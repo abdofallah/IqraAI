@@ -245,12 +245,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 if (campaignDataResult.Data.Actions != null)
                 {
                     // Ended
-                    if (campaignDataResult.Data.Actions.EndedTool != null && campaignDataResult.Data.Actions.EndedTool.ToolId != null)
+                    if (campaignDataResult.Data.Actions.CallEndedTool != null && campaignDataResult.Data.Actions.CallEndedTool.ToolId != null)
                     {
                         _sessionContextData.CallEndedAction = new ConversationSessionContextAction()
                         {
-                            SelectedToolId = campaignDataResult.Data.Actions.EndedTool.ToolId,
-                            Arguments = campaignDataResult.Data.Actions.EndedTool.Arguments ?? new Dictionary<string, object>()
+                            SelectedToolId = campaignDataResult.Data.Actions.CallEndedTool.ToolId,
+                            Arguments = campaignDataResult.Data.Actions.CallEndedTool.Arguments ?? new Dictionary<string, object>()
                         };
                     }
                 }

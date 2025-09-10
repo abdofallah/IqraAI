@@ -939,7 +939,7 @@ namespace IqraInfrastructure.Repositories.Business
         * 
         **/
 
-        public async Task<BusinessAppCampaignTelephony?> GetBusinessTelephonyCampaignById(long businessId, string existingCampaignId)
+        public async Task<BusinessAppTelephonyCampaign?> GetBusinessTelephonyCampaignById(long businessId, string existingCampaignId)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -954,7 +954,7 @@ namespace IqraInfrastructure.Repositories.Business
             return result?.TelephonyCampaigns.FirstOrDefault();
         }
 
-        public async Task<bool> AddBusinessAppTelephonyCampaign(long businessId, BusinessAppCampaignTelephony newBusinessAppCampaignTelephonyData)
+        public async Task<bool> AddBusinessAppTelephonyCampaign(long businessId, BusinessAppTelephonyCampaign newBusinessAppCampaignTelephonyData)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.TelephonyCampaigns, newBusinessAppCampaignTelephonyData);
@@ -964,7 +964,7 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessAppTelephonyCampaign(long businessId, BusinessAppCampaignTelephony newBusinessAppCampaignTelephonyData)
+        public async Task<bool> UpdateBusinessAppTelephonyCampaign(long businessId, BusinessAppTelephonyCampaign newBusinessAppCampaignTelephonyData)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -1000,7 +1000,7 @@ namespace IqraInfrastructure.Repositories.Business
         * 
         **/
 
-        public async Task<BusinessAppCampaignWeb?> GetBusinessWebCampaignById(long businessId, string existingWebCampaignId)
+        public async Task<BusinessAppWebCampaign?> GetBusinessWebCampaignById(long businessId, string existingWebCampaignId)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -1015,7 +1015,7 @@ namespace IqraInfrastructure.Repositories.Business
             return result?.WebCampaigns.FirstOrDefault();
         }
 
-        public async Task<bool> AddBusinessAppWebCampaign(long businessId, BusinessAppCampaignWeb newBusinessAppCampaignWebData)
+        public async Task<bool> AddBusinessAppWebCampaign(long businessId, BusinessAppWebCampaign newBusinessAppCampaignWebData)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.WebCampaigns, newBusinessAppCampaignWebData);
@@ -1025,7 +1025,7 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessAppWebCampaign(long businessId, BusinessAppCampaignWeb newBusinessAppCampaignWebData)
+        public async Task<bool> UpdateBusinessAppWebCampaign(long businessId, BusinessAppWebCampaign newBusinessAppCampaignWebData)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),

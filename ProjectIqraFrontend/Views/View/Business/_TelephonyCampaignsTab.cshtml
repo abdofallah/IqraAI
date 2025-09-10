@@ -1,0 +1,445 @@
+﻿<!-- TELEPHONY CAMPAIGNS TAB -->
+<div class="main-container d-none show w-100" id="telephony-campaigns-tab">
+
+    <!-- TELEPHONY CAMPAIGNS: LIST VIEW -->
+    <div class="fade show" id="telephony-campaigns-list-view">
+        <h3 class="fw-bold tab-title mb-3"><i class='fa-solid fa-phone-volume'></i> <span>Telephony Campaigns</span></h3>
+        <div class="inner-container">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 300px" class="me-4">
+                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="add-new-telephony-campaign-button">
+                        <span>+ Add New Telephony Campaign</span>
+                    </button>
+                </div>
+                <div class="input-group w-100">
+                    <input type="text" class="form-control" placeholder="Search telephony campaigns..." aria-label="Search Telephony Campaigns" id="search-telephony-campaign-input">
+                    <button class="input-group-button btn btn-primary" id="search-telephony-campaign-button">
+                        <i class='fa-regular fa-magnifying-glass'></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row" id="telephony-campaigns-list-container">
+                <!-- Dynamically Generated Telephony Campaign Cards will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- TELEPHONY CAMPAIGNS: MANAGER VIEW -->
+    <div class="fade d-none" id="telephony-campaigns-manager-view">
+        <!-- Manager Header -->
+        <div class="inner-header-container w-100 mb-3">
+            <div class="d-flex flex-column align-items-start justify-content-between">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="back-to-telephony-campaigns-list">Telephony Campaigns</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="telephony-campaign-manager-name-breadcrumb">New Campaign</span></li>
+                        </ol>
+                    </nav>
+                    <div>
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="save-telephony-campaign-button" disabled>
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Navigation for Telephony Campaign Manager -->
+                <ul class="nav w-100" id="telephony-campaign-manager-tabs" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="telephony-campaign-manager-general-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-general" type="button" role="tab" aria-controls="telephony-campaign-manager-general" aria-selected="true">General</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="telephony-campaign-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-agent" type="button" role="tab" aria-controls="telephony-campaign-manager-agent" aria-selected="false">Agent</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="telephony-campaign-manager-numbers-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-numbers" type="button" role="tab" aria-controls="telephony-campaign-manager-numbers" aria-selected="false">Number Route</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="telephony-campaign-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-configuration" type="button" role="tab" aria-controls="telephony-campaign-manager-configuration"
+                                aria-selected="false">
+                            Configuration
+                        </button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="telephony-campaign-manager-voicemail-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-voicemail" type="button" role="tab" aria-controls="telephony-campaign-manager-voicemail" aria-selected="false">Voicemail Detection</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="telephony-campaign-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-actions" type="button" role="tab" aria-controls="telephony-campaign-manager-actions" aria-selected="false">Actions</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Manager Content -->
+        <div class="inner-container">
+            <div class="tab-content w-100" id="telephony-campaign-manager-tabContent">
+
+                <!-- General Tab -->
+                <div class="tab-pane fade show active w-100" id="telephony-campaign-manager-general" role="tabpanel" aria-labelledby="telephony-campaign-manager-general-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-name-input">Name</label>
+                        <div class="input-group">
+                            <button class="btn btn-light" id="telephony-campaign-icon-input">📞</button>
+                            <input type="text" class="form-control" id="telephony-campaign-name-input" placeholder="Campaign Name">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-description-input">Description</label>
+                        <textarea class="form-control" id="telephony-campaign-description-input" placeholder="A brief description of the campaign's purpose." rows="3"></textarea>
+                    </div>
+                </div>
+
+                <!-- Agent Tab -->
+                <div class="tab-pane fade w-100" id="telephony-campaign-manager-agent" role="tabpanel" aria-labelledby="telephony-campaign-manager-agent-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-agent-name-input">Campaign Agent</label>
+                        <div class="input-group">
+                            <span class="input-group-text" id="telephony-campaign-agent-icon-span">-</span>
+                            <input type="text" class="form-control" id="telephony-campaign-agent-name-input" placeholder="Select Agent" disabled>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#telephony-campaign-select-agent-modal">Select</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-agent-script-select">Opening Script</label>
+                        <select class="form-select" id="telephony-campaign-agent-script-select" disabled></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-agent-language-select">Language</label>
+                        <select class="form-select" id="telephony-campaign-agent-language-select"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-agent-timezone-select">Timezone</label>
+                        <select class="form-select" id="telephony-campaign-agent-timezone-select"></select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" role="switch" class="form-check-input" id="telephony-campaign-agent-from-number-in-context-check" checked>
+                            <label class="form-label mb-0" for="telephony-campaign-agent-from-number-in-context-check">Include 'From' Number in Context</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" role="switch" class="form-check-input" id="telephony-campaign-agent-to-number-in-context-check" checked>
+                            <label class="form-label mb-0" for="telephony-campaign-agent-to-number-in-context-check">Include 'To' Number in Context</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Number Route Tab -->
+                <div class="tab-pane fade w-100" id="telephony-campaign-manager-numbers" role="tabpanel" aria-labelledby="telephony-campaign-manager-numbers-tab" tabindex="0">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <button class="btn btn-primary" id="telephony-campaign-add-region-route-button" data-bs-toggle="modal" data-bs-target="#telephony-campaign-add-region-modal"><span>+ Add Region Route</span></button>
+                    </div>
+                    <table id="telephony-campaign-numbers-list-table" class="table w-100">
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th>Number</th>
+                                <th>Provider</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-region-code="default">
+                                <td class="fw-bold">Default</td>
+                                <td colspan="2"><span class="text-muted">No default number selected.</span></td>
+                                <td>
+                                    <button class="btn btn-secondary btn-sm" data-action="edit-route" data-region-code="default"><i class="fa-regular fa-pencil"></i><span> Set Number</span></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Configuration Tab -->
+                <div class="tab-pane fade w-100" id="telephony-campaign-manager-configuration" role="tabpanel" aria-labelledby="telephony-campaign-manager-configuration-tab" tabindex="0">
+                    <h5 class="mb-3">Retry Logic</h5>
+                    <div class="mb-3 p-3 border rounded bg-dark">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" role="switch" class="form-check-input" id="telephony-campaign-retry-on-decline-check">
+                            <label class="form-check-label" for="telephony-campaign-retry-on-decline-check">Enable Retry on Decline/Busy</label>
+                        </div>
+                        <div class="d-none fade mt-3" id="telephony-campaign-retry-on-decline-options">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-auto">
+                                    <label for="telephony-campaign-retry-decline-count-input" class="col-form-label">Retries:</label>
+                                </div>
+                                <div class="col-auto">
+                                    <input type="number" class="form-control form-control-sm" id="telephony-campaign-retry-decline-count-input" value="3" min="1">
+                                </div>
+                                <div class="col-auto">
+                                    <label for="telephony-campaign-retry-decline-delay-input" class="col-form-label">Delay:</label>
+                                </div>
+                                <div class="col-auto">
+                                    <input type="number" class="form-control form-control-sm" id="telephony-campaign-retry-decline-delay-input" value="10" min="1">
+                                </div>
+                                <div class="col-auto">
+                                    <select class="form-select form-select-sm" id="telephony-campaign-retry-decline-unit-select"></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-4 p-3 border rounded bg-dark">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" role="switch" class="form-check-input" id="telephony-campaign-retry-on-miss-check">
+                            <label class="form-check-label" for="telephony-campaign-retry-on-miss-check">Enable Retry on No Answer</label>
+                        </div>
+                        <div class="d-none fade mt-3" id="telephony-campaign-retry-on-miss-options">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-auto">
+                                    <label for="telephony-campaign-retry-miss-count-input" class="col-form-label">Retries:</label>
+                                </div>
+                                <div class="col-auto">
+                                    <input type="number" class="form-control form-control-sm" id="telephony-campaign-retry-miss-count-input" value="3" min="1">
+                                </div>
+                                <div class="col-auto">
+                                    <label for="telephony-campaign-retry-miss-delay-input" class="col-form-label">Delay:</label>
+                                </div>
+                                <div class="col-auto">
+                                    <input type="number" class="form-control form-control-sm" id="telephony-campaign-retry-miss-delay-input" value="10" min="1">
+                                </div>
+                                <div class="col-auto">
+                                    <select class="form-select form-select-sm" id="telephony-campaign-retry-miss-unit-select"></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">Timeouts</h5>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-pickup-delay-input">Pick up delay (ms)</label>
+                        <input type="number" class="form-control" id="telephony-campaign-pickup-delay-input" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-silence-notify-input">Notify on silence (ms)</label>
+                        <input type="number" class="form-control" id="telephony-campaign-silence-notify-input" value="10000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-silence-end-input">End call on silence (ms)</label>
+                        <input type="number" class="form-control" id="telephony-campaign-silence-end-input" value="30000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-max-call-time-input">Max call time (s)</label>
+                        <input type="number" class="form-control" id="telephony-campaign-max-call-time-input" value="600">
+                    </div>
+                </div>
+
+                <!-- Voicemail Detection Tab -->
+                <div class="tab-pane fade w-100" id="telephony-campaign-manager-voicemail" role="tabpanel" aria-labelledby="telephony-campaign-manager-voicemail-tab" tabindex="0">
+                    <div class="card card-body mb-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0">Voicemail Detection</h6>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="telephony-campaign-voicemail-is-enabled-check">
+                                <label class="form-check-label" for="telephony-campaign-voicemail-is-enabled-check">Enable</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="telephony-campaign-voicemail-settings-container" class="disabled-container">
+                        <div class="card card-body mb-3">
+                            <p class="fw-bold mb-2">Detection Timing & Method</p>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="telephony-campaign-voicemail-initial-check-delay-ms-input" class="form-label">Initial Check Delay (ms)</label>
+                                    <input type="number" class="form-control" id="telephony-campaign-voicemail-initial-check-delay-ms-input" value="1000" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="telephony-campaign-voicemail-ml-check-duration-ms-range" class="form-label">ML Check Duration (ms)</label>
+                                    <input type="range" class="form-range" id="telephony-campaign-voicemail-ml-check-duration-ms-range" min="1000" max="4000" step="100" value="1000">
+                                    <div class="text-center small"><span id="telephony-campaign-voicemail-ml-check-duration-ms-value">1000</span> ms</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="telephony-campaign-voicemail-max-ml-check-tries-input" class="form-label">Max ML Check Tries</label>
+                                    <input type="number" class="form-control" id="telephony-campaign-voicemail-max-ml-check-tries-input" value="2" min="1">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="telephony-campaign-voicemail-vad-silence-threshold-ms-input" class="form-label">VAD Silence Threshold (ms)</label>
+                                    <input type="number" class="form-control" id="telephony-campaign-voicemail-vad-silence-threshold-ms-input" value="1000" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="telephony-campaign-voicemail-vad-max-speech-duration-ms-input" class="form-label">VAD Max Speech Duration (ms)</label>
+                                    <input type="number" class="form-control" id="telephony-campaign-voicemail-vad-max-speech-duration-ms-input" value="4000" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-body mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="telephony-campaign-voicemail-advanced-verification-check">
+                                <label class="form-check-label" for="telephony-campaign-voicemail-advanced-verification-check">Enable Advanced Verification</label>
+                            </div>
+                            <div id="telephony-campaign-voicemail-advanced-verification-container" class="d-none mt-3">
+                                <div class="row">
+                                    <div class="col-12 col-md-6 mb-3 mb-md-0">
+                                        <label class="form-label">STT for Transcription</label>
+                                        <div id="telephony-campaign-voicemail-stt-integration-container"></div>
+                                    </div>
+                                    <div class="col-12 col-md-6 mb-0">
+                                        <label class="form-label">LLM for Verification</label>
+                                        <div id="telephony-campaign-voicemail-llm-integration-container"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-body mb-3">
+                            <p class="fw-bold mb-2">Action Triggers</p>
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-3 mb-md-0">
+                                    <p class="fw-bold mb-2 small">Stop Agent Speaking Triggers</p>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="telephony-campaign-stop-agent-on-ml-check">
+                                                <label class="form-check-label" for="telephony-campaign-stop-agent-on-ml-check">After ML Check Success</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="telephony-campaign-stop-agent-on-vad-check">
+                                                <label class="form-check-label" for="telephony-campaign-stop-agent-on-vad-check">After VAD Silence</label>
+                                            </div>
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="checkbox" id="telephony-campaign-stop-agent-on-llm-check">
+                                                <label class="form-check-label" for="telephony-campaign-stop-agent-on-llm-check">After LLM Confirmation</label>
+                                            </div>
+                                            <label for="telephony-campaign-voicemail-stop-speaking-delay-input" class="form-label">Delay Action (ms)</label>
+                                            <input type="number" class="form-control" id="telephony-campaign-voicemail-stop-speaking-delay-input" value="1000" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6 mb-0">
+                                    <p class="fw-bold mb-2 small">End Call / Leave Message Triggers</p>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="telephony-campaign-end-leave-on-ml-check">
+                                                <label class="form-check-label" for="telephony-campaign-end-leave-on-ml-check">After ML Check Success</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="telephony-campaign-end-leave-on-vad-check">
+                                                <label class="form-check-label" for="telephony-campaign-end-leave-on-vad-check">After VAD Silence</label>
+                                            </div>
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="checkbox" id="telephony-campaign-end-leave-on-llm-check">
+                                                <label class="form-check-label" for="telephony-campaign-end-leave-on-llm-check">After LLM Confirmation</label>
+                                            </div>
+                                            <label for="telephony-campaign-voicemail-end-leave-delay-input" class="form-label">Delay Action (ms)</label>
+                                            <input type="number" class="form-control" id="telephony-campaign-voicemail-end-leave-delay-input" value="1000" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-body">
+                            <p class="fw-bold mb-2">Final Action on Detect</p>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="telephony-campaign-final-action-radio" id="telephony-campaign-voicemail-end-call-radio" value="end" checked>
+                                <label class="form-check-label" for="telephony-campaign-voicemail-end-call-radio">End Call</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="telephony-campaign-final-action-radio" id="telephony-campaign-voicemail-leave-message-radio" value="leave">
+                                <label class="form-check-label" for="telephony-campaign-voicemail-leave-message-radio">Leave a Message</label>
+                            </div>
+                            <div class="mt-3 d-none" id="telephony-campaign-voicemail-leave-message-container">
+                                <div class="mb-3">
+                                    <label class="form-label" for="telephony-campaign-voicemail-message-to-leave-textarea"><span>Message to Leave</span> <i class="fa-regular fa-language"></i></label>
+                                    <textarea class="form-control" id="telephony-campaign-voicemail-message-to-leave-textarea" rows="3" placeholder="Enter message..."></textarea>
+                                </div>
+                                <div>
+                                    <label for="telephony-campaign-voicemail-wait-after-message-input" class="form-label">Wait Before End (ms)</label>
+                                    <input type="number" class="form-control" id="telephony-campaign-voicemail-wait-after-message-input" value="1000" min="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Tab -->
+                <div class="tab-pane fade w-100" id="telephony-campaign-manager-actions" role="tabpanel" aria-labelledby="telephony-campaign-manager-actions-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-action-tool-call-initiation-failure-select">On Call Initiation Failure Action</label>
+                        <select class="form-select" id="telephony-campaign-action-tool-call-initiation-failure-select"></select>
+                        <div class="custom-tool-input-arguments d-none"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-action-tool-call-initiated-select">On Call Initiated Action</label>
+                        <select class="form-select" id="telephony-campaign-action-tool-call-initiated-select"></select>
+                        <div class="custom-tool-input-arguments d-none"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-action-tool-call-declined-select">On Call Declined Action</label>
+                        <select class="form-select" id="telephony-campaign-action-tool-call-declined-select"></select>
+                        <div class="custom-tool-input-arguments d-none"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-action-tool-call-missed-select">On Call Missed Action</label>
+                        <select class="form-select" id="telephony-campaign-action-tool-call-missed-select"></select>
+                        <div class="custom-tool-input-arguments d-none"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="telephony-campaign-action-tool-call-answered-select">On Call Answered Action</label>
+                        <select class="form-select" id="telephony-campaign-action-tool-call-answered-select"></select>
+                        <div class="custom-tool-input-arguments d-none"></div>
+                    </div>
+                    <div class="">
+                        <label class="form-label" for="telephony-campaign-action-tool-call-ended-select">On Call Ended Action</label>
+                        <select class="form-select" id="telephony-campaign-action-tool-call-ended-select"></select>
+                        <div class="custom-tool-input-arguments d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal fade" id="telephony-campaign-select-agent-modal" tabindex="-1" aria-labelledby="telephony-campaign-select-agent-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="telephony-campaign-select-agent-modal-label">Select Agent</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Agent Selection List -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="telephony-campaign-save-agent-button" disabled>Select Agent</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="telephony-campaign-change-number-modal" tabindex="-1" aria-labelledby="telephony-campaign-change-number-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="telephony-campaign-change-number-modal-label">Select 'Call From' Number</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Number Selection List -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="telephony-campaign-save-number-button" disabled>Select Number</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="telephony-campaign-add-region-modal" tabindex="-1" aria-labelledby="telephony-campaign-add-region-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="telephony-campaign-add-region-modal-label">Select a Region</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Region Selection Dropdown -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="telephony-campaign-confirm-region-button" disabled>Select Number</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

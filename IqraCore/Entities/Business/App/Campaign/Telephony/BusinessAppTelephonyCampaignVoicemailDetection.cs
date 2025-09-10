@@ -2,7 +2,7 @@
 
 namespace IqraCore.Entities.Business
 {
-    public class BusinessAppCampaignVoicemailDetection
+    public class BusinessAppTelephonyCampaignVoicemailDetection
     { 
         public bool IsEnabled { get; set; } = false;
         public int InitialCheckDelayMS { get; set; } = 1000;

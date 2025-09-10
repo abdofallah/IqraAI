@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.Business
 {
-    public class BusinessAppCampaignWebRegionRoute
+    public class BusinessAppWebCampaignRegionRoute
     {
     }
 }

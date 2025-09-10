@@ -50,10 +50,10 @@
                         <i class='fa-regular fa-chalkboard nav_icon'></i>
                         <span class="nav_name">Overview</span>
                     </a>
-                    <span class="mt-4 nav-category-label">Inbound</span>
-                    <a class="nav_link" for="routing-tab" nav-url-path="routings" is-new-tutorial-disabled="true">
-                        <i class='fa-regular fa-code-fork nav_icon'></i>
-                        <span class="nav_name">Routing</span>
+                    <span class="mt-4 nav-category-label">Actions</span>
+                    <a class="nav_link" for="make-calls-tab" nav-url-path="makecalls" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-phone nav_icon'></i>
+                        <span class="nav_name">Make Calls</span>
                     </a>
                     <span class="mt-4 nav-category-label">Setup</span>
                     <a class="nav_link" for="agents-tab" nav-url-path="agents" is-new-tutorial-disabled="true">
@@ -86,14 +86,18 @@
                         <i class='fa-regular fa-hashtag nav_icon'></i>
                         <span class="nav_name">Numbers</span>
                     </a>
-                    <span class="mt-4 nav-category-label">Outbound</span>
-                    <a class="nav_link" for="campaigns-tab" nav-url-path="campaigns" is-new-tutorial-disabled="true">
-                        <i class='fa-regular fa-megaphone nav_icon'></i>
-                        <span class="nav_name">Campaigns</span>
+                    <span class="mt-4 nav-category-label">Routing</span>
+                    <a class="nav_link" for="routing-tab" nav-url-path="routings" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-code-fork nav_icon'></i>
+                        <span class="nav_name">Inbound Routing</span>
                     </a>
-                    <a class="nav_link" for="make-calls-tab" nav-url-path="makecalls" is-new-tutorial-disabled="true">
-                        <i class='fa-regular fa-phone nav_icon'></i>
-                        <span class="nav_name">Make Calls</span>
+                    <a class="nav_link" for="telephony-campaigns-tab" nav-url-path="telephonycampaigns" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-megaphone nav_icon'></i>
+                        <span class="nav_name">Telephony Campaigns</span>
+                    </a>
+                    <a class="nav_link" for="web-campaigns-tab" nav-url-path="webcampaigns" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-globe nav_icon'></i>
+                        <span class="nav_name">Web Campaigns</span>
                     </a>
                     <span class="mt-4 nav-category-label">Analytics</span>
                     <a class="nav_link" for="conversations-tab" nav-url-path="conversations" is-new-tutorial-disabled="true">
@@ -123,11 +127,11 @@
 
         <!--
 
-            Inbound
+            Actions
 
         -->
-        <!-- Routing Container -->
-        <partial name="_RoutingTab.cshtml" />
+        <!-- Make Calls Container -->
+        <partial name="_MakeCallsTab.cshtml" />
 
         <!--
 
@@ -157,14 +161,17 @@
 
         <!--
 
-            Outbound
+            Routing
 
         -->
-        <!-- Campaigns Container -->
-        <partial name="_CampaignsTab.cshtml" />
+        <!-- Inbound Routing Container -->
+        <partial name="_RoutingTab.cshtml" />
 
-        <!-- Make Calls Container -->
-        <partial name="_MakeCallsTab.cshtml" />
+        <!-- Telephony Campaigns Container -->
+        <partial name="_TelephonyCampaignsTab.cshtml" />
+
+        <!-- Web Campaigns Container -->
+        <partial name="_WebCampaignsTab.cshtml" />
 
         <!--
 
@@ -924,7 +931,8 @@
                                                 initRoutingTab();
                                                 initNumbersTab();
                                                 initConversationsTab();
-                                                initCampaignsTab();
+                                                initTelephonyCampaignsTab();
+                                                initWebCampaignsTab();
                                                 initMakeCallsTab();
                                                 initKnowledgeBaseTab();
 

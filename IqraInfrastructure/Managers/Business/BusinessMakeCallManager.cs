@@ -53,7 +53,7 @@ namespace IqraInfrastructure.Managers.Business
             string businessDefaultLanguage = businessData.DefaultLanguage;
             List<string> businessLanguages = businessData.Languages;
 
-            BusinessAppCampaignTelephony campaignData;
+            BusinessAppTelephonyCampaign campaignData;
             var callConfigData = new MakeCallRequestDto();
             if (!formData.TryGetValue("config", out var configStringValue))
             {
@@ -115,7 +115,7 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     
-                    if (campaignDataResult.Data is BusinessAppCampaignTelephony campaignTelephony)
+                    if (campaignDataResult.Data is BusinessAppTelephonyCampaign campaignTelephony)
                     {
                         campaignData = campaignTelephony;
                     }
@@ -421,7 +421,7 @@ namespace IqraInfrastructure.Managers.Business
             return result.SetSuccessResult(new List<string?>() { callQueueIdResult });
         }
 
-        private async Task<FunctionReturnResult<List<string?>?>> QueueBulkCalls(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaignTelephony campaignData, List<OutboundBulkCallRowData> callsRows, string queueGroupId)
+        private async Task<FunctionReturnResult<List<string?>?>> QueueBulkCalls(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppTelephonyCampaign campaignData, List<OutboundBulkCallRowData> callsRows, string queueGroupId)
         {
             var result = new FunctionReturnResult<List<string?>?>();
 
@@ -720,7 +720,7 @@ namespace IqraInfrastructure.Managers.Business
             }
         }
     
-        private FunctionReturnResult<string?> GetBusinessNumberIdForToNumber(string toNumber, BusinessAppCampaignTelephony campaignData)
+        private FunctionReturnResult<string?> GetBusinessNumberIdForToNumber(string toNumber, BusinessAppTelephonyCampaign campaignData)
         {
             var result = new FunctionReturnResult<string?>();
 

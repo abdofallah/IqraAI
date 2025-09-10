@@ -1,0 +1,202 @@
+﻿<!-- WEB CAMPAIGNS TAB -->
+<div class="main-container d-none show w-100" id="web-campaigns-tab">
+
+    <!-- WEB CAMPAIGNS: LIST VIEW -->
+    <div class="fade show" id="web-campaigns-list-view">
+        <h3 class="fw-bold tab-title mb-3"><i class='fa-solid fa-globe'></i> <span>Web Campaigns</span></h3>
+        <div class="inner-container">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 300px" class="me-4">
+                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="add-new-web-campaign-button">
+                        <span>+ Add New Web Campaign</span>
+                    </button>
+                </div>
+                <div class="input-group w-100">
+                    <input type="text" class="form-control" placeholder="Search web campaigns..." aria-label="Search Web Campaigns" id="search-web-campaign-input">
+                    <button class="input-group-button btn btn-primary" id="search-web-campaign-button">
+                        <i class='fa-regular fa-magnifying-glass'></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row" id="web-campaigns-list-container">
+                <!-- Dynamically Generated Web Campaign Cards will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- WEB CAMPAIGNS: MANAGER VIEW -->
+    <div class="fade d-none" id="web-campaigns-manager-view">
+        <!-- Manager Header -->
+        <div class="inner-header-container w-100 mb-3">
+            <div class="d-flex flex-column align-items-start justify-content-between">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="back-to-web-campaigns-list">Web Campaigns</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="web-campaign-manager-name-breadcrumb">New Campaign</span></li>
+                        </ol>
+                    </nav>
+                    <div>
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="save-web-campaign-button" disabled>
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Navigation for Web Campaign Manager -->
+                <ul class="nav w-100" id="web-campaign-manager-tabs" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="web-campaign-manager-general-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-general" type="button" role="tab" aria-controls="web-campaign-manager-general" aria-selected="true">General</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="web-campaign-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-agent" type="button" role="tab" aria-controls="web-campaign-manager-agent" aria-selected="false">Agent</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="web-campaign-manager-region-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-region" type="button" role="tab" aria-controls="web-campaign-manager-region" aria-selected="false">Region Route</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="web-campaign-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-configuration" type="button" role="tab" aria-controls="web-campaign-manager-configuration"
+                                aria-selected="false">
+                            Configuration
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="web-campaign-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-actions" type="button" role="tab" aria-controls="web-campaign-manager-actions" aria-selected="false">Actions</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Manager Content -->
+        <div class="inner-container">
+            <div class="tab-content w-100" id="web-campaign-manager-tabContent">
+
+                <!-- General Tab -->
+                <div class="tab-pane fade show active w-100" id="web-campaign-manager-general" role="tabpanel" aria-labelledby="web-campaign-manager-general-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-name-input">Name</label>
+                        <div class="input-group">
+                            <button class="btn btn-light" id="web-campaign-icon-input">🌐</button>
+                            <input type="text" class="form-control" id="web-campaign-name-input" placeholder="Campaign Name">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-description-input">Description</label>
+                        <textarea class="form-control" id="web-campaign-description-input" placeholder="A brief description of the campaign's purpose." rows="3"></textarea>
+                    </div>
+                </div>
+
+                <!-- Agent Tab -->
+                <div class="tab-pane fade w-100" id="web-campaign-manager-agent" role="tabpanel" aria-labelledby="web-campaign-manager-agent-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-agent-name-input">Campaign Agent</label>
+                        <div class="input-group">
+                            <span class="input-group-text" id="web-campaign-agent-icon-span">-</span>
+                            <input type="text" class="form-control" id="web-campaign-agent-name-input" placeholder="Select Agent" disabled>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#web-campaign-select-agent-modal">Select</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-agent-script-select">Opening Script</label>
+                        <select class="form-select" id="web-campaign-agent-script-select" disabled></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-agent-language-select">Language</label>
+                        <select class="form-select" id="web-campaign-agent-language-select"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-agent-timezone-select">Timezone</label>
+                        <select class="form-select" id="web-campaign-agent-timezone-select"></select>
+                    </div>
+                </div>
+
+                <!-- Region Route Tab -->
+                <div class="tab-pane fade w-100" id="web-campaign-manager-region" role="tabpanel" aria-labelledby="web-campaign-manager-region-tab" tabindex="0">
+                    <label class="form-label btn-ic-span-align">
+                        <span>Default Region Routing Policy </span>
+                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="This setting determines which server region will handle incoming web calls if a specific region is not provided.">
+                            <i class="fa-regular fa-circle-question"></i>
+                        </a>
+                    </label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="web-campaign-region-policy-radio" id="web-campaign-region-policy-automatic" value="automatic" checked>
+                        <label class="form-check-label" for="web-campaign-region-policy-automatic">
+                            <strong>Automatic (Recommended)</strong><br>
+                            <span class="small text-muted">Automatically route the user to the nearest available region.</span>
+                        </label>
+                    </div>
+                    <hr>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="web-campaign-region-policy-radio" id="web-campaign-region-policy-fixed" value="fixed">
+                        <label class="form-check-label" for="web-campaign-region-policy-fixed">
+                            <strong>Fixed Region</strong><br>
+                            <span class="small text-muted">Force all conversations for this campaign to a single region.</span>
+                        </label>
+                    </div>
+                    <div class="mt-3 ps-4 d-none" id="web-campaign-fixed-region-options-container">
+                        <label for="web-campaign-fixed-region-select" class="form-label">Select Target Region</label>
+                        <select class="form-select" id="web-campaign-fixed-region-select"></select>
+                    </div>
+                </div>
+
+                <!-- Configuration Tab -->
+                <div class="tab-pane fade w-100" id="web-campaign-manager-configuration" role="tabpanel" aria-labelledby="web-campaign-manager-configuration-tab" tabindex="0">
+                    <h5 class="mb-3">Timeouts</h5>
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-silence-notify-input">Notify on silence (ms)</label>
+                        <input type="number" class="form-control" id="web-campaign-silence-notify-input" value="10000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-silence-end-input">End conversation on silence (ms)</label>
+                        <input type="number" class="form-control" id="web-campaign-silence-end-input" value="30000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-max-conversation-time-input">Max conversation time (s)</label>
+                        <input type="number" class="form-control" id="web-campaign-max-conversation-time-input" value="600">
+                    </div>
+                </div>
+
+                <!-- Actions Tab -->
+                <div class="tab-pane fade w-100" id="web-campaign-manager-actions" role="tabpanel" aria-labelledby="web-campaign-manager-actions-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-action-tool-conversation-initiation-failure-select">On Conversation Initiation Failure Action</label>
+                        <select class="form-select" id="web-campaign-action-tool-conversation-initiation-failure-select"></select>
+                        <div class="custom-tool-input-arguments d-none"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="web-campaign-action-tool-conversation-initiated-select">On Conversation Initiated Action</label>
+                        <select class="form-select" id="web-campaign-action-tool-conversation-initiated-select"></select>
+                        <div class="custom-tool-input-arguments d-none"></div>
+                    </div>
+                    <div class="">
+                        <label class="form-label" for="web-campaign-action-tool-conversation-ended-select">On Conversation Ended Action</label>
+                        <select class="form-select" id="web-campaign-action-tool-conversation-ended-select"></select>
+                        <div class="custom-tool-input-arguments d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal fade" id="web-campaign-select-agent-modal" tabindex="-1" aria-labelledby="web-campaign-select-agent-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="web-campaign-select-agent-modal-label">Select Agent</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Agent Selection List -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="web-campaign-save-agent-button" disabled>Select Agent</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

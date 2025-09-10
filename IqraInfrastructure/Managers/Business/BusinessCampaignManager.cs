@@ -30,9 +30,9 @@ namespace IqraInfrastructure.Managers.Business
             _integrationConfigurationManager = integrationConfigurationManager;;
         }
 
-        public async Task<FunctionReturnResult<BusinessAppCampaignTelephony?>> GetTelephonyCampaignById(long businessId, string existingTelephonyCampaignId)
+        public async Task<FunctionReturnResult<BusinessAppTelephonyCampaign?>> GetTelephonyCampaignById(long businessId, string existingTelephonyCampaignId)
         {
-            var result = new FunctionReturnResult<BusinessAppCampaignTelephony?>();
+            var result = new FunctionReturnResult<BusinessAppTelephonyCampaign?>();
 
             try
             {
@@ -55,9 +55,9 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
         }
-        public async Task<FunctionReturnResult<BusinessAppCampaignWeb?>> GetWebCampaignById(long businessId, string existingWebCampaignId)
+        public async Task<FunctionReturnResult<BusinessAppWebCampaign?>> GetWebCampaignById(long businessId, string existingWebCampaignId)
         {
-            var result = new FunctionReturnResult<BusinessAppCampaignWeb?>();
+            var result = new FunctionReturnResult<BusinessAppWebCampaign?>();
 
             try
             {
@@ -133,10 +133,10 @@ namespace IqraInfrastructure.Managers.Business
                         switch (currentCampaignType)
                         {
                             case BusinessAppCampaignTypeENUM.Telephony:
-                                newBusinessAppCampaignData = new BusinessAppCampaignTelephony();
+                                newBusinessAppCampaignData = new BusinessAppTelephonyCampaign();
                                 break;
                             case BusinessAppCampaignTypeENUM.Web:
-                                newBusinessAppCampaignData = new BusinessAppCampaignWeb();
+                                newBusinessAppCampaignData = new BusinessAppWebCampaign();
                                 break;
                             default:
                                 return result.SetFailureResult(
@@ -570,353 +570,286 @@ namespace IqraInfrastructure.Managers.Business
                             }
                         }
 
-                        // Voicemail Tab
-                        if (!changes.RootElement.TryGetProperty("voicemailDetection", out var voicemailElement))
+                        if (newBusinessAppCampaignData is BusinessAppTelephonyCampaign newBusinessAppCampaignTelephonyData)
                         {
-                            return result.SetFailureResult(
-                                "AddOrUpdateCampaignAsync:VOICEMAIL_SECTION_MISSING",
-                                "Voicemail section 'voicemailDetection' not found."
-                            );
-                        }
-                        else
-                        {
-                            var voicemailData = new BusinessAppCampaignVoicemailDetection();
-
-                            if (!voicemailElement.TryGetProperty("isEnabled", out var isEnabledElement)
-                                || (isEnabledElement.ValueKind != JsonValueKind.True && isEnabledElement.ValueKind != JsonValueKind.False))
+                            // Voicemail Tab
+                            if (!changes.RootElement.TryGetProperty("voicemailDetection", out var voicemailElement))
                             {
                                 return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:VOICEMAIL_ISENABLED_INVALID",
-                                    "Voicemail isEnabled parameter is missing or invalid."
-                                );
-                            }
-                            voicemailData.IsEnabled = isEnabledElement.GetBoolean();
-
-                            if (voicemailData.IsEnabled)
-                            {
-                                #region Voicemail Property Checks
-                                if (!voicemailElement.TryGetProperty("initialCheckDelayMS", out var initialCheckDelayMSElement)
-                                    || initialCheckDelayMSElement.ValueKind != JsonValueKind.Number)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_INITIALCHECKDELAY_INVALID",
-                                        "Voicemail initialCheckDelayMS parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.InitialCheckDelayMS = initialCheckDelayMSElement.GetInt32();
-
-                                if (!voicemailElement.TryGetProperty("mlCheckDurationMS", out var mlCheckDurationMSElement)
-                                    || mlCheckDurationMSElement.ValueKind != JsonValueKind.Number)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_MLCHECKDURATION_INVALID",
-                                        "Voicemail mlCheckDurationMS parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.MLCheckDurationMS = mlCheckDurationMSElement.GetInt32();
-
-                                if (!voicemailElement.TryGetProperty("maxMLCheckTries", out var maxMLCheckTriesElement)
-                                    || maxMLCheckTriesElement.ValueKind != JsonValueKind.Number)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_MAXMLTRIES_INVALID",
-                                        "Voicemail maxMLCheckTries parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.MaxMLCheckTries = maxMLCheckTriesElement.GetInt32();
-
-                                if (!voicemailElement.TryGetProperty("voiceMailMessageVADSilenceThresholdMS", out var vadSilenceThresholdElement)
-                                    || vadSilenceThresholdElement.ValueKind != JsonValueKind.Number)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_VADSILENCE_INVALID",
-                                        "Voicemail voiceMailMessageVADSilenceThresholdMS parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.VoiceMailMessageVADSilenceThresholdMS = vadSilenceThresholdElement.GetInt32();
-
-                                if (!voicemailElement.TryGetProperty("voiceMailMessageVADMaxSpeechDurationMS", out var vadMaxSpeechDurationElement)
-                                    || vadMaxSpeechDurationElement.ValueKind != JsonValueKind.Number)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_VADMAXSPEECH_INVALID",
-                                        "Voicemail voiceMailMessageVADMaxSpeechDurationMS parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.VoiceMailMessageVADMaxSpeechDurationMS = vadMaxSpeechDurationElement.GetInt32();
-
-                                if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterXMlCheckSuccess", out var stopOnMlElement)
-                                    || (stopOnMlElement.ValueKind != JsonValueKind.True && stopOnMlElement.ValueKind != JsonValueKind.False))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_STOPONML_INVALID",
-                                        "Voicemail stopSpeakingAgentAfterXMlCheckSuccess parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.StopSpeakingAgentAfterXMlCheckSuccess = stopOnMlElement.GetBoolean();
-
-                                if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterVadSilence", out var stopOnVadElement)
-                                    || (stopOnVadElement.ValueKind != JsonValueKind.True && stopOnVadElement.ValueKind != JsonValueKind.False))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_STOPONVAD_INVALID",
-                                        "Voicemail stopSpeakingAgentAfterVadSilence parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.StopSpeakingAgentAfterVadSilence = stopOnVadElement.GetBoolean();
-
-                                if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterLLMConfirm", out var stopOnLlmElement)
-                                    || (stopOnLlmElement.ValueKind != JsonValueKind.True && stopOnLlmElement.ValueKind != JsonValueKind.False))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_STOPONLLM_INVALID",
-                                        "Voicemail stopSpeakingAgentAfterLLMConfirm parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.StopSpeakingAgentAfterLLMConfirm = stopOnLlmElement.GetBoolean();
-
-                                if (!voicemailElement.TryGetProperty("stopSpeakingAgentDelayAfterMatchMS", out var stopDelayElement)
-                                    || stopDelayElement.ValueKind != JsonValueKind.Number)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_STOPDELAY_INVALID",
-                                        "Voicemail stopSpeakingAgentDelayAfterMatchMS parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.StopSpeakingAgentDelayAfterMatchMS = stopDelayElement.GetInt32();
-
-                                if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterXMLCheckSuccess", out var endOnMlElement)
-                                    || (endOnMlElement.ValueKind != JsonValueKind.True && endOnMlElement.ValueKind != JsonValueKind.False))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_ENDONML_INVALID",
-                                        "Voicemail endOrLeaveMessageAfterXMLCheckSuccess parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.EndOrLeaveMessageAfterXMLCheckSuccess = endOnMlElement.GetBoolean();
-
-                                if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterVadSilence", out var endOnVadElement)
-                                    || (endOnVadElement.ValueKind != JsonValueKind.True && endOnVadElement.ValueKind != JsonValueKind.False))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_ENDONVAD_INVALID",
-                                        "Voicemail endOrLeaveMessageAfterVadSilence parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.EndOrLeaveMessageAfterVadSilence = endOnVadElement.GetBoolean();
-
-                                if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterLLMConfirm", out var endOnLlmElement)
-                                    || (endOnLlmElement.ValueKind != JsonValueKind.True && endOnLlmElement.ValueKind != JsonValueKind.False))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_ENDONLLM_INVALID",
-                                        "Voicemail endOrLeaveMessageAfterLLMConfirm parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.EndOrLeaveMessageAfterLLMConfirm = endOnLlmElement.GetBoolean();
-
-                                if (!voicemailElement.TryGetProperty("endOrLeaveMessageDelayAfterMatchMS", out var endLeaveDelayElement)
-                                    || endLeaveDelayElement.ValueKind != JsonValueKind.Number)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_ENDDELAY_INVALID",
-                                        "Voicemail endOrLeaveMessageDelayAfterMatchMS parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.EndOrLeaveMessageDelayAfterMatchMS = endLeaveDelayElement.GetInt32();
-
-                                if (!voicemailElement.TryGetProperty("endCallOnDetect", out var endCallElement)
-                                    || (endCallElement.ValueKind != JsonValueKind.True && endCallElement.ValueKind != JsonValueKind.False))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_ENDCALL_INVALID",
-                                        "Voicemail endCallOnDetect parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.EndCallOnDetect = endCallElement.GetBoolean();
-
-                                if (!voicemailElement.TryGetProperty("leaveMessageOnDetect", out var leaveMessageElement)
-                                    || (leaveMessageElement.ValueKind != JsonValueKind.True && leaveMessageElement.ValueKind != JsonValueKind.False))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_LEAVEMESSAGE_INVALID",
-                                        "Voicemail leaveMessageOnDetect parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.LeaveMessageOnDetect = leaveMessageElement.GetBoolean();
-
-                                if (voicemailData.EndCallOnDetect && voicemailData.LeaveMessageOnDetect)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_ENDCALLANDLEAVEMESSAGE_INVALID",
-                                        "Voicemail endCallOnDetect and leaveMessageOnDetect cannot be true at the same time."
-                                        );
-                                }
-
-                                if (voicemailData.LeaveMessageOnDetect)
-                                {
-                                    voicemailData.MessageToLeave = new Dictionary<string, string>();
-                                    var messageToLeaveValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(businessLanguages, voicemailElement, "messageToLeave", voicemailData.MessageToLeave);
-                                    if (!messageToLeaveValidationResult.Success)
-                                    {
-                                        return result.SetFailureResult("AddOrUpdateCampaignAsync:" + messageToLeaveValidationResult.Code, messageToLeaveValidationResult.Message);
-                                    }
-
-                                    if (!voicemailElement.TryGetProperty("waitXMSAfterLeavingMessageToEndCall", out var waitAfterMessageElement)
-                                        || waitAfterMessageElement.ValueKind != JsonValueKind.Number)
-                                    {
-                                        return result.SetFailureResult(
-                                            "AddOrUpdateCampaignAsync:VOICEMAIL_WAITAFTERMESSAGE_INVALID",
-                                            "Voicemail waitXMSAfterLeavingMessageToEndCall parameter is missing or invalid."
-                                            );
-                                    }
-                                    voicemailData.WaitXMSAfterLeavingMessageToEndCall = waitAfterMessageElement.GetInt32();
-                                }
-
-                                if (!voicemailElement.TryGetProperty("onVoiceMailMessageDetectVerifySTTAndLLM", out var advancedVerificationElement)
-                                    || (advancedVerificationElement.ValueKind != JsonValueKind.True && advancedVerificationElement.ValueKind != JsonValueKind.False))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_ADVANCEDVERIFICATION_INVALID",
-                                        "Voicemail onVoiceMailMessageDetectVerifySTTAndLLM parameter is missing or invalid."
-                                        );
-                                }
-                                voicemailData.OnVoiceMailMessageDetectVerifySTTAndLLM = advancedVerificationElement.GetBoolean();
-
-                                if ((voicemailData.StopSpeakingAgentAfterLLMConfirm || voicemailData.EndOrLeaveMessageAfterLLMConfirm)
-                                    && !voicemailData.OnVoiceMailMessageDetectVerifySTTAndLLM)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:VOICEMAIL_LLMTRIGGER_MISMATCH",
-                                        "An LLM Confirmation trigger is enabled, but Advanced Verification is disabled."
-                                        );
-                                }
-
-                                if (voicemailData.OnVoiceMailMessageDetectVerifySTTAndLLM)
-                                {
-                                    if (!voicemailElement.TryGetProperty("transcribeVoiceMessageSTT", out var sttIntegrationElement)
-                                        || sttIntegrationElement.ValueKind == JsonValueKind.Null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "AddOrUpdateCampaignAsync:VOICEMAIL_STT_INTEGRATION_MISSING",
-                                            "STT integration for voicemail advanced verification is required but not provided."
-                                            );
-                                    }
-                                    var sttValidationResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(businessId, sttIntegrationElement, "STT");
-                                    if (!sttValidationResult.Success || sttValidationResult.Data == null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "AddOrUpdateCampaignAsync:" + sttValidationResult.Code,
-                                            "Voicemail STT Integration failed: " + sttValidationResult.Message
-                                            );
-                                    }
-                                    voicemailData.TranscribeVoiceMessageSTT = sttValidationResult.Data;
-
-                                    if (!voicemailElement.TryGetProperty("verifyVoiceMessageLLM", out var llmIntegrationElement)
-                                        || llmIntegrationElement.ValueKind == JsonValueKind.Null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "AddOrUpdateCampaignAsync:VOICEMAIL_LLM_INTEGRATION_MISSING",
-                                            "LLM integration for voicemail advanced verification is required but not provided."
-                                            );
-                                    }
-                                    var llmValidationResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(businessId, llmIntegrationElement, "LLM");
-                                    if (!llmValidationResult.Success || llmValidationResult.Data == null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "AddOrUpdateCampaignAsync:" + llmValidationResult.Code,
-                                            "Voicemail LLM Integration failed: " + llmValidationResult.Message
-                                            );
-                                    }
-                                    voicemailData.VerifyVoiceMessageLLM = llmValidationResult.Data;
-                                }
-                                #endregion
-                            }
-
-                            newBusinessAppCampaignData.VoicemailDetection = voicemailData;
-                        }
-
-                        // Actions Tab
-                        if (!changes.RootElement.TryGetProperty("actions", out var actionsTabRootElement))
-                        {
-                            return result.SetFailureResult(
-                                "AddOrUpdateCampaignAsync:ACTIONS_TAB_NOT_FOUND",
-                                "Actions tab not found."
-                            );
-                        }
-                        else
-                        {
-                            if (!actionsTabRootElement.TryGetProperty("answeredTool", out var answeredToolElement))
-                            {
-                                return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:ACTIONS_ANSWERED_TOOL_NOT_FOUND",
-                                    "Answered tool not found."
-                                );
-                            }
-                            var answeredToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], answeredToolElement, "Answered");
-                            if (!answeredToolValidationResult.Success)
-                            {
-                                return result.SetFailureResult("AddOrUpdateCampaignAsync:" + answeredToolValidationResult.Code, answeredToolValidationResult.Message);
-                            }
-                            newBusinessAppCampaignData.Actions.AnsweredTool = answeredToolValidationResult.Data;
-
-                            if (!actionsTabRootElement.TryGetProperty("declinedTool", out var declinedToolElement))
-                            {
-                                return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:ACTIONS_DECLINED_TOOL_NOT_FOUND",
-                                    "Declined tool not found."
-                                );
-                            }
-                            var declinedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], declinedToolElement, "Declined");
-                            if (!declinedToolValidationResult.Success)
-                            {
-                                return result.SetFailureResult("AddOrUpdateCampaignAsync:" + declinedToolValidationResult.Code, declinedToolValidationResult.Message);
-                            }
-                            newBusinessAppCampaignData.Actions.DeclinedTool = declinedToolValidationResult.Data;
-
-                            if (!actionsTabRootElement.TryGetProperty("missedTool", out var missedToolElement))
-                            {
-                                return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:ACTIONS_MISSED_TOOL_NOT_FOUND",
-                                    "No Missed tool not found."
-                                );
-                            }
-                            var missedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], missedToolElement, "Missed");
-                            if (!missedToolValidationResult.Success)
-                            {
-                                return result.SetFailureResult("AddOrUpdateCampaignAsync:" + missedToolValidationResult.Code, missedToolValidationResult.Message);
-                            }
-                            newBusinessAppCampaignData.Actions.MissedTool = missedToolValidationResult.Data;
-
-                            if (!actionsTabRootElement.TryGetProperty("endedTool", out var endedToolElement))
-                            {
-                                return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:ACTIONS_ENDED_TOOL_NOT_FOUND",
-                                    "Ended tool not found."
-                                );
-                            }
-                            var endedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], endedToolElement, "Ended");
-                            if (!endedToolValidationResult.Success)
-                            {
-                                return result.SetFailureResult("AddOrUpdateCampaignAsync:" + endedToolValidationResult.Code, endedToolValidationResult.Message);
-                            }
-                            newBusinessAppCampaignData.Actions.EndedTool = endedToolValidationResult.Data;
-                        }
-
-
-                        if (newBusinessAppCampaignData is BusinessAppCampaignTelephony newBusinessAppCampaignTelephonyData)
-                        {
-                            // Numbers Tab
-                            if (!changes.RootElement.TryGetProperty("numbers", out var numbersProperty) || numbersProperty.ValueKind != JsonValueKind.Object)
-                            {
-                                return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:NUMBERS_TAB_NOT_FOUND",
-                                    "Numbers not found."
+                                    "AddOrUpdateCampaignAsync:VOICEMAIL_SECTION_MISSING",
+                                    "Voicemail section 'voicemailDetection' not found."
                                 );
                             }
                             else
                             {
-                                if (!numbersProperty.TryGetProperty("defaultNumberId", out var defaultNumberIdProperty) ||
+                                var voicemailData = new BusinessAppTelephonyCampaignVoicemailDetection();
+
+                                if (!voicemailElement.TryGetProperty("isEnabled", out var isEnabledElement)
+                                    || (isEnabledElement.ValueKind != JsonValueKind.True && isEnabledElement.ValueKind != JsonValueKind.False))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:VOICEMAIL_ISENABLED_INVALID",
+                                        "Voicemail isEnabled parameter is missing or invalid."
+                                    );
+                                }
+                                voicemailData.IsEnabled = isEnabledElement.GetBoolean();
+
+                                if (voicemailData.IsEnabled)
+                                {
+                                    #region Voicemail Property Checks
+                                    if (!voicemailElement.TryGetProperty("initialCheckDelayMS", out var initialCheckDelayMSElement)
+                                        || initialCheckDelayMSElement.ValueKind != JsonValueKind.Number)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_INITIALCHECKDELAY_INVALID",
+                                            "Voicemail initialCheckDelayMS parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.InitialCheckDelayMS = initialCheckDelayMSElement.GetInt32();
+
+                                    if (!voicemailElement.TryGetProperty("mlCheckDurationMS", out var mlCheckDurationMSElement)
+                                        || mlCheckDurationMSElement.ValueKind != JsonValueKind.Number)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_MLCHECKDURATION_INVALID",
+                                            "Voicemail mlCheckDurationMS parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.MLCheckDurationMS = mlCheckDurationMSElement.GetInt32();
+
+                                    if (!voicemailElement.TryGetProperty("maxMLCheckTries", out var maxMLCheckTriesElement)
+                                        || maxMLCheckTriesElement.ValueKind != JsonValueKind.Number)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_MAXMLTRIES_INVALID",
+                                            "Voicemail maxMLCheckTries parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.MaxMLCheckTries = maxMLCheckTriesElement.GetInt32();
+
+                                    if (!voicemailElement.TryGetProperty("voiceMailMessageVADSilenceThresholdMS", out var vadSilenceThresholdElement)
+                                        || vadSilenceThresholdElement.ValueKind != JsonValueKind.Number)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_VADSILENCE_INVALID",
+                                            "Voicemail voiceMailMessageVADSilenceThresholdMS parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.VoiceMailMessageVADSilenceThresholdMS = vadSilenceThresholdElement.GetInt32();
+
+                                    if (!voicemailElement.TryGetProperty("voiceMailMessageVADMaxSpeechDurationMS", out var vadMaxSpeechDurationElement)
+                                        || vadMaxSpeechDurationElement.ValueKind != JsonValueKind.Number)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_VADMAXSPEECH_INVALID",
+                                            "Voicemail voiceMailMessageVADMaxSpeechDurationMS parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.VoiceMailMessageVADMaxSpeechDurationMS = vadMaxSpeechDurationElement.GetInt32();
+
+                                    if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterXMlCheckSuccess", out var stopOnMlElement)
+                                        || (stopOnMlElement.ValueKind != JsonValueKind.True && stopOnMlElement.ValueKind != JsonValueKind.False))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_STOPONML_INVALID",
+                                            "Voicemail stopSpeakingAgentAfterXMlCheckSuccess parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.StopSpeakingAgentAfterXMlCheckSuccess = stopOnMlElement.GetBoolean();
+
+                                    if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterVadSilence", out var stopOnVadElement)
+                                        || (stopOnVadElement.ValueKind != JsonValueKind.True && stopOnVadElement.ValueKind != JsonValueKind.False))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_STOPONVAD_INVALID",
+                                            "Voicemail stopSpeakingAgentAfterVadSilence parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.StopSpeakingAgentAfterVadSilence = stopOnVadElement.GetBoolean();
+
+                                    if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterLLMConfirm", out var stopOnLlmElement)
+                                        || (stopOnLlmElement.ValueKind != JsonValueKind.True && stopOnLlmElement.ValueKind != JsonValueKind.False))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_STOPONLLM_INVALID",
+                                            "Voicemail stopSpeakingAgentAfterLLMConfirm parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.StopSpeakingAgentAfterLLMConfirm = stopOnLlmElement.GetBoolean();
+
+                                    if (!voicemailElement.TryGetProperty("stopSpeakingAgentDelayAfterMatchMS", out var stopDelayElement)
+                                        || stopDelayElement.ValueKind != JsonValueKind.Number)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_STOPDELAY_INVALID",
+                                            "Voicemail stopSpeakingAgentDelayAfterMatchMS parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.StopSpeakingAgentDelayAfterMatchMS = stopDelayElement.GetInt32();
+
+                                    if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterXMLCheckSuccess", out var endOnMlElement)
+                                        || (endOnMlElement.ValueKind != JsonValueKind.True && endOnMlElement.ValueKind != JsonValueKind.False))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_ENDONML_INVALID",
+                                            "Voicemail endOrLeaveMessageAfterXMLCheckSuccess parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.EndOrLeaveMessageAfterXMLCheckSuccess = endOnMlElement.GetBoolean();
+
+                                    if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterVadSilence", out var endOnVadElement)
+                                        || (endOnVadElement.ValueKind != JsonValueKind.True && endOnVadElement.ValueKind != JsonValueKind.False))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_ENDONVAD_INVALID",
+                                            "Voicemail endOrLeaveMessageAfterVadSilence parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.EndOrLeaveMessageAfterVadSilence = endOnVadElement.GetBoolean();
+
+                                    if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterLLMConfirm", out var endOnLlmElement)
+                                        || (endOnLlmElement.ValueKind != JsonValueKind.True && endOnLlmElement.ValueKind != JsonValueKind.False))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_ENDONLLM_INVALID",
+                                            "Voicemail endOrLeaveMessageAfterLLMConfirm parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.EndOrLeaveMessageAfterLLMConfirm = endOnLlmElement.GetBoolean();
+
+                                    if (!voicemailElement.TryGetProperty("endOrLeaveMessageDelayAfterMatchMS", out var endLeaveDelayElement)
+                                        || endLeaveDelayElement.ValueKind != JsonValueKind.Number)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_ENDDELAY_INVALID",
+                                            "Voicemail endOrLeaveMessageDelayAfterMatchMS parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.EndOrLeaveMessageDelayAfterMatchMS = endLeaveDelayElement.GetInt32();
+
+                                    if (!voicemailElement.TryGetProperty("endCallOnDetect", out var endCallElement)
+                                        || (endCallElement.ValueKind != JsonValueKind.True && endCallElement.ValueKind != JsonValueKind.False))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_ENDCALL_INVALID",
+                                            "Voicemail endCallOnDetect parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.EndCallOnDetect = endCallElement.GetBoolean();
+
+                                    if (!voicemailElement.TryGetProperty("leaveMessageOnDetect", out var leaveMessageElement)
+                                        || (leaveMessageElement.ValueKind != JsonValueKind.True && leaveMessageElement.ValueKind != JsonValueKind.False))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_LEAVEMESSAGE_INVALID",
+                                            "Voicemail leaveMessageOnDetect parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.LeaveMessageOnDetect = leaveMessageElement.GetBoolean();
+
+                                    if (voicemailData.EndCallOnDetect && voicemailData.LeaveMessageOnDetect)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_ENDCALLANDLEAVEMESSAGE_INVALID",
+                                            "Voicemail endCallOnDetect and leaveMessageOnDetect cannot be true at the same time."
+                                            );
+                                    }
+
+                                    if (voicemailData.LeaveMessageOnDetect)
+                                    {
+                                        voicemailData.MessageToLeave = new Dictionary<string, string>();
+                                        var messageToLeaveValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(businessLanguages, voicemailElement, "messageToLeave", voicemailData.MessageToLeave);
+                                        if (!messageToLeaveValidationResult.Success)
+                                        {
+                                            return result.SetFailureResult("AddOrUpdateCampaignAsync:" + messageToLeaveValidationResult.Code, messageToLeaveValidationResult.Message);
+                                        }
+
+                                        if (!voicemailElement.TryGetProperty("waitXMSAfterLeavingMessageToEndCall", out var waitAfterMessageElement)
+                                            || waitAfterMessageElement.ValueKind != JsonValueKind.Number)
+                                        {
+                                            return result.SetFailureResult(
+                                                "AddOrUpdateCampaignAsync:VOICEMAIL_WAITAFTERMESSAGE_INVALID",
+                                                "Voicemail waitXMSAfterLeavingMessageToEndCall parameter is missing or invalid."
+                                                );
+                                        }
+                                        voicemailData.WaitXMSAfterLeavingMessageToEndCall = waitAfterMessageElement.GetInt32();
+                                    }
+
+                                    if (!voicemailElement.TryGetProperty("onVoiceMailMessageDetectVerifySTTAndLLM", out var advancedVerificationElement)
+                                        || (advancedVerificationElement.ValueKind != JsonValueKind.True && advancedVerificationElement.ValueKind != JsonValueKind.False))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_ADVANCEDVERIFICATION_INVALID",
+                                            "Voicemail onVoiceMailMessageDetectVerifySTTAndLLM parameter is missing or invalid."
+                                            );
+                                    }
+                                    voicemailData.OnVoiceMailMessageDetectVerifySTTAndLLM = advancedVerificationElement.GetBoolean();
+
+                                    if ((voicemailData.StopSpeakingAgentAfterLLMConfirm || voicemailData.EndOrLeaveMessageAfterLLMConfirm)
+                                        && !voicemailData.OnVoiceMailMessageDetectVerifySTTAndLLM)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:VOICEMAIL_LLMTRIGGER_MISMATCH",
+                                            "An LLM Confirmation trigger is enabled, but Advanced Verification is disabled."
+                                            );
+                                    }
+
+                                    if (voicemailData.OnVoiceMailMessageDetectVerifySTTAndLLM)
+                                    {
+                                        if (!voicemailElement.TryGetProperty("transcribeVoiceMessageSTT", out var sttIntegrationElement)
+                                            || sttIntegrationElement.ValueKind == JsonValueKind.Null)
+                                        {
+                                            return result.SetFailureResult(
+                                                "AddOrUpdateCampaignAsync:VOICEMAIL_STT_INTEGRATION_MISSING",
+                                                "STT integration for voicemail advanced verification is required but not provided."
+                                                );
+                                        }
+                                        var sttValidationResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(businessId, sttIntegrationElement, "STT");
+                                        if (!sttValidationResult.Success || sttValidationResult.Data == null)
+                                        {
+                                            return result.SetFailureResult(
+                                                "AddOrUpdateCampaignAsync:" + sttValidationResult.Code,
+                                                "Voicemail STT Integration failed: " + sttValidationResult.Message
+                                                );
+                                        }
+                                        voicemailData.TranscribeVoiceMessageSTT = sttValidationResult.Data;
+
+                                        if (!voicemailElement.TryGetProperty("verifyVoiceMessageLLM", out var llmIntegrationElement)
+                                            || llmIntegrationElement.ValueKind == JsonValueKind.Null)
+                                        {
+                                            return result.SetFailureResult(
+                                                "AddOrUpdateCampaignAsync:VOICEMAIL_LLM_INTEGRATION_MISSING",
+                                                "LLM integration for voicemail advanced verification is required but not provided."
+                                                );
+                                        }
+                                        var llmValidationResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(businessId, llmIntegrationElement, "LLM");
+                                        if (!llmValidationResult.Success || llmValidationResult.Data == null)
+                                        {
+                                            return result.SetFailureResult(
+                                                "AddOrUpdateCampaignAsync:" + llmValidationResult.Code,
+                                                "Voicemail LLM Integration failed: " + llmValidationResult.Message
+                                                );
+                                        }
+                                        voicemailData.VerifyVoiceMessageLLM = llmValidationResult.Data;
+                                    }
+                                    #endregion
+                                }
+
+                                newBusinessAppCampaignTelephonyData.VoicemailDetection = voicemailData;
+                            }
+
+
+                            // Number Route Tab
+                            if (!changes.RootElement.TryGetProperty("numberRoute", out var numberRouteProperty) || numberRouteProperty.ValueKind != JsonValueKind.Object)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateCampaignAsync:NUMBER_ROUTE_TAB_NOT_FOUND",
+                                    "Number Route not found."
+                                );
+                            }
+                            else
+                            {
+                                if (!numberRouteProperty.TryGetProperty("defaultNumberId", out var defaultNumberIdProperty) ||
                                     defaultNumberIdProperty.ValueKind != JsonValueKind.String ||
                                     string.IsNullOrWhiteSpace(defaultNumberIdProperty.GetString())
                                 )
@@ -937,7 +870,7 @@ namespace IqraInfrastructure.Managers.Business
                                 newBusinessAppCampaignTelephonyData.NumberRoute.DefaultNumberId = defaultNumberIdValue;
 
                                 // RouteNumberList object
-                                if (!numbersProperty.TryGetProperty("routeNumberList", out var routeNumberListProperty) ||
+                                if (!numberRouteProperty.TryGetProperty("routeNumberList", out var routeNumberListProperty) ||
                                     routeNumberListProperty.ValueKind != JsonValueKind.Object
                                 )
                                 {
@@ -999,10 +932,184 @@ namespace IqraInfrastructure.Managers.Business
                                 }
                             }
 
+                            // Telephony Actions Tab
+                            if (!changes.RootElement.TryGetProperty("actions", out var telephonyActionsTabRootElement))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateCampaignAsync:TELEPHONY_ACTIONS_TAB_NOT_FOUND",
+                                    "Telephony actions tab not found."
+                                );
+                            }
+                            else
+                            {
+                                if (!telephonyActionsTabRootElement.TryGetProperty("callInitiationFailureTool", out var callInitiationFailureToolElement))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ACTIONS_CALL_INITIATION_FAILURE_TOOL_NOT_FOUND",
+                                        "Call initiation failure tool not found."
+                                    );
+                                }
+                                var callInitiationFailureToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], callInitiationFailureToolElement, "CallInitiationFailure");
+                                if (!callInitiationFailureToolValidationResult.Success)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:" + callInitiationFailureToolValidationResult.Code,
+                                        callInitiationFailureToolValidationResult.Message
+                                    );
+                                }
+                                newBusinessAppCampaignTelephonyData.Actions.CallInitiationFailureTool = callInitiationFailureToolValidationResult.Data;
+
+                                if (!telephonyActionsTabRootElement.TryGetProperty("callInitiatedTool", out var callInitiatedToolElement))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ACTIONS_CALL_INITIATED_TOOL_NOT_FOUND",
+                                        "Call initiated tool not found."
+                                    );
+                                }
+                                var callInitiatedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], callInitiatedToolElement, "CallInitiated");
+                                if (!callInitiatedToolValidationResult.Success)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:" + callInitiatedToolValidationResult.Code,
+                                        callInitiatedToolValidationResult.Message
+                                    );
+                                }
+                                newBusinessAppCampaignTelephonyData.Actions.CallInitiatedTool = callInitiatedToolValidationResult.Data;
+
+                                if (!telephonyActionsTabRootElement.TryGetProperty("callDeclinedTool", out var callDeclinedToolElement))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ACTIONS_CALL_DECLINED_TOOL_NOT_FOUND",
+                                        "Call declined tool not found."
+                                    );
+                                }
+                                var callDeclinedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], callDeclinedToolElement, "CallDeclined");
+                                if (!callDeclinedToolValidationResult.Success)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:" + callDeclinedToolValidationResult.Code,
+                                        callDeclinedToolValidationResult.Message
+                                    );
+                                }
+                                newBusinessAppCampaignTelephonyData.Actions.CallDeclinedTool = callDeclinedToolValidationResult.Data;
+
+                                if (!telephonyActionsTabRootElement.TryGetProperty("callMissedTool", out var callMissedToolElement))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ACTIONS_CALL_MISSED_TOOL_NOT_FOUND",
+                                        "Call Missed tool not found."
+                                    );
+                                }
+                                var callMissedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], callMissedToolElement, "CallMissed");
+                                if (!callMissedToolValidationResult.Success)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:" + callMissedToolValidationResult.Code,
+                                        callMissedToolValidationResult.Message
+                                    );
+                                }
+                                newBusinessAppCampaignTelephonyData.Actions.CallMissedTool = callMissedToolValidationResult.Data;
+
+                                if (!telephonyActionsTabRootElement.TryGetProperty("callAnsweredTool", out var callAnsweredToolElement))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ACTIONS_CALL_ANSWERED_TOOL_NOT_FOUND",
+                                        "Call Answered tool not found."
+                                    );
+                                }
+                                var callAnsweredToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], callAnsweredToolElement, "CallAnswered");
+                                if (!callAnsweredToolValidationResult.Success)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:" + callAnsweredToolValidationResult.Code,
+                                        callAnsweredToolValidationResult.Message
+                                    );
+                                }
+                                newBusinessAppCampaignTelephonyData.Actions.CallAnsweredTool = callAnsweredToolValidationResult.Data;
+
+                                if (!telephonyActionsTabRootElement.TryGetProperty("callEndedTool", out var callEndedToolElement))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ACTIONS_CALL_ENDED_TOOL_NOT_FOUND",
+                                        "Call Ended tool not found."
+                                    );
+                                }
+                                var callEndedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], callEndedToolElement, "CallEnded");
+                                if (!callEndedToolValidationResult.Success)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:" + callEndedToolValidationResult.Code,
+                                        callEndedToolValidationResult.Message
+                                    );
+                                }
+                                newBusinessAppCampaignTelephonyData.Actions.CallEndedTool = callEndedToolValidationResult.Data;
+                            }
                         }
-                        else if (newBusinessAppCampaignData is BusinessAppCampaignWeb newBusinessAppCampaignWebData)
+                        else if (newBusinessAppCampaignData is BusinessAppWebCampaign newBusinessAppCampaignWebData)
                         {
-                            
+                            // TODO Route Regions Tab
+
+                            // Web Actions Tab
+                            if (!changes.RootElement.TryGetProperty("actions", out var webActionsTabRootElement))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateCampaignAsync:WEB_ACTIONS_TAB_NOT_FOUND",
+                                    "Web Actions tab not found."
+                                );
+                            }
+                            else
+                            {
+                                if (!webActionsTabRootElement.TryGetProperty("conversationInitiationFailureTool", out var conversationInitiationFailureToolElement))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ACTIONS_CONVERSATION_INITIATION_FAILURE_TOOL_NOT_FOUND",
+                                        "Conversation initiation failure tool not found."
+                                    );
+                                }
+                                var conversationInitiationFailureToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], conversationInitiationFailureToolElement, "ConversationInitiationFailure");
+                                if (!conversationInitiationFailureToolValidationResult.Success)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:" + conversationInitiationFailureToolValidationResult.Code,
+                                        conversationInitiationFailureToolValidationResult.Message
+                                    );
+                                }
+                                newBusinessAppCampaignWebData.Actions.ConversationInitiationFailureTool = conversationInitiationFailureToolValidationResult.Data;
+
+                                if (!webActionsTabRootElement.TryGetProperty("conversationInitiatedTool", out var conversationInitiatedToolElement))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ACTIONS_CONVERSATION_INITIATED_TOOL_NOT_FOUND",
+                                        "Conversation initiated tool not found."
+                                    );
+                                }
+                                var conversationInitiatedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], conversationInitiatedToolElement, "ConversationInitiated");
+                                if (!conversationInitiatedToolValidationResult.Success)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:" + conversationInitiatedToolValidationResult.Code,
+                                        conversationInitiatedToolValidationResult.Message
+                                    );
+                                }
+                                newBusinessAppCampaignWebData.Actions.ConversationInitiatedTool = conversationInitiatedToolValidationResult.Data;
+
+                                if (!webActionsTabRootElement.TryGetProperty("conversationEndedTool", out var conversationEndedToolElement))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ACTIONS_CONVERSATION_ENDED_TOOL_NOT_FOUND",
+                                        "Conversation Ended tool not found."
+                                    );
+                                }
+                                var conversationEndedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], conversationEndedToolElement, "ConversationEnded");
+                                if (!conversationEndedToolValidationResult.Success)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:" + conversationEndedToolValidationResult.Code,
+                                        conversationEndedToolValidationResult.Message
+                                    );
+                                }
+                                newBusinessAppCampaignWebData.Actions.ConversationEndedTool = conversationEndedToolValidationResult.Data;
+                            }
                         }
                         else
                         {
@@ -1017,7 +1124,7 @@ namespace IqraInfrastructure.Managers.Business
                         {
                             newBusinessAppCampaignData.Id = Guid.NewGuid().ToString();
 
-                            if (newBusinessAppCampaignData is BusinessAppCampaignTelephony newBusinessAppCampaignTelephonyDataForAdd)
+                            if (newBusinessAppCampaignData is BusinessAppTelephonyCampaign newBusinessAppCampaignTelephonyDataForAdd)
                             {
                                 var addResult = await _businessAppRepository.AddBusinessAppTelephonyCampaign(businessId, newBusinessAppCampaignTelephonyDataForAdd);
                                 if (!addResult)
@@ -1028,7 +1135,7 @@ namespace IqraInfrastructure.Managers.Business
                                     );
                                 }
                             }
-                            else if (newBusinessAppCampaignData is BusinessAppCampaignWeb newBusinessAppCampaignWebDataForAdd)
+                            else if (newBusinessAppCampaignData is BusinessAppWebCampaign newBusinessAppCampaignWebDataForAdd)
                             {
                                 var addResult = await _businessAppRepository.AddBusinessAppWebCampaign(businessId, newBusinessAppCampaignWebDataForAdd);
                                 if (!addResult)
@@ -1050,7 +1157,7 @@ namespace IqraInfrastructure.Managers.Business
                         else
                         {
                             newBusinessAppCampaignData.Id = existingCampaignData.Id;
-                            if (newBusinessAppCampaignData is BusinessAppCampaignTelephony newBusinessAppCampaignTelephonyDataForUpdate)
+                            if (newBusinessAppCampaignData is BusinessAppTelephonyCampaign newBusinessAppCampaignTelephonyDataForUpdate)
                             {
                                 var updateResult = await _businessAppRepository.UpdateBusinessAppTelephonyCampaign(businessId, newBusinessAppCampaignTelephonyDataForUpdate);
                                 if (!updateResult)
@@ -1061,7 +1168,7 @@ namespace IqraInfrastructure.Managers.Business
                                     );
                                 }
                             }
-                            else if (newBusinessAppCampaignData is BusinessAppCampaignWeb newBusinessAppCampaignWebDataForUpdate)
+                            else if (newBusinessAppCampaignData is BusinessAppWebCampaign newBusinessAppCampaignWebDataForUpdate)
                             {
                                 var updateResult = await _businessAppRepository.UpdateBusinessAppWebCampaign(businessId, newBusinessAppCampaignWebDataForUpdate);
                                 if (!updateResult)
