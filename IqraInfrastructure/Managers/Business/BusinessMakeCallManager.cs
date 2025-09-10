@@ -53,7 +53,7 @@ namespace IqraInfrastructure.Managers.Business
             string businessDefaultLanguage = businessData.DefaultLanguage;
             List<string> businessLanguages = businessData.Languages;
 
-            BusinessAppTelephonyCampaign campaignData;
+            BusinessAppTelephonyCampaign telephonyCampaignData;
             var callConfigData = new MakeCallRequestDto();
             if (!formData.TryGetValue("config", out var configStringValue))
             {
@@ -114,19 +114,8 @@ namespace IqraInfrastructure.Managers.Business
                             "Campaign not found in business."
                         );
                     }
-                    
-                    if (campaignDataResult.Data is BusinessAppTelephonyCampaign campaignTelephony)
-                    {
-                        campaignData = campaignTelephony;
-                    }
-                    else
-                    {
-                        return result.SetFailureResult(
-                            "QueueCallInitiationRequestAsync:CAMPAIGN_INCORRECT_TYPE",
-                            "Campaign is not a telephony campaign."
-                        );
-                    }
 
+                    telephonyCampaignData = campaignDataResult.Data!;
                     callConfigData.CampaignId = campaignIdValue!;
                 }
 
@@ -288,7 +277,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
-            BusinessAppAgent? campaignAgent = await _parentBusinessManager.GetAgentsManager().GetAgentById(businessData.Id, campaignData.Agent.SelectedAgentId);
+            BusinessAppAgent? campaignAgent = await _parentBusinessManager.GetAgentsManager().GetAgentById(businessData.Id, telephonyCampaignData.Agent.SelectedAgentId);
             if (campaignAgent == null)
             {
                 return result.SetFailureResult(
@@ -342,7 +331,7 @@ namespace IqraInfrastructure.Managers.Business
             // Forward the Call To Proxy
             if (callConfigData.Number.Type == OutboundCallNumberType.Single)
             {
-                var singleNumberBusinessId = GetBusinessNumberIdForToNumber(callConfigData.Number.ToNumber!, campaignData);
+                var singleNumberBusinessId = GetBusinessNumberIdForToNumber(callConfigData.Number.ToNumber!, telephonyCampaignData);
                 if (!singleNumberBusinessId.Success)
                 {
                     return result.SetFailureResult(
@@ -359,7 +348,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                var singleForwardResult = await QueueSingleCall(callConfigData, businessData, campaignData, singleBusinessNumberData, callQueueGroupData.Id);
+                var singleForwardResult = await QueueSingleCall(callConfigData, businessData, telephonyCampaignData, singleBusinessNumberData, callQueueGroupData.Id);
                 if (!singleForwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -372,7 +361,7 @@ namespace IqraInfrastructure.Managers.Business
             }
             else if (callConfigData.Number.Type == OutboundCallNumberType.Bulk)
             {
-                var bulkForwardResult = await QueueBulkCalls(callConfigData, businessData, campaignData, bulkCallFileResult!.Data, callQueueGroupData.Id);
+                var bulkForwardResult = await QueueBulkCalls(callConfigData, businessData, telephonyCampaignData, bulkCallFileResult!.Data, callQueueGroupData.Id);
                 if (!bulkForwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -392,11 +381,11 @@ namespace IqraInfrastructure.Managers.Business
             }
         }
 
-        private async Task<FunctionReturnResult<List<string?>?>> QueueSingleCall(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaignBase campaignData, BusinessNumberData businessNumberData, string queueGroupId)
+        private async Task<FunctionReturnResult<List<string?>?>> QueueSingleCall(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppTelephonyCampaign telephonyCampaignData, BusinessNumberData businessNumberData, string queueGroupId)
         {
             var result = new FunctionReturnResult<List<string?>?>();
 
-            OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(callConfig, businessData, campaignData, businessNumberData, null, queueGroupId);
+            OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(callConfig, businessData, telephonyCampaignData, businessNumberData, null, queueGroupId);
 
             // Enqueue outbound call queue
             string? callQueueIdResult = await _outboundCallQueueRepository.EnqueueOutboundCallAsync(outboundCallQueueData);
@@ -495,7 +484,7 @@ namespace IqraInfrastructure.Managers.Business
             return result.SetSuccessResult(callQueueIds);
         }
 
-        private OutboundCallQueueData BuildOutboundCallQueueData(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaignBase campaignData, BusinessNumberData businessNumberData, OutboundBulkCallRowData? bulkCallRowData, string queueGroupId)
+        private OutboundCallQueueData BuildOutboundCallQueueData(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppTelephonyCampaign telephonyCampaignData, BusinessNumberData businessNumberData, OutboundBulkCallRowData? bulkCallRowData, string queueGroupId)
         {
             string RecipientNumber;
             if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.ToNumber))
@@ -550,7 +539,7 @@ namespace IqraInfrastructure.Managers.Business
                 Logs = new List<CallQueueLog>(),
                 ProviderMetadata = new Dictionary<string, string>(),
                 // outbound related
-                CampaignId = campaignData.Id,
+                CampaignId = telephonyCampaignData.Id,
                 QueueGroupId = queueGroupId,
                 CallingNumberId = businessNumberData.Id,
                 ProviderCallId = null,
