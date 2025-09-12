@@ -10,10 +10,10 @@ namespace IqraInfrastructure.Managers.Telephony
     public class SipCallManager : IHostedService
     {
         private readonly ILogger<SipCallManager> _logger;
-        private readonly CallProcessorManager _callProcessorManager;
+        private readonly BackendCallProcessorManager _callProcessorManager;
         private SIPTransport _sipTransport;
 
-        public SipCallManager(ILogger<SipCallManager> logger, CallProcessorManager callProcessorManager)
+        public SipCallManager(ILogger<SipCallManager> logger, BackendCallProcessorManager callProcessorManager)
         {
             _logger = logger;
             _callProcessorManager = callProcessorManager;

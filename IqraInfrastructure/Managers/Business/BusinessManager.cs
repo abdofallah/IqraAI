@@ -54,6 +54,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessMakeCallManager? _businessMakeCallManager;
         private readonly BusinessKnowledgeBaseManager? _businessKnowledgeBaseManager;
         private readonly BusinessCampaignManager? _businessCampaignManager;
+        private readonly BusinessWebSessionManager? _businessWebSessionManager;
 
         public BusinessManager(
             ILoggerFactory loggerFactory,
@@ -183,6 +184,10 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 _businessCampaignManager = new BusinessCampaignManager(this, businessAppRepository, businessRepository, integrationConfigurationManager);
+            }
+            if (_settings.InitalizeWebSessionManager)
+            {
+                _businessWebSessionManager = new BusinessWebSessionManager(this);
             }
         }
 
@@ -563,6 +568,12 @@ namespace IqraInfrastructure.Managers.Business
         {
             if (!_settings.InitalizeCampaignManager || _businessCampaignManager == null) throw new Exception("Campaign manager not initialized");
             return _businessCampaignManager;
+        }
+    
+        public BusinessWebSessionManager GetWebSessionmanager()
+        {
+            if (!_settings.InitalizeWebSessionManager || _businessWebSessionManager == null) throw new Exception("Web Session manager not initialized");
+            return _businessWebSessionManager;
         }
     }
 }

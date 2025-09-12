@@ -47,7 +47,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1
             {
                 return result.SetFailureResult(
                     "InitiateCall:USER_BUSINESS_DISABLED",
-                    "User business editing disabled" + (string.IsNullOrWhiteSpace(user.Permission.Business.DisableBusinessesReason) ? "" : ": " + user.Permission.Business.DisableBusinessesReason)
+                    "User business disabled" + (string.IsNullOrWhiteSpace(user.Permission.Business.DisableBusinessesReason) ? "" : ": " + user.Permission.Business.DisableBusinessesReason)
                 );
             }
 

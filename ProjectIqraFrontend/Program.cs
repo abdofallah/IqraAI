@@ -100,7 +100,8 @@ namespace ProjectIqraFrontend
             {
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
-            builder.Services.AddHttpClient("ProxyForwarder").SetHandlerLifetime(TimeSpan.FromMinutes(5));
+            builder.Services.AddHttpClient("ProxyForwarder");
+            builder.Services.AddHttpClient("WebSessionForwardClient");
             // UnstructuredClient
             builder.Services.AddHttpClient("UnstructuredClient", client =>
             {

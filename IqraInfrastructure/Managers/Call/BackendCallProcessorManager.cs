@@ -46,11 +46,11 @@ namespace IqraInfrastructure.Managers.Call
         public IConversationClient Client { get; init; }
     }
 
-    public class CallProcessorManager
+    public class BackendCallProcessorManager
     {
         private BackendAppConfig _backendAppConfig;
 
-        private readonly ILogger<CallProcessorManager> _logger;
+        private readonly ILogger<BackendCallProcessorManager> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly ServerMetricsMonitor _serverMetricsMonitor;
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
@@ -70,8 +70,8 @@ namespace IqraInfrastructure.Managers.Call
 
         private readonly CancellationTokenSource _processorCTS = new CancellationTokenSource();
 
-        public CallProcessorManager(
-            ILogger<CallProcessorManager> logger,
+        public BackendCallProcessorManager(
+            ILogger<BackendCallProcessorManager> logger,
             IServiceProvider serviceProvider,
             BackendAppConfig backendAppConfig,
             ServerMetricsMonitor serverMetricsMonitor,
@@ -145,7 +145,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
                 var session = sessionResult.Data;
 
-                var startSessionResult = await session.InitalizeAsync();
+                var startSessionResult = await session.InitializeAsync();
                 if (!startSessionResult.Success)
                 {
                     return result.SetFailureResult(
@@ -197,10 +197,10 @@ namespace IqraInfrastructure.Managers.Call
                 }
             }
         }
-        public async Task<FunctionReturnResult<InitiateOutboundCallResultModel>> InitiateOutboundCallAsync(string queueId)
+        public async Task<FunctionReturnResult<BackendInitiateOutboundCallResultModel>> InitiateOutboundCallAsync(string queueId)
         {
-            var result = new FunctionReturnResult<InitiateOutboundCallResultModel>();
-            var resultData = new InitiateOutboundCallResultModel()
+            var result = new FunctionReturnResult<BackendInitiateOutboundCallResultModel>();
+            var resultData = new BackendInitiateOutboundCallResultModel()
             {
                 ShouldRequeue = false
             };
@@ -285,7 +285,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
                 var session = sessionResult.Data;
 
-                var startSessionResult = await session.InitalizeAsync();
+                var startSessionResult = await session.InitializeAsync();
                 if (!startSessionResult.Success)
                 {
                     resultData.ShouldRequeue = true;
@@ -546,7 +546,6 @@ namespace IqraInfrastructure.Managers.Call
 
                 var conversationSession = new ConversationSessionOrchestrator(
                     sessionId,
-                    queueData,
                     "call",
                     combinedCTS,
 
@@ -554,7 +553,9 @@ namespace IqraInfrastructure.Managers.Call
                     _conversationStateRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
                     _billingProcessingManager,
-                    _serviceProvider.GetRequiredService<ILoggerFactory>()
+                    _serviceProvider.GetRequiredService<ILoggerFactory>(),
+
+                    queueData: queueData
                 );
 
                 _activeSessions[sessionId] = conversationSession;
@@ -613,7 +614,7 @@ namespace IqraInfrastructure.Managers.Call
                 AudioEncodingType = sessionAudioEncodingType
             };
 
-            var clientConfig = new ConversationClientConfiguration()
+            var clientConfig = new ConversationTelephonyClientConfiguration()
             {
                 QueueData = queueData,
                 BitsPerSample = sessionBitPerSample,

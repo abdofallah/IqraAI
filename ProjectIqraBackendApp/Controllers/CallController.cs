@@ -12,12 +12,12 @@ namespace ProjectIqraBackendApp.Controllers
     public class CallController : ControllerBase
     {
         private readonly ILogger<CallController> _logger;
-        private readonly CallProcessorManager _callProcessorManager;
+        private readonly BackendCallProcessorManager _callProcessorManager;
         private readonly BackendAppConfig _backendAppConfig;
 
         public CallController(
             ILogger<CallController> logger,
-            CallProcessorManager callProcessorManager,
+            BackendCallProcessorManager callProcessorManager,
             BackendAppConfig backendAppConfig
         )
         {
@@ -59,10 +59,10 @@ namespace ProjectIqraBackendApp.Controllers
         }
 
         [HttpPost("outbound")]
-        public async Task<FunctionReturnResult<InitiateOutboundCallResultModel>> InitiateOutboundCall([FromBody] BackendOutboundCallRequest request)
+        public async Task<FunctionReturnResult<BackendInitiateOutboundCallResultModel>> InitiateOutboundCall([FromBody] BackendOutboundCallRequest request)
         {
-            var result = new FunctionReturnResult<InitiateOutboundCallResultModel>();
-            var resultData = new InitiateOutboundCallResultModel()
+            var result = new FunctionReturnResult<BackendInitiateOutboundCallResultModel>();
+            var resultData = new BackendInitiateOutboundCallResultModel()
             {
                 ShouldRequeue = false
             };

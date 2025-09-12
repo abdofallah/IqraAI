@@ -132,7 +132,7 @@ namespace ProjectIqraBackendApp
                             context.Response.StatusCode = 400; await context.Response.WriteAsync("Invalid WebSocket path."); return;
                         }
 
-                        var callProcessorManager = context.RequestServices.GetRequiredService<CallProcessorManager>();
+                        var callProcessorManager = context.RequestServices.GetRequiredService<BackendCallProcessorManager>();
                         try
                         {
                             WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
@@ -587,10 +587,10 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<LLMProviderManager>()
                 );
             });
-            builder.Services.AddSingleton<CallProcessorManager>((sp) =>
+            builder.Services.AddSingleton<BackendCallProcessorManager>((sp) =>
             {
-                return new CallProcessorManager(
-                    sp.GetRequiredService<ILogger<CallProcessorManager>>(),
+                return new BackendCallProcessorManager(
+                    sp.GetRequiredService<ILogger<BackendCallProcessorManager>>(),
                     sp,
                     backendAppConfig,
                     sp.GetRequiredService<ServerMetricsMonitor>(),

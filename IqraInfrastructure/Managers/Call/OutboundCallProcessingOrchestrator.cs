@@ -34,7 +34,6 @@ namespace IqraInfrastructure.Managers.Call
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly JsonSerializerOptions _camelCaseSerializationOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-
         public OutboundCallProcessingOrchestrator(
             ILogger<OutboundCallProcessingOrchestrator> logger,
             OutboundCallQueueRepository outboundCallQueueRepo,
@@ -229,9 +228,9 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        private async Task<FunctionReturnResult<FunctionReturnResult<InitiateOutboundCallResultModel>>> ForwardToBackendAsync(RegionServerData backendServer, BackendOutboundCallRequest requestDto)
+        private async Task<FunctionReturnResult<FunctionReturnResult<BackendInitiateOutboundCallResultModel>>> ForwardToBackendAsync(RegionServerData backendServer, BackendOutboundCallRequest requestDto)
         {
-            var result = new FunctionReturnResult<FunctionReturnResult<InitiateOutboundCallResultModel>>();
+            var result = new FunctionReturnResult<FunctionReturnResult<BackendInitiateOutboundCallResultModel>>();
             string endpoint = (backendServer.UseSSL ? "https://" : "http://") + backendServer.Endpoint;
 
             var baseUri = new Uri(endpoint);
@@ -259,10 +258,10 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult($"ForwardToBackend:{response.StatusCode}", $"Backend returned error: {response.StatusCode}. Details: {responseContentString}");
                 }
 
-                FunctionReturnResult<InitiateOutboundCallResultModel?>? backendResponse;
+                FunctionReturnResult<BackendInitiateOutboundCallResultModel?>? backendResponse;
                 try
                 {
-                    backendResponse = JsonSerializer.Deserialize<FunctionReturnResult<InitiateOutboundCallResultModel?>?>(responseContentString, _camelCaseSerializationOptions);
+                    backendResponse = JsonSerializer.Deserialize<FunctionReturnResult<BackendInitiateOutboundCallResultModel?>?>(responseContentString, _camelCaseSerializationOptions);
                 }
                 catch (Exception ex)
                 {

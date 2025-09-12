@@ -26,5 +26,6 @@
         // Non-Client Facing Permissions
         public BusinessRecieveCallPermission RecieveCall { get; set; } = new BusinessRecieveCallPermission();
         public BusinessMakeCallPermission MakeCall { get; set; } = new BusinessMakeCallPermission();
+        public BusinessWebSessionPermission WebSession { get; set; } = new BusinessWebSessionPermission();
     }
 }

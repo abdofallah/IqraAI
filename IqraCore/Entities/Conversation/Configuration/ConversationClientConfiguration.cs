@@ -1,16 +1,25 @@
 ﻿using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.WebSession;
 
 namespace IqraCore.Entities.Conversation.Configuration
 {
-    public class ConversationClientConfiguration
+    public abstract class ConversationClientConfiguration
     {
-        public CallQueueData QueueData { get; set; }
-        
         // Audio Config
         public int SampleRate { get; set; }
         public int BitsPerSample { get; set; }
         public int Channels { get; set; }
         public AudioEncodingTypeEnum AudioEncodingType { get; set; }
+    }
+
+    public class ConversationTelephonyClientConfiguration() : ConversationClientConfiguration
+    {
+        public CallQueueData QueueData { get; set; }
+    }
+
+    public class ConversationWebClientConfiguration() : ConversationClientConfiguration
+    {
+        public WebSessionData WebSessionData { get; set; }
     }
 }

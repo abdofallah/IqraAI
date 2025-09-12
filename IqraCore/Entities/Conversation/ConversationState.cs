@@ -10,7 +10,11 @@ namespace IqraCore.Entities.Conversation
 
         public string BusinessMasterEmail { get; set; }
         public long BusinessId { get; set; }
-        public string QueueId { get; set; }
+
+
+        public ConversationSessionInitiationType SessionInitiationType { get; set; }
+        public string? QueueId { get; set; }
+        public string? WebSessionId { get; set; }
 
         public string RegionId { get; set; }
         public string ProcessingServerId { get; set; }

@@ -1294,7 +1294,7 @@ function initRoutingTab() {
 
 			resetAndEmptyRouteManagerTab();
 
-			fillRoutingManagerTab(); // todo
+			fillRoutingManagerTab();
 
 			showRoutingManagerTab();
 

@@ -6,7 +6,8 @@
         public string OpeningScriptId { get; set; } = string.Empty;
         public List<string> Timezones { get; set; } = new List<string>();
 
-        public bool TelephonyNumberInContext { get; set; } = false;
+        // Telephony
+        public bool? TelephonyNumberInContext { get; set; } = null;
         // Inbound
         public bool? CallerNumberInContext { get; set; } = null;
         // Outbound

@@ -9,6 +9,7 @@ using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WebSession;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
@@ -34,8 +35,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
         private readonly string _sessionId;
         private readonly DateTime _createdAt;
-        private CallQueueData _sessionCallQueueData;
-        private readonly string _callOrWebInitiated;
+        private readonly ConversationSessionInitiationType _sessionInitiationType;
+
+        private readonly long _sessionBusinessId;
+        private readonly string _sessionRegionId;
+        private readonly string _sessionRegionProcessingServerId;
+
+        private CallQueueData? _sessionCallQueueData;
+        private WebSessionData? _sessionWebSessionData;
 
         private readonly List<IConversationClient> _clients = new();
         private IConversationClient? _primaryClient = null;
@@ -73,28 +80,29 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
         public string SessionId => _sessionId;
         public ConversationSessionState State => _state;
-        public bool IsCallInitiated => _callOrWebInitiated == "call";
-        public bool IsWebInitiated => _callOrWebInitiated == "web";
+        public bool IsCallInitiated => _sessionInitiationType == ConversationSessionInitiationType.Telephony;
+        public bool IsWebInitiated => _sessionInitiationType == ConversationSessionInitiationType.Web;
         public IConversationClient? PrimaryClient => _primaryClient;
         public IConversationAgent? PrimaryAgent => _primaryAgent;
 
         public ConversationSessionOrchestrator(
             string sessionId,
-            CallQueueData queueData,
-            string callOrWebInitiated,
+            ConversationSessionInitiationType sessionInitiationType,
             CancellationTokenSource sessionCTS,
 
             BusinessManager businessManager,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
             BillingUsageManager billingProcessingManager,
-            ILoggerFactory loggerFactory
+            ILoggerFactory loggerFactory,
+
+            CallQueueData? queueData = null,
+            WebSessionData? webSessionData = null
         )
         {
             _sessionId = sessionId;
             _createdAt = DateTime.UtcNow;
-            _sessionCallQueueData = queueData;
-            _callOrWebInitiated = callOrWebInitiated;
+            _sessionInitiationType = sessionInitiationType;
             _sessionCts = sessionCTS;
 
             _businessManager = businessManager;
@@ -103,30 +111,56 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             _billingProcessingManager = billingProcessingManager;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<ConversationSessionOrchestrator>();
+
+            if (IsCallInitiated)
+            {
+                if (queueData == null) throw new ArgumentNullException(nameof(queueData));
+                _sessionCallQueueData = queueData;
+                _sessionBusinessId = queueData.BusinessId;
+                _sessionRegionId = queueData.RegionId!;
+                _sessionRegionProcessingServerId = queueData.ProcessingBackendServerId!;
+            }
+            else if (IsWebInitiated)
+            {
+                if (webSessionData == null) throw new ArgumentNullException(nameof(webSessionData));
+                _sessionWebSessionData = webSessionData;
+                _sessionBusinessId = webSessionData.BusinessId;
+                _sessionRegionId = webSessionData.RegionId;
+                _sessionRegionProcessingServerId = webSessionData.SessionRegionBackendServerId!;
+            }
         }
 
         // Initalize
-        public async Task<FunctionReturnResult> InitalizeAsync()
+        public async Task<FunctionReturnResult> InitializeAsync()
         {
             var result = new FunctionReturnResult();
 
             try
             {
-                await InitalizeConversationConfigurationAsync();
+                await InitializeConversationConfigurationAsync();
 
                 // Create Conversation State
                 var conversationState = new ConversationState
                 {
                     Id = _sessionId,
                     BusinessMasterEmail = _sessionBusinessData.MasterUserEmail,
-                    BusinessId = _sessionCallQueueData.BusinessId,
-                    QueueId = _sessionCallQueueData.Id,
+                    BusinessId = _sessionBusinessId,
                     Status = ConversationSessionState.Created,
+                    SessionInitiationType = _sessionInitiationType,
                     StartTime = DateTime.UtcNow,
-                    ProcessingServerId = _sessionCallQueueData.ProcessingBackendServerId,
-                    RegionId = _sessionCallQueueData.RegionId,
+                    ProcessingServerId = _sessionRegionProcessingServerId,
+                    RegionId = _sessionRegionId,
                     ExpectedEndTimeAt = DateTime.UtcNow.AddSeconds(_sessionContextData.Timeout.MaxCallTimeS)
                 };
+                if (IsCallInitiated)
+                {
+                    conversationState.QueueId = _sessionCallQueueData!.Id;
+                }
+                else if (IsWebInitiated)
+                {
+                    conversationState.WebSessionId = _sessionWebSessionData!.Id;
+                }
+
                 await _conversationStateRepository.CreateAsync(conversationState);
 
                 return result.SetSuccessResult();
@@ -135,33 +169,44 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 return result.SetFailureResult("InitalizeAsync:EXCEPTION", $"Failed to initialize conversation session state: {ex.Message}");
             }
         }
-        public async Task InitalizeConversationConfigurationAsync()
+        private async Task InitializeConversationConfigurationAsync()
         {
-            var businessData = await _businessManager.GetUserBusinessById(_sessionCallQueueData.BusinessId, "InitalizeConversationConfigurationAsync");
+            var businessData = await _businessManager.GetUserBusinessById(_sessionBusinessId, "InitalizeConversationConfigurationAsync");
             if (!businessData.Success)
             {
-                _logger.LogError("Business data not found for business ID {BusinessId}", _sessionCallQueueData.BusinessId);
-                throw new InvalidOperationException($"Business data not found for business ID {_sessionCallQueueData.BusinessId}");
+                _logger.LogError("Business data not found for business ID {BusinessId}", _sessionBusinessId);
+                throw new InvalidOperationException($"Business data not found for business ID {_sessionBusinessId}");
             }
             _sessionBusinessData = businessData.Data;
 
-            var businessAppData = await _businessManager.GetUserBusinessAppById(_sessionCallQueueData.BusinessId, "InitalizeConversationConfigurationAsync");
+            var businessAppData = await _businessManager.GetUserBusinessAppById(_sessionBusinessId, "InitalizeConversationConfigurationAsync");
             if (!businessAppData.Success)
             {
-                _logger.LogError("Business app data not found for business ID {BusinessId}", _sessionCallQueueData.BusinessId);
-                throw new InvalidOperationException($"Business app data not found for business ID {_sessionCallQueueData.BusinessId}");
+                _logger.LogError("Business app data not found for business ID {BusinessId}", _sessionBusinessId);
+                throw new InvalidOperationException($"Business app data not found for business ID {_sessionBusinessId}");
             }
             _sessionBusinessAppData = businessAppData.Data;
 
+            if (IsCallInitiated)
+            {
+                await InitializeTelephonyConversationConfigurationAsync();
+            }
+            else if (IsWebInitiated)
+            {
+                await InitializeWebConversationConfigurationAsync();
+            }
+        }
+        private async Task InitializeTelephonyConversationConfigurationAsync()
+        {
             if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
             {
                 InboundCallQueueData inboundCallQueue = _sessionCallQueueData as InboundCallQueueData;
 
-                var businessRouteData = businessAppData.Data.Routings.Find(r => r.Id == inboundCallQueue.RouteId);
+                var businessRouteData = _sessionBusinessAppData.Routings.Find(r => r.Id == inboundCallQueue.RouteId);
                 if (businessRouteData == null)
                 {
-                    _logger.LogError("Business route data not found for business ID {BusinessId} and route ID {RouteId}", _sessionCallQueueData.BusinessId, inboundCallQueue.RouteId);
-                    throw new InvalidOperationException($"Business route data not found for business ID {_sessionCallQueueData.BusinessId} and route ID {inboundCallQueue.RouteId}");
+                    _logger.LogError("Business route data not found for business ID {BusinessId} and route ID {RouteId}", _sessionBusinessId, inboundCallQueue.RouteId);
+                    throw new InvalidOperationException($"Business route data not found for business ID {_sessionBusinessId} and route ID {inboundCallQueue.RouteId}");
                 }
 
                 _sessionContextData = new ConversationSessionContext()
@@ -212,8 +257,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 var campaignDataResult = await _businessManager.GetCampaignManager().GetTelephonyCampaignById(_sessionBusinessData.Id, outboundCallQueue.CampaignId);
                 if (!campaignDataResult.Success)
                 {
-                    _logger.LogError("Outbound call campaign data not found for business ID {BusinessId} and queue ID {RouteId}", _sessionCallQueueData.BusinessId, outboundCallQueue.Id);
-                    throw new InvalidOperationException($"Outbound call campaign not found for business ID {_sessionCallQueueData.BusinessId} and queue ID {outboundCallQueue.Id}");
+                    _logger.LogError("Outbound call campaign data not found for business ID {BusinessId} and queue ID {RouteId}", _sessionBusinessId, outboundCallQueue.Id);
+                    throw new InvalidOperationException($"Outbound call campaign not found for business ID {_sessionBusinessId} and queue ID {outboundCallQueue.Id}");
                 }
 
                 _sessionContextData = new ConversationSessionContext()
@@ -253,6 +298,52 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                             Arguments = campaignDataResult.Data.Actions.CallEndedTool.Arguments ?? new Dictionary<string, object>()
                         };
                     }
+                }
+            }
+        }
+        private async Task InitializeWebConversationConfigurationAsync()
+        {
+            var campaignDataResult = await _businessManager.GetCampaignManager().GetWebCampaignById(_sessionBusinessData.Id, _sessionWebSessionData.WebCampaignId);
+            if (!campaignDataResult.Success)
+            {
+                _logger.LogError("Web session campaign data not found for business ID {BusinessId} and web session ID {WebSessionId}", _sessionBusinessId, _sessionWebSessionData.WebCampaignId);
+                throw new InvalidOperationException($"Web session campaign not found for business ID {_sessionBusinessId} and queue ID {_sessionWebSessionData.WebCampaignId}");
+            }
+
+            _sessionContextData = new ConversationSessionContext()
+            {
+                Agent = new ConversationSessionContextAgent()
+                {
+                    SelectedAgentId = campaignDataResult.Data.Agent.SelectedAgentId,
+                    OpeningScriptId = campaignDataResult.Data.Agent.OpeningScriptId,
+                    Timezones = campaignDataResult.Data.Agent.Timezones
+                },
+                Language = new ConversationSessionContextLanguage()
+                {
+                    DefaultLanguageCode = campaignDataResult.Data.Agent.Language,
+                    MultiLanguageEnabled = false // TODO MULTI LANG
+                },
+                Timeout = new ConversationSessionContextTimeout()
+                {
+                    NotifyOnSilenceMS = campaignDataResult.Data.Configuration.Timeouts.NotifyOnSilenceMS,
+                    EndCallOnSilenceMS = campaignDataResult.Data.Configuration.Timeouts.EndOnSilenceMS,
+                    MaxCallTimeS = campaignDataResult.Data.Configuration.Timeouts.MaxConversationTimeS
+                },
+                DynamicVariables = _sessionWebSessionData.DynamicVariables,
+                Metadata = _sessionWebSessionData.Metadata
+            };
+
+            // ACTIONS
+            if (campaignDataResult.Data.Actions != null)
+            {
+                // Ended
+                if (campaignDataResult.Data.Actions.ConversationEndedTool != null && campaignDataResult.Data.Actions.ConversationEndedTool.ToolId != null)
+                {
+                    _sessionContextData.CallEndedAction = new ConversationSessionContextAction()
+                    {
+                        SelectedToolId = campaignDataResult.Data.Actions.ConversationEndedTool.ToolId,
+                        Arguments = campaignDataResult.Data.Actions.ConversationEndedTool.Arguments ?? new Dictionary<string, object>()
+                    };
                 }
             }
         }
@@ -890,26 +981,33 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                                 .Replace("{={metadata}=}", cachedMetadata);
                         }
 
-                        if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
+                        if (IsCallInitiated)
                         {
-                            var callerNumber = (_sessionCallQueueData as InboundCallQueueData).CallerNumber;
+                            if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
+                            {
+                                var callerNumber = (_sessionCallQueueData as InboundCallQueueData).CallerNumber;
+
+                                stringValue = stringValue
+                                    .Replace("{{from_number}}", callerNumber)
+                                    .Replace("{={from_number}=}", callerNumber);
+                            }
+                            else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
+                            {
+                                var recipientNumber = (_sessionCallQueueData as OutboundCallQueueData).RecipientNumber;
+
+                                stringValue = stringValue
+                                    .Replace("{{to_number}}", recipientNumber)
+                                    .Replace("{={to_number}=}", recipientNumber);
+                            }
 
                             stringValue = stringValue
-                                .Replace("{{from_number}}", callerNumber)
-                                .Replace("{={from_number}=}", callerNumber);
+                                .Replace("{{call_answered}}", _createdAt.ToString())
+                                .Replace("{={call_answered}=}", _createdAt.ToString());
                         }
-                        else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
+                        else if (IsWebInitiated)
                         {
-                            var recipientNumber = (_sessionCallQueueData as OutboundCallQueueData).RecipientNumber;
-
-                            stringValue = stringValue
-                                .Replace("{{to_number}}", recipientNumber)
-                                .Replace("{={to_number}=}", recipientNumber);
-                        }
-
-                        stringValue = stringValue
-                            .Replace("{{call_answered}}", _createdAt.ToString())
-                            .Replace("{={call_answered}=}", _createdAt.ToString());
+                            // TODO WEB
+                        }              
 
                         parsedArguments[argumentName] = stringValue;
                     }
