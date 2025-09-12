@@ -12,6 +12,13 @@ const webCampaignsTooltipTriggerList = document.querySelectorAll('#web-campaigns
 /** Element Variables **/
 const webCampaignsTab = $("#web-campaigns-tab");
 
+// Header Elements
+const webCampaignsHeaderContainer = webCampaignsTab.find("#web-campaigns-header-container");
+// Manager Header
+const webCampaignManagerNameBreadcrumb = webCampaignsHeaderContainer.find("#web-campaign-manager-name-breadcrumb");
+const backToWebCampaignsListButton = webCampaignsHeaderContainer.find("#back-to-web-campaigns-list");
+const saveWebCampaignButton = webCampaignsHeaderContainer.find("#save-web-campaign-button");
+
 // List View Elements
 const webCampaignsListView = webCampaignsTab.find("#web-campaigns-list-view");
 const addNewWebCampaignButton = webCampaignsListView.find("#add-new-web-campaign-button");
@@ -19,9 +26,6 @@ const webCampaignsListContainer = webCampaignsListView.find("#web-campaigns-list
 
 // Manager View Elements
 const webCampaignsManagerView = webCampaignsTab.find("#web-campaigns-manager-view");
-const webCampaignManagerNameBreadcrumb = webCampaignsManagerView.find("#web-campaign-manager-name-breadcrumb");
-const backToWebCampaignsListButton = webCampaignsManagerView.find("#back-to-web-campaigns-list");
-const saveWebCampaignButton = webCampaignsManagerView.find("#save-web-campaign-button");
 
 // General Tab
 const webCampaignIconInput = webCampaignsManagerView.find("#web-campaign-icon-input");
@@ -52,7 +56,7 @@ const webCampaignActionToolConversationInitiatedSelect = webCampaignActionsTab.f
 const webCampaignActionToolConversationEndedSelect = webCampaignActionsTab.find("#web-campaign-action-tool-conversation-ended-select");
 
 // Modals
-const webCampaignSelectAgentModalElement = $("#web-campaign-select-agent-modal");
+const webCampaignSelectAgentModalElement = webCampaignsTab.find("#web-campaign-select-agent-modal");
 let webCampaignSelectAgentModal = null;
 const webCampaignsManagerSelectAgentModalList = webCampaignSelectAgentModalElement.find(".modal-body");
 const webCampaignSaveAgentButton = webCampaignSelectAgentModalElement.find("#web-campaign-save-agent-button");
@@ -81,8 +85,11 @@ function saveWebCampaign(formData, successCallback, errorCallback) {
 /** FUNCTIONS **/
 function showWebCampaignsListView() {
     webCampaignsManagerView.removeClass("show");
+    webCampaignsHeaderContainer.removeClass("d-none");
     setTimeout(() => {
+        webCampaignsHeaderContainer.addClass("d-none");
         webCampaignsManagerView.addClass("d-none");
+
         webCampaignsListView.removeClass("d-none");
         setTimeout(() => {
             webCampaignsListView.addClass("show");
@@ -95,8 +102,11 @@ function showWebCampaignsManagerView() {
     webCampaignsListView.removeClass("show");
     setTimeout(() => {
         webCampaignsListView.addClass("d-none");
+
+        webCampaignsHeaderContainer.removeClass("d-none");
         webCampaignsManagerView.removeClass("d-none");
         setTimeout(() => {
+            webCampaignsHeaderContainer.addClass("show");
             webCampaignsManagerView.addClass("show");
             setDynamicBodyHeight();
         }, 10);
@@ -109,7 +119,7 @@ function createWebCampaignListElement(campaignData) {
 
     return `
         <div class="col-lg-4 col-md-6 col-12">
-            <div class="campaign-card d-flex flex-column align-items-start justify-content-center" data-campaign-id="${campaignData.id}">
+            <div class="campaign-card web-campaign-card d-flex flex-column align-items-start justify-content-center" data-campaign-id="${campaignData.id}">
                 <div class="d-flex flex-row align-items-center justify-content-start mb-4">
                     <span class="route-icon">${campaignData.general.emoji}</span>
                     <div class="card-data">
@@ -176,7 +186,7 @@ function createDefaultWebCampaignObject() {
     };
 }
 
-function resetWebManager() {
+function resetWebCampaignManager() {
     webCampaignsManagerView.find(".is-invalid").removeClass("is-invalid");
 
     // General
@@ -223,7 +233,7 @@ function resetWebManager() {
         });
         const container = select.closest('div');
         container.find('.custom-tool-input-arguments').addClass('d-none');
-        container.find('[id$="InputArgumentsList"]').empty();
+        container.find('[id$="-arguments-list"]').empty();
     });
 
     // Reset state
@@ -232,7 +242,7 @@ function resetWebManager() {
     currentWebCampaignAgentSelectedId = "";
 }
 
-function fillWebManager() {
+function fillWebCampaignManager() {
     const data = currentWebCampaignData;
 
     // General
@@ -258,12 +268,12 @@ function fillWebManager() {
     if (data.agent.timezones && data.agent.timezones.length > 0) webCampaignAgentTimezoneSelect.val(data.agent.timezones[0]);
 
     // Region
-    if (data.regionRoute && data.regionRoute.policy === 'fixed') {
-        webCampaignRegionPolicyRadios.filter('[value="fixed"]').prop('checked', true).change();
-        webCampaignFixedRegionSelect.val(data.regionRoute.fixedRegion);
-    } else {
-        webCampaignRegionPolicyRadios.filter('[value="automatic"]').prop('checked', true).change();
-    }
+    //if (data.regionRoute && data.regionRoute.policy === 'fixed') {
+    //    webCampaignRegionPolicyRadios.filter('[value="fixed"]').prop('checked', true).change();
+    //    webCampaignFixedRegionSelect.val(data.regionRoute.fixedRegion);
+    //} else {
+    //    webCampaignRegionPolicyRadios.filter('[value="automatic"]').prop('checked', true).change();
+    //}
 
     // Configuration
     webCampaignSilenceNotifyInput.val(data.configuration.timeouts.notifyOnSilenceMS);
@@ -271,18 +281,29 @@ function fillWebManager() {
     webCampaignMaxConversationTimeInput.val(data.configuration.timeouts.maxConversationTimeS);
 
     // Actions
-    function fillWebActionTool(toolData, selectElement) {
-        const container = selectElement.closest('div');
+    function fillWebActionTool(actionToolData, actionToolSelectElement) {
+        const container = actionToolSelectElement.closest('div');
         const argumentsContainer = container.find('.custom-tool-input-arguments');
-        const argumentsList = argumentsContainer.find('[id$="InputArgumentsList"]');
-        selectElement.val("none");
+        const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
+        const selectElement = argumentsContainer.find('select[id$="-arguments-select"]');
+        actionToolSelectElement.val("none");
+        selectElement.val("");
         argumentsList.empty();
         argumentsContainer.addClass('d-none');
-        if (toolData && toolData.toolId) {
-            selectElement.val(toolData.toolId).change();
-            if (toolData.arguments) {
-                Object.entries(toolData.arguments).forEach(([argId, value]) => {
-                    argumentsList.find(`input[input_arguement="${argId}"]`).val(value);
+        if (actionToolData && actionToolData.toolId) {
+            actionToolSelectElement.val(actionToolData.toolId).change();
+            if (actionToolData.arguments) {
+                Object.entries(actionToolData.arguments).forEach(([argId, value]) => {
+                    const businessToolData = BusinessFullData.businessApp.tools.find(tool => tool.id === actionToolData.toolId);
+                    const argumentData = businessToolData.configuration.inputSchemea.find(arg => arg.id === argId);
+
+                    if (argumentData) {
+                        var element = $(createWebCampaignActionArgumentListElement(argumentData));
+                        element.find('input').val(value);
+
+                        argumentsList.append(element);
+                        selectElement.find(`option[value="${argId}"]`).remove();
+                    }
                 });
             }
         }
@@ -317,11 +338,12 @@ function checkWebCampaignChanges(enableDisableButton = true) {
     }
 
     function checkAgentTab() {
+        var timezoneValue = webCampaignAgentTimezoneSelect.find(":selected").val();
         changes.agent = {
             selectedAgentId: currentWebCampaignAgentSelectedId,
-            openingScriptId: webCampaignAgentScriptSelect.val() || "",
-            language: webCampaignAgentLanguageSelect.val(),
-            timezones: webCampaignAgentTimezoneSelect.val() ? [webCampaignAgentTimezoneSelect.val()] : [],
+            openingScriptId: webCampaignAgentScriptSelect.find(":selected").val(),
+            language: webCampaignAgentLanguageSelect.find(":selected").val(),
+            timezones: (timezoneValue && timezoneValue.trim() !== "") ? [timezoneValue] : [],
         };
         if (changes.agent.selectedAgentId !== original.agent.selectedAgentId ||
             changes.agent.openingScriptId !== original.agent.openingScriptId ||
@@ -403,7 +425,7 @@ function checkWebCampaignChanges(enableDisableButton = true) {
     // Execute all checks
     checkGeneralTab();
     checkAgentTab();
-    checkRegionTab();
+    //checkRegionTab();
     checkConfigurationTab();
     checkActionsTab();
 
@@ -522,7 +544,7 @@ function validateWebCampaign(onlyRemove = true) {
     // Execute all validation checks
     validateGeneralTab();
     validateAgentTab();
-    validateRegionTab();
+    //validateRegionTab();
     validateConfigurationTab();
     validateActionsTab();
 
@@ -557,8 +579,22 @@ async function canLeaveWebCampaignsManager(leaveMessage = "") {
 }
 
 function handleWebCampaignRouting(subPath) {
+    if (manageWebCampaignType === 'new' || manageWebCampaignType === 'edit') {
+        let correctPath;
+        if (manageWebCampaignType === 'new') {
+            correctPath = 'webcampaigns/new';
+        } else {
+            correctPath = `webcampaigns/${currentWebCampaignData.id}`;
+        }
+
+        replaceUrlForTab(correctPath);
+        return;
+    }
+
     if (!subPath || subPath.length === 0) {
-        showWebCampaignsListView();
+        if (webCampaignsManagerView.hasClass('show') && !webCampaignsListView.hasClass('show')) {
+            showWebCampaignsListView();
+        }
         replaceUrlForTab('webcampaigns');
         return;
     }
@@ -577,6 +613,45 @@ function handleWebCampaignRouting(subPath) {
     } else {
         showWebCampaignsListView();
         replaceUrlForTab('webcampaigns');
+    }
+}
+
+function SetWebCampaignCardDynamicWidth() {
+    if (!webCampaignsTab.hasClass("show")) return;
+
+    const anyWebCampaignCard = webCampaignsListContainer.find(".web-campaign-card");
+    if (anyWebCampaignCard.length > 0) {
+        const firstWebCampaignCard = anyWebCampaignCard.first();
+
+        const webCampaignCardWidth = firstWebCampaignCard.innerWidth();
+
+        const webCampaignCardLeftRightPadding = parseInt(firstWebCampaignCard.css("padding-left")) + parseInt(firstWebCampaignCard.css("padding-right"));
+        const webCampaignCardIconWidthAndPadding = firstWebCampaignCard.find(".route-icon").innerWidth();
+
+        // .campaign-card h4
+        const marginLeftForH4 = 20; // .campaign-card h4 in style.css
+
+        const currentUsedUpSpace = webCampaignCardLeftRightPadding + webCampaignCardIconWidthAndPadding + marginLeftForH4;
+
+        let availableH4Space = webCampaignCardWidth - currentUsedUpSpace;
+
+        if (availableH4Space < 5) {
+            availableH4Space = 5;
+        }
+
+        // .campaign-card h5-info
+        let availableH5Space = webCampaignCardWidth - webCampaignCardLeftRightPadding;
+
+        // FINAL
+        $("#dynamicWebCampaignCardCSS").html(`
+            .web-campaign-card .card-data {
+				width: ${availableH4Space}px;
+			}
+
+            .web-campaign-card .h5-info {
+                width: ${availableH5Space}px;
+            }
+		`);
     }
 }
 
@@ -608,8 +683,20 @@ function handleWebCampaignActionToolChange(event) {
             });
         }
     }
-    checkTelephonyCampaignChanges();
-    validateTelephonyCampaign(true);
+    checkWebCampaignChanges();
+    validateWebCampaign(true);
+}
+
+function createWebCampaignActionArgumentListElement(argumentData) {
+    return `
+            <div class="input-group mb-1">
+                <span class="input-group-text">${argumentData.name[BusinessDefaultLanguage]}${argumentData.isRequired ? "*" : ""}</span>
+                <input type="text" class="form-control" input_arguement="${argumentData.id}" placeholder="Enter ${argumentData.type.name} value" value="">
+                <button class="btn btn-danger" btn-action="remove-campaign-action-tool-argument" input_arguement="${argumentData.id}">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </div>
+        `;
 }
 
 function handleWebCampaignActionAddArgument(event) {
@@ -618,7 +705,7 @@ function handleWebCampaignActionAddArgument(event) {
     if (!selectedArgumentId) return;
 
     const container = selectElement.closest('.custom-tool-input-arguments');
-    const mainToolSelect = container.parent().parent().find('select').first(); // Go up to parent div and find main tool select
+    const mainToolSelect = container.parent().find('select').first(); // Go up to parent div and find main tool select
     const selectedToolId = mainToolSelect.val();
     const argumentsList = container.find('[id$="-arguments-list"]');
 
@@ -626,20 +713,12 @@ function handleWebCampaignActionAddArgument(event) {
     const argumentData = toolData.configuration.inputSchemea.find(arg => arg.id === selectedArgumentId);
 
     if (argumentData) {
-        argumentsList.append(`
-            <div class="input-group mb-1">
-                <span class="input-group-text">${argumentData.name[BusinessDefaultLanguage]}${argumentData.isRequired ? "*" : ""}</span>
-                <input type="text" class="form-control" input_arguement="${argumentData.id}" placeholder="Enter ${argumentData.type.name} value" value="">
-                <button class="btn btn-danger" btn-action="remove-campaign-action-tool-argument" input_arguement="${argumentData.id}">
-                    <i class="fa-regular fa-trash"></i>
-                </button>
-            </div>
-        `);
+        argumentsList.append(createWebCampaignActionArgumentListElement(argumentData));
         selectElement.find(`option[value="${selectedArgumentId}"]`).remove();
         selectElement.val("");
     }
-    checkTelephonyCampaignChanges();
-    validateTelephonyCampaign(true);
+    checkWebCampaignChanges();
+    validateWebCampaign(true);
 }
 
 function handleWebCampaignActionRemoveArgument(event) {
@@ -660,8 +739,8 @@ function handleWebCampaignActionRemoveArgument(event) {
     }
 
     inputGroup.remove();
-    checkTelephonyCampaignChanges();
-    validateTelephonyCampaign(true);
+    checkWebCampaignChanges();
+    validateWebCampaign(true);
 }
 
 /** EVENT HANDLER INITIALIZERS **/
@@ -759,9 +838,23 @@ function initWebCampaignsTab() {
         });
 
         /** Event Handlers **/
-        $(document).on("tabShown", function (event, data) {
-            if (data.tabId === 'webcampaigns') {
+        $(window).resize(() => {
+            SetWebCampaignCardDynamicWidth();
+        });
+
+        $(document).on("containerResizeProgress", (event) => {
+            SetWebCampaignCardDynamicWidth();
+        })
+
+        $(document).on("tabShowing", function (event, data) {
+            if (data.tabId === 'web-campaigns-tab') {
                 handleWebCampaignRouting(data.urlSubPath);
+            }
+        });
+
+        $(document).on("tabShown", function (event, data) {
+            if (data.tabId === 'web-campaigns-tab') {
+                SetWebCampaignCardDynamicWidth();
             }
         });
 
@@ -769,7 +862,7 @@ function initWebCampaignsTab() {
             e.preventDefault();
             currentWebCampaignData = createDefaultWebCampaignObject();
             webCampaignManagerNameBreadcrumb.text("New Web Campaign");
-            resetWebManager();
+            resetWebCampaignManager();
             manageWebCampaignType = "new";
             showWebCampaignsManagerView();
             updateUrlForTab("webcampaigns/new");
@@ -791,8 +884,8 @@ function initWebCampaignsTab() {
             if (!campaignData) return;
             currentWebCampaignData = JSON.parse(JSON.stringify(campaignData));
             webCampaignManagerNameBreadcrumb.text(currentWebCampaignData.general.name);
-            resetWebManager();
-            fillWebManager();
+            resetWebCampaignManager();
+            fillWebCampaignManager();
             manageWebCampaignType = "edit";
             showWebCampaignsManagerView();
             updateUrlForTab(`webcampaigns/${campaignId}`);
@@ -827,7 +920,7 @@ function initWebCampaignsTab() {
             formData.append("postType", manageWebCampaignType);
             formData.append("changes", JSON.stringify(changes));
             if (manageWebCampaignType === "edit") {
-                formData.append("existingCampaignId", currentWebCampaignData.id);
+                formData.append("existingWebCampaignId", currentWebCampaignData.id);
             }
             saveWebCampaign(formData,
                 (response) => {
@@ -838,14 +931,16 @@ function initWebCampaignsTab() {
                     } else {
                         BusinessFullData.businessApp.webCampaigns.push(response.data);
                     }
-                    fillWebCampaignsList();
+                    fillWebCampaignsList(); // todo instead of this, just update the list item
                     isSavingWebCampaign = false;
                     saveWebCampaignButton.prop("disabled", true);
                     AlertManager.createAlert({
                         type: "success",
-                        message: "Campaign saved successfully."
+                        message: "Campaign saved successfully.",
+                        timeout: 3000
                     });
                     manageWebCampaignType = "edit";
+                    webCampaignManagerNameBreadcrumb.text(currentWebCampaignData.general.name);
                     updateUrlForTab(`webcampaigns/${currentWebCampaignData.id}`);
                 },
                 (error) => {
@@ -853,15 +948,17 @@ function initWebCampaignsTab() {
                     saveWebCampaignButton.prop("disabled", false);
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Failed to save campaign."
+                        message: "Failed to save campaign. Check console for more details.",
+                        timeout: 3000
                     });
+                    console.error("Failed to save campaign:", error);
                 }
             );
         });
 
         // Init All Handlers
         initWebAgentEventHandlers();
-        initWebRegionEventHandlers();
+        //initWebRegionEventHandlers();
         initWebActionsEventHandlers();
 
         // Initial population

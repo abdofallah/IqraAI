@@ -19,6 +19,13 @@ const telephonyCampaignsTooltipTriggerList = document.querySelectorAll('#telepho
 /** Element Variables **/
 const telephonyCampaignsTab = $("#telephony-campaigns-tab");
 
+// Header Elements
+const telephonyCampaignHeaderContainer = telephonyCampaignsTab.find("#telephony-campaign-header-container");
+// Manager Header
+const telephonyCampaignManagerNameBreadcrumb = telephonyCampaignHeaderContainer.find("#telephony-campaign-manager-name-breadcrumb");
+const backToTelephonyCampaignsListButton = telephonyCampaignHeaderContainer.find("#back-to-telephony-campaigns-list");
+const saveTelephonyCampaignButton = telephonyCampaignHeaderContainer.find("#save-telephony-campaign-button");
+
 // List View Elements
 const telephonyCampaignsListView = telephonyCampaignsTab.find("#telephony-campaigns-list-view");
 const addNewTelephonyCampaignButton = telephonyCampaignsListView.find("#add-new-telephony-campaign-button");
@@ -26,9 +33,6 @@ const telephonyCampaignsListContainer = telephonyCampaignsListView.find("#teleph
 
 // Manager View Elements
 const telephonyCampaignsManagerView = telephonyCampaignsTab.find("#telephony-campaigns-manager-view");
-const telephonyCampaignManagerNameBreadcrumb = telephonyCampaignsManagerView.find("#telephony-campaign-manager-name-breadcrumb");
-const backToTelephonyCampaignsListButton = telephonyCampaignsManagerView.find("#back-to-telephony-campaigns-list");
-const saveTelephonyCampaignButton = telephonyCampaignsManagerView.find("#save-telephony-campaign-button");
 
 // General Tab
 const telephonyCampaignIconInput = telephonyCampaignsManagerView.find("#telephony-campaign-icon-input");
@@ -133,8 +137,11 @@ function saveTelephonyCampaign(formData, successCallback, errorCallback) {
 /** FUNCTIONS **/
 function showTelephonyCampaignsListView() {
     telephonyCampaignsManagerView.removeClass("show");
+    telephonyCampaignHeaderContainer.removeClass("show");
     setTimeout(() => {
         telephonyCampaignsManagerView.addClass("d-none");
+        telephonyCampaignHeaderContainer.addClass("d-none");
+
         telephonyCampaignsListView.removeClass("d-none");
         setTimeout(() => {
             telephonyCampaignsListView.addClass("show");
@@ -147,8 +154,11 @@ function showTelephonyCampaignsManagerView() {
     telephonyCampaignsListView.removeClass("show");
     setTimeout(() => {
         telephonyCampaignsListView.addClass("d-none");
+
+        telephonyCampaignHeaderContainer.removeClass("d-none");
         telephonyCampaignsManagerView.removeClass("d-none");
         setTimeout(() => {
+            telephonyCampaignHeaderContainer.addClass("show");
             telephonyCampaignsManagerView.addClass("show");
             setDynamicBodyHeight();
         }, 10);
@@ -161,7 +171,7 @@ function createTelephonyCampaignListElement(campaignData) {
 
     return `
         <div class="col-lg-4 col-md-6 col-12">
-            <div class="campaign-card d-flex flex-column align-items-start justify-content-center" data-campaign-id="${campaignData.id}">
+            <div class="campaign-card telephony-campaign-card d-flex flex-column align-items-start justify-content-center" data-campaign-id="${campaignData.id}">
                 <div class="d-flex flex-row align-items-center justify-content-start mb-4">
                     <span class="route-icon">${campaignData.general.emoji}</span>
                     <div class="card-data">
@@ -273,7 +283,7 @@ function createDefaultTelephonyCampaignObject() {
     };
 }
 
-function resetTelephonyManager() {
+function resetTelephonyCampaignManager() {
     telephonyCampaignsManagerView.find(".is-invalid").removeClass("is-invalid");
     telephonyCampaignsManagerView.find('.border-danger').removeClass('border-danger');
 
@@ -340,7 +350,7 @@ function resetTelephonyManager() {
         });
         const container = select.closest('div');
         container.find('.custom-tool-input-arguments').addClass('d-none');
-        container.find('[id$="InputArgumentsList"]').empty();
+        container.find('[id$="-arguments-list"]').empty();
     });
 
     // Reset state
@@ -349,7 +359,7 @@ function resetTelephonyManager() {
     currentTelephonyCampaignAgentSelectedId = "";
 }
 
-function fillTelephonyManager() {
+function fillTelephonyCampaignManager() {
     const data = currentTelephonyCampaignData;
 
     // General
@@ -415,18 +425,29 @@ function fillTelephonyManager() {
     fillTelephonyCampaignVoicemailTab();
 
     // Actions
-    function fillTelephonyActionTool(toolData, selectElement) {
-        const container = selectElement.closest('div');
+    function fillTelephonyActionTool(actionToolData, actionToolSelectElement) {
+        const container = actionToolSelectElement.closest('div');
         const argumentsContainer = container.find('.custom-tool-input-arguments');
-        const argumentsList = argumentsContainer.find('[id$="InputArgumentsList"]');
-        selectElement.val("none");
+        const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
+        const selectElement = argumentsContainer.find('select[id$="-arguments-select"]');
+        actionToolSelectElement.val("none");
+        selectElement.val("");
         argumentsList.empty();
         argumentsContainer.addClass('d-none');
-        if (toolData && toolData.toolId) {
-            selectElement.val(toolData.toolId).change(); // Trigger change to show arguments
-            if (toolData.arguments) {
-                Object.entries(toolData.arguments).forEach(([argId, value]) => {
-                    argumentsList.find(`input[input_arguement="${argId}"]`).val(value);
+        if (actionToolData && actionToolData.toolId) {
+            actionToolSelectElement.val(actionToolData.toolId).change();
+            if (actionToolData.arguments) {
+                Object.entries(actionToolData.arguments).forEach(([argId, value]) => {
+                    const businessToolData = BusinessFullData.businessApp.tools.find(tool => tool.id === actionToolData.toolId);
+                    const argumentData = businessToolData.configuration.inputSchemea.find(arg => arg.id === argId);
+
+                    if (argumentData) {
+                        var element = $(createTelephonyCampaignActionArgumentListElement(argumentData));
+                        element.find('input').val(value);
+
+                        argumentsList.append(element);
+                        selectElement.find(`option[value="${argId}"]`).remove();
+                    }
                 });
             }
         }
@@ -465,11 +486,12 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
     }
 
     function checkAgentTab() {
+        const timezoneValue = telephonyCampaignAgentTimezoneSelect.find(":selected").val();
         changes.agent = {
             selectedAgentId: currentTelephonyCampaignAgentSelectedId,
-            openingScriptId: telephonyCampaignAgentScriptSelect.val() || "",
-            language: telephonyCampaignAgentLanguageSelect.val(),
-            timezones: telephonyCampaignAgentTimezoneSelect.val() ? [telephonyCampaignAgentTimezoneSelect.val()] : [],
+            openingScriptId: telephonyCampaignAgentScriptSelect.find(":selected").val(),
+            language: telephonyCampaignAgentLanguageSelect.find(":selected").val(),
+            timezones: (timezoneValue && timezoneValue.trim() !== "") ? [timezoneValue] : [],
             fromNumberInContext: telephonyCampaignAgentFromNumberInContextCheck.is(":checked"),
             toNumberInContext: telephonyCampaignAgentToNumberInContextCheck.is(":checked"),
         };
@@ -869,8 +891,22 @@ async function canLeaveTelephonyCampaignsManager(leaveMessage = "") {
 }
 
 function handleTelephonyCampaignRouting(subPath) {
+    if (manageTelephonyCampaignType === 'new' || manageTelephonyCampaignType === 'edit') {
+        let correctPath;
+        if (manageTelephonyCampaignType === 'new') {
+            correctPath = 'telephonycampaigns/new';
+        } else {
+            correctPath = `telephonycampaigns/${currentTelephonyCampaignData.id}`;
+        }
+
+        replaceUrlForTab(correctPath);
+        return;
+    }
+
     if (!subPath || subPath.length === 0) {
-        showTelephonyCampaignsListView();
+        if (telephonyCampaignsManagerView.hasClass("show") && !telephonyCampaignsListView.hasClass("show")) {
+            showTelephonyCampaignsListView();
+        }
         replaceUrlForTab('telephonycampaigns');
         return;
     }
@@ -889,6 +925,45 @@ function handleTelephonyCampaignRouting(subPath) {
     } else {
         showTelephonyCampaignsListView();
         replaceUrlForTab('telephonycampaigns');
+    }
+}
+
+function SetTelephonyCampaignCardDynamicWidth() {
+    if (!telephonyCampaignsTab.hasClass("show")) return;
+
+    const anyTelephonyCampaignCard = telephonyCampaignsListContainer.find(".telephony-campaign-card");
+    if (anyTelephonyCampaignCard.length > 0) {
+        const firstTelephonyCampaignCard = anyTelephonyCampaignCard.first();
+
+        const telephonyCampaignCardWidth = firstTelephonyCampaignCard.innerWidth();
+
+        const telephonyCampaignCardLeftRightPadding = parseInt(firstTelephonyCampaignCard.css("padding-left")) + parseInt(firstTelephonyCampaignCard.css("padding-right"));
+        const telephonyCampaignCardIconWidthAndPadding = firstTelephonyCampaignCard.find(".route-icon").innerWidth();
+
+        // .campaign-card h4
+        const marginLeftForH4 = 20; // .campaign-card h4 in style.css
+
+        const currentUsedUpSpace = telephonyCampaignCardLeftRightPadding + telephonyCampaignCardIconWidthAndPadding + marginLeftForH4;
+
+        let availableH4Space = telephonyCampaignCardWidth - currentUsedUpSpace;
+
+        if (availableH4Space < 5) {
+            availableH4Space = 5;
+        }
+
+        // .campaign-card h5-info
+        let availableH5Space = telephonyCampaignCardWidth - telephonyCampaignCardLeftRightPadding;
+
+        // FINAL
+        $("#dynamicTelephonyCampaignCardCSS").html(`
+            .telephony-campaign-card .card-data {
+				width: ${availableH4Space}px;
+			}
+
+            .telephony-campaign-card .h5-info {
+                width: ${availableH5Space}px;
+            }
+		`);
     }
 }
 
@@ -1023,21 +1098,8 @@ function handleTelephonyCampaignActionToolChange(event) {
     validateTelephonyCampaign(true);
 }
 
-function handleTelephonyCampaignActionAddArgument(event) {
-    const selectElement = $(event.currentTarget);
-    const selectedArgumentId = selectElement.val();
-    if (!selectedArgumentId) return;
-
-    const container = selectElement.closest('.custom-tool-input-arguments');
-    const mainToolSelect = container.parent().parent().find('select').first(); // Go up to parent div and find main tool select
-    const selectedToolId = mainToolSelect.val();
-    const argumentsList = container.find('[id$="-arguments-list"]');
-
-    const toolData = BusinessFullData.businessApp.tools.find(tool => tool.id === selectedToolId);
-    const argumentData = toolData.configuration.inputSchemea.find(arg => arg.id === selectedArgumentId);
-
-    if (argumentData) {
-        argumentsList.append(`
+function createTelephonyCampaignActionArgumentListElement(argumentData) {
+    return `
             <div class="input-group mb-1">
                 <span class="input-group-text">${argumentData.name[BusinessDefaultLanguage]}${argumentData.isRequired ? "*" : ""}</span>
                 <input type="text" class="form-control" input_arguement="${argumentData.id}" placeholder="Enter ${argumentData.type.name} value" value="">
@@ -1045,7 +1107,24 @@ function handleTelephonyCampaignActionAddArgument(event) {
                     <i class="fa-regular fa-trash"></i>
                 </button>
             </div>
-        `);
+        `;
+}
+
+function handleTelephonyCampaignActionAddArgument(event) {
+    const selectElement = $(event.currentTarget);
+    const selectedArgumentId = selectElement.val();
+    if (!selectedArgumentId) return;
+
+    const container = selectElement.closest('.custom-tool-input-arguments');
+    const mainToolSelect = container.parent().find('select').first(); // Go up to parent div and find main tool select
+    const selectedToolId = mainToolSelect.val();
+    const argumentsList = container.find('[id$="-arguments-list"]');
+
+    const toolData = BusinessFullData.businessApp.tools.find(tool => tool.id === selectedToolId);
+    const argumentData = toolData.configuration.inputSchemea.find(arg => arg.id === selectedArgumentId);
+
+    if (argumentData) {
+        argumentsList.append(createTelephonyCampaignActionArgumentListElement(argumentData));
         selectElement.find(`option[value="${selectedArgumentId}"]`).remove();
         selectElement.val("");
     }
@@ -1354,9 +1433,23 @@ function initTelephonyCampaignsTab() {
         });
 
         /** Event Handlers **/
-        $(document).on("tabShown", function (event, data) {
-            if (data.tabId === 'telephonycampaigns') {
+        $(window).resize(() => {
+            SetTelephonyCampaignCardDynamicWidth();
+        });
+
+        $(document).on("containerResizeProgress", (event) => {
+            SetTelephonyCampaignCardDynamicWidth();
+        });
+
+        $(document).on("tabShowing", function (event, data) {
+            if (data.tabId === 'telephony-campaigns-tab') {
                 handleTelephonyCampaignRouting(data.urlSubPath);
+            }
+        });
+
+        $(document).on("tabShown", function (event, data) {
+            if (data.tabId === 'telephony-campaigns-tab') {
+                SetTelephonyCampaignCardDynamicWidth();
             }
         });
 
@@ -1364,7 +1457,7 @@ function initTelephonyCampaignsTab() {
             e.preventDefault();
             currentTelephonyCampaignData = createDefaultTelephonyCampaignObject();
             telephonyCampaignManagerNameBreadcrumb.text("New Telephony Campaign");
-            resetTelephonyManager();
+            resetTelephonyCampaignManager();
             manageTelephonyCampaignType = "new";
             showTelephonyCampaignsManagerView();
             updateUrlForTab("telephonycampaigns/new");
@@ -1386,8 +1479,8 @@ function initTelephonyCampaignsTab() {
             if (!campaignData) return;
             currentTelephonyCampaignData = JSON.parse(JSON.stringify(campaignData)); // Deep copy
             telephonyCampaignManagerNameBreadcrumb.text(currentTelephonyCampaignData.general.name);
-            resetTelephonyManager();
-            fillTelephonyManager();
+            resetTelephonyCampaignManager();
+            fillTelephonyCampaignManager();
             manageTelephonyCampaignType = "edit";
             showTelephonyCampaignsManagerView();
             updateUrlForTab(`telephonycampaigns/${campaignId}`);
@@ -1428,7 +1521,7 @@ function initTelephonyCampaignsTab() {
             formData.append("postType", manageTelephonyCampaignType);
             formData.append("changes", JSON.stringify(changes));
             if (manageTelephonyCampaignType === "edit") {
-                formData.append("existingCampaignId", currentTelephonyCampaignData.id);
+                formData.append("existingTelephonyCampaignId", currentTelephonyCampaignData.id);
             }
             saveTelephonyCampaign(formData,
                 (response) => {
@@ -1439,14 +1532,16 @@ function initTelephonyCampaignsTab() {
                     } else {
                         BusinessFullData.businessApp.telephonyCampaigns.push(response.data);
                     }
-                    fillTelephonyCampaignsList();
+                    fillTelephonyCampaignsList(); // todo instead of this, update the list item
                     isSavingTelephonyCampaign = false;
                     saveTelephonyCampaignButton.prop("disabled", true);
                     AlertManager.createAlert({
                         type: "success",
-                        message: "Campaign saved successfully."
+                        message: "Campaign saved successfully.",
+                        timeout: 3000
                     });
                     manageTelephonyCampaignType = "edit";
+                    telephonyCampaignManagerNameBreadcrumb.text(currentTelephonyCampaignData.general.name);
                     updateUrlForTab(`telephonycampaigns/${currentTelephonyCampaignData.id}`);
                 },
                 (error) => {
@@ -1454,8 +1549,10 @@ function initTelephonyCampaignsTab() {
                     saveTelephonyCampaignButton.prop("disabled", false);
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Failed to save campaign."
+                        message: "Failed to save campaign. Check console logs for more details.",
+                        timeout: 3000
                     });
+                    console.error("Failed to save campaign:", error);
                 }
             );
         });

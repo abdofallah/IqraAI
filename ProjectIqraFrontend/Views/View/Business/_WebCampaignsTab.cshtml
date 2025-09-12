@@ -1,10 +1,51 @@
 ﻿<!-- WEB CAMPAIGNS TAB -->
 <div class="main-container d-none show w-100" id="web-campaigns-tab">
 
-    <!-- WEB CAMPAIGNS: LIST VIEW -->
-    <div class="fade show" id="web-campaigns-list-view">
-        <h3 class="fw-bold tab-title mb-3"><i class='fa-solid fa-globe'></i> <span>Web Campaigns</span></h3>
-        <div class="inner-container">
+    <!-- Header -->
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-solid fa-globe'></i> <span>Web Campaigns</span></h3>
+    <div class="inner-header-container w-100 mb-3 fade d-none" id="web-campaigns-header-container">
+        <div class="d-flex flex-column align-items-start justify-content-between">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item">
+                            <a href="#" id="back-to-web-campaigns-list">Web Campaigns</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page"><span id="web-campaign-manager-name-breadcrumb">New Campaign</span></li>
+                    </ol>
+                </nav>
+                <div>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="save-web-campaign-button" disabled>
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation for Web Campaign Manager -->
+            <ul class="nav w-100" id="web-campaign-manager-tabs" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="web-campaign-manager-general-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-general" type="button" role="tab" aria-controls="web-campaign-manager-general" aria-selected="true">General</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="web-campaign-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-agent" type="button" role="tab" aria-controls="web-campaign-manager-agent" aria-selected="false">Agent</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link disabled" id="web-campaign-manager-region-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-region" type="button" role="tab" aria-controls="web-campaign-manager-region" aria-selected="false" disabled>Region Route</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="web-campaign-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-configuration" type="button" role="tab" aria-controls="web-campaign-manager-configuration" aria-selected="false">Configuration</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="web-campaign-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-actions" type="button" role="tab" aria-controls="web-campaign-manager-actions" aria-selected="false">Actions</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="inner-container">
+        <!-- WEB CAMPAIGNS: LIST VIEW -->
+        <div class="fade show" id="web-campaigns-list-view">
             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                 <div style="min-width: 300px" class="me-4">
                     <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="add-new-web-campaign-button">
@@ -22,58 +63,11 @@
                 <!-- Dynamically Generated Web Campaign Cards will be loaded here -->
             </div>
         </div>
-    </div>
 
-    <!-- WEB CAMPAIGNS: MANAGER VIEW -->
-    <div class="fade d-none" id="web-campaigns-manager-view">
-        <!-- Manager Header -->
-        <div class="inner-header-container w-100 mb-3">
-            <div class="d-flex flex-column align-items-start justify-content-between">
-                <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item">
-                                <a href="#" id="back-to-web-campaigns-list">Web Campaigns</a>
-                            </li>
-                            <li class="breadcrumb-item active" aria-current="page"><span id="web-campaign-manager-name-breadcrumb">New Campaign</span></li>
-                        </ol>
-                    </nav>
-                    <div>
-                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="save-web-campaign-button" disabled>
-                            <i class='fa-regular fa-floppy-disk'></i>
-                            <span> Save</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Tab Navigation for Web Campaign Manager -->
-                <ul class="nav w-100" id="web-campaign-manager-tabs" role="tablist">
-                    <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link active" id="web-campaign-manager-general-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-general" type="button" role="tab" aria-controls="web-campaign-manager-general" aria-selected="true">General</button>
-                    </li>
-                    <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link" id="web-campaign-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-agent" type="button" role="tab" aria-controls="web-campaign-manager-agent" aria-selected="false">Agent</button>
-                    </li>
-                    <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link" id="web-campaign-manager-region-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-region" type="button" role="tab" aria-controls="web-campaign-manager-region" aria-selected="false">Region Route</button>
-                    </li>
-                    <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link" id="web-campaign-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-configuration" type="button" role="tab" aria-controls="web-campaign-manager-configuration"
-                                aria-selected="false">
-                            Configuration
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="web-campaign-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-actions" type="button" role="tab" aria-controls="web-campaign-manager-actions" aria-selected="false">Actions</button>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- Manager Content -->
-        <div class="inner-container">
+        <!-- WEB CAMPAIGNS: MANAGER VIEW -->
+        <div class="fade d-none" id="web-campaigns-manager-view">
+            <!-- Manager Content -->
             <div class="tab-content w-100" id="web-campaign-manager-tabContent">
-
                 <!-- General Tab -->
                 <div class="tab-pane fade show active w-100" id="web-campaign-manager-general" role="tabpanel" aria-labelledby="web-campaign-manager-general-tab" tabindex="0">
                     <div class="mb-3">

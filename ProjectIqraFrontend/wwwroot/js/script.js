@@ -258,6 +258,8 @@ async function handleNavLinkClick(event) {
 	});
 
 	const newTabElement = $(`#${forTab}`);
+	const subPath = getUrlSubPath();
+	$(document).trigger("tabShowing", { tabId: forTab, urlSubPath: subPath });
 	setTimeout(() => {
 		currentElement.addClass("active");
 		newTabElement.removeClass("d-none");
@@ -265,7 +267,6 @@ async function handleNavLinkClick(event) {
 			newTabElement.addClass("show");
 			setTimeout(() => {
 				setDynamicBodyHeight(forTab);
-				const subPath = getUrlSubPath();
 				$(document).trigger("tabShown", { tabId: forTab, urlSubPath: subPath });
 			}, 10);
 		}, 10);
@@ -363,6 +364,7 @@ $(document).ready(() => {
 					) {
 						clearInterval(TabStateInterval);
 
+						$(document).trigger("tabShowing", initialTabState);
 						$(document).trigger("tabShown", initialTabState);
 						initialTabState = null;
 					}

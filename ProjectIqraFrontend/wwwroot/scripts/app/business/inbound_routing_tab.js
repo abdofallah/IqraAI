@@ -1105,6 +1105,45 @@ async function canLeaveRoutingTab(leaveMessage = "") {
 	return true;
 }
 
+function handleInboundRoutingURLRouting(subPath) {
+	if (ManageRouteType === 'new' || ManageRouteType === 'edit') {
+		let correctPath;
+		if (ManageRouteType === 'new') {
+			correctPath = 'routings/new';
+		} else {
+			correctPath = `routings/${ManageCurrentRouteData.id}`;
+		}
+
+		replaceUrlForTab(correctPath);
+		return;
+	}
+
+	if (!subPath || subPath.length === 0) {
+		if (routingManagerTab.hasClass("show") && !routingListTab.hasClass("show")) {
+			showRoutingListTab();
+		}
+		replaceUrlForTab('routings');
+		return;
+	}
+
+	const action = subPath[0];
+	const routingCard = telephonyCampaignsListContainer.find(`.routing-card[route-id="${action}"]`);
+
+	if (action === 'new') {
+		if (!routingManagerTab.hasClass('show')) {
+			addNewRoutingButton.click();
+		}
+	} else if (routingCard.length > 0) {
+		if (!routingManagerTab.hasClass('show')) {
+			routingCard.click();
+		}
+	} else {
+		showRoutingListTab();
+		replaceUrlForTab('routings');
+	}
+}
+
+
 /** Language Tab **/
 function ResortMultiLanugageEnabledListNumbers() {
 	const tbodyChild = $(routeMultiLanguagesEnabledList.find("tbody")[0]).children();
@@ -1226,6 +1265,7 @@ function initRoutingTab() {
 			showRoutingManagerTab();
 
 			ManageRouteType = "new";
+			updateUrlForTab("routings/new");
 		});
 
 		switchBackToRoutingTabButton.on("click", async (event) => {
@@ -1238,7 +1278,9 @@ function initRoutingTab() {
 				}
 			}
 
+			ManageRouteType = null;
 			showRoutingListTab();
+			updateUrlForTab("routings");
 		});
 
 		routingListTable.on("click", ".routing-card", (event) => {
@@ -1257,24 +1299,7 @@ function initRoutingTab() {
 			showRoutingManagerTab();
 
 			ManageRouteType = "edit";
-		});
-
-		$("#nav-bar").on("tabChange", async (event) => {
-			const activeTab = event.detail.from;
-			if (activeTab !== "routing-tab") return;
-
-			if (ManageRouteType == null) return;
-
-			const canLeaveResult = await canLeaveRoutingTab(" Are you sure you want to discard these changes and leave the routing tab?");
-
-			if (canLeaveResult) {
-				if (ManageRouteType != null) {
-					ManageRouteType = null;
-					switchBackToRoutingTabButton.click();
-				}
-			} else {
-				event.preventDefault();
-			}
+			updateUrlForTab(`routings/${routeId}`);
 		});
 
 		$(window).resize(() => {
@@ -1283,7 +1308,19 @@ function initRoutingTab() {
 
 		$(document).on("containerResizeProgress", (event) => {
 			SetRoutingCardDynamicWidth();
-		})
+		});
+
+		$(document).on("tabShowing", function (event, data) {
+			if (data.tabId === 'routing-tab') {
+				handleInboundRoutingURLRouting(data.urlSubPath);
+			}
+		});
+
+		$(document).on("tabShown", function (event, data) {
+			if (data.tabId === 'routing-tab') {
+				SetRoutingCardDynamicWidth();
+			}
+		});
 
 		/** General Tab **/
 		function initGeneralTabHandlers() {
@@ -1870,6 +1907,7 @@ function initRoutingTab() {
 
 					// Update route type to edit mode
 					ManageRouteType = "edit";
+					updateUrlForTab(`routings/${ManageCurrentRouteData.id}`);
 				},
 				(saveError, isUnsuccessful) => {
 					// Show error message
