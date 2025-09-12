@@ -546,7 +546,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 var conversationSession = new ConversationSessionOrchestrator(
                     sessionId,
-                    "call",
+                    ConversationSessionInitiationType.Telephony,
                     combinedCTS,
 
                     _businessManager,

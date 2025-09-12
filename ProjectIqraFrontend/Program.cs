@@ -19,6 +19,7 @@ using IqraInfrastructure.Managers.RAG.Processors;
 using IqraInfrastructure.Managers.RAG.Splitters;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Rerank;
+using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
@@ -40,9 +41,11 @@ using IqraInfrastructure.Repositories.RAG;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Rerank;
+using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
+using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.Extensions.DependencyInjection;
 using Minio;
 using MongoDB.Driver;
@@ -461,13 +464,44 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<RAGKeywordStore>>()
                 );
             });
-            //EmbeddingCacheRepository
+
             builder.Services.AddSingleton<EmbeddingCacheRepository>((sp) =>
             {
                 return new EmbeddingCacheRepository(
                     sp.GetRequiredService<ILogger<EmbeddingCacheRepository>>(),
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:EmbeddingCacheRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<WebSessionRepository>((sp) =>
+            {
+                return new WebSessionRepository(
+                    sp.GetRequiredService<ILogger<WebSessionRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:WebSessionRepoistoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<ServerLiveStatusChannelRepository>((sp) =>
+            {
+                return new ServerLiveStatusChannelRepository(
+                    new RedisConnectionFactory(
+                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:ServerLiveStatusChannelDatabaseIndex"]}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    ),
+                    sp.GetRequiredService<ILogger<ServerLiveStatusChannelRepository>>()
+                );
+            });
+
+            builder.Services.AddSingleton<DistributedLockRepository>((sp) =>
+            {
+                return new DistributedLockRepository(
+                    new RedisConnectionFactory(
+                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:DistributedLockDatabaseIndex"]}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    ),
+                    sp.GetRequiredService<ILogger<DistributedLockRepository>>()
                 );
             });
         }
@@ -597,7 +631,8 @@ namespace ProjectIqraFrontend
                         InitalizeConversationsManager = true,
                         InitalizeMakeCallManager = true,
                         InitalizeKnowledgeBaseManager = true,
-                        InitalizeCampaignManager = true
+                        InitalizeCampaignManager = true,
+                        InitalizeWebSessionManager = true
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
@@ -624,7 +659,11 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ExtractProcessor>(),
                     sp.GetRequiredService<EmbeddingProviderManager>(),
                     sp.GetRequiredService<KeywordExtractor>(),
-                    sp.GetRequiredService<RAGKeywordStore>()
+                    sp.GetRequiredService<RAGKeywordStore>(),
+                    sp.GetRequiredService<WebSessionRepository>(),
+                    sp.GetRequiredService<BillingValidationManager>(),
+                    sp.GetRequiredService<ServerSelectionManager>(),
+                    sp.GetRequiredService<IHttpClientFactory>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>
@@ -687,7 +726,7 @@ namespace ProjectIqraFrontend
                 return new BillingValidationManager(
                     sp.GetRequiredService<ILogger<BillingValidationManager>>(),
                     sp.GetRequiredService<AppRepository>(),
-                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<UserManager>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<ConversationStateRepository>()
@@ -754,6 +793,16 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<EmbeddingCacheManager>>(),
                     sp.GetRequiredService<EmbeddingCacheRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>()
+                );
+            });
+
+            builder.Services.AddSingleton<ServerSelectionManager>((sp) =>
+            {
+                return new ServerSelectionManager(
+                    sp.GetRequiredService<ILogger<ServerSelectionManager>>(),
+                    sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<DistributedLockRepository>()
                 );
             });
         }

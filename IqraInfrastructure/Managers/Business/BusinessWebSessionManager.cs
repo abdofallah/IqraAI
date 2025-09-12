@@ -20,7 +20,7 @@ namespace IqraInfrastructure.Managers.Business
     {
         private readonly BusinessManager _parentBusinessManager;
 
-        private readonly WebSessionRepoistory _webSessionRepoistory;
+        private readonly WebSessionRepository _webSessionRepoistory;
         private readonly BillingValidationManager _billingValidationManager;
         private readonly ServerSelectionManager _serverSelectionManager;
         private readonly RegionManager _regionManager;
@@ -30,7 +30,7 @@ namespace IqraInfrastructure.Managers.Business
 
         public BusinessWebSessionManager(
             BusinessManager parentManager,
-            WebSessionRepoistory webSessionRepoistory,
+            WebSessionRepository webSessionRepoistory,
             BillingValidationManager billingValidationManager,
             ServerSelectionManager serverSelectionManager,
             RegionManager regionManager,
@@ -111,6 +111,7 @@ namespace IqraInfrastructure.Managers.Business
                     {
                         var webCampaignIdValue = webCampaignIdElement.GetString()!;
 
+                        // TODO change to a simple check if exists than getting full data
                         var campaignDataResult = await _parentBusinessManager.GetCampaignManager().GetWebCampaignById(businessData.Id, webCampaignIdValue);
                         if (!campaignDataResult.Success && campaignDataResult.Data != null)
                         {
@@ -146,6 +147,21 @@ namespace IqraInfrastructure.Managers.Business
                         }
 
                         newWebSessionData.RegionId = regionIdValue;
+                    }
+
+                    // ClientIdentifier String
+                    if (!callRequestElement.TryGetProperty("clientIdentifier", out var clientIdentifierElement)
+                        || clientIdentifierElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(clientIdentifierElement.GetString()))
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_CLIENT_IDENTIFIER_NOT_FOUND",
+                            "Client Identifier not found in config data."
+                        );
+                    }
+                    else
+                    {
+                        var clientIdentifierValue = clientIdentifierElement.GetString()!;
+                        newWebSessionData.ClientIdentifier = clientIdentifierValue;
                     }
 
                     // Dynamic Variables

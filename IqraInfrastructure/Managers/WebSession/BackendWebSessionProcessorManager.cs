@@ -1,14 +1,8 @@
-﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Call.Queue;
-using IqraCore.Entities.Conversation;
+﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Helper.Audio;
-using IqraCore.Entities.Helper.Call.Queue;
-using IqraCore.Entities.Helper.Server;
-using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Integrations;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.Server;
 using IqraCore.Entities.WebSession;
@@ -16,13 +10,11 @@ using IqraCore.Interfaces.Conversation;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Call.Helper;
 using IqraInfrastructure.Managers.Conversation.Session;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client;
-using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
@@ -37,7 +29,6 @@ using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PhoneNumbers;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 
@@ -50,7 +41,7 @@ namespace IqraInfrastructure.Managers.WebSession
         private readonly ILogger<BackendWebSessionProcessorManager> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly ServerMetricsMonitor _serverMetricsMonitor;
-        private readonly WebSessionRepoistory _webSessionRepoistory;
+        private readonly WebSessionRepository _webSessionRepoistory;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
@@ -70,7 +61,7 @@ namespace IqraInfrastructure.Managers.WebSession
             IServiceProvider serviceProvider,
             BackendAppConfig backendAppConfig,
             ServerMetricsMonitor serverMetricsMonitor,
-            WebSessionRepoistory webSessionRepoistory,
+            WebSessionRepository webSessionRepoistory,
             ConversationStateRepository conversationStateRepository,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
@@ -161,7 +152,7 @@ namespace IqraInfrastructure.Managers.WebSession
 
                 await session.StartAsync();
 
-                await _webSessionRepoistory.UpdateStatusProcessedBackendWithServerIdAndWebhookURL(webSessionId, session.SessionId, webhookUrl);
+                await _webSessionRepoistory.UpdateStatusProcessedBackendWithServerIdAndWebsocketURL(webSessionId, session.SessionId, webhookUrl);
                 return result.SetSuccessResult(
                     new BackendInitiateWebSessionResultModel()
                     {
@@ -275,7 +266,7 @@ namespace IqraInfrastructure.Managers.WebSession
 
                 var conversationSession = new ConversationSessionOrchestrator(
                     sessionId,
-                    "web",
+                    ConversationSessionInitiationType.Web,
                     combinedCTS,
 
                     _businessManager,

@@ -4,6 +4,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
+using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
@@ -11,12 +12,14 @@ using IqraInfrastructure.Managers.RAG.Extractors;
 using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.RAG.Processors;
 using IqraInfrastructure.Managers.Region;
+using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
+using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -84,7 +87,11 @@ namespace IqraInfrastructure.Managers.Business
             ExtractProcessor? extractProcessor,
             EmbeddingProviderManager? embeddingProviderManager,
             KeywordExtractor? keywordExtractor,
-            RAGKeywordStore? ragKeywordStore
+            RAGKeywordStore? ragKeywordStore,
+            WebSessionRepository? webSessionRepoistory,
+            BillingValidationManager? billingValidationManager,
+            ServerSelectionManager? serverSelectionManager,
+            IHttpClientFactory? httpClientFactory
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -187,7 +194,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeWebSessionManager)
             {
-                _businessWebSessionManager = new BusinessWebSessionManager(this);
+                if (webSessionRepoistory == null || billingValidationManager == null || serverSelectionManager == null || regionManager == null || httpClientFactory == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessWebSessionManager");
+                }
+                _businessWebSessionManager = new BusinessWebSessionManager(this, webSessionRepoistory, billingValidationManager, serverSelectionManager, regionManager, httpClientFactory);
             }
         }
 

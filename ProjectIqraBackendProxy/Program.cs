@@ -15,6 +15,7 @@ using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Integrations;
+using IqraInfrastructure.Repositories.MinIO;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
@@ -293,6 +294,17 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     sp.GetRequiredService<TwilioManager>(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     null
                 );
             });
@@ -343,7 +355,7 @@ namespace ProjectIqraBackendProxy
                 return new BillingValidationManager(
                     sp.GetRequiredService<ILogger<BillingValidationManager>>(),
                     sp.GetRequiredService<AppRepository>(),
-                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<UserManager>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<ConversationStateRepository>()

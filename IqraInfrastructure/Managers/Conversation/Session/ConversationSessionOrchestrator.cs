@@ -224,8 +224,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                         PickUpDelayMS = businessRouteData.Configuration.PickUpDelayMS,
                         NotifyOnSilenceMS = businessRouteData.Configuration.NotifyOnSilenceMS,
                         EndCallOnSilenceMS = businessRouteData.Configuration.EndCallOnSilenceMS,
-                        MaxCallTimeS = businessRouteData.Configuration.MaxCallTimeS,
-                        RecordCallAudio = businessRouteData.Configuration.RecordCallAudio
+                        MaxCallTimeS = businessRouteData.Configuration.MaxCallTimeS
                     },
                     Language = new ConversationSessionContextLanguage()
                     {
@@ -233,6 +232,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                         MultiLanguageEnabled = businessRouteData.Language.MultiLanguageEnabled,
                         EnabledMultiLanguages = businessRouteData.Language.EnabledMultiLanguages
                     },
+                    RecordCallAudio = businessRouteData.Configuration.RecordCallAudio,
                     DynamicVariables = new Dictionary<string, string>(),
                     Metadata = new Dictionary<string, string>()
                 };
@@ -1076,7 +1076,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             _lastUserActivityTime = DateTime.UtcNow;
 
             // Store audio if recording is enabled
-            if (_sessionContextData.Timeout.RecordCallAudio)
+            if (_sessionContextData.RecordCallAudio)
             {
                 try
                 {
@@ -1260,7 +1260,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 return;
 
             // Store audio if recording is enabled
-            if (_sessionContextData.Timeout.RecordCallAudio)
+            if (_sessionContextData.RecordCallAudio)
             {
                 try
                 {

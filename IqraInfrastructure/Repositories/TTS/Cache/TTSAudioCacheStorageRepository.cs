@@ -2,7 +2,6 @@
 using IqraInfrastructure.Repositories.MinIO;
 using Microsoft.Extensions.Logging;
 using Minio.DataModel.Args;
-using System.Drawing;
 
 namespace IqraInfrastructure.Repositories.TTS.Cache
 {

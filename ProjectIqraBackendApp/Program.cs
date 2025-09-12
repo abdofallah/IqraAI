@@ -1,5 +1,6 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
+using IqraCore.Interfaces.Server;
 using IqraCore.Models.Server;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
@@ -7,29 +8,36 @@ using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
+using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Region;
+using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.Server.Metrics;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.WebSession;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Billing;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.Embedding;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
+using IqraInfrastructure.Repositories.MinIO;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
+using IqraInfrastructure.Repositories.Rerank;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.TTS.Cache;
 using IqraInfrastructure.Repositories.User;
+using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Minio;
@@ -118,12 +126,13 @@ namespace ProjectIqraBackendApp
 
                         var pathSegments = context.Request.Path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
                         if (pathSegments == null || pathSegments.Length < 6 ||
-                            pathSegments[0] != "ws" || pathSegments[1] != "session" || pathSegments[3] != "client")
+                            pathSegments[0] != "ws" || pathSegments[1] != "session" || (pathSegments[3] != "telephonyclient" && pathSegments[3] != "webclient"))
                         {
                             context.Response.StatusCode = 400; await context.Response.WriteAsync("Invalid WebSocket path."); return;
                         }
 
                         string sessionId = pathSegments[2];
+                        string clientType = pathSegments[3];
                         string clientId = pathSegments[4];
                         string sessionToken = pathSegments[5];
 
@@ -132,30 +141,61 @@ namespace ProjectIqraBackendApp
                             context.Response.StatusCode = 400; await context.Response.WriteAsync("Invalid WebSocket path."); return;
                         }
 
-                        var callProcessorManager = context.RequestServices.GetRequiredService<BackendCallProcessorManager>();
-                        try
+                        if (clientType == "telephonyclient")
                         {
-                            WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                            var assignResult = await callProcessorManager.AssignWebSocketToClientAsync(sessionId, clientId, sessionToken, webSocket);
-                            if (!assignResult.Success)
+                            var callProcessorManager = context.RequestServices.GetRequiredService<BackendCallProcessorManager>();
+                            try
                             {
-                                await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, $"[{assignResult.Code}] {assignResult.Message}", CancellationToken.None);
-                                webSocket.Dispose();
+                                WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                                var assignResult = await callProcessorManager.AssignWebSocketToClientAsync(sessionId, clientId, sessionToken, webSocket);
+                                if (!assignResult.Success)
+                                {
+                                    await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, $"[{assignResult.Code}] {assignResult.Message}", CancellationToken.None);
+                                    webSocket.Dispose();
 
-                                context.Response.StatusCode = 400; await context.Response.WriteAsync($"[{assignResult.Code}] {assignResult.Message}"); return;
+                                    context.Response.StatusCode = 400; await context.Response.WriteAsync($"[{assignResult.Code}] {assignResult.Message}"); return;
+                                }
+
+                                // todo this is bad design, we need to await the websocket handler task for recieve itself if possible
+                                // well seems like we need to wait here else we lose the websocket (it aborts)
+                                // https://learn.microsoft.com/en-us/aspnet/core/fundamentals/websockets?view=aspnetcore-9.0
+                                while (webSocket.State == WebSocketState.Open && !context.RequestAborted.IsCancellationRequested)
+                                {
+                                    await Task.Delay(50);
+                                }
                             }
-
-                            // todo this is bad design, we need to await the websocket handler task for recieve itself if possible
-                            // well seems like we need to wait here else we lose the websocket (it aborts)
-                            // https://learn.microsoft.com/en-us/aspnet/core/fundamentals/websockets?view=aspnetcore-9.0
-                            while (webSocket.State == WebSocketState.Open && !context.RequestAborted.IsCancellationRequested)
+                            catch (Exception ex)
                             {
-                                await Task.Delay(50);
+                                if (!context.Response.HasStarted) context.Response.StatusCode = 500;
                             }
                         }
-                        catch (Exception ex)
+                        else if (clientType == "webclient")
                         {
-                            if (!context.Response.HasStarted) context.Response.StatusCode = 500;
+                            var webSessionProcessorManager = context.RequestServices.GetRequiredService<BackendWebSessionProcessorManager>();
+                            try
+                            {
+                                WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                                var assignResult = await webSessionProcessorManager.AssignWebSocketToClientAsync(sessionId, clientId, sessionToken, webSocket);
+                                if (!assignResult.Success)
+                                {
+                                    await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, $"[{assignResult.Code}] {assignResult.Message}", CancellationToken.None);
+                                    webSocket.Dispose();
+
+                                    context.Response.StatusCode = 400; await context.Response.WriteAsync($"[{assignResult.Code}] {assignResult.Message}"); return;
+                                }
+
+                                // todo this is bad design, we need to await the websocket handler task for recieve itself if possible
+                                // well seems like we need to wait here else we lose the websocket (it aborts)
+                                // https://learn.microsoft.com/en-us/aspnet/core/fundamentals/websockets?view=aspnetcore-9.0
+                                while (webSocket.State == WebSocketState.Open && !context.RequestAborted.IsCancellationRequested)
+                                {
+                                    await Task.Delay(50);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                if (!context.Response.HasStarted) context.Response.StatusCode = 500;
+                            }
                         }
                     }
                     else
@@ -191,13 +231,18 @@ namespace ProjectIqraBackendApp
                 return new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
             });
 
-            builder.Services.AddSingleton<IMinioClient>((sp) =>
+            builder.Services.AddSingleton<MinioPrivatePublicClient>((sp) =>
             {
-                return new MinioClient()
-                    .WithEndpoint(appConfig["MinioStorage:Endpoint"], int.Parse(appConfig["MinioStorage:Port"]))
-                    .WithCredentials(appConfig["MinioStorage:AccessKey"], appConfig["MinioStorage:SecretKey"])
-                    .WithSSL(bool.Parse(appConfig["MinioStorage:IsSecure"]))
-                    .Build();
+                return new MinioPrivatePublicClient(
+                    appConfig["MinioStorage:PrivateEndpoint"],
+                    int.Parse(appConfig["MinioStorage:PrivateEndpointPort"]),
+                    bool.Parse(appConfig["MinioStorage:IsPrivateEndpointSecure"]),
+                    appConfig["MinioStorage:PublicEndpoint"],
+                    int.Parse(appConfig["MinioStorage:PublicEndpointPort"]),
+                    bool.Parse(appConfig["MinioStorage:IsPublicEndpointSecure"]),
+                    appConfig["MinioStorage:AccessKey"],
+                    appConfig["MinioStorage:SecretKey"]
+                );
             });
 
             // Repositories
@@ -289,10 +334,8 @@ namespace ProjectIqraBackendApp
             {
                 return new ConversationAudioRepository(
                     sp.GetRequiredService<ILogger<ConversationAudioRepository>>(),
-                    sp.GetRequiredService<IMinioClient>(),
-                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"],
-                    null,
-                    null
+                    sp.GetRequiredService<MinioPrivatePublicClient>(),
+                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"]
                 );
             });
 
@@ -327,7 +370,7 @@ namespace ProjectIqraBackendApp
             {
                 return new BusinessToolAudioRepository(
                     sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
-                    sp.GetRequiredService<IMinioClient>(),
+                    sp.GetRequiredService<MinioPrivatePublicClient>(),
                     appConfig["MinioStorage:BusinessToolAudioRepositoryBucketName"]
                 );
             });
@@ -336,7 +379,7 @@ namespace ProjectIqraBackendApp
             {
                 return new BusinessAgentAudioRepository(
                     sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
-                    sp.GetRequiredService<IMinioClient>(),
+                    sp.GetRequiredService<MinioPrivatePublicClient>(),
                     appConfig["MinioStorage:BusinessAgentAudioRepositoryBucketName"]
                 );
             });
@@ -424,12 +467,49 @@ namespace ProjectIqraBackendApp
                 );
             });
 
+            builder.Services.AddSingleton<IqraMinioClientFactory>((sp) =>
+            {
+                return new IqraMinioClientFactory(
+                    new Dictionary<string, MinioPrivatePublicClient>() {
+                        { appConfig["Server:RegionId"], sp.GetRequiredService<MinioPrivatePublicClient>() }
+                    }
+                );
+            });
+
             builder.Services.AddSingleton<TTSAudioCacheStorageRepository>((sp) =>
             {
                 return new TTSAudioCacheStorageRepository(
                     sp.GetRequiredService<ILogger<TTSAudioCacheStorageRepository>>(),
-                    sp.GetRequiredService<IMinioClient>(),
+                    sp.GetRequiredService<IqraMinioClientFactory>(),
+                    appConfig["Server:Identity"],
                     appConfig["MinioStorage:TTSAudioCacheStorageRepositoryBucketName"]
+                );
+            });
+
+            builder.Services.AddSingleton<WebSessionRepository>((sp) =>
+            {
+                return new WebSessionRepository(
+                    sp.GetRequiredService<ILogger<WebSessionRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:WebSessionRepoistoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<EmbeddingProviderRepository>((sp) =>
+            {
+                return new EmbeddingProviderRepository(
+                    sp.GetRequiredService<ILogger<EmbeddingProviderRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:EmbeddingProviderRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<RerankProviderRepository>((sp) =>
+            {
+                return new RerankProviderRepository(
+                    sp.GetRequiredService<ILogger<RerankProviderRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:RerankProviderRepositoryDatabaseName"]
                 );
             });
         }
@@ -496,7 +576,18 @@ namespace ProjectIqraBackendApp
                     null,
                     null,
                     sp.GetRequiredService<TwilioManager>(),
-                    sp.GetRequiredService<IntegrationConfigurationManager>()
+                    sp.GetRequiredService<IntegrationConfigurationManager>(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
                 );
             });
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>
@@ -537,12 +628,30 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<IntegrationsManager>()
                 );
             });
+            builder.Services.AddSingleton<EmbeddingProviderManager>((sp) =>
+            {
+                return new EmbeddingProviderManager(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<EmbeddingProviderRepository>(),
+                    sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
+            builder.Services.AddSingleton<RerankProviderManager>((sp) =>
+            {
+                return new RerankProviderManager(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<RerankProviderRepository>(),
+                    sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
             builder.Services.AddSingleton<IntegrationConfigurationManager>((sp) =>
             {
                 return new IntegrationConfigurationManager(
                     sp.GetRequiredService<STTProviderManager>(),
                     sp.GetRequiredService<TTSProviderManager>(),
-                    sp.GetRequiredService<LLMProviderManager>()
+                    sp.GetRequiredService<LLMProviderManager>(),
+                    sp.GetRequiredService<EmbeddingProviderManager>(),
+                    sp.GetRequiredService<RerankProviderManager>()
                 );
             });
 
@@ -604,6 +713,21 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BillingUsageManager>()
                 );
             });
+            builder.Services.AddSingleton<BackendWebSessionProcessorManager>((sp) =>
+            {
+                return new BackendWebSessionProcessorManager(
+                    sp.GetRequiredService<ILogger<BackendWebSessionProcessorManager>>(),
+                    sp,
+                    backendAppConfig,
+                    sp.GetRequiredService<ServerMetricsMonitor>(),
+                    sp.GetRequiredService<WebSessionRepository>(),
+                    sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<BillingUsageManager>()
+                );
+            });
             builder.Services.AddSingleton<BillingUsageManager>((sp) =>
             {
                 return new BillingUsageManager(
@@ -630,7 +754,9 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<TTSAudioCacheManager>>(),
                     sp.GetRequiredService<TTSAudioCacheIndexRepository>(),
                     sp.GetRequiredService<TTSAudioCacheMetadataRepository>(),
-                    sp.GetRequiredService<TTSAudioCacheStorageRepository>()
+                    sp.GetRequiredService<TTSAudioCacheStorageRepository>(),
+                    sp.GetRequiredService<BusinessAppRepository>(),
+                    appConfig["Server:RegionId"]
                 );
             });
 
