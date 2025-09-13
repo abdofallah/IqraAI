@@ -105,8 +105,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // --- Move logic from LoadBackgroundMusicAsync here ---
             await LoadBackgroundMusicAsync(); // Extracted background music loading
 
-            // Start audio sending task
-            _audioSendingTask = Task.Run(() => ProcessAudioSpeakingQueueAsync(_audioSendingCTS.Token), _audioSendingCTS.Token);
             _logger.LogInformation("AudioOutput module initialized for Agent {AgentId}.", _agentState.AgentId);
         }
         public async Task ReInitializeForLanguageAsync()
@@ -257,6 +255,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // Management
+        public void StartProcessingAudioTask()
+        {
+            if (_audioSendingTask != null) return;
+
+            _audioSendingTask = Task.Run(() => ProcessAudioSpeakingQueueAsync(_audioSendingCTS.Token), _audioSendingCTS.Token);
+        }
         public async Task<(bool Success, TimeSpan Duration)> SynthesizeAndQueueSpeechAsync(string text, CancellationToken externalToken) // Called by LLM Handler
         {
             if (string.IsNullOrWhiteSpace(text) || _agentState.TTSService == null)

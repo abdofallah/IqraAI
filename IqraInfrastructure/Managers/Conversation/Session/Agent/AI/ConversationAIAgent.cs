@@ -191,7 +191,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
              // NEW: DTMF Session Manager Events -> Orchestrator/LLM
              _dtmfSessionManager.SessionEnded += OnDtmfSessionEnded;
         }
-        public async Task InitializeAsync(BusinessApp businessAppData, ConversationSessionContext contextData, CancellationToken cancellationToken)
+        public async Task InitializeAsync()
         {
             if (_agentState.IsInitialized)
             {
@@ -199,10 +199,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return;
             }
 
+            CancellationToken cancellationToken = _conversationSessionManager.CancellationTokenSource.Token;
             _conversationCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
             try
             {
+                BusinessApp businessAppData = _conversationSessionManager.BusinessApp!;
+                ConversationSessionContext contextData = _conversationSessionManager.Context!;
+                
+
                 // Populate Initial State
                 _agentState.BusinessApp = businessAppData;
                 _agentState.CurrentSessionContext = contextData;
@@ -257,6 +262,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return;
             }
 
+            // Start Services
+            _sttHandler.StartTranscription();
+            _audioOutputHandler.StartProcessingAudioTask();
+            _audioInputHandler.StartProcessingAudioTask();
+
+            // Check if language selection is required
             bool requiresLanguageSelection = _agentState.CurrentSessionContext?.Language.MultiLanguageEnabled == true &&
                                             _agentState.CurrentSessionContext.Language.EnabledMultiLanguages?.Count > 1;
 

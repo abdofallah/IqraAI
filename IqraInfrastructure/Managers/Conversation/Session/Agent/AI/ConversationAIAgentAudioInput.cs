@@ -21,10 +21,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public void InitializeAsync(CancellationToken agentCTS)
         {
             _moduleCTS = CancellationTokenSource.CreateLinkedTokenSource(agentCTS);
-            _audioProcessingTask = Task.Run(() => ProcessAudioQueueAsync(_moduleCTS.Token), _moduleCTS.Token);
         }
 
         // Management
+        public void StartProcessingAudioTask()
+        {
+            if (_audioProcessingTask != null) return;
+
+            _audioProcessingTask = Task.Run(() => ProcessAudioQueueAsync(_moduleCTS.Token), _moduleCTS.Token);
+        }
+
         public void QueueAudioChunk(byte[] audioData, CancellationToken cancellationToken)
         {
             if (!_moduleCTS?.IsCancellationRequested ?? true)

@@ -124,6 +124,15 @@ namespace ProjectIqraFrontend
                     );
                 });
 
+            // Configure CORS
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowedOrigins", p => p
+                    .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+                    .AllowAnyMethod()
+                    .AllowAnyHeader());
+            });
+
             var app = builder.Build();
 
             // Initalize All Singleton Services
@@ -139,6 +148,8 @@ namespace ProjectIqraFrontend
             // Assign the HttpContextAccessor to JSON Middleware
             var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
             customJSONMiddleware.SetHttpContextAccessor(httpContextAccessor);
+
+            app.UseCors("AllowedOrigins");
 
             app.MapStaticAssets();
             app.UseRouting();

@@ -143,7 +143,6 @@ namespace IqraInfrastructure.Managers.VAD.Silero
             }
 
             _cancellationTokenSource.Dispose();
-            _onnxModel.Dispose();
             lock (_buffer)
             {
                 _buffer.Clear();

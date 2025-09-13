@@ -19,9 +19,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         private readonly ILogger<ConversationAIAgentTurnAndInterruptionManager> _logger;
         private readonly ConversationAIAgentState _agentState;
-        private readonly BusinessAppAgentInterruption _config;
         private readonly LLMProviderManager _llmProviderManager;
         private readonly BusinessManager _businessManager;
+
+
+        private BusinessAppAgentInterruption _config;
 
         // VAD State Trackers
         private VadStateTracker? _turnEndVadTracker;
@@ -54,7 +56,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         ) {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentTurnAndInterruptionManager>();
             _agentState = agentState;
-            _config = _agentState.BusinessAppAgent.Interruptions;
             _llmProviderManager = llmProviderManager;
             _businessManager = businessManager;
         }
@@ -62,6 +63,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Initialize
         public async Task InitializeAsync(CancellationToken agentCTS)
         {
+            _config = _agentState.BusinessAppAgent.Interruptions;
+
             _logger.LogInformation("Turn and Interruption Manager initializing with TurnEnd strategy: {TurnEndType}", _config.TurnEnd.Type);
 
             if (_agentState.SileroVadCore == null)

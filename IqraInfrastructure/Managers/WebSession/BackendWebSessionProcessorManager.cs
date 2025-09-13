@@ -120,7 +120,7 @@ namespace IqraInfrastructure.Managers.WebSession
                 {
                     return result.SetFailureResult(
                         "InitiateWebSessionConversationAsync:SESSION_CREATION_FAILED",
-                        sessionResult.Message
+                        $"[{sessionResult.Code}] {sessionResult.Message}"
                     );
                 }
                 var session = sessionResult.Data;
@@ -130,7 +130,7 @@ namespace IqraInfrastructure.Managers.WebSession
                 {
                     return result.SetFailureResult(
                         "InitiateWebSessionConversationAsync:SESSION_INIT_FAILED",
-                        startSessionResult.Message
+                        $"[{startSessionResult.Code}] {startSessionResult.Message}"
                     );
                 }
 
@@ -139,7 +139,7 @@ namespace IqraInfrastructure.Managers.WebSession
                 {
                     return result.SetFailureResult(
                         "InitiateWebSessionConversationAsync:SESSION_COMPONENTS_FAILED",
-                        componentsResult.Message
+                        $"[{componentsResult.Code}] {componentsResult.Message}"
                     );
                 }
 
@@ -149,8 +149,6 @@ namespace IqraInfrastructure.Managers.WebSession
                 var webhookUrl = BuildWebhookUrl(regionServerData, session.SessionId, primaryWebSocketClient.ClientId, generatedWebhookToken);
                 
                 await session.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initialized successfully, waiting for websocket connection.");
-
-                await session.StartAsync();
 
                 await _webSessionRepoistory.UpdateStatusProcessedBackendWithServerIdAndWebsocketURL(webSessionId, session.SessionId, webhookUrl);
                 return result.SetSuccessResult(
@@ -206,6 +204,12 @@ namespace IqraInfrastructure.Managers.WebSession
                             sessionOverallCts.Token
                         );
                         deferredTransport.Activate(realTransport);
+
+                        // Start Session
+                        if (sessionManager.State == ConversationSessionState.WaitingForPrimaryClient)
+                        {
+                            await sessionManager.NotifyConversationStarted();
+                        }
 
                         return result.SetSuccessResult(sessionOverallCts);
                     }
@@ -454,6 +458,8 @@ namespace IqraInfrastructure.Managers.WebSession
                     _serviceProvider.GetRequiredService<TTSAudioCacheManager>()
                 );
 
+                await AIAgent.InitializeAsync();
+
                 return result.SetSuccessResult(AIAgent);
             }
             catch (Exception ex)
@@ -465,7 +471,7 @@ namespace IqraInfrastructure.Managers.WebSession
         private string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken)
         {
             var baseURI = new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint);
-            return new Uri(baseURI, $"{(baseURI.AbsolutePath != "/" ? baseURI.AbsolutePath : "")}/ws/session/{sessionId}/client/{clientId}/{sessionToken}").ToString();
+            return new Uri(baseURI, $"{(baseURI.AbsolutePath != "/" ? baseURI.AbsolutePath : "")}/ws/session/{sessionId}/webclient/{clientId}/{sessionToken}").ToString();
         }
     }
 

@@ -361,8 +361,6 @@ namespace IqraInfrastructure.Managers.Call
                     );
                 }
 
-                await session.StartAsync();
-
                 await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(queueId, session.SessionId, CallQueueStatusEnum.ProcessedBackend);
                 return result.SetSuccessResult(resultData);
             }
@@ -399,11 +397,6 @@ namespace IqraInfrastructure.Managers.Call
                     case "in-progress":
                         {
                             if (sessionData.State == ConversationSessionState.WaitingForPrimaryClient)
-                            {
-                                await sessionData.StartAsync();
-                            }
-
-                            if (sessionData.State == ConversationSessionState.Active)
                             {
                                 await sessionData.NotifyConversationStarted();
                             }
@@ -830,6 +823,8 @@ namespace IqraInfrastructure.Managers.Call
                     _serviceProvider.GetRequiredService<TTSAudioCacheManager>()
                 );
 
+                await AIAgent.InitializeAsync();
+
                 return result.SetSuccessResult(AIAgent);
             }
             catch (Exception ex)
@@ -945,7 +940,7 @@ namespace IqraInfrastructure.Managers.Call
         private string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken)
         {
             var baseURI = new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint);
-            return new Uri(baseURI, $"{(baseURI.AbsolutePath != "/" ? baseURI.AbsolutePath : "")}/ws/session/{sessionId}/client/{clientId}/{sessionToken}").ToString();
+            return new Uri(baseURI, $"{(baseURI.AbsolutePath != "/" ? baseURI.AbsolutePath : "")}/ws/session/{sessionId}/telephonyclient/{clientId}/{sessionToken}").ToString();
         }
         private string BuildStatusCallbackUrl(RegionServerData proxyServerData, long businessId, string sessionId, TelephonyProviderEnum telephonyProvider, string businessNumberId)
         {

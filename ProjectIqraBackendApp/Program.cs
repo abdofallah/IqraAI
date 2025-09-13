@@ -556,7 +556,8 @@ namespace ProjectIqraBackendApp
                         InitalizeIntegrationsManager = true,
                         InitalizeNumberManager = true,
                         InitalizeRoutesManager = true,
-                        InitalizeToolsManager = true
+                        InitalizeToolsManager = true,
+                        InitalizeCampaignManager = true
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),

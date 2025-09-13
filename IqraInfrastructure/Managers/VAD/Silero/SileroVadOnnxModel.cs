@@ -3,7 +3,7 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 
 namespace IqraInfrastructure.Managers.VAD.Silero
 {
-    public class SileroVadOnnxModel : IDisposable
+    public class SileroVadOnnxModel
     {
         private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "Silero", "silero_vad.onnx");
         private static InferenceSession session;
@@ -55,11 +55,6 @@ namespace IqraInfrastructure.Managers.VAD.Silero
             context = Array.Empty<float[]>();
             lastSr = 0;
             lastBatchSize = 0;
-        }
-
-        public void Dispose()
-        {
-            session?.Dispose();
         }
 
         public class ValidationResult

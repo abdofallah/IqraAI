@@ -78,12 +78,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
         public event EventHandler<object>? SessionEnded;
 
+        // Public
         public string SessionId => _sessionId;
         public ConversationSessionState State => _state;
         public bool IsCallInitiated => _sessionInitiationType == ConversationSessionInitiationType.Telephony;
         public bool IsWebInitiated => _sessionInitiationType == ConversationSessionInitiationType.Web;
+        public BusinessApp? BusinessApp => _sessionBusinessAppData;
+        public BusinessData? BusinessData => _sessionBusinessData;
+        public ConversationSessionContext? Context => _sessionContextData;
         public IConversationClient? PrimaryClient => _primaryClient;
         public IConversationAgent? PrimaryAgent => _primaryAgent;
+        public CancellationTokenSource CancellationTokenSource => _sessionCts;
 
         public ConversationSessionOrchestrator(
             string sessionId,
@@ -598,7 +603,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         }
 
         // Session Management
-        public async Task<FunctionReturnResult> StartAsync()
+        public async Task<FunctionReturnResult> NotifyConversationStarted()
         {
             var result = new FunctionReturnResult();
 
@@ -607,30 +612,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 // Update state
                 await UpdateStateAsync(ConversationSessionState.Starting, "Session starting");
 
-                // TODO move agent initalization during inbound ringing/before making outbound call/before making websocket call
-                // will speed up things, will have llm cost for every failed call but thats ok we speed up the agent by warming up before call starts
-                await PrimaryAgent.InitializeAsync(_sessionBusinessAppData, _sessionContextData, _sessionCts.Token);
+                await PrimaryAgent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
 
-                // Start silence and max duration detection timer
                 StartTimers();
 
                 // Update state
-                await UpdateStateAsync(ConversationSessionState.Active, "Session active");          
-
-                return result.SetSuccessResult();
-            }
-            catch (Exception ex)
-            {
-                return result.SetFailureResult("StartAsync:EXCEPTION", ex.Message);
-            }
-        }
-        public async Task<FunctionReturnResult> NotifyConversationStarted()
-        {
-            var result = new FunctionReturnResult();
-
-            try
-            {
-                await PrimaryAgent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
+                await UpdateStateAsync(ConversationSessionState.Active, "Session active");
 
                 return result.SetSuccessResult();
             }

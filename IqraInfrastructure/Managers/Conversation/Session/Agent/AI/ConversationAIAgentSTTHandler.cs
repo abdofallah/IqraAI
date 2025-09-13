@@ -70,7 +70,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _agentState.STTService.OnRecoginizingRecieved += OnRecognizingReceived;
 
             _agentState.STTService.Initialize();
-            _agentState.STTService.StartTranscription();
 
             _logger.LogInformation("STT Handler initialized for Agent {AgentId} with language {Language}.", _agentState.AgentId, _agentState.CurrentLanguageCode);
         }
