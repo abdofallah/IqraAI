@@ -33,6 +33,7 @@
     <PackageReference Include="MongoDB.Driver" Version="3.4.2" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NLayer.NAudioSupport" Version="1.4.0" />
+    <PackageReference Include="NWaves" Version="0.9.6" />
     <PackageReference Include="OpenAI" Version="2.2.0" />
     <PackageReference Include="Scriban" Version="6.2.1" />
     <PackageReference Include="Sep" Version="0.11.0" />

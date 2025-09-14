@@ -10,8 +10,6 @@ using IqraInfrastructure.Managers.TurnEnd;
 using IqraInfrastructure.Managers.VAD;
 using Microsoft.Extensions.Logging;
 using System.Text;
-using WebSocketSharp;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -22,6 +20,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public event Func<Task>? AgentShouldResume;
         public event Func<string, Task>? VerifiedInterruptionOccurred;
 
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationAIAgentTurnAndInterruptionManager> _logger;
         private readonly ConversationAIAgentLLMHandler _agentLLMHandler;
         private readonly ConversationAIAgentAudioOutput _agentAudioOutput;
@@ -53,6 +52,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private CancellationTokenSource _turnEndLLMCTS = new CancellationTokenSource();
         private bool _aiHasIndicatedTurnEnd = false;
 
+        // Turn End ML Components
+        private readonly List<byte> _userTurnAudioBuffer = new List<byte>();
         private SmartTurnService? _mlTurnService;
         private bool _mlHasIndicatedTurnEnd = false;
 
@@ -73,6 +74,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             LLMProviderManager llmProviderManager,
             BusinessManager businessManager
         ) {
+            _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<ConversationAIAgentTurnAndInterruptionManager>();
 
             _agentLLMHandler = agentLLMHandler;
@@ -130,8 +132,20 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.ML)
             {
-                _mlTurnService = new SmartTurnService();
+                _logger.LogDebug("Configuring SmartTurnService for ML Turn End detection.");
+                _mlTurnService = new SmartTurnService(_loggerFactory, _agentState);
                 _mlTurnService.TurnEnded += OnMlTurnEnded;
+
+                // CRITICAL: We still need the VAD tracker, but its purpose changes to be a trigger.
+                if (_turnEndVadTracker != null)
+                {
+                    _turnEndVadTracker.SpeechEnded += TriggerMlAnalysis;
+                }
+                else
+                {
+                    _logger.LogError("ML Turn End requires VAD Turn End to be configured as a trigger, but it is not. Falling back to STT.");
+                    _config.TurnEnd.Type = AgentInterruptionTurnEndTypeENUM.STT;
+                }
             }
 
             if (!_config.UseTurnByTurnMode && _config.Verification!.Enabled)
@@ -271,6 +285,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _isAgentPaused = false;
             _pauseTriggerVadTracker?.Reset();
         }
+        public void BufferAudioForMlAnalysis(byte[] audioData)
+        {
+            // Only buffer if the ML service is active and a user turn has started.
+            if (_mlTurnService != null && _isUserTurnActive)
+            {
+                _userTurnAudioBuffer.AddRange(audioData);
+            }
+        }
 
         // Event Handlers
         private void HandlePauseTrigger(string newTextChunk)
@@ -309,16 +331,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (_isUserTurnActive)
             {
-                _logger.LogDebug("VAD Turn End Tracker detected speech end.");
-                _vadHasIndicatedTurnEnd = true;
-                TryConcludeUserTurn();
+                // If in standard VAD mode, set the flag.
+                if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.VAD)
+                {
+                    _logger.LogDebug("VAD Turn End Tracker detected speech end.");
+                    _vadHasIndicatedTurnEnd = true;
+                    TryConcludeUserTurn();
+                }
+                // If in ML mode, VAD acts as a trigger, not a conclusion.
+                // The call to TriggerMlAnalysis is handled by the event subscription in InitializeAsync.
             }
-        }
-        private void OnMlTurnEnded()
-        {
-            _logger.LogDebug("ML Model detected turn end.");
-            _mlHasIndicatedTurnEnd = true;
-            TryConcludeUserTurn();
         }
         private void TryConcludeUserTurn()
         {
@@ -398,6 +420,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private void ResetTurnState()
         {
+            _userTurnAudioBuffer.Clear();
             _userTurnTextBuffer.Clear();
             _userTurnTextFinalBuffer.Clear();
             _currentTurnWordCount = 0;
@@ -553,6 +576,23 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 TryConcludeUserTurn();
             }
         }
+        // ML Turn End
+        private void TriggerMlAnalysis()
+        {
+            if (_mlTurnService != null && _userTurnAudioBuffer.Count > 0)
+            {
+                _logger.LogDebug("VAD silence triggered ML turn analysis on buffered audio.");
+                var turnAudio = _userTurnAudioBuffer.ToArray();
+                _userTurnAudioBuffer.Clear(); // Clear the buffer after copying
+                _mlTurnService.AnalyzeTurn(turnAudio);
+            }
+        }
+        private void OnMlTurnEnded()
+        {
+            _logger.LogDebug("ML Model detected turn end.");
+            _mlHasIndicatedTurnEnd = true;
+            TryConcludeUserTurn();
+        }
 
         // Disposal
         public void Dispose()
@@ -564,6 +604,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             _turnEndLLMCTS?.Cancel();
             (_turnEndLLMService as IDisposable)?.Dispose();
+            _mlTurnService?.Dispose();
             _mlTurnService?.Dispose();
         }
     }

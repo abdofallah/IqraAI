@@ -363,6 +363,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // should happen as immediately as possible.
             _agentState.SileroVadCore?.ProcessAudio(audioData);
 
+            // --- NEW: Feed audio to the Turn Manager for potential ML buffering ---
+            _turnManager.BufferAudioForMlAnalysis(audioData);
+
             // Pass to input handler
             _audioInputHandler.QueueAudioChunk(audioData, cancellationToken);
             return Task.CompletedTask;
