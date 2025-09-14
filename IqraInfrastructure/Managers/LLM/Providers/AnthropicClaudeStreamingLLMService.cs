@@ -53,29 +53,33 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                 .Concat(_messagesMemory)
                 .ToList();
 
-            var lastMessage = finalMessages.LastOrDefault();
-            if (lastMessage != null && lastMessage.Role == RoleType.User)
-            {       
-                var messageContent = lastMessage.Content.Find(x => x.Type == ContentType.text);
-                if (messageContent != null)
-                {
-                    var newText = "";
-
-                    var textData = ((TextContent)messageContent).Text;
-                    if (!string.IsNullOrEmpty(beforeMessageContext))
+            if (!string.IsNullOrEmpty(beforeMessageContext) && !string.IsNullOrEmpty(afterMessageContext))
+            {
+                var lastMessage = finalMessages.LastOrDefault();
+                if (lastMessage != null && lastMessage.Role == RoleType.User)
+                {       
+                    var messageContent = lastMessage.Content.Find(x => x.Type == ContentType.text);
+                    if (messageContent != null)
                     {
-                        newText = beforeMessageContext + "\n\n" + textData;
-                    }
-                    if (!string.IsNullOrEmpty(afterMessageContext))
-                    {
-                        newText = newText + "\n\n" + afterMessageContext;
-                    }
+                        var newText = "";
 
-                    var newUserMessage = new Message(RoleType.User, newText);
-                    finalMessages.RemoveAt(finalMessages.Count - 1);
-                    finalMessages.Add(newUserMessage);
+                        var textData = ((TextContent)messageContent).Text;
+                        if (!string.IsNullOrEmpty(beforeMessageContext))
+                        {
+                            newText = beforeMessageContext + "\n\n" + textData;
+                        }
+                        if (!string.IsNullOrEmpty(afterMessageContext))
+                        {
+                            newText = newText + "\n\n" + afterMessageContext;
+                        }
+
+                        var newUserMessage = new Message(RoleType.User, newText);
+                        finalMessages.RemoveAt(finalMessages.Count - 1);
+                        finalMessages.Add(newUserMessage);
+                    }
                 }
             }
+            
 
             var parameters = new MessageParameters
             {

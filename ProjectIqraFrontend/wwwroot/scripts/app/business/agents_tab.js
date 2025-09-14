@@ -1365,7 +1365,7 @@ function CheckAgentInterruptionsTabChanges(enableDisableButton = true) {
         hasChanges = true;
 	}
 
-	if (changes.turnEnd == AGENT_INTERRUPTION_TURN_END_TYPE.VAD) {
+	if (changes.turnEnd.type == AGENT_INTERRUPTION_TURN_END_TYPE.VAD) {
 		changes.turnEnd.vadSilenceDurationMS = parseInt(editAgentTurnEndViaVADAudioActivityDuration.val());
 
 		if (original.turnEnd.type.value == AGENT_INTERRUPTION_TURN_END_TYPE.VAD &&
@@ -1373,7 +1373,7 @@ function CheckAgentInterruptionsTabChanges(enableDisableButton = true) {
             hasChanges = true;
 		}
 	}
-	else if (changes.turnEnd == AGENT_INTERRUPTION_TURN_END_TYPE.AI) {
+	else if (changes.turnEnd.type == AGENT_INTERRUPTION_TURN_END_TYPE.AI) {
 		changes.turnEnd.useAgentLLM = editAgentTurnEndViaAIUseAgentLLM.is(":checked");
 
 		if (!changes.turnEnd.useAgentLLM) {

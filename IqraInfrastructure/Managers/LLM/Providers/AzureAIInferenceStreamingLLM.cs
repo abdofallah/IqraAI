@@ -58,25 +58,29 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                 .ToList();
             finalMessages.Prepend(new ChatRequestSystemMessage(_systemPrompt));
 
-            var lastMessage = finalMessages.LastOrDefault();
-            if (lastMessage != null && lastMessage is ChatRequestUserMessage userMessageLast)
+            if (!string.IsNullOrEmpty(beforeMessageContext) && !string.IsNullOrEmpty(afterMessageContext))
             {
-                var newText = "";
-
-                var textData = userMessageLast.Content;
-                if (!string.IsNullOrEmpty(beforeMessageContext))
+                var lastMessage = finalMessages.LastOrDefault();
+                if (lastMessage != null && lastMessage is ChatRequestUserMessage userMessageLast)
                 {
-                    newText = beforeMessageContext + "\n\n" + textData;
-                }
-                if (!string.IsNullOrEmpty(afterMessageContext))
-                {
-                    newText = newText + "\n\n" + afterMessageContext;
-                }
+                    var newText = "";
 
-                var newUserMessage = new ChatRequestUserMessage(newText);
-                finalMessages.RemoveAt(finalMessages.Count - 1);
-                finalMessages.Add(newUserMessage);
+                    var textData = userMessageLast.Content;
+                    if (!string.IsNullOrEmpty(beforeMessageContext))
+                    {
+                        newText = beforeMessageContext + "\n\n" + textData;
+                    }
+                    if (!string.IsNullOrEmpty(afterMessageContext))
+                    {
+                        newText = newText + "\n\n" + afterMessageContext;
+                    }
+
+                    var newUserMessage = new ChatRequestUserMessage(newText);
+                    finalMessages.RemoveAt(finalMessages.Count - 1);
+                    finalMessages.Add(newUserMessage);
+                }
             }
+            
 
             var parameters = new ChatCompletionsOptions()
             {

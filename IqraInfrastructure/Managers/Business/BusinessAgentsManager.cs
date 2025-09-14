@@ -435,7 +435,7 @@ namespace IqraInfrastructure.Managers.Business
 
                     if (newAgentData.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.VAD)
                     {
-                        if (!interruptionsElement.TryGetProperty("vadSilenceDurationMS", out var vadSilenceDurationMSElement) ||
+                        if (!turnEndElement.TryGetProperty("vadSilenceDurationMS", out var vadSilenceDurationMSElement) ||
                             vadSilenceDurationMSElement.ValueKind != JsonValueKind.Number)
                         {
                             return result.SetFailureResult(
@@ -456,8 +456,8 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else if (newAgentData.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI)
                     {
-                        if (!interruptionsElement.TryGetProperty("useAgentLLM", out var useAgentLlmElement) || 
-                            (useAgentLlmElement.ValueKind != JsonValueKind.False || useAgentLlmElement.ValueKind != JsonValueKind.True))
+                        if (!turnEndElement.TryGetProperty("useAgentLLM", out var useAgentLlmElement) || 
+                            (useAgentLlmElement.ValueKind != JsonValueKind.False && useAgentLlmElement.ValueKind != JsonValueKind.True))
                         {
                             return result.SetFailureResult(
                                 "AddOrUpdateAgent:INTERRUPTION_USE_AGENT_LLM_INVALID",
@@ -466,9 +466,9 @@ namespace IqraInfrastructure.Managers.Business
                         }
 
                         newAgentData.Interruptions.TurnEnd.UseAgentLLM = useAgentLlmElement.GetBoolean();
-                        if (newAgentData.Interruptions.TurnEnd.UseAgentLLM.Value)
+                        if (!newAgentData.Interruptions.TurnEnd.UseAgentLLM.Value)
                         {
-                            if (!interruptionsElement.TryGetProperty("llmIntegration", out var llmIntegrationElement))
+                            if (!turnEndElement.TryGetProperty("llmIntegration", out var llmIntegrationElement))
                             {
                                 return result.SetFailureResult(
                                     "AddOrUpdateAgent:INTERRUPTION_LLM_INTEGRATION_MISSING",
@@ -617,7 +617,6 @@ namespace IqraInfrastructure.Managers.Business
 
                                 if (newAgentData.Interruptions.Verification.Enabled)
                                 {
-                                    // UseAgentLLM bool
                                     if (!verificationElement.TryGetProperty("useAgentLLM", out var useAgentLLMElement) ||
                                         (useAgentLLMElement.ValueKind != JsonValueKind.True && useAgentLLMElement.ValueKind != JsonValueKind.False)
                                     )
@@ -653,7 +652,7 @@ namespace IqraInfrastructure.Managers.Business
                                             return result;
                                         }
 
-                                        newAgentData.Interruptions.TurnEnd.LLMIntegration = validationBuildResult.Data;
+                                        newAgentData.Interruptions.Verification.LLMIntegration = validationBuildResult.Data;
                                     }
                                 }
                             }

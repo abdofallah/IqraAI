@@ -1,12 +1,17 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Agent;
+using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using IqraInfrastructure.Managers.TurnEnd;
 using IqraInfrastructure.Managers.VAD;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using WebSocketSharp;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -18,10 +23,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public event Func<string, Task>? VerifiedInterruptionOccurred;
 
         private readonly ILogger<ConversationAIAgentTurnAndInterruptionManager> _logger;
+        private readonly ConversationAIAgentLLMHandler _agentLLMHandler;
+        private readonly ConversationAIAgentAudioOutput _agentAudioOutput;
         private readonly ConversationAIAgentState _agentState;
         private readonly LLMProviderManager _llmProviderManager;
         private readonly BusinessManager _businessManager;
-
 
         private BusinessAppAgentInterruption _config;
 
@@ -31,6 +37,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         // Turn State
         private readonly StringBuilder _userTurnTextBuffer = new StringBuilder();
+        private readonly StringBuilder _userTurnTextFinalBuffer = new StringBuilder();
         private int _currentTurnWordCount = 0;
         private bool _isUserTurnActive = false;
         private bool _isAgentPaused = false;
@@ -41,6 +48,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         // AI Turn-End Components
         private ILLMService? _turnEndLLMService;
+        private StringBuilder _turnEndLLMInputBuffer = new StringBuilder();
         private Task? _turnEndLLMTask;
         private CancellationTokenSource _turnEndLLMCTS = new CancellationTokenSource();
         private bool _aiHasIndicatedTurnEnd = false;
@@ -48,13 +56,27 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private SmartTurnService? _mlTurnService;
         private bool _mlHasIndicatedTurnEnd = false;
 
+        // AI Interruption Verification Componenets
+        private ILLMService? _interruptionVerificationLLMService;
+        private StringBuilder _interruptionVerificationLLMInputBuffer = new StringBuilder();
+        private Task? _interruptionVerificationLLMTask;
+        private CancellationTokenSource _interruptionVerificationLLMCTS = new CancellationTokenSource();
+        private bool _isAwaitingVerification = false;
+        private bool _hasVerifiedInterruptionResult = false;
+        private bool _canInterruptAgentAfterVerificaiton = false;
+
         public ConversationAIAgentTurnAndInterruptionManager(
             ILoggerFactory loggerFactory,
+            ConversationAIAgentLLMHandler agentLLMHandler,
+            ConversationAIAgentAudioOutput agentAudioOutput,
             ConversationAIAgentState agentState,
             LLMProviderManager llmProviderManager,
             BusinessManager businessManager
         ) {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentTurnAndInterruptionManager>();
+
+            _agentLLMHandler = agentLLMHandler;
+            _agentAudioOutput = agentAudioOutput;
             _agentState = agentState;
             _llmProviderManager = llmProviderManager;
             _businessManager = businessManager;
@@ -65,8 +87,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             _config = _agentState.BusinessAppAgent.Interruptions;
 
-            _logger.LogInformation("Turn and Interruption Manager initializing with TurnEnd strategy: {TurnEndType}", _config.TurnEnd.Type);
-
             if (_agentState.SileroVadCore == null)
             {
                 _logger.LogWarning("SileroVadCore is not available in agent state. VAD-based features will be disabled.");
@@ -76,7 +96,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // Setup VAD tracker for Turn End detection if configured
             if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.VAD)
             {
-                _logger.LogDebug("Configuring VAD State Tracker for Turn End detection.");
                 var options = new VadTrackerOptions
                 {
                     Threshold = 0.5f, // This could be made configurable in the future
@@ -91,12 +110,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // Setup VAD tracker for Pause Trigger detection if configured
             if (!_config.UseTurnByTurnMode && _config.PauseTrigger?.Type == AgentInterruptionPauseTriggerTypeENUM.VAD)
             {
-                _logger.LogDebug("Configuring VAD State Tracker for Pause Trigger detection.");
                 var options = new VadTrackerOptions
                 {
                     Threshold = 0.5f,
                     MinSilenceDurationMs = 30000, // Irrelevant for this tracker, set to a high value
-                    MinSpeechDurationMs = _config.PauseTrigger.VadDurationMS ?? 200 // How little speech triggers a pause
+                    MinSpeechDurationMs = _config.PauseTrigger.VadDurationMS!.Value
                 };
                 _pauseTriggerVadTracker = new VadStateTracker(options);
                 _pauseTriggerVadTracker.SpeechStarted += OnPauseTriggerVadSpeechStarted;
@@ -115,11 +133,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _mlTurnService = new SmartTurnService();
                 _mlTurnService.TurnEnded += OnMlTurnEnded;
             }
+
+            if (!_config.UseTurnByTurnMode && _config.Verification!.Enabled)
+            {
+                await InitializeInterruptionVerificaitonLLMAsync();
+            }
         }
         private async Task InitializeTurnEndLLMAsync()
         {
-            _logger.LogDebug("Configuring LLM for AI Turn End detection.");
-
             var llmConfig = _config.TurnEnd.LLMIntegration;
             if (llmConfig == null)
             {
@@ -145,10 +166,38 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             _turnEndLLMService = llmResult.Data;
-
-            // This system prompt is CRITICAL for both accuracy and low latency.
-            // It's designed to force a simple, quick response.
             _turnEndLLMService.SetSystemPrompt("You are an expert at analyzing real-time speech transcripts. Your task is to determine if a user has finished their turn. Analyze the user's utterance. Respond with ONLY ONE of the following words: 'CONTINUE' if the user is likely still speaking or has paused mid-sentence. 'END' if the user has likely finished their complete thought or question.");
+            _turnEndLLMService.MessageStreamed += OnAITurnEndLLMMessageStream;
+        }
+        private async Task InitializeInterruptionVerificaitonLLMAsync()
+        {
+            var llmConfig = _config.Verification!.LLMIntegration;
+            if (llmConfig == null)
+            {
+                _logger.LogError("AI Interruption Verification is configured, but no LLM integration was provided. Falling back to disabling verification.");
+                _config.Verification.Enabled = false; // Graceful fallback
+                return;
+            }
+
+            var integrationDataResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.BusinessApp.Id, llmConfig.Id);
+            if (!integrationDataResult.Success || integrationDataResult.Data == null)
+            {
+                _logger.LogError("Could not find business integration with ID {IntegrationId} for AI Interruption Verification. Falling back to disabling verification.", llmConfig.Id);
+                _config.Verification.Enabled = false;
+                return;
+            }
+
+            var llmResult = await _llmProviderManager.BuildProviderServiceByIntegration(integrationDataResult.Data, llmConfig, new Dictionary<string, string>());
+            if (!llmResult.Success || llmResult.Data == null)
+            {
+                _logger.LogError("Failed to build LLM service for AI Turn End: {Message}. Falling back to disabling verification.", llmResult.Message);
+                _config.Verification.Enabled = false;
+                return;
+            }
+
+            _interruptionVerificationLLMService = llmResult.Data;
+            _interruptionVerificationLLMService.SetSystemPrompt("You are an expert at analyzing real-time speech transcripts. Your task is to determine if a user speech should interrupt the agent speech. Analyze the user's utterance. Respond with ONLY ONE of the following words: 'CONTINUE' if the user speech should not interrupt the agent. 'INTERRUPT' if the user has likely interrupted the agent.");
+            _interruptionVerificationLLMService.MessageStreamed += OnAIInterruptionVerificationMessageStream;
         }
 
         // Management
@@ -160,34 +209,45 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // Reset synchronization flags for the new turn
                 _vadHasIndicatedTurnEnd = false;
                 _sttHasProvidedFinalTranscript = false;
+                _aiHasIndicatedTurnEnd = false;
+                _mlHasIndicatedTurnEnd = false;
             }
 
             // Overwrite the buffer with the most recent (and complete) transcript version.
             if (isFinal)
             {
-                _userTurnTextBuffer.Clear().Append(text);
+                _userTurnTextFinalBuffer.Append(text);
             }
             else
             {
                 // For partial results, we might append or replace based on provider behavior.
                 // For now, replacing is safer to avoid duplication.
-                _userTurnTextBuffer.Clear().Append(text);
+                _userTurnTextBuffer.Append(text);
             }
 
-            HandlePauseTrigger(text);
 
-            // Trigger AI Turn-End Check
-            if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI)
-            {
-                // We get the most up-to-date text from our buffer
-                var currentUtterance = _userTurnTextBuffer.ToString();
-                // We run this in the background (fire-and-forget) to not block anything.
-                _ = CheckAITurnEndAsync(currentUtterance);
-            }
+            var currentFinalUtterance = _userTurnTextFinalBuffer.ToString();
+            var currentUtterance = _userTurnTextBuffer.ToString();
 
+            // Pause Trigger
             if (isFinal)
             {
-                _logger.LogDebug("STT reported final transcript.");
+                HandlePauseTrigger(currentFinalUtterance);
+            }
+            else
+            {
+                HandlePauseTrigger(currentUtterance);
+            }
+
+            // Turn End Checks
+            if (isFinal)
+            {
+                // Trigger AI Turn-End Check
+                if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI)
+                {
+                    _ = CheckAITurnEndAsync(currentFinalUtterance);
+                }
+
                 _sttHasProvidedFinalTranscript = true;
                 TryConcludeUserTurn();
             }
@@ -285,32 +345,52 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return; // Conditions not yet met.
             }
 
-            var finalText = _userTurnTextBuffer.ToString().Trim();
+            var finalText = _userTurnTextFinalBuffer.ToString().Trim();
 
-            if (_isAgentPaused)
+            if (!_isAgentPaused)
             {
-                // This was an interruption. We now decide if it's valid.
-                bool shouldInterrupt = true; // Default to interrupting
-                if (_config.Verification != null && _config.Verification.Enabled)
-                {
-                    _logger.LogWarning("Verification LLM not yet implemented. Defaulting to interruption.");
-                    // In the future, this is where the verification logic would go:
-                    // shouldInterrupt = await CheckVerificationAsync(finalText);
-                }
-
-                if (shouldInterrupt)
-                {
-                    VerifiedInterruptionOccurred?.Invoke(finalText);
-                }
-                else
-                {
-                    AgentShouldResume?.Invoke();
-                }
+                UserTurnEnded?.Invoke(finalText);
             }
             else
             {
-                // This was a normal, uninterrupted turn.
-                UserTurnEnded?.Invoke(finalText);
+                if (_config.Verification!.Enabled)
+                {
+                    if (_isAwaitingVerification)
+                    {
+                        if (_hasVerifiedInterruptionResult)
+                        {
+                            if (_canInterruptAgentAfterVerificaiton)
+                            {
+                                VerifiedInterruptionOccurred?.Invoke(_userTurnTextFinalBuffer.ToString());
+                            }
+                            else
+                            {
+                                AgentShouldResume?.Invoke();
+                            }
+                        }
+                        else
+                        {
+                            // wait for ai to give us the result back
+                            // do nothing
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        _isAwaitingVerification = true;
+                        _hasVerifiedInterruptionResult = false;
+                        _canInterruptAgentAfterVerificaiton = false;
+
+                        _ = CheckAIInterruptionVerificationAsync(_userTurnTextFinalBuffer.ToString());
+
+                        return;
+                    }
+                }
+                else
+                {
+                    // how did we reach here?
+                    AgentShouldResume?.Invoke();
+                }
             }
 
             // A conclusion was reached, so reset state for the next turn.
@@ -319,6 +399,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private void ResetTurnState()
         {
             _userTurnTextBuffer.Clear();
+            _userTurnTextFinalBuffer.Clear();
             _currentTurnWordCount = 0;
             _isUserTurnActive = false;
             _isAgentPaused = false;
@@ -328,7 +409,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _pauseTriggerVadTracker?.Reset();
             _aiHasIndicatedTurnEnd = false;
             _mlHasIndicatedTurnEnd = false;
+            _isAwaitingVerification = false;
+            _canInterruptAgentAfterVerificaiton = false;
+            _hasVerifiedInterruptionResult = false;
         }
+        // AI Turn End
         private async Task CheckAITurnEndAsync(string currentUtterance)
         {
             if (_turnEndLLMService == null || string.IsNullOrWhiteSpace(currentUtterance)) return;
@@ -339,30 +424,133 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _turnEndLLMCTS.Cancel();
                 _turnEndLLMCTS = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken);
             }
+            if (_turnEndLLMInputBuffer.Length > 0) _turnEndLLMInputBuffer.Clear();
 
             try
             {
-                //var llmResponse = await _turnEndLLMService.ProcessSingleInputAsync(
-                //    $"Utterance: \"{currentUtterance}\"", _turnEndLLMCTS.Token);
+                _turnEndLLMService.ClearMessages();
 
-                //if (llmResponse.Success)
-                //{
-                //    var result = llmResponse.Data?.Trim().ToUpper();
-                //    _logger.LogTrace("AI Turn End check returned: {Result}", result);
-                //    if (result == "END")
-                //    {
-                //        _aiHasIndicatedTurnEnd = true;
-                //        TryConcludeUserTurn();
-                //    }
-                //}
+                var requestText = $"Agent Previous Utterance: \"{_agentLLMHandler.GetCurrentResponseText()}\"\n\nUser Utterance: \"{currentUtterance}\"";
+
+                _logger.LogInformation(requestText); // todo debug remove
+
+                _turnEndLLMService.AddUserMessage(requestText);
+                _turnEndLLMTask = _turnEndLLMService.ProcessInputAsync(_turnEndLLMCTS.Token);
             }
-            catch (OperationCanceledException)
-            {
-                _logger.LogTrace("AI turn end check was cancelled.");
-            }
+            catch (OperationCanceledException){ /* Expected */ }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred during AI turn end check.");
+            }
+        }
+        private void OnAITurnEndLLMMessageStream(object? sender, ConversationAgentEventLLMStreamed? data)
+        {
+            FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> result = LLMStreamingChunkDataExtractHelper.GetChunkData(data.ResponseObject, _turnEndLLMService.GetProviderType());
+
+            if (!result.Success || !result.Data.HasValue)
+            {
+                _logger.LogError("Agent {AgentId}: Error extracting AI turn end LLM chunk, {Reason}", _agentState.AgentId, result.Message);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(result.Data.Value.deltaText))
+            {
+                _turnEndLLMInputBuffer.Append(result.Data.Value.deltaText);
+            }
+            if (result.Data.Value.isEndOfResponse)
+            {
+                var bufferString = _turnEndLLMInputBuffer.ToString();
+
+                string trimmedText = bufferString.Replace("\n", " ").Replace("\r", " ").Replace("\t", " ").Trim();
+                int lastSpaceIndex = trimmedText.LastIndexOf(' ');
+                string lastWord;
+
+                if (lastSpaceIndex == -1) // No spaces, the whole string is the word
+                {
+                    lastWord = trimmedText;
+                }
+                else
+                {
+                    lastWord = trimmedText.Substring(lastSpaceIndex + 1);
+                }
+
+                if (lastWord == "END")
+                {
+                    _aiHasIndicatedTurnEnd = true;
+                    TryConcludeUserTurn();
+                }
+            }      
+        }
+        // AI Interuption Verification
+        private async Task CheckAIInterruptionVerificationAsync(string currentUtterance)
+        {
+            if (_interruptionVerificationLLMService == null || string.IsNullOrWhiteSpace(currentUtterance)) return;
+
+            // Cancel any previous, now-outdated check
+            if (_interruptionVerificationLLMTask != null && !_interruptionVerificationLLMTask.IsCompleted)
+            {
+                _interruptionVerificationLLMCTS.Cancel();
+                _interruptionVerificationLLMCTS = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken);
+            }
+            if (_interruptionVerificationLLMInputBuffer.Length > 0) _interruptionVerificationLLMInputBuffer.Clear();
+
+            try
+            {
+                _interruptionVerificationLLMService.ClearMessages();
+
+                // todo here we should isntead of llm handler, get the spoken text from the audio output text segments
+
+                var requestText = $"Agent Previous Utterance: \"{_agentLLMHandler.GetCurrentResponseText()}\"\n\nUser Utterance: \"{currentUtterance}\"";
+
+                _logger.LogInformation(requestText); // todo debug remove
+
+                _interruptionVerificationLLMService.AddUserMessage(requestText);
+                _interruptionVerificationLLMTask = _interruptionVerificationLLMService.ProcessInputAsync(_interruptionVerificationLLMCTS.Token);
+            }
+            catch (OperationCanceledException) { /* Expected */ }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during AI interruption verification check.");
+            }
+        }
+        private void OnAIInterruptionVerificationMessageStream(object? sender, ConversationAgentEventLLMStreamed? data)
+        {
+            FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> result = LLMStreamingChunkDataExtractHelper.GetChunkData(data.ResponseObject, _interruptionVerificationLLMService.GetProviderType());
+
+            if (!result.Success || !result.Data.HasValue)
+            {
+                _logger.LogError("Error extracting interruption verification LLM chunk: {Reason}", result.Message);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(result.Data.Value.deltaText))
+            {
+                _interruptionVerificationLLMInputBuffer.Append(result.Data.Value.deltaText);
+            }
+
+            if (result.Data.Value.isEndOfResponse)
+            {
+                var bufferString = _interruptionVerificationLLMInputBuffer.ToString();
+
+                string trimmedText = bufferString.Replace("\n", " ").Replace("\r", " ").Replace("\t", " ").Trim();
+                int lastSpaceIndex = trimmedText.LastIndexOf(' ');
+                string lastWord;
+
+                if (lastSpaceIndex == -1) // No spaces, the whole string is the word
+                {
+                    lastWord = trimmedText;
+                }
+                else
+                {
+                    lastWord = trimmedText.Substring(lastSpaceIndex + 1);
+                }
+
+                _hasVerifiedInterruptionResult = true;
+                if (lastWord == "INTERRUPT")
+                {
+                    _canInterruptAgentAfterVerificaiton = true;
+                }
+                TryConcludeUserTurn();
             }
         }
 

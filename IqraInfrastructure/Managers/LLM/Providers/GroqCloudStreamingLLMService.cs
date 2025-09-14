@@ -77,24 +77,27 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             finalMessages.AddRange(_initialMessages);
             finalMessages.AddRange(_messagesMemory);
 
-            var lastMessage = finalMessages.LastOrDefault();
-            if (lastMessage != null && lastMessage.Role == "user")
+            if (!string.IsNullOrEmpty(beforeMessageContext) && !string.IsNullOrEmpty(afterMessageContext))
             {
-                var newText = "";
-
-                var textData = lastMessage.Content;
-                if (!string.IsNullOrEmpty(beforeMessageContext))
+                var lastMessage = finalMessages.LastOrDefault();
+                if (lastMessage != null && lastMessage.Role == "user")
                 {
-                    newText = beforeMessageContext + "\n\n" + textData;
-                }
-                if (!string.IsNullOrEmpty(afterMessageContext))
-                {
-                    newText = newText + "\n\n" + afterMessageContext;
-                }
+                    var newText = "";
 
-                var newUserMessage = new GroqCloudMessage("user", newText);
-                finalMessages.RemoveAt(finalMessages.Count - 1);
-                finalMessages.Add(newUserMessage);
+                    var textData = lastMessage.Content;
+                    if (!string.IsNullOrEmpty(beforeMessageContext))
+                    {
+                        newText = beforeMessageContext + "\n\n" + textData;
+                    }
+                    if (!string.IsNullOrEmpty(afterMessageContext))
+                    {
+                        newText = newText + "\n\n" + afterMessageContext;
+                    }
+
+                    var newUserMessage = new GroqCloudMessage("user", newText);
+                    finalMessages.RemoveAt(finalMessages.Count - 1);
+                    finalMessages.Add(newUserMessage);
+                }
             }
 
             if (!finalMessages.Any(m => m.Role == "user"))

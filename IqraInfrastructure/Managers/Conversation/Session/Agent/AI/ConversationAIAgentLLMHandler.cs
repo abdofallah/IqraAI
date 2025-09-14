@@ -332,8 +332,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _agentState.IsResponding = false;
             _agentState.IsExecutingSystemTool = false;
             _agentState.IsExecutingCustomTool = false;
-            // Don't reset _agentState.CurrentResponseDuration/SpeakingStarted here, AudioOutput manages that lifecycle
-            _logger.LogDebug("Agent {AgentId}: LLM state flags reset.", _agentState.AgentId);
         }
         
         // Streamed Message (Event) Processing
@@ -677,8 +675,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             CancelCurrentLLMTaskAsync().Wait(TimeSpan.FromSeconds(1)); // Wait briefly
             DisposeCurrentLLMService(_agentState.LLMService);
             _agentState.LLMService = null;
-            DisposeCurrentLLMService(_agentState.InterruptingLLMService);
-            _agentState.InterruptingLLMService = null;
             _currentLLMProcessingTaskCTS?.Dispose();
             _llmResponseLock?.Dispose();
             _logger.LogDebug("LLM Handler disposed for Agent {AgentId}.", _agentState.AgentId);

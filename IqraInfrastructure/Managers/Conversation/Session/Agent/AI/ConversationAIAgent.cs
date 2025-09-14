@@ -121,7 +121,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager);
             _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator);
             _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper);
-            _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _agentState, _llmProviderManager, _businessManager);
+            _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _llmHandler, _audioOutputHandler, _agentState, _llmProviderManager, _businessManager);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
             
@@ -664,29 +664,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
 
-            _logger.LogInformation("Agent {AgentId}: Turn Manager signaled user turn ended with text: '{Text}'", AgentId, finalText);
-
             // Reset STT recognizing flag as the turn is over.
             _agentState.IsSTTRecognizing = false;
 
-            // This is the CRITICAL handoff to the brain. The logic that used to be
-            // in ProcessTranscriptionResultAsync now lives here, but it's only triggered
-            // when the turn is definitively over.
             try
             {
-                // The old interruption check is no longer needed here. 
-                // That logic will now live entirely within the Turn Manager.
-                // bool canAgentContinue = await _interruptionManager.CheckShouldLetAgentBeInterrupted(...); // <-- DELETE
-
-                // The logic for handling the interrupt buffer also moves. For now, we assume
-                // the `finalText` from the event is the complete and correct text to process.
+                await _llmHandler.CancelCurrentLLMTaskAsync();
+                await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
 
                 await _llmHandler.ProcessUserTextAsync(finalText, _agentState.CurrentClientId, _conversationCTS.Token);
             }
-            catch (OperationCanceledException)
-            {
-                _logger.LogInformation("Agent {AgentId}: Text processing for ended turn was cancelled.", AgentId);
-            }
+            catch (OperationCanceledException) { /* Expected */ }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Agent {AgentId}: Error processing text for ended turn: {Text}", AgentId, finalText);
@@ -703,19 +691,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private async Task OnVerifiedInterruptionOccurredAsync(string interruptingText)
         {
-            _logger.LogInformation("Agent received signal: VerifiedInterruptionOccurred with text: '{Text}'", interruptingText);
-
-            // A verified interruption means we must stop everything the agent is currently doing.
-            // 1. Stop the brain (cancel any ongoing LLM generation).
             await _llmHandler.CancelCurrentLLMTaskAsync();
-
-            // 2. Stop the mouth (cancel any queued or playing audio).
-            // This also implicitly un-pauses the audio output handler for the next turn.
             await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
 
-            // 3. Start a new thought process with the user's interrupting text.
-            // This is effectively the same as a normal turn end, but triggered mid-speech.
-            await OnUserTurnEndedAsync(interruptingText);
+            await _llmHandler.ProcessUserTextAsync(interruptingText, _agentState.CurrentClientId, _conversationCTS.Token);
         }
 
         // Disposal

@@ -87,27 +87,35 @@ namespace IqraInfrastructure.Managers.VAD.Silero
         private async Task RunLoop()
         {
             _logger.LogDebug("SileroVadCore processing loop started.");
-            while (!_cancellationTokenSource.IsCancellationRequested)
+            try
             {
-                float[]? currentChunk = null;
-                lock (_buffer)
+                while (!_cancellationTokenSource.IsCancellationRequested)
                 {
-                    if (_buffer.Count >= Silero16khzWindowSizeSamples)
+                    float[]? currentChunk = null;
+                    lock (_buffer)
                     {
-                        currentChunk = _buffer.Take(Silero16khzWindowSizeSamples).ToArray();
-                        _buffer.RemoveRange(0, Silero16khzWindowSizeSamples);
+                        if (_buffer.Count >= Silero16khzWindowSizeSamples)
+                        {
+                            currentChunk = _buffer.Take(Silero16khzWindowSizeSamples).ToArray();
+                            _buffer.RemoveRange(0, Silero16khzWindowSizeSamples);
+                        }
+                    }
+
+                    if (currentChunk != null)
+                    {
+                        ProcessWindow(currentChunk);
+                    }
+                    else
+                    {
+                        // If no data, wait briefly before checking again
+                        await Task.Delay(10, _cancellationTokenSource.Token);
                     }
                 }
-
-                if (currentChunk != null)
-                {
-                    ProcessWindow(currentChunk);
-                }
-                else
-                {
-                    // If no data, wait briefly before checking again
-                    await Task.Delay(10, _cancellationTokenSource.Token);
-                }
+            }
+            catch (OperationCanceledException) { /* Expected */ }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Silero VAD processing loop exception.");
             }
             _logger.LogDebug("SileroVadCore processing loop stopped.");
         }

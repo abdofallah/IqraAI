@@ -32,7 +32,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public BusinessAppIntegration? LLMBusinessIntegrationData { get; set; }
         public ILLMService? LLMService { get; set; }
         public string LLMBaseSystemPrompt { get; set; } = string.Empty;
-        public ILLMService? InterruptingLLMService { get; set; }
 
         // Vad Related
         public SileroVadCore? SileroVadCore;
@@ -58,11 +57,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Client Context
         public string? CurrentClientId { get; set; }
         public Dictionary<string, string> ClientContextMap { get; } = new(); // Example, adjust if needed
-
-        // Buffers (Potentially managed within specific handlers but accessible if needed)
-        public StringBuilder ResponseBuffer { get; } = new StringBuilder();
-        public int CurrentResponseBufferRead { get; set; } = 0;
-        public StringBuilder InterruptResponseBuffer { get; } = new StringBuilder();
 
         // Timings / Durations (Managed by relevant handlers)
         public DateTime? CurrentResponseDurationSpeakingStarted { get; set; }

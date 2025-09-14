@@ -56,29 +56,33 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
             var finalMessages = _initialMessages.Concat(_messagesMemory).ToList();
 
-            var lastMessage = finalMessages.LastOrDefault();
-            if (lastMessage != null && lastMessage.Role == "user")
+            if (!string.IsNullOrEmpty(beforeMessageContext) && !string.IsNullOrEmpty(afterMessageContext))
             {
-                var lastMessageWithText = lastMessage.Parts.Find(x => !string.IsNullOrEmpty(x.Text));
-                if (lastMessageWithText != null)
+                var lastMessage = finalMessages.LastOrDefault();
+                if (lastMessage != null && lastMessage.Role == "user")
                 {
-                    var newText = "";
-
-                    var textData = lastMessageWithText.Text;
-                    if (!string.IsNullOrEmpty(beforeMessageContext))
+                    var lastMessageWithText = lastMessage.Parts.Find(x => !string.IsNullOrEmpty(x.Text));
+                    if (lastMessageWithText != null)
                     {
-                        newText = beforeMessageContext + "\n\n" + textData;
-                    }
-                    if (!string.IsNullOrEmpty(afterMessageContext))
-                    {
-                        newText = newText + "\n\n" + afterMessageContext;
-                    }
+                        var newText = "";
 
-                    var newUserMessage = MakeContent("user", newText);
-                    finalMessages.RemoveAt(finalMessages.Count - 1);
-                    finalMessages.Add(newUserMessage);
+                        var textData = lastMessageWithText.Text;
+                        if (!string.IsNullOrEmpty(beforeMessageContext))
+                        {
+                            newText = beforeMessageContext + "\n\n" + textData;
+                        }
+                        if (!string.IsNullOrEmpty(afterMessageContext))
+                        {
+                            newText = newText + "\n\n" + afterMessageContext;
+                        }
+
+                        var newUserMessage = MakeContent("user", newText);
+                        finalMessages.RemoveAt(finalMessages.Count - 1);
+                        finalMessages.Add(newUserMessage);
+                    }
                 }
             }
+            
 
             var generationConfig = new GenerationConfig
             {
