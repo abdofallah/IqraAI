@@ -6,10 +6,6 @@ using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.TurnEnd
 {
-    /// <summary>
-    /// A service that uses the Pipecat Smart Turn ONNX model to perform
-    /// intelligent, ML-based turn-end detection on a complete audio utterance.
-    /// </summary>
     public class SmartTurnService : IDisposable
     {
         public event Action? TurnEnded;
@@ -22,17 +18,10 @@ namespace IqraInfrastructure.Managers.TurnEnd
         {
             _logger = loggerFactory.CreateLogger<SmartTurnService>();
             _agentState = agentState;
-            // The model path should be managed via configuration in a real app,
-            // but hardcoding is fine for this implementation.
             var modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "SmartTurn", "smart-turn-v3.0.onnx");
             _model = new SmartTurnOnnxModel(modelPath);
         }
 
-        /// <summary>
-        /// Analyzes a complete audio utterance to determine if the turn is complete.
-        /// This is a "one-shot" analysis and should be triggered by VAD silence.
-        /// </summary>
-        /// <param name="turnAudioData">The raw audio bytes of the user's full turn.</param>
         public void AnalyzeTurn(byte[] turnAudioData)
         {
             if (turnAudioData == null || turnAudioData.Length == 0)

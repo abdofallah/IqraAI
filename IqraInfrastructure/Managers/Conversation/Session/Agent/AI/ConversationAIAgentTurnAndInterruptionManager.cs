@@ -56,6 +56,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly List<byte> _userTurnAudioBuffer = new List<byte>();
         private SmartTurnService? _mlTurnService;
         private bool _mlHasIndicatedTurnEnd = false;
+        private VadStateTracker _mlTurnVadTracker;
 
         // AI Interruption Verification Componenets
         private ILLMService? _interruptionVerificationLLMService;
@@ -136,16 +137,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _mlTurnService = new SmartTurnService(_loggerFactory, _agentState);
                 _mlTurnService.TurnEnded += OnMlTurnEnded;
 
-                // CRITICAL: We still need the VAD tracker, but its purpose changes to be a trigger.
-                if (_turnEndVadTracker != null)
+                var options = new VadTrackerOptions
                 {
-                    _turnEndVadTracker.SpeechEnded += TriggerMlAnalysis;
-                }
-                else
-                {
-                    _logger.LogError("ML Turn End requires VAD Turn End to be configured as a trigger, but it is not. Falling back to STT.");
-                    _config.TurnEnd.Type = AgentInterruptionTurnEndTypeENUM.STT;
-                }
+                    Threshold = 0.5f,
+                    MinSilenceDurationMs = 300,
+                    MinSpeechDurationMs = 150 // A user must speak for at least 150ms to constitute a turn
+                };
+                _mlTurnVadTracker = new VadStateTracker(options);
+                _mlTurnVadTracker.SpeechEnded += TriggerMlAnalysis;
+                _agentState.SileroVadCore.SpeechProbabilityUpdated += _mlTurnVadTracker.ProcessProbability;
             }
 
             if (!_config.UseTurnByTurnMode && _config.Verification!.Enabled)

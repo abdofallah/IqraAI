@@ -37,7 +37,7 @@ namespace IqraInfrastructure.Managers.TurnEnd
             float[] processedAudio = ProcessAudioLength(audio_16khz_mono);
 
             // 2. Generate the log-Mel spectrogram features.
-            float[,] featureMatrix = _featureExtractor.Process(processedAudio);
+            float[,] featureMatrix = _featureExtractor.Process(processedAudio, audio_16khz_mono.Length);
 
             // 3. Convert the 2D feature matrix into a flat array for the Tensor.
             var flatFeatures = featureMatrix.Cast<float>().ToArray();
