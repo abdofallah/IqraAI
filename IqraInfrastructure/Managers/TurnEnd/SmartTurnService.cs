@@ -1,25 +1,29 @@
 ﻿using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.TTS;
 using IqraInfrastructure.Helpers.Audio;
-using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.TurnEnd
 {
-    public class SmartTurnService : IDisposable
+    public class SmartTurnService
     {
         public event Action? TurnEnded;
 
         private readonly ILogger<SmartTurnService> _logger;
         private readonly SmartTurnOnnxModel _model;
-        private readonly ConversationAIAgentState _agentState;
 
-        public SmartTurnService(ILoggerFactory loggerFactory, ConversationAIAgentState agentState)
+        private readonly AudioEncodingTypeEnum _audioEncodingType;
+        private readonly int _sampleRate;
+        private readonly int _bitsPerSample;
+
+        public SmartTurnService(ILogger<SmartTurnService> logger, AudioEncodingTypeEnum audioEncodingType, int sampleRate, int bitsPerSample)
         {
-            _logger = loggerFactory.CreateLogger<SmartTurnService>();
-            _agentState = agentState;
-            var modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "SmartTurn", "smart-turn-v3.0.onnx");
-            _model = new SmartTurnOnnxModel(modelPath);
+            _logger = logger;
+            _model = new SmartTurnOnnxModel();
+
+            _audioEncodingType = audioEncodingType;
+            _sampleRate = sampleRate;
+            _bitsPerSample = bitsPerSample;
         }
 
         public void AnalyzeTurn(byte[] turnAudioData)
@@ -31,15 +35,28 @@ namespace IqraInfrastructure.Managers.TurnEnd
 
             try
             {
-                // 1. Convert the raw turn audio (likely mulaw/pcm) to the required 16kHz, 32-bit float format.
                 var audioFloats = ConvertTo16kHzFloat(turnAudioData);
 
-                // 2. Run the prediction using the ONNX model wrapper.
-                var (isComplete, probability) = _model.Predict(audioFloats);
+                AnalyzeTurn(audioFloats);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during Smart Turn analysis.");
+                // We fail silently and don't fire the event, allowing fallback to other mechanisms if any.
+            }
+        }
 
-                _logger.LogDebug("Smart Turn analysis complete. Prediction: {Prediction}, Probability: {Probability:F4}", isComplete ? "COMPLETE" : "INCOMPLETE", probability);
+        public void AnalyzeTurn(float[] turnAudioData)
+        {
+            if (turnAudioData == null || turnAudioData.Length == 0)
+            {
+                return;
+            }
 
-                // 3. If the model predicts the turn is complete, fire the event.
+            try
+            {
+                var (isComplete, probability) = _model.Predict(turnAudioData);
+
                 if (isComplete)
                 {
                     TurnEnded?.Invoke();
@@ -58,9 +75,9 @@ namespace IqraInfrastructure.Managers.TurnEnd
                 audioData,
                 new TTSProviderAvailableAudioFormat
                 {
-                    Encoding = _agentState.AgentConfiguration.AudioEncodingType,
-                    SampleRateHz = _agentState.AgentConfiguration.SampleRate,
-                    BitsPerSample = _agentState.AgentConfiguration.BitsPerSample
+                    Encoding = _audioEncodingType,
+                    SampleRateHz = _sampleRate,
+                    BitsPerSample = _bitsPerSample
                 }
             );
 
@@ -70,11 +87,10 @@ namespace IqraInfrastructure.Managers.TurnEnd
                 {
                     RequestedEncoding = AudioEncodingTypeEnum.PCM,
                     RequestedSampleRateHz = 16000,
-                    RequestedBitsPerSample = 32 // float
+                    RequestedBitsPerSample = 32
                 }
             );
 
-            // Read all samples from the resampler into a list and then convert to an array.
             var samples = new List<float>();
             var buffer = new float[1024];
             int bytesRead;
@@ -83,11 +99,6 @@ namespace IqraInfrastructure.Managers.TurnEnd
                 samples.AddRange(buffer.Take(bytesRead));
             }
             return samples.ToArray();
-        }
-
-        public void Dispose()
-        {
-            _model?.Dispose();
         }
     }
 

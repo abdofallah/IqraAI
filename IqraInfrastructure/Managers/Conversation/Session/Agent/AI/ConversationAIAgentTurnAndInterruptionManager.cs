@@ -102,8 +102,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 var options = new VadTrackerOptions
                 {
                     Threshold = 0.5f, // This could be made configurable in the future
-                    MinSilenceDurationMs = _config.TurnEnd.VadSilenceDurationMS ?? 1200,
-                    MinSpeechDurationMs = 150 // A user must speak for at least 150ms to constitute a turn
+                    MinSilenceDurationMs = _config.TurnEnd.VadSilenceDurationMS.Value,
+                    MinSpeechDurationMs = _config.TurnEnd.VadSpeechDurationMS.Value
                 };
                 _turnEndVadTracker = new VadStateTracker(options);
                 _turnEndVadTracker.SpeechEnded += OnTurnEndVadSpeechEnded;
@@ -134,14 +134,19 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.ML)
             {
                 _logger.LogDebug("Configuring SmartTurnService for ML Turn End detection.");
-                _mlTurnService = new SmartTurnService(_loggerFactory, _agentState);
+                _mlTurnService = new SmartTurnService(
+                    _loggerFactory.CreateLogger<SmartTurnService>(),
+                    _agentState.AgentConfiguration.AudioEncodingType,
+                    _agentState.AgentConfiguration.SampleRate,
+                    _agentState.AgentConfiguration.BitsPerSample
+                );
                 _mlTurnService.TurnEnded += OnMlTurnEnded;
 
                 var options = new VadTrackerOptions
                 {
                     Threshold = 0.5f,
-                    MinSilenceDurationMs = 300,
-                    MinSpeechDurationMs = 150 // A user must speak for at least 150ms to constitute a turn
+                    MinSilenceDurationMs = _config.TurnEnd.MLTurnEndVADMinimumSilenceDurationMS.Value,
+                    MinSpeechDurationMs = _config.TurnEnd.MLTurnEndVADMinimumSpeechDurationMS.Value
                 };
                 _mlTurnVadTracker = new VadStateTracker(options);
                 _mlTurnVadTracker.SpeechEnded += TriggerMlAnalysis;
@@ -604,8 +609,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             _turnEndLLMCTS?.Cancel();
             (_turnEndLLMService as IDisposable)?.Dispose();
-            _mlTurnService?.Dispose();
-            _mlTurnService?.Dispose();
         }
     }
 }

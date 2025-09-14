@@ -19,12 +19,7 @@ namespace IqraInfrastructure.Managers.TurnEnd
 
         private readonly Tensor _melFiltersTensor;
 
-        /// <summary>
-        /// Initializes a new instance of the WhisperFeatureExtractor.
-        /// [MODIFIED] Now takes chunk_length to be flexible.
-        /// </summary>
-        /// <param name="chunkLengthInSeconds">The desired audio chunk length in seconds.</param>
-        public WhisperFeatureExtractor(int chunkLengthInSeconds = 8)
+        public WhisperFeatureExtractor(int chunkLengthInSeconds)
         {
             _chunkLength = chunkLengthInSeconds;
             _nSamples = _chunkLength * SamplingRate;
@@ -33,7 +28,7 @@ namespace IqraInfrastructure.Managers.TurnEnd
             _melFiltersTensor = from_array(melFilters);
         }
 
-        public float[,] Process(float[] audio, int originalAudioLength)
+        public float[,] Process(float[] audio)
         {
             // 1. Pad audio to the required number of samples
             var paddedAudio = PadOrTruncate(audio, _nSamples);
@@ -70,7 +65,6 @@ namespace IqraInfrastructure.Managers.TurnEnd
 
         #region Core Processing Steps
 
-        // UNTESTED - prolly correct
         private float[] PadOrTruncate(float[] audio, int targetLength)
         {
             // This assumes padding at the start, which matches your Python script
@@ -83,8 +77,6 @@ namespace IqraInfrastructure.Managers.TurnEnd
             return result;
         }
 
-
-        // CORRECT
         public float[] ZeroMeanUnitVarNormalization(float[] paddedAudio, int validLength = 0, float paddingValue = 0.0f)
         {
             // If no valid length specified, assume entire array is valid
@@ -126,7 +118,6 @@ namespace IqraInfrastructure.Managers.TurnEnd
             return normalizedAudio;
         }
 
-        // CORRECT
         private float[,] To2DArray(Tensor tensor)
         {
             long rows = tensor.shape[0];
