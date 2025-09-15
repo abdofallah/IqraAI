@@ -7,7 +7,7 @@ namespace IqraCore.Entities.Business
         public AgentInterruptionTurnEndTypeENUM Type { get; set; } = AgentInterruptionTurnEndTypeENUM.VAD;
         
         // Via VAD
-        public int? VadSpeechDurationMS { get; set; } = 200;
+        public int? VadSpeechDurationMS { get; set; } = 150;
         public int? VadSilenceDurationMS { get; set; } = 300;
 
         // Via AI
@@ -15,7 +15,7 @@ namespace IqraCore.Entities.Business
         public BusinessAppAgentIntegrationData? LLMIntegration { get; set; } = null;
 
         // Via ML
-        public int? MLTurnEndVADMinimumSpeechDurationMS { get; set; } = 200;
+        public int? MLTurnEndVADMinimumSpeechDurationMS { get; set; } = 150;
         public int? MLTurnEndVADMinimumSilenceDurationMS { get; set; } = 300;
         public int? MlTurnEndFallbackMs { get; set; } = 400;
     }

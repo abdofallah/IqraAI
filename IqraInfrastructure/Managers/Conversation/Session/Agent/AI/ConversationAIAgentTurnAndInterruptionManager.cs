@@ -57,6 +57,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private SmartTurnService? _mlTurnService;
         private bool _mlHasIndicatedTurnEnd = false;
         private VadStateTracker _mlTurnVadTracker;
+        private CancellationTokenSource? _mlTurnFallbackCts;
 
         // AI Interruption Verification Componenets
         private ILLMService? _interruptionVerificationLLMService;
@@ -149,6 +150,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     MinSpeechDurationMs = _config.TurnEnd.MLTurnEndVADMinimumSpeechDurationMS.Value
                 };
                 _mlTurnVadTracker = new VadStateTracker(options);
+                _mlTurnVadTracker.SpeechStarted += OnMLTurnVadSpeechStarted;
                 _mlTurnVadTracker.SpeechEnded += TriggerMlAnalysis;
                 _agentState.SileroVadCore.SpeechProbabilityUpdated += _mlTurnVadTracker.ProcessProbability;
             }
@@ -293,7 +295,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public void BufferAudioForMlAnalysis(byte[] audioData)
         {
             // Only buffer if the ML service is active and a user turn has started.
-            if (_mlTurnService != null && _isUserTurnActive)
+            if (_mlTurnService != null)
             {
                 _userTurnAudioBuffer.AddRange(audioData);
             }
@@ -422,24 +424,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             // A conclusion was reached, so reset state for the next turn.
             ResetTurnState();
-        }
-        private void ResetTurnState()
-        {
-            _userTurnAudioBuffer.Clear();
-            _userTurnTextBuffer.Clear();
-            _userTurnTextFinalBuffer.Clear();
-            _currentTurnWordCount = 0;
-            _isUserTurnActive = false;
-            _isAgentPaused = false;
-            _vadHasIndicatedTurnEnd = false;
-            _sttHasProvidedFinalTranscript = false;
-            _turnEndVadTracker?.Reset();
-            _pauseTriggerVadTracker?.Reset();
-            _aiHasIndicatedTurnEnd = false;
-            _mlHasIndicatedTurnEnd = false;
-            _isAwaitingVerification = false;
-            _canInterruptAgentAfterVerificaiton = false;
-            _hasVerifiedInterruptionResult = false;
         }
         // AI Turn End
         private async Task CheckAITurnEndAsync(string currentUtterance)
@@ -582,26 +566,91 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
         // ML Turn End
+        private void OnMLTurnVadSpeechStarted()
+        {
+            _isUserTurnActive = true;
+            _mlHasIndicatedTurnEnd = false;
+        }
         private void TriggerMlAnalysis()
         {
-            if (_mlTurnService != null && _userTurnAudioBuffer.Count > 0)
+            if (_mlTurnService != null && _isUserTurnActive && _userTurnAudioBuffer.Count > 0)
             {
-                _logger.LogDebug("VAD silence triggered ML turn analysis on buffered audio.");
                 var turnAudio = _userTurnAudioBuffer.ToArray();
-                _userTurnAudioBuffer.Clear(); // Clear the buffer after copying
+                _userTurnAudioBuffer.Clear();
+
                 _mlTurnService.AnalyzeTurn(turnAudio);
+
+                StartMlFallbackTimer();
             }
         }
         private void OnMlTurnEnded()
         {
-            _logger.LogDebug("ML Model detected turn end.");
-            _mlHasIndicatedTurnEnd = true;
-            TryConcludeUserTurn();
+            CancelMlFallbackTimer();
+
+            if (!_mlHasIndicatedTurnEnd)
+            {
+                _mlHasIndicatedTurnEnd = true;
+                TryConcludeUserTurn();
+            }
         }
+        private void StartMlFallbackTimer()
+        {
+            // Ensure any previous timer is stopped before starting a new one.
+            CancelMlFallbackTimer();
+
+            var fallbackMs = _config.TurnEnd.MlTurnEndFallbackMs.Value;
+            _mlTurnFallbackCts = new CancellationTokenSource();
+            var token = _mlTurnFallbackCts.Token;
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(fallbackMs, token);
+
+                    if (_mlTurnFallbackCts.IsCancellationRequested) return;
+                    
+                    OnMlTurnEnded();
+                }
+                catch (OperationCanceledException) { /* Expected */ }
+            }, token);
+        }
+        private void CancelMlFallbackTimer()
+        {
+            if (_mlTurnFallbackCts != null && !_mlTurnFallbackCts.IsCancellationRequested)
+            {
+                _mlTurnFallbackCts.Cancel();
+                _mlTurnFallbackCts.Dispose();
+                _mlTurnFallbackCts = null;
+            }
+        }
+
+        // COMMON
+        private void ResetTurnState()
+        {
+            CancelMlFallbackTimer();
+            _userTurnAudioBuffer.Clear();
+            _userTurnTextBuffer.Clear();
+            _userTurnTextFinalBuffer.Clear();
+            _currentTurnWordCount = 0;
+            _isUserTurnActive = false;
+            _isAgentPaused = false;
+            _vadHasIndicatedTurnEnd = false;
+            _sttHasProvidedFinalTranscript = false;
+            _turnEndVadTracker?.Reset();
+            _pauseTriggerVadTracker?.Reset();
+            _aiHasIndicatedTurnEnd = false;
+            _mlHasIndicatedTurnEnd = false;
+            _isAwaitingVerification = false;
+            _canInterruptAgentAfterVerificaiton = false;
+            _hasVerifiedInterruptionResult = false;
+        }
+
 
         // Disposal
         public void Dispose()
         {
+            CancelMlFallbackTimer();
             if (_agentState.SileroVadCore != null)
             {
                 if (_turnEndVadTracker != null) _agentState.SileroVadCore.SpeechProbabilityUpdated -= _turnEndVadTracker.ProcessProbability;
