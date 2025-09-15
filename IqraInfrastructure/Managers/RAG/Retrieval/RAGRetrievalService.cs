@@ -268,7 +268,8 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
                     { "Score", res.Score },
                     { "DocumentId", res.DocumentId },
                     { "ChunkId", res.ChunkId },
-                    { "ParentChunkId", res.ParentChunkid ?? string.Empty }
+                    { "ParentChunkId", res.ParentChunkid ?? string.Empty },
+                    { "KnowledgeBaseId", _knowledgeBaseData.Id }
                 }
             }).ToList();
         }
@@ -293,7 +294,8 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
                     {
                         { "ChunkId", chunk.Id },
                         { "Score", 1.0 }, // Keyword searches don't have a normalized score, assign a default
-                        { "KeywordMatch", true }
+                        { "KeywordMatch", true },
+                        { "KnowledgeBaseId", _knowledgeBaseData.Id }
                     }
                 };
 
@@ -305,7 +307,12 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
                 return doc;
             }).ToList();
         }
-        
+
+        public IEmbeddingService? GetEmbeddingService()
+        {
+            return _embeddingService;
+        }
+
         public InterfaceEmbeddingProviderEnum? GetEmbeddingServiceType()
         {
             if (_embeddingService != null)

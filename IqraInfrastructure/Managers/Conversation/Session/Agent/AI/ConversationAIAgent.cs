@@ -9,14 +9,20 @@ using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
+using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.KnowledgeBase;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.VAD.Silero;
 using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
+using IqraInfrastructure.Repositories.RAG;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
@@ -50,6 +56,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly ConversationAIAgentDTMFSessionManager _dtmfSessionManager;
         private readonly CustomToolExecutionHelper _customToolHelper;
         private readonly SendSMSToolExecutionHelper _sendSMSToolExecutionHelper;
+        private readonly ConversationAIAgentRAGManager _ragManager;
 
         // Master Cancellation Token
         private CancellationTokenSource _conversationCTS = new();
@@ -89,7 +96,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             IntegrationsManager integrationManager,
             ModemTelManager modemTelManager,
             TwilioManager twilioManager,
-            TTSAudioCacheManager ttsAudioCacheManager
+            TTSAudioCacheManager ttsAudioCacheManager,
+            IServiceProvider serviceProvider
         )
         {
             _loggerFactory = loggerFactory;
@@ -124,7 +132,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _llmHandler, _audioOutputHandler, _agentState, _llmProviderManager, _businessManager);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
-            
+            _ragManager = new ConversationAIAgentRAGManager(
+                _loggerFactory,
+                _agentState,
+                _businessManager,
+                serviceProvider.GetRequiredService<KnowledgeBaseVectorRepository>(),
+                serviceProvider.GetRequiredService<RAGKeywordStore>(),
+                serviceProvider.GetRequiredService<EmbeddingProviderManager>(),
+                serviceProvider.GetRequiredService<BusinessKnowledgeBaseDocumentRepository>(),
+                serviceProvider.GetRequiredService<KnowledgeBaseCollectionsLoadManager>(),
+                serviceProvider.GetRequiredService<EmbeddingCacheManager>(),
+                serviceProvider.GetRequiredService<RerankProviderManager>(),
+                serviceProvider.GetRequiredService<LLMProviderManager>(),
+                _conversationSessionManager.SessionId
+            );
+
             // Wire up Events between Modules and Orchestrator
             WireUpEvents();
         }
@@ -240,7 +262,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 await _toolExecutor.InitializeAsync();
                 await _turnManager.InitializeAsync(_conversationCTS.Token);
                 _audioInputHandler.InitializeAsync(_conversationCTS.Token);
-                
+                await _ragManager.InitializeAsync(_conversationCTS.Token);
+
                 _agentState.IsInitialized = true;
             }
             catch (Exception ex)
@@ -332,6 +355,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _audioOutputHandler?.StopSending();
             _audioOutputHandler?.Dispose();
+
+            await (_ragManager?.DisposeAsync() ?? ValueTask.CompletedTask);
 
             // Dispose Tool Executor? (If it holds resources) TODO > might need to cancel current httpclient ongoign request and dispose
             // _toolExecutor?.Dispose(); // If it implements IDisposable
