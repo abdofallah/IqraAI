@@ -38,12 +38,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public SileroVadCore? SileroVadCore { get; set; } = null;
 
         // Turn Management
+        public ConversationTurn? PreviousTurn { get; set; } = null;
         public ConversationTurn? CurrentTurn { get; set; } = null;
 
 
         // Runtime State Flags & Variables
         public bool IsInitialized { get; set; } = false;
         public bool IsResponding { get; set; } = false;
+        public bool IsExecutingCustomTool { get; set; } = false;
+        public bool IsExecutingSystemTool { get; set; } = false;
         public bool IsAcceptingSTTAudio { get; set; } = false;
 
         // Audio Output State

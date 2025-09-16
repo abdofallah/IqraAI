@@ -16,12 +16,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
     public class ConversationAIAgentTurnAndInterruptionManager : IDisposable
     {
-        public event Func<ConversationTurn, Task>? UserTurnFinalized;
-
         public event Action<ConversationTurn>? NewTurnCreated;
+        public event Func<ConversationTurn, Task>? UserTurnFinalized;
+        public event Func<ConversationTurn, Task>? VerifiedInterruptionOccurred;
         public event Func<Task>? AgentShouldPause;
         public event Func<Task>? AgentShouldResume;
-        public event Func<ConversationTurn, Task>? VerifiedInterruptionOccurred;
 
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationAIAgentTurnAndInterruptionManager> _logger;
@@ -110,6 +109,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     MinSpeechDurationMs = _config.TurnEnd.VadSpeechDurationMS.Value
                 };
                 _turnEndVadTracker = new VadStateTracker(options);
+                _turnEndVadTracker.SpeechStarted += OnTurnEndVadSpeechStarted;
                 _turnEndVadTracker.SpeechEnded += OnTurnEndVadSpeechEnded;
                 _agentState.SileroVadCore.SpeechProbabilityUpdated += _turnEndVadTracker.ProcessProbability;
             }
@@ -223,6 +223,25 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _interruptionVerificationLLMService.SetSystemPrompt("You are an expert at analyzing real-time speech transcripts. Your task is to determine if a user speech should interrupt the agent speech. Analyze the user's utterance. Respond with ONLY ONE of the following words: 'CONTINUE' if the user speech should not interrupt the agent. 'INTERRUPT' if the user has likely interrupted the agent.");
             _interruptionVerificationLLMService.MessageStreamed += OnAIInterruptionVerificationMessageStream;
         }
+        public void ResetForNewTurn()
+        {
+            CancelMlFallbackTimer();
+            _userTurnAudioBuffer.Clear();
+            _userTurnTextBuffer.Clear();
+            _userTurnTextFinalBuffer.Clear();
+            _currentTurnWordCount = 0;
+            _isUserTurnActive = false;
+            _isAgentPaused = false;
+            _vadHasIndicatedTurnEnd = false;
+            _sttHasProvidedFinalTranscript = false;
+            _turnEndVadTracker?.Reset();
+            _pauseTriggerVadTracker?.Reset();
+            _aiHasIndicatedTurnEnd = false;
+            _mlHasIndicatedTurnEnd = false;
+            _isAwaitingVerification = false;
+            _canInterruptAgentAfterVerificaiton = false;
+            _hasVerifiedInterruptionResult = false;
+        }
 
         // Management
         public void ProcessTranscriptionForTurnAnalysis(string text, bool isFinal)
@@ -230,65 +249,77 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (!_isUserTurnActive)
             {
                 _isUserTurnActive = true;
-                // Reset synchronization flags for the new turn
                 _vadHasIndicatedTurnEnd = false;
                 _sttHasProvidedFinalTranscript = false;
                 _aiHasIndicatedTurnEnd = false;
                 _mlHasIndicatedTurnEnd = false;
+
+                if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.STT || _config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI)
+                {
+                    var newTurn = new ConversationTurn
+                    {
+                        User = new UserInput
+                        {
+                            SenderId = _agentState.CurrentClientId ?? "UnknownClient",
+                            StartedSpeakingAt = DateTime.UtcNow
+                        }
+                    };
+
+                    _agentState.CurrentTurn = newTurn;
+                    NewTurnCreated?.Invoke(newTurn);
+                }
             }
 
-            // Overwrite the buffer with the most recent (and complete) transcript version.
             if (isFinal)
             {
                 _userTurnTextFinalBuffer.Append(text);
             }
             else
             {
-                // For partial results, we might append or replace based on provider behavior.
-                // For now, replacing is safer to avoid duplication.
                 _userTurnTextBuffer.Append(text);
             }
 
+            var currentUtterance = isFinal ? _userTurnTextFinalBuffer.ToString() : _userTurnTextBuffer.ToString();
 
-            var currentFinalUtterance = _userTurnTextFinalBuffer.ToString();
-            var currentUtterance = _userTurnTextBuffer.ToString();
+            HandlePauseTrigger(currentUtterance);
 
-            // Pause Trigger
             if (isFinal)
             {
-                HandlePauseTrigger(currentFinalUtterance);
-            }
-            else
-            {
-                HandlePauseTrigger(currentUtterance);
-            }
-
-            // Turn End Checks
-            if (isFinal)
-            {
-                // Trigger AI Turn-End Check
                 if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI)
                 {
-                    _ = CheckAITurnEndAsync(currentFinalUtterance);
+                    _ = CheckAITurnEndAsync(currentUtterance);
                 }
-
                 _sttHasProvidedFinalTranscript = true;
                 TryConcludeUserTurn();
             }
         }
         public async Task ProcessDirectTextInputAsync(string text, CancellationToken cancellationToken)
         {
-            // If the agent is busy, a direct text input is always treated as a verified interruption.
+            var now = DateTime.UtcNow;
+            var newTurn = new ConversationTurn
+            {
+                User = new UserInput
+                {
+                    SenderId = _agentState.CurrentClientId ?? "UnknownClient",
+                    TranscribedText = text,
+                    StartedSpeakingAt = now,
+                    FinishedSpeakingAt = now,
+                },
+                Status = TurnStatus.UserInputEnded
+            };
+
+            _agentState.CurrentTurn = newTurn;
+            NewTurnCreated?.Invoke(newTurn);
+
             if (_agentState.IsResponding || _agentState.IsExecutingCustomTool || _agentState.IsExecutingSystemTool)
             {
-                _logger.LogInformation("Direct text input received while agent was busy. Firing VerifiedInterruptionOccurred.");
-                VerifiedInterruptionOccurred?.Invoke(text);
-                return;
+                newTurn.Status = TurnStatus.Interrupted;
+                VerifiedInterruptionOccurred?.Invoke(newTurn);
             }
-
-            // If the agent is idle, this is a normal turn.
-            _logger.LogDebug("Processing direct text input as a complete user turn.");
-            UserTurnEnded?.Invoke(text);
+            else
+            {
+                UserTurnFinalized?.Invoke(newTurn);
+            }
         }
         public void NotifyAgentSpeechCompleted()
         {
@@ -304,54 +335,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        // Event Handlers
-        private void HandlePauseTrigger(string newTextChunk)
-        {
-            if (_config.UseTurnByTurnMode || !_agentState.IsResponding || _isAgentPaused)
-            {
-                return; // Not applicable or already paused
-            }
-
-            if (_config.PauseTrigger?.Type == AgentInterruptionPauseTriggerTypeENUM.STT)
-            {
-                var wordCountThreshold = _config.PauseTrigger.WordCount ?? 0;
-                if (wordCountThreshold > 0)
-                {
-                    _currentTurnWordCount += newTextChunk.Split(new[] { ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
-
-                    if (_currentTurnWordCount >= wordCountThreshold)
-                    {
-                        _logger.LogInformation("STT Pause Trigger: Word count ({Current}) met threshold ({Threshold}). Firing AgentShouldPause.", _currentTurnWordCount, wordCountThreshold);
-                        AgentShouldPause?.Invoke();
-                        _isAgentPaused = true;
-                    }
-                }
-            }
-        }
-        private void OnPauseTriggerVadSpeechStarted()
-        {
-            if (_agentState.IsResponding && !_isAgentPaused)
-            {
-                _logger.LogInformation("VAD Pause Trigger detected user speech while agent was responding. Firing AgentShouldPause.");
-                AgentShouldPause?.Invoke();
-                _isAgentPaused = true;
-            }
-        }
-        private void OnTurnEndVadSpeechEnded()
-        {
-            if (_isUserTurnActive)
-            {
-                // If in standard VAD mode, set the flag.
-                if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.VAD)
-                {
-                    _logger.LogDebug("VAD Turn End Tracker detected speech end.");
-                    _vadHasIndicatedTurnEnd = true;
-                    TryConcludeUserTurn();
-                }
-                // If in ML mode, VAD acts as a trigger, not a conclusion.
-                // The call to TriggerMlAnalysis is handled by the event subscription in InitializeAsync.
-            }
-        }
+        // Common Helper
         private void TryConcludeUserTurn()
         {
             bool canConclude = false;
@@ -377,21 +361,22 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return; // Conditions not yet met.
             }
 
-            if (_agentState.CurrentTurn == null)
+            var turnToFinalize = _agentState.CurrentTurn;
+            if (turnToFinalize == null)
             {
-                _logger.LogError("Attempted to conclude a user turn, but no active turn object exists.");
-                ResetTurnState();
+                _logger.LogError("TryConcludeUserTurn was called, but no active turn exists in the agent state.");
+                ResetForNewTurn();
                 return;
             }
 
             var finalText = _userTurnTextFinalBuffer.ToString().Trim();
-            _agentState.CurrentTurn.User.TranscribedText = finalText;
-            _agentState.CurrentTurn.User.FinishedSpeakingAt = DateTime.UtcNow;
-            _agentState.CurrentTurn.Status = TurnStatus.UserInputEnded;
+            turnToFinalize.User.TranscribedText = finalText;
+            turnToFinalize.User.FinishedSpeakingAt = DateTime.UtcNow;
+            turnToFinalize.Status = TurnStatus.UserInputEnded;
 
             if (!_isAgentPaused)
             {
-                UserTurnFinalized?.Invoke(_agentState.CurrentTurn);
+                UserTurnFinalized?.Invoke(turnToFinalize);
             }
             else
             {
@@ -403,44 +388,112 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         {
                             if (_canInterruptAgentAfterVerificaiton)
                             {
-                                _agentState.CurrentTurn.Status = TurnStatus.Interrupted;
-                                VerifiedInterruptionOccurred?.Invoke(_agentState.CurrentTurn);
+                                turnToFinalize.Status = TurnStatus.Interrupted;
+                                VerifiedInterruptionOccurred?.Invoke(turnToFinalize);
                             }
                             else
                             {
                                 AgentShouldResume?.Invoke();
                             }
                         }
-                        else
-                        {
-                            // wait for ai to give us the result back
-                            // do nothing
-                            return;
-                        }
+
+                        return;
                     }
                     else
                     {
                         _isAwaitingVerification = true;
                         _hasVerifiedInterruptionResult = false;
                         _canInterruptAgentAfterVerificaiton = false;
-
-                        _ = CheckAIInterruptionVerificationAsync(_userTurnTextFinalBuffer.ToString());
-
+                        _ = CheckAIInterruptionVerificationAsync(finalText);
                         return;
                     }
                 }
                 else
                 {
-                    // how did we reach here?
-                    AgentShouldResume?.Invoke();
+                    // todo how did we reach here?
+                    turnToFinalize.Status = TurnStatus.Interrupted;
+                    VerifiedInterruptionOccurred?.Invoke(turnToFinalize);
                 }
             }
 
-            // DO NOT reset turn state here. Resetting now happens after the agent response is complete.
-            // Only reset the user-input specific parts.
             _userTurnTextBuffer.Clear();
             _userTurnTextFinalBuffer.Clear();
-            _isUserTurnActive = false;
+            _sttHasProvidedFinalTranscript = false;
+        }
+        private string CalculatePreviousTurnAgentSpokenText()
+        {
+            if (_agentState.PreviousTurn == null)
+            {
+                _logger.LogError("CalculatePreviousTurnAgentSpokenText was called, but no active turn exists in the agent state.");
+                return "";
+            }
+
+            string currentSpeechSegments = "";
+            foreach (var speechSegment in _agentState.PreviousTurn.Response.SpokenSegments)
+            {
+                currentSpeechSegments += speechSegment.Text;
+            }
+
+            return currentSpeechSegments;
+        }
+
+        // Pause Trigger Event Handlers
+        private void HandlePauseTrigger(string newTextChunk)
+        {
+            if (_config.UseTurnByTurnMode || !_agentState.IsResponding || _isAgentPaused)
+            {
+                return;
+            }
+
+            if (_config.PauseTrigger?.Type == AgentInterruptionPauseTriggerTypeENUM.STT)
+            {
+                var wordCountThreshold = _config.PauseTrigger.WordCount ?? 0;
+                if (wordCountThreshold > 0)
+                {
+                    _currentTurnWordCount += newTextChunk.Split(new[] { ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+
+                    if (_currentTurnWordCount >= wordCountThreshold)
+                    {
+                        AgentShouldPause?.Invoke();
+                        _isAgentPaused = true;
+                    }
+                }
+            }
+        }
+        private void OnPauseTriggerVadSpeechStarted()
+        {
+            if (_agentState.IsResponding && !_isAgentPaused)
+            {
+                AgentShouldPause?.Invoke();
+                _isAgentPaused = true;
+            }
+        }
+
+        // Vad Turn End Event Handlers
+        private void OnTurnEndVadSpeechStarted()
+        {
+            var newTurn = new ConversationTurn
+            {
+                User = new UserInput
+                {
+                    SenderId = _agentState.CurrentClientId ?? "UnknownClient",
+                    StartedSpeakingAt = DateTime.UtcNow
+                }
+            };
+
+            _agentState.CurrentTurn = newTurn;
+            NewTurnCreated?.Invoke(newTurn);
+        }
+        private void OnTurnEndVadSpeechEnded()
+        {
+            if (_isUserTurnActive)
+            {
+                if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.VAD)
+                {
+                    _vadHasIndicatedTurnEnd = true;
+                    TryConcludeUserTurn();
+                }
+            }
         }
         // AI Turn End
         private async Task CheckAITurnEndAsync(string currentUtterance)
@@ -459,10 +512,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 _turnEndLLMService.ClearMessages();
 
-                var requestText = $"Agent Previous Utterance: \"{_agentLLMHandler.GetCurrentResponseText()}\"\n\nUser Utterance: \"{currentUtterance}\"";
-
-                _logger.LogInformation(requestText); // todo debug remove
-
+                var requestText = $"Agent Previous Utterance: \"{CalculatePreviousTurnAgentSpokenText()}\"\n\nUser Utterance: \"{currentUtterance}\"";
+                
                 _turnEndLLMService.AddUserMessage(requestText);
                 _turnEndLLMTask = _turnEndLLMService.ProcessInputAsync(_turnEndLLMCTS.Token);
             }
@@ -527,11 +578,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 _interruptionVerificationLLMService.ClearMessages();
 
-                // todo here we should isntead of llm handler, get the spoken text from the audio output text segments
-
-                var requestText = $"Agent Previous Utterance: \"{_agentLLMHandler.GetCurrentResponseText()}\"\n\nUser Utterance: \"{currentUtterance}\"";
-
-                _logger.LogInformation(requestText); // todo debug remove
+                // TODO based on the current turn, calculate how much of the current text was spoken and pass that
+                var requestText = $"Agent Previous Utterance: \"{CalculatePreviousTurnAgentSpokenText()}\"\n\nUser Utterance: \"{currentUtterance}\"";
 
                 _interruptionVerificationLLMService.AddUserMessage(requestText);
                 _interruptionVerificationLLMTask = _interruptionVerificationLLMService.ProcessInputAsync(_interruptionVerificationLLMCTS.Token);
@@ -585,34 +633,23 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // ML Turn End
         private void OnMLTurnVadSpeechStarted()
         {
-            if (_agentState.CurrentTurn == null)
+            var newTurn = new ConversationTurn
             {
-                _isUserTurnActive = true;
-                _mlHasIndicatedTurnEnd = false;
-
-                int sequence = _conversationSession.GetTurns().Count + 1;
-
-                var newTurn = new ConversationTurn
+                User = new UserInput
                 {
-                    Sequence = sequence,
-                    User = new UserInput
-                    {
-                        SenderId = _agentState.CurrentClientId ?? "Unknown",
-                        StartedSpeakingAt = DateTime.UtcNow
-                    }
-                };
+                    SenderId = _agentState.CurrentClientId ?? "UnknownClient",
+                    StartedSpeakingAt = DateTime.UtcNow
+                }
+            };
 
-                _agentState.CurrentTurn = newTurn;
-
-                NewTurnCreated?.Invoke(newTurn);
-            }
+            _agentState.CurrentTurn = newTurn;
+            NewTurnCreated?.Invoke(newTurn);
         }
         private void TriggerMlAnalysis()
         {
-            if (_mlTurnService != null && _isUserTurnActive && _userTurnAudioBuffer.Count > 0)
+            if (_mlTurnService != null && _userTurnAudioBuffer.Count > 0)
             {
                 var turnAudio = _userTurnAudioBuffer.ToArray();
-                _userTurnAudioBuffer.Clear();
 
                 _mlTurnService.AnalyzeTurn(turnAudio);
 
@@ -661,29 +698,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        // COMMON
-        private void ResetTurnState()
-        {
-            CancelMlFallbackTimer();
-            _userTurnAudioBuffer.Clear();
-            _userTurnTextBuffer.Clear();
-            _userTurnTextFinalBuffer.Clear();
-            _currentTurnWordCount = 0;
-            _isUserTurnActive = false;
-            _isAgentPaused = false;
-            _vadHasIndicatedTurnEnd = false;
-            _sttHasProvidedFinalTranscript = false;
-            _turnEndVadTracker?.Reset();
-            _pauseTriggerVadTracker?.Reset();
-            _aiHasIndicatedTurnEnd = false;
-            _mlHasIndicatedTurnEnd = false;
-            _isAwaitingVerification = false;
-            _canInterruptAgentAfterVerificaiton = false;
-            _hasVerifiedInterruptionResult = false;
-            _agentState.CurrentTurn = null;
-        }
-
-
         // Disposal
         public void Dispose()
         {
@@ -694,7 +708,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (_pauseTriggerVadTracker != null) _agentState.SileroVadCore.SpeechProbabilityUpdated -= _pauseTriggerVadTracker.ProcessProbability;
             }
             _turnEndLLMCTS?.Cancel();
+            _interruptionVerificationLLMCTS?.Cancel();
             (_turnEndLLMService as IDisposable)?.Dispose();
+            (_interruptionVerificationLLMService as IDisposable)?.Dispose();
         }
     }
 }

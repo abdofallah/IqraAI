@@ -46,7 +46,8 @@ namespace IqraCore.Entities.Conversation.Turn
         Processing,
         Completed,
         Cancelled, // Interrupted before it could even start
-        Interrupted // Interrupted mid-stream
+        Interrupted, // Interrupted mid-stream
+        Error
     }
 
     public enum AgentToolType

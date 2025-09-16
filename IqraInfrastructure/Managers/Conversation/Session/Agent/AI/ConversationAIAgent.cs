@@ -68,16 +68,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Public Interface
         public string AgentId => _agentState.AgentId;
         public ConversationAgentType AgentType => ConversationAgentType.AI;
-
         public ConversationAgentConfiguration AgentConfiguration => _agentConfiguration;
 
         // Events
         public event EventHandler<ConversationAudioGeneratedEventArgs>? AudioGenerated;
-
-        public event EventHandler<ConversationTextGeneratedEventArgs>? AgentTextResponse;
-        public event EventHandler<ConversationTextReceivedEventArgs>? ClientTextQuery;
         public event EventHandler<object?> ClearBufferedAudio;
-
         public event EventHandler<ConversationAgentThinkingEventArgs>? Thinking; // TODO: Wire this up if needed
         public event EventHandler<ConversationAgentErrorEventArgs>? ErrorOccurred;
 
@@ -155,37 +150,37 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Initalize
         private void WireUpEvents()
         {
-            // Audio Output -> Orchestrator (Public Events)
+            // Audio Output
             _audioOutputHandler.AudioChunkGenerated += (sender, args) => AudioGenerated?.Invoke(this, args);
             _audioOutputHandler.TurnUpdate += OnTurnUpdated;
             _audioOutputHandler.AgentResponsePlaybackComplete += OnAgentResponsePlaybackComplete;
             _audioOutputHandler.OnAudioBufferCleared += (sender, args) => ClearBufferedAudio?.Invoke(this, args);
 
-            // STT Handler -> Orchestrator (Process Text)
+            // STT Handler 
             _sttHandler.TranscriptionReceived += (text, isFinal) =>
             {
                 _turnManager.ProcessTranscriptionForTurnAnalysis(text, isFinal);
             };
 
-            // Turn End/Interruption Handler
+            // Turn End/Interruption
             _turnManager.NewTurnCreated += OnNewTurnCreated;
             _turnManager.UserTurnFinalized += OnUserTurnFinalizedAsync;
             _turnManager.VerifiedInterruptionOccurred += OnVerifiedInterruptionOccurredAsync;
             _turnManager.AgentShouldPause += OnAgentShouldPauseAsync;
             _turnManager.AgentShouldResume += OnAgentShouldResumeAsync;
 
-            // LLM Handler -> Orchestrator/Other Modules
+            // LLM Handler
             _llmHandler.SynthesizeTextSegmentRequested += OnSynthesizeTextSegmentRequested;
             _llmHandler.SystemToolExecutionRequested += OnSystemToolExecutionRequested;
             _llmHandler.CustomToolExecutionRequested += OnCustomToolExecutionRequested;
 
-            // Tool Executor -> LLM / Audio / Orchestrator
+            // Tool Executor
             _toolExecutor.TurnUpdate += OnTurnUpdated;
             _toolExecutor.ToolResultAvailable += OnToolResultAvailable;
             _toolExecutor.PlaySpeechRequested += OnPlaySpeechRequested;
             _toolExecutor.EndConversationRequested += OnEndConversationRequested;
-             _toolExecutor.TransferToAIAgentRequested += OnTransferToAIAgentRequested;
-             _toolExecutor.TransferToHumanAgentRequested += OnTransferToHumanAgentRequested;
+            //_toolExecutor.TransferToAIAgentRequested += OnTransferToAIAgentRequested;
+            //_toolExecutor.TransferToHumanAgentRequested += OnTransferToHumanAgentRequested;
             _toolExecutor.SendDTMFRequested += async (digits) =>
             {
                 IConversationClient? client = _conversationSessionManager.PrimaryClient;
@@ -195,7 +190,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             };
 
-             // NEW: DTMF Session Manager Events -> Orchestrator/LLM
+             // DTMF Session Manager
              _dtmfSessionManager.SessionEnded += OnDtmfSessionEnded;
         }
         public async Task InitializeAsync()
@@ -293,17 +288,27 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (!_agentState.IsInitialized) return;
             _logger.LogWarning("Agent {AgentId}: Maximum conversation duration reached.", AgentId);
 
-            // Stop accepting new input
             _agentState.IsAcceptingSTTAudio = false;
-            // TODO: Maybe stop VAD processing too?
-
-            // Cancel any ongoing agent response forcefully
             await _llmHandler.CancelCurrentLLMTaskAsync();
             await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
 
             // Instruct LLM to end the call immediately
-            string endCallCommand = $"Maximum duration of {_agentState.CurrentSessionContext?.Timeout.MaxCallTimeS ?? 0} seconds reached perform end_call with reason and notifying customer why right away.";
-            await _llmHandler.ProcessSystemMessageAsync(endCallCommand, _agentState.CurrentClientId, _conversationCTS.Token); // todo this is problematic
+            var reason = $"System Event: Maximum duration of {_agentState.CurrentSessionContext?.Timeout.MaxCallTimeS ?? 0} seconds reached.";
+
+            var finalTurn = new ConversationTurn
+            {
+                Sequence = (await _conversationSessionManager.GetTurnsAsync()).Count + 1,
+                User = new UserInput
+                {
+                    SenderId = "System",
+                    TranscribedText = reason,
+                    StartedSpeakingAt = DateTime.UtcNow,
+                    FinishedSpeakingAt = DateTime.UtcNow
+                },
+                Status = TurnStatus.UserInputEnded
+            };
+
+            await OnUserTurnFinalizedAsync(finalTurn);
         }
         public async Task ShutdownAsync(string reason)
         {
@@ -347,8 +352,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // _toolExecutor?.Dispose(); // If it implements IDisposable
 
             AudioGenerated = null;
-            AgentTextResponse = null;
-            ClientTextQuery = null;
             ClearBufferedAudio = null;
             Thinking = null;
             ErrorOccurred = null;
@@ -357,11 +360,31 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _logger.LogInformation("AI Agent {AgentId} shut down complete.", AgentId);
         }
+        public async Task FinalizeCurrentTurn(TurnStatus finalStatus, string? reason = null)
+        {
+            if (_agentState.CurrentTurn != null)
+            {
+                var turnToFinalize = _agentState.CurrentTurn;
+                turnToFinalize.Status = finalStatus;
+                turnToFinalize.CompletedAt = DateTime.UtcNow;
+
+                if (turnToFinalize.Response.ToolExecution != null && turnToFinalize.Response.CompletedAt == null)
+                {
+                    turnToFinalize.Response.Status = AgentResponseStatus.Completed;
+                    turnToFinalize.Response.CompletedAt = DateTime.UtcNow;
+                }
+
+                await _conversationSessionManager.NotifyTurnUpdated(turnToFinalize);
+            }
+
+            _agentState.CurrentTurn = null;
+            _turnManager.ResetForNewTurn();
+        }
 
         // Agent Input Management
-        public Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken)
+        public async Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken)
         {
-            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return Task.CompletedTask;
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
 
             // Set client ID (important for multi-participant, maybe less so for 1-1)
             // todo dont know what this is used for, might be problematic if turn by turn is not enabled?
@@ -378,20 +401,19 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             // Pass to input handler
             _audioInputHandler.QueueAudioChunk(audioData, cancellationToken);
-            return Task.CompletedTask;
         }
-        public Task ProcessTextAsync(string text, string? clientId, CancellationToken cancellationToken)
+        public async Task ProcessTextAsync(string text, string? clientId, CancellationToken cancellationToken)
         {
             if (clientId != null)
             {
                 _agentState.CurrentClientId = clientId;
             }
 
-            return _turnManager.ProcessDirectTextInputAsync(text, cancellationToken);
+            await _turnManager.ProcessDirectTextInputAsync(text, cancellationToken);
         }
-        public Task ProcessDTMFAsync(string digit, string? clientId, CancellationToken cancellationToken)
+        public async Task ProcessDTMFAsync(string digit, string? clientId, CancellationToken cancellationToken)
         {
-            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return Task.CompletedTask;
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
 
             if (clientId != null) _agentState.CurrentClientId = clientId;
 
@@ -399,8 +421,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _dtmfSessionManager.ProcessDigit(digit);
 
             // No need for language selection logic here anymore, it's handled by OnDtmfSessionEnded
-
-            return Task.CompletedTask;
         }
         
         // Multi Language
@@ -517,7 +537,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     // Format for LLM history, synthesize raw text
                     string llmHistoryMessage = "response_to_customer: " + openingMessage;
                     _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
-                    AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(llmHistoryMessage, _agentState.CurrentClientId ?? "Start", false)); // Raw text event
                     await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(openingMessage, _conversationCTS.Token);
                 }
                 else
@@ -542,31 +561,28 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async void OnNewTurnCreated(ConversationTurn newTurn)
         {
             // The agent is now the authority for the sequence number.
-            var turnsInDb = await _conversationSession.GetTurnsAsync(); // We need to implement this method
+            var turnsInDb = await _conversationSessionManager.GetTurnsAsync(); // We need to implement this method
             newTurn.Sequence = turnsInDb.Count + 1;
 
             _agentState.CurrentTurn = newTurn;
 
-            await _conversationSession.NotifyTurnStarted(_agentState.CurrentTurn);
-            _logger.LogInformation("Agent {AgentId}: Started new turn {TurnId} (Sequence: {Seq})", AgentId, newTurn.Id, newTurn.Sequence);
+            await _conversationSessionManager.NotifyTurnStarted(_agentState.CurrentTurn);
         }
         private async void OnTurnUpdated(object? sender, ConversationTurn turn)
         {
-            await _conversationSession.NotifyTurnUpdated(turn);
-            _logger.LogTrace("Agent {AgentId}: Updated turn {TurnId} in database.", AgentId, turn.Id);
+            await _conversationSessionManager.NotifyTurnUpdated(turn);
         }
 
         private async Task OnUserTurnFinalizedAsync(ConversationTurn turn)
         {
             if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
 
-            // First, persist the finalized user input.
-            await _conversationSession.NotifyTurnUpdated(turn);
+            await _conversationSessionManager.NotifyTurnUpdated(turn);
 
             try
             {
-                _agentState.CurrentTurn.Status = TurnStatus.AgentProcessing;
-                await _conversationSession.NotifyTurnUpdated(_agentState.CurrentTurn);
+                _agentState.CurrentTurn!.Status = TurnStatus.AgentProcessing;
+                await _conversationSessionManager.NotifyTurnUpdated(_agentState.CurrentTurn);
 
                 await _llmHandler.CancelCurrentLLMTaskAsync();
                 await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
@@ -578,28 +594,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogError(ex, "Error processing finalized user turn {TurnId}", turn.Id);
                 await FinalizeCurrentTurn(TurnStatus.Error, "Error processing user turn");
             }
-        }
-        public async Task FinalizeCurrentTurn(TurnStatus finalStatus, string? reason = null)
-        {
-            if (_agentState.CurrentTurn != null)
-            {
-                _agentState.CurrentTurn.Status = finalStatus;
-                _agentState.CurrentTurn.CompletedAt = DateTime.UtcNow;
-
-                // If the response was a tool and it's now complete, update its status
-                if (_agentState.CurrentTurn.Response.ToolExecution != null && _agentState.CurrentTurn.Response.CompletedAt == null)
-                {
-                    _agentState.CurrentTurn.Response.Status = AgentResponseStatus.Completed;
-                    _agentState.CurrentTurn.Response.CompletedAt = DateTime.UtcNow;
-                }
-
-                await _conversationSession.NotifyTurnUpdated(_agentState.CurrentTurn);
-                _logger.LogInformation("Agent {AgentId}: Finalized turn {TurnId} with status {Status}", AgentId, _agentState.CurrentTurn.Id, finalStatus);
-            }
-
-            // Reset state for the next turn.
-            _agentState.CurrentTurn = null;
-            _turnManager.ResetForNewTurn(); // We'll rename ResetTurnState to be more explicit.
         }
 
         // LLM Handler
@@ -619,18 +613,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Tool Executor Handler
         private async Task OnToolResultAvailable(ConversationTurn turnWithResult)
         {
-            // Persist the result of the tool execution first.
-            await _conversationSession.NotifyTurnUpdated(turnWithResult);
+            turnWithResult.Status = TurnStatus.Completed;
 
-            // Now, send the result back to the LLM to continue the conversation.
+            await _conversationSessionManager.NotifyTurnUpdated(turnWithResult);
             await _llmHandler.ProcessToolResultAsync(turnWithResult, _conversationCTS.Token);
         }
         private async Task OnPlaySpeechRequested(ConversationTurn turn, string message, CancellationToken token)
         {
-            // We can add this message as a special, non-interruptible segment to the turn.
             var speechData = new SpeechSegmentData { Text = message, WasInterrupted = false };
             turn.Response.SpokenSegments.Add(speechData);
-            await _conversationSession.NotifyTurnUpdated(turn);
+            await _conversationSessionManager.NotifyTurnUpdated(turn);
 
             await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(message, token);
         }
@@ -638,13 +630,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             string reason = turn.Response.ToolExecution?.ReasonForExecution ?? "Agent requested conversation end.";
             await FinalizeCurrentTurn(TurnStatus.Completed, reason); // Finalize the turn before ending the session
-            await _conversationSession.EndAsync(reason);
+            await _conversationSessionManager.EndAsync(reason);
         }
 
         // Audio Output Handlers
         private async void OnAgentResponsePlaybackComplete(object? sender, ConversationTurn turn)
         {
-            _logger.LogInformation("Agent {AgentId}: Speech playback completed for turn {TurnId}", AgentId, turn.Id);
             await FinalizeCurrentTurn(TurnStatus.Completed);
         }
 
@@ -776,7 +767,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             // The audio output handler has already been cancelled and has updated the turn state.
             // We just need to persist this final interrupted state.
-            await _conversationSession.NotifyTurnUpdated(interruptedTurn);
+            await _conversationSessionManager.NotifyTurnUpdated(interruptedTurn);
 
             // Finalize the old, interrupted turn.
             await FinalizeCurrentTurn(TurnStatus.Interrupted, "Interrupted by user");
