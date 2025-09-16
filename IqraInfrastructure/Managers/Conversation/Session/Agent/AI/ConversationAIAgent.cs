@@ -4,6 +4,7 @@ using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Managers.Business;
@@ -156,9 +157,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             // Audio Output -> Orchestrator (Public Events)
             _audioOutputHandler.AudioChunkGenerated += (sender, args) => AudioGenerated?.Invoke(this, args);
-            _audioOutputHandler.SpeechPlaybackComplete += OnSpeechPlaybackComplete; // Handle completion signal
+            _audioOutputHandler.TurnUpdate += OnTurnUpdated;
+            _audioOutputHandler.AgentResponsePlaybackComplete += OnAgentResponsePlaybackComplete;
             _audioOutputHandler.OnAudioBufferCleared += (sender, args) => ClearBufferedAudio?.Invoke(this, args);
-            _audioOutputHandler.SpeechPlaybackComplete += () => _turnManager.NotifyAgentSpeechCompleted();
 
             // STT Handler -> Orchestrator (Process Text)
             _sttHandler.TranscriptionReceived += (text, isFinal) =>
@@ -167,40 +168,24 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             };
 
             // Turn End/Interruption Handler
-            _turnManager.UserTurnEnded += OnUserTurnEndedAsync;
+            _turnManager.NewTurnCreated += OnNewTurnCreated;
+            _turnManager.UserTurnFinalized += OnUserTurnFinalizedAsync;
+            _turnManager.VerifiedInterruptionOccurred += OnVerifiedInterruptionOccurredAsync;
             _turnManager.AgentShouldPause += OnAgentShouldPauseAsync;
             _turnManager.AgentShouldResume += OnAgentShouldResumeAsync;
-            _turnManager.VerifiedInterruptionOccurred += OnVerifiedInterruptionOccurredAsync;
 
             // LLM Handler -> Orchestrator/Other Modules
-            _llmHandler.SynthesizeTextRequested += (text) => _audioOutputHandler.SynthesizeAndQueueSpeechAsync(text, CancellationToken.None); // TODO Use appropriate token
-
-            _llmHandler.AIAgentResponseCompleted += (text) => AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(text, _agentState.CurrentClientId, true));
-            _llmHandler.TextRecievedForLLMToProcess += (text, clientId) => ClientTextQuery?.Invoke(clientId, new ConversationTextReceivedEventArgs(text, _agentState.AgentId, true));
-
-            _llmHandler.ResponseHandlingComplete += OnLLMResponseHandlingComplete; // May not be needed if SpeechPlaybackComplete is used
-            _llmHandler.SystemToolExecutionRequested += (content) => _toolExecutor.HandleSystemToolAsync(content, _conversationCTS.Token, _agentState.CurrentClientId); // Use agent token
-            _llmHandler.CustomToolExecutionRequested += (content) => _toolExecutor.HandleCustomToolAsync(content, _conversationCTS.Token); // Use agent token
+            _llmHandler.SynthesizeTextSegmentRequested += OnSynthesizeTextSegmentRequested;
+            _llmHandler.SystemToolExecutionRequested += OnSystemToolExecutionRequested;
+            _llmHandler.CustomToolExecutionRequested += OnCustomToolExecutionRequested;
 
             // Tool Executor -> LLM / Audio / Orchestrator
-            _toolExecutor.ToolResultAvailable += (result) => _llmHandler.ProcessSystemMessageAsync(result, _agentState.CurrentClientId ?? "System", _conversationCTS.Token); // Feed result back
-            _toolExecutor.PlaySpeechRequested += (text, token) => _audioOutputHandler.SynthesizeAndPlayBlockingAsync(text, token); // Request blocking speech
-            _toolExecutor.EndConversationRequested += async (reason) => {
-                 _logger.LogInformation("Agent {AgentId} requested conversation end via tool. Reason: {Reason}", AgentId, reason);
-                 // Raise event instead of directly calling session manager? Consistent pattern.
-                 // Optionally still call shutdown locally? No, let SessionManager handle it.
-                 // await ShutdownAsync(reason);
-                 await _conversationSessionManager.EndAsync(reason);
-            };
-             // NEW: Handle transfer requests from Tool Executor
-             _toolExecutor.TransferToAIAgentRequested += async (reason, nodeId) => {
-                 _logger.LogInformation("Agent {AgentId} requested transfer to AI Agent via tool. Reason: {Reason}, Node: {NodeId}", AgentId, reason, nodeId);
-                 // TODO: Need a way to map nodeId/reason to specific target agent/context if needed.
-                 // For now, just signal the end with a transfer reason.
-             };
-             _toolExecutor.TransferToHumanAgentRequested += async (reason, nodeId) => {
-                 _logger.LogInformation("Agent {AgentId} requested transfer to Human Agent via tool. Reason: {Reason}, Node: {NodeId}", AgentId, reason, nodeId);
-             };
+            _toolExecutor.TurnUpdate += OnTurnUpdated;
+            _toolExecutor.ToolResultAvailable += OnToolResultAvailable;
+            _toolExecutor.PlaySpeechRequested += OnPlaySpeechRequested;
+            _toolExecutor.EndConversationRequested += OnEndConversationRequested;
+             _toolExecutor.TransferToAIAgentRequested += OnTransferToAIAgentRequested;
+             _toolExecutor.TransferToHumanAgentRequested += OnTransferToHumanAgentRequested;
             _toolExecutor.SendDTMFRequested += async (digits) =>
             {
                 IConversationClient? client = _conversationSessionManager.PrimaryClient;
@@ -553,26 +538,117 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // TODO: Enable VAD if needed (_vadService.Start() ?)
         }
 
-        // Event Handlers
-        private void OnSpeechPlaybackComplete()
+        // Turn Event Handlers
+        private async void OnNewTurnCreated(ConversationTurn newTurn)
         {
-            // This is signaled by AudioOutput when the speech queue is empty and the last segment finished playing.
-            _logger.LogInformation("Agent {AgentId}: Received signal that speech playback is complete.", AgentId);
-            // If LLM was waiting for speech, it can now proceed (if necessary)
-            // This helps decouple LLM completion from actual audio finishing.
+            // The agent is now the authority for the sequence number.
+            var turnsInDb = await _conversationSession.GetTurnsAsync(); // We need to implement this method
+            newTurn.Sequence = turnsInDb.Count + 1;
 
-            // Potentially signal LLM handler if it needs to wait for speech before continuing?
-            // Or use to re-enable STT input after agent speaks?
-            // If (! _agentState.IsExecutingTool && !_dtmfSessionManager.IsSessionActive) {
-            //    _agentState.IsAcceptingSTTAudio = true; // Re-enable listening? Context dependent.
-            // }
+            _agentState.CurrentTurn = newTurn;
+
+            await _conversationSession.NotifyTurnStarted(_agentState.CurrentTurn);
+            _logger.LogInformation("Agent {AgentId}: Started new turn {TurnId} (Sequence: {Seq})", AgentId, newTurn.Id, newTurn.Sequence);
         }
-        private void OnLLMResponseHandlingComplete()
+        private async void OnTurnUpdated(object? sender, ConversationTurn turn)
         {
-            // This is signaled by LLMHandler when it finishes processing a 'response_to_customer' stream.
-            _logger.LogInformation("Agent {AgentId}: Received signal that LLM response handling is complete.", AgentId);
-            // Usually followed by waiting for OnSpeechPlaybackComplete.
+            await _conversationSession.NotifyTurnUpdated(turn);
+            _logger.LogTrace("Agent {AgentId}: Updated turn {TurnId} in database.", AgentId, turn.Id);
         }
+
+        private async Task OnUserTurnFinalizedAsync(ConversationTurn turn)
+        {
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
+
+            // First, persist the finalized user input.
+            await _conversationSession.NotifyTurnUpdated(turn);
+
+            try
+            {
+                _agentState.CurrentTurn.Status = TurnStatus.AgentProcessing;
+                await _conversationSession.NotifyTurnUpdated(_agentState.CurrentTurn);
+
+                await _llmHandler.CancelCurrentLLMTaskAsync();
+                await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
+
+                await _llmHandler.ProcessUserTurnAsync(turn, _conversationCTS.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing finalized user turn {TurnId}", turn.Id);
+                await FinalizeCurrentTurn(TurnStatus.Error, "Error processing user turn");
+            }
+        }
+        public async Task FinalizeCurrentTurn(TurnStatus finalStatus, string? reason = null)
+        {
+            if (_agentState.CurrentTurn != null)
+            {
+                _agentState.CurrentTurn.Status = finalStatus;
+                _agentState.CurrentTurn.CompletedAt = DateTime.UtcNow;
+
+                // If the response was a tool and it's now complete, update its status
+                if (_agentState.CurrentTurn.Response.ToolExecution != null && _agentState.CurrentTurn.Response.CompletedAt == null)
+                {
+                    _agentState.CurrentTurn.Response.Status = AgentResponseStatus.Completed;
+                    _agentState.CurrentTurn.Response.CompletedAt = DateTime.UtcNow;
+                }
+
+                await _conversationSession.NotifyTurnUpdated(_agentState.CurrentTurn);
+                _logger.LogInformation("Agent {AgentId}: Finalized turn {TurnId} with status {Status}", AgentId, _agentState.CurrentTurn.Id, finalStatus);
+            }
+
+            // Reset state for the next turn.
+            _agentState.CurrentTurn = null;
+            _turnManager.ResetForNewTurn(); // We'll rename ResetTurnState to be more explicit.
+        }
+
+        // LLM Handler
+        private async Task OnSynthesizeTextSegmentRequested(ConversationTurn turn, string textSegment)
+        {
+            await _audioOutputHandler.SynthesizeAndQueueSpeechAsync(turn, textSegment, _conversationCTS.Token);
+        }
+        private async Task OnSystemToolExecutionRequested(ConversationTurn turn)
+        {
+            await _toolExecutor.HandleSystemToolAsync(turn, _conversationCTS.Token);
+        }
+        private async Task OnCustomToolExecutionRequested(ConversationTurn turn)
+        {
+            await _toolExecutor.HandleCustomToolAsync(turn, _conversationCTS.Token);
+        }
+
+        // Tool Executor Handler
+        private async Task OnToolResultAvailable(ConversationTurn turnWithResult)
+        {
+            // Persist the result of the tool execution first.
+            await _conversationSession.NotifyTurnUpdated(turnWithResult);
+
+            // Now, send the result back to the LLM to continue the conversation.
+            await _llmHandler.ProcessToolResultAsync(turnWithResult, _conversationCTS.Token);
+        }
+        private async Task OnPlaySpeechRequested(ConversationTurn turn, string message, CancellationToken token)
+        {
+            // We can add this message as a special, non-interruptible segment to the turn.
+            var speechData = new SpeechSegmentData { Text = message, WasInterrupted = false };
+            turn.Response.SpokenSegments.Add(speechData);
+            await _conversationSession.NotifyTurnUpdated(turn);
+
+            await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(message, token);
+        }
+        private async Task OnEndConversationRequested(ConversationTurn turn)
+        {
+            string reason = turn.Response.ToolExecution?.ReasonForExecution ?? "Agent requested conversation end.";
+            await FinalizeCurrentTurn(TurnStatus.Completed, reason); // Finalize the turn before ending the session
+            await _conversationSession.EndAsync(reason);
+        }
+
+        // Audio Output Handlers
+        private async void OnAgentResponsePlaybackComplete(object? sender, ConversationTurn turn)
+        {
+            _logger.LogInformation("Agent {AgentId}: Speech playback completed for turn {TurnId}", AgentId, turn.Id);
+            await FinalizeCurrentTurn(TurnStatus.Completed);
+        }
+
+        // Event Handlers
         private async void OnDtmfSessionEnded(object? sender, DTMFSessionEventArgs args)
         {
             _logger.LogInformation("Agent {AgentId}: DTMF session for Node {NodeId} ended. Reason: {Reason}, Digits: '{Digits}'",
@@ -688,27 +764,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 await _llmHandler.ProcessSystemMessageAsync(resultMessage, args.ClientId, CancellationToken.None); // Use CancellationToken.None? Or master token?
             }
         }
-        private async Task OnUserTurnEndedAsync(string finalText)
-        {
-            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
-
-            // Reset STT recognizing flag as the turn is over.
-            _agentState.IsSTTRecognizing = false;
-
-            try
-            {
-                await _llmHandler.CancelCurrentLLMTaskAsync();
-                await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
-
-                await _llmHandler.ProcessUserTextAsync(finalText, _agentState.CurrentClientId, _conversationCTS.Token);
-            }
-            catch (OperationCanceledException) { /* Expected */ }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Agent {AgentId}: Error processing text for ended turn: {Text}", AgentId, finalText);
-                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs($"Error processing text: {ex.Message}", ex));
-            }
-        }
         private async Task OnAgentShouldPauseAsync()
         {
             await _audioOutputHandler.PausePlaybackAsync();
@@ -717,12 +772,19 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             await _audioOutputHandler.ResumePlaybackAsync();
         }
-        private async Task OnVerifiedInterruptionOccurredAsync(string interruptingText)
+        private async Task OnVerifiedInterruptionOccurredAsync(ConversationTurn interruptedTurn)
         {
-            await _llmHandler.CancelCurrentLLMTaskAsync();
-            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
+            // The audio output handler has already been cancelled and has updated the turn state.
+            // We just need to persist this final interrupted state.
+            await _conversationSession.NotifyTurnUpdated(interruptedTurn);
 
-            await _llmHandler.ProcessUserTextAsync(interruptingText, _agentState.CurrentClientId, _conversationCTS.Token);
+            // Finalize the old, interrupted turn.
+            await FinalizeCurrentTurn(TurnStatus.Interrupted, "Interrupted by user");
+
+            // Now, treat the user's interrupting speech as the start of a NEW turn.
+            // The TurnManager will have already created a new turn object for the interrupting speech.
+            // The OnUserTurnFinalizedAsync handler will be called next for this new turn.
+            // We just need to make sure the state is clean.
         }
 
         // Disposal

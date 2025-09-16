@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
@@ -15,10 +16,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
     public class ConversationAIAgentTurnAndInterruptionManager : IDisposable
     {
-        public event Func<string, Task>? UserTurnEnded;
+        public event Func<ConversationTurn, Task>? UserTurnFinalized;
+
+        public event Action<ConversationTurn>? NewTurnCreated;
         public event Func<Task>? AgentShouldPause;
         public event Func<Task>? AgentShouldResume;
-        public event Func<string, Task>? VerifiedInterruptionOccurred;
+        public event Func<ConversationTurn, Task>? VerifiedInterruptionOccurred;
 
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationAIAgentTurnAndInterruptionManager> _logger;
@@ -374,11 +377,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return; // Conditions not yet met.
             }
 
+            if (_agentState.CurrentTurn == null)
+            {
+                _logger.LogError("Attempted to conclude a user turn, but no active turn object exists.");
+                ResetTurnState();
+                return;
+            }
+
             var finalText = _userTurnTextFinalBuffer.ToString().Trim();
+            _agentState.CurrentTurn.User.TranscribedText = finalText;
+            _agentState.CurrentTurn.User.FinishedSpeakingAt = DateTime.UtcNow;
+            _agentState.CurrentTurn.Status = TurnStatus.UserInputEnded;
 
             if (!_isAgentPaused)
             {
-                UserTurnEnded?.Invoke(finalText);
+                UserTurnFinalized?.Invoke(_agentState.CurrentTurn);
             }
             else
             {
@@ -390,7 +403,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         {
                             if (_canInterruptAgentAfterVerificaiton)
                             {
-                                VerifiedInterruptionOccurred?.Invoke(_userTurnTextFinalBuffer.ToString());
+                                _agentState.CurrentTurn.Status = TurnStatus.Interrupted;
+                                VerifiedInterruptionOccurred?.Invoke(_agentState.CurrentTurn);
                             }
                             else
                             {
@@ -422,8 +436,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             }
 
-            // A conclusion was reached, so reset state for the next turn.
-            ResetTurnState();
+            // DO NOT reset turn state here. Resetting now happens after the agent response is complete.
+            // Only reset the user-input specific parts.
+            _userTurnTextBuffer.Clear();
+            _userTurnTextFinalBuffer.Clear();
+            _isUserTurnActive = false;
         }
         // AI Turn End
         private async Task CheckAITurnEndAsync(string currentUtterance)
@@ -568,8 +585,27 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // ML Turn End
         private void OnMLTurnVadSpeechStarted()
         {
-            _isUserTurnActive = true;
-            _mlHasIndicatedTurnEnd = false;
+            if (_agentState.CurrentTurn == null)
+            {
+                _isUserTurnActive = true;
+                _mlHasIndicatedTurnEnd = false;
+
+                int sequence = _conversationSession.GetTurns().Count + 1;
+
+                var newTurn = new ConversationTurn
+                {
+                    Sequence = sequence,
+                    User = new UserInput
+                    {
+                        SenderId = _agentState.CurrentClientId ?? "Unknown",
+                        StartedSpeakingAt = DateTime.UtcNow
+                    }
+                };
+
+                _agentState.CurrentTurn = newTurn;
+
+                NewTurnCreated?.Invoke(newTurn);
+            }
         }
         private void TriggerMlAnalysis()
         {
@@ -644,6 +680,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _isAwaitingVerification = false;
             _canInterruptAgentAfterVerificaiton = false;
             _hasVerifiedInterruptionResult = false;
+            _agentState.CurrentTurn = null;
         }
 
 

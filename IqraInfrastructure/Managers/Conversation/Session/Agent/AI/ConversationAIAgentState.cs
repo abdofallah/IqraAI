@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Context;
+using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.VAD.Silero;
 using System.Text;
@@ -34,16 +35,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public string LLMBaseSystemPrompt { get; set; } = string.Empty;
 
         // Vad Related
-        public SileroVadCore? SileroVadCore;
+        public SileroVadCore? SileroVadCore { get; set; } = null;
+
+        // Turn Management
+        public ConversationTurn? CurrentTurn { get; set; } = null;
 
 
         // Runtime State Flags & Variables
         public bool IsInitialized { get; set; } = false;
         public bool IsResponding { get; set; } = false;
-        public bool IsExecutingSystemTool { get; set; } = false;
-        public bool IsRespondingSystemToolRespone { get; set; } = false;
-        public bool IsExecutingCustomTool { get; set; } = false;
-        public bool IsRespondingCustomToolRespone { get; set; } = false;
         public bool IsAcceptingSTTAudio { get; set; } = false;
 
         // Audio Output State

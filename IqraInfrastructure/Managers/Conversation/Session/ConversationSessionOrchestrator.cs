@@ -6,6 +6,7 @@ using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Context.Action;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
@@ -50,15 +51,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly List<IConversationAgent> _agents = new();
         private IConversationAgent? _primaryAgent = null;
 
-        private readonly List<ConversationMessage> _messages = new();
-
         private BusinessData _sessionBusinessData;
         private BusinessApp _sessionBusinessAppData;
         private ConversationSessionContext _sessionContextData;
 
         private readonly object _clientsLock = new();
         private readonly object _agentsLock = new();
-        private readonly object _messagesLock = new();
 
         private ConversationSessionState _state = ConversationSessionState.Created;
         private DateTime _lastUserActivityTime = DateTime.UtcNow;
@@ -69,12 +67,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private bool disposedValue;
 
         public event EventHandler<ConversationSessionStateChangedEventArgs>? StateChanged;
-        public event EventHandler<ConversationMessageAddedEventArgs>? MessageAdded;
         public event EventHandler<ConversationDTMFReceivedEventArgs>? DTMFRecieved;
         public event EventHandler<ConversationClientAddedEventArgs>? ClientAdded;
         public event EventHandler<ConversationClientRemovedEventArgs>? ClientRemoved;
         public event EventHandler<ConversationAgentAddedEventArgs>? AgentAdded;
         public event EventHandler<ConversationAgentRemovedEventArgs>? AgentRemoved;
+        // --- NEW TURN MANAGEMENT ---
+        public event EventHandler<ConversationTurnEventArgs>? TurnStarted;
+        public event EventHandler<ConversationTurnEventArgs>? TurnUpdated;
+        public event EventHandler<ConversationTurnEventArgs>? TurnCompleted;
+        // --- END NEW ---
 
         public event EventHandler<object>? SessionEnded;
 
@@ -388,7 +390,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
                 // Register event handlers
                 client.AudioReceived += OnClientAudioReceived;
-                client.TextReceived += OnClientTextReceived;
                 if (client.ClientType == ConversationClientType.Telephony)
                 {
                     ((BaseTelephonyConversationClient)client).DTMFReceived += OnClientDTMFReceived;
@@ -439,7 +440,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
                 // Unregister event handlers
                 client.AudioReceived -= OnClientAudioReceived;
-                client.TextReceived -= OnClientTextReceived;
                 if (client.ClientType == ConversationClientType.Telephony)
                 {
                     ((BaseTelephonyConversationClient)client).DTMFReceived -= OnClientDTMFReceived;
@@ -515,8 +515,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 // Register event handlers
                 agent.AudioGenerated += OnAgentAudioGenerated;
 
-                agent.AgentTextResponse += OnAgentTextResponse;
-                agent.ClientTextQuery += OnClientTextReceived;
                 agent.ClearBufferedAudio += OnClearAgentsSentAudioWriteOnClient;
 
                 agent.Thinking += OnAgentThinking;
@@ -567,8 +565,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 // Unregister event handlers
                 agent.AudioGenerated -= OnAgentAudioGenerated;
 
-                agent.AgentTextResponse -= OnAgentTextResponse;
-                agent.ClientTextQuery -= OnClientTextReceived;
                 agent.ClearBufferedAudio -= OnClearAgentsSentAudioWriteOnClient;
 
                 agent.Thinking -= OnAgentThinking;
@@ -738,13 +734,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             // Dispose
             Dispose();
         }
-        public IReadOnlyList<ConversationMessage> GetHistory()
-        {
-            lock (_messagesLock)
-            {
-                return _messages.ToList().AsReadOnly();
-            }
-        }
         public void AddLogEntry(ConversationLogLevel level, string message, object? data = null)
         {
             try
@@ -790,6 +779,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             // Notify event subscribers
             StateChanged?.Invoke(this, new ConversationSessionStateChangedEventArgs(oldState, newState, reason));
+        }
+        public async Task<IReadOnlyList<ConversationTurn>> GetTurnsAsync()
+        {
+            var state = await _conversationStateRepository.GetByIdAsync(_sessionId);
+            return state?.Turns?.AsReadOnly() ?? new List<ConversationTurn>().AsReadOnly();
         }
 
         // Timers for Silence / Max Duration
@@ -948,7 +942,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                         {
                             if (cachedConversation == null)
                             {
-                                cachedConversation = JsonSerializer.Serialize(_messages);
+                                // TODO why not just use the current class turns
+                                var finalState = await _conversationStateRepository.GetByIdAsync(_sessionId);
+                                cachedConversation = JsonSerializer.Serialize(finalState.Turns);
                             }
 
                             stringValue = stringValue
@@ -1023,6 +1019,22 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error executing call ended action for session {SessionId}", _sessionId);
+            }
+        }
+
+        // Turn Event Handlers
+        public async Task NotifyTurnStarted(ConversationTurn turn)
+        {
+            await _conversationStateRepository.StartNewTurnAsync(_sessionId, turn);
+            TurnStarted?.Invoke(this, new ConversationTurnEventArgs(turn));
+        }
+        public async Task NotifyTurnUpdated(ConversationTurn turn)
+        {
+            await _conversationStateRepository.UpdateTurnAsync(_sessionId, turn);
+            TurnUpdated?.Invoke(this, new ConversationTurnEventArgs(turn));
+            if (turn.Status == TurnStatus.Completed || turn.Status == TurnStatus.Interrupted || turn.Status == TurnStatus.Error)
+            {
+                TurnCompleted?.Invoke(this, new ConversationTurnEventArgs(turn));
             }
         }
 
@@ -1102,76 +1114,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     _logger.LogError(ex, "Error processing audio for agent {AgentId}", agent.AgentId);
                 }
             }
-        }
-        private async void OnClientTextReceived(object? sender, ConversationTextReceivedEventArgs e)
-        {
-            if (sender is string)
-            {
-                sender = _clients.Find(c => c.ClientId == (string)sender);
-            }
-
-            if (sender is not IConversationClient client)
-                return;
-
-            _logger.LogInformation("Received text from client {ClientId}: {Text}", client.ClientId, e.Text);
-
-            // Update last activity time for silence detection
-            _lastUserActivityTime = DateTime.UtcNow;
-
-            // Create a message
-            var message = new ConversationMessage(client.ClientId, ConversationSenderRole.Client, e.Text);
-
-            // Add to history
-            lock (_messagesLock)
-            {
-                _messages.Add(message);
-            }
-
-            // Create message data for storage
-            var messageData = new ConversationMessageData
-            {
-                SenderId = client.ClientId,
-                Role = ConversationSenderRole.Client,
-                Content = e.Text,
-                Timestamp = DateTime.UtcNow
-            };
-
-            // Save to repository
-            await _conversationStateRepository.AddMessageAsync(_sessionId, messageData);
-
-            // Notify event subscribers
-            MessageAdded?.Invoke(this, new ConversationMessageAddedEventArgs(message));
-
-            if (e.OnlySave) return;
-
-            // if target agent is specified, send only to that agent
-            if (!string.IsNullOrEmpty(e.TargetAgentId))
-            {
-                var agent = GetAgents().FirstOrDefault(a => a.AgentId == e.TargetAgentId);
-                if (agent != null)
-                {
-                    await agent.ProcessTextAsync(e.Text, client.ClientId, CancellationToken.None);
-                }
-                else
-                {
-                    _logger.LogWarning("Target agent {TargetAgentId} not found", e.TargetAgentId);
-                }
-                return;
-            }
-
-            // Otherwise Forward the text to all agents
-            foreach (var agent in GetAgents())
-            {
-                try
-                {
-                    await agent.ProcessTextAsync(e.Text, client.ClientId, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error sending text to agent {AgentId}", agent.AgentId);
-                }
-            }
-
         }
         private async void OnClientDTMFReceived(object? sender, ConversationDTMFReceivedEventArgs e)
         {
@@ -1288,72 +1230,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 }
             }
         }
-        private async void OnAgentTextResponse(object? sender, ConversationTextGeneratedEventArgs e)
-        {
-            if (sender is string)
-            {
-                sender = _agents.Find(a => a.AgentId == (string)sender);
-            }
-
-            if (sender is not IConversationAgent agent)
-                return;
-
-            _logger.LogInformation("Agent {AgentId} generated text: {Text}", agent.AgentId, e.Text);
-
-            // Create a message
-            var message = new ConversationMessage(agent.AgentId, ConversationSenderRole.Agent, e.Text);
-
-            // Add to history
-            lock (_messagesLock)
-            {
-                _messages.Add(message);
-            }
-
-            // Create message data for storage
-            var messageData = new ConversationMessageData
-            {
-                SenderId = agent.AgentId,
-                Role = ConversationSenderRole.Agent,
-                Content = e.Text,
-                Timestamp = DateTime.UtcNow
-            };
-
-            // Save to repository
-            await _conversationStateRepository.AddMessageAsync(_sessionId, messageData);
-
-            // Notify event subscribers
-            MessageAdded?.Invoke(this, new ConversationMessageAddedEventArgs(message));
-
-            if (e.OnlySave) return;
-
-            // If target client is specified, send only to that client
-            if (!string.IsNullOrEmpty(e.TargetClientId))
-            {
-                var targetClient = GetClients().FirstOrDefault(c => c.ClientId == e.TargetClientId);
-                if (targetClient != null)
-                {
-                    await targetClient.SendTextAsync(e.Text, CancellationToken.None);
-                }
-                else
-                {
-                    _logger.LogWarning("Target client {ClientId} not found for text from agent {AgentId}", e.TargetClientId, agent.AgentId);
-                }
-                return;
-            }
-
-            // Otherwise, broadcast to all clients
-            foreach (var client in GetClients())
-            {
-                try
-                {
-                    await client.SendTextAsync(e.Text, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error sending text to client {ClientId}", client.ClientId);
-                }
-            }
-        }
+        
         private void OnAgentThinking(object? sender, ConversationAgentThinkingEventArgs e)
         {
             if (sender is string)

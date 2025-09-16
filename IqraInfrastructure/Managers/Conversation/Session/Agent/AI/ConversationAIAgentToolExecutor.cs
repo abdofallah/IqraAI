@@ -1,22 +1,25 @@
-﻿using IqraInfrastructure.Managers.Conversation.Session;
+﻿using IqraCore.Entities.Conversation.Turn;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using Microsoft.Extensions.Logging;
-using PhoneNumbers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using static Google.Cloud.TextToSpeech.V1.MultiSpeakerMarkup.Types;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
     public class ConversationAIAgentToolExecutor
     {
-        public event Func<string, Task>? ToolResultAvailable;
-        public event Func<string, CancellationToken, Task>? PlaySpeechRequested;
-        public event Func<string, Task>? EndConversationRequested;
-        public event Func<string, string?, Task>? TransferToAIAgentRequested; // (reason, nodeId)
-        public event Func<string, string?, Task>? TransferToHumanAgentRequested; // (reason, nodeId)
+        public event EventHandler<ConversationTurn>? TurnUpdate;
+
+        public event Func<ConversationTurn, Task>? ToolResultAvailable;
+        public event Func<ConversationTurn, string, CancellationToken, Task>? PlaySpeechRequested;
+
+        public event Func<ConversationTurn, Task>? EndConversationRequested;
+        public event Func<ConversationTurn, Task>? TransferToAIAgentRequested; // (reason, nodeId)
+        public event Func<ConversationTurn, Task>? TransferToHumanAgentRequested; // (reason, nodeId)
         public event Func<List<char>, Task>? SendDTMFRequested;
         public event Func<string, Task>? AddContextRequested;
         public event Func<string, Task>? ChangeLanguageRequested;
@@ -79,26 +82,37 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             await InitializeAsync();
         }
 
-        public async Task HandleSystemToolAsync(string functionContent, CancellationToken cancellationToken, string? clientId = null)
+        public async Task HandleSystemToolAsync(ConversationTurn turn, CancellationToken cancellationToken)
         {
+            string functionContent = turn.Response.ToolExecution.RawLLMInput;
+            var toolExecutionData = turn.Response.ToolExecution;
+
             try
             {
                 string toolName;
                 string argsRaw = string.Empty;
+                string prefix = "execute_system_function:";
                 int colonIndex = functionContent.IndexOf(':');
 
                 if (colonIndex > 0)
                 {
-                    toolName = functionContent.Substring(0, colonIndex).Trim();
+                    toolName = functionContent.Substring(prefix.Length, colonIndex - prefix.Length).Trim();
                     argsRaw = functionContent.Substring(colonIndex + 1).Trim();
                 }
                 else
                 {
-                    await ToolResultAvailable?.Invoke($"Error: Invalid system tool format '{functionContent}'. Expected 'tool_name: args'.");
+                    toolExecutionData.Result = $"Error: Invalid system tool format '{functionContent}'. Expected 'tool_name: args'.";
+                    toolExecutionData.WasSuccessful = false;
+                    await FinalizeAndReportToolResult(turn);
                     return;
                 }
 
+                toolExecutionData.ToolName = toolName;
                 List<string> arguments = ParseArguments(argsRaw);
+                // We can even store the parsed arguments for better debugging.
+                // toolExecutionData.ParsedArguments = JsonSerializer.SerializeToDocument(arguments);
+
+                TurnUpdate?.Invoke(this, turn);
 
                 // Tool Specific Logic
                 if (toolName.Equals("end_call", StringComparison.OrdinalIgnoreCase))
@@ -109,17 +123,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     // string? nodeId = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null; // todo NodeId not used right now
 
                     if (!string.IsNullOrWhiteSpace(messageToSpeak) && PlaySpeechRequested != null)
-                        await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
-
-                    // TODO make this based on telephony vs web For telephony higher and web low
-                    // somehow know estimate accurate of how much sound delay there is?
-                    await Task.Delay(2000);
+                    {
+                        await PlaySpeechRequested.Invoke(turn, messageToSpeak, cancellationToken);
+                    }
 
                     if (EndConversationRequested != null)
-                        await EndConversationRequested.Invoke(reason);
-                    else
-                        _logger.LogWarning("Agent {AgentId}: EndConversationRequested event has no subscribers.", _agentState.AgentId);
+                    {
+                        await EndConversationRequested.Invoke(turn);
+                    }
 
+                    return;
                 }
                 else if (toolName.Equals("change_language", StringComparison.OrdinalIgnoreCase))
                 {
@@ -460,36 +473,40 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
 
                     var sendSmsResult = await _sendSMSToolExecutionHelper.SendMessageAsync(sendSmsNodeDetails.Data, message, toNumber, cancellationToken);
-                    if (!sendSmsResult.Success)
-                    {
-                        await ToolResultAvailable?.Invoke($"Error: {sendSmsResult.Message}.");
-                        return;
-                    }
+                    toolExecutionData.WasSuccessful = sendSmsResult.Success;
 
-                    await ToolResultAvailable?.Invoke("Success: Successfully sent SMS.");
+                    toolExecutionData.Result = sendSmsResult.Success ? "Success: Successfully sent SMS." : $"Error: {sendSmsResult.Message}.";
                 }
                 else
                 {
-                    await ToolResultAvailable?.Invoke($"Error: Unknown system tool '{toolName}'.");
+                    toolExecutionData.WasSuccessful = false;
+                    toolExecutionData.Result = $"Error: Unknown system tool '{toolName}'.";
                 }
             }
             catch (OperationCanceledException)
             {
-                await ToolResultAvailable?.Invoke($"System tool execution cancelled."); // Optionally notify LLM
+                toolExecutionData.WasSuccessful = false;
+                toolExecutionData.Result = $"System tool execution cancelled.";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Agent {AgentId}: Error executing system tool: {FunctionContent}", _agentState.AgentId, functionContent);
-                await ToolResultAvailable?.Invoke($"Error executing system tool: {ex.Message}");
+                _logger.LogError(ex, "Error executing system tool for turn {TurnId}", turn.Id);
+                toolExecutionData.WasSuccessful = false;
+                toolExecutionData.Result = $"Error executing system tool: {ex.Message}";
             }
+
+            await FinalizeAndReportToolResult(turn);
         }
 
-        public async Task HandleCustomToolAsync(string functionContent, CancellationToken cancellationToken)
+        public async Task HandleCustomToolAsync(ConversationTurn turn, CancellationToken cancellationToken)
         {
+            string functionContent = turn.Response.ToolExecution.RawLLMInput;
+            var toolExecutionData = turn.Response.ToolExecution;
+
             try
             {
                 // Format: execute_custom_function: string <reason>, string | null <message>, string <node_id>, Dictionary | null <vars>
-                List<string> arguments = ParseArguments(functionContent);
+                List<string> arguments = ParseArguments(functionContent.Substring("execute_custom_function:".Length).Trim());
 
                 if (arguments.Count < 3) // Need at least reason, message (even if null), and node_id
                 {
@@ -521,6 +538,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
                 }
 
+                toolExecutionData.ReasonForExecution = reasonForExecuting;
+                toolExecutionData.NodeId = nodeIdToExecute;
+
+                // For simplicity, let's assume 'nodeVariables' is our parsed dictionary.
+                // toolExecutionData.ParsedArguments = JsonSerializer.SerializeToDocument(nodeVariables);
+
+                // Let's update the turn state before making the external call.
+                TurnUpdate?.Invoke(this, turn);
+
                 // Get Tool Details from Script Node
                 var nodeDetailsResult = _scriptAccessor.GetCustomToolNodeDetails(nodeIdToExecute);
                 if (!nodeDetailsResult.Success || nodeDetailsResult.Data == null)
@@ -529,6 +555,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     return;
                 }
                 var toolData = nodeDetailsResult.Data;
+
+                toolExecutionData.ToolName = toolData.Name;
 
                 // Parse Variables
                 Dictionary<string, JsonElement>? nodeVariables = null;
@@ -577,24 +605,41 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     cancellationToken
                 );
 
-                // --- Notify Result ---
+                toolExecutionData.WasSuccessful = executeResult.Success;
                 if (!executeResult.Success)
                 {
-                    await ToolResultAvailable?.Invoke(executeResult.Message ?? $"Failed to execute custom tool with node id '{nodeIdToExecute}'.");
+                    toolExecutionData.Result = (executeResult.Data ?? $"Successfully executed custom tool '{toolData.Name}'.");
                 }
                 else
                 {
-                    await ToolResultAvailable?.Invoke(executeResult.Data ?? $"Successfully executed custom tool with node id '{nodeIdToExecute}'.");
+                    toolExecutionData.Result = (executeResult.Message ?? $"Failed to execute custom tool '{toolData.Name}'.");
                 }
 
             }
             catch (OperationCanceledException)
             {
-                await ToolResultAvailable?.Invoke($"Custom tool execution cancelled.");
+                toolExecutionData.WasSuccessful = false;
+                toolExecutionData.Result = $"Custom tool execution cancelled.";
             }
             catch (Exception ex)
             {
-                await ToolResultAvailable?.Invoke($"Unexpected error executing custom tool: {ex.Message}");
+                _logger.LogError(ex, "Error executing custom tool for turn {TurnId}", turn.Id);
+                toolExecutionData.WasSuccessful = false;
+                toolExecutionData.Result = $"Unexpected error executing custom tool: {ex.Message}";
+            }
+        }
+
+        private async Task FinalizeAndReportToolResult(ConversationTurn turn)
+        {
+            // Mark the tool execution as complete in the turn object.
+            turn.Response.ToolExecution.CompletedAt = DateTime.UtcNow;
+            turn.Response.Status = AgentResponseStatus.Completed; // The *tool response* is complete (handle cancel or interrupt)
+            turn.Response.CompletedAt = DateTime.UtcNow;
+
+            // The tool part of the turn is done. Now, the result must go back to the LLM.
+            if (ToolResultAvailable != null)
+            {
+                await ToolResultAvailable.Invoke(turn);
             }
         }
 

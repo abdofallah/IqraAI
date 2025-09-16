@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Turn;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Conversation
@@ -30,7 +31,7 @@ namespace IqraCore.Entities.Conversation
         public List<ConversationClientInfo> Clients { get; set; } = new List<ConversationClientInfo>();
         public List<ConversationAgentInfo> Agents { get; set; } = new List<ConversationAgentInfo>();
 
-        public List<ConversationMessageData> Messages { get; set; } = new List<ConversationMessageData>();
+        public List<ConversationTurn> Turns { get; set; } = new List<ConversationTurn>();
         public List<ConversationLogEntry> Logs { get; set; } = new List<ConversationLogEntry>();
 
         public ConversationMetrics Metrics { get; set; } = new ConversationMetrics();

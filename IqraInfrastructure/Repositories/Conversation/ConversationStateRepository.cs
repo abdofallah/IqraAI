@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Turn;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -159,34 +160,56 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<bool> AddMessageAsync(string conversationId, ConversationMessageData message, CancellationToken cancellationToken = default)
+        public async Task<bool> StartNewTurnAsync(string conversationId, ConversationTurn turn, CancellationToken cancellationToken = default)
         {
             try
             {
                 var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId);
-                var update = Builders<ConversationState>.Update
-                    .Push(c => c.Messages, message);
 
-                // Update metrics
-                if (message.Role == ConversationSenderRole.Client)
-                {
-                    update = update.Inc(c => c.Metrics.ClientMessageCount, 1);
-                    update = update.Inc(c => c.Metrics.ClientWordCount, CountWords(message.Content));
-                }
-                else if (message.Role == ConversationSenderRole.Agent)
-                {
-                    update = update.Inc(c => c.Metrics.AgentMessageCount, 1);
-                    update = update.Inc(c => c.Metrics.AgentWordCount, CountWords(message.Content));
-                }
+                var arraySizeExpression = Builders<ConversationState>.Update.Push(c => c.Turns, turn);
+                var update = Builders<ConversationState>.Update.Push(c => c.Turns, turn);
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
-                _logger.LogDebug("Added message to conversation {Id}", conversationId);
+                _logger.LogDebug("Started new turn {TurnId} with sequence {Sequence} in conversation {ConversationId}", turn.Id, turn.Sequence, conversationId);
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding message to conversation {Id}", conversationId);
+                _logger.LogError(ex, "Error starting new turn in conversation {ConversationId}", conversationId);
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateTurnAsync(string conversationId, ConversationTurn turn, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // To update an element in an array, we need to match the conversation ID and the turn ID within the array.
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId),
+                    Builders<ConversationState>.Filter.ElemMatch(c => c.Turns, t => t.Id == turn.Id)
+                );
+
+                // The '$' positional operator updates the first element that matched the filter.
+                var update = Builders<ConversationState>.Update.Set(c => c.Turns.FirstMatchingElement(), turn);
+
+                var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
+
+                if (result.ModifiedCount == 0)
+                {
+                    _logger.LogWarning("UpdateTurnAsync for conversation {ConversationId} and turn {TurnId} did not modify any documents. The turn might not exist.", conversationId, turn.Id);
+                }
+                else
+                {
+                    _logger.LogTrace("Updated turn {TurnId} in conversation {ConversationId}", turn.Id, conversationId);
+                }
+
+                return result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating turn {TurnId} in conversation {ConversationId}", turn.Id, conversationId);
                 throw;
             }
         }

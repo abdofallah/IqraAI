@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.Business;
@@ -13,14 +14,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
     public class ConversationAIAgentLLMHandler : IDisposable
     {
         // Events for Orchestrator
-        public event Func<string, Task>? SynthesizeTextRequested;
+        public event Func<ConversationTurn, string, Task>? SynthesizeTextSegmentRequested;
 
-        public event Action<string, string?>? TextRecievedForLLMToProcess;
-        public event Action<string>? AIAgentResponseCompleted;
-
-        public event Action? ResponseHandlingComplete;
-        public event Func<string, Task>? SystemToolExecutionRequested;
-        public event Func<string, Task>? CustomToolExecutionRequested;
+        public event Func<ConversationTurn, Task>? SystemToolExecutionRequested;
+        public event Func<ConversationTurn, Task>? CustomToolExecutionRequested;
 
         private readonly ILogger<ConversationAIAgentLLMHandler> _logger;
         private readonly ConversationAIAgentState _agentState;
@@ -32,10 +29,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private CancellationTokenSource _currentLLMProcessingTaskCTS = new();
         private Task? _llmTask;
 
+        private readonly StringBuilder _responseBuffer = new StringBuilder();
+
         // Buffers managed here now
         public string? CurrentlyProcessingMessage = null;
-        private readonly StringBuilder _responseBuffer = new StringBuilder();
-        private int _currentResponseBufferRead = 0;
 
         public ConversationAIAgentLLMHandler(
             ILoggerFactory loggerFactory,
@@ -191,31 +188,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // Management
-        public async Task ProcessUserTextAsync(string text, string? clientId, CancellationToken externalToken)
+        public async Task ProcessUserTextAsync(ConversationTurn turn, CancellationToken externalToken)
         {
-            if (_agentState.IsResponding || _agentState.IsExecutingSystemTool || _agentState.IsExecutingCustomTool)
-            {
-                _logger.LogWarning("Agent {AgentId}: Received text while busy (responding:{Responding}, systool:{SysTool}, custtool:{CustTool}). Behavior depends on interruption logic.",
-                   _agentState.AgentId, _agentState.IsResponding, _agentState.IsExecutingSystemTool, _agentState.IsExecutingCustomTool);
-                // TODO: Delegate to Interruption Manager to decide fate of this text?
-                return;
-            }
-
-            // Combine agent CTS and external token
             using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
-            await SendLLMMessageAsync(text, clientId, combinedCTS.Token);
-        }
-        public async Task ProcessSystemMessageAsync(string text, string? clientId, CancellationToken externalToken)
-        {
-            if (_agentState.IsExecutingSystemTool || _agentState.IsExecutingCustomTool)
-            {
-                await CancelCurrentLLMTaskAsync();
-            }
-
-            // Combine agent CTS and external token
-            using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
-            // Note: clientId is null for system messages typically
-            await SendLLMMessageAsync(text, clientId, combinedCTS.Token, true); // Flag as system message
+            await SendLLMMessageAsync(turn, combinedCTS.Token);
         }
         public async Task CancelCurrentLLMTaskAsync()
         {
@@ -240,13 +216,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _llmTask = null;
             ResetLLMState(); // Also reset flags etc when cancelling
         }
-        public string GetCurrentResponseText()
-        {
-            return _responseBuffer.ToString();
-        }
-
+        
         // Message Processing
-        private async Task SendLLMMessageAsync(string text, string? clientId, CancellationToken cancellationToken, bool isSystemMessage = false)
+        private async Task SendLLMMessageAsync(ConversationTurn turn, CancellationToken cancellationToken)
         {
             if (_agentState.LLMService == null)
             {
@@ -255,41 +227,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return;
             }
 
-            CurrentlyProcessingMessage = text;
-            _agentState.CurrentClientId = clientId;
-
             var currentDateTimeData = await _systemPromptGenerator.GenerateDateTimeInformationForMessage(null, _agentState.CurrentSessionContext.Agent.Timezones);
             if (!currentDateTimeData.Success || currentDateTimeData.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Error generating date time information for message.", _agentState.AgentId);
             }
 
-            string messageToSend = string.Empty;
-            if (isSystemMessage)
-            {
-                messageToSend = $"response_from_system: {text}";
-            }
-            else
-            {
-                messageToSend = $"customer_query: {text}";
-            }
-
-            TextRecievedForLLMToProcess?.Invoke(messageToSend, clientId);
+            string messageToSend = $"customer_query: {turn.User.TranscribedText}";
             _agentState.LLMService.AddUserMessage(messageToSend);
 
-            // Reset state flags before starting new task - tho this should already be done? todo check
-            _agentState.IsResponding = false;
-            _agentState.IsExecutingSystemTool = false;
-            _agentState.IsExecutingCustomTool = false;
-            _responseBuffer.Clear();
-            _currentResponseBufferRead = 0;
-
-            _logger.LogInformation("Agent {AgentId}: Sending message to LLM.", _agentState.AgentId);
-
-            var cacheableResult = await IsTextCacheable(text);
+            var cacheableResult = await IsTextCacheable(turn.User.TranscribedText);
             if (cacheableResult.isCacheable && cacheableResult.cachedQuery != null)
             {
-                _logger.LogInformation("Agent {AgentId}: Using cached response for text: '{Text}'", _agentState.AgentId, text);
                 OnLLMMessageStreamed(this, new ConversationAgentEventLLMStreamed($"response_to_customer: {cacheableResult.cachedQuery}", true));
                 return; // No need to process further
             }
@@ -325,20 +274,23 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             return (false, null);
         }
-        private void ResetLLMState()
-        {
-            _responseBuffer.Clear();
-            _currentResponseBufferRead = 0;
-            _agentState.IsResponding = false;
-            _agentState.IsExecutingSystemTool = false;
-            _agentState.IsExecutingCustomTool = false;
-        }
         
         // Streamed Message (Event) Processing
         private async void OnLLMMessageStreamed(object? sender, ConversationAgentEventLLMStreamed eventData)
         {
-            var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);
+            var currentTurn = _agentState.CurrentTurn;
+            if (currentTurn == null)
+            {
+                _logger.LogError("LLM stream received but there is no active turn in the agent state.");
+                return;
+            }
 
+            if (currentTurn.Response.StartedAt == null) // A good proxy for the start of a new response
+            {
+                _responseBuffer.Clear();
+            }
+
+            var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);
             // Check if cancellation requested before processing
             if (combinedCancellationToken.IsCancellationRequested)
             {
@@ -384,7 +336,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     deltaText = chunkExtractResult.Data.Value.deltaText;
                     isEndOfResponse = chunkExtractResult.Data.Value.isEndOfResponse;
                 }
-                
 
                 if (!string.IsNullOrEmpty(deltaText))
                 {
@@ -392,69 +343,81 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
 
                 // Determine response type first time
-                if (!_agentState.IsResponding && !_agentState.IsExecutingSystemTool && !_agentState.IsExecutingCustomTool)
+                if (currentTurn.Response.Type == AgentResponseType.NotSet)
                 {
                     var fullText = _responseBuffer.ToString().TrimStart();
                     if (fullText.StartsWith("response_to_customer:"))
                     {
-                        _logger.LogDebug("Agent {AgentId}: LLM response identified as: Speak", _agentState.AgentId);
-                        _agentState.IsResponding = true;
-                        _currentResponseBufferRead = "response_to_customer:".Length; // Skip prefix
-                        _agentState.CurrentResponseDurationSpeakingStarted = null; // Reset start time
-                        _agentState.CurrentResponseDuration = TimeSpan.Zero;      // Reset duration
+                        currentTurn.Response.Type = AgentResponseType.Speech;
+                        currentTurn.Status = TurnStatus.AgentRespondingSpeech;    // Reset duration
                     }
                     else if (fullText.StartsWith("execute_system_function:"))
                     {
-                        _logger.LogDebug("Agent {AgentId}: LLM response identified as: System Tool", _agentState.AgentId);
-                        _agentState.IsExecutingSystemTool = true;
-                        _currentResponseBufferRead = "execute_system_function:".Length;
+                        currentTurn.Response.Type = AgentResponseType.SystemTool;
+                        currentTurn.Status = TurnStatus.AgentExecutingTool;
+                        currentTurn.Response.ToolExecution = new ToolExecutionData { ToolType = AgentToolType.System };
                     }
                     else if (fullText.StartsWith("execute_custom_function:"))
                     {
-                        _logger.LogDebug("Agent {AgentId}: LLM response identified as: Custom Tool", _agentState.AgentId);
-                        _agentState.IsExecutingCustomTool = true;
-                        _currentResponseBufferRead = "execute_custom_function:".Length;
+                        currentTurn.Response.Type = AgentResponseType.CustomTool;
+                        currentTurn.Status = TurnStatus.AgentExecutingTool;
+                        currentTurn.Response.ToolExecution = new ToolExecutionData { ToolType = AgentToolType.Custom };
+                    }
+
+                    if (currentTurn.Response.Type != AgentResponseType.NotSet)
+                    {
+                        currentTurn.Response.StartedAt = DateTime.UtcNow;
+                        await _conversationSession.NotifyTurnUpdated(currentTurn);
                     }
                 }
 
-                // if currently in responding mode
-                if (_agentState.IsResponding)
+                // Process based on type
+                if (currentTurn.Response.Type == AgentResponseType.Speech)
                 {
-                    await HandleLLMResponseProcessingAsync(deltaText, isEndOfResponse);
+                    // The buffer now contains the complete text streamed so far.
+                    // We compare it to what we've already sent for synthesis.
+                    string prefix = "response_to_customer:";
+                    string fullSpeechText = _responseBuffer.ToString().Substring(prefix.Length);
+                    string alreadySynthesizedText = string.Join("", currentTurn.Response.SpokenSegments.Select(s => s.Text));
+
+                    // Find the new, unprocessed text.
+                    if (fullSpeechText.Length > alreadySynthesizedText.Length)
+                    {
+                        string newTextToProcess = fullSpeechText.Substring(alreadySynthesizedText.Length);
+
+                        // Now, we check this *new* chunk for sentence boundaries.
+                        if (ShouldProcessChunk(newTextToProcess, isEndOfResponse))
+                        {
+                            // Fire the event with ONLY the new, clean text segment.
+                            // The AudioOutputHandler will add this to the turn's SpokenSegments list.
+                            await SynthesizeTextSegmentRequested?.Invoke(currentTurn, newTextToProcess.Trim());
+                        }
+                    }
                 }
 
                 // if llm stream task is complete
                 if (isEndOfResponse)
                 {
-                    _logger.LogDebug("Agent {AgentId}: LLM stream ended.", _agentState.AgentId);
-                    var finalResponse = _responseBuffer.ToString();
-
-                    if (_agentState.IsResponding)
+                    if (currentTurn.Response.Type == AgentResponseType.SystemTool || currentTurn.Response.Type == AgentResponseType.CustomTool)
                     {
-                        await HandleLLMResponseCompletedAsync(finalResponse);
+                        currentTurn.Response.ToolExecution.RawLLMInput = _responseBuffer.ToString();
+
+                        if (currentTurn.Response.Type == AgentResponseType.SystemTool)
+                        {
+                            await SystemToolExecutionRequested?.Invoke(currentTurn);
+                        }
+                        else
+                        {
+                            await CustomToolExecutionRequested?.Invoke(currentTurn);
+                        }
                     }
-                    else if (_agentState.IsExecutingSystemTool)
+                    else if (currentTurn.Response.Type == AgentResponseType.Speech)
                     {
-                        var toolContent = finalResponse.Substring(_currentResponseBufferRead).Trim();
-                        _agentState.LLMService!.AddAssistantMessage(finalResponse);
-                        AIAgentResponseCompleted?.Invoke(finalResponse);
-
-                        // todo this execution is not awaited
-                        SystemToolExecutionRequested?.Invoke(toolContent);
-                        _logger.LogInformation("Agent {AgentId}: System tool execution completed.", _agentState.AgentId);
-                        CurrentlyProcessingMessage = null;
-                    }
-                    else if (_agentState.IsExecutingCustomTool)
-                    {
-                        // Pass the full content after the prefix
-                        var toolContent = finalResponse.Substring(_currentResponseBufferRead).Trim();
-                        _agentState.LLMService!.AddAssistantMessage(finalResponse);
-                        AIAgentResponseCompleted?.Invoke(finalResponse);
-
-                        // todo this execution is not awaited
-                        CustomToolExecutionRequested?.Invoke(toolContent);
-                        _logger.LogInformation("Agent {AgentId}: Custom tool execution completed.", _agentState.AgentId);
-                        CurrentlyProcessingMessage = null;
+                        // The LLM part is done. The final text is in _responseBuffer.
+                        // We don't need to do anything here except maybe one final DB update
+                        // to ensure the full text is captured if there were unsynthesized fragments.
+                        // The turn's final completion is now handled by the AudioOutput handler.
+                        await _conversationSession.NotifyTurnUpdated(currentTurn);
                     }
                     else
                     {
@@ -467,6 +430,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                         await ProcessSystemMessageAsync("Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.", _agentState.CurrentClientId, CancellationToken.None);
                     }
+
+                    _responseBuffer.Clear();
                 }
             }
             catch (OperationCanceledException ex)
@@ -641,6 +606,30 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 throw;
             }
+        }
+
+        // Tool Result
+        public async Task ProcessToolResultAsync(ConversationTurn turnWithToolResult, CancellationToken externalToken) // NEW
+        {
+            // A new entry point for when a tool finishes and we need to report back to the LLM.
+            using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
+
+            // The tool result is already in turnWithToolResult.Response.ToolExecution.Result
+            // We just need to format it and send it.
+            var messageToSend = $"response_from_system: {turnWithToolResult.Response.ToolExecution.Result}";
+            _agentState.LLMService.AddUserMessage(messageToSend);
+
+            await ProcessLlmInputForTurn(turnWithToolResult, combinedCTS.Token);
+        }
+        private async Task ProcessLlmInputForTurn(ConversationTurn turn, CancellationToken cancellationToken)
+        {
+            // This is a new helper to contain the core LLM call logic.
+            _agentState.CurrentTurn = turn; // Ensure the state has the most up-to-date turn object.
+
+            var currentDateTimeData = await _systemPromptGenerator.GenerateDateTimeInformationForMessage(...);
+
+            _llmTask = _agentState.LLMService.ProcessInputAsync(cancellationToken, currentDateTimeData.Data, null);
+            await _llmTask;
         }
 
         // Disposal
