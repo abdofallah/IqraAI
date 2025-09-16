@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using IqraCore.Entities.Conversation.Turn;
+using Microsoft.Extensions.Logging;
 using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
@@ -21,14 +22,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public string NodeId { get; }
         public string CollectedDigits { get; }
         public DTMFSessionEndReason Reason { get; }
-        public string? ClientId { get; }
+        public ConversationTurn Turn { get; }
 
-        public DTMFSessionEventArgs(string nodeId, string digits, DTMFSessionEndReason reason, string? clientId)
+        public DTMFSessionEventArgs(string nodeId, string digits, DTMFSessionEndReason reason, ConversationTurn turn)
         {
             NodeId = nodeId;
             CollectedDigits = digits;
             Reason = reason;
-            ClientId = clientId;
+            Turn = turn;
         }
     }
 
@@ -49,12 +50,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly ConversationAIAgentState _agentState;
 
         private DTMFSessionConfig? _activeSessionConfig;
+        private ConversationTurn? _activeSessionTurn;
+
         private StringBuilder _digitBuffer = new StringBuilder();
         private bool _isSessionActive = false;
         private bool _waitingForStartChar = false;
         private bool _disposed = false;
-
-        private string? _sessionStartedByClientId;
 
         private Timer? _maxDurationTimer;
         private Timer? _interDigitTimer;
@@ -69,10 +70,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         public DTMFSessionConfig? ActiveSessionConfig => _activeSessionConfig;
+        public ConversationTurn? ActiveSessionTurn => _activeSessionTurn;
         public bool IsSessionActive => _isSessionActive;
         public string? ActiveSessionNodeId => _activeSessionConfig?.AssociatedNodeId;
 
-        public bool StartSession(DTMFSessionConfig config, string? clientId = null)
+        public bool StartSession(DTMFSessionConfig config, ConversationTurn turn)
         {
             if (_isSessionActive)
             {
@@ -81,8 +83,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return false;
             }
 
-            _sessionStartedByClientId = clientId;
             _activeSessionConfig = config;
+            _activeSessionTurn = turn;
             _digitBuffer.Clear();
             _isSessionActive = true;
             _waitingForStartChar = config.StartChar.HasValue;
@@ -199,16 +201,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             string nodeId = _activeSessionConfig?.AssociatedNodeId ?? "Unknown";
             string collectedDigits = _digitBuffer.ToString();
 
-            if (reason != DTMFSessionEndReason.TimeoutInterDigit)
-            {
-                CleanupTimers();
-                _isSessionActive = false;
-                _activeSessionConfig = null;
-            }
-
             try
             {
-                SessionEnded?.Invoke(this, new DTMFSessionEventArgs(nodeId, collectedDigits, reason, _sessionStartedByClientId));
+                SessionEnded?.Invoke(this, new DTMFSessionEventArgs(nodeId, collectedDigits, reason, _activeSessionTurn));
             }
             catch (Exception ex)
             {
@@ -217,6 +212,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             finally
             {
                 _digitBuffer.Clear();
+            }
+
+            if (reason != DTMFSessionEndReason.TimeoutInterDigit)
+            {
+                CleanupTimers();
+                _isSessionActive = false;
+                _activeSessionConfig = null;
+                _activeSessionTurn = null;
             }
         }
 

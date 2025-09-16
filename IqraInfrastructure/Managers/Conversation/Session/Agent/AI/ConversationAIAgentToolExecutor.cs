@@ -298,7 +298,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
 
                     var dtmfConfig = dtmfNodeResult.Data;
-                    bool started = _dtmfSessionManager.StartSession(dtmfConfig, turn.User.SenderId);
+                    bool started = _dtmfSessionManager.StartSession(dtmfConfig, turn);
                     if (!started)
                     {
                         await FinalizeAndReportToolResult(
@@ -761,11 +761,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        private async Task FinalizeAndReportToolResult(ConversationTurn turn, bool wasSuccessful, string? result)
+        public async Task FinalizeAndReportToolResult(ConversationTurn turn, bool wasSuccessful, string? result)
         {
             turn.Response.ToolExecution!.WasSuccessful = wasSuccessful;
             turn.Response.ToolExecution!.Result = result;
-            turn.Response.ToolExecution!.CompletedAt = DateTime.UtcNow;          
+            turn.Response.ToolExecution!.CompletedAt = DateTime.UtcNow;
 
             await ToolResultAvailable?.Invoke(turn);
         }

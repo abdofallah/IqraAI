@@ -329,7 +329,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public void BufferAudioForMlAnalysis(byte[] audioData)
         {
             // Only buffer if the ML service is active and a user turn has started.
-            if (_mlTurnService != null)
+            if (_mlTurnService != null && _config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.ML)
             {
                 _userTurnAudioBuffer.AddRange(audioData);
             }

@@ -64,6 +64,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         // Multi Language
         private string cachedMultiLanguagePlayMessage = string.Empty;
+        private bool _isConversationStarted = false;
 
         // Public Interface
         public string AgentId => _agentState.AgentId;
@@ -122,8 +123,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             // Instantiate Core Modules
             _dtmfSessionManager = new ConversationAIAgentDTMFSessionManager(_loggerFactory, _agentState);
-            _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager);
-            _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator);
+            _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager, _conversationSessionManager);
+            _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator, _conversationSessionManager);
             _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper);
             _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _llmHandler, _audioOutputHandler, _agentState, _llmProviderManager, _businessManager);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
@@ -269,18 +270,46 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _sttHandler.StartTranscription();
             _audioOutputHandler.StartProcessingAudioTask();
             _audioInputHandler.StartProcessingAudioTask();
+            // TODO enable vad here as well if possible
+            _isConversationStarted = true;
 
             // Check if language selection is required
             bool requiresLanguageSelection = _agentState.CurrentSessionContext?.Language.MultiLanguageEnabled == true &&
                                             _agentState.CurrentSessionContext.Language.EnabledMultiLanguages?.Count > 1;
 
+            // Initial Empty Turn
+            var dateTimeNow = DateTime.UtcNow;
+            var newTurn = new ConversationTurn
+            {
+                Sequence = (await _conversationSessionManager.GetTurnsAsync()).Count + 1,
+                User = new UserInput
+                {
+                    SenderId = "System",
+                    TranscribedText = "",
+                    StartedSpeakingAt = dateTimeNow,
+                    FinishedSpeakingAt = dateTimeNow
+                },
+                Response = new AgentResponse
+                {
+                    StartedAt = dateTimeNow,
+                    Type = AgentResponseType.SystemTool,
+                    ToolExecution = new ToolExecutionData
+                    {
+                        ToolType = AgentToolType.System,
+                        ToolName = "ConversationStarted"
+                    }
+                },
+                Status = TurnStatus.AgentProcessing
+            };
+            OnNewTurnCreated(newTurn);
+
             if (requiresLanguageSelection)
             {
-                await SetupLanguageSelectionViaDTMFAsync();
+                await SetupLanguageSelectionViaDTMFAsync(newTurn);
             }
             else
             {
-                await BeginAgentConversationFlowAsync();
+                await BeginAgentConversationFlowAsync(newTurn);
             }
         }
         public async Task NotifyMaxDurationReached()
@@ -377,6 +406,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 await _conversationSessionManager.NotifyTurnUpdated(turnToFinalize);
             }
 
+            _agentState.PreviousTurn = _agentState.CurrentTurn;
             _agentState.CurrentTurn = null;
             _turnManager.ResetForNewTurn();
         }
@@ -384,22 +414,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Agent Input Management
         public async Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken)
         {
-            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested || !_isConversationStarted) return;
 
             // Set client ID (important for multi-participant, maybe less so for 1-1)
             // todo dont know what this is used for, might be problematic if turn by turn is not enabled?
             // insetad of setting current client id, we should have a proper structure of client id + data being sent
             _agentState.CurrentClientId = clientId;
 
-            // --- NEW: Feed audio to the VAD core if it exists ---
-            // This is separate from the AudioInput queue because VAD processing
-            // should happen as immediately as possible.
             _agentState.SileroVadCore?.ProcessAudio(audioData);
-
-            // --- NEW: Feed audio to the Turn Manager for potential ML buffering ---
             _turnManager.BufferAudioForMlAnalysis(audioData);
-
-            // Pass to input handler
             _audioInputHandler.QueueAudioChunk(audioData, cancellationToken);
         }
         public async Task ProcessTextAsync(string text, string? clientId, CancellationToken cancellationToken)
@@ -424,11 +447,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         
         // Multi Language
-        private async Task SetupLanguageSelectionViaDTMFAsync()
+        private async Task SetupLanguageSelectionViaDTMFAsync(ConversationTurn turn)
         {
             try
             {
-                await HandleLanguageSelectionMessagePlaying();
+                await HandleLanguageSelectionMessagePlaying(turn);
 
                 var dtmfConfig = new DTMFSessionConfig
                 {
@@ -439,7 +462,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     MaxSessionDurationSeconds = 30
                 };
 
-                bool started = _dtmfSessionManager.StartSession(dtmfConfig);
+                bool started = _dtmfSessionManager.StartSession(dtmfConfig, turn);
                 if (started)
                 {
                     _agentState.IsAwaitingLanguageSelectionInput = true;
@@ -448,16 +471,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 {
                     _logger.LogError("Agent {AgentId}: Failed to start DTMF session for language selection (already active?).", _agentState.AgentId);
                     // Fallback? Maybe proceed with default language?
-                    await BeginAgentConversationFlowAsync();
+                    await BeginAgentConversationFlowAsync(turn);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Agent {AgentId}: Error during language selection setup. Proceeding with default.", _agentState.AgentId);
-                await BeginAgentConversationFlowAsync();
+                await BeginAgentConversationFlowAsync(turn);
             }
         } 
-        private async Task HandleLanguageSelectionMessagePlaying()
+        private async Task HandleLanguageSelectionMessagePlaying(ConversationTurn turn)
         {
             if (string.IsNullOrWhiteSpace(cachedMultiLanguagePlayMessage))
             {
@@ -483,7 +506,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 cachedMultiLanguagePlayMessage = cachedMultiLanguagePlayMessage.Trim();
             }
 
-            await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(cachedMultiLanguagePlayMessage, _conversationCTS.Token);
+            await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(turn, cachedMultiLanguagePlayMessage, _conversationCTS.Token);
         }
         private async Task HandleLanguageChangeRequestAsync(string newLanguageCode)
         {
@@ -516,7 +539,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // Begin Conversation
-        private async Task BeginAgentConversationFlowAsync()
+        private async Task BeginAgentConversationFlowAsync(ConversationTurn turn)
         {
             if (_agentState.IsBackgroundMusicLoaded)
             {
@@ -537,7 +560,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     // Format for LLM history, synthesize raw text
                     string llmHistoryMessage = "response_to_customer: " + openingMessage;
                     _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
-                    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(openingMessage, _conversationCTS.Token);
+                    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(turn, openingMessage, _conversationCTS.Token);
                 }
                 else
                 {
@@ -553,6 +576,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             // Enable listening after potential greeting
+            await FinalizeCurrentTurn(TurnStatus.Completed);
             _agentState.IsAcceptingSTTAudio = true;
             // TODO: Enable VAD if needed (_vadService.Start() ?)
         }
@@ -564,6 +588,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var turnsInDb = await _conversationSessionManager.GetTurnsAsync(); // We need to implement this method
             newTurn.Sequence = turnsInDb.Count + 1;
 
+            _agentState.PreviousTurn = _agentState.CurrentTurn;
             _agentState.CurrentTurn = newTurn;
 
             await _conversationSessionManager.NotifyTurnStarted(_agentState.CurrentTurn);
@@ -624,7 +649,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             turn.Response.SpokenSegments.Add(speechData);
             await _conversationSessionManager.NotifyTurnUpdated(turn);
 
-            await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(message, token);
+            await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(turn, message, token);
         }
         private async Task OnEndConversationRequested(ConversationTurn turn)
         {
@@ -642,9 +667,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Event Handlers
         private async void OnDtmfSessionEnded(object? sender, DTMFSessionEventArgs args)
         {
-            _logger.LogInformation("Agent {AgentId}: DTMF session for Node {NodeId} ended. Reason: {Reason}, Digits: '{Digits}'",
-                _agentState.AgentId, args.NodeId, args.Reason, args.CollectedDigits);
-
             if (_conversationCTS.IsCancellationRequested) return; // Don't process if shutting down
 
             // --- Handle Language Selection ---
@@ -672,16 +694,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
                     else
                     {
-                        await _audioOutputHandler.SynthesizeAndPlayBlockingAsync("Invalid Language Selection.", CancellationToken.None);
-                        await HandleLanguageSelectionMessagePlaying();
+                        await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(args.Turn, "Invalid Language Selection.", CancellationToken.None);
+                        await HandleLanguageSelectionMessagePlaying(args.Turn);
                         _dtmfSessionManager.ResumeSession();
                         return;
                     }
                 }
                 else if (args.Reason == DTMFSessionEndReason.TimeoutInterDigit)
                 {
-                    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync("Please choose a language.", CancellationToken.None);
-                    await HandleLanguageSelectionMessagePlaying();
+                    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(args.Turn, "Please choose a language.", CancellationToken.None);
+                    await HandleLanguageSelectionMessagePlaying(args.Turn);
                     _dtmfSessionManager.ResumeSession();
                     return;
                 }
@@ -692,14 +714,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 await Task.Delay(2000);
 
                 _agentState.IsAwaitingLanguageSelectionInput = false;
-                await BeginAgentConversationFlowAsync();
+                await BeginAgentConversationFlowAsync(args.Turn);
                 _dtmfSessionManager.CancelSession("Language Selected");
                 return;
             }
             // --- Handle Regular DTMF Tool Results ---
             else
             {
-                // Package the result and send it back to the LLM as a system message
+                bool wasSuccessful = false;
                 string resultMessage;
                 switch (args.Reason)
                 {
@@ -751,8 +773,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         resultMessage = $"Tool result for '{args.NodeId}': DTMF input session ended with an error.";
                         break;
                 }
-                _logger.LogDebug("Agent {AgentId}: Sending DTMF result to LLM: {ResultMessage}", _agentState.AgentId, resultMessage);
-                await _llmHandler.ProcessSystemMessageAsync(resultMessage, args.ClientId, CancellationToken.None); // Use CancellationToken.None? Or master token?
+
+                // TODO GET THE CORRECT TURN WITHIN THE EVENT'S OBJECT
+                await _toolExecutor.FinalizeAndReportToolResult(args.Turn, wasSuccessful, resultMessage);
             }
         }
         private async Task OnAgentShouldPauseAsync()

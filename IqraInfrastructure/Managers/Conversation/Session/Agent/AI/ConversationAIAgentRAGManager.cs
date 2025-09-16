@@ -433,13 +433,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 case AgentKnowledgeBaseSearchStartegyTypeENUM.LLM:
                     {
-                        if (_classifierLlmService == null)
-                            return false;
-                        var response = await _classifierLlmService.ProcessSingleInputAsync(
-                            $"User Query: \"{query}\"",
-                            cancellationToken
-                        );
-                        return response.Success && response.Data?.Trim().ToUpper() == "SEARCH";
+                        // TODO
+
+                        //if (_classifierLlmService == null)
+                        //    return false;
+                        //var response = await _classifierLlmService.ProcessSingleInputAsync(
+                        //    $"User Query: \"{query}\"",
+                        //    cancellationToken
+                        //);
+                        //return response.Success && response.Data?.Trim().ToUpper() == "SEARCH";
+
+                        return false;
                     }
 
                 default:
@@ -456,20 +460,22 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return new List<string> { originalQuery };
             try
             {
-                int queryCount = _ragConfig.Refinement.QueryCount.Value;
-                var prompt = $"Original query: \"{originalQuery}\". Generate {queryCount} refined queries as a JSON array of strings:";
+                // TODO
 
-                var response = await _refinementLlmService.ProcessSingleInputAsync(prompt, cancellationToken);
-                if (response.Success && !string.IsNullOrWhiteSpace(response.Data))
-                {
-                    var refinedQueries = JsonSerializer.Deserialize<List<string>>(response.Data, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                //int queryCount = _ragConfig.Refinement.QueryCount.Value;
+                //var prompt = $"Original query: \"{originalQuery}\". Generate {queryCount} refined queries as a JSON array of strings:";
 
-                    if (refinedQueries != null && refinedQueries.Any())
-                    {
-                        refinedQueries.Insert(0, originalQuery);
-                        return refinedQueries.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-                    }
-                }
+                //var response = await _refinementLlmService.ProcessSingleInputAsync(prompt, cancellationToken);
+                //if (response.Success && !string.IsNullOrWhiteSpace(response.Data))
+                //{
+                //    var refinedQueries = JsonSerializer.Deserialize<List<string>>(response.Data, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                //    if (refinedQueries != null && refinedQueries.Any())
+                //    {
+                //        refinedQueries.Insert(0, originalQuery);
+                //        return refinedQueries.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                //    }
+                //}
             }
             catch (Exception ex)
             {

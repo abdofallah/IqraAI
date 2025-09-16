@@ -820,7 +820,8 @@ namespace IqraInfrastructure.Managers.Call
                     _serviceProvider.GetRequiredService<IntegrationsManager>(),
                     _serviceProvider.GetRequiredService<ModemTelManager>(),
                     _serviceProvider.GetRequiredService<TwilioManager>(),
-                    _serviceProvider.GetRequiredService<TTSAudioCacheManager>()
+                    _serviceProvider.GetRequiredService<TTSAudioCacheManager>(),
+                    _serviceProvider
                 );
 
                 await AIAgent.InitializeAsync();

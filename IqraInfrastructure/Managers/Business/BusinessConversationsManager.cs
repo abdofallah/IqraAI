@@ -324,17 +324,45 @@ namespace IqraInfrastructure.Managers.Business
                     resultModel.Agents.Add(clientModel);
                 }
 
-                foreach (var message in state.Messages)
+                // TODO stop using the message view model and use turn view model
+                foreach (var turn in state.Turns)
                 {
-                    var messageModel = new ConversationStateMessageViewModel()
+                    var userMessageModel = new ConversationStateMessageViewModel()
                     {
-                        SenderId = message.SenderId,
-                        Role = message.Role,
-                        Content = message.Content,
-                        Timestamp = message.Timestamp,
+                        SenderId = turn.User.SenderId,
+                        Role = ConversationSenderRole.Client,
+                        Content = turn.User.TranscribedText ?? "",
+                        Timestamp = turn.User.StartedSpeakingAt,
                     };
+                    resultModel.Messages.Add(userMessageModel);
 
-                    resultModel.Messages.Add(messageModel);
+                    var agentMessageModel = new ConversationStateMessageViewModel()
+                    {
+                        SenderId = turn.Response.AgentId,
+                        Role = ConversationSenderRole.Agent,
+                        Content = "",
+                        Timestamp = turn.Response.StartedAt
+                    };
+                    if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.AgentResponseType.Speech)
+                    {
+                        turn.Response.SpokenSegments.ForEach(segment => agentMessageModel.Content += segment.Text + " ");
+                    }
+                    else if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.AgentResponseType.CustomTool || turn.Response.Type == IqraCore.Entities.Conversation.Turn.AgentResponseType.SystemTool)
+                    {
+                        if (turn.Response.ToolExecution != null)
+                        {
+                            agentMessageModel.Content = turn.Response.ToolExecution.RawLLMInput;
+                        }
+                        else
+                        {
+                            agentMessageModel.Content = "ERROR: Conversation Turn Response Tool execution not found";
+                        }
+                    }
+                    else
+                    {
+                        agentMessageModel.Content = "ERROR: Conversation Turn Response Type not found";
+                    }
+                    resultModel.Messages.Add(agentMessageModel);
                 }
 
                 foreach (var log in state.Logs)

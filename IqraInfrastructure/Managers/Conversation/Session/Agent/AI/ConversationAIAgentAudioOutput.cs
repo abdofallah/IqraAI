@@ -377,7 +377,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _currentTtsTaskCTS = null;
             }
         }
-        public async Task SynthesizeAndPlayBlockingAsync(string text, CancellationToken cancellationToken)
+        public async Task SynthesizeAndPlayBlockingAsync(ConversationTurn turn, string text, CancellationToken cancellationToken)
         {
             // --- Move logic from original SynthesizeAndPlaySpeechAsync here ---
             // Calls SynthesizeAndQueueSpeechAsync
@@ -389,7 +389,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             await CancelCurrentSpeechPlaybackAsync();
 
             // 2. Synthesize and queue the new speech
-            var (success, duration) = await SynthesizeAndQueueSpeechAsync(text, cancellationToken);
+            var (success, duration) = await SynthesizeAndQueueSpeechAsync(turn, text, cancellationToken);
 
             // 3. Wait for the estimated duration if synthesis was successful
             if (success && duration > TimeSpan.Zero)
@@ -735,10 +735,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             }
 
                             // Check if playback just became complete
-                            if (!playbackWasComplete)
+                            if (playbackWasComplete)
                             {
-                                SpeechPlaybackComplete?.Invoke();
-                                playbackWasComplete = true;
+                                AgentResponsePlaybackComplete?.Invoke(this, _agentState.CurrentTurn);
                             }
                         }
                     }

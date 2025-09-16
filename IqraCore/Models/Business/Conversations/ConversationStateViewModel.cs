@@ -49,7 +49,7 @@ namespace IqraCore.Models.Business.Conversations
         public string SenderId { get; set; }
         public ConversationSenderRole Role { get; set; }
         public string Content { get; set; }
-        public DateTime Timestamp { get; set; }
+        public DateTime? Timestamp { get; set; }
     }
 
     public class ConversationStateLogViewModel
