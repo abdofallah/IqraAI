@@ -11,20 +11,21 @@ using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using System.Collections.Concurrent;
-using static Google.Cloud.TextToSpeech.V1.MultiSpeakerMarkup.Types;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
     internal readonly struct SpeechSegment
     {
+        public string Id { get; }
         public string Text { get; }
         public ReadOnlyMemory<byte> AudioData { get; }
         public TimeSpan Duration { get; }
         public string TurnId { get; }
 
-        public SpeechSegment(string text, ReadOnlyMemory<byte> audioData, TimeSpan duration, string turnId)
+        public SpeechSegment(string id, string text, ReadOnlyMemory<byte> audioData, TimeSpan duration, string turnId)
         {
+            Id = id;
             Text = text;
             AudioData = audioData;
             Duration = duration;
@@ -64,16 +65,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private int _backgroundAudioPosition = 0;
 
         // Current Speech Playback State
-        private ReadOnlyMemory<byte> _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
-        private TimeSpan _currentSpeechDuration = TimeSpan.Zero;
-        private string _currentSpeechText = string.Empty;
-        private int _currentSpeechPosition = 0;
+        private string _currentSpeechSegmentId = string.Empty;
+        private ReadOnlyMemory<byte> _currentSpeechSegmentAudio = ReadOnlyMemory<byte>.Empty;
+        private TimeSpan _currentSpeechSegmentDuration = TimeSpan.Zero;
+        private string _currentSpeechSegmentText = string.Empty;
+        private int _currentSpeechSegmentAudioPosition = 0;
         private volatile bool _isPlaybackPaused = false;
-
-        // Volume Fading State (managed here, affects _agentState.CurrentAgentVolumeFactor)
-        private CancellationTokenSource? _volumeFadeCTS = null;
-        private Task? _volumeFadeTask = null;
-        private DateTime? _volumeFadeStartTime = null;
 
         // TTS Specific Task Management
         private CancellationTokenSource? _currentTtsTaskCTS = null;
@@ -273,7 +270,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _audioSendingTask = Task.Run(() => ProcessAudioSpeakingQueueAsync(_audioSendingCTS.Token), _audioSendingCTS.Token);
         }
-        public async Task<(bool Success, TimeSpan Duration)> SynthesizeAndQueueSpeechAsync(ConversationTurn turn, string text, CancellationToken externalToken) // Called by LLM Handler
+        public async Task<(bool Success, TimeSpan Duration)> SynthesizeAndQueueSpeechAsync(ConversationTurn turn, string text, bool markTurnAsCompleteAfterThis, CancellationToken externalToken) // Called by LLM Handler
         {
             if (string.IsNullOrWhiteSpace(text) || _agentState.TTSService == null)
             {
@@ -298,16 +295,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     var cacheResult = await _cacheManager.TryGetAudioAsync(cacheKey, ttsConfig, _agentState.TTSService.GetProviderType(), _agentState.BusinessApp.Id, cacheGroupId, _agentState.CurrentLanguageCode, cacheEntryId, ttsToken);
                     if (cacheResult.IsHit && !cacheResult.AudioData.IsEmpty)
                     {
-                        var newCachedSegmentData = new SpeechSegmentData
-                        {
-                            Text = text,
-                            Duration = cacheResult.Duration
-                        };
-                        turn.Response.SpokenSegments.Add(newCachedSegmentData);
-                        TurnUpdate?.Invoke(this, turn);
-
-                        var cachedSegment = new SpeechSegment(text, cacheResult.AudioData, cacheResult.Duration, turn.Id);
+                        var cachedSegment = new SpeechSegment(Guid.NewGuid().ToString(), text, cacheResult.AudioData, cacheResult.Duration, turn.Id);
                         _speechAudioQueue.Add(cachedSegment, _audioSendingCTS.Token);
+                        _speechAudioQueue.CompleteAdding();
                         return (true, cachedSegment.Duration);
                     }
                 }
@@ -340,17 +330,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     );
                 }
 
-                var newSegmentData = new SpeechSegmentData
-                {
-                    Text = text,
-                    Duration = audioDuration.Value
-                };
-                turn.Response.SpokenSegments.Add(newSegmentData);
-                TurnUpdate?.Invoke(this, turn);
-
-                var segment = new SpeechSegment(text, audioData, audioDuration.Value, turn.Id);
+                var segment = new SpeechSegment(Guid.NewGuid().ToString(), text, audioData, audioDuration.Value, turn.Id);
                 _speechAudioQueue.Add(segment, _audioSendingCTS.Token);
-                _agentState.CurrentResponseDuration = _agentState.CurrentResponseDuration.Add(audioDuration.Value);
+                _speechAudioQueue.CompleteAdding();
 
                 return (true, segment.Duration);
             }
@@ -389,7 +371,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             await CancelCurrentSpeechPlaybackAsync();
 
             // 2. Synthesize and queue the new speech
-            var (success, duration) = await SynthesizeAndQueueSpeechAsync(turn, text, cancellationToken);
+            var (success, duration) = await SynthesizeAndQueueSpeechAsync(turn, text, true, cancellationToken);
 
             // 3. Wait for the estimated duration if synthesis was successful
             if (success && duration > TimeSpan.Zero)
@@ -419,7 +401,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             _currentTtsTaskCTS?.Cancel();
             await (_agentState.TTSService?.StopTextSynthesisAsync() ?? Task.CompletedTask);
-            _volumeFadeCTS?.Cancel();
 
             while (_speechAudioQueue.TryTake(out _)) { }
 
@@ -440,15 +421,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // If nothing has been played, it was cancelled. If something has played, it was interrupted.
                 bool hasPlayedSomething = turnBeingCancelled.Response.SpokenSegments.Any(s => s.StartedPlayingAt != default);
                 turnBeingCancelled.Response.Status = hasPlayedSomething ? AgentResponseStatus.Interrupted : AgentResponseStatus.Cancelled;
-                turnBeingCancelled.Response.CompletedAt = DateTime.UtcNow;
+                turnBeingCancelled.Response.SpeechCompletedAt = DateTime.UtcNow;
 
                 TurnUpdate?.Invoke(this, turnBeingCancelled); // Persist the final interrupted state
             }
 
             // Reset local playback state
-            _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
-            _currentSpeechPosition = 0;
-            _currentSpeechText = string.Empty;
+            _currentSpeechSegmentId = string.Empty;
+            _currentSpeechSegmentAudio = ReadOnlyMemory<byte>.Empty;
+            _currentSpeechSegmentAudioPosition = 0;
+            _currentSpeechSegmentText = string.Empty;
             _isPlaybackPaused = false;
 
             OnAudioBufferCleared?.Invoke(this, null);
@@ -457,28 +439,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             _speechAudioQueue.CompleteAdding();
             _audioSendingCTS.Cancel(); // Signal the sending loop to terminate
-            _volumeFadeCTS?.Cancel(); // Stop fades
             _currentTtsTaskCTS?.Cancel(); // Stop any final TTS
-        }
-        public TimeSpan CurrentlyLeftToPlay()
-        {
-            TimeSpan totalDuration = TimeSpan.Zero;
-            foreach (var segment in _speechAudioQueue)
-            {
-                totalDuration += segment.Duration;
-            }
-
-            if (_currentSpeechSegment.Length != 0 && _currentSpeechDuration != TimeSpan.Zero)
-            {
-                int currentSegmentDurationLeft = (int)_currentSpeechDuration.TotalMilliseconds * _currentSpeechPosition / _currentSpeechSegment.Length;
-                totalDuration = totalDuration.Add(TimeSpan.FromMilliseconds(currentSegmentDurationLeft));
-            }
-
-            return totalDuration;
-        }
-        public (TimeSpan Duration, string Text, int Position, int Length) GetCurrentPlayingSegmentDetails()
-        {
-            return (_currentSpeechDuration, _currentSpeechText, _currentSpeechPosition, _currentSpeechSegment.Length);
         }
         public Task PausePlaybackAsync()
         {
@@ -615,148 +576,112 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             try
             {
-                bool playbackWasComplete = true; // Assume initially complete
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    _agentState.AudioDurationLeftToPlay = CurrentlyLeftToPlay();
+                    var currentTurn = _agentState.CurrentTurn;
+                    if (currentTurn == null)
+                    {
+                        _logger.LogError("Agent {AgentId}: No current turn found.", _agentState.AgentId);
+                        continue;
+                    }
 
                     byte[]? chunkToSend = null;
-                    bool isSpeechChunk = false;
-                    bool segmentFinished = false;
 
                     // --- Process Current Speech Segment ---
-                    if (!_currentSpeechSegment.IsEmpty && !_isPlaybackPaused)
+                    if (!_currentSpeechSegmentAudio.IsEmpty && !_isPlaybackPaused)
                     {
-                        playbackWasComplete = false; // Speech is playing
-                        int remainingSpeechBytes = _currentSpeechSegment.Length - _currentSpeechPosition;
+                        int remainingSpeechBytes = _currentSpeechSegmentAudio.Length - _currentSpeechSegmentAudioPosition;
                         int speechChunkSize = Math.Min(BytesPerChunk, remainingSpeechBytes);
 
                         if (speechChunkSize > 0)
                         {
-                            var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, speechChunkSize);
+                            var speechChunk = _currentSpeechSegmentAudio.Slice(_currentSpeechSegmentAudioPosition, speechChunkSize);
                             var backgroundChunk = GetNextBackgroundChunk(speechChunkSize);
                             chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(speechChunk, backgroundChunk);
 
-                            _currentSpeechPosition += speechChunkSize;
-                            isSpeechChunk = true;
+                            _currentSpeechSegmentAudioPosition += speechChunkSize;
 
-                            if (_currentSpeechPosition >= _currentSpeechSegment.Length)
+                            if (_currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length)
                             {
-                                var currentTurn = _agentState.CurrentTurn;
-                                if (currentTurn != null && !string.IsNullOrEmpty(_currentSpeechText))
-                                {
-                                    var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Text == _currentSpeechText && s.FinishedPlayingAt == null);
-                                    if (segmentDataToUpdate != null)
-                                    {
-                                        segmentDataToUpdate.FinishedPlayingAt = DateTime.UtcNow;
-                                        TurnUpdate?.Invoke(this, currentTurn); // Notify agent to save
-                                    }
-                                }
-
-                                _logger.LogTrace("Agent {AgentId}: Finished sending speech segment.", _agentState.AgentId);
-                                _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
-                                _currentSpeechDuration = TimeSpan.Zero;
-                                _currentSpeechPosition = 0;
-                                _currentSpeechText = string.Empty;
-                                segmentFinished = true; // Mark that a segment just finished
-                            }
-                        }
-                        else // Should not happen if logic is correct
-                        {
-                            _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
-                            _currentSpeechDuration = TimeSpan.Zero;
-                            _currentSpeechPosition = 0;
-                            _currentSpeechText = string.Empty;
-                            segmentFinished = true; // Treat as finished
-                        }
-                    }
-
-                    // --- If no current speech chunk, try dequeuing next segment ---
-                    if (chunkToSend == null && !_isPlaybackPaused)
-                    {
-                        if (_speechAudioQueue.TryTake(out var nextSegment))
-                        {
-                            var currentTurn = _agentState.CurrentTurn;
-                            if (currentTurn != null && currentTurn.Id == nextSegment.TurnId)
-                            {
-                                var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Text == nextSegment.Text && s.StartedPlayingAt == default);
+                                var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == s.Id);
                                 if (segmentDataToUpdate != null)
                                 {
-                                    segmentDataToUpdate.StartedPlayingAt = DateTime.UtcNow;
-                                    TurnUpdate?.Invoke(this, currentTurn); // Notify agent to save
+                                    segmentDataToUpdate.FinishedPlayingAt = DateTime.UtcNow;
+                                    TurnUpdate?.Invoke(this, currentTurn);
                                 }
-                            }
-
-                            playbackWasComplete = false; // Starting new speech
-                            _logger.LogTrace("Agent {AgentId}: Starting new speech segment ({Duration}).", _agentState.AgentId, nextSegment.Duration);
-                            _currentSpeechSegment = nextSegment.AudioData;
-                            _currentSpeechDuration = nextSegment.Duration;
-                            _currentSpeechText = nextSegment.Text;
-                            _currentSpeechPosition = 0;
-
-                            // Immediately process the first chunk of the new segment
-                            int firstSpeechChunkSize = Math.Min(BytesPerChunk, _currentSpeechSegment.Length);
-                            if (firstSpeechChunkSize > 0)
-                            {
-                                var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, firstSpeechChunkSize);
-                                var backgroundChunk = GetNextBackgroundChunk(firstSpeechChunkSize);
-                                chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(speechChunk, backgroundChunk);
-
-                                _currentSpeechPosition += firstSpeechChunkSize;
-                                isSpeechChunk = true;
-
-                                if (_currentSpeechPosition >= _currentSpeechSegment.Length) // Handle very short segments
-                                {
-                                    _logger.LogTrace("Agent {AgentId}: Finished sending short speech segment immediately.", _agentState.AgentId);
-                                    _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
-                                    _currentSpeechDuration = TimeSpan.Zero;
-                                    _currentSpeechPosition = 0;
-                                    _currentSpeechText = string.Empty;
-                                    segmentFinished = true;
-                                }
-                            }
-                            else // Dequeued segment is empty
-                            {
-                                _logger.LogWarning("Agent {AgentId}: Dequeued speech segment has zero length.", _agentState.AgentId);
-                                _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
-                                _currentSpeechDuration = TimeSpan.Zero;
-                                _currentSpeechText = string.Empty;
-                                _currentSpeechPosition = 0;
-                                segmentFinished = true;
                             }
                         }
-                        else // Queue is empty and no current segment / or is paused
-                        {
-                            // Play background only (if enabled)
-                            var backgroundChunk = GetNextBackgroundChunk(BytesPerChunk);
-                            if (!backgroundChunk.IsEmpty)
-                            {
-                                chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(ReadOnlyMemory<byte>.Empty, backgroundChunk);
-                            }
+                        else { _logger.LogError("Agent {AgentId}: Speech chunk size is zero.", _agentState.AgentId); } // Should not happen if logic is correct
+                    }
 
-                            // Check if playback just became complete
-                            if (playbackWasComplete)
+                    // If no current speech chunk, try dequeuing next segment
+                    if (chunkToSend == null && !_isPlaybackPaused && _speechAudioQueue.TryTake(out var nextSegment))
+                    {
+                        if (currentTurn.Id != nextSegment.TurnId)
+                        {
+                            _logger.LogError("Agent {AgentId}: Dequeued speech segment for turn {TurnId} but current turn is {CurrentTurnId}.", _agentState.AgentId, nextSegment.TurnId, currentTurn.Id);
+                            continue;
+                        }
+
+                        var newSegmentData = new SpeechSegmentData
+                        {
+                            Id = nextSegment.Id,
+                            Text = nextSegment.Text,
+                            Duration = nextSegment.Duration,
+                            StartedPlayingAt = DateTime.UtcNow
+                        };
+                        currentTurn.Response.SpokenSegments.Add(newSegmentData);
+                        TurnUpdate?.Invoke(this, currentTurn);
+
+                        _currentSpeechSegmentId = nextSegment.Id;
+                        _currentSpeechSegmentAudio = nextSegment.AudioData;
+                        _currentSpeechSegmentDuration = nextSegment.Duration;
+                        _currentSpeechSegmentText = nextSegment.Text;
+                        _currentSpeechSegmentAudioPosition = 0;
+
+                        // Immediately process the first chunk of the new segment
+                        int firstSpeechChunkSize = Math.Min(BytesPerChunk, _currentSpeechSegmentAudio.Length);
+                        if (firstSpeechChunkSize > 0)
+                        {
+                            var speechChunk = _currentSpeechSegmentAudio.Slice(_currentSpeechSegmentAudioPosition, firstSpeechChunkSize);
+                            var backgroundChunk = GetNextBackgroundChunk(firstSpeechChunkSize);
+                            chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(speechChunk, backgroundChunk);
+
+                            _currentSpeechSegmentAudioPosition += firstSpeechChunkSize;
+
+                            if (_currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length)
                             {
-                                AgentResponsePlaybackComplete?.Invoke(this, _agentState.CurrentTurn);
+                                var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == s.Id);
+                                if (segmentDataToUpdate != null)
+                                {
+                                    segmentDataToUpdate.FinishedPlayingAt = DateTime.UtcNow;
+                                    TurnUpdate?.Invoke(this, currentTurn);
+                                }
                             }
+                        }
+                        else { _logger.LogError("Agent {AgentId}: Dequeued speech segment for turn {TurnId} has no audio data.", _agentState.AgentId, nextSegment.TurnId); } // Should not happen if logic is correct
+                    }
+
+                    if (chunkToSend == null || chunkToSend.Length == 0) // Queue is empty and no current segment / or is paused
+                    {
+                        // Play background only (if enabled)
+                        var backgroundChunk = GetNextBackgroundChunk(BytesPerChunk);
+                        if (!backgroundChunk.IsEmpty)
+                        {
+                            chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(ReadOnlyMemory<byte>.Empty, backgroundChunk);
                         }
                     }
 
                     // --- Send Chunk and Delay ---
                     if (chunkToSend != null && chunkToSend.Length > 0)
                     {
-                        try
-                        {
-                            // Use ToArray() if event expects byte[], otherwise pass ReadOnlyMemory if possible
-                            AudioChunkGenerated?.Invoke(this, new ConversationAudioGeneratedEventArgs(chunkToSend, _agentState.CurrentClientId));
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Agent {AgentId}: Error invoking AudioChunkGenerated event.", _agentState.AgentId);
-                            // Decide how to handle - stop sending? Log and continue?
-                        }
+                        AudioChunkGenerated?.Invoke(this, new ConversationAudioGeneratedEventArgs(chunkToSend, _agentState.CurrentClientId));
 
-                        await Task.Delay(ChunkDurationMs, cancellationToken);
+                        // todo this can be wrong is duration ms is smaller than the chunk size,
+                        // possible when 600ms is defined but array only had 200ms left thats being played
+                        // this is a temporary implementation, we must make sure it is correct and works
+                        var currentChunkDuration = (int)((int)chunkToSend.Length / (int)(SampleRate * BitsPerSample / 8.0f));
+                        await Task.Delay(Math.Min(ChunkDurationMs, currentChunkDuration), cancellationToken);
                     }
                     else
                     {
@@ -764,35 +689,32 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         await Task.Delay(10, cancellationToken);
                     }
 
-                    // Check if playback became complete *after* sending the last chunk of a segment
-                    if (segmentFinished && _currentSpeechSegment.IsEmpty && _speechAudioQueue.IsCompleted && !playbackWasComplete)
+                    // Check if current turn playback is complete
+                    if (
+                        currentTurn.Response.Status == AgentResponseStatus.Processing &&
+                        currentTurn.Response.Type == AgentResponseType.Speech &&
+                        currentTurn.Response.LLMProcessCompletedAt != null &&
+                        currentTurn.Response.SpeechCompletedAt == null &&
+                        _currentSpeechSegmentAudio.IsEmpty &&
+                        _speechAudioQueue.IsCompleted
+                    )
                     {
-                        var currentTurn = _agentState.CurrentTurn;
-                        if (currentTurn != null && (currentTurn.Response.Status == AgentResponseStatus.Processing || currentTurn.Response.Status == AgentResponseStatus.Pending))
-                        {
-                            // This signals the successful completion of the agent's spoken response
-                            currentTurn.Response.Status = AgentResponseStatus.Completed;
-                            currentTurn.Response.CompletedAt = DateTime.UtcNow;
-
-                            // Let the agent know the entire response is finished. The agent will then finalize the turn.
-                            AgentResponsePlaybackComplete?.Invoke(this, currentTurn);
-                        }
-                        playbackWasComplete = true;
+                        currentTurn.Response.Status = AgentResponseStatus.Completed;
+                        currentTurn.Response.SpeechCompletedAt = DateTime.UtcNow;
+                        AgentResponsePlaybackComplete?.Invoke(this, currentTurn);
                     }
                 }
             }
             catch (OperationCanceledException)
             {
+                // TODO handle the completion of turn
                 _logger.LogInformation("Agent {AgentId}: Audio sending task cancelled.", _agentState.AgentId);
             }
             catch (Exception ex)
             {
+                // TODO handle the completion of turn
                 _logger.LogError(ex, "Agent {AgentId}: Error in audio sending task.", _agentState.AgentId);
                 // TODO: Raise error event
-            }
-            finally
-            {
-                _logger.LogInformation("Agent {AgentId}: Audio sending task finished.", _agentState.AgentId);
             }
         }
         private ReadOnlyMemory<byte> GetNextBackgroundChunk(int desiredChunkSize)
@@ -879,91 +801,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        public Task StartVolumeFadeAsync(float targetFactor, TimeSpan duration, CancellationToken cancellationToken)
-        {
-            // this causes more issues than it solves
-            return Task.CompletedTask;
-
-            float target = Math.Clamp(targetFactor, 0.0f, 1.0f);
-
-            if (duration <= TimeSpan.Zero)
-            {
-                _logger.LogDebug("Agent {AgentId}: Duration is zero or negative. Setting volume instantly to {TargetFactor:F2}", _agentState.AgentId, target);
-                _agentState.CurrentAgentVolumeFactor = target;
-                _volumeFadeCTS.Dispose(); // Dispose the unused CTS
-                _volumeFadeCTS = null;
-                return Task.CompletedTask; // Return an already completed task
-            }
-
-            _volumeFadeCTS?.Cancel(); // Cancel existing fade
-            _volumeFadeCTS?.Dispose();
-            if (_volumeFadeTask != null)
-            {
-                try {
-                    _volumeFadeTask?.Wait(500);
-                }
-                catch (TaskCanceledException ex)
-                {
-                    //expected
-                }
-            }
-            _volumeFadeStartTime = DateTime.UtcNow;
-            _volumeFadeCTS = CancellationTokenSource.CreateLinkedTokenSource(_audioSendingCTS.Token, cancellationToken);
-            var token = _volumeFadeCTS.Token;
-
-            float startFactor = _agentState.CurrentAgentVolumeFactor; // Read current volatile value
-            
-
-            _logger.LogDebug("Agent {AgentId}: Starting volume fade from {StartFactor:F2} to {TargetFactor:F2} over {Duration}",
-                            _agentState.AgentId, startFactor, target, duration);
-
-            _volumeFadeTask = Task.Run(async () =>
-            {
-                try
-                {
-                    while (!token.IsCancellationRequested)
-                    {
-                        var elapsed = DateTime.UtcNow - _volumeFadeStartTime.Value;
-                        float progress;
-                        double totalDurationMs = duration.TotalMilliseconds;
-                        if (totalDurationMs <= 0)
-                        { 
-                            progress = 1.0f;
-                        }
-                        else
-                        {
-                            progress = (float)Math.Clamp(elapsed.TotalMilliseconds / totalDurationMs, 0.0, 1.0);
-                        }
-
-
-                        // Linear interpolation (Lerp)
-                        float currentCalculated = startFactor + (target - startFactor) * progress;
-                        _agentState.CurrentAgentVolumeFactor = currentCalculated;
-
-                        if (progress >= 1.0f)
-                        {
-                            _agentState.CurrentAgentVolumeFactor = target; // Ensure exact target
-                            _logger.LogTrace("Agent {AgentId}: Volume fade completed at {TargetFactor:F2}", _agentState.AgentId, target);
-                            break;
-                        }
-                        await Task.Delay(10, token); // Check ~50 times per second
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger.LogTrace("Agent {AgentId}: Volume fade task cancelled.", _agentState.AgentId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Agent {AgentId}: Error during volume fade task.", _agentState.AgentId);
-                }
-                // Optionally set final value even on cancellation?
-                // if (token.IsCancellationRequested) { _agentState.CurrentAgentVolumeFactor = target; }
-            }, token);
-
-            return _volumeFadeTask; // Return the task so caller can optionally await it
-        }
-
         // Disposal
         private void DisposeCurrentTTSService()
         {
@@ -989,7 +826,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioSendingTask?.Wait(TimeSpan.FromSeconds(2)); // Wait for task to finish
             _speechAudioQueue?.Dispose();
             _audioSendingCTS?.Dispose();
-            _volumeFadeCTS?.Dispose();
             _currentTtsTaskCTS?.Dispose();
             _logger.LogDebug("AudioOutput module disposed for Agent {AgentId}.", _agentState.AgentId);
         }

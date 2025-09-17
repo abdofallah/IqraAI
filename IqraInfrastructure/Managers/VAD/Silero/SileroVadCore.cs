@@ -24,7 +24,9 @@ namespace IqraInfrastructure.Managers.VAD.Silero
         private readonly AudioEncodingTypeEnum _audioEncoding;
         private readonly int _sampleRate;
         private readonly int _bitsPerSample;
-        private readonly Task _loopTask;
+
+        // Background Processing Task
+        private Task _loopTask;
 
         public SileroVadCore(ILogger<SileroVadCore> logger, VadOptions options, CancellationToken cancellationToken)
         {
@@ -35,7 +37,10 @@ namespace IqraInfrastructure.Managers.VAD.Silero
             _audioEncoding = options.AudioEncodingType;
             _sampleRate = options.SampleRate;
             _bitsPerSample = options.BitsPerSample;
+        }
 
+        public void StartAudioProcessingTask()
+        {
             _loopTask = Task.Run(RunLoop, _cancellationTokenSource.Token);
         }
 

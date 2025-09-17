@@ -4,8 +4,10 @@
     {
         public string AgentId { get; set; }
         public AgentResponseType Type { get; set; } = AgentResponseType.NotSet;
-        public DateTime? StartedAt { get; set; }
-        public DateTime? CompletedAt { get; set; }
+        public DateTime? LLMProcessStartedAt { get; set; }
+        public DateTime? LLMProcessCompletedAt { get; set; }
+
+        public DateTime? SpeechCompletedAt { get; set; }
         public AgentResponseStatus Status { get; set; } = AgentResponseStatus.Pending;
 
         // For Speech

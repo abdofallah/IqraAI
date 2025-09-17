@@ -10,8 +10,10 @@ using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.KnowledgeBase;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.Server.Metrics;
@@ -25,10 +27,13 @@ using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Embedding;
+using IqraInfrastructure.Repositories.Embedding.Cache;
 using IqraInfrastructure.Repositories.Integrations;
+using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.MinIO;
+using IqraInfrastructure.Repositories.RAG;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Rerank;
@@ -42,6 +47,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Minio;
 using MongoDB.Driver;
+using Mosaik.Core;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -71,6 +77,9 @@ namespace ProjectIqraBackendApp
             {
                 return backendAppConfig;
             });
+
+            // Dependencies
+            RegisterCatalystLanguages();
 
             // Repositories
             SetupRepositories(builder, appConfig);
@@ -242,6 +251,22 @@ namespace ProjectIqraBackendApp
                     bool.Parse(appConfig["MinioStorage:IsPublicEndpointSecure"]),
                     appConfig["MinioStorage:AccessKey"],
                     appConfig["MinioStorage:SecretKey"]
+                );
+            });
+
+            builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
+            {
+                return new MilvusKnowledgeBaseClient(
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    new MilvusOptions()
+                    {
+                        Endpoint = appConfig["Milvus:Endpoint"],
+                        Username = appConfig["Milvus:Username"],
+                        Password = appConfig["Milvus:Password"],
+                        ExpiryCheckIntervalSeconds = int.Parse(appConfig["Milvus:ExpiryCheckIntervalSeconds"]),
+                        CollectionStaleTimeoutMinutes = int.Parse(appConfig["Milvus:CollectionStaleTimeoutMinutes"])
+                    },
+                    sp.GetRequiredService<ILogger<MilvusKnowledgeBaseClient>>()
                 );
             });
 
@@ -512,6 +537,43 @@ namespace ProjectIqraBackendApp
                     appConfig["MongoDatabase:RerankProviderRepositoryDatabaseName"]
                 );
             });
+
+            builder.Services.AddSingleton<EmbeddingCacheRepository>((sp) =>
+            {
+                return new EmbeddingCacheRepository(
+                    sp.GetRequiredService<ILogger<EmbeddingCacheRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:EmbeddingCacheRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<BusinessKnowledgeBaseDocumentRepository>((sp) =>
+            {
+                return new BusinessKnowledgeBaseDocumentRepository(
+                    sp.GetRequiredService<ILogger<BusinessKnowledgeBaseDocumentRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:BusinessKnowledgeBaseDocumentRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<KnowledgeBaseVectorRepository>((sp) =>
+            {
+                return new KnowledgeBaseVectorRepository(
+                    sp.GetRequiredService<MilvusKnowledgeBaseClient>(),
+                    appConfig["Milvus:Database"],
+                    sp.GetRequiredService<ILogger<KnowledgeBaseVectorRepository>>()
+                );
+            });
+
+            builder.Services.AddSingleton<RAGKeywordStore>((sp) =>
+            {
+                return new RAGKeywordStore(
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:RAGKeywordStoreDatabaseName"],
+                    sp.GetRequiredService<KeywordExtractor>(),
+                    sp.GetRequiredService<ILogger<RAGKeywordStore>>()
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
@@ -653,6 +715,32 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<LLMProviderManager>(),
                     sp.GetRequiredService<EmbeddingProviderManager>(),
                     sp.GetRequiredService<RerankProviderManager>()
+                );
+            });
+
+            builder.Services.AddSingleton<KeywordExtractor>((sp) =>
+            {
+                // TODO load the keywords from a .json file
+                return new KeywordExtractor();
+            });
+            builder.Services.AddSingleton<KnowledgeBaseCollectionsLoadManager>((sp) =>
+            {
+                return new KnowledgeBaseCollectionsLoadManager(
+                    sp.GetRequiredService<ILogger<KnowledgeBaseCollectionsLoadManager>>(),
+                    sp.GetRequiredService<MilvusKnowledgeBaseClient>(),
+                    appConfig["Milvus:Database"],
+                    new RedisConnectionFactory(
+                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:RAGCollectionsLoadedDatabaseIndex"]}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    )
+                );
+            });
+            builder.Services.AddSingleton<EmbeddingCacheManager>((sp) =>
+            {
+                return new EmbeddingCacheManager(
+                    sp.GetRequiredService<ILogger<EmbeddingCacheManager>>(),
+                    sp.GetRequiredService<EmbeddingCacheRepository>(),
+                    sp.GetRequiredService<BusinessAppRepository>()
                 );
             });
 
@@ -803,6 +891,56 @@ namespace ProjectIqraBackendApp
             var callSiteFactory = serviceProvider.GetType().GetProperty("CallSiteFactory", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(serviceProvider);
             var serviceDescriptors = callSiteFactory.GetType().GetProperty("Descriptors", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(callSiteFactory) as ServiceDescriptor[];
             return serviceDescriptors.ToList();
+        }
+
+        private static void RegisterCatalystLanguages()
+        {
+            Catalyst.Models.English.Register(); // Load initial assembly
+
+            foreach (var langauge in Enum.GetNames(typeof(Language)))
+            {
+                var langName = langauge.ToString(); // "English", "Arabic", etc.
+                var typeName = $"Catalyst.Models.{langName}";
+
+                try
+                {
+                    // Step 1: Load the assembly manually if it's not already loaded
+                    var assembly = AppDomain.CurrentDomain
+                        .GetAssemblies()
+                        .FirstOrDefault(a => a.GetName().Name == typeName)
+                        ?? Assembly.Load(typeName); // Load from name (e.g., "Catalyst.Models.English")
+
+                    if (assembly == null)
+                    {
+                        Console.WriteLine($"Failed to load assembly: {typeName}. Skipping!");
+                        continue;
+                    }
+
+                    // Step 2: Try to find the type
+                    var langType = assembly.ExportedTypes.FirstOrDefault(t => t?.FullName != null && t.FullName.Equals(typeName));
+
+                    if (langType == null)
+                    {
+                        throw new Exception($"Type {typeName} not found in assembly {typeName}");
+                    }
+                    // Step 3: Call Register()
+                    var registerMethod = langType.GetMethod("Register", BindingFlags.Public | BindingFlags.Static);
+
+                    if (registerMethod != null)
+                    {
+                        registerMethod.Invoke(null, null);
+                    }
+                    else
+                    {
+                        throw new Exception($"Register() method not found for type {typeName}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to register language {langName}. Skipping!");
+                    continue;
+                }
+            }
         }
     }
 }

@@ -258,6 +258,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 {
                     var newTurn = new ConversationTurn
                     {
+                        Status = TurnStatus.UserInputStarted,
                         User = new UserInput
                         {
                             SenderId = _agentState.CurrentClientId ?? "UnknownClient",
@@ -265,7 +266,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         }
                     };
 
-                    _agentState.CurrentTurn = newTurn;
                     NewTurnCreated?.Invoke(newTurn);
                 }
             }
@@ -308,7 +308,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 Status = TurnStatus.UserInputEnded
             };
 
-            _agentState.CurrentTurn = newTurn;
             NewTurnCreated?.Invoke(newTurn);
 
             if (_agentState.IsResponding || _agentState.IsExecutingCustomTool || _agentState.IsExecutingSystemTool)
@@ -481,7 +480,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             };
 
-            _agentState.CurrentTurn = newTurn;
             NewTurnCreated?.Invoke(newTurn);
         }
         private void OnTurnEndVadSpeechEnded()
@@ -642,7 +640,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             };
 
-            _agentState.CurrentTurn = newTurn;
             NewTurnCreated?.Invoke(newTurn);
         }
         private void TriggerMlAnalysis()

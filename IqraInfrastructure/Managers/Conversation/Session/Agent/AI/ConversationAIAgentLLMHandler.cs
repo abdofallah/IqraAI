@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Conversation.Events;
+﻿using Catalyst;
+using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
@@ -7,6 +8,7 @@ using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using Microsoft.Extensions.Logging;
+using Mosaik.Core;
 using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
@@ -14,7 +16,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
     public class ConversationAIAgentLLMHandler : IDisposable
     {
         // Events for Orchestrator
-        public event Func<ConversationTurn, string, Task>? SynthesizeTextSegmentRequested;
+        public event Func<ConversationTurn, string, bool, Task>? SynthesizeTextSegmentRequested;
         public event Func<ConversationTurn, Task>? SystemToolExecutionRequested;
         public event Func<ConversationTurn, Task>? CustomToolExecutionRequested;
 
@@ -230,8 +232,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Message Processing
         private async Task ProcessLLMInputForTurn(ConversationTurn turn, CancellationToken cancellationToken)
         {
-            _agentState.CurrentTurn = turn;
-
             var currentDateTimeData = await _systemPromptGenerator.GenerateDateTimeInformationForMessage(
                 null, _agentState.CurrentSessionContext!.Agent.Timezones);
 
@@ -241,6 +241,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 OnLLMMessageStreamed(this, new ConversationAgentEventLLMStreamed($"response_to_customer: {cacheableResult.cachedQuery}", true));
                 return;
             }
+
+            // TODO knowledge base retrieval here
 
             _llmTask = _agentState.LLMService!.ProcessInputAsync(cancellationToken, currentDateTimeData.Data, null);
             await _llmTask;
@@ -284,10 +286,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             // On the first token of a new agent response, clear the buffer.
-            if (currentTurn.Response.StartedAt == null)
+            if (currentTurn.Response.LLMProcessStartedAt == null)
             {
                 _responseBuffer.Clear();
                 _currentResponseBufferReadPosition = 0;
+
+                currentTurn.Response.LLMProcessStartedAt = DateTime.UtcNow;
+                await _conversationSession.NotifyTurnUpdated(currentTurn);
             }
 
             var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);
@@ -346,23 +351,20 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     {
                         currentTurn.Response.Type = AgentResponseType.Speech;
                         currentTurn.Status = TurnStatus.AgentRespondingSpeech;
+                        await _conversationSession.NotifyTurnUpdated(currentTurn);
                     }
                     else if (fullText.StartsWith("execute_system_function:"))
                     {
                         currentTurn.Response.Type = AgentResponseType.SystemTool;
                         currentTurn.Status = TurnStatus.AgentExecutingTool;
                         currentTurn.Response.ToolExecution = new ToolExecutionData { ToolType = AgentToolType.System };
+                        await _conversationSession.NotifyTurnUpdated(currentTurn);
                     }
                     else if (fullText.StartsWith("execute_custom_function:"))
                     {
                         currentTurn.Response.Type = AgentResponseType.CustomTool;
                         currentTurn.Status = TurnStatus.AgentExecutingTool;
                         currentTurn.Response.ToolExecution = new ToolExecutionData { ToolType = AgentToolType.Custom };
-                    }
-
-                    if (currentTurn.Response.Type != AgentResponseType.NotSet)
-                    {
-                        currentTurn.Response.StartedAt = DateTime.UtcNow;
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
                     }
                 }
@@ -375,12 +377,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         string prefix = "response_to_customer:";
                         if (_responseBuffer.Length > prefix.Length)
                         {
-                            string unprocessedText = _responseBuffer.ToString().Substring(_currentResponseBufferReadPosition);
+                            string unprocessedText = _responseBuffer.ToString().Substring(_currentResponseBufferReadPosition + prefix.Length);
 
                             // Simple chunking strategy based on your previous robust implementation
                             bool isCompleteSentence = unprocessedText.TrimEnd().EndsWith('.') || unprocessedText.TrimEnd().EndsWith('!') || unprocessedText.TrimEnd().EndsWith('?');
                             bool isLargeChunk = unprocessedText.Length > 80;
-                            bool shouldProcessChunk = isEndOfResponse || (isCompleteSentence && unprocessedText.Length > 10) || isLargeChunk;
+                            bool shouldProcessChunk = isEndOfResponse || (isCompleteSentence && unprocessedText.Length > 30) || isLargeChunk;
 
                             if (shouldProcessChunk)
                             {
@@ -414,7 +416,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                                 if (!string.IsNullOrWhiteSpace(textToSynthesize))
                                 {
-                                    await SynthesizeTextSegmentRequested?.Invoke(currentTurn, textToSynthesize);
+                                    await SynthesizeTextSegmentRequested?.Invoke(currentTurn, textToSynthesize, isEndOfResponse);
                                     _currentResponseBufferReadPosition += chunkSize;
                                 }
                             }
@@ -428,6 +430,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     if (currentTurn.Response.Type == AgentResponseType.SystemTool || currentTurn.Response.Type == AgentResponseType.CustomTool)
                     {
                         currentTurn.Response.ToolExecution!.RawLLMInput = _responseBuffer.ToString();
+                        await _conversationSession.NotifyTurnUpdated(currentTurn);
 
                         if (currentTurn.Response.Type == AgentResponseType.SystemTool)
                         {
@@ -440,7 +443,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
                     else if (currentTurn.Response.Type == AgentResponseType.Speech)
                     {
-                        await _conversationSession.NotifyTurnUpdated(currentTurn);
+                        // todo, check remaning buffer?
                     }
                     else
                     {
@@ -452,7 +455,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         //await ProcessSystemMessageAsync("Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.", _agentState.CurrentClientId, CancellationToken.None);
                     }
 
-                    _responseBuffer.Clear();
+                    currentTurn.Response.LLMProcessCompletedAt = DateTime.UtcNow;
+                    await _conversationSession.NotifyTurnUpdated(currentTurn);
                 }
             }
             catch (OperationCanceledException ex)
@@ -479,14 +483,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     throw;
                 }
             }
-        }
-        private bool ShouldProcessChunk(string newText, bool isEndOfResponse)
-        {
-            if (string.IsNullOrWhiteSpace(newText)) return false;
-
-            bool isCompleteSentence = newText.TrimEnd().EndsWith(".") || newText.TrimEnd().EndsWith("!") || newText.TrimEnd().EndsWith("?");
-            bool isLargeChunk = newText.Length > 80;
-            return isEndOfResponse || (isCompleteSentence && newText.Length > 10) || isLargeChunk;
         }
 
         // Disposal

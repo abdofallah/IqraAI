@@ -266,13 +266,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return;
             }
 
-            // Start Services
-            _sttHandler.StartTranscription();
-            _audioOutputHandler.StartProcessingAudioTask();
-            _audioInputHandler.StartProcessingAudioTask();
-            // TODO enable vad here as well if possible
-            _isConversationStarted = true;
-
             // Check if language selection is required
             bool requiresLanguageSelection = _agentState.CurrentSessionContext?.Language.MultiLanguageEnabled == true &&
                                             _agentState.CurrentSessionContext.Language.EnabledMultiLanguages?.Count > 1;
@@ -291,8 +284,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 },
                 Response = new AgentResponse
                 {
-                    StartedAt = dateTimeNow,
-                    Type = AgentResponseType.SystemTool,
+                    LLMProcessStartedAt = dateTimeNow,
+                    LLMProcessCompletedAt = dateTimeNow,
+                    Type = AgentResponseType.SystemTool,                  
                     ToolExecution = new ToolExecutionData
                     {
                         ToolType = AgentToolType.System,
@@ -302,6 +296,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 Status = TurnStatus.AgentProcessing
             };
             OnNewTurnCreated(newTurn);
+
+            // Start Services
+            _sttHandler.StartTranscription();
+            _audioOutputHandler.StartProcessingAudioTask();
+            _audioInputHandler.StartProcessingAudioTask();
+            _agentState.SileroVadCore?.StartAudioProcessingTask();
+            _isConversationStarted = true;
 
             if (requiresLanguageSelection)
             {
@@ -397,17 +398,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 turnToFinalize.Status = finalStatus;
                 turnToFinalize.CompletedAt = DateTime.UtcNow;
 
-                if (turnToFinalize.Response.ToolExecution != null && turnToFinalize.Response.CompletedAt == null)
-                {
-                    turnToFinalize.Response.Status = AgentResponseStatus.Completed;
-                    turnToFinalize.Response.CompletedAt = DateTime.UtcNow;
-                }
-
                 await _conversationSessionManager.NotifyTurnUpdated(turnToFinalize);
             }
 
-            _agentState.PreviousTurn = _agentState.CurrentTurn;
-            _agentState.CurrentTurn = null;
             _turnManager.ResetForNewTurn();
         }
 
@@ -585,7 +578,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async void OnNewTurnCreated(ConversationTurn newTurn)
         {
             // The agent is now the authority for the sequence number.
-            var turnsInDb = await _conversationSessionManager.GetTurnsAsync(); // We need to implement this method
+            var turnsInDb = await _conversationSessionManager.GetTurnsAsync();
             newTurn.Sequence = turnsInDb.Count + 1;
 
             _agentState.PreviousTurn = _agentState.CurrentTurn;
@@ -597,7 +590,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             await _conversationSessionManager.NotifyTurnUpdated(turn);
         }
-
         private async Task OnUserTurnFinalizedAsync(ConversationTurn turn)
         {
             if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
@@ -622,9 +614,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // LLM Handler
-        private async Task OnSynthesizeTextSegmentRequested(ConversationTurn turn, string textSegment)
+        private async Task OnSynthesizeTextSegmentRequested(ConversationTurn turn, string textSegment, bool markTurnAsCompleteAfterThis)
         {
-            await _audioOutputHandler.SynthesizeAndQueueSpeechAsync(turn, textSegment, _conversationCTS.Token);
+            await _audioOutputHandler.SynthesizeAndQueueSpeechAsync(turn, textSegment, markTurnAsCompleteAfterThis, _conversationCTS.Token);
         }
         private async Task OnSystemToolExecutionRequested(ConversationTurn turn)
         {

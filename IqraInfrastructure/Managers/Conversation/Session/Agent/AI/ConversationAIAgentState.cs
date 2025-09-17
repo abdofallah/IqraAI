@@ -4,7 +4,6 @@ using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.VAD.Silero;
-using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -55,15 +54,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public bool IsBackgroundMusicLoaded { get; set; } = false;
         public float BackgroundMusicVolume { get; set; } = 0.3f; // Default, could be config
         public ReadOnlyMemory<byte> BackgroundAudioData { get; set; } = ReadOnlyMemory<byte>.Empty; // Loaded data
-        public TimeSpan AudioDurationLeftToPlay { get; set; } = TimeSpan.Zero;
 
         // Client Context
         public string? CurrentClientId { get; set; }
         public Dictionary<string, string> ClientContextMap { get; } = new(); // Example, adjust if needed
-
-        // Timings / Durations (Managed by relevant handlers)
-        public DateTime? CurrentResponseDurationSpeakingStarted { get; set; }
-        public TimeSpan CurrentResponseDuration { get; set; } = TimeSpan.Zero;
 
         public ConversationAIAgentState(string agentId, CancellationToken masterCTS)
         {
