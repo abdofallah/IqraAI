@@ -89,14 +89,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                string toolName;
-                string argsRaw = string.Empty;
                 string prefix = "execute_system_function:";
+                functionContent = functionContent.Substring(prefix.Length).Trim();
+
+                string toolName = string.Empty;
+                string argsRaw = string.Empty;
                 int colonIndex = functionContent.IndexOf(':');
 
                 if (colonIndex > 0)
                 {
-                    toolName = functionContent.Substring(prefix.Length, colonIndex - prefix.Length).Trim();
+                    toolName = functionContent.Substring(0, colonIndex).Trim();
                     argsRaw = functionContent.Substring(colonIndex + 1).Trim();
                 }
                 else
@@ -141,9 +143,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         await PlaySpeechRequested.Invoke(turn, messageToSpeak, cancellationToken);
                     }
 
-                    EndConversationRequested?.Invoke(turn);
-
-                    // RESULT HANDLED BY ORCHESTRATOR
+                    await FinalizeAndReportToolResult(turn, true, null);
+                    await EndConversationRequested?.Invoke(turn);
+                    return;
                 }
                 else if (toolName.Equals("change_language", StringComparison.OrdinalIgnoreCase))
                 {

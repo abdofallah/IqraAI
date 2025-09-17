@@ -57,7 +57,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private int BytesPerChunk;
 
         // Queues & Tasks
-        private readonly BlockingCollection<SpeechSegment> _speechAudioQueue = new(new ConcurrentQueue<SpeechSegment>());
+        private BlockingCollection<SpeechSegment> _speechAudioQueue = new(new ConcurrentQueue<SpeechSegment>());
         private Task? _audioSendingTask;
         private CancellationTokenSource _audioSendingCTS = new(); // CTS for the sending loop
 
@@ -70,10 +70,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private TimeSpan _currentSpeechSegmentDuration = TimeSpan.Zero;
         private string _currentSpeechSegmentText = string.Empty;
         private int _currentSpeechSegmentAudioPosition = 0;
+
         private volatile bool _isPlaybackPaused = false;
+        private DateTime? _playbackPausedAt = null;
 
         // TTS Specific Task Management
         private CancellationTokenSource? _currentTtsTaskCTS = null;
+
+        // Synthesis Semaphore
+        private SemaphoreSlim _synthesisSemaphore = new SemaphoreSlim(1, 1);
 
         public ConversationAIAgentAudioOutput(
             ILoggerFactory loggerFactory,
@@ -272,99 +277,113 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         public async Task<(bool Success, TimeSpan Duration)> SynthesizeAndQueueSpeechAsync(ConversationTurn turn, string text, bool markTurnAsCompleteAfterThis, CancellationToken externalToken) // Called by LLM Handler
         {
-            if (string.IsNullOrWhiteSpace(text) || _agentState.TTSService == null)
-            {
-                _logger.LogWarning("Agent {AgentId}: Cannot synthesize empty text or TTS service is null.", _agentState.AgentId);
-                return (false, TimeSpan.Zero);
-            }
-
-            // Cancel previous TTS task if running, create a new CTS linked to overall shutdown and external token
-            _currentTtsTaskCTS?.Cancel();
-            _currentTtsTaskCTS?.Dispose();
-            _currentTtsTaskCTS = CancellationTokenSource.CreateLinkedTokenSource(_audioSendingCTS.Token, externalToken); // Link to module CTS and external one
-            var ttsToken = _currentTtsTaskCTS.Token;
-
             try
             {
-                (bool isCacheable, string? cacheGroupId, string? cacheEntryId) = await IsTextCacheable(text);
-                string cacheKey = string.Empty;
-                ITTSConfig ttsConfig = _agentState.TTSService.GetCacheableConfig();
+                await _synthesisSemaphore.WaitAsync(externalToken);
 
-                if (isCacheable)
+                if (string.IsNullOrWhiteSpace(text) || _agentState.TTSService == null)
                 {
-                    var cacheResult = await _cacheManager.TryGetAudioAsync(cacheKey, ttsConfig, _agentState.TTSService.GetProviderType(), _agentState.BusinessApp.Id, cacheGroupId, _agentState.CurrentLanguageCode, cacheEntryId, ttsToken);
-                    if (cacheResult.IsHit && !cacheResult.AudioData.IsEmpty)
+                    if (markTurnAsCompleteAfterThis)
                     {
-                        var cachedSegment = new SpeechSegment(Guid.NewGuid().ToString(), text, cacheResult.AudioData, cacheResult.Duration, turn.Id);
-                        _speechAudioQueue.Add(cachedSegment, _audioSendingCTS.Token);
                         _speechAudioQueue.CompleteAdding();
-                        return (true, cachedSegment.Duration);
                     }
-                }
 
-                var (audioData, audioDuration) = await _agentState.TTSService.SynthesizeTextAsync(text, ttsToken, null);
-                if (ttsToken.IsCancellationRequested)
-                {
                     return (false, TimeSpan.Zero);
                 }
 
-                if (audioData == null || audioData.Length == 0 || audioDuration == null || audioDuration.Value <= TimeSpan.Zero)
+                // Cancel previous TTS task if running, create a new CTS linked to overall shutdown and external token
+                _currentTtsTaskCTS?.Cancel();
+                _currentTtsTaskCTS?.Dispose();
+                _currentTtsTaskCTS = CancellationTokenSource.CreateLinkedTokenSource(_audioSendingCTS.Token, externalToken); // Link to module CTS and external one
+                var ttsToken = _currentTtsTaskCTS.Token;
+
+                try
                 {
-                    _logger.LogWarning("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                    (bool isCacheable, string? cacheGroupId, string? cacheEntryId) = await IsTextCacheable(text);
+                    string cacheKey = string.Empty;
+                    ITTSConfig ttsConfig = _agentState.TTSService.GetCacheableConfig();
+
+                    if (isCacheable)
+                    {
+                        var cacheResult = await _cacheManager.TryGetAudioAsync(cacheKey, ttsConfig, _agentState.TTSService.GetProviderType(), _agentState.BusinessApp.Id, cacheGroupId, _agentState.CurrentLanguageCode, cacheEntryId, ttsToken);
+                        if (cacheResult.IsHit && !cacheResult.AudioData.IsEmpty)
+                        {
+                            var cachedSegment = new SpeechSegment(Guid.NewGuid().ToString(), text, cacheResult.AudioData, cacheResult.Duration, turn.Id);
+                            _speechAudioQueue.Add(cachedSegment, _audioSendingCTS.Token);
+                            if (markTurnAsCompleteAfterThis)
+                            {
+                                _speechAudioQueue.CompleteAdding();
+                            }
+                            return (true, cachedSegment.Duration);
+                        }
+                    }
+
+                    var (audioData, audioDuration) = await _agentState.TTSService.SynthesizeTextAsync(text, ttsToken, null);
+                    if (ttsToken.IsCancellationRequested)
+                    {
+                        return (false, TimeSpan.Zero);
+                    }
+
+                    if (audioData == null || audioData.Length == 0 || audioDuration == null || audioDuration.Value <= TimeSpan.Zero)
+                    {
+                        _logger.LogWarning("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                        return (false, TimeSpan.Zero);
+                    }
+
+                    if (isCacheable && audioData.Length != 0)
+                    {
+                        _ = _cacheManager.StoreAudioAsync(
+                            cacheKey,
+                            audioData,
+                            audioDuration.Value,
+                            ttsConfig,
+                            _agentState.TTSService.GetProviderType(),
+                            _agentState.BusinessApp.Id,
+                            cacheGroupId,
+                            _agentState.CurrentLanguageCode,
+                            cacheEntryId,
+                            ttsToken
+                        );
+                    }
+
+                    var segment = new SpeechSegment(Guid.NewGuid().ToString(), text, audioData, audioDuration.Value, turn.Id);
+                    _speechAudioQueue.Add(segment, _audioSendingCTS.Token);
+                    if (markTurnAsCompleteAfterThis)
+                    {
+                        _speechAudioQueue.CompleteAdding();
+                    }
+                    return (true, segment.Duration);
+                }
+                catch (OperationCanceledException) when (ttsToken.IsCancellationRequested || _audioSendingCTS.Token.IsCancellationRequested)
+                {
+                    _logger.LogInformation("Agent {AgentId}: TTS synthesis cancelled for text: \"{Text}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                     return (false, TimeSpan.Zero);
                 }
-
-                if (isCacheable && audioData.Length != 0)
+                catch (InvalidOperationException) when (_speechAudioQueue.IsAddingCompleted)
                 {
-                    _ = _cacheManager.StoreAudioAsync(
-                        cacheKey,
-                        audioData,
-                        audioDuration.Value,
-                        ttsConfig,
-                        _agentState.TTSService.GetProviderType(),
-                        _agentState.BusinessApp.Id,
-                        cacheGroupId,
-                        _agentState.CurrentLanguageCode,
-                        cacheEntryId,
-                        ttsToken
-                    );
+                    _logger.LogWarning("Agent {AgentId}: Could not queue speech segment as queue is completed.", _agentState.AgentId);
+                    return (false, TimeSpan.Zero);
                 }
-
-                var segment = new SpeechSegment(Guid.NewGuid().ToString(), text, audioData, audioDuration.Value, turn.Id);
-                _speechAudioQueue.Add(segment, _audioSendingCTS.Token);
-                _speechAudioQueue.CompleteAdding();
-
-                return (true, segment.Duration);
-            }
-            catch (OperationCanceledException) when (ttsToken.IsCancellationRequested || _audioSendingCTS.Token.IsCancellationRequested)
-            {
-                _logger.LogInformation("Agent {AgentId}: TTS synthesis cancelled for text: \"{Text}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
-                return (false, TimeSpan.Zero);
-            }
-            catch (InvalidOperationException) when (_speechAudioQueue.IsAddingCompleted)
-            {
-                _logger.LogWarning("Agent {AgentId}: Could not queue speech segment as queue is completed.", _agentState.AgentId);
-                return (false, TimeSpan.Zero);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Agent {AgentId}: Error synthesizing speech for text: {Text}", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
-                // TODO: Raise error event
-                return (false, TimeSpan.Zero);
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Agent {AgentId}: Error synthesizing speech for text: {Text}", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                    // TODO: Raise error event
+                    return (false, TimeSpan.Zero);
+                }
+                finally
+                {
+                    // Clean up the specific CTS for this TTS task
+                    _currentTtsTaskCTS?.Dispose();
+                    _currentTtsTaskCTS = null;
+                }
             }
             finally
             {
-                // Clean up the specific CTS for this TTS task
-                _currentTtsTaskCTS?.Dispose();
-                _currentTtsTaskCTS = null;
+                _synthesisSemaphore.Release();
             }
         }
         public async Task SynthesizeAndPlayBlockingAsync(ConversationTurn turn, string text, CancellationToken cancellationToken)
         {
-            // --- Move logic from original SynthesizeAndPlaySpeechAsync here ---
-            // Calls SynthesizeAndQueueSpeechAsync
-            // Waits for the duration (needs careful cancellation handling)
-
             if (string.IsNullOrWhiteSpace(text)) return;
 
             // 1. Cancel any currently playing speech first (important for blocking calls)
@@ -376,19 +395,22 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // 3. Wait for the estimated duration if synthesis was successful
             if (success && duration > TimeSpan.Zero)
             {
-                _logger.LogDebug("Agent {AgentId}: Blocking - waiting for estimated speech duration: {Duration}", _agentState.AgentId, duration);
-                try
+                await Task.Delay(duration, cancellationToken);
+
+                while (true)
                 {
-                    // Wait for the duration, but allow cancellation
-                    // Use a combined token source for waiting
-                    using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _audioSendingCTS.Token);
-                    await Task.Delay((int)duration.TotalMilliseconds, waitCts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger.LogInformation("Agent {AgentId}: Blocking wait for speech playback cancelled.", _agentState.AgentId);
-                    // If cancelled during wait, ensure playback stops
-                    await CancelCurrentSpeechPlaybackAsync();
+                    if (
+                        (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&
+                        _speechAudioQueue.IsCompleted
+                    )
+                    {
+                        turn.Response.SpeechCompletedAt = DateTime.UtcNow;
+                        TurnUpdate?.Invoke(this, turn);
+
+                        break;
+                    }
+
+                    await Task.Delay(10, cancellationToken);
                 }
             }
             else if (!success)
@@ -402,29 +424,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _currentTtsTaskCTS?.Cancel();
             await (_agentState.TTSService?.StopTextSynthesisAsync() ?? Task.CompletedTask);
 
-            while (_speechAudioQueue.TryTake(out _)) { }
-
-            var turnBeingCancelled = _agentState.CurrentTurn;
-            if (turnBeingCancelled != null && turnBeingCancelled.Response.Type == AgentResponseType.Speech)
+            if (!_speechAudioQueue.IsAddingCompleted)
             {
-                // Find the segment that was actively playing when cancellation was called.
-                var activeSegment = turnBeingCancelled.Response.SpokenSegments
-                                        .FirstOrDefault(s => s.StartedPlayingAt != default && s.FinishedPlayingAt == null);
-
-                if (activeSegment != null)
-                {
-                    activeSegment.WasInterrupted = true;
-                    activeSegment.FinishedPlayingAt = DateTime.UtcNow; // Mark the exact time of interruption
-                }
-
-                // Update the overall response status
-                // If nothing has been played, it was cancelled. If something has played, it was interrupted.
-                bool hasPlayedSomething = turnBeingCancelled.Response.SpokenSegments.Any(s => s.StartedPlayingAt != default);
-                turnBeingCancelled.Response.Status = hasPlayedSomething ? AgentResponseStatus.Interrupted : AgentResponseStatus.Cancelled;
-                turnBeingCancelled.Response.SpeechCompletedAt = DateTime.UtcNow;
-
-                TurnUpdate?.Invoke(this, turnBeingCancelled); // Persist the final interrupted state
+                _speechAudioQueue.CompleteAdding();
             }
+            while (_speechAudioQueue.TryTake(out _)) { }        
+
+            _speechAudioQueue = new BlockingCollection<SpeechSegment>(new ConcurrentQueue<SpeechSegment>());
 
             // Reset local playback state
             _currentSpeechSegmentId = string.Empty;
@@ -432,6 +438,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _currentSpeechSegmentAudioPosition = 0;
             _currentSpeechSegmentText = string.Empty;
             _isPlaybackPaused = false;
+            _playbackPausedAt = null;
 
             OnAudioBufferCleared?.Invoke(this, null);
         }
@@ -445,10 +452,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (!_isPlaybackPaused)
             {
-                _logger.LogInformation("Agent {AgentId}: Pausing audio playback.", _agentState.AgentId);
+                _playbackPausedAt = DateTime.UtcNow;
                 _isPlaybackPaused = true;
-                // Optionally, we could add a quick volume fade-out here if desired.
-                // await StartVolumeFadeAsync(0.0f, TimeSpan.FromMilliseconds(100), CancellationToken.None);
             }
             return Task.CompletedTask;
         }
@@ -456,12 +461,37 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (_isPlaybackPaused)
             {
-                _logger.LogInformation("Agent {AgentId}: Resuming audio playback.", _agentState.AgentId);
+                _playbackPausedAt = null;
                 _isPlaybackPaused = false;
-                // Optionally, we could add a quick volume fade-in here.
-                // await StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(100), CancellationToken.None);
             }
             return Task.CompletedTask;
+        }
+        public async Task InterruptCurrentTurnSegment()
+        {
+            var turnBeingCancelled = _agentState.CurrentTurn;
+            if (turnBeingCancelled != null &&
+                turnBeingCancelled.Response.Type == AgentResponseType.Speech &&
+                (turnBeingCancelled.Status == TurnStatus.AgentProcessing || turnBeingCancelled.Status == TurnStatus.AgentRespondingSpeech)
+            ) {
+                var activeSegment = turnBeingCancelled.Response.SpokenSegments.Find(s => s.Id == _currentSpeechSegmentId);
+
+                if (activeSegment != null)
+                {
+                    activeSegment.WasInterrupted = true;
+
+                    if (_playbackPausedAt != null)
+                    {
+                        activeSegment.FinishedPlayingAt = _playbackPausedAt;
+                    }
+                }
+
+                if (_playbackPausedAt != null)
+                {
+                    turnBeingCancelled.Response.SpeechCompletedAt = _playbackPausedAt;
+                }
+
+                TurnUpdate?.Invoke(this, turnBeingCancelled);
+            }
         }
 
         // Audio Processing
@@ -588,7 +618,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     byte[]? chunkToSend = null;
 
                     // --- Process Current Speech Segment ---
-                    if (!_currentSpeechSegmentAudio.IsEmpty && !_isPlaybackPaused)
+                    if (!_currentSpeechSegmentAudio.IsEmpty && _currentSpeechSegmentAudioPosition < _currentSpeechSegmentAudio.Length && !_isPlaybackPaused)
                     {
                         int remainingSpeechBytes = _currentSpeechSegmentAudio.Length - _currentSpeechSegmentAudioPosition;
                         int speechChunkSize = Math.Min(BytesPerChunk, remainingSpeechBytes);
@@ -680,8 +710,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         // todo this can be wrong is duration ms is smaller than the chunk size,
                         // possible when 600ms is defined but array only had 200ms left thats being played
                         // this is a temporary implementation, we must make sure it is correct and works
-                        var currentChunkDuration = (int)((int)chunkToSend.Length / (int)(SampleRate * BitsPerSample / 8.0f));
-                        await Task.Delay(Math.Min(ChunkDurationMs, currentChunkDuration), cancellationToken);
+                        //var currentChunkDuration = (int)((double)((double)chunkToSend.Length / (double)(SampleRate * BitsPerSample / 8.0f)) * (double)1000);
+                        await Task.Delay(ChunkDurationMs, cancellationToken);
                     }
                     else
                     {
@@ -691,15 +721,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                     // Check if current turn playback is complete
                     if (
-                        currentTurn.Response.Status == AgentResponseStatus.Processing &&
+                        currentTurn.Status == TurnStatus.AgentRespondingSpeech &&
                         currentTurn.Response.Type == AgentResponseType.Speech &&
                         currentTurn.Response.LLMProcessCompletedAt != null &&
                         currentTurn.Response.SpeechCompletedAt == null &&
-                        _currentSpeechSegmentAudio.IsEmpty &&
+                        (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&
                         _speechAudioQueue.IsCompleted
                     )
                     {
-                        currentTurn.Response.Status = AgentResponseStatus.Completed;
                         currentTurn.Response.SpeechCompletedAt = DateTime.UtcNow;
                         AgentResponsePlaybackComplete?.Invoke(this, currentTurn);
                     }

@@ -414,11 +414,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                                     }
                                 }
 
-                                if (!string.IsNullOrWhiteSpace(textToSynthesize))
-                                {
-                                    await SynthesizeTextSegmentRequested?.Invoke(currentTurn, textToSynthesize, isEndOfResponse);
-                                    _currentResponseBufferReadPosition += chunkSize;
-                                }
+                                await SynthesizeTextSegmentRequested?.Invoke(currentTurn, textToSynthesize, isEndOfResponse);
+                                _currentResponseBufferReadPosition += chunkSize;
                             }
                         }
                     }

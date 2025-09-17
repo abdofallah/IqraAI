@@ -8,7 +8,6 @@
         public DateTime? LLMProcessCompletedAt { get; set; }
 
         public DateTime? SpeechCompletedAt { get; set; }
-        public AgentResponseStatus Status { get; set; } = AgentResponseStatus.Pending;
 
         // For Speech
         public List<SpeechSegmentData> SpokenSegments { get; set; } = new List<SpeechSegmentData>();

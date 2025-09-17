@@ -655,11 +655,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             _logger.LogInformation("Session {SessionId} resumed", _sessionId);
         }
-        public async Task EndAsync(string reason, ConversationSessionState finalState = ConversationSessionState.Ended)
+        public async Task EndAsync(string reason,  ConversationSessionState finalState = ConversationSessionState.Ended)
         {
             if (_state == ConversationSessionState.Ended || _state == ConversationSessionState.Ending)
             {
-                _logger.LogDebug("Session {SessionId} is already ended", _sessionId);
+                _logger.LogDebug("Session {SessionId} is already ended or ending", _sessionId);
                 return;
             }
 

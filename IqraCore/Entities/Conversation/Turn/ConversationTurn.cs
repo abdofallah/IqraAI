@@ -40,16 +40,6 @@ namespace IqraCore.Entities.Conversation.Turn
         Error
     }
 
-    public enum AgentResponseStatus
-    {
-        Pending,
-        Processing,
-        Completed,
-        Cancelled, // Interrupted before it could even start
-        Interrupted, // Interrupted mid-stream
-        Error
-    }
-
     public enum AgentToolType
     {
         System,

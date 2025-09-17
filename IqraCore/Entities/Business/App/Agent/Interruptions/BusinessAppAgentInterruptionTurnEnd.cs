@@ -17,6 +17,6 @@ namespace IqraCore.Entities.Business
         // Via ML
         public int? MLTurnEndVADMinimumSpeechDurationMS { get; set; } = 150;
         public int? MLTurnEndVADMinimumSilenceDurationMS { get; set; } = 300;
-        public int? MlTurnEndFallbackMs { get; set; } = 400;
+        public int? MlTurnEndFallbackMs { get; set; } = 2000;
     }
 }
