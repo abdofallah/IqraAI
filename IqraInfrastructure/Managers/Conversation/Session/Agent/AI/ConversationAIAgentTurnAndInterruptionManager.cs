@@ -352,7 +352,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     if (VerifiedInterruptionOccurred != null)
                     {
                         // this is wrong, this needs to be the current turn not the new turn
-                        await VerifiedInterruptionOccurred.Invoke(newTurn, text);
+                        //await VerifiedInterruptionOccurred.Invoke(newTurn, text);
                     }
                 }
                 else
@@ -383,7 +383,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // Common Helper
-        private async Task CreateNewTurn()
+        private async Task<ConversationTurn?> CreateNewTurn()
         {
             if (!_isUserTurnActive)
             {
@@ -408,7 +408,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 {
                     await NewTurnCreated.Invoke(newTurn);
                 }
+
+                return newTurn;
             }
+
+            return null;
         }
         private async Task TryConcludeUserTurn()
         {
@@ -444,12 +448,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             var finalText = _userTurnTextFinalBuffer.ToString().Trim();
-            turnToFinalize.User.TranscribedText = finalText;
-            turnToFinalize.User.FinishedSpeakingAt = DateTime.UtcNow;
-            turnToFinalize.Status = TurnStatus.UserInputEnded;
 
             if (!_isAgentPaused)
             {
+                turnToFinalize.User.TranscribedText = finalText;
+                turnToFinalize.User.FinishedSpeakingAt = DateTime.UtcNow;
+                turnToFinalize.Status = TurnStatus.UserInputEnded;
+
                 if (UserTurnFinalized != null)
                 {
                     _ = UserTurnFinalized.Invoke(turnToFinalize);
@@ -477,6 +482,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
                     else
                     {
+                        // what if an already verification is running? cancel the previous one?
+
                         _isAwaitingVerification = true;
                         _hasVerifiedInterruptionResult = false;
                         _canInterruptAgentAfterVerificaiton = false;
@@ -514,12 +521,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             await VerifiedInterruptionOccurred!?.Invoke(turnToInterrupt);
 
-            ResetForNewTurn();
-
-            await CreateNewTurn();
-
-            var newTurn = _agentState.CurrentTurn!;
-            newTurn.User.TranscribedText = $"response_from_customer: {interruptingText}";
+            var newTurn = await CreateNewTurn();
+            newTurn!.User.TranscribedText = interruptingText;
 
             await UserTurnFinalized!.Invoke(newTurn);
         }
