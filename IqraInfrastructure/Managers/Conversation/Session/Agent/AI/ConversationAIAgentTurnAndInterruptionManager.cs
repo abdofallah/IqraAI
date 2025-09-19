@@ -337,6 +337,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         StartedSpeakingAt = now,
                         FinishedSpeakingAt = now,
                     },
+                    Response = new AgentResponse()
+                    {
+                        AgentId = _agentState.AgentId
+                    },
                     Status = TurnStatus.UserInputEnded
                 };
 
@@ -401,6 +405,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     {
                         SenderId = _agentState.CurrentClientId ?? "UnknownClient",
                         StartedSpeakingAt = DateTime.UtcNow
+                    },
+                    Response = new AgentResponse()
+                    {
+                        AgentId = _agentState.AgentId
                     }
                 };
 
@@ -819,8 +827,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             _turnEndLLMCTS?.Cancel();
             _interruptionVerificationLLMCTS?.Cancel();
-            (_turnEndLLMService as IDisposable)?.Dispose();
-            (_interruptionVerificationLLMService as IDisposable)?.Dispose();
+            try
+            {
+                (_turnEndLLMService as IDisposable)?.Dispose();
+            }
+            catch (ObjectDisposedException) { /* Expected */ }
+
+            try
+            {
+                (_interruptionVerificationLLMService as IDisposable)?.Dispose();
+            }
+            catch (ObjectDisposedException) { /* Expected */ }
         }
     }
 }

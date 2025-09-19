@@ -244,6 +244,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             // TODO knowledge base retrieval here
 
+            turn.Response.LLMProcessStartedAt = DateTime.UtcNow;
+            await _conversationSession.NotifyTurnUpdated(turn);
+
             _llmTask = _agentState.LLMService!.ProcessInputAsync(cancellationToken, currentDateTimeData.Data, null);
             await _llmTask;
         }
@@ -286,12 +289,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             // On the first token of a new agent response, clear the buffer.
-            if (currentTurn.Response.LLMProcessStartedAt == null)
+            if (currentTurn.Response.LLMStreamingStartedAt == null)
             {
                 _responseBuffer.Clear();
                 _currentResponseBufferReadPosition = 0;
 
-                currentTurn.Response.LLMProcessStartedAt = DateTime.UtcNow;
+                currentTurn.Response.LLMStreamingStartedAt = DateTime.UtcNow;
+                currentTurn.Response.LLMProcessLatencyFirstTokenMS = (int)(currentTurn.Response.LLMStreamingStartedAt.Value - currentTurn.Response.LLMProcessStartedAt!.Value).TotalMilliseconds;
                 await _conversationSession.NotifyTurnUpdated(currentTurn);
             }
 
@@ -426,6 +430,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 {
                     if (currentTurn.Response.Type == AgentResponseType.SystemTool || currentTurn.Response.Type == AgentResponseType.CustomTool)
                     {
+                        currentTurn.Response.LLMStreamingCompletedAt = DateTime.UtcNow;
                         currentTurn.Response.ToolExecution!.RawLLMInput = _responseBuffer.ToString();
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
@@ -437,23 +442,32 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         {
                             await CustomToolExecutionRequested?.Invoke(currentTurn);
                         }
+
+                        return;
                     }
                     else if (currentTurn.Response.Type == AgentResponseType.Speech)
                     {
+                        currentTurn.Response.LLMStreamingCompletedAt = DateTime.UtcNow;
+                        await _conversationSession.NotifyTurnUpdated(currentTurn);
+
                         // todo, check remaning buffer?
+
+                        return;
                     }
                     else
                     {
+                        currentTurn.Response.LLMStreamingCompletedAt = DateTime.UtcNow;
+                        await _conversationSession.NotifyTurnUpdated(currentTurn);
+
                         _logger.LogError("Agent {AgentId}: LLM response ended but type unknown or invalid: {Response}", _agentState.AgentId, _responseBuffer.ToString());
 
                         //_agentState.LLMService!.AddAssistantMessage(finalResponse);
                         //AIAgentResponseCompleted?.Invoke(finalResponse);
 
                         //await ProcessSystemMessageAsync("Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.", _agentState.CurrentClientId, CancellationToken.None);
-                    }
 
-                    currentTurn.Response.LLMProcessCompletedAt = DateTime.UtcNow;
-                    await _conversationSession.NotifyTurnUpdated(currentTurn);
+                        return;
+                    }   
                 }
             }
             catch (OperationCanceledException ex)

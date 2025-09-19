@@ -285,8 +285,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 },
                 Response = new AgentResponse
                 {
-                    LLMProcessStartedAt = dateTimeNow,
-                    LLMProcessCompletedAt = dateTimeNow,
+                    AgentId = AgentId,
+                    LLMStreamingStartedAt = dateTimeNow,
+                    LLMStreamingCompletedAt = dateTimeNow,
                     Type = AgentResponseType.SystemTool,                  
                     ToolExecution = new ToolExecutionData
                     {
@@ -335,6 +336,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     TranscribedText = reason,
                     StartedSpeakingAt = DateTime.UtcNow,
                     FinishedSpeakingAt = DateTime.UtcNow
+                },
+                Response = new AgentResponse()
+                {
+                    AgentId = _agentState.AgentId
                 },
                 Status = TurnStatus.UserInputEnded
             };

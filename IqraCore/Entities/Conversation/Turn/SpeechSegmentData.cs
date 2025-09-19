@@ -8,5 +8,7 @@
         public DateTime? FinishedPlayingAt { get; set; } // Null if interrupted while playing
         public bool WasInterrupted { get; set; } = false;
         public TimeSpan Duration { get; set; }
+        public bool IsCacheHit { get; set; } = false;
+        public int RetrievalLatencyMS { get; set; } // generation or either cache db retrieval
     }
 }

@@ -400,8 +400,8 @@ namespace IqraInfrastructure.Repositories.Business
 
             var arrayFilters = new List<ArrayFilterDefinition>
             {
-                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("group.Id", groupId)),
-                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("audio.Id", audioId))
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("group._id", groupId)),
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("audio._id", audioId))
             };
 
             var options = new UpdateOptions { ArrayFilters = arrayFilters };

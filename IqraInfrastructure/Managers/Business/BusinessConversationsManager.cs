@@ -341,7 +341,7 @@ namespace IqraInfrastructure.Managers.Business
                         SenderId = turn.Response.AgentId,
                         Role = ConversationSenderRole.Agent,
                         Content = "",
-                        Timestamp = turn.Response.LLMProcessStartedAt
+                        Timestamp = turn.Response.LLMStreamingStartedAt
                     };
                     if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.AgentResponseType.Speech)
                     {

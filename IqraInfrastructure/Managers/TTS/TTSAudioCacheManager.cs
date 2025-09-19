@@ -56,7 +56,7 @@ namespace IqraInfrastructure.Managers.TTS
                    });
         }
 
-        public async Task<CacheGetResult> TryGetAudioAsync(string cacheKey, ITTSConfig config, InterfaceTTSProviderEnum ttsProvider, long businessId, string audioCacheGroupId, string audioCacheGroupEntryLanguage, string audioCacheGroupEntryId, CancellationToken token)
+        public async Task<CacheGetResult> TryGetAudioAsync(string cacheKey, ITTSConfig config, InterfaceTTSProviderEnum ttsProvider, long businessId, string audioCacheGroupId, string audioCacheGroupEntryLanguage, string audioCacheGroupEntryId, string referencedByAgentId, CancellationToken token)
         {
             // 1. Check fast, region-local Redis cache
             var (redisSuccess, redisValue) = await _cacheIndexLocalRepository.GetAsync(cacheKey);
@@ -66,7 +66,7 @@ namespace IqraInfrastructure.Managers.TTS
                 var audioBytes = await SmartFetchFromStorageAsync(pointer.Path, pointer.OriginRegion, token);
                 if (!audioBytes.IsEmpty)
                 {
-                    _ = CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, CancellationToken.None);
+                    _ = CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, referencedByAgentId, CancellationToken.None);
                     return new CacheGetResult(CacheHitStatus.HIT, audioBytes, pointer.Duration);
                 }
                 _logger.LogWarning("Redis entry existed for {CacheKey}, but failed to fetch from storage.", cacheKey);
@@ -83,7 +83,7 @@ namespace IqraInfrastructure.Managers.TTS
             {
                 case TTSAudioCacheStatus.COMPLETE:
                     {
-                        _ = CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, CancellationToken.None);
+                        _ = CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, referencedByAgentId, CancellationToken.None);
                         return await SmartFetchAndReturnResultAsync(mongoEntry, token);
                     }
 
@@ -92,7 +92,7 @@ namespace IqraInfrastructure.Managers.TTS
 
                     if (entryAfterWait?.Status == TTSAudioCacheStatus.COMPLETE)
                     {
-                        _ = CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, CancellationToken.None);
+                        _ = CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, referencedByAgentId, CancellationToken.None);
                         return await SmartFetchAndReturnResultAsync(entryAfterWait, token);
                     }
                     else
@@ -155,7 +155,7 @@ namespace IqraInfrastructure.Managers.TTS
             return ReadOnlyMemory<byte>.Empty;
         }
 
-        public async Task StoreAudioAsync(string cacheKey, ReadOnlyMemory<byte> audioData, TimeSpan duration, ITTSConfig config, InterfaceTTSProviderEnum ttsProvider, long businessId, string audioCacheGroupId, string audioCacheGroupEntryLanguage, string audioCacheGroupEntryId, CancellationToken token)
+        public async Task StoreAudioAsync(string cacheKey, ReadOnlyMemory<byte> audioData, TimeSpan duration, ITTSConfig config, InterfaceTTSProviderEnum ttsProvider, long businessId, string audioCacheGroupId, string audioCacheGroupEntryLanguage, string audioCacheGroupEntryId, string referencedByAgentId, CancellationToken token)
         {
             var placeholder = new TTSAudioCacheEntry
             {
@@ -181,7 +181,7 @@ namespace IqraInfrastructure.Managers.TTS
                     await _cacheMetadataRepository.UpdateToCompleteAsync(cacheKey, minioPath, duration);
                     var finalEntry = await _cacheMetadataRepository.GetAsync(cacheKey);
                     await UpdateRedisCacheAsync(finalEntry);
-                    await CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, token);
+                    await CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, referencedByAgentId, token);
                 }
                 catch (Exception ex)
                 {
@@ -204,6 +204,7 @@ namespace IqraInfrastructure.Managers.TTS
             string groupId,
             string groupEntryLanguage,
             string groupEntryId,
+            string referencedByAgent,
             CancellationToken token
         )
         {
@@ -220,6 +221,22 @@ namespace IqraInfrastructure.Managers.TTS
                 groupEntryId,
                 groupEntryLanguage,
                 cacheLink
+            );
+
+            var cacheReference = new TTSAudioCacheEntryReference()
+            {
+                BusinessId = businessId,
+                AudioCacheGroupId = groupId,
+                AudioCacheGroupEntryLanguage = groupEntryLanguage,
+                AudioCacheEntryId = groupEntryId,
+                ReferencedByAgents = new List<string>() { referencedByAgent },
+                ReferencedCount = 1
+            };
+
+            await _cacheMetadataRepository.AddOrUpdateBusinessReferenceAsync(
+                cacheKey,
+                cacheReference,
+                token
             );
         }
 

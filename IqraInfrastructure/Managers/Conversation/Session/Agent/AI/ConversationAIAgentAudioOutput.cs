@@ -7,10 +7,12 @@ using IqraCore.Interfaces.TTS;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.TTS.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
@@ -22,14 +24,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public ReadOnlyMemory<byte> AudioData { get; }
         public TimeSpan Duration { get; }
         public string TurnId { get; }
+        public bool IsCacheHit { get; }
+        public int RetrievalLatencyMS { get; }
 
-        public SpeechSegment(string id, string text, ReadOnlyMemory<byte> audioData, TimeSpan duration, string turnId)
+        public SpeechSegment(string id, string text, ReadOnlyMemory<byte> audioData, TimeSpan duration, string turnId, bool isCacheHit, int retrieveLatencyMS)
         {
             Id = id;
             Text = text;
             AudioData = audioData;
             Duration = duration;
             TurnId = turnId;
+            IsCacheHit = isCacheHit;
+            RetrievalLatencyMS = retrieveLatencyMS;
         }
     }
 
@@ -300,15 +306,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 try
                 {
                     (bool isCacheable, string? cacheGroupId, string? cacheEntryId) = await IsTextCacheable(text);
-                    string cacheKey = string.Empty;
                     ITTSConfig ttsConfig = _agentState.TTSService.GetCacheableConfig();
+                    string cacheKey = TTSCacheKeyGenerator.Generate(text, _agentState.TTSService.GetProviderType(), ttsConfig);
 
                     if (isCacheable)
                     {
-                        var cacheResult = await _cacheManager.TryGetAudioAsync(cacheKey, ttsConfig, _agentState.TTSService.GetProviderType(), _agentState.BusinessApp.Id, cacheGroupId, _agentState.CurrentLanguageCode, cacheEntryId, ttsToken);
+                        var cacheRetrievalLatencyStopwatch = Stopwatch.StartNew();
+                        var cacheResult = await _cacheManager.TryGetAudioAsync(cacheKey, ttsConfig, _agentState.TTSService.GetProviderType(), _agentState.BusinessApp.Id, cacheGroupId, _agentState.CurrentLanguageCode, cacheEntryId, turn.Response.AgentId, ttsToken);
+                        cacheRetrievalLatencyStopwatch.Stop();
                         if (cacheResult.IsHit && !cacheResult.AudioData.IsEmpty)
                         {
-                            var cachedSegment = new SpeechSegment(Guid.NewGuid().ToString(), text, cacheResult.AudioData, cacheResult.Duration, turn.Id);
+                            var cachedSegment = new SpeechSegment(Guid.NewGuid().ToString(), text, cacheResult.AudioData, cacheResult.Duration, turn.Id, true, (int)cacheRetrievalLatencyStopwatch.ElapsedMilliseconds);
                             _speechAudioQueue.Add(cachedSegment, _audioSendingCTS.Token);
                             if (markTurnAsCompleteAfterThis)
                             {
@@ -318,7 +326,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         }
                     }
 
+                    var generationLatencyStopwatch = Stopwatch.StartNew();
                     var (audioData, audioDuration) = await _agentState.TTSService.SynthesizeTextAsync(text, ttsToken, null);
+                    generationLatencyStopwatch.Stop();
                     if (ttsToken.IsCancellationRequested)
                     {
                         return (false, TimeSpan.Zero);
@@ -342,11 +352,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             cacheGroupId,
                             _agentState.CurrentLanguageCode,
                             cacheEntryId,
+                            turn.Response.AgentId,
                             ttsToken
                         );
                     }
 
-                    var segment = new SpeechSegment(Guid.NewGuid().ToString(), text, audioData, audioDuration.Value, turn.Id);
+                    var segment = new SpeechSegment(Guid.NewGuid().ToString(), text, audioData, audioDuration.Value, turn.Id, false, (int)generationLatencyStopwatch.ElapsedMilliseconds);
                     _speechAudioQueue.Add(segment, _audioSendingCTS.Token);
                     if (markTurnAsCompleteAfterThis)
                     {
@@ -658,7 +669,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             Id = nextSegment.Id,
                             Text = nextSegment.Text,
                             Duration = nextSegment.Duration,
-                            StartedPlayingAt = DateTime.UtcNow
+                            StartedPlayingAt = DateTime.UtcNow,
+                            IsCacheHit = nextSegment.IsCacheHit,
+                            RetrievalLatencyMS = nextSegment.RetrievalLatencyMS
                         };
                         currentTurn.Response.SpokenSegments.Add(newSegmentData);
                         TurnUpdate?.Invoke(this, currentTurn);
@@ -723,7 +736,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     if (
                         currentTurn.Status == TurnStatus.AgentRespondingSpeech &&
                         currentTurn.Response.Type == AgentResponseType.Speech &&
-                        currentTurn.Response.LLMProcessCompletedAt != null &&
+                        currentTurn.Response.LLMStreamingCompletedAt != null &&
                         currentTurn.Response.SpeechCompletedAt == null &&
                         (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&
                         _speechAudioQueue.IsCompleted
