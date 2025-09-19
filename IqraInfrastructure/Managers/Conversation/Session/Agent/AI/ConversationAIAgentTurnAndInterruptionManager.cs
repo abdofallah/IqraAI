@@ -474,16 +474,23 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             }
                             else if (AgentShouldResume != null)
                             {
-                                _ = AgentShouldResume.Invoke();
+                                _userTurnTextBuffer.Clear();
+                                _userTurnTextFinalBuffer.Clear();
+                                _sttHasProvidedFinalTranscript = false;
+
+                                await AgentShouldResume.Invoke();
+                                _isAgentPaused = false;
                             }
+
+                            _isAwaitingVerification = false;
+                            _hasVerifiedInterruptionResult = false;
+                            _canInterruptAgentAfterVerificaiton = false;
                         }
 
                         return;
                     }
                     else
                     {
-                        // what if an already verification is running? cancel the previous one?
-
                         _isAwaitingVerification = true;
                         _hasVerifiedInterruptionResult = false;
                         _canInterruptAgentAfterVerificaiton = false;
