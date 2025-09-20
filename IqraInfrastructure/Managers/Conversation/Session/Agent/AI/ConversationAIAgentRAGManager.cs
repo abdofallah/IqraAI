@@ -18,17 +18,11 @@ using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
 using Microsoft.Extensions.Logging;
 using System.Text;
-using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
-    /// <summary>
-    /// Manages all Retrieval-Augmented Generation (RAG) operations for the AI agent during a conversation.
-    /// It orchestrates retrieval from multiple knowledge bases, query refinement, post-processing, and context consolidation.
-    /// </summary>
     public class ConversationAIAgentRAGManager : IAsyncDisposable
     {
-        #region Dependencies & Private Fields
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationAIAgentRAGManager> _logger;
         private readonly ConversationAIAgentState _agentState;
@@ -56,7 +50,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         // Efficient lookup for manually cached queries. Key: Query Text, Value: Cache Info
         private Dictionary<string, (string GroupId, string EntryId)> _manualCacheLookup = new();
-        #endregion
 
         public ConversationAIAgentRAGManager(
             ILoggerFactory loggerFactory,
@@ -88,9 +81,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _conversationSessionId = conversationSessionId;
         }
 
-        /// <summary>
-        /// Initializes the RAG manager, pre-loading configurations and preparing retrieval services.
-        /// </summary>
         public async Task<FunctionReturnResult> InitializeAsync(CancellationToken cancellationToken)
         {
             var result = new FunctionReturnResult();
@@ -185,9 +175,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        /// <summary>
-        /// Orchestrates the full RAG pipeline for a given user query.
-        /// </summary>
         public async Task<string?> RetrieveContextForQueryAsync(string query, CancellationToken cancellationToken)
         {
             if (!_isInitialized || !_contextSources.Any())
@@ -197,15 +184,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                if (!await ShouldPerformSearchAsync(query, cancellationToken))
-                {
-                    _logger.LogTrace(
-                        "Search strategy determined no search is needed for query: '{Query}'",
-                        query
-                    );
-                    return null;
-                }
-
                 var queriesToProcess = _ragConfig.Refinement.Enabled
                     ? await RefineQueryAsync(query, cancellationToken)
                     : new List<string> { query };
@@ -320,7 +298,59 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        #region Private Helper Methods
+        public async Task<bool> ShouldPerformSearchAsync(
+            string query,
+            CancellationToken cancellationToken
+        )
+        {
+            switch (_ragConfig.SearchStrategy.Type)
+            {
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.Always:
+                    return true;
+
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.SpecificKeyword:
+                    {
+                        var keywords = _ragConfig.SearchStrategy.SpecificKeywords;
+                        return keywords != null
+                            && keywords.Any(k => query.Contains(k, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.KnowledgeBaseKeyword:
+                    {
+                        if (!_contextSources.Any())
+                            return false;
+                        foreach (var kbId in _contextSources.Keys)
+                        {
+                            if ((await _keywordStore.SearchAsync(kbId, query, 1)).Any())
+                                return true;
+                        }
+                        return false;
+                    }
+
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.LLM:
+                    {
+                        // TODO
+
+                        //if (_classifierLlmService == null)
+                        //    return false;
+                        //var response = await _classifierLlmService.ProcessSingleInputAsync(
+                        //    $"User Query: \"{query}\"",
+                        //    cancellationToken
+                        //);
+                        //return response.Success && response.Data?.Trim().ToUpper() == "SEARCH";
+
+                        return false;
+                    }
+
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.AgentToolCallOnly:
+                    {
+                        return false;
+                    }
+
+                default:
+                    return false;
+            }
+        }
 
         private async Task InitializeClassifierLlmAsync(CancellationToken cancellationToken)
         {
@@ -402,55 +432,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        private async Task<bool> ShouldPerformSearchAsync(
-            string query,
-            CancellationToken cancellationToken
-        )
-        {
-            switch (_ragConfig.SearchStrategy.Type)
-            {
-                case AgentKnowledgeBaseSearchStartegyTypeENUM.Always:
-                    return true;
-
-                case AgentKnowledgeBaseSearchStartegyTypeENUM.SpecificKeyword:
-                    {
-                        var keywords = _ragConfig.SearchStrategy.SpecificKeywords;
-                        return keywords != null
-                            && keywords.Any(k => query.Contains(k, StringComparison.OrdinalIgnoreCase));
-                    }
-
-                case AgentKnowledgeBaseSearchStartegyTypeENUM.KnowledgeBaseKeyword:
-                    {
-                        if (!_contextSources.Any())
-                            return false;
-                        foreach (var kbId in _contextSources.Keys)
-                        {
-                            if ((await _keywordStore.SearchAsync(kbId, query, 1)).Any())
-                                return true;
-                        }
-                        return false;
-                    }
-
-                case AgentKnowledgeBaseSearchStartegyTypeENUM.LLM:
-                    {
-                        // TODO
-
-                        //if (_classifierLlmService == null)
-                        //    return false;
-                        //var response = await _classifierLlmService.ProcessSingleInputAsync(
-                        //    $"User Query: \"{query}\"",
-                        //    cancellationToken
-                        //);
-                        //return response.Success && response.Data?.Trim().ToUpper() == "SEARCH";
-
-                        return false;
-                    }
-
-                default:
-                    return false;
-            }
-        }
-
+        
         private async Task<List<string>> RefineQueryAsync(
             string originalQuery,
             CancellationToken cancellationToken
@@ -515,8 +497,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 BusinessAppKnowledgeBaseConfigurationHybridRetrieval c when c.UseScoreThreshold => c.ScoreThreshold,
                 _ => null
             };
-
-        #endregion
 
         public async ValueTask DisposeAsync()
         {

@@ -293,7 +293,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
                 }
                 // is turn by turn mode
-                else if (_agentState.CurrentTurn.Status == TurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == TurnStatus.AgentRespondingSpeech)
+                else if (_agentState.CurrentTurn.Status == ConversationTurnTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnTurnStatus.AgentRespondingSpeech)
                 {
                     // do nothing for now?
                     Console.WriteLine($"Recieved transcript during turn by turn: {currentUtterance}");
@@ -330,18 +330,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 var now = DateTime.UtcNow;
                 var newTurn = new ConversationTurn
                 {
-                    User = new UserInput
+                    User = new ConversationTurnUserInput
                     {
                         SenderId = _agentState.CurrentClientId ?? "UnknownClient",
                         TranscribedText = text,
                         StartedSpeakingAt = now,
                         FinishedSpeakingAt = now,
                     },
-                    Response = new AgentResponse()
+                    Response = new ConversationTurnAgentResponse()
                     {
-                        AgentId = _agentState.AgentId
+                        AgentId = _agentState.BusinessAppAgent!.Id
                     },
-                    Status = TurnStatus.UserInputEnded
+                    Status = ConversationTurnTurnStatus.UserInputEnded
                 };
 
                 if (NewTurnCreated != null)
@@ -351,7 +351,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 if (_agentState.IsResponding || _agentState.IsExecutingCustomTool || _agentState.IsExecutingSystemTool)
                 {
-                    newTurn.Status = TurnStatus.Interrupted;
+                    newTurn.Status = ConversationTurnTurnStatus.Interrupted;
 
                     if (VerifiedInterruptionOccurred != null)
                     {
@@ -400,15 +400,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 var newTurn = new ConversationTurn
                 {
-                    Status = TurnStatus.UserInputStarted,
-                    User = new UserInput
+                    Status = ConversationTurnTurnStatus.UserInputStarted,
+                    User = new ConversationTurnUserInput
                     {
                         SenderId = _agentState.CurrentClientId ?? "UnknownClient",
                         StartedSpeakingAt = DateTime.UtcNow
                     },
-                    Response = new AgentResponse()
+                    Response = new ConversationTurnAgentResponse()
                     {
-                        AgentId = _agentState.AgentId
+                        AgentId = _agentState.BusinessAppAgent!.Id
                     }
                 };
 
@@ -461,7 +461,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 turnToFinalize.User.TranscribedText = finalText;
                 turnToFinalize.User.FinishedSpeakingAt = DateTime.UtcNow;
-                turnToFinalize.Status = TurnStatus.UserInputEnded;
+                turnToFinalize.Status = ConversationTurnTurnStatus.UserInputEnded;
 
                 if (UserTurnFinalized != null)
                 {
@@ -565,7 +565,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_agentState.CurrentTurn == null) return;
 
             if (
-                (_agentState.CurrentTurn.Status == TurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == TurnStatus.AgentRespondingSpeech)
+                (_agentState.CurrentTurn.Status == ConversationTurnTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnTurnStatus.AgentRespondingSpeech)
                 && !_isAgentPaused
                 )
             {

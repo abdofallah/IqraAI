@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.Conversation.Turn
 {
-    public class SpeechSegmentData
+    public class ConversationTurnSpeechSegmentData
     {
         public string Id { get; set; }
         public string Text { get; set; }

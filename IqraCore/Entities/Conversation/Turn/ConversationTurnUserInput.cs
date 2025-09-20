@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.Conversation.Turn
 {
-    public class UserInput
+    public class ConversationTurnUserInput
     {
         public string SenderId { get; set; }
         public string? TranscribedText { get; set; }

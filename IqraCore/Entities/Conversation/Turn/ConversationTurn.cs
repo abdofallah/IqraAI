@@ -11,15 +11,15 @@ namespace IqraCore.Entities.Conversation.Turn
 
         public int Sequence { get; set; }
 
-        public UserInput User { get; set; } = new UserInput();
-        public AgentResponse Response { get; set; } = new AgentResponse();
+        public ConversationTurnUserInput User { get; set; } = new ConversationTurnUserInput();
+        public ConversationTurnAgentResponse Response { get; set; } = new ConversationTurnAgentResponse();
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? CompletedAt { get; set; }
-        public TurnStatus Status { get; set; } = TurnStatus.UserInputStarted;
+        public ConversationTurnTurnStatus Status { get; set; } = ConversationTurnTurnStatus.UserInputStarted;
     }
 
-    public enum TurnStatus
+    public enum ConversationTurnTurnStatus
     {
         UserInputStarted,
         UserInputEnded,
@@ -31,7 +31,7 @@ namespace IqraCore.Entities.Conversation.Turn
         Error
     }
 
-    public enum AgentResponseType
+    public enum ConversationTurnAgentResponseType
     {
         NotSet,
         Speech,
@@ -40,7 +40,7 @@ namespace IqraCore.Entities.Conversation.Turn
         Error
     }
 
-    public enum AgentToolType
+    public enum ConversationTurnAgentToolType
     {
         System,
         Custom

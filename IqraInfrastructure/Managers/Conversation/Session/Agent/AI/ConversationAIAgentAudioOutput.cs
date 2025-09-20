@@ -481,8 +481,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             var turnBeingCancelled = _agentState.CurrentTurn;
             if (turnBeingCancelled != null &&
-                turnBeingCancelled.Response.Type == AgentResponseType.Speech &&
-                (turnBeingCancelled.Status == TurnStatus.AgentProcessing || turnBeingCancelled.Status == TurnStatus.AgentRespondingSpeech)
+                turnBeingCancelled.Response.Type == ConversationTurnAgentResponseType.Speech &&
+                (turnBeingCancelled.Status == ConversationTurnTurnStatus.AgentProcessing || turnBeingCancelled.Status == ConversationTurnTurnStatus.AgentRespondingSpeech)
             ) {
                 var activeSegment = turnBeingCancelled.Response.SpokenSegments.Find(s => s.Id == _currentSpeechSegmentId);
 
@@ -539,7 +539,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 !autoCacheSettings.AutoCacheAudioResponses ||
                 string.IsNullOrWhiteSpace(autoCacheSettings.AutoCacheAudioResponseCacheGroupId))
             {
-                _logger.LogTrace("Agent {AgentId}: Text '{Text}' is not cacheable (auto-cache disabled or not configured).", _agentState.AgentId, text);
                 return (false, null, null);
             }
 
@@ -565,15 +564,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (existingQuery != null)
             {
-                // The query was likely added by another process, but it is now cacheable.
-                _logger.LogTrace("Agent {AgentId}: Text '{Text}' is eligible for caching (already in auto-cache group).", _agentState.AgentId, text);
                 return (true, autoCacheGroupId, existingQuery.Id);
             }
             else
             {
-                // The query does NOT exist, so we add it.
-                _logger.LogInformation("Agent {AgentId}: Auto-caching new query '{Text}' to group '{GroupId}'.", _agentState.AgentId, text, autoCacheGroupId);
-
                 var newCacheAudio = new BusinessAppCacheAudio
                 {
                     Id = ObjectId.GenerateNewId().ToString(), // Generate a new unique ID
@@ -664,7 +658,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             continue;
                         }
 
-                        var newSegmentData = new SpeechSegmentData
+                        var newSegmentData = new ConversationTurnSpeechSegmentData
                         {
                             Id = nextSegment.Id,
                             Text = nextSegment.Text,
@@ -734,8 +728,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                     // Check if current turn playback is complete
                     if (
-                        currentTurn.Status == TurnStatus.AgentRespondingSpeech &&
-                        currentTurn.Response.Type == AgentResponseType.Speech &&
+                        currentTurn.Status == ConversationTurnTurnStatus.AgentRespondingSpeech &&
+                        currentTurn.Response.Type == ConversationTurnAgentResponseType.Speech &&
                         currentTurn.Response.LLMStreamingCompletedAt != null &&
                         currentTurn.Response.SpeechCompletedAt == null &&
                         (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&

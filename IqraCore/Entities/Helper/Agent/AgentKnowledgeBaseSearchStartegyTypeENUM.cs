@@ -5,6 +5,7 @@
         Always = 0,
         SpecificKeyword = 1,
         KnowledgeBaseKeyword = 2,
-        LLM = 3
+        LLM = 3,
+        AgentToolCallOnly = 4
     }
 }

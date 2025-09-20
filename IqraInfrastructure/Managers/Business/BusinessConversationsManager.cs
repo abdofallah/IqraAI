@@ -343,11 +343,11 @@ namespace IqraInfrastructure.Managers.Business
                         Content = "",
                         Timestamp = turn.Response.LLMStreamingStartedAt
                     };
-                    if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.AgentResponseType.Speech)
+                    if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.ConversationTurnAgentResponseType.Speech)
                     {
                         turn.Response.SpokenSegments.ForEach(segment => agentMessageModel.Content += segment.Text + " ");
                     }
-                    else if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.AgentResponseType.CustomTool || turn.Response.Type == IqraCore.Entities.Conversation.Turn.AgentResponseType.SystemTool)
+                    else if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.ConversationTurnAgentResponseType.CustomTool || turn.Response.Type == IqraCore.Entities.Conversation.Turn.ConversationTurnAgentResponseType.SystemTool)
                     {
                         if (turn.Response.ToolExecution != null)
                         {

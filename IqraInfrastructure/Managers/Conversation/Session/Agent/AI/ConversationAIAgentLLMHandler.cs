@@ -9,6 +9,7 @@ using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using Microsoft.Extensions.Logging;
 using Mosaik.Core;
+using System.Diagnostics;
 using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
@@ -26,6 +27,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly BusinessManager _businessManager;
         private readonly SystemPromptGenerator _systemPromptGenerator;
         private readonly ConversationSessionOrchestrator _conversationSession;
+        private readonly ConversationAIAgentRAGManager _conversationAIAgentRAGManager;
 
         private readonly SemaphoreSlim _llmResponseLock = new SemaphoreSlim(1, 1);
         private CancellationTokenSource _currentLLMProcessingTaskCTS = new();
@@ -43,7 +45,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             LLMProviderManager llmProviderManager,
             BusinessManager businessManager,
             SystemPromptGenerator systemPromptGenerator,
-            ConversationSessionOrchestrator conversationSession
+            ConversationSessionOrchestrator conversationSession,
+            ConversationAIAgentRAGManager conversationAIAgentRAGManager
         )
         {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentLLMHandler>();
@@ -52,6 +55,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _businessManager = businessManager;
             _systemPromptGenerator = systemPromptGenerator;
             _conversationSession = conversationSession;
+            _conversationAIAgentRAGManager = conversationAIAgentRAGManager;
         }
 
         // Initalize
@@ -232,8 +236,29 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Message Processing
         private async Task ProcessLLMInputForTurn(ConversationTurn turn, CancellationToken cancellationToken)
         {
+            string beforeMessageContext = string.Empty;
+
+            bool performKnowledgeBaseRetrieval = await _conversationAIAgentRAGManager.ShouldPerformSearchAsync(turn.User.TranscribedText!, cancellationToken);
+            string? knowledgeBaseRetrivalResult = null;
+            if (performKnowledgeBaseRetrieval)
+            {
+                Stopwatch ragRetrievalLatencyStopwatch = Stopwatch.StartNew();
+                knowledgeBaseRetrivalResult = await _conversationAIAgentRAGManager.RetrieveContextForQueryAsync(turn.User.TranscribedText!, cancellationToken);
+                ragRetrievalLatencyStopwatch.Stop();
+                if (!string.IsNullOrWhiteSpace(knowledgeBaseRetrivalResult))
+                {
+                    beforeMessageContext = $"<KnowledgeBaseQueryRetrival>\n{knowledgeBaseRetrivalResult}\n</KnowledgeBaseQueryRetrieval>";
+
+                    // TODO > save knowledgebase data in turn.response.knowledgebase
+                }
+            }
+
             var currentDateTimeData = await _systemPromptGenerator.GenerateDateTimeInformationForMessage(
                 null, _agentState.CurrentSessionContext!.Agent.Timezones);
+            if (currentDateTimeData.Success && !string.IsNullOrWhiteSpace(currentDateTimeData.Data))
+            {
+                beforeMessageContext += "\n" + currentDateTimeData.Data;
+            }
 
             var cacheableResult = await IsTextCacheable(turn.User.TranscribedText!);
             if (cacheableResult.isCacheable && cacheableResult.cachedQuery != null)
@@ -242,12 +267,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return;
             }
 
-            // TODO knowledge base retrieval here
-
             turn.Response.LLMProcessStartedAt = DateTime.UtcNow;
             await _conversationSession.NotifyTurnUpdated(turn);
 
-            _llmTask = _agentState.LLMService!.ProcessInputAsync(cancellationToken, currentDateTimeData.Data, null);
+            _llmTask = _agentState.LLMService!.ProcessInputAsync(cancellationToken, beforeMessageContext, null);
             await _llmTask;
         }
         private async Task<(bool isCacheable, string? cachedQuery)> IsTextCacheable(string text)
@@ -348,33 +371,33 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
 
                 // Determine response type first time
-                if (currentTurn.Response.Type == AgentResponseType.NotSet)
+                if (currentTurn.Response.Type == ConversationTurnAgentResponseType.NotSet)
                 {
                     var fullText = _responseBuffer.ToString().TrimStart();
                     if (fullText.StartsWith("response_to_customer:"))
                     {
-                        currentTurn.Response.Type = AgentResponseType.Speech;
-                        currentTurn.Status = TurnStatus.AgentRespondingSpeech;
+                        currentTurn.Response.Type = ConversationTurnAgentResponseType.Speech;
+                        currentTurn.Status = ConversationTurnTurnStatus.AgentRespondingSpeech;
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
                     }
                     else if (fullText.StartsWith("execute_system_function:"))
                     {
-                        currentTurn.Response.Type = AgentResponseType.SystemTool;
-                        currentTurn.Status = TurnStatus.AgentExecutingTool;
-                        currentTurn.Response.ToolExecution = new ToolExecutionData { ToolType = AgentToolType.System };
+                        currentTurn.Response.Type = ConversationTurnAgentResponseType.SystemTool;
+                        currentTurn.Status = ConversationTurnTurnStatus.AgentExecutingTool;
+                        currentTurn.Response.ToolExecution = new ConversationTurnToolExecutionData { ToolType = ConversationTurnAgentToolType.System };
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
                     }
                     else if (fullText.StartsWith("execute_custom_function:"))
                     {
-                        currentTurn.Response.Type = AgentResponseType.CustomTool;
-                        currentTurn.Status = TurnStatus.AgentExecutingTool;
-                        currentTurn.Response.ToolExecution = new ToolExecutionData { ToolType = AgentToolType.Custom };
+                        currentTurn.Response.Type = ConversationTurnAgentResponseType.CustomTool;
+                        currentTurn.Status = ConversationTurnTurnStatus.AgentExecutingTool;
+                        currentTurn.Response.ToolExecution = new ConversationTurnToolExecutionData { ToolType = ConversationTurnAgentToolType.Custom };
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
                     }
                 }
 
                 // Process based on type
-                if (currentTurn.Response.Type == AgentResponseType.Speech)
+                if (currentTurn.Response.Type == ConversationTurnAgentResponseType.Speech)
                 {
                     if (_responseBuffer.Length > _currentResponseBufferReadPosition)
                     {
@@ -428,13 +451,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // if llm stream task is complete
                 if (isEndOfResponse)
                 {
-                    if (currentTurn.Response.Type == AgentResponseType.SystemTool || currentTurn.Response.Type == AgentResponseType.CustomTool)
+                    if (currentTurn.Response.Type == ConversationTurnAgentResponseType.SystemTool || currentTurn.Response.Type == ConversationTurnAgentResponseType.CustomTool)
                     {
                         currentTurn.Response.LLMStreamingCompletedAt = DateTime.UtcNow;
                         currentTurn.Response.ToolExecution!.RawLLMInput = _responseBuffer.ToString();
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
-                        if (currentTurn.Response.Type == AgentResponseType.SystemTool)
+                        if (currentTurn.Response.Type == ConversationTurnAgentResponseType.SystemTool)
                         {
                             await SystemToolExecutionRequested?.Invoke(currentTurn);
                         }
@@ -445,7 +468,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                         return;
                     }
-                    else if (currentTurn.Response.Type == AgentResponseType.Speech)
+                    else if (currentTurn.Response.Type == ConversationTurnAgentResponseType.Speech)
                     {
                         currentTurn.Response.LLMStreamingCompletedAt = DateTime.UtcNow;
                         await _conversationSession.NotifyTurnUpdated(currentTurn);

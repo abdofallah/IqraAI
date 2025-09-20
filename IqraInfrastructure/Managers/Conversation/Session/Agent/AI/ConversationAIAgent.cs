@@ -123,13 +123,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _sendSMSToolExecutionHelper = new SendSMSToolExecutionHelper(loggerFactory, integrationManager, modemTelManager, twilioManager);
 
             // Instantiate Core Modules
-            _dtmfSessionManager = new ConversationAIAgentDTMFSessionManager(_loggerFactory, _agentState);
-            _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager, _conversationSessionManager);
-            _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator, _conversationSessionManager);
-            _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper);
-            _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _llmHandler, _audioOutputHandler, _agentState, _llmProviderManager, _businessManager);
-            _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
-            _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
             _ragManager = new ConversationAIAgentRAGManager(
                 _loggerFactory,
                 _agentState,
@@ -144,6 +137,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 serviceProvider.GetRequiredService<LLMProviderManager>(),
                 _conversationSessionManager.SessionId
             );
+            _dtmfSessionManager = new ConversationAIAgentDTMFSessionManager(_loggerFactory, _agentState);
+            _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager, _conversationSessionManager);
+            _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator, _conversationSessionManager, _ragManager);
+            _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper);
+            _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _llmHandler, _audioOutputHandler, _agentState, _llmProviderManager, _businessManager);
+            _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
+            _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
+            
 
             // Wire up Events between Modules and Orchestrator
             WireUpEvents();
@@ -276,28 +277,28 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var newTurn = new ConversationTurn
             {
                 Sequence = (await _conversationSessionManager.GetTurnsAsync()).Count + 1,
-                User = new UserInput
+                User = new ConversationTurnUserInput
                 {
                     SenderId = "System",
                     TranscribedText = "",
                     StartedSpeakingAt = dateTimeNow,
                     FinishedSpeakingAt = dateTimeNow
                 },
-                Response = new AgentResponse
+                Response = new ConversationTurnAgentResponse
                 {
-                    AgentId = AgentId,
+                    AgentId = _agentState.BusinessAppAgent!.Id,
                     LLMStreamingStartedAt = dateTimeNow,
                     LLMStreamingCompletedAt = dateTimeNow,
-                    Type = AgentResponseType.SystemTool,                  
-                    ToolExecution = new ToolExecutionData
+                    Type = ConversationTurnAgentResponseType.SystemTool,                  
+                    ToolExecution = new ConversationTurnToolExecutionData
                     {
-                        ToolType = AgentToolType.System,
-                        ToolName = "ConversationStarted"
+                        ToolType = ConversationTurnAgentToolType.System,
+                        ToolName = "conversation_started"
                     }
                 },
-                Status = TurnStatus.AgentProcessing
+                Status = ConversationTurnTurnStatus.AgentProcessing
             };
-            OnNewTurnCreated(newTurn);
+            await OnNewTurnCreated(newTurn);
 
             // Start Services
             _sttHandler.StartTranscription();
@@ -330,18 +331,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var finalTurn = new ConversationTurn
             {
                 Sequence = (await _conversationSessionManager.GetTurnsAsync()).Count + 1,
-                User = new UserInput
+                User = new ConversationTurnUserInput
                 {
                     SenderId = "System",
                     TranscribedText = reason,
                     StartedSpeakingAt = DateTime.UtcNow,
                     FinishedSpeakingAt = DateTime.UtcNow
                 },
-                Response = new AgentResponse()
+                Response = new ConversationTurnAgentResponse()
                 {
-                    AgentId = _agentState.AgentId
+                    AgentId = _agentState.BusinessAppAgent!.Id
                 },
-                Status = TurnStatus.UserInputEnded
+                Status = ConversationTurnTurnStatus.UserInputEnded
             };
 
             await OnUserTurnFinalizedAsync(finalTurn);
@@ -396,7 +397,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _logger.LogInformation("AI Agent {AgentId} shut down complete.", AgentId);
         }
-        public async Task FinalizeCurrentTurn(TurnStatus finalStatus)
+        public async Task FinalizeCurrentTurn(ConversationTurnTurnStatus finalStatus)
         {
             if (_agentState.CurrentTurn != null)
             {
@@ -575,7 +576,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             // Enable listening after potential greeting
-            await FinalizeCurrentTurn(TurnStatus.Completed);
+            await FinalizeCurrentTurn(ConversationTurnTurnStatus.Completed);
             _agentState.IsAcceptingSTTAudio = true;
             // TODO: Enable VAD if needed (_vadService.Start() ?)
         }
@@ -604,7 +605,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                _agentState.CurrentTurn!.Status = TurnStatus.AgentProcessing;
+                _agentState.CurrentTurn!.Status = ConversationTurnTurnStatus.AgentProcessing;
                 await _conversationSessionManager.NotifyTurnUpdated(_agentState.CurrentTurn);
 
                 await _llmHandler.CancelCurrentLLMTaskAsync();
@@ -615,7 +616,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing finalized user turn {TurnId}", turn.Id);
-                await FinalizeCurrentTurn(TurnStatus.Error);
+                await FinalizeCurrentTurn(ConversationTurnTurnStatus.Error);
             }
         }
 
@@ -636,7 +637,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Tool Executor Handler
         private async Task OnToolResultAvailable(ConversationTurn turnWithResult)
         {
-            turnWithResult.Status = TurnStatus.Completed;
+            turnWithResult.Status = ConversationTurnTurnStatus.Completed;
 
             await _conversationSessionManager.NotifyTurnUpdated(turnWithResult);
             await _llmHandler.ProcessToolResultAsync(turnWithResult, _conversationCTS.Token);
@@ -648,7 +649,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async Task OnEndConversationRequested(ConversationTurn turn)
         {
             string? reason = turn.Response.ToolExecution?.ReasonForExecution ?? "Agent requested end of conversation, no reason provided.";
-            await FinalizeCurrentTurn(TurnStatus.Completed); 
+            await FinalizeCurrentTurn(ConversationTurnTurnStatus.Completed); 
             await _conversationSessionManager.EndAsync(reason);
         }
 
@@ -658,7 +659,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var currentTurnText = string.Join(" ", turn.Response.SpokenSegments.Select(x => x.Text).ToArray());
             _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
 
-            await FinalizeCurrentTurn(TurnStatus.Completed);
+            await FinalizeCurrentTurn(ConversationTurnTurnStatus.Completed);
         }
 
         // Event Handlers
@@ -789,7 +790,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             var currentTurnText = string.Join(" ", interruptedTurn.Response.SpokenSegments.Select(x => x.Text).ToArray());
             _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
-            await FinalizeCurrentTurn(TurnStatus.Interrupted);
+            await FinalizeCurrentTurn(ConversationTurnTurnStatus.Interrupted);
         }
 
         // Disposal
