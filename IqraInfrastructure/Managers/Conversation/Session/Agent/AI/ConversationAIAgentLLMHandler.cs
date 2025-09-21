@@ -439,8 +439,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             string unprocessedText = _responseBuffer.ToString().Substring(_currentResponseBufferReadPosition + prefix.Length);
 
                             // Simple chunking strategy based on your previous robust implementation
+                            // todo have a better type of chunking based on if its a new turn, speak less, then start chunking longer based on how much speech is in the buffer.
                             bool isCompleteSentence = unprocessedText.TrimEnd().EndsWith('.') || unprocessedText.TrimEnd().EndsWith('!') || unprocessedText.TrimEnd().EndsWith('?');
-                            bool isLargeChunk = unprocessedText.Length > 80;
+                            bool isLargeChunk = unprocessedText.Length > 80; // todo this can be problematic, we need to make this dynamic or better
                             bool shouldProcessChunk = isEndOfResponse || (isCompleteSentence && unprocessedText.Length > 30) || isLargeChunk;
 
                             if (shouldProcessChunk)

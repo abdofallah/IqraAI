@@ -291,16 +291,34 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // is not turn by turn
                 if (!_config.UseTurnByTurnMode)
                 {
-                    if (!_isAgentPaused)
+                    if (_agentState.CurrentTurn.Type == ConversationTurnType.System || _agentState.CurrentTurn.Type == ConversationTurnType.ToolResult)
                     {
-                        HandlePauseTrigger(currentUtterance);
+                        // do nothing when its system or tool result type
+                        return;
+                    }
+
+                    if (_agentState.CurrentTurn.Type == ConversationTurnType.User && _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentExecutingTool)
+                    {
+                        // do nothing when tool is being executed
+                        return;
+                    }
+
+                    if (
+                        (_agentState.CurrentTurn.Status == ConversationTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech)
+                        && !_isAgentPaused
+                    )
+                    {
+                        HandleSTTPauseTrigger(currentUtterance);
                     }
                 }
                 // is turn by turn mode
-                else if (_agentState.CurrentTurn.Status == ConversationTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech)
+                else if (
+                    _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentProcessing ||
+                    _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech ||
+                    _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentExecutingTool
+                )
                 {
-                    // do nothing for now?
-                    Console.WriteLine($"Recieved transcript during turn by turn: {currentUtterance}");
+                    // do nothing if its agent turn
                     return;
                 }
 
@@ -549,7 +567,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // Pause Trigger Event Handlers
-        private void HandlePauseTrigger(string newTextChunk)
+        private void HandleSTTPauseTrigger(string newTextChunk)
         {
             if (_config.PauseTrigger?.Type == AgentInterruptionPauseTriggerTypeENUM.STT)
             {
@@ -571,6 +589,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_agentState.CurrentTurn == null) return;
 
             if (
+                _agentState.CurrentTurn.Type == ConversationTurnType.User &&
                 (_agentState.CurrentTurn.Status == ConversationTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech)
                 && !_isAgentPaused
                 )
