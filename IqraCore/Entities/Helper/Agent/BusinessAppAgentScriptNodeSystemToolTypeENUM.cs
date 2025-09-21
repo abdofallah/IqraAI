@@ -11,6 +11,7 @@
         TransferToHuman = 6,
         AddScriptToContext = 7,
         SendSMS = 8,
-        GoToNode = 9
+        GoToNode = 9,
+        RetrieveKnowledgeBase = 10
     }
 }

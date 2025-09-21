@@ -110,6 +110,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                 agentObject["ScriptAddableScripts"] = CreateAgentScriptAddableScriptsObject(openingAgentScriptNodesData.scripts, languageCode);
                 agentObject["HasDTMFRequestTool"] = openingAgentScriptNodesData.hasDTMFRequestTool;
                 agentObject["HasSendSMSTool"] = openingAgentScriptNodesData.hasSendSMSTool;
+                agentObject["HasRetrieveKnowledgeBaseTool"] = openingAgentScriptNodesData.hasRetrieveKnowledgeBaseTool;
                 modelObject["Agent"] = agentObject;
                 
                 // Add Context (company) data
@@ -709,9 +710,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             return languageContainerObject;
         }
 
-        private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents, List<BusinessAppAgentScript> scripts, bool hasDTMFRequestTool, bool hasSendSMSTool) GetScriptNodesData(BusinessAppAgentScript currentScriptToCheck, BusinessApp businessApp, BusinessAppAgent sessionRouteAgent)
+        private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents, List<BusinessAppAgentScript> scripts, bool hasDTMFRequestTool, bool hasSendSMSTool, bool hasRetrieveKnowledgeBaseTool) GetScriptNodesData(BusinessAppAgentScript currentScriptToCheck, BusinessApp businessApp, BusinessAppAgent sessionRouteAgent)
         {
-            var (tools, agents, scripts, hasDTMFRequestTool, hasSendSMSTool) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>(), new List<BusinessAppAgentScript>(), false, false);
+            var (tools, agents, scripts, hasDTMFRequestTool, hasSendSMSTool, hasRetrieveKnowledgeBaseTool) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>(), new List<BusinessAppAgentScript>(), false, false, false);
 
             foreach (var node in currentScriptToCheck.Nodes)
             {
@@ -777,11 +778,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                         {
                             hasSendSMSTool = true;
                         }
+                        else if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.RetrieveKnowledgeBase)
+                        {
+                            hasRetrieveKnowledgeBaseTool = true;
+                        }
                     }
                 }
             }
 
-            return (tools, agents, scripts, hasDTMFRequestTool, hasSendSMSTool);
+            return (tools, agents, scripts, hasDTMFRequestTool, hasSendSMSTool, hasRetrieveKnowledgeBaseTool);
         }
 
         private string GetLocalizedString(Dictionary<string, string> dictionary, string languageCode, string defaultValue)

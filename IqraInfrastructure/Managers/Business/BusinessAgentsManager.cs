@@ -2008,6 +2008,30 @@ namespace IqraInfrastructure.Managers.Business
 
                         nodes.Add(goToNode);
                     }
+                    // Retrieve KnowledgeBase Tool
+                    else if (toolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.RetrieveKnowledgeBase)
+                    {
+                        var retrieveKnowledgeBaseNode = new BusinessAppAgentScriptRetrieveKnowledgeBaseNode()
+                        {
+                            Id = nodeId,
+                            Position = position
+                        };
+
+                        var messagesValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                            businessLanguages,
+                            toolConfigElement,
+                            "responseBeforeExecution",
+                            retrieveKnowledgeBaseNode.ResponseBeforeExecution
+                        );
+                        if (!messagesValidationResult.Success)
+                        {
+                            result.Code = "ValidateAndCreateNodes:" + messagesValidationResult.Code;
+                            result.Message = messagesValidationResult.Message;
+                            return result;
+                        }
+
+                        nodes.Add(retrieveKnowledgeBaseNode);
+                    }
                     // Unknown System Tool
                     else
                     {

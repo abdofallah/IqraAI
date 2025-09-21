@@ -140,7 +140,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _dtmfSessionManager = new ConversationAIAgentDTMFSessionManager(_loggerFactory, _agentState);
             _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager, _conversationSessionManager);
             _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator, _conversationSessionManager, _ragManager);
-            _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper);
+            _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper, _ragManager);
             _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _llmHandler, _audioOutputHandler, _agentState, _llmProviderManager, _businessManager);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);

@@ -3,6 +3,7 @@ using IqraCore.Entities.Conversation.Turn;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -32,6 +33,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly CustomToolExecutionHelper _customToolHelper;
         private readonly ConversationAIAgentDTMFSessionManager _dtmfSessionManager;
         private readonly SendSMSToolExecutionHelper _sendSMSToolExecutionHelper;
+        private readonly ConversationAIAgentRAGManager _conversationAIAgentRAGManager;
 
         // Static Regex for basic DTMF validation (0-9, *, #, A-D, W - W for pause if needed)
         private static readonly Regex ValidDtmfCharsRegex = new Regex(@"^[0-9*#A-DW\s,""\[\]]+$", RegexOptions.Compiled);
@@ -44,7 +46,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             ScriptExecutionManager scriptAccessor,
             CustomToolExecutionHelper customToolHelper,
             ConversationAIAgentDTMFSessionManager dtmfSessionManager,
-            SendSMSToolExecutionHelper sendSMSToolExecutionHelper
+            SendSMSToolExecutionHelper sendSMSToolExecutionHelper,
+            ConversationAIAgentRAGManager conversationAIAgentRAGManager
         )
         {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentToolExecutor>();
@@ -55,6 +58,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _customToolHelper = customToolHelper;
             _dtmfSessionManager = dtmfSessionManager;
             _sendSMSToolExecutionHelper = sendSMSToolExecutionHelper;
+            _conversationAIAgentRAGManager = conversationAIAgentRAGManager;
         }
 
         public async Task InitializeAsync()
@@ -585,6 +589,65 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         $"Success: Successfully sent SMS."
                     );
                     return;
+                }
+                else if (toolName.Equals("retrieve_knowledgebase_information", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Format: retrieve_service_information: string <reason>, string | null <response>, string query, string <node_id>
+                    if (arguments.Count < 3)
+                    {
+                        await FinalizeAndReportToolResult(
+                            turn,
+                            false,
+                            "Error: Retrieve service information requires 3 arguments: string <reason>, string | null <response>, string query, string <node_id>"
+                        );
+                        return;
+                    }
+
+                    string reason = UnescapeArgument(arguments[0]);
+                    string? response = UnescapeNullableArgument(arguments[1]);
+                    string query = UnescapeArgument(arguments[2]);
+                    string nodeId = UnescapeArgument(arguments[3]);
+
+                    turnToolExecutionData.ReasonForExecution = reason;
+                    turnToolExecutionData.NodeId = nodeId;
+                    TurnUpdate?.Invoke(this, turn);
+
+                    if (!string.IsNullOrWhiteSpace(response) && PlaySpeechRequested != null)
+                    {
+                        await PlaySpeechRequested.Invoke(turn, response, cancellationToken);
+                    }
+
+                    var knowledgeBaseRetrivalResult = await _conversationAIAgentRAGManager.RetrieveResultsForQueryAsync(query, cancellationToken);
+                    if (knowledgeBaseRetrivalResult.Success)
+                    {
+                        string successfullResult = $"Successfull Result: Here is detailed information for the knowledgebase retrieval:\n\n";
+
+                        if (knowledgeBaseRetrivalResult.Data == null)
+                        {
+                            successfullResult = $"<KnowledgeBaseQueryRetrival>\n{knowledgeBaseRetrivalResult.Message}\n</KnowledgeBaseQueryRetrieval>";
+                        }
+                        else
+                        {
+                            string contextConverted = _conversationAIAgentRAGManager.FormatResultsForContext(knowledgeBaseRetrivalResult.Data);
+                            successfullResult = $"<KnowledgeBaseQueryRetrival>\n{contextConverted}\n</KnowledgeBaseQueryRetrieval>";
+                        }
+
+                        await FinalizeAndReportToolResult(
+                            turn,
+                            true,
+                            successfullResult
+                        );
+                        return;
+                    }
+                    else
+                    {
+                        await FinalizeAndReportToolResult(
+                            turn,
+                            true,
+                            $"Error: Failed to retrieve knowledgebase information: [{knowledgeBaseRetrivalResult.Code}] {knowledgeBaseRetrivalResult.Message}"
+                        );
+                        return;
+                    }
                 }
                 else // UNKNOWN TOOL YO
                 {

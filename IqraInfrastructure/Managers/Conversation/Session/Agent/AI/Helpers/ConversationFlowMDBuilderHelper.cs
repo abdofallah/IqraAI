@@ -276,6 +276,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
 
                         return $"send_sms: \"reason for sending the message\", \"{messageToSend}\", \"phone number in E.164 format '+[country code][phone number]' or 'current_caller' if sending to the current caller without knowing their number\" \"{nodeId}\"";
                     }
+                case BusinessAppAgentScriptNodeSystemToolTypeENUM.RetrieveKnowledgeBase:
+                    {
+                        var retrieveKnowledgeBaseNode = systemToolNode as BusinessAppAgentScriptRetrieveKnowledgeBaseNode;
+                        var responseBeforeExecution = retrieveKnowledgeBaseNode.ResponseBeforeExecution[currentLanguage] ?? null;
+                        if (responseBeforeExecution == null) throw new Exception("Response before execution is null for language " + currentLanguage + "."); // here it should never be null tho
+
+                        return $"retrieve_knowledgebase_information: \"{responseBeforeExecution}\", \"{nodeId}\"";
+                    }
                 default:
                     return $"{systemToolNode.ToolType}: \"details...\", \"{nodeId}\"";
             }
