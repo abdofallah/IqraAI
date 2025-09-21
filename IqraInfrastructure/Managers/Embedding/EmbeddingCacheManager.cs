@@ -10,7 +10,7 @@ using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Embedding
 {
-    public record BusinessReferenceInfo(long BusinessId, string GroupId, string groupEmbeddingLanguage, string EmbeddingId, string AgentId);
+    public record BusinessReferenceInfo(long BusinessId, string EmbeddingGroupId, string EmbeddingGroupLanguage, string EmbeddingGroupEntryId, string AgentId);
 
     public class EmbeddingCacheManager
     {
@@ -98,9 +98,9 @@ namespace IqraInfrastructure.Managers.Embedding
 
             await _businessAppRepository.AddCacheLinkToEmbeddingCacheGroupEntry(
                 businessReference.BusinessId,
-                businessReference.GroupId,
-                businessReference.EmbeddingId,
-                businessReference.groupEmbeddingLanguage,
+                businessReference.EmbeddingGroupId,
+                businessReference.EmbeddingGroupEntryId,
+                businessReference.EmbeddingGroupLanguage,
                 cacheLink
             );
         }
@@ -119,9 +119,9 @@ namespace IqraInfrastructure.Managers.Embedding
             return new EmbeddingCacheEntryReference
             {
                 BusinessId = info.BusinessId,
-                EmbeddingCacheGroupId = info.GroupId,
-                EmbeddingCacheGroupEmbeddingLanguage = info.groupEmbeddingLanguage,
-                EmbeddingCacheEmbeddingId = info.EmbeddingId,
+                EmbeddingCacheGroupId = info.EmbeddingGroupId,
+                EmbeddingCacheGroupEmbeddingLanguage = info.EmbeddingGroupLanguage,
+                EmbeddingCacheEmbeddingId = info.EmbeddingGroupEntryId,
                 ReferencedByAgents = new List<string> { info.AgentId },
                 ReferencedCount = 1,
                 LastAccessedAtUtc = now

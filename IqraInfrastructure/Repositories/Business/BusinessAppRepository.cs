@@ -438,7 +438,7 @@ namespace IqraInfrastructure.Repositories.Business
             return result.ModifiedCount > 0;
         }
 
-        public async Task<bool> AddEmbeddingToGroup(long businessId, string groupId, string language, BusinessAppCacheEmbedding newEmbedding)
+        public async Task<bool> AddEmbeddingEntryToGroup(long businessId, string groupId, string language, BusinessAppCacheEmbedding newEmbedding)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),

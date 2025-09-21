@@ -591,7 +591,7 @@ namespace IqraInfrastructure.Managers.Business
             {
                 newEmbedding.Id = Guid.NewGuid().ToString();
 
-                var addResult = await _businessAppRepository.AddEmbeddingToGroup(
+                var addResult = await _businessAppRepository.AddEmbeddingEntryToGroup(
                     businessId,
                     groupId,
                     language,
@@ -625,6 +625,16 @@ namespace IqraInfrastructure.Managers.Business
             result.Success = true;
             result.Data = newEmbedding;
             return result;
+        }
+
+        public async Task<bool> AddEmbeddingGroupEntry(long businessId, string groupId, string language, BusinessAppCacheEmbedding cacheEntry)
+        {
+            return await _businessAppRepository.AddEmbeddingEntryToGroup(
+                businessId,
+                groupId,
+                language,
+                cacheEntry
+            );
         }
     }
 }

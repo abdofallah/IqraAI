@@ -355,12 +355,33 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             // If no manual hit, check for auto-caching on miss
                             else if (agentCacheConfig.EmbeddingsCacheSettings.AutoCacheEmbeddingResponses)
                             {
+                                var newCacheEntry = new BusinessAppCacheEmbedding()
+                                {
+                                    Id = Guid.NewGuid().ToString(),
+                                    Query = q,
+                                    UnusedExpiryHours = agentCacheConfig.EmbeddingsCacheSettings.AutoCacheEmbeddingResponsesDefaultExpiryHours!.Value,
+                                    GeneratedCacheLinks = new List<BusinessAppCacheEmbeddingCacheLink>()
+                                };
+
+                                var addEntryToCacheGroup = await _businessManager.GetCacheManager().AddEmbeddingGroupEntry(
+                                    _agentState.BusinessApp.Id,
+                                    agentCacheConfig.EmbeddingsCacheSettings.AutoCacheEmbeddingResponseCacheGroupId,
+                                    _agentState.CurrentLanguageCode,
+                                    newCacheEntry
+                                );
+                                if (!addEntryToCacheGroup)
+                                {
+                                    _logger.LogError("Failed to add embedding cache entry to cache group.");
+                                    // TODO
+                                }    
+
                                 var embeddingService = source.RetrievalService.GetEmbeddingService();
                                 if (embeddingService != null)
                                 {
                                     retrievalOptions.IsCachable = true;
                                     retrievalOptions.CacheGroupId = agentCacheConfig.EmbeddingsCacheSettings.AutoCacheEmbeddingResponseCacheGroupId;
                                     retrievalOptions.CacheGroupLanguage = _agentState.CurrentLanguageCode;
+                                    retrievalOptions.CacheGroupEntryId = newCacheEntry.Id;
                                     retrievalOptions.CacheReference = _conversationSessionId;
                                     retrievalOptions.CacheKey = EmbeddingCacheKeyGenerator.Generate(
                                         q, embeddingService.GetProviderType(), embeddingService.GetCacheableConfig()
