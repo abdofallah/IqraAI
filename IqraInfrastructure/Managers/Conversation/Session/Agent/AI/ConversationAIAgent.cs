@@ -288,6 +288,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 Status = ConversationTurnStatus.AgentProcessing
             };
             await OnNewTurnCreated(newTurn);
+            _turnManager.SetUserTurnActive();
 
             // Start Services
             _sttHandler.StartTranscription();
@@ -329,6 +330,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 },
                 Status = ConversationTurnStatus.AgentProcessing
             };
+            _turnManager.SetUserTurnActive();
 
             // TODO play the max duration reached message and end the call
         }
@@ -637,6 +639,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             };
             await OnNewTurnCreated(newToolResultTurn);
+            _turnManager.SetUserTurnActive();
+
+            await _llmHandler.CancelCurrentLLMTaskAsync();
+            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
 
             await _llmHandler.ProcessToolResultAsync(newToolResultTurn, turnWithResult, _conversationCTS.Token);
         }

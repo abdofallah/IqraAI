@@ -263,6 +263,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _canInterruptAgentAfterVerificaiton = false;
             _hasVerifiedInterruptionResult = false;
         }
+        public void SetUserTurnActive()
+        {
+            _isUserTurnActive = true;
+        }
 
         // Management
         public async Task ProcessTranscriptionForTurnAnalysis(string text, bool isFinal)
