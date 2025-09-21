@@ -482,7 +482,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var turnBeingCancelled = _agentState.CurrentTurn;
             if (turnBeingCancelled != null &&
                 turnBeingCancelled.Response.Type == ConversationTurnAgentResponseType.Speech &&
-                (turnBeingCancelled.Status == ConversationTurnTurnStatus.AgentProcessing || turnBeingCancelled.Status == ConversationTurnTurnStatus.AgentRespondingSpeech)
+                (turnBeingCancelled.Status == ConversationTurnStatus.AgentProcessing || turnBeingCancelled.Status == ConversationTurnStatus.AgentRespondingSpeech)
             ) {
                 var activeSegment = turnBeingCancelled.Response.SpokenSegments.Find(s => s.Id == _currentSpeechSegmentId);
 
@@ -728,7 +728,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                     // Check if current turn playback is complete
                     if (
-                        currentTurn.Status == ConversationTurnTurnStatus.AgentRespondingSpeech &&
+                        currentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech &&
                         currentTurn.Response.Type == ConversationTurnAgentResponseType.Speech &&
                         currentTurn.Response.LLMStreamingCompletedAt != null &&
                         currentTurn.Response.SpeechCompletedAt == null &&

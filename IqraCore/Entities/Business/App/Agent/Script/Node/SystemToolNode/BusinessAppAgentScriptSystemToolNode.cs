@@ -8,7 +8,8 @@ namespace IqraCore.Entities.Business
         typeof(BusinessAppAgentScriptDTMFInputToolNode),
         typeof(BusinessAppAgentScriptTransferToAgentToolNode),
         typeof(BusinessAppAgentScriptAddScriptToContextToolNode),
-        typeof(BusinessAppAgentScriptSendSMSToolNode)
+        typeof(BusinessAppAgentScriptSendSMSToolNode),
+        typeof(BusinessAppAgentScriptRetrieveKnowledgeBaseNode)
     )]
     public class BusinessAppAgentScriptSystemToolNode : BusinessAppAgentScriptNode
     {

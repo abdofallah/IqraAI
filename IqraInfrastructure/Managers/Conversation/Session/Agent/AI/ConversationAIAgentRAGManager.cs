@@ -314,6 +314,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
+                if (!_contextSources.Any())
+                {
+                    return result.SetSuccessResult(
+                        null,
+                        "No knowledge bases sources are configured."
+                    );
+                }
+
                 var queriesToProcess = _ragConfig.Refinement.Enabled
                     ? await RefineQueryAsync(query, cancellationToken)
                     : new List<string> { query };

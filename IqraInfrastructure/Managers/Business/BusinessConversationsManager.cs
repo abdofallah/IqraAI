@@ -329,10 +329,10 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     var userMessageModel = new ConversationStateMessageViewModel()
                     {
-                        SenderId = turn.User.SenderId,
+                        SenderId = turn.UserInput.SenderId,
                         Role = ConversationSenderRole.Client,
-                        Content = turn.User.TranscribedText ?? "",
-                        Timestamp = turn.User.StartedSpeakingAt,
+                        Content = turn.UserInput.TranscribedText ?? "",
+                        Timestamp = turn.UserInput.StartedSpeakingAt,
                     };
                     resultModel.Messages.Add(userMessageModel);
 

@@ -9,14 +9,7 @@ namespace IqraCore.Entities.Conversation.Turn
         public string? ReasonForExecution { get; set; } // The reason provided by the LLM
         public string ToolName { get; set; }
 
-        /// <summary>
-        /// The full, raw command string from the LLM. Useful for debugging.
-        /// </summary>
         public string RawLLMInput { get; set; }
-
-        /// <summary>
-        /// The raw string result from the tool's execution.
-        /// </summary>
         public string? Result { get; set; }
 
         public DateTime? CompletedAt { get; set; }

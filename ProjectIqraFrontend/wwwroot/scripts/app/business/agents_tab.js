@@ -26,7 +26,8 @@ const AGENT_SCRIPT_SYSTEM_TOOLS = {
 	TRANSFER_TO_HUMAN: 6,
 	ADD_SCRIPT_TO_CONTEXT: 7,
 	SEND_SMS: 8,
-	GOTONODE: 9
+	GOTONODE: 9,
+	RETRIEVE_KNOWLEDGEBASE: 10
 };
 
 const AGENT_SCRIPT_END_CALL_SYSTEM_TOOL_TYPE = {
@@ -2554,6 +2555,28 @@ function validateAgentScriptMultilanguageElements(onlyRemoveInvalid = true) {
 					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).removeClass('invalid-multilang');
 				}
 			}
+
+			// Check Retrieve KnowledgeBase Node
+			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
+				var anyLanguageMissing = false;
+				BusinessFullData.businessData.languages.forEach((language) => {
+					const currentLanguageMessage = config.responseBeforeExecution[language];
+					if (!currentLanguageMessage || currentLanguageMessage === "" || currentLanguageMessage.trim() === "") {
+						areLanguagesIncompleteInConversationTab[language] = true;
+						anyLanguageMissing = true;
+					}
+				});
+				if (anyLanguageMissing) {
+					if (!onlyRemoveInvalid) {
+						$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+					}
+				}
+				else {
+					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).removeClass('invalid-multilang');
+				}
+
+				continue;
+			}
 		}
 	}
 
@@ -2757,6 +2780,19 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
                             if (!compileConversationChanges) break;
                         }
                     }
+				}
+
+				// Retrieve KnowledgeBase Tool
+				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
+					pushNewNode.config.type = newScriptNodeData.config.type;
+					pushNewNode.config.responseBeforeExecution = newScriptNodeData.config.responseBeforeExecution;
+
+					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
+						if (JSON.stringify(oldNode.responseBeforeExecution) !== JSON.stringify(pushNewNode.config.responseBeforeExecution)) {
+							hasChanges = true;
+							if (!compileConversationChanges) break;
+						}
+					}
 				}
 			}
 
@@ -3101,6 +3137,10 @@ function fillAgentSriptManagerTab() {
 			// Go To Node Data
 			else if (node.toolType.value === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE) {
                 nodeBase.data.config.goToNodeId = node.goToNodeId;
+			}
+			// END CALL TOOL DATA
+			else if (node.toolType.value === AGENT_SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
+				nodeBase.data.config.responseBeforeExecution = node.responseBeforeExecution;
 			}
 		}
 		// Custom Tool Data
@@ -3666,6 +3706,7 @@ function registerAgentScriptNodes() {
                                 <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT ? "selected" : ""}>Add Script to Context</option>
                                 <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS ? "selected" : ""}>Send SMS</option>
                                 <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE ? "selected" : ""}>Go To Node</option>
+								<option value="${AGENT_SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE ? "selected" : ""}>Retrieve KnowledgeBase</option>
                             </select>
                         </div>
                     </div>
@@ -4335,6 +4376,7 @@ function getAgentScriptSystemToolConfig(cellId, toolType, currentLanguage, data 
 		`;
 	}
 
+	// get dtmf
 	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
 		return `
                 <div class="tool-config-group">
@@ -4445,6 +4487,7 @@ function getAgentScriptSystemToolConfig(cellId, toolType, currentLanguage, data 
             `;
 	}
 
+	// transfer to agent
 	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) {
 		const agents = BusinessFullData.businessApp.agents || [];
 		const agentOptions = agents
@@ -4495,6 +4538,7 @@ function getAgentScriptSystemToolConfig(cellId, toolType, currentLanguage, data 
             `;
 	}
 
+	// add script to conext
 	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
 		const scripts = CurrentManageAgentData.scripts;
 
@@ -4517,6 +4561,24 @@ function getAgentScriptSystemToolConfig(cellId, toolType, currentLanguage, data 
 					</div>
 				</div>
 			`;
+	}
+
+	// Retrieve Knowledgebase
+	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
+		return `
+                <div class="tool-config-group">
+                    <label class="form-label">Retrieve KnowledgeBase Configuration</label>
+                    <div id="retrieve-knowledgebase-response-before-execution-container">
+						<label class="form-label btn-ic-span-align"><span>Response Before Execution</span> <i class="fa-regular fa-language"></i></label>
+						<textarea 
+							class="form-control" 
+							data-input="retrieve-knowledgebase-response-before-execution"
+							placeholder="Enter response before execution..."
+							rows="2"
+						>${config.responseBeforeExecution?.[currentLanguage] || ""}</textarea>
+					</div>
+                </div>
+            `;
 	}
 
 	return "";
@@ -4616,7 +4678,8 @@ function doesScriptSystemToolRequireConfig(toolType) {
 			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT ||
 			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT ||
 			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS ||
-            toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE
+			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE ||
+            toolType === AGENT_SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE
 		)
 	);
 }
@@ -5898,7 +5961,15 @@ function initAgentTab() {
 						newData.config = {
 							scriptId: null,
 						};
-					}
+					} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
+						newData.config = {
+							responseBeforeExecution: { }
+						}
+
+						BusinessFullData.businessData.languages.forEach((language) => {
+							newData.config.responseBeforeExecution[language] = "";
+						});
+                    }
 
 					// Update cell data
 					cell.replaceData(newData);
@@ -6267,6 +6338,36 @@ function initAgentTab() {
 					updateSystemToolConfig({ ...config, scriptId: e.target.value });
 					// todo
 					alert("todo 841284812");
+				});
+
+				// Retrieve KnowledgeBase Node
+				$("#nodeConfigOffcanvas").on("input", '[data-input="retrieve-knowledgebase-response-before-execution"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
+					const config = data.config;
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					const responseBeforeExecution = config.responseBeforeExecution;
+					responseBeforeExecution[currentLanguage] = e.target.value;
+
+					updateSystemToolConfig({ ...config, responseBeforeExecution });
+				});
+				agentsScriptManagerLanguageDropdown.onLanguageChange((language) => {
+					const currentLanguage = language.id;
+
+					if (!CurrentCanvasConfigCell || !nodeConfigOffcanvas._element.classList.contains("show")) {
+						return;
+					}
+
+					const nodeData = CurrentCanvasConfigCell.getData() || {};
+
+					if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL && nodeData.toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
+						return;
+					}
+
+					const config = nodeData.config;
+					const responseBeforeExecution = config.responseBeforeExecution;
+
+					$(`#nodeConfigOffcanvas [data-input="retrieve-knowledgebase-response-before-execution"]`).val(responseBeforeExecution[currentLanguage]);
 				});
 			}
 			initSystemToolConfigHandlers();

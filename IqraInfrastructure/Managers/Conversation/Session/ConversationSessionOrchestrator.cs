@@ -1032,7 +1032,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         {
             await _conversationStateRepository.UpdateTurnAsync(_sessionId, turn);
             TurnUpdated?.Invoke(this, new ConversationTurnEventArgs(turn));
-            if (turn.Status == ConversationTurnTurnStatus.Completed || turn.Status == ConversationTurnTurnStatus.Interrupted || turn.Status == ConversationTurnTurnStatus.Error)
+            if (turn.Status == ConversationTurnStatus.Completed || turn.Status == ConversationTurnStatus.Interrupted || turn.Status == ConversationTurnStatus.Error)
             {
                 TurnCompleted?.Invoke(this, new ConversationTurnEventArgs(turn));
             }

@@ -11,15 +11,28 @@ namespace IqraCore.Entities.Conversation.Turn
 
         public int Sequence { get; set; }
 
-        public ConversationTurnUserInput User { get; set; } = new ConversationTurnUserInput();
+        public ConversationTurnType Type { get; set; }
+
+        public ConversationTurnUserInput? UserInput { get; set; } = null;
+        public ConversationTurnSystemInput? SystemInput { get; set; } = null;
+        public ConversationTurnToolResultInput? ToolResultInput { get; set; } = null;
+
         public ConversationTurnAgentResponse Response { get; set; } = new ConversationTurnAgentResponse();
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? CompletedAt { get; set; }
-        public ConversationTurnTurnStatus Status { get; set; } = ConversationTurnTurnStatus.UserInputStarted;
+        public ConversationTurnStatus Status { get; set; } = ConversationTurnStatus.UserInputStarted;
     }
 
-    public enum ConversationTurnTurnStatus
+    public enum ConversationTurnType
+    {
+        NotSet,
+        System,
+        ToolResult,
+        User
+    }
+
+    public enum ConversationTurnStatus
     {
         UserInputStarted,
         UserInputEnded,

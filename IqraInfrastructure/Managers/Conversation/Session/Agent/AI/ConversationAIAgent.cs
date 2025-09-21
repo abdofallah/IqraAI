@@ -25,7 +25,6 @@ using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using static Google.Cloud.TextToSpeech.V1.MultiSpeakerMarkup.Types;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -276,27 +275,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var dateTimeNow = DateTime.UtcNow;
             var newTurn = new ConversationTurn
             {
-                Sequence = (await _conversationSessionManager.GetTurnsAsync()).Count + 1,
-                User = new ConversationTurnUserInput
+                Type = ConversationTurnType.System,
+                SystemInput = new ConversationTurnSystemInput()
                 {
-                    SenderId = "System",
-                    TranscribedText = "",
-                    StartedSpeakingAt = dateTimeNow,
-                    FinishedSpeakingAt = dateTimeNow
+                    Type = "ConversationStarted"
                 },
                 Response = new ConversationTurnAgentResponse
                 {
                     AgentId = _agentState.BusinessAppAgent!.Id,
-                    LLMStreamingStartedAt = dateTimeNow,
-                    LLMStreamingCompletedAt = dateTimeNow,
-                    Type = ConversationTurnAgentResponseType.SystemTool,                  
-                    ToolExecution = new ConversationTurnToolExecutionData
-                    {
-                        ToolType = ConversationTurnAgentToolType.System,
-                        ToolName = "conversation_started"
-                    }
+                    Type = ConversationTurnAgentResponseType.Speech,
                 },
-                Status = ConversationTurnTurnStatus.AgentProcessing
+                Status = ConversationTurnStatus.AgentProcessing
             };
             await OnNewTurnCreated(newTurn);
 
@@ -319,33 +308,29 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public async Task NotifyMaxDurationReached()
         {
             if (!_agentState.IsInitialized) return;
-            _logger.LogWarning("Agent {AgentId}: Maximum conversation duration reached.", AgentId);
 
             _agentState.IsAcceptingSTTAudio = false;
+
+            // TODO end the current turn properly
             await _llmHandler.CancelCurrentLLMTaskAsync();
             await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
-
-            // Instruct LLM to end the call immediately
-            var reason = $"System Event: Maximum duration of {_agentState.CurrentSessionContext?.Timeout.MaxCallTimeS ?? 0} seconds reached.";
 
             var finalTurn = new ConversationTurn
             {
                 Sequence = (await _conversationSessionManager.GetTurnsAsync()).Count + 1,
-                User = new ConversationTurnUserInput
+                SystemInput = new ConversationTurnSystemInput()
                 {
-                    SenderId = "System",
-                    TranscribedText = reason,
-                    StartedSpeakingAt = DateTime.UtcNow,
-                    FinishedSpeakingAt = DateTime.UtcNow
+                    Type = "MaxDurationReached"
                 },
                 Response = new ConversationTurnAgentResponse()
                 {
-                    AgentId = _agentState.BusinessAppAgent!.Id
+                    AgentId = _agentState.BusinessAppAgent!.Id,
+                    Type = ConversationTurnAgentResponseType.Speech
                 },
-                Status = ConversationTurnTurnStatus.UserInputEnded
+                Status = ConversationTurnStatus.AgentProcessing
             };
 
-            await OnUserTurnFinalizedAsync(finalTurn);
+            // TODO play the max duration reached message and end the call
         }
         public async Task ShutdownAsync(string reason)
         {
@@ -397,7 +382,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _logger.LogInformation("AI Agent {AgentId} shut down complete.", AgentId);
         }
-        public async Task FinalizeCurrentTurn(ConversationTurnTurnStatus finalStatus)
+        public async Task FinalizeCurrentTurn(ConversationTurnStatus finalStatus)
         {
             if (_agentState.CurrentTurn != null)
             {
@@ -576,7 +561,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             // Enable listening after potential greeting
-            await FinalizeCurrentTurn(ConversationTurnTurnStatus.Completed);
+            await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
             _agentState.IsAcceptingSTTAudio = true;
             // TODO: Enable VAD if needed (_vadService.Start() ?)
         }
@@ -605,7 +590,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                _agentState.CurrentTurn!.Status = ConversationTurnTurnStatus.AgentProcessing;
+                _agentState.CurrentTurn!.Status = ConversationTurnStatus.AgentProcessing;
                 await _conversationSessionManager.NotifyTurnUpdated(_agentState.CurrentTurn);
 
                 await _llmHandler.CancelCurrentLLMTaskAsync();
@@ -616,7 +601,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing finalized user turn {TurnId}", turn.Id);
-                await FinalizeCurrentTurn(ConversationTurnTurnStatus.Error);
+                await FinalizeCurrentTurn(ConversationTurnStatus.Error);
             }
         }
 
@@ -637,10 +622,23 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Tool Executor Handler
         private async Task OnToolResultAvailable(ConversationTurn turnWithResult)
         {
-            turnWithResult.Status = ConversationTurnTurnStatus.Completed;
+            await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
+            var newToolResultTurn = new ConversationTurn()
+            {
+                Type = ConversationTurnType.ToolResult,
+                Status = ConversationTurnStatus.AgentProcessing,
+                ToolResultInput = new ConversationTurnToolResultInput()
+                {
+                    ResultOfTurnId = turnWithResult.Id,
+                },
+                Response = new ConversationTurnAgentResponse()
+                {
+                    AgentId = _agentState.BusinessAppAgent!.Id
+                }
+            };
+            await OnNewTurnCreated(newToolResultTurn);
 
-            await _conversationSessionManager.NotifyTurnUpdated(turnWithResult);
-            await _llmHandler.ProcessToolResultAsync(turnWithResult, _conversationCTS.Token);
+            await _llmHandler.ProcessToolResultAsync(newToolResultTurn, turnWithResult, _conversationCTS.Token);
         }
         private async Task OnPlaySpeechRequested(ConversationTurn turn, string message, CancellationToken token)
         {
@@ -649,7 +647,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async Task OnEndConversationRequested(ConversationTurn turn)
         {
             string? reason = turn.Response.ToolExecution?.ReasonForExecution ?? "Agent requested end of conversation, no reason provided.";
-            await FinalizeCurrentTurn(ConversationTurnTurnStatus.Completed); 
+            await FinalizeCurrentTurn(ConversationTurnStatus.Completed); 
             await _conversationSessionManager.EndAsync(reason);
         }
 
@@ -659,7 +657,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var currentTurnText = string.Join(" ", turn.Response.SpokenSegments.Select(x => x.Text).ToArray());
             _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
 
-            await FinalizeCurrentTurn(ConversationTurnTurnStatus.Completed);
+            await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
         }
 
         // Event Handlers
@@ -790,7 +788,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             var currentTurnText = string.Join(" ", interruptedTurn.Response.SpokenSegments.Select(x => x.Text).ToArray());
             _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
-            await FinalizeCurrentTurn(ConversationTurnTurnStatus.Interrupted);
+            await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted);
         }
 
         // Disposal

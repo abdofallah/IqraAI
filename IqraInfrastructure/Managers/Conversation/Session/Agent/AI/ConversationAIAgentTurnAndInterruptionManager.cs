@@ -271,7 +271,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                await CreateNewTurn();
+                await CreateNewUserTurn();
 
                 if (isFinal)
                 {
@@ -293,7 +293,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
                 }
                 // is turn by turn mode
-                else if (_agentState.CurrentTurn.Status == ConversationTurnTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnTurnStatus.AgentRespondingSpeech)
+                else if (_agentState.CurrentTurn.Status == ConversationTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech)
                 {
                     // do nothing for now?
                     Console.WriteLine($"Recieved transcript during turn by turn: {currentUtterance}");
@@ -330,7 +330,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 var now = DateTime.UtcNow;
                 var newTurn = new ConversationTurn
                 {
-                    User = new ConversationTurnUserInput
+                    Type = ConversationTurnType.User,
+                    UserInput = new ConversationTurnUserInput
                     {
                         SenderId = _agentState.CurrentClientId ?? "UnknownClient",
                         TranscribedText = text,
@@ -341,7 +342,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     {
                         AgentId = _agentState.BusinessAppAgent!.Id
                     },
-                    Status = ConversationTurnTurnStatus.UserInputEnded
+                    Status = ConversationTurnStatus.UserInputEnded
                 };
 
                 if (NewTurnCreated != null)
@@ -351,7 +352,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 if (_agentState.IsResponding || _agentState.IsExecutingCustomTool || _agentState.IsExecutingSystemTool)
                 {
-                    newTurn.Status = ConversationTurnTurnStatus.Interrupted;
+                    newTurn.Status = ConversationTurnStatus.Interrupted;
 
                     if (VerifiedInterruptionOccurred != null)
                     {
@@ -387,7 +388,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // Common Helper
-        private async Task<ConversationTurn?> CreateNewTurn()
+        private async Task<ConversationTurn?> CreateNewUserTurn()
         {
             if (!_isUserTurnActive)
             {
@@ -400,8 +401,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 var newTurn = new ConversationTurn
                 {
-                    Status = ConversationTurnTurnStatus.UserInputStarted,
-                    User = new ConversationTurnUserInput
+                    Type = ConversationTurnType.User,
+                    Status = ConversationTurnStatus.UserInputStarted,
+                    UserInput = new ConversationTurnUserInput
                     {
                         SenderId = _agentState.CurrentClientId ?? "UnknownClient",
                         StartedSpeakingAt = DateTime.UtcNow
@@ -459,9 +461,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (!_isAgentPaused)
             {
-                turnToFinalize.User.TranscribedText = finalText;
-                turnToFinalize.User.FinishedSpeakingAt = DateTime.UtcNow;
-                turnToFinalize.Status = ConversationTurnTurnStatus.UserInputEnded;
+                turnToFinalize.UserInput.TranscribedText = finalText;
+                turnToFinalize.UserInput.FinishedSpeakingAt = DateTime.UtcNow;
+                turnToFinalize.Status = ConversationTurnStatus.UserInputEnded;
 
                 if (UserTurnFinalized != null)
                 {
@@ -536,8 +538,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             await VerifiedInterruptionOccurred!?.Invoke(turnToInterrupt);
 
-            var newTurn = await CreateNewTurn();
-            newTurn!.User.TranscribedText = interruptingText;
+            var newTurn = await CreateNewUserTurn();
+            newTurn!.UserInput.TranscribedText = interruptingText;
 
             await UserTurnFinalized!.Invoke(newTurn);
         }
@@ -565,7 +567,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_agentState.CurrentTurn == null) return;
 
             if (
-                (_agentState.CurrentTurn.Status == ConversationTurnTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnTurnStatus.AgentRespondingSpeech)
+                (_agentState.CurrentTurn.Status == ConversationTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech)
                 && !_isAgentPaused
                 )
             {
@@ -581,7 +583,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                await CreateNewTurn();
+                await CreateNewUserTurn();
             }
             finally
             {
@@ -749,7 +751,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                await CreateNewTurn();
+                await CreateNewUserTurn();
             }
             finally
             {
