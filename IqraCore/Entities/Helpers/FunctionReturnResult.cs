@@ -4,10 +4,11 @@
     {
         public T? Data { get; set; } = default(T); // todo set as internal set
 
-        public FunctionReturnResult<T> SetSuccessResult(T? data)
+        public FunctionReturnResult<T> SetSuccessResult(T? data, string? message = null)
         {
             this.Success = true;
             this.Data = data;
+            this.Message = message;
 
             return this;
         }

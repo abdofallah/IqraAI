@@ -201,14 +201,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
             string messageToSend = $"customer_query: {turn.User.TranscribedText}";
             _agentState.LLMService!.AddUserMessage(messageToSend);
-            await ProcessLLMInputForTurn(turn, combinedCTS.Token);
+            await ProcessLLMInputForTurn(turn, false, combinedCTS.Token);
         }
         public async Task ProcessToolResultAsync(ConversationTurn turnWithToolResult, CancellationToken externalToken) // NEW
         {
             using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
             var messageToSend = $"response_from_system: {turnWithToolResult.Response.ToolExecution!.Result}";
             _agentState.LLMService!.AddUserMessage(messageToSend);
-            await ProcessLLMInputForTurn(turnWithToolResult, combinedCTS.Token);
+            await ProcessLLMInputForTurn(turnWithToolResult, true, combinedCTS.Token);
         }
 
         public async Task CancelCurrentLLMTaskAsync()
@@ -234,24 +234,52 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // Message Processing
-        private async Task ProcessLLMInputForTurn(ConversationTurn turn, CancellationToken cancellationToken)
+        private async Task ProcessLLMInputForTurn(ConversationTurn turn, bool isToolResult, CancellationToken cancellationToken)
         {
             string beforeMessageContext = string.Empty;
 
-            bool performKnowledgeBaseRetrieval = await _conversationAIAgentRAGManager.ShouldPerformSearchAsync(turn.User.TranscribedText!, cancellationToken);
-            string? knowledgeBaseRetrivalResult = null;
-            if (performKnowledgeBaseRetrieval)
+            if (!isToolResult)
             {
-                Stopwatch ragRetrievalLatencyStopwatch = Stopwatch.StartNew();
-                knowledgeBaseRetrivalResult = await _conversationAIAgentRAGManager.RetrieveContextForQueryAsync(turn.User.TranscribedText!, cancellationToken);
-                ragRetrievalLatencyStopwatch.Stop();
-                if (!string.IsNullOrWhiteSpace(knowledgeBaseRetrivalResult))
+                bool performKnowledgeBaseRetrieval = await _conversationAIAgentRAGManager.ShouldPerformSearchAsync(turn.User.TranscribedText!, cancellationToken);
+                if (performKnowledgeBaseRetrieval)
                 {
-                    beforeMessageContext = $"<KnowledgeBaseQueryRetrival>\n{knowledgeBaseRetrivalResult}\n</KnowledgeBaseQueryRetrieval>";
+                    Stopwatch ragRetrievalLatencyStopwatch = Stopwatch.StartNew();
+                    var knowledgeBaseRetrivalResult = await _conversationAIAgentRAGManager.RetrieveResultsForQueryAsync(turn.User.TranscribedText!, cancellationToken);
+                    ragRetrievalLatencyStopwatch.Stop();
 
-                    // TODO > save knowledgebase data in turn.response.knowledgebase
+                    turn.Response.KnowledgeBaseRetrievalData = new ConversationTurnKnowledgeBaseRetrievalData()
+                    {
+                        WasSuccessfull = knowledgeBaseRetrivalResult.Success,
+                        RetrievalLatencyMS = (int)ragRetrievalLatencyStopwatch.ElapsedMilliseconds
+                    };
+
+                    if (knowledgeBaseRetrivalResult.Success)
+                    {
+                        if (knowledgeBaseRetrivalResult.Data == null)
+                        {
+                            turn.Response.KnowledgeBaseRetrievalData.ResultMessage = knowledgeBaseRetrivalResult.Message;
+
+                            beforeMessageContext = $"<KnowledgeBaseQueryRetrival>\n{knowledgeBaseRetrivalResult.Message}\n</KnowledgeBaseQueryRetrieval>";
+                        }
+                        else
+                        {
+                            turn.Response.KnowledgeBaseRetrievalData.RetrievedResultsMetaData = knowledgeBaseRetrivalResult.Data.Select(x => x.Metadata).ToList();
+
+                            string contextConverted = _conversationAIAgentRAGManager.FormatResultsForContext(knowledgeBaseRetrivalResult.Data);
+                            beforeMessageContext = $"<KnowledgeBaseQueryRetrival>\n{contextConverted}\n</KnowledgeBaseQueryRetrieval>";
+                        }
+                    }
+                    else
+                    {
+                        turn.Response.KnowledgeBaseRetrievalData.ResultMessage = $"[{knowledgeBaseRetrivalResult.Code}] {knowledgeBaseRetrivalResult.Message}";
+                    }
+
+                    await _conversationSession.NotifyTurnUpdated(turn);
                 }
             }
+
+            // Since knowledge base retrieval takes time, turn could be cancelled in between so we need to check
+            if (cancellationToken.IsCancellationRequested) return;
 
             var currentDateTimeData = await _systemPromptGenerator.GenerateDateTimeInformationForMessage(
                 null, _agentState.CurrentSessionContext!.Agent.Timezones);

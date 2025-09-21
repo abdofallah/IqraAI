@@ -81,6 +81,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _conversationSessionId = conversationSessionId;
         }
 
+        // Initialize
         public async Task<FunctionReturnResult> InitializeAsync(CancellationToken cancellationToken)
         {
             var result = new FunctionReturnResult();
@@ -174,13 +175,142 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return result.SetFailureResult("Initialize:Exception", ex.Message);
             }
         }
-
-        public async Task<string?> RetrieveContextForQueryAsync(string query, CancellationToken cancellationToken)
+        private async Task InitializeClassifierLlmAsync(CancellationToken cancellationToken)
         {
-            if (!_isInitialized || !_contextSources.Any())
+            var llmConfig = _ragConfig.SearchStrategy.LLMClassifier?.LLMIntegration;
+            _classifierLlmService = await BuildLlmServiceAsync(
+                llmConfig,
+                "You are a search query classifier. Analyze the user's query and the conversation history. Decide if a search in a knowledge base is likely to yield a relevant answer. Respond with ONLY the word 'SEARCH' or 'SKIP'.",
+                cancellationToken
+            );
+            if (_classifierLlmService == null)
             {
+                _ragConfig.SearchStrategy.Type = AgentKnowledgeBaseSearchStartegyTypeENUM.Always; // Fallback
+            }
+        }
+        private async Task InitializeRefinementLlmAsync(CancellationToken cancellationToken)
+        {
+            var llmConfig = _ragConfig.Refinement.LLMIntegration;
+            _refinementLlmService = await BuildLlmServiceAsync(
+                llmConfig,
+                "You are a query refinement expert. Rewrite a user's query into multiple, effective search queries. Generate a JSON array of strings. Do not include any other text or explanation.",
+                cancellationToken
+            );
+            if (_refinementLlmService == null)
+            {
+                _ragConfig.Refinement.Enabled = false; // Fallback
+            }
+        }
+        private async Task<ILLMService?> BuildLlmServiceAsync(BusinessAppAgentIntegrationData? llmConfig, string systemPrompt, CancellationToken cancellationToken)
+        {
+            if (llmConfig == null)
+                return null;
+
+            var integrationDataResult = await _businessManager
+                .GetIntegrationsManager()
+                .getBusinessIntegrationById(_agentState.BusinessApp.Id, llmConfig.Id);
+            if (!integrationDataResult.Success || integrationDataResult.Data == null)
+            {
+                _logger.LogError("Could not find business integration with ID {IntegrationId} for RAG LLM task.", llmConfig.Id);
                 return null;
             }
+
+            var llmResult = await _llmProviderManager.BuildProviderServiceByIntegration(
+                integrationDataResult.Data,
+                llmConfig,
+                new Dictionary<string, string>()
+            );
+            if (!llmResult.Success || llmResult.Data == null)
+            {
+                _logger.LogError("Failed to build LLM service for RAG task: {Message}", llmResult.Message);
+                return null;
+            }
+
+            llmResult.Data.SetSystemPrompt(systemPrompt);
+            return llmResult.Data;
+        }
+        private void BuildManualCacheLookup()
+        {
+            var embeddingCacheGroups = _agentState.BusinessApp.Cache.EmbeddingGroups.Where(
+                g => _agentState.BusinessAppAgent.Cache.Embeddings.Contains(g.Id)
+            );
+
+            _manualCacheLookup = new Dictionary<string, (string GroupId, string EntryId)>(
+                StringComparer.OrdinalIgnoreCase
+            );
+
+            foreach (var group in embeddingCacheGroups)
+            {
+                // We only care about the agent's current language for this conversation
+                if (group.Embeddings.TryGetValue(_agentState.CurrentLanguageCode, out var entries))
+                {
+                    foreach (var entry in entries)
+                    {
+                        _manualCacheLookup[entry.Query] = (group.Id, entry.Id);
+                    }
+                }
+            }
+        }
+
+        // Management
+        public async Task<bool> ShouldPerformSearchAsync(string query, CancellationToken cancellationToken)
+        {
+            if (_contextSources.Count == 0)
+            {
+                return false;
+            }
+
+            switch (_ragConfig.SearchStrategy.Type)
+            {
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.Always:
+                    return true;
+
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.SpecificKeyword:
+                    {
+                        var keywords = _ragConfig.SearchStrategy.SpecificKeywords;
+                        return keywords != null
+                            && keywords.Any(k => query.Contains(k, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.KnowledgeBaseKeyword:
+                    {
+                        if (!_contextSources.Any())
+                            return false;
+                        foreach (var kbId in _contextSources.Keys)
+                        {
+                            if ((await _keywordStore.SearchAsync(kbId, query, 1)).Any())
+                                return true;
+                        }
+                        return false;
+                    }
+
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.LLM:
+                    {
+                        // TODO
+
+                        //if (_classifierLlmService == null)
+                        //    return false;
+                        //var response = await _classifierLlmService.ProcessSingleInputAsync(
+                        //    $"User Query: \"{query}\"",
+                        //    cancellationToken
+                        //);
+                        //return response.Success && response.Data?.Trim().ToUpper() == "SEARCH";
+
+                        return false;
+                    }
+
+                case AgentKnowledgeBaseSearchStartegyTypeENUM.AgentToolCallOnly:
+                    {
+                        return false;
+                    }
+
+                default:
+                    return false;
+            }
+        }
+        public async Task<FunctionReturnResult<List<RAGRetrievalDocumentModal>?>> RetrieveResultsForQueryAsync(string query, CancellationToken cancellationToken)
+        {
+            var result = new FunctionReturnResult<List<RAGRetrievalDocumentModal>?>();
 
             try
             {
@@ -253,7 +383,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     .ToList();
 
                 if (!uniqueDocs.Any())
-                    return null;
+                {
+                    return result.SetSuccessResult(
+                        null,
+                        "No knowledgebase results found for query."
+                    );
+                }
 
                 var postProcessingTasks = new List<Task<List<RAGRetrievalDocumentModal>>>();
                 var docsByKb = uniqueDocs
@@ -280,12 +415,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     .OrderByDescending(d => (float)d.Metadata["Score"])
                     .ToList();
 
-                return FormatContext(finalDocs);
+                return result.SetSuccessResult(finalDocs);
             }
-            catch (OperationCanceledException)
-            {
-                _logger.LogInformation("RAG context retrieval was cancelled.");
-                return null;
+            catch (OperationCanceledException) {
+                /** Expected **/
+                return result.SetSuccessResult(
+                    null,
+                    "Cancelled during RAG context retrieval."
+                );
             }
             catch (Exception ex)
             {
@@ -294,149 +431,29 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     "Error during RAG context retrieval for query: '{Query}'",
                     query
                 );
-                return null;
+                return result.SetFailureResult(
+                    "RetrieveContextForQueryAsync:EXCEPTION",
+                    "Error during RAG context retrieval for query: " + ex.Message
+                );
             }
         }
-
-        public async Task<bool> ShouldPerformSearchAsync(
-            string query,
-            CancellationToken cancellationToken
-        )
+        public string FormatResultsForContext(List<RAGRetrievalDocumentModal> documents)
         {
-            switch (_ragConfig.SearchStrategy.Type)
+            if (documents == null || !documents.Any())
+                return string.Empty;
+
+            var contextBuilder = new StringBuilder();
+            contextBuilder.AppendLine("--- Relevant Information Found ---");
+            for (int i = 0; i < documents.Count; i++)
             {
-                case AgentKnowledgeBaseSearchStartegyTypeENUM.Always:
-                    return true;
-
-                case AgentKnowledgeBaseSearchStartegyTypeENUM.SpecificKeyword:
-                    {
-                        var keywords = _ragConfig.SearchStrategy.SpecificKeywords;
-                        return keywords != null
-                            && keywords.Any(k => query.Contains(k, StringComparison.OrdinalIgnoreCase));
-                    }
-
-                case AgentKnowledgeBaseSearchStartegyTypeENUM.KnowledgeBaseKeyword:
-                    {
-                        if (!_contextSources.Any())
-                            return false;
-                        foreach (var kbId in _contextSources.Keys)
-                        {
-                            if ((await _keywordStore.SearchAsync(kbId, query, 1)).Any())
-                                return true;
-                        }
-                        return false;
-                    }
-
-                case AgentKnowledgeBaseSearchStartegyTypeENUM.LLM:
-                    {
-                        // TODO
-
-                        //if (_classifierLlmService == null)
-                        //    return false;
-                        //var response = await _classifierLlmService.ProcessSingleInputAsync(
-                        //    $"User Query: \"{query}\"",
-                        //    cancellationToken
-                        //);
-                        //return response.Success && response.Data?.Trim().ToUpper() == "SEARCH";
-
-                        return false;
-                    }
-
-                case AgentKnowledgeBaseSearchStartegyTypeENUM.AgentToolCallOnly:
-                    {
-                        return false;
-                    }
-
-                default:
-                    return false;
+                contextBuilder.AppendLine($"[Source {i + 1}]: {documents[i].PageContent}");
             }
+            contextBuilder.Append("---");
+            return contextBuilder.ToString();
         }
 
-        private async Task InitializeClassifierLlmAsync(CancellationToken cancellationToken)
-        {
-            var llmConfig = _ragConfig.SearchStrategy.LLMClassifier?.LLMIntegration;
-            _classifierLlmService = await BuildLlmServiceAsync(
-                llmConfig,
-                "You are a search query classifier. Analyze the user's query and the conversation history. Decide if a search in a knowledge base is likely to yield a relevant answer. Respond with ONLY the word 'SEARCH' or 'SKIP'.",
-                cancellationToken
-            );
-            if (_classifierLlmService == null)
-            {
-                _ragConfig.SearchStrategy.Type = AgentKnowledgeBaseSearchStartegyTypeENUM.Always; // Fallback
-            }
-        }
-
-        private async Task InitializeRefinementLlmAsync(CancellationToken cancellationToken)
-        {
-            var llmConfig = _ragConfig.Refinement.LLMIntegration;
-            _refinementLlmService = await BuildLlmServiceAsync(
-                llmConfig,
-                "You are a query refinement expert. Rewrite a user's query into multiple, effective search queries. Generate a JSON array of strings. Do not include any other text or explanation.",
-                cancellationToken
-            );
-            if (_refinementLlmService == null)
-            {
-                _ragConfig.Refinement.Enabled = false; // Fallback
-            }
-        }
-
-        private async Task<ILLMService?> BuildLlmServiceAsync(BusinessAppAgentIntegrationData? llmConfig, string systemPrompt, CancellationToken cancellationToken)
-        {
-            if (llmConfig == null)
-                return null;
-
-            var integrationDataResult = await _businessManager
-                .GetIntegrationsManager()
-                .getBusinessIntegrationById(_agentState.BusinessApp.Id, llmConfig.Id);
-            if (!integrationDataResult.Success || integrationDataResult.Data == null)
-            {
-                _logger.LogError("Could not find business integration with ID {IntegrationId} for RAG LLM task.", llmConfig.Id);
-                return null;
-            }
-
-            var llmResult = await _llmProviderManager.BuildProviderServiceByIntegration(
-                integrationDataResult.Data,
-                llmConfig,
-                new Dictionary<string, string>()
-            );
-            if (!llmResult.Success || llmResult.Data == null)
-            {
-                _logger.LogError("Failed to build LLM service for RAG task: {Message}", llmResult.Message);
-                return null;
-            }
-
-            llmResult.Data.SetSystemPrompt(systemPrompt);
-            return llmResult.Data;
-        }
-
-        private void BuildManualCacheLookup()
-        {
-            var embeddingCacheGroups = _agentState.BusinessApp.Cache.EmbeddingGroups.Where(
-                g => _agentState.BusinessAppAgent.Cache.Embeddings.Contains(g.Id)
-            );
-
-            _manualCacheLookup = new Dictionary<string, (string GroupId, string EntryId)>(
-                StringComparer.OrdinalIgnoreCase
-            );
-
-            foreach (var group in embeddingCacheGroups)
-            {
-                // We only care about the agent's current language for this conversation
-                if (group.Embeddings.TryGetValue(_agentState.CurrentLanguageCode, out var entries))
-                {
-                    foreach (var entry in entries)
-                    {
-                        _manualCacheLookup[entry.Query] = (group.Id, entry.Id);
-                    }
-                }
-            }
-        }
-
-        
-        private async Task<List<string>> RefineQueryAsync(
-            string originalQuery,
-            CancellationToken cancellationToken
-        )
+        // Helpers
+        private async Task<List<string>> RefineQueryAsync(string originalQuery, CancellationToken cancellationToken)
         {
             if (_refinementLlmService == null)
                 return new List<string> { originalQuery };
@@ -464,22 +481,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogError(ex, "Error during query refinement. Using original query only.");
             }
             return new List<string> { originalQuery };
-        }
-
-        private string FormatContext(List<RAGRetrievalDocumentModal> documents)
-        {
-            if (documents == null || !documents.Any())
-                return string.Empty;
-
-            var contextBuilder = new StringBuilder();
-            contextBuilder.AppendLine("--- Relevant Information Found ---");
-            for (int i = 0; i < documents.Count; i++)
-            {
-                contextBuilder.AppendLine($"[Source {i + 1}]: {documents[i].PageContent}");
-            }
-            contextBuilder.Append("---");
-            return contextBuilder.ToString();
-        }
+        }  
 
         private int GetTopK(BusinessAppKnowledgeBaseConfigurationRetrieval config) =>
             config switch
@@ -498,6 +500,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _ => null
             };
 
+        // Disposal
         public async ValueTask DisposeAsync()
         {
             foreach (var source in _contextSources.Values)
