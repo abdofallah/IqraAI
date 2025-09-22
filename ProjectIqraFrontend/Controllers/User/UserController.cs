@@ -4,8 +4,9 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Models.Usage;
 using IqraCore.Models.User;
+using IqraCore.Models.User.Billing;
 using IqraCore.Models.User.GetMasterUserDataModel;
-using IqraCore.Models.User.GetUserPlanDetailsModel;
+using IqraCore.Models.User.Usage;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
@@ -166,9 +167,9 @@ namespace ProjectIqraFrontend.Controllers.User
         **/
 
         [HttpPost("/app/user/usage/summary")]
-        public async Task<FunctionReturnResult<GetUsageSummaryModel?>> GetUsageSummary([FromBody] GetUsageSummaryRequestModel request)
+        public async Task<FunctionReturnResult<GetUserUsageSummaryModel?>> GetUsageSummary([FromBody] GetUserUsageSummaryRequestModel request)
         {
-            var result = new FunctionReturnResult<GetUsageSummaryModel?>();
+            var result = new FunctionReturnResult<GetUserUsageSummaryModel?>();
 
             string? sessionId = Request.Cookies["sessionId"];
             string? authKey = Request.Cookies["authKey"];
@@ -215,7 +216,7 @@ namespace ProjectIqraFrontend.Controllers.User
         }
 
         [HttpPost("/app/user/usage/history")]
-        public async Task<FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>?>> GetUsageHistory([FromBody] GetUsageHistoryRequestModel request)
+        public async Task<FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>?>> GetUsageHistory([FromBody] GetUserUsageHistoryRequestModel request)
         {
             var result = new FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>?>();
 
@@ -246,7 +247,7 @@ namespace ProjectIqraFrontend.Controllers.User
             }
 
             var limit = Math.Clamp(request.Limit, 10, 50);
-            var usaheHistoryResult = await _userUsageManager.GetUsageHistoryAsync(userEmail, limit, request.NextCursor, request.PreviousCursor);
+            var usaheHistoryResult = await _userUsageManager.GetUsageHistoryAsync(userEmail, limit, request.NextCursor, request.PreviousCursor, request.BusinessIds);
             if (!usaheHistoryResult.Success)
             {
                 result.Code = "GetUsageHistory:" + usaheHistoryResult.Code;

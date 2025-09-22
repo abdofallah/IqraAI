@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Models.User
+﻿namespace IqraCore.Models.User.Usage
 {
     public enum UsageGroupBy
     {
@@ -7,7 +7,7 @@
         Month = 2
     }
 
-    public class GetUsageSummaryRequestModel
+    public class GetUserUsageSummaryRequestModel
     {
         public DateTime StartDate { get; set; } = DateTime.UtcNow.Date;
         public DateTime EndDate { get; set; } = DateTime.UtcNow.AddMonths(-1).Date;

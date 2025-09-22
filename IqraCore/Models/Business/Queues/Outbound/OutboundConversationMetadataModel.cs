@@ -2,9 +2,9 @@
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Helper.Call.Queue;
 
-namespace IqraCore.Models.Business.Conversations
+namespace IqraCore.Models.Business.Queues
 {
-    public class InboundConversationMetadataModel
+    public class OutboundConversationMetadataModel
     {
         public string QueueId { get; set; }
         public CallQueueStatusEnum Status { get; set; }
@@ -16,9 +16,9 @@ namespace IqraCore.Models.Business.Conversations
         public DateTime? CompletedAt { get; set; } = null;
 
         // General
+        public string? CampaignId { get; set; }
         public string NumberId { get; set; }
-        public string RouteId { get; set; }
-        public string CallerNumber { get; set; }
+        public string RecipientNumber { get; set; }
 
         // Queue Session Related
         public string? SessionId { get; set; } = null;

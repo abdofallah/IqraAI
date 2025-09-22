@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helpers;
+using IqraCore.Models.Business.Queues.Outbound;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -8,12 +9,10 @@ namespace IqraInfrastructure.Repositories.Call
 {
     public class OutboundCallQueueRepository
     {
-        private readonly IMongoCollection<OutboundCallQueueData> _outboundActiveQueueCollection;
-        private readonly IMongoCollection<OutboundCallQueueData> _outboundArchivedQueueCollection;
+        private readonly IMongoCollection<OutboundCallQueueData> _outboundQueueCollection;
         private readonly ILogger<OutboundCallQueueRepository> _logger;
 
-        private const string ActiveCollectionName = "OutboundCallQueue_Active";
-        private const string ArchivedCollectionName = "OutboundCallQueue_Archived";
+        private const string CollectionName = "OutboundCallQueue";
 
         public OutboundCallQueueRepository(IMongoClient client, string databaseName, ILogger<OutboundCallQueueRepository> logger)
         {
@@ -21,9 +20,7 @@ namespace IqraInfrastructure.Repositories.Call
             try
             {
                 var database = client.GetDatabase(databaseName);
-                _outboundActiveQueueCollection = database.GetCollection<OutboundCallQueueData>(ActiveCollectionName);
-                _outboundArchivedQueueCollection = database.GetCollection<OutboundCallQueueData>(ArchivedCollectionName);
-
+                _outboundQueueCollection = database.GetCollection<OutboundCallQueueData>(CollectionName);
                 CreateIndexes();
             }
             catch (Exception ex)
@@ -35,76 +32,58 @@ namespace IqraInfrastructure.Repositories.Call
 
         private void CreateIndexes()
         {
-            var activeIndexes = new[]
+            var indexes = new[]
             {
-                    // For GetProcessableOutboundCallsAndMarkAsync
-                    new CreateIndexModel<OutboundCallQueueData>(
-                        Builders<OutboundCallQueueData>.IndexKeys
-                            .Ascending(c => c.RegionId)
-                            .Ascending(c => c.Status)
-                            .Ascending(c => c.ScheduledForDateTime),
-                        new CreateIndexOptions { Name = "Idx_Active_Region_Status_ScheduledFor" }),
+                // Primary index for filtered pagination
+                new CreateIndexModel<OutboundCallQueueData>(
+                    Builders<OutboundCallQueueData>.IndexKeys
+                        .Ascending(c => c.BusinessId)
+                        .Ascending(c => c.Status)
+                        .Descending(c => c.CreatedAt)
+                        .Descending(c => c.Id),
+                    new CreateIndexOptions<OutboundCallQueueData> { Name = "Idx_Business_Status_CreatedAt_Id" }), // Using generic for consistency
 
-                    // For general lookups by BusinessId and Status
-                    new CreateIndexModel<OutboundCallQueueData>(
-                        Builders<OutboundCallQueueData>.IndexKeys
-                            .Ascending(c => c.BusinessId)
-                            .Ascending(c => c.Status),
-                        new CreateIndexOptions { Name = "Idx_Active_BusinessId_Status" }),
+                // For GetProcessableOutboundCallsAndMarkAsync
+                new CreateIndexModel<OutboundCallQueueData>(
+                    Builders<OutboundCallQueueData>.IndexKeys
+                        .Ascending(c => c.RegionId)
+                        .Ascending(c => c.Status)
+                        .Ascending(c => c.ScheduledForDateTime),
+                    new CreateIndexOptions<OutboundCallQueueData> { Name = "Idx_Region_Status_ScheduledFor" }), // Using generic for consistency
 
-                    // For finding calls being processed by a specific proxy instance
-                    new CreateIndexModel<OutboundCallQueueData>(
-                        Builders<OutboundCallQueueData>.IndexKeys
-                            .Ascending(c => c.ProcessingBackendServerId) // Assuming this will store Proxy Instance ID
-                            .Ascending(c => c.Status),
-                        new CreateIndexOptions { Name = "Idx_Active_ProcessingServerId_Status" }),
+                // For finding calls being processed by a specific server
+                new CreateIndexModel<OutboundCallQueueData>(
+                    Builders<OutboundCallQueueData>.IndexKeys
+                        .Ascending(c => c.ProcessingBackendServerId)
+                        .Ascending(c => c.Status),
+                    new CreateIndexOptions<OutboundCallQueueData> { Name = "Idx_ProcessingServerId_Status" }), // Using generic for consistency
 
-                     // For campaign related queries on active calls
-                    new CreateIndexModel<OutboundCallQueueData>(
-                        Builders<OutboundCallQueueData>.IndexKeys.Ascending(c => c.CampaignId),
-                        new CreateIndexOptions { Name = "Idx_Active_CampaignId" }),
+                // For general campaign and status lookups
+                new CreateIndexModel<OutboundCallQueueData>(
+                    Builders<OutboundCallQueueData>.IndexKeys
+                        .Ascending(c => c.CampaignId)
+                        .Ascending(c => c.Status),
+                    new CreateIndexOptions<OutboundCallQueueData> { Name = "Idx_CampaignId_Status" }), // Using generic for consistency
 
-                    // For paginated conversation logs
-                    new CreateIndexModel<OutboundCallQueueData>(
-                        Builders<OutboundCallQueueData>.IndexKeys
-                            .Ascending(c => c.BusinessId)
-                            .Descending(c => c.CreatedAt)
-                            .Descending(c => c.Id),
-                        new CreateIndexOptions { Name = "Idx_Active_Business_CreatedAt_Id" })
-                };
-            _outboundActiveQueueCollection.Indexes.CreateManyAsync(activeIndexes).GetAwaiter().GetResult();
+                // For looking up calls by SessionId with a partial filter
+                new CreateIndexModel<OutboundCallQueueData>(
+                    Builders<OutboundCallQueueData>.IndexKeys.Ascending(c => c.SessionId),
+                    new CreateIndexOptions<OutboundCallQueueData>
+                    {
+                        Name = "Idx_SessionId",
+                        Unique = true,
+                        PartialFilterExpression = Builders<OutboundCallQueueData>.Filter.Type(c => c.SessionId, "string")
+                    })
+            };
 
-            // Indexes for OutboundCallQueue_Archived
-            var archivedIndexes = new[]
-            {
-                    // For fetching archived calls by BusinessId, sorted by completion
-                    new CreateIndexModel<OutboundCallQueueData>(
-                        Builders<OutboundCallQueueData>.IndexKeys
-                            .Ascending(c => c.BusinessId)
-                            .Descending(c => c.CompletedAt), // Often you query recent completed calls
-                        new CreateIndexOptions { Name = "Idx_Archived_BusinessId_CompletedAt" }),
-
-                    // For fetching archived calls by CampaignId
-                    new CreateIndexModel<OutboundCallQueueData>(
-                        Builders<OutboundCallQueueData>.IndexKeys.Ascending(c => c.CampaignId),
-                        new CreateIndexOptions { Name = "Idx_Archived_CampaignId" }),
-
-                    // For paginated conversation logs
-                    new CreateIndexModel<OutboundCallQueueData>(
-                        Builders<OutboundCallQueueData>.IndexKeys
-                            .Ascending(c => c.BusinessId)
-                            .Descending(c => c.CreatedAt)
-                            .Descending(c => c.Id),
-                        new CreateIndexOptions { Name = "Idx_Archived_Business_CreatedAt_Id" })
-                };
-            _outboundArchivedQueueCollection.Indexes.CreateManyAsync(archivedIndexes).GetAwaiter().GetResult();
+            _outboundQueueCollection.Indexes.CreateManyAsync(indexes).GetAwaiter().GetResult();
         }
 
         public async Task<string?> EnqueueOutboundCallAsync(OutboundCallQueueData callQueueData)
         {
             try
             {
-                await _outboundActiveQueueCollection.InsertOneAsync(callQueueData);
+                await _outboundQueueCollection.InsertOneAsync(callQueueData);
                 return callQueueData.Id;
             }
             catch (Exception ex)
@@ -114,12 +93,49 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task<(List<OutboundCallQueueData> Items, bool HasMore)> GetOutboundCallQueuesForBusinessPaginatedAsync(long businessId, int limit, PaginationCursor? cursor, bool fetchNext = true)
+        public async Task<(List<OutboundCallQueueData> Items, bool HasMore, long TotalCount)> GetOutboundCallQueuesForBusinessPaginatedAsync(
+    long businessId,
+    GetBusinessOutboundCallQueuesRequestFilterModel filter, // MODIFIED: Accepts the specific filter model
+    int limit,                                             // MODIFIED: Accepts the limit directly
+    PaginationCursor<GetBusinessOutboundCallQueuesRequestFilterModel>? cursor, // MODIFIED: Accepts the generic cursor
+    bool fetchNext)
         {
             try
             {
                 var filterBuilder = Builders<OutboundCallQueueData>.Filter;
-                var baseFilter = filterBuilder.Eq(c => c.BusinessId, businessId);
+
+                var filterDefinitions = new List<FilterDefinition<OutboundCallQueueData>>
+                {
+                    filterBuilder.Eq(c => c.BusinessId, businessId)
+                };
+
+                // --- MODIFIED: Build the query directly from the 'filter' parameter ---
+                if (filter.StartCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.CreatedAt, filter.StartCreatedDate.Value.ToUniversalTime()));
+                if (filter.EndCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.CreatedAt, filter.EndCreatedDate.Value.ToUniversalTime()));
+                if (filter.StartCompletedAtDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.CompletedAt, filter.StartCompletedAtDate.Value.ToUniversalTime()));
+                if (filter.EndCompletedAtDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.CompletedAt, filter.EndCompletedAtDate.Value.ToUniversalTime()));
+                if (filter.StartScheduledDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.ScheduledForDateTime, filter.StartScheduledDate.Value.ToUniversalTime()));
+                if (filter.EndScheduledDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.ScheduledForDateTime, filter.EndScheduledDate.Value.ToUniversalTime()));
+                if (filter.QueueStatusTypes?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.Status, filter.QueueStatusTypes));
+                if (filter.CampaignIds?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.CampaignId, filter.CampaignIds));
+                if (filter.CallingNumberIds?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.CallingNumberId, filter.CallingNumberIds));
+                if (filter.CallingNumberProviders?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.CallingNumberProvider, filter.CallingNumberProviders));
+                if (filter.RecipientNumbers?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.RecipientNumber, filter.RecipientNumbers));
+
+                var baseFilter = filterBuilder.And(filterDefinitions);
+
+                long totalCount = await _outboundQueueCollection.CountDocumentsAsync(baseFilter);
 
                 FilterDefinition<OutboundCallQueueData> finalFilter = baseFilter;
                 SortDefinition<OutboundCallQueueData> sortDefinition;
@@ -134,10 +150,7 @@ namespace IqraInfrastructure.Repositories.Call
                     {
                         var cursorFilter = filterBuilder.Or(
                             filterBuilder.Lt(c => c.CreatedAt, cursor.Timestamp),
-                            filterBuilder.And(
-                                filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp),
-                                filterBuilder.Lt(c => c.Id, cursor.Id)
-                            )
+                            filterBuilder.And(filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp), filterBuilder.Lt(c => c.Id, cursor.Id))
                         );
                         finalFilter = filterBuilder.And(baseFilter, cursorFilter);
                     }
@@ -152,123 +165,50 @@ namespace IqraInfrastructure.Repositories.Call
                     {
                         var cursorFilter = filterBuilder.Or(
                             filterBuilder.Gt(c => c.CreatedAt, cursor.Timestamp),
-                            filterBuilder.And(
-                                filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp),
-                                filterBuilder.Gt(c => c.Id, cursor.Id)
-                            )
+                            filterBuilder.And(filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp), filterBuilder.Gt(c => c.Id, cursor.Id))
                         );
                         finalFilter = filterBuilder.And(baseFilter, cursorFilter);
                     }
                     else
                     {
-                        return (new List<OutboundCallQueueData>(), false);
+                        return (new List<OutboundCallQueueData>(), false, 0);
                     }
                 }
 
-                // 1. Query both collections in parallel. We fetch 'limit' from each.
-                // This is a reasonable amount, ensuring we have enough data to merge
-                // without fetching excessive amounts.
-                var activeCallsTask = _outboundActiveQueueCollection.Find(finalFilter)
+                // Fetch one extra item to determine if a next/previous page exists
+                var items = await _outboundQueueCollection.Find(finalFilter)
                     .Sort(sortDefinition)
-                    .Limit(limit)
+                    .Limit(limit + 1)
                     .ToListAsync();
 
-                var archivedCallsTask = _outboundArchivedQueueCollection.Find(finalFilter)
-                    .Sort(sortDefinition)
-                    .Limit(limit)
-                    .ToListAsync();
-
-                await Task.WhenAll(activeCallsTask, archivedCallsTask);
-
-                var activeCalls = await activeCallsTask;
-                var archivedCalls = await archivedCallsTask;
-
-                // 2. Merge the two sorted lists.
-                var mergedResults = new List<OutboundCallQueueData>();
-                int activePtr = 0;
-                int archivedPtr = 0;
-
-                while (mergedResults.Count < limit && (activePtr < activeCalls.Count || archivedPtr < archivedCalls.Count))
+                bool hasMore = items.Count > limit;
+                if (hasMore)
                 {
-                    if (activePtr < activeCalls.Count && archivedPtr < archivedCalls.Count)
-                    {
-                        // Both lists have items, compare them based on the sort direction
-                        var activeCall = activeCalls[activePtr];
-                        var archivedCall = archivedCalls[archivedPtr];
-                        int comparison = activeCall.CreatedAt.CompareTo(archivedCall.CreatedAt);
-                        if (comparison == 0)
-                        {
-                            // Use ID as tie-breaker (string comparison on ObjectId works)
-                            comparison = string.Compare(activeCall.Id, archivedCall.Id, StringComparison.Ordinal);
-                        }
-
-                        if (fetchNext) // Descending order, so higher value comes first
-                        {
-                            if (comparison > 0)
-                            {
-                                mergedResults.Add(activeCall);
-                                activePtr++;
-                            }
-                            else
-                            {
-                                mergedResults.Add(archivedCall);
-                                archivedPtr++;
-                            }
-                        }
-                        else // Ascending order, so lower value comes first
-                        {
-                            if (comparison < 0)
-                            {
-                                mergedResults.Add(activeCall);
-                                activePtr++;
-                            }
-                            else
-                            {
-                                mergedResults.Add(archivedCall);
-                                archivedPtr++;
-                            }
-                        }
-                    }
-                    else if (activePtr < activeCalls.Count)
-                    {
-                        mergedResults.Add(activeCalls[activePtr]);
-                        activePtr++;
-                    }
-                    else if (archivedPtr < archivedCalls.Count)
-                    {
-                        mergedResults.Add(archivedCalls[archivedPtr]);
-                        archivedPtr++;
-                    }
+                    items.RemoveAt(limit);
                 }
 
-                // 3. Determine if there are more items.
-                // 'hasMore' is true if there are any items left in either list after we've filled our page.
-                bool hasMore = activePtr < activeCalls.Count || archivedPtr < archivedCalls.Count;
-
-                // 4. If fetching previous, reverse the results to maintain Descending order for the user.
                 if (!fetchNext)
                 {
-                    mergedResults.Reverse();
+                    items.Reverse();
                 }
 
-                return (mergedResults, hasMore);
+                return (items, hasMore, totalCount);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting paginated outbound calls for business {BusinessId}", businessId);
-                return (new List<OutboundCallQueueData>(), false);
+                return (new List<OutboundCallQueueData>(), false, 0);
             }
         }
 
-        public async Task<(List<OutboundCallQueueData> processedCalls, PaginationCursor? nextCursor)> GetProcessableOutboundCallsAndMarkAsync(
+        public async Task<(List<OutboundCallQueueData> processedCalls, PaginationCursor<PaginationCursorNoFilterHelper>? nextCursor)> GetProcessableOutboundCallsAndMarkAsync(
             string regionId,
             int batchSizeToFetch,
             DateTime scheduleThreshold,
-            PaginationCursor? previousRequestLastSeenCursor
-        )
+            PaginationCursor<PaginationCursorNoFilterHelper>? previousRequestLastSeenCursor)
         {
             var successfullyMarkedCalls = new List<OutboundCallQueueData>();
-            PaginationCursor? newLastSeenCursorInThisBatch = null;
+            PaginationCursor<PaginationCursorNoFilterHelper>? newLastSeenCursorInThisBatch = null;
 
             try
             {
@@ -280,14 +220,12 @@ namespace IqraInfrastructure.Repositories.Call
                 );
 
                 FilterDefinition<OutboundCallQueueData> finalFilter = baseFilter;
-                // Sort by oldest scheduled first, then by ID for stable ordering
                 var sort = Builders<OutboundCallQueueData>.Sort
                     .Ascending(c => c.ScheduledForDateTime)
                     .Ascending(c => c.Id);
 
                 if (previousRequestLastSeenCursor != null)
                 {
-                    // Apply cursor filter: get items *after* the previous cursor
                     var cursorFilter = filterBuilder.Or(
                         filterBuilder.Gt(c => c.ScheduledForDateTime, previousRequestLastSeenCursor.Timestamp),
                         filterBuilder.And(
@@ -298,29 +236,24 @@ namespace IqraInfrastructure.Repositories.Call
                     finalFilter = filterBuilder.And(baseFilter, cursorFilter);
                 }
 
-                // Fetch a batch of candidates.
-                var candidateCalls = await _outboundActiveQueueCollection.Find(finalFilter)
-                                                                    .Sort(sort)
-                                                                    .Limit(batchSizeToFetch)
-                                                                    .ToListAsync();
+                var candidateCalls = await _outboundQueueCollection.Find(finalFilter)
+                    .Sort(sort)
+                    .Limit(batchSizeToFetch)
+                    .ToListAsync();
 
                 if (!candidateCalls.Any())
                 {
-                    // No more calls after the cursor, or no calls at all if cursor was null.
-                    // If cursor was null and no calls, means queue is empty for criteria.
-                    // If cursor was not null, means we reached the end of the queue for criteria.
-                    // The caller (service) might decide to reset its cursor to null to start from beginning next time.
-                    return (successfullyMarkedCalls, null); // Signal to reset cursor
+                    return (successfullyMarkedCalls, null);
                 }
 
                 var now = DateTime.UtcNow;
                 foreach (var call in candidateCalls)
                 {
-                    newLastSeenCursorInThisBatch = new PaginationCursor { Timestamp = call.ScheduledForDateTime, Id = call.Id };
+                    newLastSeenCursorInThisBatch = new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = call.ScheduledForDateTime, Id = call.Id };
 
                     var updateFilter = Builders<OutboundCallQueueData>.Filter.And(
                         filterBuilder.Eq(c => c.Id, call.Id),
-                        filterBuilder.Eq(c => c.Status, CallQueueStatusEnum.Queued) // Ensure it's still Queued (important!)
+                        filterBuilder.Eq(c => c.Status, CallQueueStatusEnum.Queued)
                     );
 
                     var updateDefinition = Builders<OutboundCallQueueData>.Update
@@ -334,50 +267,40 @@ namespace IqraInfrastructure.Repositories.Call
 
                     try
                     {
-                        var updatedCall = await _outboundActiveQueueCollection.FindOneAndUpdateAsync(updateFilter, updateDefinition, options);
+                        var updatedCall = await _outboundQueueCollection.FindOneAndUpdateAsync(updateFilter, updateDefinition, options);
                         if (updatedCall != null)
                         {
                             successfullyMarkedCalls.Add(updatedCall);
                         }
-                        // If updatedCall is null, another proxy instance or process grabbed it, or its status changed.
-                        // This is fine, we just move to the next candidate.
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error marking call {CallId} for processing by proxy during paginated fetch.", call.Id);
+                        _logger.LogError(ex, "Error marking call {CallId} for processing during paginated fetch.", call.Id);
                     }
                 }
 
-                // If we fetched fewer items than batchSizeToFetch, it means we might have reached the end of the current queue snapshot.
-                // The newLastSeenCursorInThisBatch will be the last item considered.
-                // If candidateCalls.Count < batchSizeToFetch, the service might want to reset its cursor for the next full poll.
-                // Or, if newLastSeenCursorInThisBatch is the same as previousRequestLastSeenCursor and no calls were processed, it might indicate no progress.
                 if (candidateCalls.Count < batchSizeToFetch && successfullyMarkedCalls.Count == 0 && candidateCalls.Any())
                 {
-                    // We scanned a partial batch, found nothing we could process, and it was the end of the list.
-                    // Signal to service to reset its internal cursor to null for next full scan.
                     return (successfullyMarkedCalls, null);
                 }
-
 
                 return (successfullyMarkedCalls, newLastSeenCursorInThisBatch);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in GetProcessableOutboundCallsAndMarkAsync for region {RegionId} by proxy", regionId);
-                return (new List<OutboundCallQueueData>(), previousRequestLastSeenCursor); // Return old cursor on error to retry same range
+                _logger.LogError(ex, "Error in GetProcessableOutboundCallsAndMarkAsync for region {RegionId}", regionId);
+                return (new List<OutboundCallQueueData>(), previousRequestLastSeenCursor);
             }
         }
 
         public async Task<bool> UpdateCallStatusAsync(
             string queueId, CallQueueStatusEnum newStatus,
             CallQueueLog? log = null,
-            string? newProcessingServerId = null, // For when backend takes over
+            string? newProcessingServerId = null,
             DateTime? processingStartedAt = null,
             DateTime? completedAt = null,
             Dictionary<string, string>? providerMetadata = null,
-            string? providerCallId = null
-        )
+            string? providerCallId = null)
         {
             try
             {
@@ -390,25 +313,23 @@ namespace IqraInfrastructure.Repositories.Call
                     updateBuilder = updateBuilder.Push(c => c.Logs, log);
                 }
 
-                if (newProcessingServerId != null) // Can be null to unset, or a new server ID
+                if (newProcessingServerId != null)
                 {
                     updateBuilder = updateBuilder.Set(c => c.ProcessingBackendServerId, newProcessingServerId);
                 }
-                else if (newStatus == CallQueueStatusEnum.Queued) // If requeueing, clear ProcessingServerId
+                else if (newStatus == CallQueueStatusEnum.Queued)
                 {
                     updateBuilder = updateBuilder.Set(c => c.ProcessingBackendServerId, (string?)null);
                 }
-
 
                 if (processingStartedAt.HasValue)
                 {
                     updateBuilder = updateBuilder.Set(c => c.ProcessingStartedAt, processingStartedAt.Value);
                 }
-                else if (newStatus == CallQueueStatusEnum.ProcessingProxy && !processingStartedAt.HasValue) // Set if transitioning to Processing
+                else if (newStatus == CallQueueStatusEnum.ProcessingProxy && !processingStartedAt.HasValue)
                 {
                     updateBuilder = updateBuilder.Set(c => c.ProcessingStartedAt, DateTime.UtcNow);
                 }
-
 
                 if (completedAt.HasValue)
                 {
@@ -422,7 +343,6 @@ namespace IqraInfrastructure.Repositories.Call
 
                 if (providerMetadata != null)
                 {
-                    // This will overwrite the existing dictionary. If you need to merge, fetch first or use $set for specific keys.
                     updateBuilder = updateBuilder.Set(c => c.ProviderMetadata, providerMetadata);
                 }
                 if (providerCallId != null)
@@ -430,7 +350,7 @@ namespace IqraInfrastructure.Repositories.Call
                     updateBuilder = updateBuilder.Set(c => c.ProviderCallId, providerCallId);
                 }
 
-                var result = await _outboundActiveQueueCollection.UpdateOneAsync(filter, updateBuilder);
+                var result = await _outboundQueueCollection.UpdateOneAsync(filter, updateBuilder);
                 return result.IsAcknowledged;
             }
             catch (Exception ex)
@@ -440,58 +360,12 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task<bool> MoveToArchivedAsync(string queueId, CallQueueStatusEnum finalStatus, CallQueueLog? finalLog = null)
+        public async Task<OutboundCallQueueData?> GetOutboundCallQueueByIdAsync(string queueId)
         {
             try
             {
                 var filter = Builders<OutboundCallQueueData>.Filter.Eq(c => c.Id, queueId);
-                var callToArchive = await _outboundActiveQueueCollection.Find(filter).FirstOrDefaultAsync();
-
-                if (callToArchive == null)
-                {
-                    var alreadyArchived = await _outboundArchivedQueueCollection.Find(filter).FirstOrDefaultAsync();
-                    return alreadyArchived != null; // Return true if already archived
-                }
-
-                // Update final properties before archiving
-                callToArchive.Status = finalStatus;
-                callToArchive.CompletedAt = DateTime.UtcNow;
-                if (finalLog != null)
-                {
-                    callToArchive.Logs.Add(finalLog);
-                }
-
-                await _outboundArchivedQueueCollection.InsertOneAsync(callToArchive);
-                var deleteResult = await _outboundActiveQueueCollection.DeleteOneAsync(filter);
-
-                if (deleteResult.IsAcknowledged && deleteResult.DeletedCount > 0)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error moving call {QueueId} to archive with status {FinalStatus}", queueId, finalStatus);
-                return false;
-            }
-        }
-
-        public async Task<OutboundCallQueueData?> GetOutboundCallQueueByIdAsync(string queueId, bool searchArchivedIfNotFoundInActive = true)
-        {
-            try
-            {
-                var filter = Builders<OutboundCallQueueData>.Filter.Eq(c => c.Id, queueId);
-                var call = await _outboundActiveQueueCollection.Find(filter).FirstOrDefaultAsync();
-
-                if (call == null && searchArchivedIfNotFoundInActive)
-                {
-                    call = await _outboundArchivedQueueCollection.Find(filter).FirstOrDefaultAsync();
-                }
-                return call;
+                return await _outboundQueueCollection.Find(filter).FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
@@ -500,44 +374,49 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task<OutboundCallQueueData?> GetOutboundCallQueueBySessionIdAsync(string sessionId, bool searchArchivedIfNotFoundInActive = true)
+        public async Task<OutboundCallQueueData?> GetOutboundCallQueueByIdAsync(long businessId, string queueId)
         {
             try
             {
-                var filter = Builders<OutboundCallQueueData>.Filter.Eq(c => c.SessionId, sessionId);
-                var call = await _outboundActiveQueueCollection.Find(filter).FirstOrDefaultAsync();
+                var filter = Builders<OutboundCallQueueData>.Filter.And(
+                    Builders<OutboundCallQueueData>.Filter.Eq(c => c.Id, queueId),
+                    Builders<OutboundCallQueueData>.Filter.Eq(c => c.BusinessId, businessId)
+                );
 
-                if (call == null && searchArchivedIfNotFoundInActive)
-                {
-                    call = await _outboundArchivedQueueCollection.Find(filter).FirstOrDefaultAsync();
-                }
-                return call;
+                return await _outboundQueueCollection.Find(filter).FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting outbound call by ID {SessionId}", sessionId);
+                _logger.LogError(ex, "Error getting outbound call by ID {QueueId}", queueId);
                 return null;
             }
         }
 
-        public async Task<List<OutboundCallQueueData>> GetOutboundCallsByCampaignIdAsync(string campaignId, bool searchArchived = false)
+        public async Task<OutboundCallQueueData?> GetOutboundCallQueueBySessionIdAsync(string sessionId)
         {
-            var calls = new List<OutboundCallQueueData>();
+            try
+            {
+                var filter = Builders<OutboundCallQueueData>.Filter.Eq(c => c.SessionId, sessionId);
+                return await _outboundQueueCollection.Find(filter).FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting outbound call by Session ID {SessionId}", sessionId);
+                return null;
+            }
+        }
+
+        public async Task<List<OutboundCallQueueData>> GetOutboundCallsByCampaignIdAsync(string campaignId)
+        {
             try
             {
                 var filter = Builders<OutboundCallQueueData>.Filter.Eq(c => c.CampaignId, campaignId);
-                calls.AddRange(await _outboundActiveQueueCollection.Find(filter).ToListAsync());
-
-                if (searchArchived)
-                {
-                    calls.AddRange(await _outboundArchivedQueueCollection.Find(filter).ToListAsync());
-                }
-                return calls;
+                return await _outboundQueueCollection.Find(filter).ToListAsync();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting outbound calls for CampaignId {CampaignId}", campaignId);
-                return calls; // return whatever was fetched so far or an empty list
+                return new List<OutboundCallQueueData>();
             }
         }
 
@@ -550,11 +429,54 @@ namespace IqraInfrastructure.Repositories.Call
                     .Set(c => c.SessionId, sessionId)
                     .Set(c => c.Status, status);
 
-                await _outboundActiveQueueCollection.UpdateOneAsync(filter, update);
+                await _outboundQueueCollection.UpdateOneAsync(filter, update);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating session ID and status for queue {QueueId}", queueId);
+            }
+        }
+
+        public async Task<long?> GetOutboundCallQueuesCountAsync(long businessId, GetBusinessOutboundCallQueuesCountRequestModel modelData)
+        {
+            try
+            {
+                var filterBuilder = Builders<OutboundCallQueueData>.Filter;
+                var filterDefinitions = new List<FilterDefinition<OutboundCallQueueData>>
+                {
+                    filterBuilder.Eq(c => c.BusinessId, businessId)
+                };
+
+                if (modelData.StartCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.CreatedAt, modelData.StartCreatedDate.Value));
+                if (modelData.EndCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.CreatedAt, modelData.EndCreatedDate.Value));
+                if (modelData.StartCompletedAtDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.CompletedAt, modelData.StartCompletedAtDate.Value));
+                if (modelData.EndCompletedAtDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.CompletedAt, modelData.EndCompletedAtDate.Value));
+                if (modelData.StartScheduledDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.ScheduledForDateTime, modelData.StartScheduledDate.Value));
+                if (modelData.EndScheduledDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.ScheduledForDateTime, modelData.EndScheduledDate.Value));
+                if (modelData.QueueStatusTypes?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.Status, modelData.QueueStatusTypes));
+                if (modelData.CampaignIds?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.CampaignId, modelData.CampaignIds));
+                if (modelData.CallingNumberIds?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.CallingNumberId, modelData.CallingNumberIds));
+                if (modelData.CallingNumberProviders?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.CallingNumberProvider, modelData.CallingNumberProviders));
+                if (modelData.RecipientNumbers?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.RecipientNumber, modelData.RecipientNumbers));
+
+                var finalFilter = filterBuilder.And(filterDefinitions);
+                return await _outboundQueueCollection.CountDocumentsAsync(finalFilter);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting outbound call queues count for business {BusinessId}", businessId);
+                return null;
             }
         }
     }

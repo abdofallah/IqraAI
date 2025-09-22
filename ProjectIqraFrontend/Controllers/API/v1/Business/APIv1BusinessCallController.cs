@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.Helpers;
-using IqraCore.Models.WebSession;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
@@ -7,14 +6,15 @@ using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.API.v1.Business
 {
-    [Route("api/v1/business/{businessId}/websession")]
-    public class APIv1WebSessionController : Controller
+    [ApiController]
+    [Route("api/v1/business/{businessId}/call")]
+    public class APIv1BusinessCallController : Controller
     {
-        public readonly UserAPIValidationHelper _userAPIValidationHelper;
+        private readonly UserAPIValidationHelper _userAPIValidationHelper;
         private readonly BillingValidationManager _billingValidationManager;
         private readonly BusinessManager _businessManager;
 
-        public APIv1WebSessionController(UserAPIValidationHelper userAPIValidationHelper, BillingValidationManager billingValidationManager, BusinessManager businessManager)
+        public APIv1BusinessCallController(UserAPIValidationHelper userAPIValidationHelper, BillingValidationManager billingValidationManager, BusinessManager businessManager)
         {
             _userAPIValidationHelper = userAPIValidationHelper;
             _billingValidationManager = billingValidationManager;
@@ -22,9 +22,11 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
         }
 
         [HttpPost("initiate")]
-        public async Task<FunctionReturnResult<InitiateWebSessionResultModel?>> InitiateWebSession(long businessId, [FromForm] IFormCollection formData)
+        [RequestSizeLimit(10 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 10 * 1024 * 1024)]
+        public async Task<FunctionReturnResult<List<string?>?>> InitiateCall(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<InitiateWebSessionResultModel?>();
+            var result = new FunctionReturnResult<List<string?>?>();
 
             try
             {
@@ -33,37 +35,37 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult(
-                        $"InitiateWebSession:{apiKeyValidaiton.Code}",
+                        $"InitiateCall:{apiKeyValidaiton.Code}",
                         apiKeyValidaiton.Message
                     );
                 }
                 var businessData = apiKeyValidaiton.Data!.businessData!;
 
-                // Check WebSession Permissions
-                if (businessData.Permission.WebSession.DisabledInitiatingAt != null)
+                // Check Make Call Permissions
+                if (businessData.Permission.MakeCall.DisabledCallingAt != null)
                 {
                     return result.SetFailureResult(
-                        "InitiateWebSession:BUSINESS_WEBSESSION_INITIATING_DISABLED",
-                        "WebSession initiating is disabled for this business" + (string.IsNullOrWhiteSpace(businessData.Permission.WebSession.DisabledInitiatingReason) ? "" : ": " + businessData.Permission.WebSession.DisabledInitiatingReason)
+                        "InitiateCall:BUSINESS_CALLING_DISABLED",
+                        "Outbound calling is disabled for this business" + (string.IsNullOrWhiteSpace(businessData.Permission.MakeCall.DisabledCallingReason) ? "" : ": " + businessData.Permission.MakeCall.DisabledCallingReason)
                     );
                 }
 
                 // Check Balance/Package
-                var checkBalanceOrMinutes = await _billingValidationManager.CheckCreditOrPackageMinutesOnly(businessId, "websession");
+                var checkBalanceOrMinutes = await _billingValidationManager.CheckCreditOrPackageMinutesOnly(businessId, "outbound call");
                 if (!checkBalanceOrMinutes.Success)
                 {
                     return result.SetFailureResult(
-                        "InitiateWebSession:" + checkBalanceOrMinutes.Code,
+                        "InitiateCall:" + checkBalanceOrMinutes.Code,
                         checkBalanceOrMinutes.Message
                     );
                 }
 
                 // Forward
-                var forwardResult = await _businessManager.GetWebSessionmanager().InitiateWebSession(businessData, formData);
+                var forwardResult = await _businessManager.GetMakeCallManager().QueueCallInitiationRequestAsync(businessData, formData);
                 if (!forwardResult.Success)
                 {
                     return result.SetFailureResult(
-                        "InitiateWebSession:" + forwardResult.Code,
+                        "InitiateCall:" + forwardResult.Code,
                         forwardResult.Message
                     );
                 }
@@ -73,11 +75,10 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "InitiateWebSession:EXCEPTION",
+                    "InitiateCall:EXCEPTION",
                     $"Internal server error processing request: {ex.Message}"
                 );
             }
         }
-
     }
 }

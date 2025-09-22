@@ -2,6 +2,7 @@
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
+using IqraCore.Models.Business.Queues.Inbound;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -78,6 +79,23 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
+        public async Task<InboundCallQueueData?> GetInboundCallQueueByIdAsync(long businessId, string queueId)
+        {
+            try
+            {
+                var filter = Builders<InboundCallQueueData>.Filter.And(
+                    Builders<InboundCallQueueData>.Filter.Eq(c => c.Id, queueId),
+                    Builders<InboundCallQueueData>.Filter.Eq(c => c.BusinessId, businessId)
+                );
+                return await _inboundCallQueueCollection.Find(filter).FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting inbound call queue by ID {QueueId}", queueId);
+                return null;
+            }
+        }
+
         public async Task<InboundCallQueueData?> GetInboundCallQueueByProviderCallIdAsync(TelephonyProviderEnum provider, string providerCallId, long businessId, string routeNumberId)
         {
             try
@@ -97,90 +115,108 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task<(List<InboundCallQueueData> Items, bool HasMore)> GetInboundCallQueuesForBusinessPaginatedAsync(long businessId, int limit, PaginationCursor? cursor, bool fetchNext = true)
+        public async Task<(List<InboundCallQueueData> Items, bool HasMore, long TotalCount)> GetInboundCallQueuesForBusinessPaginatedAsync(
+    long businessId,
+    GetBusinessInboundCallQueuesRequestFilterModel filter,
+    int limit,
+    PaginationCursor<GetBusinessInboundCallQueuesRequestFilterModel>? cursor,
+    bool fetchNext)
         {
             try
             {
                 var filterBuilder = Builders<InboundCallQueueData>.Filter;
-                var baseFilter = filterBuilder.Eq(c => c.BusinessId, businessId) & filterBuilder.Eq(c => c.Type, CallQueueTypeEnum.Inbound);
+                var filterDefinitions = new List<FilterDefinition<InboundCallQueueData>>
+        {
+            filterBuilder.Eq(c => c.BusinessId, businessId),
+            filterBuilder.Eq(c => c.Type, CallQueueTypeEnum.Inbound) // Good practice to keep this
+        };
+
+                // --- NEW: Dynamically build the filter from the provided model ---
+                if (filter.StartCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.CreatedAt, filter.StartCreatedDate.Value.ToUniversalTime()));
+                if (filter.EndCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.CreatedAt, filter.EndCreatedDate.Value.ToUniversalTime()));
+                if (filter.StartCompletedAtDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.CompletedAt, filter.StartCompletedAtDate.Value.ToUniversalTime()));
+                if (filter.EndCompletedAtDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.CompletedAt, filter.EndCompletedAtDate.Value.ToUniversalTime()));
+                if (filter.QueueStatusTypes?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.Status, filter.QueueStatusTypes));
+                if (filter.RouteIds?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.RouteId, filter.RouteIds));
+                if (filter.CallingNumbers?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.CallerNumber, filter.CallingNumbers));
+                if (filter.RouteNumberProviders?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.RouteNumberProvider, filter.RouteNumberProviders));
+                if (filter.RouteNumberIds?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.RouteNumberId, filter.RouteNumberIds));
+
+                var baseFilter = filterBuilder.And(filterDefinitions);
+
+                // NEW: Get the total count for the filtered results before pagination
+                long totalCount = await _inboundCallQueueCollection.CountDocumentsAsync(baseFilter);
 
                 FilterDefinition<InboundCallQueueData> finalFilter = baseFilter;
                 SortDefinition<InboundCallQueueData> sortDefinition;
 
                 if (fetchNext)
                 {
-                    // Sort for fetching the 'next' page (most recent first)
                     sortDefinition = Builders<InboundCallQueueData>.Sort
                         .Descending(c => c.CreatedAt)
-                        .Descending(c => c.Id); // Use Id for tie-breaking
+                        .Descending(c => c.Id);
 
                     if (cursor != null)
                     {
-                        // Apply cursor filter for 'next' page
                         var cursorFilter = filterBuilder.Or(
                             filterBuilder.Lt(c => c.CreatedAt, cursor.Timestamp),
-                            filterBuilder.And(
-                                filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp),
-                                filterBuilder.Lt(c => c.Id, cursor.Id) // MongoDB compares ObjectIds correctly
-                            )
+                            filterBuilder.And(filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp), filterBuilder.Lt(c => c.Id, cursor.Id))
                         );
                         finalFilter = filterBuilder.And(baseFilter, cursorFilter);
                     }
                 }
                 else // Fetching Previous Page
                 {
-                    // Sort for fetching the 'previous' page (oldest first temporarily)
                     sortDefinition = Builders<InboundCallQueueData>.Sort
                         .Ascending(c => c.CreatedAt)
                         .Ascending(c => c.Id);
 
                     if (cursor != null)
                     {
-                        // Apply cursor filter for 'previous' page
                         var cursorFilter = filterBuilder.Or(
                             filterBuilder.Gt(c => c.CreatedAt, cursor.Timestamp),
-                            filterBuilder.And(
-                                filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp),
-                                filterBuilder.Gt(c => c.Id, cursor.Id)
-                            )
+                            filterBuilder.And(filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp), filterBuilder.Gt(c => c.Id, cursor.Id))
                         );
                         finalFilter = filterBuilder.And(baseFilter, cursorFilter);
                     }
                     else
                     {
-                        // Cannot fetch previous page from the very beginning
-                        return (new List<InboundCallQueueData>(), false);
+                        return (new List<InboundCallQueueData>(), false, 0);
                     }
                 }
 
-                // Fetch one extra item to determine if there's a next/previous page
-                var queryLimit = limit + 1;
-
                 var calls = await _inboundCallQueueCollection.Find(finalFilter)
                     .Sort(sortDefinition)
-                    .Limit(queryLimit)
+                    .Limit(limit + 1)
                     .ToListAsync();
 
                 bool hasMore = calls.Count > limit;
 
-                // Trim the extra item if it exists
                 if (hasMore)
                 {
-                    calls = calls.Take(limit).ToList();
+                    calls.RemoveAt(limit);
                 }
 
-                // If fetching previous, reverse the results to maintain Descending order for the user
                 if (!fetchNext)
                 {
                     calls.Reverse();
                 }
 
-                return (calls, hasMore);
+                return (calls, hasMore, totalCount);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting paginated calls for business {BusinessId}", businessId);
-                return (new List<InboundCallQueueData>(), false);
+                _logger.LogError(ex, "Error getting paginated inbound calls for business {BusinessId}", businessId);
+                return (new List<InboundCallQueueData>(), false, 0);
             }
         }
 
@@ -315,6 +351,48 @@ namespace IqraInfrastructure.Repositories.Call
             {
                 _logger.LogError(ex, "Error getting queued call count for server {ServerId}", serverId);
                 return 0;
+            }
+        }
+
+        public async Task<long?> GetInboundCallQueuesCountAsync(long businessId, GetBusinessInboundCallQueuesCountRequestModel modelData)
+        {
+            try
+            {
+                var filterBuilder = Builders<InboundCallQueueData>.Filter;
+                var filterDefinitions = new List<FilterDefinition<InboundCallQueueData>>
+                {
+                    filterBuilder.Eq(c => c.BusinessId, businessId),
+                    filterBuilder.Eq(c => c.Type, CallQueueTypeEnum.Inbound)
+                };
+
+                // This filter-building logic is identical to the one in the pagination method for consistency
+                if (modelData.StartCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.CreatedAt, modelData.StartCreatedDate.Value.ToUniversalTime()));
+                if (modelData.EndCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.CreatedAt, modelData.EndCreatedDate.Value.ToUniversalTime()));
+                if (modelData.StartCompletedAtDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.CompletedAt, modelData.StartCompletedAtDate.Value.ToUniversalTime()));
+                if (modelData.EndCompletedAtDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.CompletedAt, modelData.EndCompletedAtDate.Value.ToUniversalTime()));
+                if (modelData.QueueStatusTypes?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.Status, modelData.QueueStatusTypes));
+                if (modelData.RouteIds?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.RouteId, modelData.RouteIds));
+                if (modelData.CallingNumbers?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.CallerNumber, modelData.CallingNumbers));
+                if (modelData.RouteNumberProviders?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.RouteNumberProvider, modelData.RouteNumberProviders));
+                if (modelData.RouteNumberIds?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.RouteNumberId, modelData.RouteNumberIds));
+
+                var finalFilter = filterBuilder.And(filterDefinitions);
+
+                return await _inboundCallQueueCollection.CountDocumentsAsync(finalFilter);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting inbound call queues count for business {BusinessId}", businessId);
+                return null; // Return null to indicate failure to the manager
             }
         }
     }

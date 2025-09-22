@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Models.User
+﻿namespace IqraCore.Models.User.Usage
 {
     public class StackedBarDataset
     {
@@ -12,7 +12,7 @@
         public List<StackedBarDataset> Datasets { get; set; } = new List<StackedBarDataset>();
     }
 
-    public class GetUsageSummaryModel
+    public class GetUserUsageSummaryModel
     {
         public int TotalCalls { get; set; }
         public decimal TotalDurationMinutes { get; set; }

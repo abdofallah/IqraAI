@@ -1,6 +1,8 @@
 ﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Turn;
+using IqraCore.Entities.Helpers;
+using IqraCore.Models.Business.Conversations;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -71,6 +73,24 @@ namespace IqraInfrastructure.Repositories.Conversation
             try
             {
                 var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId);
+                return await _conversationStateCollection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting conversation state by ID {Id}", conversationId);
+                throw;
+            }
+        }
+
+        public async Task<ConversationState> GetByIdAsync(long businessId, string conversationId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId),
+                    Builders<ConversationState>.Filter.Eq(c => c.BusinessId, businessId)
+                );
+
                 return await _conversationStateCollection.Find(filter).FirstOrDefaultAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -482,7 +502,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<long> GetActiveCallCountByMasterUserEmailAsync(string userEmail, CancellationToken cancellationToken = default)
+        public async Task<long> GetActiveSessionsCountByMasterUserEmailAsync(string userEmail, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -561,6 +581,102 @@ namespace IqraInfrastructure.Repositories.Conversation
             {
                 _logger.LogError(ex, "Error cleaning up max duration reached conversations for server {ServerId} in region {RegionId}", serverId, regionId);
                 throw;
+            }
+        }
+
+        public async Task<(List<ConversationState> Items, bool HasMore, long TotalCount)> GetConversationStatesPaginatedAsync(
+            long businessId,
+            GetBusinessConversationsRequestFilterModel filter,
+            int limit,
+            PaginationCursor<GetBusinessConversationsRequestFilterModel>? cursor,
+            bool fetchNext)
+        {
+            try
+            {
+                var filterBuilder = Builders<ConversationState>.Filter;
+                var filterDefinitions = new List<FilterDefinition<ConversationState>>
+                {
+                    filterBuilder.Eq(c => c.BusinessId, businessId)
+                };
+
+                // --- Build the dynamic filter from the request model ---
+                if (filter.StartStartedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.StartTime, filter.StartStartedDate.Value.ToUniversalTime()));
+                if (filter.EndStartedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.StartTime, filter.EndStartedDate.Value.ToUniversalTime()));
+                if (filter.SessionStates?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.Status, filter.SessionStates));
+                if (filter.SessionInitiationTypes?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.SessionInitiationType, filter.SessionInitiationTypes));
+                if (filter.SessionEndTypes?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.EndType, filter.SessionEndTypes));
+
+                var baseFilter = filterBuilder.And(filterDefinitions);
+
+                // Get the total count for the filtered results before pagination
+                long totalCount = await _conversationStateCollection.CountDocumentsAsync(baseFilter);
+
+                FilterDefinition<ConversationState> finalFilter = baseFilter;
+                SortDefinition<ConversationState> sortDefinition;
+
+                if (fetchNext)
+                {
+                    sortDefinition = Builders<ConversationState>.Sort
+                        .Descending(c => c.StartTime)
+                        .Descending(c => c.Id); // Use Id for tie-breaking
+
+                    if (cursor != null)
+                    {
+                        var cursorFilter = filterBuilder.Or(
+                            filterBuilder.Lt(c => c.StartTime, cursor.Timestamp),
+                            filterBuilder.And(filterBuilder.Eq(c => c.StartTime, cursor.Timestamp), filterBuilder.Lt(c => c.Id, cursor.Id))
+                        );
+                        finalFilter = filterBuilder.And(baseFilter, cursorFilter);
+                    }
+                }
+                else // Fetching Previous Page
+                {
+                    sortDefinition = Builders<ConversationState>.Sort
+                        .Ascending(c => c.StartTime)
+                        .Ascending(c => c.Id);
+
+                    if (cursor != null)
+                    {
+                        var cursorFilter = filterBuilder.Or(
+                            filterBuilder.Gt(c => c.StartTime, cursor.Timestamp),
+                            filterBuilder.And(filterBuilder.Eq(c => c.StartTime, cursor.Timestamp), filterBuilder.Gt(c => c.Id, cursor.Id))
+                        );
+                        finalFilter = filterBuilder.And(baseFilter, cursorFilter);
+                    }
+                    else
+                    {
+                        return (new List<ConversationState>(), false, 0);
+                    }
+                }
+
+                var items = await _conversationStateCollection.Find(finalFilter)
+                    .Sort(sortDefinition)
+                    .Limit(limit + 1)
+                    .ToListAsync();
+
+                bool hasMore = items.Count > limit;
+
+                if (hasMore)
+                {
+                    items.RemoveAt(limit);
+                }
+
+                if (!fetchNext)
+                {
+                    items.Reverse();
+                }
+
+                return (items, hasMore, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated conversation states for business {BusinessId}", businessId);
+                return (new List<ConversationState>(), false, 0);
             }
         }
     }

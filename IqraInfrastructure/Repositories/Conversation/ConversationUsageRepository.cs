@@ -112,10 +112,18 @@ namespace IqraInfrastructure.Repositories.Conversation
         }
 
 
-        public async Task<(List<BaseMinuteUsageRecord> Items, bool HasMore)> GetUsageHistoryPaginatedAsync(string masterUserEmail, int limit, PaginationCursor? cursor, bool fetchNext)
+        public async Task<(List<BaseMinuteUsageRecord> Items, bool HasMore)> GetUsageHistoryPaginatedAsync(string masterUserEmail, int limit, PaginationCursor? cursor, bool fetchNext, List<long>? businessIds)
         {
             var filterBuilder = Builders<BaseMinuteUsageRecord>.Filter;
             var baseFilter = filterBuilder.Eq(r => r.MasterUserEmail, masterUserEmail);
+
+            if (businessIds != null && businessIds.Count > 0)
+            {
+                baseFilter = filterBuilder.And(
+                    baseFilter,
+                    filterBuilder.In(r => r.BusinessId, businessIds)
+                );
+            }
 
             // The rest of this method's logic is identical to your reference implementation.
             // I've adapted it for MinuteUsageRecord.
@@ -180,6 +188,25 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
 
             return (records, hasMore);
+        }
+
+        public async Task<long> GetConversationsCountAsync(string masterUserEmail, DateTime startDate, DateTime endDate, List<long>? businessIds)
+        {
+            var filter = Builders<BaseMinuteUsageRecord>.Filter.And(
+                Builders<BaseMinuteUsageRecord>.Filter.Eq(r => r.MasterUserEmail, masterUserEmail),
+                Builders<BaseMinuteUsageRecord>.Filter.Gte(r => r.CreatedAt, startDate),
+                Builders<BaseMinuteUsageRecord>.Filter.Lt(r => r.CreatedAt, endDate)
+            );
+
+            if (businessIds != null && businessIds.Count > 0)
+            {
+                filter = Builders<BaseMinuteUsageRecord>.Filter.And(
+                    filter,
+                    Builders<BaseMinuteUsageRecord>.Filter.In(r => r.BusinessId, businessIds)
+                );
+            }
+
+            return await _usageCollection.CountDocumentsAsync(filter);
         }
     }
 }

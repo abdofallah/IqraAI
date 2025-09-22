@@ -25,7 +25,7 @@ namespace IqraCore.Entities.Conversation
         public DateTime StartTime { get; set; }
         public DateTime ExpectedEndTimeAt { get; set; }
 
-        public string EndReason { get; set; }
+        public ConversationSessionEndType EndType { get; set; } = ConversationSessionEndType.NotSet;
         public DateTime? EndTime { get; set; }
 
         public List<ConversationClientInfo> Clients { get; set; } = new List<ConversationClientInfo>();

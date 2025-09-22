@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Billing.Usage;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Usage;
-using IqraCore.Models.User;
+using IqraCore.Models.User.Usage;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -23,9 +23,49 @@ namespace IqraInfrastructure.Managers.User
             _conversationUsageRepository = usageRepository;
         }
 
-        public async Task<FunctionReturnResult<GetUsageSummaryModel?>> GetUsageSummaryAsync(string masterUserEmail, GetUsageSummaryRequestModel request)
+        public async Task<FunctionReturnResult<GetUserUsageCountResponseModel?>> GetUsageCount(string masterUserEmail, GetUserUsageCountRequestModel request)
         {
-            var result = new FunctionReturnResult<GetUsageSummaryModel?>();
+            var result = new FunctionReturnResult<GetUserUsageCountResponseModel?>();
+
+            try
+            {
+                var currentCount = await _conversationUsageRepository.GetConversationsCountAsync(masterUserEmail, request.StartDate, request.EndDate, request.BusinessIds);
+
+                var response = new GetUserUsageCountResponseModel
+                {
+                    CurrentCount = currentCount,
+                    PreviousCount = null
+                };
+
+                // If a comparison with the previous period is requested.
+                if (request.ComparePrevious)
+                {
+                    // Calculate the timespan of the current period.
+                    var timeSpan = request.EndDate - request.StartDate;
+
+                    // Determine the start and end dates for the previous period.
+                    var previousStartDate = request.StartDate - timeSpan;
+                    var previousEndDate = request.StartDate;
+
+                    // Fetch the count for the previous period.
+                    var previousCount = await _conversationUsageRepository.GetConversationsCountAsync(masterUserEmail, previousStartDate, previousEndDate, request.BusinessIds);
+                    response.PreviousCount = (int)previousCount;
+                }
+
+                return result.SetSuccessResult(response);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetUsageCount:EXCEPTION",
+                    $"An unexpected error occurred: {ex.Message}"
+                );
+            }
+        }
+
+        public async Task<FunctionReturnResult<GetUserUsageSummaryModel?>> GetUsageSummaryAsync(string masterUserEmail, GetUserUsageSummaryRequestModel request)
+        {
+            var result = new FunctionReturnResult<GetUserUsageSummaryModel?>();
 
             var startDate = request.StartDate.ToUniversalTime().Date;
             var endDate = request.EndDate.ToUniversalTime().Date.AddDays(1);
@@ -58,7 +98,7 @@ namespace IqraInfrastructure.Managers.User
             }
             // END: VALIDATION
 
-            var summary = new GetUsageSummaryModel();
+            var summary = new GetUserUsageSummaryModel();
             try
             {
                 // 2. Get Overall Summary Stats
@@ -182,8 +222,9 @@ namespace IqraInfrastructure.Managers.User
             string masterUserEmail,
             int limit,
             string? nextCursor,
-            string? previousCursor)
-        {
+            string? previousCursor,
+            List<long>? businessIds
+        ) {
             var result = new FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>>();
             var paginatedResult = new PaginatedResult<MinuteUsageRecordModel> { PageSize = limit };
 
@@ -194,7 +235,7 @@ namespace IqraInfrastructure.Managers.User
             try
             {
                 // Fetch usage records
-                var (usageRecords, hasMore) = await _conversationUsageRepository.GetUsageHistoryPaginatedAsync(masterUserEmail, limit, decodedCursor, fetchNext);
+                var (usageRecords, hasMore) = await _conversationUsageRepository.GetUsageHistoryPaginatedAsync(masterUserEmail, limit, decodedCursor, fetchNext, businessIds);
 
                 if (usageRecords == null || !usageRecords.Any())
                 {

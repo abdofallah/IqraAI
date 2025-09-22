@@ -3,6 +3,9 @@ using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Models.Business.Conversations;
+using IqraCore.Models.Business.Queues;
+using IqraCore.Models.Business.Queues.Inbound;
+using IqraCore.Models.Business.Queues.Outbound;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
@@ -126,7 +129,15 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result;
             }
 
-            var conversationMetaDataListResult = await _businessManager.GetConversationsManager() .GetInboundConversationsMetaDataListAsync(businessId, limit, next, prev);
+            var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetInboundConversationsMetaDataListAsync(
+                businessId,
+                new GetBusinessInboundCallQueuesRequestModel()
+                {
+                    Limit = limit,
+                    NextCursor = next,
+                    PreviousCursor = prev
+                }
+            );
             if (!conversationMetaDataListResult.Success)
             {
                 result.Code = "GetBusinessInboundConversationsMetaData:" + conversationMetaDataListResult.Code;
@@ -240,7 +251,15 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result;
             }
 
-            var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetOutboundConversationsMetaDataListAsync(businessId, limit, next, prev);
+            var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetOutboundConversationsMetaDataListAsync(
+                businessId,
+                new GetBusinessOutboundCallQueuesRequestModel()
+                {
+                    Limit = limit,
+                    NextCursor = next,
+                    PreviousCursor = prev
+                }
+            );
             if (!conversationMetaDataListResult.Success)
             {
                 result.Code = "GetBusinessOutboundConversationsMetaData:" + conversationMetaDataListResult.Code;
@@ -336,7 +355,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result;
             }
 
-            var stateResult = await _businessManager.GetConversationsManager().GetConversationStateViewModelByIdAsync(businessId, conversationSessionId);
+            var stateResult = await _businessManager.GetConversationsManager().GetConversationState(businessId, conversationSessionId);
             if (!stateResult.Success)
             {
                 result.Code = "GetConversationState:" + stateResult.Code;
