@@ -30,6 +30,11 @@ namespace IqraInfrastructure.Managers.Business
             _integrationConfigurationManager = integrationConfigurationManager;;
         }
 
+        /**
+         * 
+         * Telephony Campaign
+         * 
+        **/
         public async Task<FunctionReturnResult<BusinessAppTelephonyCampaign?>> GetTelephonyCampaignById(long businessId, string existingTelephonyCampaignId)
         {
             var result = new FunctionReturnResult<BusinessAppTelephonyCampaign?>();
@@ -55,32 +60,6 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
         }
-        public async Task<FunctionReturnResult<BusinessAppWebCampaign?>> GetWebCampaignById(long businessId, string existingWebCampaignId)
-        {
-            var result = new FunctionReturnResult<BusinessAppWebCampaign?>();
-
-            try
-            {
-                var data = await _businessAppRepository.GetBusinessWebCampaignById(businessId, existingWebCampaignId);
-                if (data == null)
-                {
-                    return result.SetFailureResult(
-                        "GetWebCampaignById:NOT_FOUND",
-                        "Campaign not found."
-                    );
-                }
-
-                return result.SetSuccessResult(data);
-            }
-            catch (Exception ex)
-            {
-                return result.SetFailureResult(
-                    "GetWebCampaignById:EXCEPTION",
-                    $"Error retrieving campaign: {ex.Message}"
-                );
-            }
-        }
-
         public async Task<FunctionReturnResult<BusinessAppTelephonyCampaign?>> AddOrUpdateTelephonyCampaignAsync(long businessId, IFormCollection formData, string postType, BusinessAppTelephonyCampaign? existingCampaignData)
         {
             var result = new FunctionReturnResult<BusinessAppTelephonyCampaign?>();
@@ -272,7 +251,7 @@ namespace IqraInfrastructure.Managers.Business
                     if (!retryDeclineElement.TryGetProperty("enabled", out var retryDeclineEnabledProp) || (retryDeclineEnabledProp.ValueKind != JsonValueKind.True && retryDeclineEnabledProp.ValueKind != JsonValueKind.False))
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:CONFIG_RETRY_DECLINE_ENABLED_INVALID", 
+                            "AddOrUpdateTelephonyCampaignAsync:CONFIG_RETRY_DECLINE_ENABLED_INVALID",
                             "Invalid 'enabled' value for retry on decline."
                         );
                     }
@@ -382,7 +361,7 @@ namespace IqraInfrastructure.Managers.Business
                     if (!timeoutsElement.TryGetProperty("endOnSilenceMS", out var endSilenceProp) || !endSilenceProp.TryGetInt32(out var endSilence) || endSilence < 0)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:CONFIG_END_SILENCE_INVALID", 
+                            "AddOrUpdateTelephonyCampaignAsync:CONFIG_END_SILENCE_INVALID",
                             "Invalid end call on silence value."
                         );
                     }
@@ -692,7 +671,7 @@ namespace IqraInfrastructure.Managers.Business
                     if (!numberRouteProperty.TryGetProperty("routeNumberList", out var routeNumberListProperty) || routeNumberListProperty.ValueKind != JsonValueKind.Object)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_NOT_FOUND", 
+                            "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_NOT_FOUND",
                             "Route number list not found or invalid."
                         );
                     }
@@ -758,7 +737,7 @@ namespace IqraInfrastructure.Managers.Business
                     if (!callDeclinedToolValidationResult.Success)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:" + callDeclinedToolValidationResult.Code, 
+                            "AddOrUpdateTelephonyCampaignAsync:" + callDeclinedToolValidationResult.Code,
                             callDeclinedToolValidationResult.Message
                         );
                     }
@@ -788,7 +767,7 @@ namespace IqraInfrastructure.Managers.Business
                     if (!callEndedToolValidationResult.Success)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:" + callEndedToolValidationResult.Code, 
+                            "AddOrUpdateTelephonyCampaignAsync:" + callEndedToolValidationResult.Code,
                             callEndedToolValidationResult.Message
                         );
                     }
@@ -828,6 +807,37 @@ namespace IqraInfrastructure.Managers.Business
                 return result.SetFailureResult(
                     "AddOrUpdateTelephonyCampaignAsync:EXCEPTION",
                     $"Error adding or updating telephony campaign: {ex.Message}"
+                );
+            }
+        }
+
+        /**
+         * 
+         * Web Campaign
+         * 
+        **/
+        public async Task<FunctionReturnResult<BusinessAppWebCampaign?>> GetWebCampaignById(long businessId, string existingWebCampaignId)
+        {
+            var result = new FunctionReturnResult<BusinessAppWebCampaign?>();
+
+            try
+            {
+                var data = await _businessAppRepository.GetBusinessWebCampaignById(businessId, existingWebCampaignId);
+                if (data == null)
+                {
+                    return result.SetFailureResult(
+                        "GetWebCampaignById:NOT_FOUND",
+                        "Campaign not found."
+                    );
+                }
+
+                return result.SetSuccessResult(data);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetWebCampaignById:EXCEPTION",
+                    $"Error retrieving campaign: {ex.Message}"
                 );
             }
         }
@@ -1150,6 +1160,7 @@ namespace IqraInfrastructure.Managers.Business
             }
         }
 
+        // Common Helpers
         private async Task<FunctionReturnResult<BusinessAppCampaignActionConfig>> ValidateBusinessCampaignActionData(long businessId, string businessDefaultLanguage, JsonElement actionToolElement, string actionType)
         {
             var result = new FunctionReturnResult<BusinessAppCampaignActionConfig>();          

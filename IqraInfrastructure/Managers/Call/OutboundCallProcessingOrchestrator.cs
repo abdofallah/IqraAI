@@ -74,20 +74,20 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"Validation failed: [{validationResult.Code}] {validationResult.Message}", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"Validation failed: [{validationResult.Code}] {validationResult.Message}", Type = CallQueueLogTypeEnum.Error });
                 return;
             }
 
             var businessPhoneNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(call.BusinessId, call.CallingNumberId);
             if (businessPhoneNumber == null)
             {
-                await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"System error: Business number {call.CallingNumberId} not found.", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"System error: Business number {call.CallingNumberId} not found.", Type = CallQueueLogTypeEnum.Error });
             }
 
             var businessPhoneIntegration = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(call.BusinessId, businessPhoneNumber.IntegrationId);
             if (businessPhoneIntegration == null)
             {
-                await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"System error: Business number {call.CallingNumberId} integration {businessPhoneNumber.IntegrationId} not found.", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"System error: Business number {call.CallingNumberId} integration {businessPhoneNumber.IntegrationId} not found.", Type = CallQueueLogTypeEnum.Error });
             }
 
             switch (businessPhoneNumber.Provider)
@@ -100,7 +100,7 @@ namespace IqraInfrastructure.Managers.Call
                         var currentNumberCalls = await _modemTelManager.GetCallsByStatusForPhoneNumber(_integrationsManager.DecryptField(businessPhoneIntegration.Data.EncryptedFields["apikey"]), businessPhoneIntegration.Data.Fields["endpoint"], modemTelPhonenumberId, modemtelStatusToCheck, 1);
                         if (!currentNumberCalls.Success)
                         {
-                            await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"[{currentNumberCalls.Code}] {currentNumberCalls.Message}", Type = CallQueueLogTypeEnum.Error });
+                            await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"[{currentNumberCalls.Code}] {currentNumberCalls.Message}", Type = CallQueueLogTypeEnum.Error });
                             return;
                         }
 
@@ -120,7 +120,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 default:
                     {
-                        await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"Unknown calling number provider: {businessPhoneNumber.Provider}.", Type = CallQueueLogTypeEnum.Error });
+                        await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"Unknown calling number provider: {businessPhoneNumber.Provider}.", Type = CallQueueLogTypeEnum.Error });
                         return;
                     }
             }
@@ -131,7 +131,7 @@ namespace IqraInfrastructure.Managers.Call
             if (!serverSelectionResult.Success || !serverSelectionResult.Data.Any())
             {
                 // todo this should happen very critically but should we kill the queue because of it?
-                await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"No backend server available for region {call.RegionId}. {serverSelectionResult.Message}", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"No backend server available for region {call.RegionId}. {serverSelectionResult.Message}", Type = CallQueueLogTypeEnum.Error });
                 return;
             }
 
@@ -139,7 +139,7 @@ namespace IqraInfrastructure.Managers.Call
             if (regionDetails == null)
             {
                 _logger.LogError("Region details not found for {RegionId} during call {QueueId} processing.", call.RegionId, call.Id);
-                await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"System error: Region details for {call.RegionId} not found.", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"System error: Region details for {call.RegionId} not found.", Type = CallQueueLogTypeEnum.Error });
                 return;
             }
 
@@ -216,7 +216,7 @@ namespace IqraInfrastructure.Managers.Call
             }
             else if (!successfullyForwarded)
             {
-                await _outboundCallQueueRepo.MoveToArchivedAsync(
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(
                     call.Id,
                     CallQueueStatusEnum.Failed,
                     new CallQueueLog

@@ -112,7 +112,7 @@ namespace IqraInfrastructure.Repositories.Conversation
         }
 
 
-        public async Task<(List<BaseMinuteUsageRecord> Items, bool HasMore)> GetUsageHistoryPaginatedAsync(string masterUserEmail, int limit, PaginationCursor? cursor, bool fetchNext, List<long>? businessIds)
+        public async Task<(List<BaseMinuteUsageRecord> Items, bool HasMore)> GetUsageHistoryPaginatedAsync(string masterUserEmail, int limit, PaginationCursor<PaginationCursorNoFilterHelper>? cursor, bool fetchNext, List<long>? businessIds)
         {
             var filterBuilder = Builders<BaseMinuteUsageRecord>.Filter;
             var baseFilter = filterBuilder.Eq(r => r.MasterUserEmail, masterUserEmail);

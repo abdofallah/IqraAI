@@ -190,7 +190,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                 }
 
                 // Forward
-                var forwardResult = await _businessManager.GetConversationsManager().GetOutboundConversationsMetaData(businessId, queueId);
+                var forwardResult = await _businessManager.GetConversationsManager().GetOutboundConversationsMetaDataAsync(businessId, queueId);
                 if (!forwardResult.Success)
                 {
                     return result.SetFailureResult(

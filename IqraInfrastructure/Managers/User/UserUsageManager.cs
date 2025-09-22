@@ -230,7 +230,7 @@ namespace IqraInfrastructure.Managers.User
 
             bool fetchNext = string.IsNullOrWhiteSpace(previousCursor);
             string? currentCursor = fetchNext ? nextCursor : previousCursor;
-            var decodedCursor = PaginationCursor.Decode(currentCursor);
+            var decodedCursor = PaginationCursor<PaginationCursorNoFilterHelper>.Decode(currentCursor);
 
             try
             {
@@ -276,15 +276,15 @@ namespace IqraInfrastructure.Managers.User
                 if (fetchNext)
                 {
                     paginatedResult.HasNextPage = hasMore;
-                    paginatedResult.NextCursor = hasMore ? new PaginationCursor { Timestamp = usageRecords.Last().CreatedAt, Id = usageRecords.Last().Id }.Encode() : null;
-                    paginatedResult.PreviousCursor = decodedCursor != null ? new PaginationCursor { Timestamp = usageRecords.First().CreatedAt, Id = usageRecords.First().Id }.Encode() : null;
+                    paginatedResult.NextCursor = hasMore ? new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = usageRecords.Last().CreatedAt, Id = usageRecords.Last().Id }.Encode() : null;
+                    paginatedResult.PreviousCursor = decodedCursor != null ? new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = usageRecords.First().CreatedAt, Id = usageRecords.First().Id }.Encode() : null;
                     paginatedResult.HasPreviousPage = decodedCursor != null;
                 }
                 else
                 {
                     paginatedResult.HasPreviousPage = hasMore;
-                    paginatedResult.PreviousCursor = hasMore ? new PaginationCursor { Timestamp = usageRecords.First().CreatedAt, Id = usageRecords.First().Id }.Encode() : null;
-                    paginatedResult.NextCursor = new PaginationCursor { Timestamp = usageRecords.Last().CreatedAt, Id = usageRecords.Last().Id }.Encode();
+                    paginatedResult.PreviousCursor = hasMore ? new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = usageRecords.First().CreatedAt, Id = usageRecords.First().Id }.Encode() : null;
+                    paginatedResult.NextCursor = new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = usageRecords.Last().CreatedAt, Id = usageRecords.Last().Id }.Encode();
                     paginatedResult.HasNextPage = true;
                 }
 

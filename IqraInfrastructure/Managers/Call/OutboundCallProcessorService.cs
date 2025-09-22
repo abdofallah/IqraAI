@@ -14,7 +14,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly OutboundCallProcessingOrchestrator _outboundCallProcessingOrchestrator;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepo;
         private Task _pollTask;
-        private PaginationCursor? _currentRegionQueueCursor;
+        private PaginationCursor<PaginationCursorNoFilterHelper>? _currentRegionQueueCursor;
         private readonly CancellationTokenSource _stoppingCts = new CancellationTokenSource();
 
         private readonly ProxyAppConfig _proxyAppConfig;
@@ -135,7 +135,14 @@ namespace IqraInfrastructure.Managers.Call
 
                 try
                 {
-                    await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Type = CallQueueLogTypeEnum.Error, Message = $"Unhandled error during processing: {ex.Message}" });
+                    await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                        call.Id,
+                        CallQueueStatusEnum.Failed,
+                        new CallQueueLog {
+                            Type = CallQueueLogTypeEnum.Error,
+                            Message = $"Unhandled error during processing: {ex.Message}"
+                        }
+                    );
                 }
                 catch (Exception finalEx)
                 {
