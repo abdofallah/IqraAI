@@ -1,5 +1,4 @@
-﻿using Deepgram.Models.Manage.v1;
-using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Entities.User.Billing;
 using IqraCore.Models.Authentication;

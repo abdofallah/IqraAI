@@ -129,7 +129,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    if (!callRequestElement.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.Number)
+                    if (!numberElement.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.Number)
                     {
                         return result.SetFailureResult(
                             "QueueCallInitiationRequestAsync:CONFIG_NUMBER_TYPE_NOT_FOUND",
@@ -151,7 +151,7 @@ namespace IqraInfrastructure.Managers.Business
                     {
                         // To Number
                         if (
-                            !callRequestElement.TryGetProperty("toNumber", out var toNumberElement) ||
+                            !numberElement.TryGetProperty("toNumber", out var toNumberElement) ||
                             toNumberElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(toNumberElement.GetString())
                         ) {
                             return result.SetFailureResult(
@@ -193,7 +193,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    if (!callRequestElement.TryGetProperty("type", out var scheduleTypeElement) || scheduleTypeElement.ValueKind != JsonValueKind.Number)
+                    if (!scheduleElement.TryGetProperty("type", out var scheduleTypeElement) || scheduleTypeElement.ValueKind != JsonValueKind.Number)
                     {
                         return result.SetFailureResult(
                             "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_TYPE_NOT_FOUND",
@@ -217,7 +217,7 @@ namespace IqraInfrastructure.Managers.Business
                     else if (callConfigData.Schedule.Type == OutboundCallScheduleType.Scheduled)
                     {
                         if (
-                            !callRequestElement.TryGetProperty("dateTimeUTC", out var dateTimeUTCElement) ||
+                            !scheduleElement.TryGetProperty("dateTimeUTC", out var dateTimeUTCElement) ||
                             dateTimeUTCElement.ValueKind != JsonValueKind.String ||
                             string.IsNullOrWhiteSpace(dateTimeUTCElement.GetString())
                         ) {

@@ -1,10 +1,4 @@
-﻿/**
- * make_calls_tab.js
- * Bismillah. This file manages the simplified "Make Calls" tab.
- * The user selects a pre-configured campaign and provides target numbers.
- */
-
-/** Global Variables & ENUMs **/
+﻿/** Global Variables & ENUMs **/
 const OutboundCallNumberType = {
 	Single: 0,
 	Bulk: 1,
@@ -261,7 +255,7 @@ function createMakeCallCampaignModalListElement(campaignData) {
 function fillMakeCallCampaignModalList() {
 	const searchTerm = inputMakeCallSelectCampaignSearch.val().toLowerCase().trim();
 	makeCallSelectCampaignModalList.empty();
-	const campaigns = BusinessFullData?.businessApp?.campaigns || [];
+	const campaigns = BusinessFullData.businessApp.telephonyCampaigns;
 	let campaignsFound = false;
 
 	if (campaigns.length === 0) {
@@ -270,7 +264,7 @@ function fillMakeCallCampaignModalList() {
 	}
 
 	campaigns.forEach((campaign) => {
-		const campaignName = campaign.name || "";
+		const campaignName = campaign.name;
 		if (!searchTerm || campaignName.toLowerCase().includes(searchTerm)) {
 			makeCallSelectCampaignModalList.append(createMakeCallCampaignModalListElement(campaign));
 			campaignsFound = true;
@@ -293,10 +287,10 @@ function createMakeCallNumberModalListElement(numberData) {
 function fillMakeCallNumberModalNumbersList() {
 	const searchTerm = inputMakeCallModalSearchNumberInput.val().toLowerCase().trim();
 	makeCallAssignNumberModalLists.empty().append('<span class="list-group-item">Loading numbers...</span>');
-	const allNumbers = BusinessFullData?.businessApp?.numbers || [];
+	const allNumbers = BusinessFullData?.businessApp?.numbers;
 	const numbersByProvider = {};
 
-	const campaignNumbers = BusinessFullData.businessApp.campaigns.find((c) => c.id == SelectedCampaignId)?.numbers || [];
+	const campaignNumbers = BusinessFullData.businessApp.telephonyCampaigns.find((c) => c.id == SelectedCampaignId)?.numbers;
 
 	campaignNumbers.forEach((campaignNumberId) => {
 		const number = allNumbers.find((n) => n.id == campaignNumberId);
@@ -314,7 +308,7 @@ function fillMakeCallNumberModalNumbersList() {
 	makeCallAssignNumberModalLists.each((index, listElement) => {
 		const $listElement = $(listElement);
 		const providerValue = parseInt($listElement.attr("number-provider"));
-		const providerNumbers = numbersByProvider[providerValue] || [];
+		const providerNumbers = numbersByProvider[providerValue];
 		$listElement.empty();
 		if (providerNumbers.length > 0) {
 			providerNumbers.forEach((number) => $listElement.append(createMakeCallNumberModalListElement(number)));
@@ -374,7 +368,7 @@ function initMakeCallHandlers() {
 
 			makeCallSelectedFromNumberInput.val("").attr("placeholder", "Select a number...");
 
-			const campaignData = BusinessFullData.businessApp.campaigns.find((c) => c.id === campaignId);
+			const campaignData = BusinessFullData.businessApp.telephonyCampaigns.find((c) => c.id === campaignId);
 			if (campaignData) {
 				SelectedCampaignId = campaignId;
 				editSelectedMakeCallCampaignIcon.text(campaignData.general.emoji);

@@ -88,7 +88,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (checkBusinessesDisabled && userData.Permission.Business.DisableBusinessesAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateSessionAsync:BUSINESSES_DISABLED",
+                    "ValidateUserAndBusinessSessionAsync:BUSINESSES_DISABLED",
                     $"Bussinesses are disabled for the user: {userData.Permission.Business.DisableBusinessesReason}"
                 );
             }
@@ -97,7 +97,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (checkBusinessesAddingEnabled && userData.Permission.Business.AddBusinessDisabledAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateSessionAsync:BUSINESSES_ADDING_DISABLED",
+                    "ValidateUserAndBusinessSessionAsync:BUSINESSES_ADDING_DISABLED",
                     $"Bussinesses adding is disabled for the user: {userData.Permission.Business.AddBusinessDisableReason}"
                 );
             }
@@ -106,7 +106,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (checkBusinessesEditingEnabled && userData.Permission.Business.EditBusinessDisabledAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateSessionAsync:BUSINESSES_EDITING_DISABLED",
+                    "ValidateUserAndBusinessSessionAsync:BUSINESSES_EDITING_DISABLED",
                     $"Bussinesses editing is disabled for the user: {userData.Permission.Business.EditBusinessDisableReason}"
                 );
             }
@@ -115,7 +115,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (checkBusinessDeletingEnabled && userData.Permission.Business.DeleteBusinessDisableAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateSessionAsync:BUSINESSES_DELETING_DISABLED",
+                    "ValidateUserAndBusinessSessionAsync:BUSINESSES_DELETING_DISABLED",
                     $"Bussinesses deleting is disabled for the user: {userData.Permission.Business.DeleteBusinessDisableReason}"
                 );
             }
@@ -125,7 +125,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (!businessGetResult.Success)
             {
                 return result.SetFailureResult(
-                    $"ValidateSessionAsync:{businessGetResult.Code}",
+                    $"ValidateUserAndBusinessSessionAsync:{businessGetResult.Code}",
                     businessGetResult.Message
                 );
             }

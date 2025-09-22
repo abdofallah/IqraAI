@@ -150,13 +150,13 @@ namespace ProjectIqraFrontend
             customJSONMiddleware.SetHttpContextAccessor(httpContextAccessor);
 
             app.UseCors("AllowedOrigins");
-
-            app.MapStaticAssets();
+           
             app.UseRouting();
 
             app.UseAuthentication();
             app.UseAuthorization();
 
+            app.MapStaticAssets();
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}")
