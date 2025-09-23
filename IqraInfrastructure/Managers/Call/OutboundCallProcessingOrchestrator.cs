@@ -70,24 +70,55 @@ namespace IqraInfrastructure.Managers.Call
                     (validationResult.Code.Contains("USER_CONCURRENCY_LIMIT") || validationResult.Code.Contains("BUSINESS_CONCURRENCY_LIMIT"))
                 )
                 {
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued, new CallQueueLog { Message = $"Validation failed (will retry): {validationResult.Message}", Type = CallQueueLogTypeEnum.Information });
+                    await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                        call.Id,
+                        CallQueueStatusEnum.Queued,
+                        new CallQueueLog {
+                            Message = $"Validation failed (will retry): {validationResult.Message}",
+                            Type = CallQueueLogTypeEnum.Information
+                        }
+                    );
                     return;
                 }
 
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"Validation failed: [{validationResult.Code}] {validationResult.Message}", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                    call.Id,
+                    CallQueueStatusEnum.Canceled,
+                    new CallQueueLog {
+                        Message = $"Validation failed: [{validationResult.Code}] {validationResult.Message}",
+                        Type = CallQueueLogTypeEnum.Error
+                    },
+                    completedAt: DateTime.UtcNow
+                );
                 return;
             }
 
             var businessPhoneNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(call.BusinessId, call.CallingNumberId);
             if (businessPhoneNumber == null)
             {
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"System error: Business number {call.CallingNumberId} not found.", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                    call.Id,
+                    CallQueueStatusEnum.Canceled,
+                    new CallQueueLog {
+                        Message = $"System error: Business number {call.CallingNumberId} not found.",
+                        Type = CallQueueLogTypeEnum.Error
+                    },
+                    completedAt: DateTime.UtcNow
+                );
             }
 
             var businessPhoneIntegration = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(call.BusinessId, businessPhoneNumber.IntegrationId);
             if (businessPhoneIntegration == null)
             {
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"System error: Business number {call.CallingNumberId} integration {businessPhoneNumber.IntegrationId} not found.", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                    call.Id,
+                    CallQueueStatusEnum.Canceled,
+                    new CallQueueLog {
+                        Message = $"System error: Business number {call.CallingNumberId} integration {businessPhoneNumber.IntegrationId} not found.",
+                        Type = CallQueueLogTypeEnum.Error
+                    },
+                    completedAt: DateTime.UtcNow
+                );
             }
 
             switch (businessPhoneNumber.Provider)
@@ -100,7 +131,15 @@ namespace IqraInfrastructure.Managers.Call
                         var currentNumberCalls = await _modemTelManager.GetCallsByStatusForPhoneNumber(_integrationsManager.DecryptField(businessPhoneIntegration.Data.EncryptedFields["apikey"]), businessPhoneIntegration.Data.Fields["endpoint"], modemTelPhonenumberId, modemtelStatusToCheck, 1);
                         if (!currentNumberCalls.Success)
                         {
-                            await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"[{currentNumberCalls.Code}] {currentNumberCalls.Message}", Type = CallQueueLogTypeEnum.Error });
+                            await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                                call.Id,
+                                CallQueueStatusEnum.Canceled,
+                                new CallQueueLog {
+                                    Message = $"[{currentNumberCalls.Code}] {currentNumberCalls.Message}",
+                                    Type = CallQueueLogTypeEnum.Error
+                                },
+                                completedAt: DateTime.UtcNow
+                            );
                             return;
                         }
 
@@ -120,18 +159,41 @@ namespace IqraInfrastructure.Managers.Call
 
                 default:
                     {
-                        await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"Unknown calling number provider: {businessPhoneNumber.Provider}.", Type = CallQueueLogTypeEnum.Error });
+                        await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                            call.Id,
+                            CallQueueStatusEnum.Canceled,
+                            new CallQueueLog {
+                                Message = $"Unknown calling number provider: {businessPhoneNumber.Provider}.",
+                                Type = CallQueueLogTypeEnum.Error
+                            },
+                            completedAt: DateTime.UtcNow
+                        );
                         return;
                     }
             }
 
-            await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.ProcessingProxy, new CallQueueLog { Message = $"Processing Queue within proxy", Type = CallQueueLogTypeEnum.Information });
+            await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                call.Id,
+                CallQueueStatusEnum.ProcessingProxy,
+                new CallQueueLog {
+                    Message = $"Processing Queue within proxy",
+                    Type = CallQueueLogTypeEnum.Information
+                }
+            );
 
             var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(call.RegionId);
             if (!serverSelectionResult.Success || !serverSelectionResult.Data.Any())
             {
                 // todo this should happen very critically but should we kill the queue because of it?
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"No backend server available for region {call.RegionId}. {serverSelectionResult.Message}", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                    call.Id,
+                    CallQueueStatusEnum.Failed,
+                    new CallQueueLog {
+                        Message = $"No backend server available for region {call.RegionId}. {serverSelectionResult.Message}",
+                        Type = CallQueueLogTypeEnum.Error
+                    },
+                    completedAt: DateTime.UtcNow
+                );
                 return;
             }
 
@@ -139,7 +201,15 @@ namespace IqraInfrastructure.Managers.Call
             if (regionDetails == null)
             {
                 _logger.LogError("Region details not found for {RegionId} during call {QueueId} processing.", call.RegionId, call.Id);
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"System error: Region details for {call.RegionId} not found.", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                    call.Id,
+                    CallQueueStatusEnum.Failed,
+                    new CallQueueLog {
+                        Message = $"System error: Region details for {call.RegionId} not found.",
+                        Type = CallQueueLogTypeEnum.Error
+                    },
+                    completedAt: DateTime.UtcNow
+                );
                 return;
             }
 
@@ -150,7 +220,15 @@ namespace IqraInfrastructure.Managers.Call
                 RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Endpoint == optimalServer.ServerEndpoint && s.Type == ServerTypeEnum.Backend);
                 if (backendServerDetails == null)
                 {
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"System error: Region details for {call.RegionId} not found.", Type = CallQueueLogTypeEnum.Error });
+                    await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                        call.Id,
+                        CallQueueStatusEnum.Failed,
+                        new CallQueueLog {
+                            Message = $"System error: Region details for {call.RegionId} not found.",
+                            Type = CallQueueLogTypeEnum.Error
+                        },
+                        completedAt: DateTime.UtcNow
+                    );
                     continue;
                 }
 
@@ -169,7 +247,8 @@ namespace IqraInfrastructure.Managers.Call
                         {
                             Message = $"Failed to forward to backend. [{forwardResponse.Code}] {forwardResponse.Message}",
                             Type = CallQueueLogTypeEnum.Error
-                        }
+                        },
+                        completedAt: DateTime.UtcNow
                     );
                     break;
                 }
@@ -189,7 +268,8 @@ namespace IqraInfrastructure.Managers.Call
                             {
                                 Message = $"Backend call processing failure: [{backendResult.Code}] {backendResult.Message}",
                                 Type = CallQueueLogTypeEnum.Error
-                            }
+                            },
+                            completedAt: DateTime.UtcNow
                         );
                     }
                     else
@@ -223,7 +303,8 @@ namespace IqraInfrastructure.Managers.Call
                     {
                         Message = "Failed to forward to backend server.",
                         Type = CallQueueLogTypeEnum.Error
-                    }
+                    },
+                    completedAt: DateTime.UtcNow
                 );
             }
         }

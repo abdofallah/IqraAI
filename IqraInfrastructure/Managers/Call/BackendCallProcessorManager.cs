@@ -170,7 +170,12 @@ namespace IqraInfrastructure.Managers.Call
                 // --- Refactored Block End ---
 
                 await session.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initialized successfully so now waiting for primary telephony client to connect");
-                await _inboundCallQueueRepository.UpdateInboundCallQueueSessionIdAndStatusAsync(queueId, session.SessionId, CallQueueStatusEnum.ProcessedBackend);
+                await _inboundCallQueueRepository.UpdateInboundCallQueueSessionIdAndStatusAsync(
+                    queueId,
+                    session.SessionId,
+                    CallQueueStatusEnum.ProcessedBackend,
+                    DateTime.UtcNow
+                );
 
                 return result.SetSuccessResult(
                     new ProcessedInboundCallResponse()
@@ -192,7 +197,7 @@ namespace IqraInfrastructure.Managers.Call
             {
                 if (!result.Success && sessionResult?.Data != null)
                 {
-                    await sessionResult.Data.EndAsync("ProcessInboundCall Failed", ConversationSessionState.Error);
+                    await sessionResult.Data.EndAsync("ProcessInboundCall Failed", ConversationSessionEndType.InitalizeError, ConversationSessionState.Error);
                     await CleanupSessionAsync(sessionResult.Data.SessionId);
                 }
             }
@@ -218,7 +223,11 @@ namespace IqraInfrastructure.Managers.Call
                         resultData
                     );
                 }
-                await _outboundCallQueueRepository.UpdateCallStatusAsync(queueId, CallQueueStatusEnum.ProcessingBackend, newProcessingServerId: _backendAppConfig.ServerId);
+                await _outboundCallQueueRepository.UpdateCallStatusAsync(
+                    queueId,
+                    CallQueueStatusEnum.ProcessingBackend,
+                    newProcessingServerId: _backendAppConfig.ServerId
+                );
 
                 // --- Start of Outbound-Specific Logic ---
                 var businessNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(outboundQueueData.BusinessId, outboundQueueData.CallingNumberId);
@@ -361,7 +370,12 @@ namespace IqraInfrastructure.Managers.Call
                     );
                 }
 
-                await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(queueId, session.SessionId, CallQueueStatusEnum.ProcessedBackend);
+                await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(
+                    queueId,
+                    session.SessionId,
+                    CallQueueStatusEnum.ProcessedBackend,
+                    DateTime.UtcNow
+                );
                 return result.SetSuccessResult(resultData);
             }
             catch (Exception ex)
@@ -376,7 +390,7 @@ namespace IqraInfrastructure.Managers.Call
             {
                 if (!result.Success && sessionResult?.Data != null)
                 {
-                    await sessionResult.Data.EndAsync("InitiateOutboundCall Failed", ConversationSessionState.Error);
+                    await sessionResult.Data.EndAsync("InitiateOutboundCall Failed", ConversationSessionEndType.InitalizeError, ConversationSessionState.Error);
                     await CleanupSessionAsync(sessionResult.Data.SessionId);
                 }
             }
@@ -425,8 +439,17 @@ namespace IqraInfrastructure.Managers.Call
 
                     case "busy":
                         {
+                            // it should never be any other state than waiting if we get busy
+                            if (sessionData.State != ConversationSessionState.WaitingForPrimaryClient)
+                            {
+                                return result.SetFailureResult("NotifyTelephonyClientStatus:INVALID_STATE", "Invalid state for busy status");
+                            }
+
+                            // TODO we need to check for retry logic of the queue
                             // for outbound calls, we need to end the session and clean it up, check for retry logic and requeue if needed
-                            goto default;
+
+                            _ = sessionData.EndAsync("Busy outbound call response", ConversationSessionEndType.UserDeclinedOrBusy);
+                            return result.SetSuccessResult();
                         }
 
                     default:

@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.Conversations;
 using IqraCore.Models.Business.Queues;
@@ -122,13 +123,15 @@ namespace IqraInfrastructure.Managers.Business
                     RouteId = cq.RouteId,
                     CallerNumber = cq.CallerNumber,
                     SessionId = null,
-                    SessionStatus = null
+                    SessionStatus = null,
+                    SessionEndType = null
                 };
 
                 if (!string.IsNullOrEmpty(cq.Id) && conversationStates.TryGetValue(cq.Id, out var state))
                 {
                     metadata.SessionId = state.Id;
                     metadata.SessionStatus = state.Status;
+                    metadata.SessionEndType = state.EndType;
                 }
 
                 return metadata;
@@ -225,7 +228,8 @@ namespace IqraInfrastructure.Managers.Business
                     RouteId = callQueueItem.RouteId,
                     CallerNumber = callQueueItem.CallerNumber,
                     SessionId = conversationState?.Id,
-                    SessionStatus = conversationState?.Status
+                    SessionStatus = conversationState?.Status,
+                    SessionEndType = conversationState?.EndType
                 };
 
                 return result.SetSuccessResult(metadata);
@@ -323,12 +327,16 @@ namespace IqraInfrastructure.Managers.Business
                     NumberId = cq.CallingNumberId,
                     RecipientNumber = cq.RecipientNumber,
                     SessionId = null,
-                    SessionStatus = null
+                    SessionStatus = null,
+                    SessionEndType = null,
+                    DynamicVariables = cq.DynamicVariables,
+                    Metadata = cq.Metadata,
                 };
                 if (!string.IsNullOrEmpty(cq.Id) && conversationStates.TryGetValue(cq.Id, out var state))
                 {
                     metadata.SessionId = state.Id;
                     metadata.SessionStatus = state.Status;
+                    metadata.SessionEndType = state.EndType;
                 }
                 return metadata;
             }).ToList();
@@ -420,7 +428,10 @@ namespace IqraInfrastructure.Managers.Business
                     NumberId = callQueueItem.CallingNumberId,
                     RecipientNumber = callQueueItem.RecipientNumber,
                     SessionId = conversationState?.Id,
-                    SessionStatus = conversationState?.Status
+                    SessionStatus = conversationState?.Status,
+                    SessionEndType = conversationState?.EndType,
+                    DynamicVariables = callQueueItem.DynamicVariables,
+                    Metadata = callQueueItem.Metadata
                 };
 
                 return result.SetSuccessResult(metadata);
@@ -449,7 +460,7 @@ namespace IqraInfrastructure.Managers.Business
                 if (state == null)
                 {
                     return result.SetFailureResult(
-                        "GetConversationStateByIdAsync:NOT_FOUND",
+                        "GetConversationState:NOT_FOUND",
                         $"Conversation state with Session ID '{sessionId}' not found."
                     );
                 }
@@ -461,7 +472,7 @@ namespace IqraInfrastructure.Managers.Business
             catch (Exception ex)
             {
                 result.SetFailureResult(
-                    "GetConversationStateByIdAsync:EXCEPTION",
+                    "GetConversationState:EXCEPTION",
                     $"An error occurred while fetching conversation state: {ex.Message}"
                 );
                 return result;
@@ -556,6 +567,7 @@ namespace IqraInfrastructure.Managers.Business
                 Status = state.Status,
                 StartTime = state.StartTime,
                 EndTime = state.EndTime,
+                EndType = state.EndType,
                 Clients = new List<ConversationStateClientViewModel>(),
                 Agents = new List<ConversationStateAgentViewModel>(),
                 Messages = new List<ConversationStateMessageViewModel>(),
@@ -613,21 +625,39 @@ namespace IqraInfrastructure.Managers.Business
             // TODO stop using the message view model and use turn view model
             foreach (var turn in state.Turns)
             {
-                var userMessageModel = new ConversationStateMessageViewModel()
+                if (turn.Type == ConversationTurnType.User)
                 {
-                    SenderId = turn.UserInput.SenderId,
-                    Role = ConversationSenderRole.Client,
-                    Content = turn.UserInput.TranscribedText ?? "",
-                    Timestamp = turn.UserInput.StartedSpeakingAt,
-                };
-                resultModel.Messages.Add(userMessageModel);
+                    var userMessageModel = new ConversationStateMessageViewModel()
+                    {
+                        SenderId = turn.UserInput.SenderId,
+                        Role = ConversationSenderRole.Client,
+                        Content = turn.UserInput.TranscribedText ?? "",
+                        Timestamp = turn.UserInput.StartedSpeakingAt,
+                    };
+                    resultModel.Messages.Add(userMessageModel);
+                }
+                else if (turn.Type == ConversationTurnType.System)
+                {
+                    var userMessageModel = new ConversationStateMessageViewModel()
+                    {
+                        SenderId = "System",
+                        Role = ConversationSenderRole.System,
+                        Content = turn.SystemInput.Type,
+                        Timestamp = turn.CreatedAt
+                    };
+                    resultModel.Messages.Add(userMessageModel);
+                }
+                else if (turn.Type == ConversationTurnType.ToolResult)
+                {
+                    // do nothing
+                }
 
                 var agentMessageModel = new ConversationStateMessageViewModel()
                 {
                     SenderId = turn.Response.AgentId,
                     Role = ConversationSenderRole.Agent,
                     Content = "",
-                    Timestamp = turn.Response.LLMStreamingStartedAt
+                    Timestamp = turn.Response.LLMStreamingStartedAt ?? turn.Response.LLMProcessStartedAt
                 };
                 if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.ConversationTurnAgentResponseType.Speech)
                 {

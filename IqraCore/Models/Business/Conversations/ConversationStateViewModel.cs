@@ -9,6 +9,7 @@ namespace IqraCore.Models.Business.Conversations
         public ConversationSessionState Status { get; set; }
         public DateTime StartTime { get; set; }
         public DateTime? EndTime { get; set; }
+        public ConversationSessionEndType EndType { get; set; }
 
         public List<ConversationStateClientViewModel> Clients { get; set; }
         public List<ConversationStateAgentViewModel> Agents { get; set; }

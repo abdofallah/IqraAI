@@ -654,7 +654,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             string? reason = turn.Response.ToolExecution?.ReasonForExecution ?? "Agent requested end of conversation, no reason provided.";
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed); 
-            await _conversationSessionManager.EndAsync(reason);
+            await _conversationSessionManager.EndAsync(reason, ConversationSessionEndType.AgentEndedCall);
         }
 
         // Audio Output Handlers

@@ -467,7 +467,15 @@ namespace IqraInfrastructure.Managers.Business
                 var queueToQueueGroupResult = await _outboundCallQueueGroupRepository.AddQueueToQueueGroupAsync(outboundCallQueueData.Id, queueGroupId);
                 if (!queueToQueueGroupResult)
                 {
-                    await _outboundCallQueueRepository.UpdateCallStatusAsync(outboundCallQueueData.Id, CallQueueStatusEnum.Failed, new CallQueueLog() { Type = CallQueueLogTypeEnum.Error, Message = "Failed to add outbound call queue to campaign at row " + (i + 1) + "." });
+                    await _outboundCallQueueRepository.UpdateCallStatusAsync(
+                        outboundCallQueueData.Id,
+                        CallQueueStatusEnum.Failed,
+                        new CallQueueLog() {
+                            Type = CallQueueLogTypeEnum.Error,
+                            Message = "Failed to add outbound call queue to campaign at row " + (i + 1) + "."
+                        },
+                        completedAt: DateTime.UtcNow
+                    );
                     errors.Add("Failed to add outbound call queue to queue group at row " + (i + 1) + ".");
                     continue;
                 }

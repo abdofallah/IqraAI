@@ -23,5 +23,6 @@ namespace IqraCore.Models.Business.Queues.Inbound
         // Queue Session Related
         public string? SessionId { get; set; } = null;
         public ConversationSessionState? SessionStatus { get; set; } = null;
+        public ConversationSessionEndType? SessionEndType { get; set; } = null;
     }
 }

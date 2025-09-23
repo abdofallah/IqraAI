@@ -459,7 +459,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             // Move this somewhere else, if all clients disconnected, we need better reason handling
             if (_clients.Count == 0)
             {
-                await EndAsync(reason + ": All clients disconnected");
+                await EndAsync(reason + ": All clients disconnected", ConversationSessionEndType.UserEndedCall);
             }
 
             return true;
@@ -585,7 +585,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             // If there are no more agents, end the session
             if (_agents.Count == 0 && _state == ConversationSessionState.Active)
             {
-                await EndAsync(reason + ": All agents disconnected");
+                await EndAsync(reason + ": All agents disconnected", ConversationSessionEndType.AgentEndedCall);
             }
 
             return true;
@@ -655,7 +655,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             _logger.LogInformation("Session {SessionId} resumed", _sessionId);
         }
-        public async Task EndAsync(string reason,  ConversationSessionState finalState = ConversationSessionState.Ended)
+        public async Task EndAsync(string reason, ConversationSessionEndType endType, ConversationSessionState finalState = ConversationSessionState.Ended)
         {
             if (_state == ConversationSessionState.Ended || _state == ConversationSessionState.Ending)
             {
@@ -707,6 +707,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             }
 
             // Update state
+            await _conversationStateRepository.UpdateEndType(_sessionId, endType);
             await UpdateStateAsync(finalState, reason);
 
             if (originalState == ConversationSessionState.Active)
@@ -802,7 +803,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             if (silenceDuration.TotalMilliseconds > _sessionContextData.Timeout.EndCallOnSilenceMS)
             {
-                EndAsync("Silence timeout reached").ContinueWith(t =>
+                EndAsync("Silence timeout reached", ConversationSessionEndType.UserSilenceTimeoutReached).ContinueWith(t =>
                 {
                     if (t.IsFaulted)
                     {
@@ -858,7 +859,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             // todo play a default message to end the call
 
-            await EndAsync("Maximum session duration reached").ContinueWith(t =>
+            await EndAsync("Maximum session duration reached", ConversationSessionEndType.MaxConversationDurationReached).ContinueWith(t =>
             {
                 if (t.IsFaulted)
                 {
@@ -1268,7 +1269,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             // End the session if it's a critical error
             if (e.Severity == ConversationErrorSeverity.Critical)
             {
-                EndAsync($"Critical agent error: {e.ErrorMessage}").ContinueWith(t =>
+                EndAsync($"Critical agent error: {e.ErrorMessage}", ConversationSessionEndType.MidSessionFailure).ContinueWith(t =>
                 {
                     if (t.IsFaulted)
                     {

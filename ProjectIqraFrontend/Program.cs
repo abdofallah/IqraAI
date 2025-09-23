@@ -46,8 +46,6 @@ using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
-using Microsoft.Extensions.DependencyInjection;
-using Minio;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
 using System.Reflection;
@@ -523,6 +521,13 @@ namespace ProjectIqraFrontend
             {
                 return new UserSessionValidationHelper(
                     sp.GetRequiredService<UserManager>(),
+                    sp.GetRequiredService<BusinessManager>()
+                );
+            });
+            builder.Services.AddSingleton<UserAPIValidationHelper>((sp) =>
+            {
+                return new UserAPIValidationHelper(
+                    sp.GetRequiredService<UserApiKeyManager>(),
                     sp.GetRequiredService<BusinessManager>()
                 );
             });

@@ -169,7 +169,7 @@ namespace IqraInfrastructure.Managers.WebSession
             {
                 if (!result.Success && sessionResult?.Data != null)
                 {
-                    await sessionResult.Data.EndAsync("InitiateWebSessionConversationAsync Failed", ConversationSessionState.Error);
+                    await sessionResult.Data.EndAsync("InitiateWebSessionConversationAsync Failed", ConversationSessionEndType.InitalizeError, ConversationSessionState.Error);
                     await CleanupSessionAsync(sessionResult.Data.SessionId);
                 }
             }

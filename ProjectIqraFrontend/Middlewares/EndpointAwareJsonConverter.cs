@@ -1,11 +1,14 @@
-﻿using System.Collections;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Helper;
+using MathNet.Numerics;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using IqraCore.Attributes;
-using IqraCore.Entities.Helper;
 
 namespace ProjectIqraFrontend.Middlewares
 {
@@ -54,40 +57,9 @@ namespace ProjectIqraFrontend.Middlewares
 
                 if (properties.TryGetValue(propertyName, out PropertyInfo? property))
                 {
-                    object? value;
-                    if (property.PropertyType == typeof(int))
-                    {
-                        value = DeserializeInt(ref reader);
-                    }
-                    else if (property.PropertyType == typeof(long))
-                    {
-                        value = DeserializeLong(ref reader);
-                    }
-                    else if (property.PropertyType == typeof(float))
-                    {
-                        value = DeserializeFloat(ref reader);
-                    }
-                    else if (property.PropertyType == typeof(double))
-                    {
-                        value = DeserializeDouble(ref reader);
-                    }
-                    else if (property.PropertyType.IsEnum)
-                    {
-                        value = DeserializeEnum(ref reader, property.PropertyType);
-                    }
-                    else if (property.PropertyType == typeof(string) || property.PropertyType == typeof(DateTime))
-                    {
-                        value = JsonSerializer.Deserialize(ref reader, property.PropertyType, options);
-                    }
-                    else if (typeof(IEnumerable).IsAssignableFrom(property.PropertyType) && property.PropertyType.IsGenericType)
-                    {
-                        var listType = typeof(List<>).MakeGenericType(property.PropertyType.GetGenericArguments()[0]);
-                        value = JsonSerializer.Deserialize(ref reader, listType, options);
-                    }
-                    else
-                    {
-                        value = JsonSerializer.Deserialize(ref reader, property.PropertyType, options);
-                    }
+                    var underlyingType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+
+                    var value = ReadObject(ref reader, underlyingType, options);
 
                     property.SetValue(instance, value);
                 }
@@ -98,6 +70,85 @@ namespace ProjectIqraFrontend.Middlewares
             }
 
             throw new JsonException("JSON object is incomplete");
+        }
+
+        private object? ReadObject(ref Utf8JsonReader reader, Type underlyingType, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                return null;
+            }
+
+            object? value;
+            if (underlyingType == typeof(int))
+            {
+                value = DeserializeInt(ref reader);
+            }
+            else if (underlyingType == typeof(long))
+            {
+                value = DeserializeLong(ref reader);
+            }
+            else if (underlyingType == typeof(float))
+            {
+                value = DeserializeFloat(ref reader);
+            }
+            else if (underlyingType == typeof(double))
+            {
+                value = DeserializeDouble(ref reader);
+            }
+            else if (underlyingType.IsEnum)
+            {
+                value = DeserializeEnum(ref reader, underlyingType);
+            }
+            else if (underlyingType == typeof(string))
+            {
+                value = DeserializeString(ref reader);
+            }
+            else if (underlyingType == typeof(DateTime))
+            {
+                value = DeserializeDateTime(ref reader);
+            }
+            else if (typeof(IEnumerable).IsAssignableFrom(underlyingType) && underlyingType.IsGenericType)
+            {
+                var listType = typeof(List<>).MakeGenericType(underlyingType.GetGenericArguments()[0]);
+                var listItemType = Nullable.GetUnderlyingType(underlyingType.GetGenericArguments()[0]) ?? underlyingType.GetGenericArguments()[0];
+
+                if (reader.TokenType != JsonTokenType.StartArray)
+                {
+                    throw new JsonException("JSON token is not a start array");
+                }
+                reader.Read();
+
+                value = Activator.CreateInstance(listType);
+
+                while (true)
+                {
+                    if (reader.TokenType == JsonTokenType.EndArray)
+                    {
+                        reader.Read();
+                        break;
+                    }
+
+                    if (reader.TokenType == JsonTokenType.Null)
+                    {
+                        ((IList)value).Add(null);
+                        reader.Read();
+                        continue;
+                    }
+
+                    var item = ReadObject(ref reader, listItemType, options);
+                    ((IList)value).Add(item);
+                    reader.Read();
+                }
+
+                reader.Read();
+            }
+            else
+            {
+                value = JsonSerializer.Deserialize(ref reader, underlyingType, options);
+            }
+
+            return value;
         }
 
         private int DeserializeInt(ref Utf8JsonReader reader)
@@ -186,6 +237,27 @@ namespace ProjectIqraFrontend.Middlewares
                 }
             }
             throw new JsonException($"Unable to deserialize enum of type {enumType.Name}");
+        }
+
+        private object DeserializeString(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                return reader.GetString();
+            }
+            throw new JsonException("Unable to deserialize string value");
+        }
+
+        private object DeserializeDateTime(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                if (DateTime.TryParse(reader.GetString(), out DateTime result))
+                {
+                    return result;
+                }
+            }
+            throw new JsonException("Unable to deserialize DateTime value");
         }
 
         public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
@@ -285,10 +357,17 @@ namespace ProjectIqraFrontend.Middlewares
 
             if (underlyingType.IsEnum)
             {
-                writer.WriteStartObject();
-                writer.WriteNumber("value", Convert.ToInt32(value));
-                writer.WriteString("name", Enum.GetName(value.GetType(), value));
-                writer.WriteEndObject();
+                if (IsApiRequest())
+                {
+                    writer.WriteNumberValue(Convert.ToInt32(value));
+                }
+                else
+                {
+                    writer.WriteStartObject();
+                    writer.WriteNumber("value", Convert.ToInt32(value));
+                    writer.WriteString("name", Enum.GetName(value.GetType(), value));
+                    writer.WriteEndObject();
+                }
                 return true;
             }
 
@@ -349,7 +428,7 @@ namespace ProjectIqraFrontend.Middlewares
                 var keepOriginalCase = false;
                 if (property != null)
                 {
-                    keepOriginalCase = property?.GetCustomAttribute<KeepOriginalDictionaryKeyCaseAttribute>() != null;
+                    keepOriginalCase = property?.GetCustomAttribute<KeepOriginalDictionaryKeyCaseAttribute>() != null || IsApiRequest();
                 }
 
                 foreach (var entry in (IDictionary)value)
@@ -452,6 +531,28 @@ namespace ProjectIqraFrontend.Middlewares
         {
             var endpoint = _httpContextAccessor.HttpContext?.GetEndpoint() as RouteEndpoint;
             return endpoint?.RoutePattern?.RawText ?? _httpContextAccessor.HttpContext?.Request.Path.Value ?? string.Empty;
+        }
+
+        private bool IsApiRequest()
+        {
+            if (_httpContextAccessor?.HttpContext == null)
+            {
+                return false;
+            }
+
+            var endpoint = _httpContextAccessor.HttpContext.GetEndpoint();
+            if (endpoint == null)
+            {
+                return false;
+            }
+
+            var controllerActionDescriptor = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>();
+            if (controllerActionDescriptor != null)
+            {
+                return controllerActionDescriptor.ControllerTypeInfo.GetCustomAttribute<ApiControllerAttribute>() != null;
+            }
+
+            return false;
         }
     }
 }

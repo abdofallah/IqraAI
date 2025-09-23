@@ -141,7 +141,8 @@ namespace IqraInfrastructure.Managers.Call
                         new CallQueueLog {
                             Type = CallQueueLogTypeEnum.Error,
                             Message = $"Unhandled error during processing: {ex.Message}"
-                        }
+                        },
+                        completedAt: DateTime.UtcNow
                     );
                 }
                 catch (Exception finalEx)

@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Helper.Campaign;
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;

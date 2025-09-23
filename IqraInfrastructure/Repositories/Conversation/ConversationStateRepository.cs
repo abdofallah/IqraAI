@@ -58,7 +58,6 @@ namespace IqraInfrastructure.Repositories.Conversation
             try
             {
                 await _conversationStateCollection.InsertOneAsync(conversationState, null, cancellationToken);
-                _logger.LogInformation("Created conversation state with ID {Id}", conversationState.Id);
                 return conversationState.Id;
             }
             catch (Exception ex)
@@ -145,7 +144,6 @@ namespace IqraInfrastructure.Repositories.Conversation
                 var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationState.Id);
                 var result = await _conversationStateCollection.ReplaceOneAsync(filter, conversationState, new ReplaceOptions { IsUpsert = false }, cancellationToken);
 
-                _logger.LogInformation("Updated conversation state with ID {Id}", conversationState.Id);
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)
@@ -170,12 +168,30 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
-                _logger.LogInformation("Updated status of conversation {Id} to {Status}", conversationId, status);
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating status of conversation {Id} to {Status}", conversationId, status);
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateEndType(string conversationId, ConversationSessionEndType endType, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId);
+                var update = Builders<ConversationState>.Update
+                    .Set(c => c.EndType, endType);
+
+                var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
+
+                return result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating end type of conversation {Id} to {EndType}", conversationId, endType);
                 throw;
             }
         }
@@ -191,7 +207,6 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
-                _logger.LogDebug("Started new turn {TurnId} with sequence {Sequence} in conversation {ConversationId}", turn.Id, turn.Sequence, conversationId);
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)
@@ -263,7 +278,6 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
-                _logger.LogInformation("Added client {ClientId} to conversation {Id}", clientInfo.ClientId, conversationId);
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)
@@ -288,7 +302,6 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
-                _logger.LogInformation("Updated client {ClientId} left information in conversation {Id}", clientId, conversationId);
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)
@@ -308,7 +321,6 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
-                _logger.LogInformation("Added agent {AgentId} to conversation {Id}", agentInfo.AgentId, conversationId);
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)
@@ -333,7 +345,6 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
-                _logger.LogInformation("Updated agent {AgentId} left information in conversation {Id}", agentId, conversationId);
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)
@@ -353,7 +364,6 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
-                _logger.LogInformation("Updated metrics for conversation {Id}", conversationId);
                 return result.ModifiedCount > 0;
             }
             catch (Exception ex)

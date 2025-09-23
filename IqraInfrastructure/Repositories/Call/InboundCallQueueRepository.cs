@@ -220,14 +220,15 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task UpdateInboundCallQueueSessionIdAndStatusAsync(string queueId, string sessionId, CallQueueStatusEnum status)
+        public async Task UpdateInboundCallQueueSessionIdAndStatusAsync(string queueId, string sessionId, CallQueueStatusEnum status, DateTime completedAt)
         {
             try
             {
                 var filter = Builders<InboundCallQueueData>.Filter.Eq(c => c.Id, queueId);
                 var update = Builders<InboundCallQueueData>.Update
                     .Set(c => c.SessionId, sessionId)
-                    .Set(c => c.Status, status);
+                    .Set(c => c.Status, status)
+                    .Set(c => c.CompletedAt, completedAt);
 
                 await _inboundCallQueueCollection.UpdateOneAsync(filter, update);
             }

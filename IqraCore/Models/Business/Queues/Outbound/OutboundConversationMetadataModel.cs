@@ -15,6 +15,9 @@ namespace IqraCore.Models.Business.Queues
         public DateTime? ProcessingStartedAt { get; set; } = null;
         public DateTime? CompletedAt { get; set; } = null;
 
+        public Dictionary<string, string> DynamicVariables { get; set; }
+        public Dictionary<string, string> Metadata { get; set; }
+
         // General
         public string? CampaignId { get; set; }
         public string NumberId { get; set; }
@@ -23,5 +26,6 @@ namespace IqraCore.Models.Business.Queues
         // Queue Session Related
         public string? SessionId { get; set; } = null;
         public ConversationSessionState? SessionStatus { get; set; } = null;
+        public ConversationSessionEndType? SessionEndType { get; set; } = null;
     }
 }
