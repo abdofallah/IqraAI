@@ -962,8 +962,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.EndCallOnDetect)
             {
                 _agentState.PreviousTurn!.Response.ToolExecution!.Result = $"voicemail detected, execute end call action while leaving message: `{_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.MessageToLeave![_agentState.CurrentLanguageCode]}`.";
-
-                await _conversationSessionManager.EndAsync("Voicemail Detected", ConversationSessionEndType.VoicemailDetected);
             }
             else if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.LeaveMessageOnDetect)
             {
