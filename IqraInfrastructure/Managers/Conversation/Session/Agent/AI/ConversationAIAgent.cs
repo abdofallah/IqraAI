@@ -25,6 +25,8 @@ using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Drawing;
+using static Google.Cloud.TextToSpeech.V1.MultiSpeakerMarkup.Types;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -58,6 +60,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly CustomToolExecutionHelper _customToolHelper;
         private readonly SendSMSToolExecutionHelper _sendSMSToolExecutionHelper;
         private readonly ConversationAIAgentRAGManager _ragManager;
+        private readonly ConversationAIAgentVoicemailDetector _voicemailDetector;
 
         // Master Cancellation Token
         private CancellationTokenSource _conversationCTS = new();
@@ -143,7 +146,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _llmHandler, _audioOutputHandler, _agentState, _llmProviderManager, _businessManager);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
-            
+            if (_conversationSessionManager.IsOutboundCall)
+            {
+                _voicemailDetector = new ConversationAIAgentVoicemailDetector(_loggerFactory, _agentState, _sttProviderManager, _llmProviderManager);
+            }
 
             // Wire up Events between Modules and Orchestrator
             WireUpEvents();
@@ -194,6 +200,20 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
              // DTMF Session Manager
              _dtmfSessionManager.SessionEnded += OnDtmfSessionEnded;
+
+            // Voicemail Detection
+            if(_conversationSessionManager.IsOutboundCall)
+            {
+                _voicemailDetector.OnStopAgentSpeaking += async () =>
+                {
+                    await PauseAgentOnVoicemailDetectedAsync();
+                };
+
+                _voicemailDetector.OnEndCallorLeaveMessageRecieved += async () =>
+                {
+                    await EndOrLeaveMessageEndOnVoicemailDetectedAsync();
+                };
+            }
         }
         public async Task InitializeAsync()
         {
@@ -246,6 +266,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _audioInputHandler.InitializeAsync(_conversationCTS.Token);
                 await _ragManager.InitializeAsync(_conversationCTS.Token);
 
+                if (_conversationSessionManager.IsOutboundCall)
+                {
+                    await _voicemailDetector.InitializeAsync(_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection, _conversationCTS.Token);
+                }
+
                 _agentState.IsInitialized = true;
             }
             catch (Exception ex)
@@ -272,7 +297,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                                             _agentState.CurrentSessionContext.Language.EnabledMultiLanguages?.Count > 1;
 
             // Initial Empty Turn
-            var dateTimeNow = DateTime.UtcNow;
             var newTurn = new ConversationTurn
             {
                 Type = ConversationTurnType.System,
@@ -295,6 +319,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioOutputHandler.StartProcessingAudioTask();
             _audioInputHandler.StartProcessingAudioTask();
             _agentState.SileroVadCore?.StartAudioProcessingTask();
+            if (_conversationSessionManager.IsOutboundCall)
+            {
+                _ = _voicemailDetector.StartAsync();
+            }
             _isConversationStarted = true;
 
             if (requiresLanguageSelection)
@@ -370,6 +398,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioOutputHandler?.StopSending();
             _audioOutputHandler?.Dispose();
 
+            if (_conversationSessionManager.IsOutboundCall)
+            {
+                _voicemailDetector?.Dispose();
+            }
+
             await (_ragManager?.DisposeAsync() ?? ValueTask.CompletedTask);
 
             // Dispose Tool Executor? (If it holds resources) TODO > might need to cancel current httpclient ongoign request and dispose
@@ -411,6 +444,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _agentState.SileroVadCore?.ProcessAudio(audioData);
             _turnManager.BufferAudioForMlAnalysis(audioData);
             _audioInputHandler.QueueAudioChunk(audioData, cancellationToken);
+            if (_conversationSessionManager.IsOutboundCall && !_voicemailDetector.HasServiceEnded)
+            {
+                _voicemailDetector.BufferAudio(audioData);
+            }
         }
         public async Task ProcessTextAsync(string text, string? clientId, CancellationToken cancellationToken)
         {
@@ -795,6 +832,80 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var currentTurnText = string.Join(" ", interruptedTurn.Response.SpokenSegments.Select(x => x.Text).ToArray());
             _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
             await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted);
+        }
+
+        // Voicemail Detector Handlers
+        private async Task PauseAgentOnVoicemailDetectedAsync()
+        {
+            _agentState.IsAcceptingSTTAudio = false;
+            _agentState.IsVoicemailDetected = true;
+
+            await _llmHandler.CancelCurrentLLMTaskAsync();
+            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
+
+            // what if conversation still at first turn of conversation started
+            // > if it is then is it on language selection? or on begin conversation flow?
+
+            // what if it is on a user turn that is currently speaking
+
+            // what if it is on a agent speaking turn
+
+            // what if it is on a agent executing function turn
+            
+            // what if it is on a agent executing tool result turn
+
+            if (_agentState.CurrentTurn != null)
+            {
+                if (
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Completed ||
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Interrupted ||
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Error
+                )
+                {
+                    await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted);
+                }
+            }
+
+            // create new system voicemail turn
+            var newTurn = new ConversationTurn
+            {
+                Type = ConversationTurnType.System,
+                SystemInput = new ConversationTurnSystemInput()
+                {
+                    Type = "VoicemailDetected"
+                },
+                Response = new ConversationTurnAgentResponse
+                {
+                    AgentId = _agentState.BusinessAppAgent!.Id,
+                    Type = ConversationTurnAgentResponseType.SystemTool,
+                    ToolExecution = new ConversationTurnToolExecutionData()
+                    {
+                        ToolType = ConversationTurnAgentToolType.System,
+                        ToolName = "VoicemailDetected",
+                        RawLLMInput = "execute_system_function: \"voicemail_detected\""
+                    }
+                },
+                Status = ConversationTurnStatus.AgentProcessing
+            };
+            await OnNewTurnCreated(newTurn);
+        }
+
+        private async Task EndOrLeaveMessageEndOnVoicemailDetectedAsync()
+        {
+            _agentState.CurrentTurn!.Response.ToolExecution!.CompletedAt = DateTime.UtcNow;
+
+            if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.EndCallOnDetect)
+            {
+                _agentState.CurrentTurn.Response.ToolExecution.Result = $"voicemail detected, execute end call action while leaving message: `{_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.MessageToLeave![_agentState.CurrentLanguageCode]}`.";
+
+                await _conversationSessionManager.EndAsync("Voicemail Detected", ConversationSessionEndType.VoicemailDetected);
+            }
+            else if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.LeaveMessageOnDetect)
+            {
+                _agentState.CurrentTurn.Response.ToolExecution.Result = $"voicemail detected, execute end call action.";
+            }
+
+            await _llmHandler.ProcessToolResultAsync(null, _agentState.CurrentTurn, _conversationCTS.Token);
         }
 
         // Disposal

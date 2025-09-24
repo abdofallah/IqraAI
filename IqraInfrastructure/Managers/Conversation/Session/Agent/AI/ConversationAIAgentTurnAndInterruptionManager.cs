@@ -249,6 +249,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _userTurnTextFinalBuffer.Clear();
             }
 
+            if (_interruptionVerificationLLMTask != null)
+            {
+                _interruptionVerificationLLMCTS.Cancel();
+                _interruptionVerificationLLMTask = null;
+            }
+
+            if (_turnEndLLMTask != null)
+            {
+                _turnEndLLMCTS.Cancel();
+                _turnEndLLMTask = null;
+            }
+
             _userTurnAudioBuffer.Clear();  
             _currentTurnWordCount = 0;
             _isUserTurnActive = false;
@@ -262,6 +274,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _isAwaitingVerification = false;
             _canInterruptAgentAfterVerificaiton = false;
             _hasVerifiedInterruptionResult = false;
+            _turnEndLLMInputBuffer.Clear();
+            _interruptionVerificationLLMInputBuffer.Clear();
         }
         public void SetUserTurnActive()
         {
@@ -271,6 +285,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Management
         public async Task ProcessTranscriptionForTurnAnalysis(string text, bool isFinal)
         {
+            if (_agentState.IsVoicemailDetected) return;
+
             await _transcriptionProcessingLock.WaitAsync();
 
             try
@@ -448,6 +464,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private async Task TryConcludeUserTurn()
         {
+            if (_agentState.IsVoicemailDetected) return;
+
             bool canConclude = false;
 
             switch (_config.TurnEnd.Type)
@@ -569,6 +587,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Pause Trigger Event Handlers
         private void HandleSTTPauseTrigger(string newTextChunk)
         {
+            if (_agentState.IsVoicemailDetected) return;
+
             if (_config.PauseTrigger?.Type == AgentInterruptionPauseTriggerTypeENUM.STT)
             {
                 var wordCountThreshold = _config.PauseTrigger.WordCount ?? 0;
@@ -586,6 +606,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private void OnPauseTriggerVadSpeechStarted()
         {
+            if (_agentState.IsVoicemailDetected) return;
             if (_agentState.CurrentTurn == null) return;
 
             if (
@@ -602,6 +623,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Vad Turn End Event Handlers
         private async Task OnTurnEndVadSpeechStarted()
         {
+            if (_agentState.IsVoicemailDetected) return;
+
             await _transcriptionProcessingLock.WaitAsync();
 
             try
@@ -615,6 +638,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private async Task OnTurnEndVadSpeechEnded()
         {
+            if (_agentState.IsVoicemailDetected) return;
+
             await _transcriptionProcessingLock.WaitAsync();
 
             try
@@ -770,6 +795,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // ML Turn End
         private async Task OnMLTurnVadSpeechStarted()
         {
+            if (_agentState.IsVoicemailDetected) return;
+
             await _transcriptionProcessingLock.WaitAsync();
 
             try
@@ -783,6 +810,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private async Task OnMLTurnVadSpeechEnded()
         {
+            if (_agentState.IsVoicemailDetected) return;
+
             await _transcriptionProcessingLock.WaitAsync();
 
             try

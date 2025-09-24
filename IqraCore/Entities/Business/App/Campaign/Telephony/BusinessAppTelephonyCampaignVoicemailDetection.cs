@@ -9,7 +9,7 @@ namespace IqraCore.Entities.Business
 
         public int MLCheckDurationMS { get; set; } = 1000;
         public int MaxMLCheckTries { get; set; } = 2;
-        public bool WaitForVADSpeechForMLCheck { get; set; } = true;
+        public bool WaitForVADSpeechForMLCheck { get; set; } = false;
 
         public int VoiceMailMessageVADSilenceThresholdMS { get; set; } = 1000;
         public int VoiceMailMessageVADMaxSpeechDurationMS { get; set; } = 4000;

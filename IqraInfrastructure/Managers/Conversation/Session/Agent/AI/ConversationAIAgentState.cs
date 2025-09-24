@@ -47,6 +47,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public bool IsExecutingCustomTool { get; set; } = false;
         public bool IsExecutingSystemTool { get; set; } = false;
         public bool IsAcceptingSTTAudio { get; set; } = false;
+        public bool IsVoicemailDetected { get; set; } = false;
 
         // Audio Output State
         public float CurrentAgentVolumeFactor { get; set; } = 1.0f; // Volume for mixing

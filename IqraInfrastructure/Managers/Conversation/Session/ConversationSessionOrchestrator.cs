@@ -42,8 +42,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly string _sessionRegionId;
         private readonly string _sessionRegionProcessingServerId;
 
+        // Telephony Data
         private CallQueueData? _sessionCallQueueData;
+        private BusinessAppTelephonyCampaign? _sessionCallQueueTelephonyCampaignData;
+        private BusinessAppRoute? _sessionCallQueueRouteData;
+
+        // Web Session Data
         private WebSessionData? _sessionWebSessionData;
+        private BusinessAppWebCampaign? _sessionWebSessionCampaignData;
 
         private readonly List<IConversationClient> _clients = new();
         private IConversationClient? _primaryClient = null;
@@ -84,9 +90,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         public string SessionId => _sessionId;
         public ConversationSessionState State => _state;
         public bool IsCallInitiated => _sessionInitiationType == ConversationSessionInitiationType.Telephony;
+        public bool IsInboundCall => IsCallInitiated && (_sessionCallQueueData != null && _sessionCallQueueData.Type == CallQueueTypeEnum.Inbound);
+        public bool IsOutboundCall => IsCallInitiated && (_sessionCallQueueData != null && _sessionCallQueueData.Type == CallQueueTypeEnum.Outbound);
         public bool IsWebInitiated => _sessionInitiationType == ConversationSessionInitiationType.Web;
         public BusinessApp? BusinessApp => _sessionBusinessAppData;
         public BusinessData? BusinessData => _sessionBusinessData;
+        public CallQueueData? CallQueueData => _sessionCallQueueData;
+        public BusinessAppTelephonyCampaign? CallQueueTelephonyCampaignData => _sessionCallQueueTelephonyCampaignData;
+        public BusinessAppRoute? CallQueueRouteData => _sessionCallQueueRouteData;
+        public WebSessionData? WebSessionData => _sessionWebSessionData;
+        public BusinessAppWebCampaign? WebSessionCampaignData => _sessionWebSessionCampaignData;
         public ConversationSessionContext? Context => _sessionContextData;
         public IConversationClient? PrimaryClient => _primaryClient;
         public IConversationAgent? PrimaryAgent => _primaryAgent;
@@ -215,6 +228,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     _logger.LogError("Business route data not found for business ID {BusinessId} and route ID {RouteId}", _sessionBusinessId, inboundCallQueue.RouteId);
                     throw new InvalidOperationException($"Business route data not found for business ID {_sessionBusinessId} and route ID {inboundCallQueue.RouteId}");
                 }
+                _sessionCallQueueRouteData = businessRouteData;
 
                 _sessionContextData = new ConversationSessionContext()
                 {
@@ -267,6 +281,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     _logger.LogError("Outbound call campaign data not found for business ID {BusinessId} and queue ID {RouteId}", _sessionBusinessId, outboundCallQueue.Id);
                     throw new InvalidOperationException($"Outbound call campaign not found for business ID {_sessionBusinessId} and queue ID {outboundCallQueue.Id}");
                 }
+                _sessionCallQueueTelephonyCampaignData = campaignDataResult.Data;
 
                 _sessionContextData = new ConversationSessionContext()
                 {
@@ -316,6 +331,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 _logger.LogError("Web session campaign data not found for business ID {BusinessId} and web session ID {WebSessionId}", _sessionBusinessId, _sessionWebSessionData.WebCampaignId);
                 throw new InvalidOperationException($"Web session campaign not found for business ID {_sessionBusinessId} and queue ID {_sessionWebSessionData.WebCampaignId}");
             }
+            _sessionWebSessionCampaignData = campaignDataResult.Data;
 
             _sessionContextData = new ConversationSessionContext()
             {

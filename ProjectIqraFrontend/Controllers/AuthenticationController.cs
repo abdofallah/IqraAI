@@ -246,7 +246,7 @@ namespace ProjectIqraFrontend.Controllers
             {
                 return result.SetFailureResult(
                     "Login:EXCEPTION",
-                    "Internal server error occured while trying to login."
+                    $"Internal server error occured while trying to login: {ex.Message}"
                 );
             }
         }

@@ -9,7 +9,7 @@ using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using IqraInfrastructure.Managers.STT;
-using IqraInfrastructure.Managers.VAD.Silero;
+using IqraInfrastructure.Managers.VAD;
 using IqraInfrastructure.Managers.VoiceMailDetection;
 using Microsoft.Extensions.Logging;
 using System.Text;
@@ -25,7 +25,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly STTProviderManager _sttProviderManager;
         private readonly LLMProviderManager _llmProviderManager;
 
-        private readonly BusinessAppAgentVoicemail _voicemailSettings;
+        private BusinessAppTelephonyCampaignVoicemailDetection _voicemailSettings;
 
         private CancellationTokenSource _cancellationTokenSource;
 
@@ -33,8 +33,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private bool _hasServiceEnded = false;
 
         // Public Events
-        public event EventHandler OnStopAgentSpeaking;
-        public event EventHandler OnEndCallorLeaveMessageRecieved;
+        public event Action OnStopAgentSpeaking;
+        public event Action OnEndCallorLeaveMessageRecieved;
 
         // ML MODEL RELATED STATE
         private BlandAIOnnxVoicemailDetectModel _voicemailMLModel;
@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private Task _audioBufferProcessingTask;
 
         // VAD RELATED STATE
-        private IVadService _vadService;
+        private VadStateTracker _vadStateTracker;
         private DateTime? _firstSpeechDetected = null;
         private DateTime? _silenceDetected = null;
 
@@ -64,6 +64,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private bool _hasTriggeredStopSpeakingAgentTrigger = false;
         private bool _hasTriggeredEndCallorLeaveMessageTrigger = false;    
 
+        // PUBLIC
+        public bool HasServiceEnded => _hasServiceEnded;
+
         public ConversationAIAgentVoicemailDetector(
             ILoggerFactory loggerFactory,
             ConversationAIAgentState agentState,
@@ -79,30 +82,28 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _llmProviderManager = llmProviderManager;
 
             _audioBuffer = new List<float>();
-
-            //_voicemailSettings = _agentState.BusinessAppAgent.Voicemail;
         }
 
-        public async Task InitializeAsync(CancellationToken token)
+        public async Task InitializeAsync(BusinessAppTelephonyCampaignVoicemailDetection voiceMailSettings, CancellationToken token)
         {
+            _voicemailSettings = voiceMailSettings;
+
             if (!_voicemailSettings.IsEnabled) return;
 
             _cancellationTokenSource= CancellationTokenSource.CreateLinkedTokenSource(token);
 
-            //_vadService = new SileroVadCore(_loggerFactory.CreateLogger<SileroVadCore>(), token);
-            _vadService.VoiceActivityChanged += OnVADResultRecieved;
+            _vadStateTracker = new VadStateTracker(
+                new VadTrackerOptions()
+                {
+                    MinSilenceDurationMs = _voicemailSettings.VoiceMailMessageVADSilenceThresholdMS,
+                    MinSpeechDurationMs = 300
+                }    
+            );
+            _vadStateTracker.SpeechStarted += OnVADSpeechStarted;
+            _vadStateTracker.SpeechEnded += OnVadSpeechEnded;
+            _agentState.SileroVadCore!.SpeechProbabilityUpdated += _vadStateTracker.ProcessProbability;
 
             _voicemailMLModel = new BlandAIOnnxVoicemailDetectModel();
-
-            _vadService.Initialize(new VadOptions()
-            {
-                AudioEncodingType = _agentState.AgentConfiguration.AudioEncodingType,
-                SampleRate = _agentState.AgentConfiguration.SampleRate,
-                BitsPerSample = _agentState.AgentConfiguration.BitsPerSample,
-
-                MinSilenceDurationMs = _voicemailSettings.VoiceMailMessageVADSilenceThresholdMS,
-                MinSpeechDurationMs = 300
-            });
 
             if (_voicemailSettings.OnVoiceMailMessageDetectVerifySTTAndLLM)
             {
@@ -205,7 +206,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 var currentBuffer = floatArray.Take(currentRead).ToArray();
 
-                _vadService.Process32bitAudio(currentBuffer);
                 _audioBuffer.AddRange(currentBuffer);
             }
         }
@@ -224,12 +224,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     _hasCompletedMLChecks = true;
                     break;
                 }
-                if (_voicemailSettings.WaitForVADSpeechForMLCheck && _firstSpeechDetected == null)
-                {
-                    await Task.Delay(50, _cancellationTokenSource.Token);
-                    continue;
-                }
-                if (_silenceDetected == null)
+                if (_voicemailSettings.WaitForVADSpeechForMLCheck && (_firstSpeechDetected == null || _silenceDetected == null))
                 {
                     await Task.Delay(50, _cancellationTokenSource.Token);
                     continue;
@@ -242,6 +237,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                     var prediction = _voicemailMLModel.Predict(currentChunk);
                     _currentCheckResult.Add((prediction.Label, prediction.Confidence));
+                    _logger.LogInformation($"ML CHECK: {prediction.Label} - {prediction.Confidence}");
 
                     _currentMLChecks++;
                 }
@@ -353,7 +349,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _ = Task.Run(async () =>
                         {
                             await Task.Delay(_voicemailSettings.StopSpeakingAgentDelayAfterMatchMS, _cancellationTokenSource.Token);
-                            OnStopAgentSpeaking?.Invoke(this, null);
+                            OnStopAgentSpeaking?.Invoke();
                         });
                     }
                 }
@@ -391,7 +387,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _ = Task.Run(async () =>
                         {
                             await Task.Delay(_voicemailSettings.EndOrLeaveMessageDelayAfterMatchMS, _cancellationTokenSource.Token);
-                            OnEndCallorLeaveMessageRecieved?.Invoke(this, null);
+                            OnEndCallorLeaveMessageRecieved?.Invoke();
                         });
                     }
                 }
@@ -436,49 +432,33 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _llmService.ProcessInputAsync(_cancellationTokenSource.Token);
         }
 
-        // EVENTS
-        private void OnVADResultRecieved(object sender, VadEventArgs args)
+        // VAD EVENTS
+        private void OnVADSpeechStarted()
         {
             if (_hasServiceEnded) return;
             if (_firstSpeechDetected != null && _silenceDetected != null) return;
 
-            if (args.IsSpeechDetected && _firstSpeechDetected == null)
-            {
-                if (_voicemailSettings.WaitForVADSpeechForMLCheck)
+            _firstSpeechDetected = DateTime.UtcNow;
+
+            Task.Run(async () =>
                 {
-                    // remove all initial silence audio from buffer
-                    var timespan = args.Timestamp;
-                    double audioBufferSample = (timespan.TotalSeconds - 0.25 /** speech min vad options **/) * 16000;
-                    _audioBuffer.RemoveRange(0, Math.Min((int)audioBufferSample, _audioBuffer.Count));
-                }
-
-                _firstSpeechDetected = DateTime.UtcNow;                
-
-                // make sure we are not stuck in loop of no silence ending
-                Task.Run(async () =>
-                    {
-                        await Task.Delay(_voicemailSettings.VoiceMailMessageVADMaxSpeechDurationMS, _cancellationTokenSource.Token);
-                        OnVadSilenceRecived();
-                    },
-                    _cancellationTokenSource.Token
-                );
-            }
-
-            if (!args.IsSpeechDetected)
-            {
-                OnVadSilenceRecived();
-            }
+                    await Task.Delay(_voicemailSettings.VoiceMailMessageVADMaxSpeechDurationMS, _cancellationTokenSource.Token);
+                    OnVadSpeechEnded();
+                },
+                _cancellationTokenSource.Token
+            );
         }
-
-        private void OnVadSilenceRecived()
+        private void OnVadSpeechEnded()
         {
             if (_hasServiceEnded) return;
-            if (_silenceDetected != null) return;
+            if (_firstSpeechDetected != null && _silenceDetected != null) return;
+
             _silenceDetected = DateTime.UtcNow;
 
             PerformLLMCheck();
         }
 
+        // SST EVENTS
         private void OnRecognizingReceived(object sender, string text)
         {
             if (_hasServiceEnded) return;
@@ -486,6 +466,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _sttStringBuffer = text;
         }
 
+        // LLM EVENTS
         private void OnLLMMessageStreamed(object sender, ConversationAgentEventLLMStreamed eventData)
         {
             string? deltaText;
@@ -513,6 +494,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
+        // DISPOSAL
         public void Dispose()
         {
             if (_hasServiceEnded) return;
@@ -539,12 +521,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             try
             {
                 _cancellationTokenSource.Dispose();
-            }
-            catch { /* Ignore */ }
-
-            try
-            {
-                _vadService?.Dispose();
             }
             catch { /* Ignore */ }
             

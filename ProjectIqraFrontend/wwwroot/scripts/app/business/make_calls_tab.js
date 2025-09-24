@@ -13,7 +13,6 @@ const OutboundCallScheduleType = {
 let IsInitiatingCall = false;
 let CurrentMakeCallType = OutboundCallNumberType.Single;
 let SelectedCampaignId = null;
-let SelectedFromNumberId = null;
 let SelectedBulkFromFileObject = null;
 let makeCallFormInitialState = {};
 
@@ -32,8 +31,6 @@ const editSelectedMakeCallCampaignInput = makeCallsTab.find("#editSelectedMakeCa
 const editChangeMakeCallCampaignButton = makeCallsTab.find("#editChangeMakeCallCampaignButton");
 // Single Number Container
 const makeCallNumberSingleContainer = makeCallsTab.find("#make-call-number-single-container");
-const makeCallSelectedFromNumberInput = makeCallsTab.find("#makeCallSelectedFromNumber");
-const makeCallChangeFromNumberButton = makeCallsTab.find("#makeCallChangeFromNumberButton");
 const makeCallToNumberInput = makeCallsTab.find("#makeCallToNumberInput");
 // Bulk Number Container
 const makeCallNumberBulkContainer = makeCallsTab.find("#make-call-number-bulk-container");
@@ -51,14 +48,6 @@ const inputMakeCallSelectCampaignSearch = editChangeMakeCallCampaignModalElement
 const searchMakeCallSelectCampaignListButton = editChangeMakeCallCampaignModalElement.find("#searchMakeCallSelectCampaignList");
 const makeCallSelectCampaignModalList = editChangeMakeCallCampaignModalElement.find("#make-call-select-campaign-modal-list");
 const saveMakeCallCampaignButton = editChangeMakeCallCampaignModalElement.find("#saveMakeCallCampaignButton");
-
-// Number Selection Modal
-const makeCallChangeFromNumberModalElement = makeCallsTab.find("#makeCallChangeFromNumberModal");
-let makeCallChangeFromNumberModal = null;
-const makeCallAssignNumberModalLists = makeCallChangeFromNumberModalElement.find(".make-call-assign-number-modal-list");
-const inputMakeCallModalSearchNumberInput = makeCallChangeFromNumberModalElement.find("#inputMakeCallModalSearchNumberInput");
-const searchMakeCallAssignNumberModalListButton = makeCallChangeFromNumberModalElement.find("#searchMakeCallAssignNumberModalList");
-const saveMakeCallFromNumberButton = makeCallChangeFromNumberModalElement.find("#saveMakeCallFromNumberButton");
 
 /** API FUNCTIONS **/
 function InitiateCall(data, successCallback, errorCallback) {
@@ -83,14 +72,12 @@ function resetMakeCallForm() {
 	// Reset State Variables
 	CurrentMakeCallType = OutboundCallNumberType.Single;
 	SelectedCampaignId = null;
-	SelectedFromNumberId = null;
 	SelectedBulkFromFileObject = null;
 
 	// Reset Form Elements
 	editSelectedMakeCallCampaignIcon.text("-");
 	editSelectedMakeCallCampaignInput.val("").attr("placeholder", "Select Campaign");
 
-	makeCallSelectedFromNumberInput.val("").attr("placeholder", "Select a number...");
 	makeCallToNumberInput.val("");
 
 	makeCallToNumberBulkInput.val(null); // Resets the file input
@@ -170,7 +157,6 @@ function gatherMakeCallConfig() {
 		campaignId: SelectedCampaignId,
 		number: {
 			type: CurrentMakeCallType,
-			forceFromNumber: SelectedFromNumberId,
 			toNumber: CurrentMakeCallType === OutboundCallNumberType.Single ? makeCallToNumberInput.val().trim() : null,
 		},
 		schedule: {
@@ -200,7 +186,6 @@ function captureInitialFormState() {
 	makeCallFormInitialState = {
 		campaignId: SelectedCampaignId,
 		callType: CurrentMakeCallType,
-		fromNumberId: SelectedFromNumberId,
 		toNumber: makeCallToNumberInput.val(),
 		bulkFileSelected: !!SelectedBulkFromFileObject,
 		scheduleType: makeCallScheduleTypeLaterRadio.is(":checked") ? "later" : "now",
@@ -211,7 +196,6 @@ function captureInitialFormState() {
 function checkMakeCallTabHasChanges() {
 	if (makeCallFormInitialState.campaignId !== SelectedCampaignId) return true;
 	if (makeCallFormInitialState.callType !== CurrentMakeCallType) return true;
-	if (makeCallFormInitialState.fromNumberId !== SelectedFromNumberId) return true;
 
 	if (CurrentMakeCallType === OutboundCallNumberType.Single) {
 		if (makeCallFormInitialState.toNumber !== makeCallToNumberInput.val()) return true;
@@ -276,48 +260,6 @@ function fillMakeCallCampaignModalList() {
 	}
 }
 
-// Number Modal Functions
-function createMakeCallNumberModalListElement(numberData) {
-	const isUsedByRoute = numberData.routeId !== null && numberData.routeId !== undefined;
-	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
-	const formattedNumber = `(${countryData?.phone_code || numberData.countryCode}) ${numberData.number}`;
-	return `<button type="button" class="list-group-item list-group-item-action" number-id="${numberData.id}" number-provider="${numberData.provider.value}" number-formatted="${formattedNumber}">${formattedNumber} ${isUsedByRoute ? "(Used by inbound route)" : ""}</button>`;
-}
-
-function fillMakeCallNumberModalNumbersList() {
-	const searchTerm = inputMakeCallModalSearchNumberInput.val().toLowerCase().trim();
-	makeCallAssignNumberModalLists.empty().append('<span class="list-group-item">Loading numbers...</span>');
-	const allNumbers = BusinessFullData?.businessApp?.numbers;
-	const numbersByProvider = {};
-
-	const campaignNumbers = BusinessFullData.businessApp.telephonyCampaigns.find((c) => c.id == SelectedCampaignId)?.numbers;
-
-	campaignNumbers.forEach((campaignNumberId) => {
-		const number = allNumbers.find((n) => n.id == campaignNumberId);
-		if (!number) return;
-
-		const providerValue = number.provider.value;
-		const countryData = CountriesList[number.countryCode.toUpperCase()];
-		const formattedNumber = `(${countryData?.phone_code || number.countryCode}) ${number.number}`;
-		if (searchTerm && !formattedNumber.toLowerCase().includes(searchTerm) && !number.number.includes(searchTerm)) return;
-
-		if (!numbersByProvider[providerValue]) numbersByProvider[providerValue] = [];
-		numbersByProvider[providerValue].push(number);
-	});
-
-	makeCallAssignNumberModalLists.each((index, listElement) => {
-		const $listElement = $(listElement);
-		const providerValue = parseInt($listElement.attr("number-provider"));
-		const providerNumbers = numbersByProvider[providerValue];
-		$listElement.empty();
-		if (providerNumbers.length > 0) {
-			providerNumbers.forEach((number) => $listElement.append(createMakeCallNumberModalListElement(number)));
-		} else {
-			$listElement.append(`<span class="list-group-item">No suitable numbers found.</span>`);
-		}
-	});
-}
-
 /** EVENT HANDLERS **/
 function initMakeCallHandlers() {
 	// Call Type Selection
@@ -366,8 +308,6 @@ function initMakeCallHandlers() {
 				return;
 			}
 
-			makeCallSelectedFromNumberInput.val("").attr("placeholder", "Select a number...");
-
 			const campaignData = BusinessFullData.businessApp.telephonyCampaigns.find((c) => c.id === campaignId);
 			if (campaignData) {
 				SelectedCampaignId = campaignId;
@@ -383,55 +323,6 @@ function initMakeCallHandlers() {
 				});
 			}
 		}
-	});
-
-	// Number Selection Modal
-	const handleOpenNumberModal = (event) => {
-		event.preventDefault();
-
-		if (!SelectedCampaignId || SelectedCampaignId == null) {
-			AlertManager.createAlert({
-				type: "warning",
-				message: "Please select a campaign first.",
-				timeout: 3000
-			});
-            return false;
-		}
-
-		fillMakeCallNumberModalNumbersList();
-		inputMakeCallModalSearchNumberInput.val("");
-		makeCallAssignNumberModalLists.find("button.active").removeClass("active");
-		saveMakeCallFromNumberButton.prop("disabled", true);
-		saveMakeCallFromNumberButton.data("opener-id", event.currentTarget.id);
-		makeCallChangeFromNumberModal.show();
-	};
-	makeCallChangeFromNumberButton.on("click", handleOpenNumberModal);
-
-	makeCallChangeFromNumberModalElement.on("click", ".make-call-assign-number-modal-list button", (event) => {
-		const $button = $(event.currentTarget);
-		makeCallAssignNumberModalLists.find("button.active").removeClass("active");
-		$button.addClass("active");
-		saveMakeCallFromNumberButton.prop("disabled", false);
-	});
-
-	saveMakeCallFromNumberButton.on("click", (event) => {
-		event.preventDefault();
-		const $activeButton = makeCallAssignNumberModalLists.find("button.active");
-		if ($activeButton.length) {
-			SelectedFromNumberId = $activeButton.attr("number-id");
-			const formattedNumber = $activeButton.attr("number-formatted");
-			const openerId = saveMakeCallFromNumberButton.data("opener-id");
-			if (openerId === makeCallChangeFromNumberButton.attr("id")) {
-				makeCallSelectedFromNumberInput.val(formattedNumber);
-			}
-			makeCallChangeFromNumberModal.hide();
-			validateMakeCallConfig(true);
-		}
-	});
-
-	searchMakeCallAssignNumberModalListButton.on("click", fillMakeCallNumberModalNumbersList);
-	inputMakeCallModalSearchNumberInput.on("keypress", (e) => {
-		if (e.which === 13) fillMakeCallNumberModalNumbersList();
 	});
 
 	// Input handlers
@@ -457,7 +348,6 @@ function initMakeCallsTab() {
 	const tooltipTriggerList = makeCallsTab[0].querySelectorAll('[data-bs-toggle="tooltip"]');
 	[...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 	editChangeMakeCallCampaignModal = new bootstrap.Modal(editChangeMakeCallCampaignModalElement[0]);
-	makeCallChangeFromNumberModal = new bootstrap.Modal(makeCallChangeFromNumberModalElement[0]);
 
 	// Set Initial Form State
 	resetMakeCallForm();

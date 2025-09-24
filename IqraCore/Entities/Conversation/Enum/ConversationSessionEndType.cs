@@ -6,10 +6,11 @@
         InitalizeError = 1,
         ExpiredWaitingForInitalize = 2,
         UserDeclinedOrBusy = 3, // for outbound only
-        UserEndedCall = 2,
-        AgentEndedCall = 3,
-        MidSessionFailure = 4,
-        UserSilenceTimeoutReached = 5,
-        MaxConversationDurationReached = 6
+        UserEndedCall = 4,
+        AgentEndedCall = 5,
+        MidSessionFailure = 6,
+        UserSilenceTimeoutReached = 7,
+        MaxConversationDurationReached = 8,
+        VoicemailDetected = 9 // for outbound only
     }
 }
