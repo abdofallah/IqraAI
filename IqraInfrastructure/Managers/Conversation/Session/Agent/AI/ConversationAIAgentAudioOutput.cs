@@ -397,36 +397,50 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (string.IsNullOrWhiteSpace(text)) return;
 
-            // 1. Cancel any currently playing speech first (important for blocking calls)
-            await CancelCurrentSpeechPlaybackAsync();
-
-            // 2. Synthesize and queue the new speech
-            var (success, duration) = await SynthesizeAndQueueSpeechAsync(turn, text, true, cancellationToken);
-
-            // 3. Wait for the estimated duration if synthesis was successful
-            if (success && duration > TimeSpan.Zero)
+            try
             {
-                await Task.Delay(duration, cancellationToken);
+                // 1. Cancel any currently playing speech first (important for blocking calls)
+                await CancelCurrentSpeechPlaybackAsync();
 
-                while (true)
+                // 2. Synthesize and queue the new speech
+                var (success, duration) = await SynthesizeAndQueueSpeechAsync(turn, text, true, cancellationToken);
+
+                // current tts task token 
+                var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentTtsTaskCTS!.Token, cancellationToken);
+
+                // 3. Wait for the estimated duration if synthesis was successful
+                if (success && duration > TimeSpan.Zero)
                 {
-                    if (
-                        (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&
-                        _speechAudioQueue.IsCompleted
-                    )
+                    await Task.Delay(duration, combinedCTS.Token);
+
+                    while (true)
                     {
-                        turn.Response.SpeechCompletedAt = DateTime.UtcNow;
-                        TurnUpdate?.Invoke(this, turn);
+                        if (
+                            (
+                                (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&
+                                _speechAudioQueue.IsCompleted
+                            ) ||
+                            combinedCTS.IsCancellationRequested
+                        )
+                        {
+                            turn.Response.SpeechCompletedAt = DateTime.UtcNow;
+                            TurnUpdate?.Invoke(this, turn);
 
-                        break;
+                            break;
+                        }
+
+                        await Task.Delay(10, combinedCTS.Token);
                     }
-
-                    await Task.Delay(10, cancellationToken);
+                }
+                else if (!success)
+                {
+                    _logger.LogError("Agent {AgentId}: Failed to synthesize speech for blocking message: {Text}", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                    // Handle error - maybe log, maybe try fallback?
                 }
             }
-            else if (!success)
-            {
-                _logger.LogError("Agent {AgentId}: Failed to synthesize speech for blocking message: {Text}", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+            catch (OperationCanceledException) { /* Expected */ }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Agent {AgentId}: Error synthesizing speech for blocking message: {Text}", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                 // Handle error - maybe log, maybe try fallback?
             }
         }

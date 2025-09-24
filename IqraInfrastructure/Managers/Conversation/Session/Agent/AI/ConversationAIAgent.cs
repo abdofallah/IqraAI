@@ -661,6 +661,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Tool Executor Handler
         private async Task OnToolResultAvailable(ConversationTurn turnWithResult)
         {
+            if (_agentState.IsVoicemailDetected)
+            {
+                var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turnWithResult.ToolResultInput!.ResultOfTurnId);
+                if (
+                    resultOfTurn == null ||
+                    resultOfTurn.Type != ConversationTurnType.System ||
+                    resultOfTurn.SystemInput?.Type != "VoicemailDetected"
+                ) {
+                    return;
+                }
+            }
+
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
             var newToolResultTurn = new ConversationTurn()
             {
@@ -840,33 +852,71 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _agentState.IsAcceptingSTTAudio = false;
             _agentState.IsVoicemailDetected = true;
 
+            if (_agentState.CurrentTurn == null)
+            {
+                // critical, should not be possible
+                _logger.LogError("Agent {AgentId}: Current turn is null when voicemail detected", AgentId);
+                return;
+            }
+
+            if (
+                _agentState.CurrentTurn.Type == ConversationTurnType.System &&
+                _agentState.CurrentTurn.SystemInput?.Type == "ConversationStarted"
+                )
+            {
+                if (_agentState.IsAwaitingLanguageSelectionInput)
+                {
+                    _dtmfSessionManager.CancelSession("Voicemail detected");
+                }
+            }
+
+            _turnManager.ResetForNewTurn();
+
             await _llmHandler.CancelCurrentLLMTaskAsync();
             await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
 
-            // what if conversation still at first turn of conversation started
-            // > if it is then is it on language selection? or on begin conversation flow?
-
-            // what if it is on a user turn that is currently speaking
-
-            // what if it is on a agent speaking turn
-
-            // what if it is on a agent executing function turn
-            
-            // what if it is on a agent executing tool result turn
-
-            if (_agentState.CurrentTurn != null)
-            {
-                if (
+            if (
+                (
+                    _agentState.CurrentTurn.Response.Type == ConversationTurnAgentResponseType.Speech ||
+                    _agentState.CurrentTurn.Response.Type == ConversationTurnAgentResponseType.NotSet ||
+                    _agentState.CurrentTurn.Response.Type == ConversationTurnAgentResponseType.Error
+                )
+                &&
+                (
                     _agentState.CurrentTurn.Status != ConversationTurnStatus.Completed ||
                     _agentState.CurrentTurn.Status != ConversationTurnStatus.Interrupted ||
                     _agentState.CurrentTurn.Status != ConversationTurnStatus.Error
                 )
-                {
-                    await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted);
-                }
+            )
+            {
+                await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted);
             }
 
-            // create new system voicemail turn
+            if (
+                (
+                    _agentState.CurrentTurn.Response.Type == ConversationTurnAgentResponseType.SystemTool ||
+                    _agentState.CurrentTurn.Response.Type == ConversationTurnAgentResponseType.CustomTool
+                )
+                &&
+                _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentExecutingTool
+            )
+            {
+                await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted);
+            }
+
+            if (
+                _agentState.CurrentTurn.Type == ConversationTurnType.ToolResult
+                &&
+                (
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Completed ||
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Interrupted ||
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Error
+                )
+            )
+            {
+                await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted);
+            }
+
             var newTurn = new ConversationTurn
             {
                 Type = ConversationTurnType.System,
@@ -892,20 +942,35 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         private async Task EndOrLeaveMessageEndOnVoicemailDetectedAsync()
         {
-            _agentState.CurrentTurn!.Response.ToolExecution!.CompletedAt = DateTime.UtcNow;
+            await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
+
+            var newTurn = new ConversationTurn
+            {
+                Type = ConversationTurnType.ToolResult,
+                ToolResultInput = new ConversationTurnToolResultInput()
+                {
+                    ResultOfTurnId = _agentState.CurrentTurn!.Id,
+                },
+                Response = new ConversationTurnAgentResponse
+                {
+                    AgentId = _agentState.BusinessAppAgent!.Id
+                },
+                Status = ConversationTurnStatus.AgentProcessing
+            };
+            await OnNewTurnCreated(newTurn);
 
             if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.EndCallOnDetect)
             {
-                _agentState.CurrentTurn.Response.ToolExecution.Result = $"voicemail detected, execute end call action while leaving message: `{_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.MessageToLeave![_agentState.CurrentLanguageCode]}`.";
+                _agentState.PreviousTurn!.Response.ToolExecution!.Result = $"voicemail detected, execute end call action while leaving message: `{_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.MessageToLeave![_agentState.CurrentLanguageCode]}`.";
 
                 await _conversationSessionManager.EndAsync("Voicemail Detected", ConversationSessionEndType.VoicemailDetected);
             }
             else if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.LeaveMessageOnDetect)
             {
-                _agentState.CurrentTurn.Response.ToolExecution.Result = $"voicemail detected, execute end call action.";
+                _agentState.PreviousTurn!.Response.ToolExecution!.Result = $"voicemail detected, execute end call action.";
             }
 
-            await _llmHandler.ProcessToolResultAsync(null, _agentState.CurrentTurn, _conversationCTS.Token);
+            await _llmHandler.ProcessToolResultAsync(_agentState.CurrentTurn!, _agentState.PreviousTurn!, _conversationCTS.Token);
         }
 
         // Disposal

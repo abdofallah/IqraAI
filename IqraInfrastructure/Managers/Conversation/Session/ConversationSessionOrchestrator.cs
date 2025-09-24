@@ -802,6 +802,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             var state = await _conversationStateRepository.GetByIdAsync(_sessionId);
             return state?.Turns?.AsReadOnly() ?? new List<ConversationTurn>().AsReadOnly();
         }
+        public async Task<ConversationTurn?> GetTurnAsync(string turnId)
+        {
+            var state = await _conversationStateRepository.GetByIdAsync(_sessionId);
+            return state?.Turns?.FirstOrDefault(t => t.Id == turnId);
+        }
 
         // Timers for Silence / Max Duration
         private void StartTimers()
