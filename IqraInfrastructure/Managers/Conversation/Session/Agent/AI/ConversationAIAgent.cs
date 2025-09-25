@@ -661,14 +661,26 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Tool Executor Handler
         private async Task OnToolResultAvailable(ConversationTurn turnWithResult)
         {
+            var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turnWithResult.ToolResultInput!.ResultOfTurnId);
+            if (resultOfTurn == null)
+            {
+                _logger.LogError("Agent {AgentId}: Tool result for turn {TurnId} not found.", _agentState.AgentId, turnWithResult.Id);
+                return;
+            }
+
+            if (resultOfTurn.Type == ConversationTurnType.System && resultOfTurn.Response.ToolExecution.ToolName == "EndCall")
+            {
+                await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
+                return;
+            }
+
             if (_agentState.IsVoicemailDetected)
             {
-                var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turnWithResult.ToolResultInput!.ResultOfTurnId);
                 if (
-                    resultOfTurn == null ||
                     resultOfTurn.Type != ConversationTurnType.System ||
                     resultOfTurn.SystemInput?.Type != "VoicemailDetected"
-                ) {
+                )
+                {
                     return;
                 }
             }
@@ -959,11 +971,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             };
             await OnNewTurnCreated(newTurn);
 
-            if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.EndCallOnDetect)
+            await _llmHandler.CancelCurrentLLMTaskAsync();
+            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
+
+            if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.LeaveMessageOnDetect)
             {
                 _agentState.PreviousTurn!.Response.ToolExecution!.Result = $"voicemail detected, execute end call action while leaving message: `{_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.MessageToLeave![_agentState.CurrentLanguageCode]}`.";
             }
-            else if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.LeaveMessageOnDetect)
+            else if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.EndCallOnDetect)
             {
                 _agentState.PreviousTurn!.Response.ToolExecution!.Result = $"voicemail detected, execute end call action.";
             }

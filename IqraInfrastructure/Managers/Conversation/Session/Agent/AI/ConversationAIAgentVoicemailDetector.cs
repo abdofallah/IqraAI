@@ -33,8 +33,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private bool _hasServiceEnded = false;
 
         // Public Events
-        public event Action OnStopAgentSpeaking;
-        public event Action OnEndCallorLeaveMessageRecieved;
+        public event Func<Task> OnStopAgentSpeaking;
+        public event Func<Task> OnEndCallorLeaveMessageRecieved;
 
         // ML MODEL RELATED STATE
         private BlandAIOnnxVoicemailDetectModel _voicemailMLModel;
@@ -62,6 +62,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // TREIGGERS RELATED STATE
         private Task _triggersTask;
         private bool _hasTriggeredStopSpeakingAgentTrigger = false;
+        private bool _hasTriggeredStopSpeakingAgentTriggerCompleted = false;
         private bool _hasTriggeredEndCallorLeaveMessageTrigger = false;    
 
         // PUBLIC
@@ -349,13 +350,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _ = Task.Run(async () =>
                         {
                             await Task.Delay(_voicemailSettings.StopSpeakingAgentDelayAfterMatchMS, _cancellationTokenSource.Token);
-                            OnStopAgentSpeaking?.Invoke();
+                            await OnStopAgentSpeaking?.Invoke();
+                            _hasTriggeredStopSpeakingAgentTriggerCompleted = true;
                         });
                     }
                 }
 
                 // End Call / Leave Message Triggers
-                if (!_hasTriggeredEndCallorLeaveMessageTrigger)
+                if (!_hasTriggeredEndCallorLeaveMessageTrigger && _hasTriggeredStopSpeakingAgentTriggerCompleted)
                 {
                     var hasAchievedResult = true;
                     if (_voicemailSettings.EndOrLeaveMessageAfterXMLCheckSuccess)
@@ -387,7 +389,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _ = Task.Run(async () =>
                         {
                             await Task.Delay(_voicemailSettings.EndOrLeaveMessageDelayAfterMatchMS, _cancellationTokenSource.Token);
-                            OnEndCallorLeaveMessageRecieved?.Invoke();
+                            await OnEndCallorLeaveMessageRecieved?.Invoke();
                         });
                     }
                 }

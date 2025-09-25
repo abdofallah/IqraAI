@@ -298,8 +298,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
 
                 // Cancel previous TTS task if running, create a new CTS linked to overall shutdown and external token
-                _currentTtsTaskCTS?.Cancel();
-                _currentTtsTaskCTS?.Dispose();
+                try
+                {
+                    _currentTtsTaskCTS?.Cancel();
+                    _currentTtsTaskCTS?.Dispose();
+                }
+                catch { }
                 _currentTtsTaskCTS = CancellationTokenSource.CreateLinkedTokenSource(_audioSendingCTS.Token, externalToken); // Link to module CTS and external one
                 var ttsToken = _currentTtsTaskCTS.Token;
 
@@ -381,12 +385,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     // TODO: Raise error event
                     return (false, TimeSpan.Zero);
                 }
-                finally
-                {
-                    // Clean up the specific CTS for this TTS task
-                    _currentTtsTaskCTS?.Dispose();
-                    _currentTtsTaskCTS = null;
-                }
             }
             finally
             {
@@ -404,6 +402,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 // 2. Synthesize and queue the new speech
                 var (success, duration) = await SynthesizeAndQueueSpeechAsync(turn, text, true, cancellationToken);
+
+                if (_currentTtsTaskCTS.IsCancellationRequested)
+                {
+                    turn.Response.SpeechCompletedAt = DateTime.UtcNow;
+                    TurnUpdate?.Invoke(this, turn);
+
+                    return;
+                }
 
                 // current tts task token 
                 var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentTtsTaskCTS!.Token, cancellationToken);
@@ -446,7 +452,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         public async Task CancelCurrentSpeechPlaybackAsync()
         {
-            _currentTtsTaskCTS?.Cancel();
+            try
+            {
+                _currentTtsTaskCTS?.Cancel();
+                _currentTtsTaskCTS?.Dispose();
+            }
+            catch { }
+            
             await (_agentState.TTSService?.StopTextSynthesisAsync() ?? Task.CompletedTask);
 
             if (!_speechAudioQueue.IsAddingCompleted)
