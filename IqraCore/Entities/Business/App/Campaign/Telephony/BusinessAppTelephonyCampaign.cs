@@ -1,4 +1,6 @@
-﻿namespace IqraCore.Entities.Business
+﻿using IqraCore.Entities.Business.App.Campaign;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppTelephonyCampaign
     {
@@ -9,5 +11,6 @@
         public BusinessAppTelephonyCampaignVoicemailDetection VoicemailDetection { get; set; } = new BusinessAppTelephonyCampaignVoicemailDetection();
         public BusinessAppTelephonyCampaignNumberRoute NumberRoute { get; set; } = new BusinessAppTelephonyCampaignNumberRoute();
         public BusinessAppTelephonyCampaignActions Actions { get; set; } = new BusinessAppTelephonyCampaignActions();
+        public BusinessAppCampaignVariables Variables { get; set; } = new BusinessAppCampaignVariables();
     }
 }

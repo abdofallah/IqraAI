@@ -715,7 +715,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             string? reason = turn.Response.ToolExecution?.ReasonForExecution ?? "Agent requested end of conversation, no reason provided.";
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed); 
-            await _conversationSessionManager.EndAsync(reason, ConversationSessionEndType.AgentEndedCall);
+
+            var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turn.ToolResultInput!.ResultOfTurnId);
+            if (resultOfTurn.Type == ConversationTurnType.System || resultOfTurn.SystemInput?.Type == "VoicemailDetected")
+            {
+                await _conversationSessionManager.EndAsync(reason, ConversationSessionEndType.VoicemailDetected);
+            }
+            else
+            {
+                await _conversationSessionManager.EndAsync(reason, ConversationSessionEndType.AgentEndedCall);
+            } 
         }
 
         // Audio Output Handlers

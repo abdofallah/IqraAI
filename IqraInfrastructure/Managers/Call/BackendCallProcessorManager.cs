@@ -362,7 +362,6 @@ namespace IqraInfrastructure.Managers.Call
 
                 if (callResultModel == null || !callResultModel.Success)
                 {
-                    resultData.ShouldRequeue = true; // Requeue if the provider fails to even initiate the call
                     return result.SetFailureResult(
                         "InitiateOutboundCallAsync:CALL_FAILED",
                         callResultModel?.Message ?? "Call initiation failed.",

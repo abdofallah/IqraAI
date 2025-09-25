@@ -34,10 +34,10 @@
                     <button class="nav-link" id="telephony-campaign-manager-numbers-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-numbers" type="button" role="tab" aria-controls="telephony-campaign-manager-numbers" aria-selected="false">Number Route</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link" id="telephony-campaign-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-configuration" type="button" role="tab" aria-controls="telephony-campaign-manager-configuration"
-                            aria-selected="false">
-                        Configuration
-                    </button>
+                    <button class="nav-link" id="telephony-campaign-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-configuration" type="button" role="tab" aria-controls="telephony-campaign-manager-configuration" aria-selected="false">Configuration</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="telephony-campaign-manager-variables-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-variables" type="button" role="tab" aria-controls="telephony-campaign-manager-variables" aria-selected="false">Variables</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="telephony-campaign-manager-voicemail-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-voicemail" type="button" role="tab" aria-controls="telephony-campaign-manager-voicemail" aria-selected="false">Voicemail Detection</button>
@@ -306,6 +306,26 @@
                     </div>
                 </div>
 
+                <!-- Variables Tab -->
+                <div class="tab-pane fade w-100" id="telephony-campaign-manager-variables" role="tabpanel" aria-labelledby="telephony-campaign-manager-variables-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label d-block">Dynamic Variables</label>
+                        <button class="btn btn-light btn-sm m-0 mb-2" id="addTelephonyCampaignDynamicVariable">
+                            <span>Add Dynamic Variable</span>
+                        </button>
+                        <div id="telephonyCampaignDynamicVariablesList">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label d-block">Metadata</label>
+                        <button class="btn btn-light btn-sm m-0 mb-2" id="addTelephonyCampaignMetadata">
+                            <span>Add Metadata</span>
+                        </button>
+                        <div id="telephonyCampaignMetadataList">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Voicemail Detection Tab -->
                 <div class="tab-pane fade w-100" id="telephony-campaign-manager-voicemail" role="tabpanel" aria-labelledby="telephony-campaign-manager-voicemail-tab" tabindex="0">
                     <div class="card card-body mb-4">
@@ -324,15 +344,6 @@
                                 <div class="col-md-6 mb-3">
                                     <label for="telephony-campaign-voicemail-initial-check-delay-ms-input" class="form-label">Initial Check Delay (ms)</label>
                                     <input type="number" class="form-control" id="telephony-campaign-voicemail-initial-check-delay-ms-input" value="1000" min="0">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="telephony-campaign-voicemail-ml-check-duration-ms-range" class="form-label">ML Check Duration (ms)</label>
-                                    <input type="range" class="form-range" id="telephony-campaign-voicemail-ml-check-duration-ms-range" min="1000" max="4000" step="100" value="1000">
-                                    <div class="text-center small"><span id="telephony-campaign-voicemail-ml-check-duration-ms-value">1000</span> ms</div>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="telephony-campaign-voicemail-max-ml-check-tries-input" class="form-label">Max ML Check Tries</label>
-                                    <input type="number" class="form-control" id="telephony-campaign-voicemail-max-ml-check-tries-input" value="2" min="1">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="telephony-campaign-voicemail-vad-silence-threshold-ms-input" class="form-label">VAD Silence Threshold (ms)</label>
@@ -420,13 +431,9 @@
                                 <label class="form-check-label" for="telephony-campaign-voicemail-leave-message-radio">Leave a Message</label>
                             </div>
                             <div class="mt-3 d-none" id="telephony-campaign-voicemail-leave-message-container">
-                                <div class="mb-3">
+                                <div>
                                     <label class="form-label" for="telephony-campaign-voicemail-message-to-leave-textarea"><span>Message to Leave</span> <i class="fa-regular fa-language"></i></label>
                                     <textarea class="form-control" id="telephony-campaign-voicemail-message-to-leave-textarea" rows="3" placeholder="Enter message..."></textarea>
-                                </div>
-                                <div>
-                                    <label for="telephony-campaign-voicemail-wait-after-message-input" class="form-label">Wait Before End (ms)</label>
-                                    <input type="number" class="form-control" id="telephony-campaign-voicemail-wait-after-message-input" value="1000" min="0">
                                 </div>
                             </div>
                         </div>

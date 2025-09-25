@@ -1,13 +1,10 @@
-﻿using Google.Api;
-using IqraCore.Entities.Conversation.Turn;
+﻿using IqraCore.Entities.Conversation.Turn;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using WebSocketSharp;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI

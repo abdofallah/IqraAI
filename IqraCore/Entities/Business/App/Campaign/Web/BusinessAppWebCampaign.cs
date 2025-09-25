@@ -1,4 +1,6 @@
-﻿namespace IqraCore.Entities.Business
+﻿using IqraCore.Entities.Business.App.Campaign;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppWebCampaign
     {
@@ -9,5 +11,6 @@
         public BusinessAppWebCampaignConfiguration Configuration { get; set; } = new BusinessAppWebCampaignConfiguration();
         public BusinessAppWebCampaignRegionRoute RegionRoute { get; set; } = new BusinessAppWebCampaignRegionRoute();
         public BusinessAppWebCampaignActions Actions { get; set; } = new BusinessAppWebCampaignActions();
+        public BusinessAppCampaignVariables Variables { get; set; } = new BusinessAppCampaignVariables();
     }
 }

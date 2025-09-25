@@ -68,13 +68,16 @@ const telephonyCampaignSilenceNotifyInput = telephonyCampaignsManagerView.find("
 const telephonyCampaignSilenceEndInput = telephonyCampaignsManagerView.find("#telephony-campaign-silence-end-input");
 const telephonyCampaignMaxCallTimeInput = telephonyCampaignsManagerView.find("#telephony-campaign-max-call-time-input");
 
+// Variables Tab
+const addTelephonyCampaignDynamicVariable = telephonyCampaignsManagerView.find("#addTelephonyCampaignDynamicVariable");
+const telephonyCampaignDynamicVariablesList = telephonyCampaignsManagerView.find("#telephonyCampaignDynamicVariablesList");
+const addTelephonyCampaignMetadata = telephonyCampaignsManagerView.find("#addTelephonyCampaignMetadata");
+const telephonyCampaignMetadataList = telephonyCampaignsManagerView.find("#telephonyCampaignMetadataList");
+
 // Voicemail Tab
 const telephonyCampaignVoicemailIsEnabledCheck = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-is-enabled-check");
 const telephonyCampaignVoicemailSettingsContainer = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-settings-container");
 const telephonyCampaignVoicemailInitialCheckDelayMSInput = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-initial-check-delay-ms-input");
-const telephonyCampaignVoicemailMLCheckDurationMSRange = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-ml-check-duration-ms-range");
-const telephonyCampaignVoicemailMLCheckDurationMSValue = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-ml-check-duration-ms-value");
-const telephonyCampaignVoicemailMaxMLCheckTriesInput = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-max-ml-check-tries-input");
 const telephonyCampaignVoicemailVADSilenceThresholdMSInput = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-vad-silence-threshold-ms-input");
 const telephonyCampaignVoicemailVADMaxSpeechDurationMSInput = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-vad-max-speech-duration-ms-input");
 const telephonyCampaignVoicemailAdvancedVerificationCheck = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-advanced-verification-check");
@@ -90,7 +93,6 @@ const telephonyCampaignVoicemailEndLeaveDelayInput = telephonyCampaignsManagerVi
 const telephonyCampaignFinalActionRadios = telephonyCampaignsManagerView.find('input[name="telephony-campaign-final-action-radio"]');
 const telephonyCampaignVoicemailLeaveMessageContainer = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-leave-message-container");
 const telephonyCampaignVoicemailMessageToLeaveTextarea = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-message-to-leave-textarea");
-const telephonyCampaignVoicemailWaitAfterMessageInput = telephonyCampaignsManagerView.find("#telephony-campaign-voicemail-wait-after-message-input");
 
 // Actions Tab
 const telephonyCampaignActionsTab = telephonyCampaignsManagerView.find("#telephony-campaign-manager-actions");
@@ -229,30 +231,31 @@ function createDefaultTelephonyCampaignObject() {
         voicemailDetection: {
             isEnabled: false,
             initialCheckDelayMS: 1000,
-            mlCheckDurationMS: 1000,
-            maxMLCheckTries: 2,
             waitForVADSpeechForMLCheck: true,
             voiceMailMessageVADSilenceThresholdMS: 1000,
             voiceMailMessageVADMaxSpeechDurationMS: 4000,
             onVoiceMailMessageDetectVerifySTTAndLLM: false,
             transcribeVoiceMessageSTT: null,
             verifyVoiceMessageLLM: null,
-            stopSpeakingAgentAfterXMlCheckSuccess: true,
+            stopSpeakingAgentAfterMlCheckSuccess: true,
             stopSpeakingAgentAfterVadSilence: false,
             stopSpeakingAgentAfterLLMConfirm: false,
             stopSpeakingAgentDelayAfterMatchMS: 1000,
-            endOrLeaveMessageAfterXMLCheckSuccess: true,
+            endOrLeaveMessageAfterMLCheckSuccess: true,
             endOrLeaveMessageAfterVadSilence: false,
             endOrLeaveMessageAfterLLMConfirm: false,
             endOrLeaveMessageDelayAfterMatchMS: 1000,
             endCallOnDetect: true,
             leaveMessageOnDetect: false,
-            messageToLeave: {},
-            waitXMSAfterLeavingMessageToEndCall: 1000
+            messageToLeave: {}
         },
         numberRoute: {
             routeNumberList: {},
             defaultNumberId: ""
+        },
+        variables: {
+            dynamicVariables: {},
+            metadata: {}
         },
         actions: {
             callInitiationFailureTool: {
@@ -310,6 +313,10 @@ function resetTelephonyCampaignManager() {
     telephonyCampaignNumbersListTable.find("tbody tr:not([data-region-code='default'])").remove();
     currentTelephonyCampaignRouteNumberList = {};
     currentTelephonyCampaignDefaultNumberId = "";
+
+    // Variables Tab
+    telephonyCampaignDynamicVariablesList.empty();
+    telephonyCampaignMetadataList.empty();
 
     // Configuration
     telephonyCampaignRetryOnDeclineCheck.prop("checked", false).change();
@@ -420,6 +427,16 @@ function fillTelephonyCampaignManager() {
     telephonyCampaignSilenceNotifyInput.val(data.configuration.timeouts.notifyOnSilenceMS);
     telephonyCampaignSilenceEndInput.val(data.configuration.timeouts.endOnSilenceMS);
     telephonyCampaignMaxCallTimeInput.val(data.configuration.timeouts.maxCallTimeS);
+
+    // Variables
+    data.variables.dynamicVariables.forEach((dynamicVariable) => {
+        const row = createTelephonyCampaignDynamicVariableElement(dynamicVariable);
+        telephonyCampaignVariablesListTable.append(row);
+    });
+    data.variables.metadata.forEach((metaData) => {
+        const row = createTelephonyCampaignMetadataElement(metaData);
+        telephonyCampaignVariablesListTable.append(row);
+    });
 
     // Voicemail
     fillTelephonyCampaignVoicemailTab();
@@ -574,8 +591,6 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
 
         if (changes.voicemailDetection.isEnabled) {
             changes.voicemailDetection.initialCheckDelayMS = parseInt(telephonyCampaignVoicemailInitialCheckDelayMSInput.val(), 10);
-            changes.voicemailDetection.mlCheckDurationMS = parseInt(telephonyCampaignVoicemailMLCheckDurationMSRange.val(), 10);
-            changes.voicemailDetection.maxMLCheckTries = parseInt(telephonyCampaignVoicemailMaxMLCheckTriesInput.val(), 10);
             changes.voicemailDetection.voiceMailMessageVADSilenceThresholdMS = parseInt(telephonyCampaignVoicemailVADSilenceThresholdMSInput.val(), 10);
             changes.voicemailDetection.voiceMailMessageVADMaxSpeechDurationMS = parseInt(telephonyCampaignVoicemailVADMaxSpeechDurationMSInput.val(), 10);
             changes.voicemailDetection.onVoiceMailMessageDetectVerifySTTAndLLM = telephonyCampaignVoicemailAdvancedVerificationCheck.is(":checked");
@@ -583,11 +598,11 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
                 changes.voicemailDetection.transcribeVoiceMessageSTT = telephonyCampaignVoicemailSTTIntegrationManager.getData();
                 changes.voicemailDetection.verifyVoiceMessageLLM = telephonyCampaignVoicemailLLMIntegrationManager.getData();
             }
-            changes.voicemailDetection.stopSpeakingAgentAfterXMlCheckSuccess = telephonyCampaignStopAgentOnMLCheck.is(':checked');
+            changes.voicemailDetection.stopSpeakingAgentAfterMlCheckSuccess = telephonyCampaignStopAgentOnMLCheck.is(':checked');
             changes.voicemailDetection.stopSpeakingAgentAfterVadSilence = telephonyCampaignStopAgentOnVADCheck.is(':checked');
             changes.voicemailDetection.stopSpeakingAgentAfterLLMConfirm = telephonyCampaignStopAgentOnLLMCheck.is(':checked');
             changes.voicemailDetection.stopSpeakingAgentDelayAfterMatchMS = parseInt(telephonyCampaignVoicemailStopSpeakingDelayInput.val(), 10);
-            changes.voicemailDetection.endOrLeaveMessageAfterXMLCheckSuccess = telephonyCampaignEndLeaveOnMLCheck.is(':checked');
+            changes.voicemailDetection.endOrLeaveMessageAfterMLCheckSuccess = telephonyCampaignEndLeaveOnMLCheck.is(':checked');
             changes.voicemailDetection.endOrLeaveMessageAfterVadSilence = telephonyCampaignEndLeaveOnVADCheck.is(':checked');
             changes.voicemailDetection.endOrLeaveMessageAfterLLMConfirm = telephonyCampaignEndLeaveOnLLMCheck.is(':checked');
             changes.voicemailDetection.endOrLeaveMessageDelayAfterMatchMS = parseInt(telephonyCampaignVoicemailEndLeaveDelayInput.val(), 10);
@@ -595,7 +610,6 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
             changes.voicemailDetection.endCallOnDetect = finalAction === 'end';
             changes.voicemailDetection.leaveMessageOnDetect = finalAction === 'leave';
             if (changes.voicemailDetection.leaveMessageOnDetect) {
-                changes.voicemailDetection.waitXMSAfterLeavingMessageToEndCall = parseInt(telephonyCampaignVoicemailWaitAfterMessageInput.val(), 10);
                 changes.voicemailDetection.messageToLeave = currentTelephonyCampaignVoicemailMessageToLeaveMultiLangData;
             }
         }
@@ -1033,14 +1047,39 @@ function populateTelephonyNumberSelectionModal() {
     modalBody.append(listGroup);
 }
 
+// -- Variable Tab Helpers --
+function createTelephonyCampaignDynamicVariableElement(data) {
+    return 'TODO';
+}
+
+function createTelephonyCampaignMetadataElement(data) {
+    return 'TODO';
+}
+
+function initTelephonyCampaignVariablesEventHandlers() {
+    // Dynamic Variables
+    addTelephonyCampaignDynamicVariable.on('click', (event) => {
+        var newElement = createTelephonyCampaignDynamicVariableElement(null);
+        telephonyCampaignDynamicVariablesList.append(newElement);
+    });
+
+    // todo delete
+
+    // Metadata
+    addTelephonyCampaignMetadata.on('click', (event) => {
+        var newElement = createTelephonyCampaignMetadataElement(null);
+        telephonyCampaignMetadataList.append(newElement);
+    });
+
+    // todo delete
+}
+
 // -- Voicemail Tab Helpers --
 function fillTelephonyCampaignVoicemailTab() {
     const data = currentTelephonyCampaignData.voicemailDetection;
 
     telephonyCampaignVoicemailIsEnabledCheck.prop('checked', data.isEnabled).change();
     telephonyCampaignVoicemailInitialCheckDelayMSInput.val(data.initialCheckDelayMS);
-    telephonyCampaignVoicemailMLCheckDurationMSRange.val(data.mlCheckDurationMS).trigger('input');
-    telephonyCampaignVoicemailMaxMLCheckTriesInput.val(data.maxMLCheckTries);
     telephonyCampaignVoicemailVADSilenceThresholdMSInput.val(data.voiceMailMessageVADSilenceThresholdMS);
     telephonyCampaignVoicemailVADMaxSpeechDurationMSInput.val(data.voiceMailMessageVADMaxSpeechDurationMS);
 
@@ -1048,12 +1087,12 @@ function fillTelephonyCampaignVoicemailTab() {
     if (telephonyCampaignVoicemailSTTIntegrationManager) telephonyCampaignVoicemailSTTIntegrationManager.load(data.transcribeVoiceMessageSTT);
     if (telephonyCampaignVoicemailLLMIntegrationManager) telephonyCampaignVoicemailLLMIntegrationManager.load(data.verifyVoiceMessageLLM);
 
-    telephonyCampaignStopAgentOnMLCheck.prop('checked', data.stopSpeakingAgentAfterXMlCheckSuccess);
+    telephonyCampaignStopAgentOnMLCheck.prop('checked', data.stopSpeakingAgentAfterMlCheckSuccess);
     telephonyCampaignStopAgentOnVADCheck.prop('checked', data.stopSpeakingAgentAfterVadSilence);
     telephonyCampaignStopAgentOnLLMCheck.prop('checked', data.stopSpeakingAgentAfterLLMConfirm);
     telephonyCampaignVoicemailStopSpeakingDelayInput.val(data.stopSpeakingAgentDelayAfterMatchMS);
 
-    telephonyCampaignEndLeaveOnMLCheck.prop('checked', data.endOrLeaveMessageAfterXMLCheckSuccess);
+    telephonyCampaignEndLeaveOnMLCheck.prop('checked', data.endOrLeaveMessageAfterMLCheckSuccess);
     telephonyCampaignEndLeaveOnVADCheck.prop('checked', data.endOrLeaveMessageAfterVadSilence);
     telephonyCampaignEndLeaveOnLLMCheck.prop('checked', data.endOrLeaveMessageAfterLLMConfirm);
     telephonyCampaignVoicemailEndLeaveDelayInput.val(data.endOrLeaveMessageDelayAfterMatchMS);
@@ -1067,7 +1106,6 @@ function fillTelephonyCampaignVoicemailTab() {
     } else {
         telephonyCampaignFinalActionRadios.filter('[value="end"]').prop('checked', true).change();
     }
-    telephonyCampaignVoicemailWaitAfterMessageInput.val(data.waitXMSAfterLeavingMessageToEndCall);
 }
 
 // -- Actions Tab Helpers --
@@ -1358,10 +1396,6 @@ function initTelephonyVoicemailDetectionEventHandlers() {
         telephonyCampaignVoicemailLeaveMessageContainer.toggleClass('d-none', $(this).val() !== 'leave');
     });
 
-    telephonyCampaignVoicemailMLCheckDurationMSRange.on('input', function () {
-        telephonyCampaignVoicemailMLCheckDurationMSValue.text($(this).val());
-    });
-
     telephonyCampaignVoicemailMessageToLeaveTextarea.on("input", (e) => {
         const currentLang = BusinessDefaultLanguage;
         currentTelephonyCampaignVoicemailMessageToLeaveMultiLangData[currentLang] = $(e.currentTarget).val();
@@ -1561,6 +1595,7 @@ function initTelephonyCampaignsTab() {
         initTelephonyConfigurationEventHandlers();
         initTelephonyVoicemailDetectionEventHandlers();
         initTelephonyAgentEventHandlers();
+        initTelephonyCampaignVariablesEventHandlers();
         initTelephonyNumbersEventHandlers();
         initTelephonyActionsEventHandlers();
 
