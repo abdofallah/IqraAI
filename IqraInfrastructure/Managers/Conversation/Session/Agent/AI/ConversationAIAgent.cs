@@ -395,7 +395,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _dtmfSessionManager?.Dispose();
 
-            _audioOutputHandler?.StopSending();
+            await (_audioOutputHandler?.CancelCurrentSpeechPlaybackAsync() ?? Task.CompletedTask);
             _audioOutputHandler?.Dispose();
 
             if (_conversationSessionManager.IsOutboundCall)

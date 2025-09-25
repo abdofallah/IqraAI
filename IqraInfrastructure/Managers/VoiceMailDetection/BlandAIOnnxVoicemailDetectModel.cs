@@ -142,7 +142,6 @@ namespace IqraInfrastructure.Managers.VoiceMailDetection
 
         public void Dispose()
         {
-            Session?.Dispose();
             GC.SuppressFinalize(this);
         }
     }

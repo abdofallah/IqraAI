@@ -652,8 +652,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             // Update state
             await UpdateStateAsync(ConversationSessionState.Paused, reason);
-
-            _logger.LogInformation("Session {SessionId} paused: {Reason}", _sessionId, reason);
         }
         public async Task ResumeAsync()
         {
@@ -668,8 +666,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             // Update state
             await UpdateStateAsync(ConversationSessionState.Active, "Session resumed");
-
-            _logger.LogInformation("Session {SessionId} resumed", _sessionId);
         }
         public async Task EndAsync(string reason, ConversationSessionEndType endType, ConversationSessionState finalState = ConversationSessionState.Ended)
         {
@@ -918,7 +914,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         }
         private void RunAudioCompilationAsync()
         {
-            _logger.LogInformation("Queueing audio compilation background task for session {SessionId}", _sessionId);
             _ = Task.Run(async () =>
             {
                 try
@@ -1085,6 +1080,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         }
         private void OnClientAudioReceived(object? sender, ConversationAudioReceivedEventArgs e)
         {
+            if (_state == ConversationSessionState.Ending || _state == ConversationSessionState.Ended) return;
+
             if (sender is string)
             {
                 sender = _clients.Find(c => c.ClientId == (string)sender);
@@ -1139,6 +1136,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         }
         private async void OnClientDTMFReceived(object? sender, ConversationDTMFReceivedEventArgs e)
         {
+            if (_state == ConversationSessionState.Ending || _state == ConversationSessionState.Ended) return;
+
             if (sender is string)
             {
                 sender = _clients.Find(c => c.ClientId == (string)sender);
@@ -1146,8 +1145,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             if (sender is not IConversationClient client)
                 return;
-
-            _logger.LogInformation("Received digit from client {ClientId}: {Text}", client.ClientId, e.Digit);
 
             // Update last activity time for silence detection
             _lastUserActivityTime = DateTime.UtcNow;
@@ -1193,8 +1190,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             if (sender is not IConversationClient client)
                 return;
 
-            _logger.LogInformation("Client {ClientId} disconnected: {Reason}", client.ClientId, e.Reason);
-
             // Remove the client
             await RemoveClientAsync(client.ClientId, e.Reason);
         }
@@ -1202,6 +1197,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         // Agent Event Handlers
         private async void OnAgentAudioGenerated(object? sender, ConversationAudioGeneratedEventArgs e)
         {
+            if (_state == ConversationSessionState.Ending || _state == ConversationSessionState.Ended) return;
+
             if (sender is string)
             {
                 sender = _agents.Find(a => a.AgentId == (string)sender);

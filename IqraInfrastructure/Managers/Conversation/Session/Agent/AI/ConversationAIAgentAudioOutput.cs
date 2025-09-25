@@ -357,7 +357,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             _agentState.CurrentLanguageCode,
                             cacheEntryId,
                             turn.Response.AgentId,
-                            ttsToken
+                            CancellationToken.None
                         );
                     }
 
@@ -402,8 +402,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 // 2. Synthesize and queue the new speech
                 var (success, duration) = await SynthesizeAndQueueSpeechAsync(turn, text, true, cancellationToken);
-
-                if (_currentTtsTaskCTS.IsCancellationRequested)
+                if (_currentTtsTaskCTS!.IsCancellationRequested)
                 {
                     turn.Response.SpeechCompletedAt = DateTime.UtcNow;
                     TurnUpdate?.Invoke(this, turn);
@@ -411,13 +410,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     return;
                 }
 
-                // current tts task token 
-                var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentTtsTaskCTS!.Token, cancellationToken);
-
                 // 3. Wait for the estimated duration if synthesis was successful
                 if (success && duration > TimeSpan.Zero)
                 {
-                    await Task.Delay(duration, combinedCTS.Token);
+                    await Task.Delay(duration, _currentTtsTaskCTS.Token);
 
                     while (true)
                     {
@@ -426,7 +422,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                                 (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&
                                 _speechAudioQueue.IsCompleted
                             ) ||
-                            combinedCTS.IsCancellationRequested
+                            _currentTtsTaskCTS.IsCancellationRequested
                         )
                         {
                             turn.Response.SpeechCompletedAt = DateTime.UtcNow;
@@ -435,7 +431,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             break;
                         }
 
-                        await Task.Delay(10, combinedCTS.Token);
+                        await Task.Delay(10, _currentTtsTaskCTS.Token);
                     }
                 }
                 else if (!success)
@@ -482,8 +478,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public void StopSending()
         {
             _speechAudioQueue.CompleteAdding();
-            _audioSendingCTS.Cancel(); // Signal the sending loop to terminate
-            _currentTtsTaskCTS?.Cancel(); // Stop any final TTS
+            try
+            {
+                _audioSendingCTS?.Cancel();
+            }
+            catch { }
+             
+            try
+            {
+                _currentTtsTaskCTS?.Cancel();
+            }
+            catch { }
         }
         public Task PausePlaybackAsync()
         {
