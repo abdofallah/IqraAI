@@ -7,6 +7,9 @@
   </PropertyGroup>
 
 	<ItemGroup>
+	  <None Update="Models\BlandAIVM\cnnModel.pt">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	  <None Update="Models\BlandAIVM\config.json">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>

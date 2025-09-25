@@ -411,26 +411,6 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         voicemailData.InitialCheckDelayMS = initialCheckDelayMSElement.GetInt32();
 
-                        if (!voicemailElement.TryGetProperty("mlCheckDurationMS", out var mlCheckDurationMSElement)
-                            || mlCheckDurationMSElement.ValueKind != JsonValueKind.Number)
-                        {
-                            return result.SetFailureResult(
-                                "AddOrUpdateTelephonyCampaignAsync:VOICEMAIL_MLCHECKDURATION_INVALID",
-                                "Voicemail mlCheckDurationMS parameter is missing or invalid."
-                                );
-                        }
-                        voicemailData.MLCheckDurationMS = mlCheckDurationMSElement.GetInt32();
-
-                        if (!voicemailElement.TryGetProperty("maxMLCheckTries", out var maxMLCheckTriesElement)
-                            || maxMLCheckTriesElement.ValueKind != JsonValueKind.Number)
-                        {
-                            return result.SetFailureResult(
-                                "AddOrUpdateTelephonyCampaignAsync:VOICEMAIL_MAXMLTRIES_INVALID",
-                                "Voicemail maxMLCheckTries parameter is missing or invalid."
-                                );
-                        }
-                        voicemailData.MaxMLCheckTries = maxMLCheckTriesElement.GetInt32();
-
                         if (!voicemailElement.TryGetProperty("voiceMailMessageVADSilenceThresholdMS", out var vadSilenceThresholdElement)
                             || vadSilenceThresholdElement.ValueKind != JsonValueKind.Number)
                         {
@@ -451,15 +431,15 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         voicemailData.VoiceMailMessageVADMaxSpeechDurationMS = vadMaxSpeechDurationElement.GetInt32();
 
-                        if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterXMlCheckSuccess", out var stopOnMlElement)
+                        if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterMlCheckSuccess", out var stopOnMlElement)
                             || (stopOnMlElement.ValueKind != JsonValueKind.True && stopOnMlElement.ValueKind != JsonValueKind.False))
                         {
                             return result.SetFailureResult(
                                 "AddOrUpdateTelephonyCampaignAsync:VOICEMAIL_STOPONML_INVALID",
-                                "Voicemail stopSpeakingAgentAfterXMlCheckSuccess parameter is missing or invalid."
+                                "Voicemail stopSpeakingAgentAfterMlCheckSuccess parameter is missing or invalid."
                                 );
                         }
-                        voicemailData.StopSpeakingAgentAfterXMlCheckSuccess = stopOnMlElement.GetBoolean();
+                        voicemailData.StopSpeakingAgentAfterMlCheckSuccess = stopOnMlElement.GetBoolean();
 
                         if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterVadSilence", out var stopOnVadElement)
                             || (stopOnVadElement.ValueKind != JsonValueKind.True && stopOnVadElement.ValueKind != JsonValueKind.False))
@@ -491,15 +471,15 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         voicemailData.StopSpeakingAgentDelayAfterMatchMS = stopDelayElement.GetInt32();
 
-                        if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterXMLCheckSuccess", out var endOnMlElement)
+                        if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterMLCheckSuccess", out var endOnMlElement)
                             || (endOnMlElement.ValueKind != JsonValueKind.True && endOnMlElement.ValueKind != JsonValueKind.False))
                         {
                             return result.SetFailureResult(
                                 "AddOrUpdateTelephonyCampaignAsync:VOICEMAIL_ENDONML_INVALID",
-                                "Voicemail endOrLeaveMessageAfterXMLCheckSuccess parameter is missing or invalid."
+                                "Voicemail endOrLeaveMessageAfterMLCheckSuccess parameter is missing or invalid."
                                 );
                         }
-                        voicemailData.EndOrLeaveMessageAfterXMLCheckSuccess = endOnMlElement.GetBoolean();
+                        voicemailData.EndOrLeaveMessageAfterMLCheckSuccess = endOnMlElement.GetBoolean();
 
                         if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterVadSilence", out var endOnVadElement)
                             || (endOnVadElement.ValueKind != JsonValueKind.True && endOnVadElement.ValueKind != JsonValueKind.False))
@@ -567,16 +547,6 @@ namespace IqraInfrastructure.Managers.Business
                             {
                                 return result.SetFailureResult("AddOrUpdateTelephonyCampaignAsync:" + messageToLeaveValidationResult.Code, messageToLeaveValidationResult.Message);
                             }
-
-                            if (!voicemailElement.TryGetProperty("waitXMSAfterLeavingMessageToEndCall", out var waitAfterMessageElement)
-                                || waitAfterMessageElement.ValueKind != JsonValueKind.Number)
-                            {
-                                return result.SetFailureResult(
-                                    "AddOrUpdateTelephonyCampaignAsync:VOICEMAIL_WAITAFTERMESSAGE_INVALID",
-                                    "Voicemail waitXMSAfterLeavingMessageToEndCall parameter is missing or invalid."
-                                    );
-                            }
-                            voicemailData.WaitXMSAfterLeavingMessageToEndCall = waitAfterMessageElement.GetInt32();
                         }
 
                         if (!voicemailElement.TryGetProperty("onVoiceMailMessageDetectVerifySTTAndLLM", out var advancedVerificationElement)

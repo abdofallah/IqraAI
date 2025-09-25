@@ -4,7 +4,6 @@ using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.AI;
-using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
@@ -38,14 +37,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         // ML MODEL RELATED STATE
         private BlandAIOnnxVoicemailDetectModel _voicemailMLModel;
-        private int _currentMLChecks = 0;
-        private List<(string, float)> _currentCheckResult = new List<(string, float)>();
-        private bool _hasCompletedMLChecks = false;
+        private (string, double)? _voicemailMlPrediction = null;
+        private bool _hasCompletedMLCheck = false;
 
         private List<float> _audioBuffer; // 16khz 32bit
         private Task _audioBufferProcessingTask;
 
         // VAD RELATED STATE
+        private static readonly int VADMinSpeechMS = 300;
         private VadStateTracker _vadStateTracker;
         private DateTime? _firstSpeechDetected = null;
         private DateTime? _silenceDetected = null;
@@ -97,7 +96,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 new VadTrackerOptions()
                 {
                     MinSilenceDurationMs = _voicemailSettings.VoiceMailMessageVADSilenceThresholdMS,
-                    MinSpeechDurationMs = 300
+                    MinSpeechDurationMs = VADMinSpeechMS
                 }    
             );
             _vadStateTracker.SpeechStarted += OnVADSpeechStarted;
@@ -213,19 +212,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         private async Task ProcessAudioBuffer()
         {
-            double mlCheckDurationInSeconds = _voicemailSettings.MLCheckDurationMS / 1000.0;
-            long samplesLength = (long)(16000 * mlCheckDurationInSeconds);
+            long samplesLength = (long)(16000 * 2); // 2 seconds
 
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
                 if (_hasServiceEnded) break;
-                if (_hasCompletedMLChecks) break;
-                if (_currentMLChecks >= _voicemailSettings.MaxMLCheckTries)
-                {
-                    _hasCompletedMLChecks = true;
-                    break;
-                }
-                if (_voicemailSettings.WaitForVADSpeechForMLCheck && (_firstSpeechDetected == null || _silenceDetected == null))
+                if (_hasCompletedMLCheck) break;
+
+                if (_firstSpeechDetected == null)
                 {
                     await Task.Delay(50, _cancellationTokenSource.Token);
                     continue;
@@ -236,11 +230,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     var currentChunk = _audioBuffer.Take((int)samplesLength).ToArray();
                     _audioBuffer.RemoveRange(0, (int)samplesLength);
 
-                    var prediction = _voicemailMLModel.Predict(currentChunk);
-                    _currentCheckResult.Add((prediction.Label, prediction.Confidence));
-                    _logger.LogInformation($"ML CHECK: {prediction.Label} - {prediction.Confidence}");
-
-                    _currentMLChecks++;
+                    _voicemailMlPrediction = _voicemailMLModel.Predict(currentChunk);
+                    break;
                 }
 
                 await Task.Delay(50, _cancellationTokenSource.Token);
@@ -261,24 +252,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // Get Results
 
                 // ML CHECK
-                bool isMLCheckEnabled = _voicemailSettings.StopSpeakingAgentAfterXMlCheckSuccess;
+                bool isMLCheckEnabled = _voicemailSettings.StopSpeakingAgentAfterMlCheckSuccess;
                 bool isMLCheckSuccess = false;
                 if (isMLCheckEnabled)
                 {
-                    if (_hasCompletedMLChecks)
+                    if (_hasCompletedMLCheck)
                     {
-                        var onlyVoicemailResults = _currentCheckResult.Where(x => x.Item1 == "voicemail").ToList();
-                        var totalVoicemailConfidence = onlyVoicemailResults.Sum(x => x.Item2);
-
-                        var onlyHumanResults = _currentCheckResult.Where(x => x.Item1 == "human").ToList();
-                        var totalHumanConfidence = onlyHumanResults.Sum(x => x.Item2);
-
-                        var totalConfidence = totalVoicemailConfidence + totalHumanConfidence;
-
-                        var voiceMailResult = totalVoicemailConfidence / totalConfidence;
-                        var humanResult = totalHumanConfidence / totalConfidence;
-
-                        if (voiceMailResult > humanResult)
+                        if (_voicemailMlPrediction.Value.Item1 == "voicemail")
                         {
                             isMLCheckSuccess = true;
                         }
@@ -321,7 +301,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (!_hasTriggeredStopSpeakingAgentTrigger)
                 {
                     var hasAchievedResult = true;
-                    if (_voicemailSettings.StopSpeakingAgentAfterXMlCheckSuccess)
+                    if (_voicemailSettings.StopSpeakingAgentAfterMlCheckSuccess)
                     {
                         if (!isMLCheckSuccess)
                         {
@@ -360,7 +340,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (!_hasTriggeredEndCallorLeaveMessageTrigger && _hasTriggeredStopSpeakingAgentTriggerCompleted)
                 {
                     var hasAchievedResult = true;
-                    if (_voicemailSettings.EndOrLeaveMessageAfterXMLCheckSuccess)
+                    if (_voicemailSettings.EndOrLeaveMessageAfterMLCheckSuccess)
                     {
                         if (!isMLCheckSuccess)
                         {
@@ -406,17 +386,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _hasStartedLLMCheck = true;
 
             string llmMessage = "Here is the context from the call so far that you can use to determine the result:\n\n\n";
-            if (_voicemailSettings.StopSpeakingAgentAfterXMlCheckSuccess && _hasCompletedMLChecks)
+            if (_voicemailSettings.StopSpeakingAgentAfterMlCheckSuccess && _hasCompletedMLCheck)
             {
-                var predictionSeconds = _voicemailSettings.MLCheckDurationMS / 1000;
-
                 llmMessage += "- Result of the Voicemail Detection Machine Learning Model:\n```";
-                for (int i = 0; i < _currentCheckResult.Count; i++)
-                {
-                    llmMessage += $"Prediciton ({(predictionSeconds) * (i)}seconds to {predictionSeconds * (i + 1)} seconds): {_currentCheckResult[i].Item1} with confidence {_currentCheckResult[i].Item2.ToString("0.00")}";
-
-                    if (i < _currentCheckResult.Count - 1) llmMessage += "\n";
-                }
+                llmMessage += $"Prediciton (First 2 Seconds): {_voicemailMlPrediction.Value.Item1} with confidence {_voicemailMlPrediction.Value.Item2.ToString("0.00")}";
                 llmMessage += "```\n\n";
             }
 
@@ -439,6 +412,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (_hasServiceEnded) return;
             if (_firstSpeechDetected != null && _silenceDetected != null) return;
+
+            long speechStartIndex = (long)(16000 * duration.Subtract(TimeSpan.FromMilliseconds(VADMinSpeechMS)).TotalSeconds);
+            _audioBuffer.RemoveRange(0, (int)speechStartIndex);
 
             _firstSpeechDetected = DateTime.UtcNow;
 
