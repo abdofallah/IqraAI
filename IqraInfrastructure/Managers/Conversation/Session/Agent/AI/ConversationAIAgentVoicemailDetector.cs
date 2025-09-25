@@ -435,7 +435,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // VAD EVENTS
-        private void OnVADSpeechStarted()
+        private void OnVADSpeechStarted(TimeSpan duration)
         {
             if (_hasServiceEnded) return;
             if (_firstSpeechDetected != null && _silenceDetected != null) return;
@@ -445,12 +445,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             Task.Run(async () =>
                 {
                     await Task.Delay(_voicemailSettings.VoiceMailMessageVADMaxSpeechDurationMS, _cancellationTokenSource.Token);
-                    OnVadSpeechEnded();
+                    OnVadSpeechEnded(TimeSpan.Zero); // TODO THIS IS WRONG, Calculate the right timespan
                 },
                 _cancellationTokenSource.Token
             );
         }
-        private void OnVadSpeechEnded()
+        private void OnVadSpeechEnded(TimeSpan duration)
         {
             if (_hasServiceEnded) return;
             if (_firstSpeechDetected != null && _silenceDetected != null) return;

@@ -2,8 +2,8 @@
 {
     public class VadStateTracker
     {
-        public event Action? SpeechStarted;
-        public event Action? SpeechEnded;
+        public event Action<TimeSpan>? SpeechStarted;
+        public event Action<TimeSpan>? SpeechEnded;
 
         // Configuration
         private readonly float _threshold;
@@ -27,7 +27,7 @@
             _speechPadSamples = (16000 * options.SpeechPadMs) / 1000;
         }
 
-        public void ProcessProbability(float speechProbability)
+        public void ProcessProbability(float speechProbability, TimeSpan durationTimespan)
         {
             if (speechProbability >= _threshold)
             {
@@ -40,7 +40,7 @@
                     if (!_isCurrentlySpeaking)
                     {
                         _isCurrentlySpeaking = true;
-                        SpeechStarted?.Invoke();
+                        SpeechStarted?.Invoke(durationTimespan);
                     }
                     _silenceDurationSamples = 0;
                 }
@@ -61,7 +61,7 @@
                     _triggered = false;
                     _tempEndSamples = 0;
                     _speechDurationSamples = 0;
-                    SpeechEnded?.Invoke();
+                    SpeechEnded?.Invoke(durationTimespan);
                 }
             }
         }

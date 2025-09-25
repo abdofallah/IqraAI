@@ -9,7 +9,7 @@ namespace IqraInfrastructure.Managers.VAD.Silero
     public class SileroVadCore : IDisposable
     {
         // Event that emits the raw speech probability (a float between 0.0 and 1.0) for each processed audio window.
-        public event Action<float>? SpeechProbabilityUpdated;
+        public event Action<float, TimeSpan>? SpeechProbabilityUpdated;
 
         // Constants for Silero VAD model requirements.
         private static readonly int SileroVadSampleRate = 16000;
@@ -19,6 +19,7 @@ namespace IqraInfrastructure.Managers.VAD.Silero
         private readonly SileroVadOnnxModel _onnxModel;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly List<float> _buffer = new List<float>();
+        private long _bufferReadPosition = 0;
 
         // Audio format configuration
         private readonly AudioEncodingTypeEnum _audioEncoding;
@@ -103,6 +104,7 @@ namespace IqraInfrastructure.Managers.VAD.Silero
                         {
                             currentChunk = _buffer.Take(Silero16khzWindowSizeSamples).ToArray();
                             _buffer.RemoveRange(0, Silero16khzWindowSizeSamples);
+                            _bufferReadPosition += Silero16khzWindowSizeSamples;
                         }
                     }
 
@@ -132,8 +134,11 @@ namespace IqraInfrastructure.Managers.VAD.Silero
                 // Perform inference using the ONNX model
                 float speechProbability = _onnxModel.Call(new[] { windowData }, SileroVadSampleRate)[0];
 
+                // Calculate the Timespan for the current buffer read position in TimeSpan, 16khz sample rate, 32bit
+                TimeSpan bufferReadPositionTimeSpan = TimeSpan.FromSeconds((double)_bufferReadPosition / SileroVadSampleRate);
+
                 // Emit the raw probability for any subscribers
-                SpeechProbabilityUpdated?.Invoke(speechProbability);
+                SpeechProbabilityUpdated?.Invoke(speechProbability, bufferReadPositionTimeSpan);
             }
             catch (Exception ex)
             {

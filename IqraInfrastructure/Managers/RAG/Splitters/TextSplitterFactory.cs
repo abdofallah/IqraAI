@@ -6,13 +6,8 @@ namespace IqraInfrastructure.Managers.RAG.Splitters
 {
     public enum SplitterType { Parent, Child }
 
-    /// <summary>
-    /// A factory for creating configured instances of ITextSplitter.
-    /// </summary>
     public class TextSplitterFactory
     {
-        private static readonly List<string> DefaultSeparators = new List<string> { "\n\n", "\n", ". ", " ", "" };
-
         public ITextSplitter Create(BusinessAppKnowledgeBaseConfigurationChunking config, SplitterType? type = null)
         {
             switch (config.Type)
@@ -20,9 +15,7 @@ namespace IqraInfrastructure.Managers.RAG.Splitters
                 case KnowledgeBaseChunkingType.General:
                 {
                     var generalConfig = (BusinessAppKnowledgeBaseConfigurationGeneralChunking)config;
-                    var generalSeparators = new List<string> { generalConfig.Delimiter.Replace("\\n", "\n") };
-                    generalSeparators.AddRange(DefaultSeparators);
-                    return new RecursiveCharacterTextSplitter(generalConfig.MaxLength, generalConfig.Overlap, generalSeparators);
+                    return new RecursiveCharacterTextSplitter(generalConfig.MaxLength, generalConfig.Overlap, ReplaceTextToEscapeSequence(generalConfig.Delimiter));
                 }
 
                 case KnowledgeBaseChunkingType.ParentChild:
@@ -35,22 +28,44 @@ namespace IqraInfrastructure.Managers.RAG.Splitters
                             // For FullDoc, the splitter is not used for the parent. We can return a "do-nothing" splitter.
                             return new RecursiveCharacterTextSplitter(int.MaxValue, 0);
                         }
-                        var parentSeparators = new List<string> { parentChildConfig.Parent.Delimiter!.Replace("\\n", "\n") };
-                        parentSeparators.AddRange(DefaultSeparators);
-                        return new RecursiveCharacterTextSplitter(parentChildConfig.Parent.MaxLength!.Value, 0, parentSeparators); // Parents have no overlap
+                        return new RecursiveCharacterTextSplitter(parentChildConfig.Parent.MaxLength!.Value, 0, ReplaceTextToEscapeSequence(parentChildConfig.Parent.Delimiter)); // Parents have no overlap
                     }
                     else // Child
                     {
-                        var childSeparators = new List<string> { parentChildConfig.Child.Delimiter.Replace("\\n", "\n") };
-                        childSeparators.AddRange(DefaultSeparators);
-                        // Child chunks do not overlap as they are contained within a parent.
-                        return new RecursiveCharacterTextSplitter(parentChildConfig.Child.MaxLength, 0, childSeparators);
+                        return new RecursiveCharacterTextSplitter(parentChildConfig.Child.MaxLength, 0, ReplaceTextToEscapeSequence(parentChildConfig.Child.Delimiter));
                     }
                 }
 
                 default:
                     throw new NotSupportedException($"Chunking type '{config.Type}' is not supported by the factory.");
             }
+        }
+
+        private string ReplaceTextToEscapeSequence(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text;
+            }
+
+            return text
+                // IMPORTANT: Replace the backslash escape first!
+                // This prevents "\\n" from becoming "\n" and then the '\' getting removed.
+                .Replace("\\\\", "\\")  // Literal backslash
+
+                // Common Newline and Whitespace Characters (Most important for chunking)
+                .Replace("\\n", "\n")  // Newline / Line Feed (LF)
+                .Replace("\\r", "\r")  // Carriage Return (CR)
+                .Replace("\\t", "\t")  // Horizontal Tab
+                .Replace("\\f", "\f")  // Form Feed (often used for page breaks)
+                .Replace("\\v", "\v")  // Vertical Tab
+
+                // Other escape sequences (less common as delimiters, but good to have)
+                .Replace("\\'", "\'")  // Single quote
+                .Replace("\\\"", "\"") // Double quote
+                .Replace("\\0", "\0")  // Null character
+                .Replace("\\a", "\a")  // Alert (bell)
+                .Replace("\\b", "\b"); // Backspace
         }
     }
 }

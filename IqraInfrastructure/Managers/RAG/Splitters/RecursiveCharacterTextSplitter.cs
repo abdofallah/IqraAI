@@ -6,9 +6,9 @@ namespace IqraInfrastructure.Managers.RAG.Splitters
     {
         private readonly int _chunkSize;
         private readonly int _chunkOverlap;
-        private readonly List<string> _separators;
+        private readonly string _separator;
 
-        public RecursiveCharacterTextSplitter(int chunkSize = 1024, int chunkOverlap = 50, List<string>? separators = null)
+        public RecursiveCharacterTextSplitter(int chunkSize = 1024, int chunkOverlap = 50, string separator = "\n")
         {
             if (chunkOverlap > chunkSize)
             {
@@ -16,7 +16,7 @@ namespace IqraInfrastructure.Managers.RAG.Splitters
             }
             _chunkSize = chunkSize;
             _chunkOverlap = chunkOverlap;
-            _separators = separators ?? new List<string> { "\n\n", "\n", ". ", " ", "" };
+            _separator = separator;
         }
 
         public List<string> SplitText(string text)
@@ -26,46 +26,35 @@ namespace IqraInfrastructure.Managers.RAG.Splitters
                 return new List<string>();
             }
 
-            // Start with the full text as a single chunk
-            var initialChunks = new List<string> { text };
+            List<string> newChunks = new List<string>();
 
-            // Iteratively split the text by each separator
-            foreach (var separator in _separators)
+            if (text.Length < _chunkSize)
             {
-                var newChunks = new List<string>();
-                foreach (var chunk in initialChunks)
+                newChunks.Add(text);
+            }
+            else
+            {
+                // Split the chunk by the current separator
+                var splits = _separator == ""
+                    ? text.Select(c => c.ToString()).ToList()
+                    : text.Split(new[] { _separator }, StringSplitOptions.None).ToList();
+
+                for (int i = 0; i < splits.Count; i++)
                 {
-                    // If a chunk is already smaller than the target size, no need to split it further by this separator
-                    if (chunk.Length < _chunkSize)
+                    // Re-add the separator to all but the last split part
+                    if (_separator != "" && i < splits.Count - 1)
                     {
-                        newChunks.Add(chunk);
-                        continue;
+                        splits[i] += _separator;
                     }
 
-                    // Split the chunk by the current separator
-                    var splits = separator == ""
-                        ? chunk.Select(c => c.ToString()).ToList()
-                        : chunk.Split(new[] { separator }, StringSplitOptions.None).ToList();
-
-                    for (int i = 0; i < splits.Count; i++)
+                    if (!string.IsNullOrEmpty(splits[i]))
                     {
-                        // Re-add the separator to all but the last split part
-                        if (separator != "" && i < splits.Count - 1)
-                        {
-                            splits[i] += separator;
-                        }
-
-                        if (!string.IsNullOrEmpty(splits[i]))
-                        {
-                            newChunks.Add(splits[i]);
-                        }
+                        newChunks.Add(splits[i]);
                     }
                 }
-                initialChunks = newChunks;
             }
 
-            // Now, merge the small chunks into final chunks of the desired size
-            return MergeChunks(initialChunks);
+            return MergeChunks(newChunks);
         }
 
         private List<string> MergeChunks(List<string> smallChunks)

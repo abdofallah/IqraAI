@@ -112,11 +112,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     MinSpeechDurationMs = _config.TurnEnd.VadSpeechDurationMS.Value
                 };
                 _turnEndVadTracker = new VadStateTracker(options);
-                _turnEndVadTracker.SpeechStarted += async () =>
+                _turnEndVadTracker.SpeechStarted += async (duration) =>
                 {
                     await OnTurnEndVadSpeechStarted();
                 };
-                _turnEndVadTracker.SpeechEnded += async () => {
+                _turnEndVadTracker.SpeechEnded += async (duration) => {
                     await OnTurnEndVadSpeechEnded();
                 };
                 _agentState.SileroVadCore.SpeechProbabilityUpdated += _turnEndVadTracker.ProcessProbability;
@@ -161,10 +161,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     MinSpeechDurationMs = _config.TurnEnd.MLTurnEndVADMinimumSpeechDurationMS.Value
                 };
                 _mlTurnVadTracker = new VadStateTracker(options);
-                _mlTurnVadTracker.SpeechStarted += async () => {
+                _mlTurnVadTracker.SpeechStarted += async (duration) => {
                     await OnMLTurnVadSpeechStarted();
                 };
-                _mlTurnVadTracker.SpeechEnded += async () => { await OnMLTurnVadSpeechEnded(); };
+                _mlTurnVadTracker.SpeechEnded += async (duration) => {
+                    await OnMLTurnVadSpeechEnded();
+                };
                 _agentState.SileroVadCore.SpeechProbabilityUpdated += _mlTurnVadTracker.ProcessProbability;
             }
 
@@ -604,7 +606,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             }
         }
-        private void OnPauseTriggerVadSpeechStarted()
+        private void OnPauseTriggerVadSpeechStarted(TimeSpan duration)
         {
             if (_agentState.IsVoicemailDetected) return;
             if (_agentState.CurrentTurn == null) return;
