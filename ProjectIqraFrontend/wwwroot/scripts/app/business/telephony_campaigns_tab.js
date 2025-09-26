@@ -431,11 +431,11 @@ function fillTelephonyCampaignManager() {
     // Variables
     data.variables.dynamicVariables.forEach((dynamicVariable) => {
         const row = createTelephonyCampaignVariableElement(dynamicVariable);
-        telephonyCampaignVariablesListTable.append(row);
+        telephonyCampaignDynamicVariablesList.append(row);
     });
     data.variables.metadata.forEach((metaData) => {
         const row = createTelephonyCampaignVariableElement(metaData);
-        telephonyCampaignVariablesListTable.append(row);
+        telephonyCampaignMetadataList.append(row);
     });
 
     // Voicemail
@@ -1178,17 +1178,23 @@ function initTelephonyCampaignVariablesEventHandlers() {
 }
 
 function getTelephonyCampaignVariablesList(variablesList) {
-    return variablesList.find(".telephony-campaign-variable-box").map((variableElement) => {
+    var array = [];
+
+    variablesList.find(".telephony-campaign-variable-box").each((index, variableElement) => {
         var variableKey = $(variableElement).find('input[data-type="key"]').val()?.trim();
         var isRequired = $(variableElement).find('input[data-type="isRequired"]').is(":checked");
         var isEmptyOrNullAllowed = $(variableElement).find('input[data-type="isEmptyOrNullAllowed"]').is(":checked");
 
-        return {
+        var object = {
             key: variableKey,
             isRequired: isRequired,
             isEmptyOrNullAllowed: isEmptyOrNullAllowed
         };
+
+        array.push(object);
     });
+
+    return array;
 }
 
 // -- Voicemail Tab Helpers --

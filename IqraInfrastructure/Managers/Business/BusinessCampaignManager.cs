@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.App.Campaign;
 using IqraCore.Entities.Helper.Call.Outbound;
 using IqraCore.Entities.Helper.Campaign;
 using IqraCore.Entities.Helpers;
@@ -375,6 +376,173 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     newBusinessAppCampaignData.Configuration.Timeouts.MaxCallTimeS = maxCallTime;
+                }
+
+                // Variables Tab
+                if (!changes.RootElement.TryGetProperty("variables", out var variablesElement))
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTelephonyCampaignAsync:VARIABLES_SECTION_MISSING",
+                        "Variables section 'variables' not found."
+                    );
+                }
+                else
+                {
+                    // Dynamic Variables
+                    if (!variablesElement.TryGetProperty("dynamicVariables", out var dynamicVariablesElement) ||
+                        dynamicVariablesElement.ValueKind != JsonValueKind.Array)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTelephonyCampaignAsync:DYNAMIC_VARIABLES_SECTION_MISSING",
+                            "Variables section 'dynamicVariables' not found or not an array."
+                        );
+                    }
+                    else
+                    {
+                        var dynamicVariablesEnumerator = dynamicVariablesElement.EnumerateArray().GetEnumerator();
+
+                        foreach (var dynamicVariableElement in dynamicVariablesEnumerator)
+                        {
+                            var dynamicVariable = new BusinessAppCampaignVariableData();
+
+                            if (!dynamicVariableElement.TryGetProperty("key", out var nameElement)
+                                || nameElement.ValueKind != JsonValueKind.String)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTelephonyCampaignAsync:DYNAMIC_VARIABLE_KEY_INVALID",
+                                    "Invalid dynamic variable key or not found."
+                                );
+                            }
+                            else
+                            {
+                                var key = nameElement.GetString();
+                                if (string.IsNullOrWhiteSpace(key))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:DYNAMIC_VARIABLE_KEY_EMPTY",
+                                        "Dynamic variable key is empty."
+                                    );
+                                }
+
+                                if (newBusinessAppCampaignData.Variables.DynamicVariables.Any(x => x.Key.Equals(key, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:DYNAMIC_VARIABLE_KEY_EXISTS",
+                                        $"Dynamic variable key '{key}' already exists."
+                                    );
+                                }
+
+                                dynamicVariable.Key = key;
+                            }
+
+                            if (!dynamicVariableElement.TryGetProperty("isRequired", out var valueElement)
+                                || (valueElement.ValueKind != JsonValueKind.True && valueElement.ValueKind != JsonValueKind.False)
+                            )
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTelephonyCampaignAsync:DYNAMIC_VARIABLE_ISREQUIRED_INVALID",
+                                    "Invalid dynamic variable is required or not found."
+                                );
+                            }
+                            else
+                            {
+                                dynamicVariable.IsRequired = valueElement.GetBoolean();
+                            }
+
+                            if (!dynamicVariableElement.TryGetProperty("isEmptyOrNullAllowed", out var isEmptyOrNullAllowedElement)
+                                || (isEmptyOrNullAllowedElement.ValueKind != JsonValueKind.True && isEmptyOrNullAllowedElement.ValueKind != JsonValueKind.False))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTelephonyCampaignAsync:DYNAMIC_VARIABLE_ISREQUIRED_INVALID",
+                                    "Invalid dynamic variable is required or not found."
+                                );
+                            }
+                            else
+                            {
+                                dynamicVariable.IsEmptyOrNullAllowed = isEmptyOrNullAllowedElement.GetBoolean();
+                            }
+
+                            newBusinessAppCampaignData.Variables.DynamicVariables.Add(dynamicVariable);
+                        }
+                    }
+
+                    // Metadata Variables
+                    if (!variablesElement.TryGetProperty("metadata", out var metadataListElement) ||
+                        metadataListElement.ValueKind != JsonValueKind.Array)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTelephonyCampaignAsync:METADATA_SECTION_MISSING",
+                            "Variables section 'metadata' not found or not an array."
+                        );
+                    }
+                    else
+                    {
+                        var metadataListEnumerator = metadataListElement.EnumerateArray().GetEnumerator();
+
+                        foreach (var metadataVariableElement in metadataListEnumerator)
+                        {
+                            var metadata = new BusinessAppCampaignVariableData();
+
+                            if (!metadataVariableElement.TryGetProperty("key", out var nameElement)
+                                || nameElement.ValueKind != JsonValueKind.String)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTelephonyCampaignAsync:METADATA_KEY_INVALID",
+                                    "Invalid metadata key or not found."
+                                );
+                            }
+                            else
+                            {
+                                var key = nameElement.GetString();
+                                if (string.IsNullOrWhiteSpace(key))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:METADATA_KEY_EMPTY",
+                                        "Metadata key is empty."
+                                    );
+                                }
+
+                                if (newBusinessAppCampaignData.Variables.Metadata.Any(x => x.Key.Equals(key, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:METADATA_KEY_EXISTS",
+                                        $"Metadata key '{key}' already exists."
+                                    );
+                                }
+
+                                metadata.Key = key;
+                            }
+
+                            if (!metadataVariableElement.TryGetProperty("isRequired", out var valueElement)
+                                || (valueElement.ValueKind != JsonValueKind.True && valueElement.ValueKind != JsonValueKind.False)
+                            )
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTelephonyCampaignAsync:METADATA_ISREQUIRED_INVALID",
+                                    "Invalid metadata is required or not found."
+                                );
+                            }
+                            else
+                            {
+                                metadata.IsRequired = valueElement.GetBoolean();
+                            }
+
+                            if (!metadataVariableElement.TryGetProperty("isEmptyOrNullAllowed", out var isEmptyOrNullAllowedElement)
+                                || (isEmptyOrNullAllowedElement.ValueKind != JsonValueKind.True && isEmptyOrNullAllowedElement.ValueKind != JsonValueKind.False))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTelephonyCampaignAsync:METADATA_ISREQUIRED_INVALID",
+                                    "Invalid metadata is required or not found."
+                                );
+                            }
+                            else
+                            {
+                                metadata.IsEmptyOrNullAllowed = isEmptyOrNullAllowedElement.GetBoolean();
+                            }
+
+                            newBusinessAppCampaignData.Variables.Metadata.Add(metadata);
+                        }
+                    }
                 }
 
                 // Voicemail Tab

@@ -97,7 +97,7 @@
                 </div>
                 
                 <!-- Schedule / Call Now -->
-                <div>
+                <div class="mb-3">
                     <label class="form-label btn-ic-span-align">
                         <span>When to Call</span>
                         <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Choose to initiate the call(s) immediately or schedule them for a future date and time.">
@@ -121,6 +121,32 @@
                     <div class="mt-2 d-none fade" id="makeCallScheduleDateTimeContainer">
                         <label class="form-label" for="makeCallScheduleDateTimeInput">Schedule Date & Time</label>
                         <input type="datetime-local" class="form-control" id="makeCallScheduleDateTimeInput">
+                    </div>
+                </div>
+            
+                <div class="mb-3">
+                    <label class="form-label" for="makeCallDynamicVariablesSelect">Dynamic Variables</label>
+                    <div class="input-group mb-2">
+                        <select class="form-select" id="makeCallDynamicVariablesSelect">
+                            <!-- Dynamically Added -->
+                        </select>
+                        <button class="btn btn-primary" type="button" id="makeCallDynamicVariablesSelectAddButton">Add</button>
+                    </div>
+                    <div id="makeCallDynamicVariablesList">
+                        <!-- Dynamically Added -->
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label" for="makeCallMetadataSelect">Metadata</label>
+                    <div class="input-group mb-2">
+                        <select class="form-select" id="makeCallMetadataSelect">
+                            <!-- Dynamically Added -->
+                        </select>
+                        <button class="btn btn-primary" type="button" id="makeCallMetadataSelectAddButton">Add</button>
+                    </div>
+                    <div id="makeCallMetadataList">
+                        <!-- Dynamically Added -->
                     </div>
                 </div>
             </div>

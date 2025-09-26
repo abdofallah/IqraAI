@@ -40,6 +40,14 @@ const makeCallScheduleTypeNowRadio = makeCallsTab.find("#makeCallScheduleTypeNow
 const makeCallScheduleTypeLaterRadio = makeCallsTab.find("#makeCallScheduleTypeLater");
 const makeCallScheduleDateTimeContainer = makeCallsTab.find("#makeCallScheduleDateTimeContainer");
 const makeCallScheduleDateTimeInput = makeCallsTab.find("#makeCallScheduleDateTimeInput");
+// Dynamic Variables
+const makeCallDynamicVariablesSelect = makeCallsTab.find("#makeCallDynamicVariablesSelect");
+const makeCallDynamicVariablesSelectAddButton = makeCallsTab.find("#makeCallDynamicVariablesSelectAddButton");
+const makeCallDynamicVariablesList = makeCallsTab.find("#makeCallDynamicVariablesList");
+// Metadata
+const makeCallMetadataSelect = makeCallsTab.find("#makeCallMetadataSelect");
+const makeCallMetadataSelectAddButton = makeCallsTab.find("#makeCallMetadataSelectAddButton");
+const makeCallMetadataList = makeCallsTab.find("#makeCallMetadataList");
 
 // Campaign Selection Modal
 const editChangeMakeCallCampaignModalElement = makeCallsTab.find("#editChangeMakeCallCampaignModal");
@@ -86,6 +94,13 @@ function resetMakeCallForm() {
 	makeCallScheduleTypeLaterRadio.prop("checked", false);
 	makeCallScheduleDateTimeInput.val("");
 	makeCallScheduleDateTimeContainer.addClass("d-none").removeClass("show");
+
+	makeCallDynamicVariablesSelect.empty();
+	makeCallDynamicVariablesSelect.append("<option value='' is-custom='true' selected>Custom Variable</option>");
+	makeCallDynamicVariablesList.empty();
+	makeCallMetadataSelect.empty();
+	makeCallMetadataSelect.append("<option value='' is-custom='true' selected>Custom Variable</option>");
+    makeCallMetadataList.empty();
 
 	// Reset validation and buttons
 	makeCallsTab.find(".is-invalid").removeClass("is-invalid");
@@ -149,10 +164,87 @@ function validateMakeCallConfig(onlyRemoveErrors = false) {
 		}
 	}
 
+	// VARIBALES TAB
+	function validateVariableElement(variablesList, variableSelectElement, variableListName, campaignVariablesData = null) {
+		var addedKeys = [];
+
+		variablesList.find(".input-group").each((index, element) => {
+			var keyElement = $(element).find('[data-type="key"]');
+
+			const key = keyElement.val()?.trim();
+
+			if (!key || key === "") {
+				addError(`${variableListName} item (${index + 1}) key must be set.`, keyElement);
+				return true;
+			}
+
+			if (addedKeys.includes(key)) {
+				addError(`${variableListName} item key '${key}' must be unique.`, keyElement);
+				return true;
+			}
+
+			addedKeys.push(key);
+
+			const value = $(element).find('[data-type="value"]').val()?.trim();
+
+			if (campaignVariablesData != null) {
+				var keyData = campaignVariablesData.find((v) => v.key === key);
+				if (keyData && keyData != null) {
+					if (!keyData.isEmptyOrNullAllowed &&
+						(!value || value === "")
+					) {
+						addError(`${variableListName} item '${key}' value can not be empty.`, $(element).find('[data-type="value"]'));
+						return true;
+					}
+				}
+			}
+		});
+
+		if (campaignVariablesData != null) {
+			campaignVariablesData.forEach((variableData) => {
+				if (!addedKeys.includes(variableData.key)) {
+					addError(`${variableListName} item key '${variableData.key}' is required.`, variableSelectElement);
+                }
+			});
+		}
+	}
+
+	removeError(makeCallDynamicVariablesSelect);
+	makeCallDynamicVariablesList.find(".is-invalid").removeClass("is-invalid");
+
+    removeError(makeCallMetadataSelect);
+	makeCallMetadataList.find(".is-invalid").removeClass("is-invalid");	
+
+	if (SelectedCampaignId) {
+		const campaignData = BusinessFullData.businessApp.telephonyCampaigns.find((c) => c.id === SelectedCampaignId);
+
+		validateVariableElement(makeCallDynamicVariablesList, makeCallDynamicVariablesSelect,  "Dynamic Variables", campaignData.variables.dynamicVariables);
+		validateVariableElement(makeCallMetadataList, makeCallMetadataSelect, "Metadata", campaignData.variables.metadata);
+	}
+	else {
+		validateVariableElement(makeCallDynamicVariablesList, makeCallDynamicVariablesSelect, "Dynamic Variables");
+		validateVariableElement(makeCallMetadataList, makeCallMetadataSelect, "Metadata");
+	}
+
 	return { validated: isValid, errors: errors };
 }
 
 function gatherMakeCallConfig() {
+	function getVariableData(elementList) {
+		const data = {};
+
+		elementList.find(".make-call-variable-data").each((index, element) => {
+			const key = $(element).find('[data-type="key"]').val()?.trim();
+			const value = $(element).find('[data-type="value"]').val()?.trim();
+
+			if (!key || !value) return;
+
+			data[key] = value;
+		});
+
+		return data;
+	}
+
 	const config = {
 		campaignId: SelectedCampaignId,
 		number: {
@@ -162,12 +254,8 @@ function gatherMakeCallConfig() {
 		schedule: {
 			type: makeCallScheduleTypeLaterRadio.is(":checked") ? OutboundCallScheduleType.Later : OutboundCallScheduleType.Now
 		},
-		dynamicVariables: {
-			// keep empty for now
-		},
-		metadata: {
-			// keep empty for now
-		}
+		dynamicVariables: getVariableData(makeCallDynamicVariablesList),
+		metadata: getVariableData(makeCallMetadataList)
 	};
 
 	if (config.schedule.type === OutboundCallScheduleType.Later && makeCallScheduleDateTimeInput.val()) {
@@ -190,6 +278,8 @@ function captureInitialFormState() {
 		bulkFileSelected: !!SelectedBulkFromFileObject,
 		scheduleType: makeCallScheduleTypeLaterRadio.is(":checked") ? "later" : "now",
 		scheduleDateTime: makeCallScheduleDateTimeInput.val(),
+		dynamicVariables: {},
+		metadata: {}
 	};
 }
 
@@ -206,6 +296,9 @@ function checkMakeCallTabHasChanges() {
 	const currentScheduleType = makeCallScheduleTypeLaterRadio.is(":checked") ? "later" : "now";
 	if (makeCallFormInitialState.scheduleType !== currentScheduleType) return true;
 	if (currentScheduleType === "later" && makeCallFormInitialState.scheduleDateTime !== makeCallScheduleDateTimeInput.val()) return true;
+
+	if (Object.keys(makeCallFormInitialState.dynamicVariables).length != 0) return true;
+	if (Object.keys(makeCallFormInitialState.metadata).length != 0) return true;
 
 	return false; // No changes detected
 }
@@ -314,6 +407,19 @@ function initMakeCallHandlers() {
 				editSelectedMakeCallCampaignIcon.text(campaignData.general.emoji);
 				editSelectedMakeCallCampaignInput.val(campaignData.general.name);
 				editChangeMakeCallCampaignModal.hide();
+
+				makeCallDynamicVariablesSelect.empty();
+				makeCallDynamicVariablesSelect.append("<option value='' is-custom='true' selected>Custom Variable</option>");
+				campaignData.variables.dynamicVariables.forEach((variable) => {
+					makeCallDynamicVariablesSelect.append(`<option value='${variable.key}' is-custom='false' is-required='${variable.isRequired ? "true" : "false"}'>${(variable.isRequired ? "*" : "")}${variable.key}</option>`);
+				});
+
+				makeCallMetadataSelect.empty();
+				makeCallMetadataSelect.append("<option value='' is-custom='true' selected>Custom Variable</option>");
+                campaignData.variables.metadata.forEach((variable) => {
+					makeCallMetadataSelect.append(`<option value='${variable.key}' is-custom='false' is-required='${variable.isRequired ? "true" : "false"}'>${(variable.isRequired ? "*" : "")}${variable.key}</option>`);
+                });
+
 				validateMakeCallConfig(true);
 			} else {
 				AlertManager.createAlert({
@@ -340,6 +446,77 @@ function initMakeCallHandlers() {
 		validateMakeCallConfig(true);
 	});
 	makeCallScheduleDateTimeInput.on("input", () => validateMakeCallConfig(true));
+
+	// Variables Handlers
+	function addVariableListElement(isCustom, key, isRequired) {
+		return `
+			<div class="input-group mt-1">
+			  <input type="text" class="form-control" placeholder="Key" data-type="key" ${(isCustom ? "" : `value="${key}" disabled`)}>
+			  <input type="text" class="form-control" placeholder="Value" data-type="value">
+			  <button class="btn btn-danger" button-type="remove-variable" is-custom="${isCustom ? "true" : "false"}" ${(isCustom ? "" : `static-key="${key}" is-required="${isRequired ? "true" : "false"}"`)}><i class="fa-regular fa-trash"></i></button>
+			</div>
+		`;
+	}
+
+	function onVariableSelectAddClick(event, variablesList, selectElement) {
+		event.preventDefault();
+
+		const selectedElement = selectElement.find("option:selected");
+		if (selectedElement.length == 0) return;
+
+		var isCustomAdd = selectedElement.attr("is-custom") === "true";
+		if (isCustomAdd) {
+			variablesList.append($(addVariableListElement(true, null, null)))
+		}
+		else {
+			const variableKey = selectedElement.val();
+            const isRequired = selectedElement.attr("is-required") === "true";
+
+			variablesList.append($(addVariableListElement(false, variableKey, isRequired)))
+
+			selectedElement.remove();
+		}
+	}
+
+	makeCallDynamicVariablesSelectAddButton.on("click", (event) => {
+		onVariableSelectAddClick(event, makeCallDynamicVariablesList, makeCallDynamicVariablesSelect);
+		validateMakeCallConfig(true);
+	});
+	makeCallMetadataSelectAddButton.on("click", (event) => {
+		onVariableSelectAddClick(event, makeCallMetadataList, makeCallMetadataSelect);
+		validateMakeCallConfig(true);
+	});
+	function onRemoveVariableClick(event, selectElement) {
+        event.preventDefault();
+
+		var currentTarget = $(event.currentTarget);
+
+		var isCustom = currentTarget.attr("is-custom") === "true";
+		if (!isCustom) {
+            var staticKey = currentTarget.attr("static-key");
+			var isRequired = currentTarget.attr("is-required") === "true";
+
+			selectElement.append(`<option value="${staticKey}" is-custom="false" static-key="${staticKey}">${isRequired ? "*" : ""}${staticKey}</option>`);
+		}
+
+		currentTarget.parent().remove();
+    }
+
+	makeCallDynamicVariablesList.on("click", "button[button-type='remove-variable']", (event) => {
+		onRemoveVariableClick(event, makeCallDynamicVariablesSelect);
+		validateMakeCallConfig(true);
+	});
+	makeCallMetadataList.on("click", "button[button-type='remove-variable']", (event) => {
+		onRemoveVariableClick(event, makeCallMetadataSelect);
+		validateMakeCallConfig(true);
+	});
+
+	makeCallDynamicVariablesList.on("input", "input", (event) => {
+		validateMakeCallConfig(true);
+	});
+	makeCallMetadataList.on("input", "input", (event) => {
+		validateMakeCallConfig(true);
+	});
 }
 
 /** INITIALIZATION **/
@@ -362,7 +539,7 @@ function initMakeCallsTab() {
 			AlertManager.createAlert({
 				type: "danger",
 				message: `Please fix the errors:<br><br>${validationResult.errors.join("<br>")}`,
-				timeout: 6000
+				timeout: 3000
 			});
 			makeCallsTab.find(".is-invalid").first().focus();
 			return;
@@ -414,7 +591,7 @@ function initMakeCallsTab() {
 				AlertManager.createAlert({
 					type: "danger",
 					message: "An error occurred while initiating calls. Check console logs for more details.",
-					timeout: 6000
+					timeout: 4000
 				});
 				console.error("An error occurred while initiating calls:", errorResponse);
 

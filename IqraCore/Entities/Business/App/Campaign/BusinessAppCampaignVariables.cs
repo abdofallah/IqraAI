@@ -9,7 +9,7 @@
     public class BusinessAppCampaignVariableData
     {
         public string Key { get; set; }
-        public bool IsRequried { get; set; }
+        public bool IsRequired { get; set; }
         public bool IsEmptyOrNullAllowed { get; set; }
     }
 }
