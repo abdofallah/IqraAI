@@ -2,14 +2,14 @@
 {
     public class BusinessAppCampaignVariables
     {
-        public Dictionary<string, BusinessAppCampaignVariableData> DynamicVariables { get; set; } = new Dictionary<string, BusinessAppCampaignVariableData>();
-        public Dictionary<string, BusinessAppCampaignVariableData> Metadata { get; set; } = new Dictionary<string, BusinessAppCampaignVariableData>();
+        public List<BusinessAppCampaignVariableData> DynamicVariables { get; set; } = new List<BusinessAppCampaignVariableData>();
+        public List<BusinessAppCampaignVariableData> Metadata { get; set; } = new List<BusinessAppCampaignVariableData>();
     }
 
     public class BusinessAppCampaignVariableData
     {
+        public string Key { get; set; }
         public bool IsRequried { get; set; }
         public bool IsEmptyOrNullAllowed { get; set; }
-        public string? DefaultValue { get; set; }
     }
 }

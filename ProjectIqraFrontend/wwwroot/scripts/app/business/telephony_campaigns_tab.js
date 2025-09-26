@@ -254,8 +254,8 @@ function createDefaultTelephonyCampaignObject() {
             defaultNumberId: ""
         },
         variables: {
-            dynamicVariables: {},
-            metadata: {}
+            dynamicVariables: [],
+            metadata: []
         },
         actions: {
             callInitiationFailureTool: {
@@ -430,11 +430,11 @@ function fillTelephonyCampaignManager() {
 
     // Variables
     data.variables.dynamicVariables.forEach((dynamicVariable) => {
-        const row = createTelephonyCampaignDynamicVariableElement(dynamicVariable);
+        const row = createTelephonyCampaignVariableElement(dynamicVariable);
         telephonyCampaignVariablesListTable.append(row);
     });
     data.variables.metadata.forEach((metaData) => {
-        const row = createTelephonyCampaignMetadataElement(metaData);
+        const row = createTelephonyCampaignVariableElement(metaData);
         telephonyCampaignVariablesListTable.append(row);
     });
 
@@ -584,6 +584,39 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
         }
     }
 
+    function checkVariablesTab() {
+        changes.variables = {
+            dynamicVariables: [],
+            metadata: []
+        };
+
+        changes.variables.dynamicVariables = getTelephonyCampaignVariablesList(telephonyCampaignDynamicVariablesList);
+        changes.variables.metadata = getTelephonyCampaignVariablesList(telephonyCampaignMetadataList);
+
+        // Check Changes
+        function areArraysOfObjectsEqual(arr1, arr2) {
+            if (arr1 === arr2) return true;
+            if (!arr1 || !arr2 || arr1.length !== arr2.length) return false;
+
+            for (let i = 0; i < arr1.length; i++) {
+                const obj1 = arr1[i];
+                const obj2 = arr2[i];
+                const keys1 = Object.keys(obj1);
+                const keys2 = Object.keys(obj2);
+                if (keys1.length !== keys2.length) return false;
+                for (const key of keys1) {
+                    if (obj1[key] !== obj2[key]) return false;
+                }
+            }
+            return true;
+        }
+
+        if (!areArraysOfObjectsEqual(changes.variables.dynamicVariables, original.variables.dynamicVariables) ||
+            !areArraysOfObjectsEqual(changes.variables.metadata, original.variables.metadata)) {
+            hasChanges = true;
+        }
+    }
+    
     function checkVoicemailTab() {
         changes.voicemailDetection = {
             isEnabled: telephonyCampaignVoicemailIsEnabledCheck.is(":checked")
@@ -597,6 +630,10 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
             if (changes.voicemailDetection.onVoiceMailMessageDetectVerifySTTAndLLM) {
                 changes.voicemailDetection.transcribeVoiceMessageSTT = telephonyCampaignVoicemailSTTIntegrationManager.getData();
                 changes.voicemailDetection.verifyVoiceMessageLLM = telephonyCampaignVoicemailLLMIntegrationManager.getData();
+            }
+            else {
+                changes.voicemailDetection.transcribeVoiceMessageSTT = null;
+                changes.voicemailDetection.verifyVoiceMessageLLM = null;
             }
             changes.voicemailDetection.stopSpeakingAgentAfterMlCheckSuccess = telephonyCampaignStopAgentOnMLCheck.is(':checked');
             changes.voicemailDetection.stopSpeakingAgentAfterVadSilence = telephonyCampaignStopAgentOnVADCheck.is(':checked');
@@ -682,6 +719,7 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
     checkAgentTab();
     checkNumbersTab();
     checkConfigurationTab();
+    checkVariablesTab();
     checkVoicemailTab();
     checkActionsTab();
 
@@ -789,6 +827,39 @@ function validateTelephonyCampaign(onlyRemove = true) {
         }
     }
 
+    // Variables
+    function validateVariablesTab() {
+        function checkVariableList(variablesList, listName) {
+            var currentAddedKeys = [];
+
+            variablesList.find(".telephony-campaign-variable-box").each((index, variableElement) => {
+                var variableKeyElement = $(variableElement).find('input[data-type="key"]');
+                var variableKey = variableKeyElement.val();
+
+                if (!variableKey || variableKey == "" || variableKey == null) {
+                    validated = false;
+                    errors.push(`${listName}: Variable key is required and can not be empty.`);
+                    if (!onlyRemove) variableKeyElement.addClass('is-invalid');
+                }
+                else {
+                    variableKey = variableKey.trim();
+
+                    if (currentAddedKeys.includes(variableKey)) {
+                        validated = false;
+                        errors.push(`${listName}: Variable key must be unique but is duplicate for ${variableKey}`);
+                        if (!onlyRemove) variableKeyElement.addClass('is-invalid');
+                    }
+                    else {
+                        currentAddedKeys.push(variableKey);
+                    }
+                }
+            });
+        }
+
+        checkVariableList(telephonyCampaignDynamicVariablesList, "Dynamic Variables");
+        checkVariableList(telephonyCampaignMetadataList, "Metadata");
+    }
+
     // Voicemail
     function validateVoicemailTab() {
         if (!telephonyCampaignVoicemailIsEnabledCheck.is(":checked")) return; // No validation needed if disabled
@@ -870,6 +941,7 @@ function validateTelephonyCampaign(onlyRemove = true) {
     validateGeneralTab();
     validateAgentTab();
     validateConfigurationTab();
+    validateVariablesTab();
     validateNumbersTab();
     validateVoicemailTab();
     validateActionsTab();
@@ -1048,30 +1120,75 @@ function populateTelephonyNumberSelectionModal() {
 }
 
 // -- Variable Tab Helpers --
-function createTelephonyCampaignDynamicVariableElement(data) {
-    return 'TODO';
-}
+function createTelephonyCampaignVariableElement(data) {
+    let isRequiredCheckBoxIdUnique = `telephony-campaign-variable-required-${crypto.randomUUID()}`;
+    let isEmptyOrNullAllowedCheckBoxIdUnique = `telephony-campaign-variable-emptyOrNull-${crypto.randomUUID()}`;
 
-function createTelephonyCampaignMetadataElement(data) {
-    return 'TODO';
+    return `
+        <div class="input-group mt-1 telephony-campaign-variable-box">
+			<input type="text" class="form-control" data-type="key" placeholder="Key" value="${data ? data.key : ""}">
+            <div class="input-group-text">
+                <input class="form-check-input mt-0" type="checkbox" id="${isRequiredCheckBoxIdUnique}" data-type="isRequired" ${data && data.isRequired ? "checked" : ""}>
+                <label class="form-check-label ms-1" for="${isRequiredCheckBoxIdUnique}">Required?</label>
+            </div>
+            <div class="input-group-text">
+                <input class="form-check-input mt-0" type="checkbox" id="${isEmptyOrNullAllowedCheckBoxIdUnique}" data-type="isEmptyOrNullAllowed" ${data && data.isEmptyOrNullAllowed ? "checked" : ""}>
+                <label class="form-check-label ms-1" for="${isEmptyOrNullAllowedCheckBoxIdUnique}">Empty Allowed?</label>
+            </div>
+			<button class="btn btn-danger" button-type="removeTelephonyCampaignVariable">
+				<i class="fa-regular fa-trash"></i>
+			</button>
+		</div>
+    `;
 }
 
 function initTelephonyCampaignVariablesEventHandlers() {
     // Dynamic Variables
     addTelephonyCampaignDynamicVariable.on('click', (event) => {
-        var newElement = createTelephonyCampaignDynamicVariableElement(null);
+        var newElement = createTelephonyCampaignVariableElement(null);
         telephonyCampaignDynamicVariablesList.append(newElement);
+
+        checkTelephonyCampaignChanges();
+        validateTelephonyCampaign(true);
     });
 
-    // todo delete
+    telephonyCampaignDynamicVariablesList.on('click', '.btn[button-type="removeTelephonyCampaignVariable"]', onRemoveVariable);
 
     // Metadata
     addTelephonyCampaignMetadata.on('click', (event) => {
-        var newElement = createTelephonyCampaignMetadataElement(null);
+        var newElement = createTelephonyCampaignVariableElement(null);
         telephonyCampaignMetadataList.append(newElement);
+
+        checkTelephonyCampaignChanges();
+        validateTelephonyCampaign(true);
     });
 
-    // todo delete
+    telephonyCampaignMetadataList.on('click', '.btn[button-type="removeTelephonyCampaignVariable"]', onRemoveVariable);
+
+    // Common
+    function onRemoveVariable(event) {
+        event.preventDefault();
+
+        const currentElement = $(event.currentTarget);
+        currentElement.closest('.telephony-campaign-variable-box').remove();
+
+        checkTelephonyCampaignChanges();
+        validateTelephonyCampaign(true);
+    }
+}
+
+function getTelephonyCampaignVariablesList(variablesList) {
+    return variablesList.find(".telephony-campaign-variable-box").map((variableElement) => {
+        var variableKey = $(variableElement).find('input[data-type="key"]').val()?.trim();
+        var isRequired = $(variableElement).find('input[data-type="isRequired"]').is(":checked");
+        var isEmptyOrNullAllowed = $(variableElement).find('input[data-type="isEmptyOrNullAllowed"]').is(":checked");
+
+        return {
+            key: variableKey,
+            isRequired: isRequired,
+            isEmptyOrNullAllowed: isEmptyOrNullAllowed
+        };
+    });
 }
 
 // -- Voicemail Tab Helpers --
