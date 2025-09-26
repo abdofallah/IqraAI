@@ -41,10 +41,12 @@ const makeCallScheduleTypeLaterRadio = makeCallsTab.find("#makeCallScheduleTypeL
 const makeCallScheduleDateTimeContainer = makeCallsTab.find("#makeCallScheduleDateTimeContainer");
 const makeCallScheduleDateTimeInput = makeCallsTab.find("#makeCallScheduleDateTimeInput");
 // Dynamic Variables
+const makeCallDynamicVariablesSelectLabel = makeCallsTab.find("#makeCallDynamicVariablesSelectLabel");
 const makeCallDynamicVariablesSelect = makeCallsTab.find("#makeCallDynamicVariablesSelect");
 const makeCallDynamicVariablesSelectAddButton = makeCallsTab.find("#makeCallDynamicVariablesSelectAddButton");
 const makeCallDynamicVariablesList = makeCallsTab.find("#makeCallDynamicVariablesList");
 // Metadata
+const makeCallMetadataSelectLabel = makeCallsTab.find("#makeCallMetadataSelectLabel");
 const makeCallMetadataSelect = makeCallsTab.find("#makeCallMetadataSelect");
 const makeCallMetadataSelectAddButton = makeCallsTab.find("#makeCallMetadataSelectAddButton");
 const makeCallMetadataList = makeCallsTab.find("#makeCallMetadataList");
@@ -200,7 +202,7 @@ function validateMakeCallConfig(onlyRemoveErrors = false) {
 			}
 		});
 
-		if (campaignVariablesData != null) {
+		if (campaignVariablesData != null && CurrentMakeCallType == OutboundCallNumberType.Single) {
 			campaignVariablesData.forEach((variableData) => {
 				if (!addedKeys.includes(variableData.key)) {
 					addError(`${variableListName} item key '${variableData.key}' is required.`, variableSelectElement);
@@ -311,6 +313,8 @@ function handleCallTypeChange(selectedType) {
 		makeCallTypeBulkBox.removeClass("active");
 		makeCallNumberSingleContainer.removeClass("d-none").addClass("show");
 		makeCallNumberBulkContainer.addClass("d-none").removeClass("show");
+		makeCallDynamicVariablesSelectLabel.text("Dynamic Variables");
+        makeCallMetadataSelectLabel.text("Metadata");
 	} else {
 		// bulk
 		CurrentMakeCallType = OutboundCallNumberType.Bulk;
@@ -318,6 +322,8 @@ function handleCallTypeChange(selectedType) {
 		makeCallTypeBulkBox.addClass("active");
 		makeCallNumberSingleContainer.addClass("d-none").removeClass("show");
 		makeCallNumberBulkContainer.removeClass("d-none").addClass("show");
+		makeCallDynamicVariablesSelectLabel.text("Default Dynamic Variables");
+        makeCallMetadataSelectLabel.text("Default Metadata");
 	}
 	validateMakeCallConfig(true);
 }
