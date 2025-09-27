@@ -228,6 +228,10 @@ function createDefaultTelephonyCampaignObject() {
                 maxCallTimeS: 600
             }
         },
+        variables: {
+            dynamicVariables: [],
+            metadata: []
+        },
         voicemailDetection: {
             isEnabled: false,
             initialCheckDelayMS: 1000,
@@ -252,10 +256,6 @@ function createDefaultTelephonyCampaignObject() {
         numberRoute: {
             routeNumberList: {},
             defaultNumberId: ""
-        },
-        variables: {
-            dynamicVariables: [],
-            metadata: []
         },
         actions: {
             callInitiationFailureTool: {
@@ -314,10 +314,6 @@ function resetTelephonyCampaignManager() {
     currentTelephonyCampaignRouteNumberList = {};
     currentTelephonyCampaignDefaultNumberId = "";
 
-    // Variables Tab
-    telephonyCampaignDynamicVariablesList.empty();
-    telephonyCampaignMetadataList.empty();
-
     // Configuration
     telephonyCampaignRetryOnDeclineCheck.prop("checked", false).change();
     telephonyCampaignRetryDeclineCountInput.val(3);
@@ -333,6 +329,10 @@ function resetTelephonyCampaignManager() {
     telephonyCampaignSilenceNotifyInput.val(10000);
     telephonyCampaignSilenceEndInput.val(30000);
     telephonyCampaignMaxCallTimeInput.val(600);
+
+    // Variables Tab
+    telephonyCampaignDynamicVariablesList.empty();
+    telephonyCampaignMetadataList.empty();
 
     // Voicemail
     telephonyCampaignVoicemailIsEnabledCheck.prop('checked', false).change();
@@ -814,19 +814,6 @@ function validateTelephonyCampaign(onlyRemove = true) {
         }
     }
 
-    // Numbers
-    function validateNumbersTab() {
-        if (!currentTelephonyCampaignDefaultNumberId) {
-            validated = false;
-            errors.push("A default calling number must be set.");
-            if (!onlyRemove) {
-                telephonyCampaignNumbersListTable.find("tr[data-region-code='default']").addClass('table-danger');
-            }
-        } else {
-            telephonyCampaignNumbersListTable.find("tr[data-region-code='default']").removeClass('table-danger');
-        }
-    }
-
     // Variables
     function validateVariablesTab() {
         function checkVariableList(variablesList, listName) {
@@ -860,6 +847,19 @@ function validateTelephonyCampaign(onlyRemove = true) {
         checkVariableList(telephonyCampaignMetadataList, "Metadata");
     }
 
+    // Numbers
+    function validateNumbersTab() {
+        if (!currentTelephonyCampaignDefaultNumberId) {
+            validated = false;
+            errors.push("A default calling number must be set.");
+            if (!onlyRemove) {
+                telephonyCampaignNumbersListTable.find("tr[data-region-code='default']").addClass('table-danger');
+            }
+        } else {
+            telephonyCampaignNumbersListTable.find("tr[data-region-code='default']").removeClass('table-danger');
+        }
+    }
+  
     // Voicemail
     function validateVoicemailTab() {
         if (!telephonyCampaignVoicemailIsEnabledCheck.is(":checked")) return; // No validation needed if disabled

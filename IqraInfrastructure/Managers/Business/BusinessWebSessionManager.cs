@@ -58,7 +58,7 @@ namespace IqraInfrastructure.Managers.Business
                     Status = WebSessionStatusEnum.Queued,
                     Logs = new List<WebSessionLog>(),
                 };
-
+                BusinessAppWebCampaign webCampaignData;
                 if (!formData.TryGetValue("config", out var configStringValue))
                 {
                     return result.SetFailureResult(
@@ -100,7 +100,8 @@ namespace IqraInfrastructure.Managers.Business
 
                     // Web Campaign Id
                     if (!callRequestElement.TryGetProperty("webCampaignId", out var webCampaignIdElement)
-                        || webCampaignIdElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(webCampaignIdElement.GetString()))
+                        || webCampaignIdElement.ValueKind != JsonValueKind.String
+                        || string.IsNullOrWhiteSpace(webCampaignIdElement.GetString()))
                     {
                         return result.SetFailureResult(
                             "InitiateWebSession:CONFIG_WEB_CAMPAIGN_ID_NOT_FOUND",
@@ -121,12 +122,14 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
+                        webCampaignData = campaignDataResult.Data!;
                         newWebSessionData.WebCampaignId = webCampaignIdValue;
                     }
 
                     // Region Id
                     if (!callRequestElement.TryGetProperty("regionId", out var regionIdElement)
-                        || regionIdElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(regionIdElement.GetString()))
+                        || regionIdElement.ValueKind != JsonValueKind.String
+                        || string.IsNullOrWhiteSpace(regionIdElement.GetString()))
                     {
                         return result.SetFailureResult(
                             "InitiateWebSession:CONFIG_REGION_ID_NOT_FOUND",
@@ -151,7 +154,8 @@ namespace IqraInfrastructure.Managers.Business
 
                     // ClientIdentifier String
                     if (!callRequestElement.TryGetProperty("clientIdentifier", out var clientIdentifierElement)
-                        || clientIdentifierElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(clientIdentifierElement.GetString()))
+                        || clientIdentifierElement.ValueKind != JsonValueKind.String
+                        || string.IsNullOrWhiteSpace(clientIdentifierElement.GetString()))
                     {
                         return result.SetFailureResult(
                             "InitiateWebSession:CONFIG_CLIENT_IDENTIFIER_NOT_FOUND",
@@ -204,6 +208,35 @@ namespace IqraInfrastructure.Managers.Business
 
                             newWebSessionData.DynamicVariables.Add(dynamicVariableItem.Name, dynamicVariableItem.Value.GetString()!);
                         }
+
+                        if (webCampaignData.Variables.DynamicVariables.Count > 0)
+                        {
+                            foreach (var variableData in webCampaignData.Variables.DynamicVariables)
+                            {
+                                var dynamicVariableItem = newWebSessionData.DynamicVariables.FirstOrDefault(x => x.Key == variableData.Key);
+
+                                if (dynamicVariableItem.Key == null)
+                                {
+                                    if (variableData.IsRequired)
+                                    {
+                                        return result.SetFailureResult(
+                                            "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
+                                            $"Dynamic variable required not found in config data for {variableData.Key}. Web campaign variable rule."
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    if (string.IsNullOrEmpty(dynamicVariableItem.Value) && !variableData.IsEmptyOrNullAllowed)
+                                    {
+                                        return result.SetFailureResult(
+                                            "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
+                                            $"Dynamic variable cannot be empty in config data for {variableData.Key}. Web campaign variable rule."
+                                        );
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // Metadata
@@ -244,6 +277,35 @@ namespace IqraInfrastructure.Managers.Business
                             }
 
                             newWebSessionData.Metadata.Add(metadataItem.Name, metadataItem.Value.GetString()!);
+                        }
+
+                        if (webCampaignData.Variables.Metadata.Count > 0)
+                        {
+                            foreach (var variableData in webCampaignData.Variables.Metadata)
+                            {
+                                var metadataItem = newWebSessionData.Metadata.FirstOrDefault(x => x.Key == variableData.Key);
+
+                                if (metadataItem.Key == null)
+                                {
+                                    if (variableData.IsRequired)
+                                    {
+                                        return result.SetFailureResult(
+                                            "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
+                                            $"Metadata required not found in config data for {variableData.Key}. Web campaign variable rule."
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    if (string.IsNullOrEmpty(metadataItem.Value) && !variableData.IsEmptyOrNullAllowed)
+                                    {
+                                        return result.SetFailureResult(
+                                            "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
+                                            $"Metadata cannot be empty in config data for {variableData.Key}. Web campaign variable rule."
+                                        );
+                                    }
+                                }
+                            }
                         }
                     }
                 }

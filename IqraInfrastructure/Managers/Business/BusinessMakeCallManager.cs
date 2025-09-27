@@ -3,10 +3,8 @@ using IqraCore.Entities.Call.Outbound;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Call.Outbound;
 using IqraCore.Entities.Helper.Call.Queue;
-using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.MakeCalls;
-using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Repositories.Call;
@@ -95,7 +93,8 @@ namespace IqraInfrastructure.Managers.Business
 
                 // Campaign Id
                 if (!callRequestElement.TryGetProperty("campaignId", out var campaignIdElement)
-                    || campaignIdElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(campaignIdElement.GetString()))
+                    || campaignIdElement.ValueKind != JsonValueKind.String
+                    || string.IsNullOrWhiteSpace(campaignIdElement.GetString()))
                 {
                     return result.SetFailureResult(
                         "QueueCallInitiationRequestAsync:CONFIG_CAMPAIGN_ID_NOT_FOUND",
@@ -120,7 +119,8 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 // Number
-                if (!callRequestElement.TryGetProperty("number", out var numberElement) || numberElement.ValueKind != JsonValueKind.Object)
+                if (!callRequestElement.TryGetProperty("number", out var numberElement)
+                    || numberElement.ValueKind != JsonValueKind.Object)
                 {
                     return result.SetFailureResult(
                         "QueueCallInitiationRequestAsync:CONFIG_NUMBER_NOT_FOUND",
@@ -184,7 +184,8 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 // Schedule
-                if (!callRequestElement.TryGetProperty("schedule", out var scheduleElement) || scheduleElement.ValueKind != JsonValueKind.Object)
+                if (!callRequestElement.TryGetProperty("schedule", out var scheduleElement)
+                    || scheduleElement.ValueKind != JsonValueKind.Object)
                 {
                     return result.SetFailureResult(
                         "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_NOT_FOUND",
@@ -239,7 +240,8 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 // DynamicVariables
-                if (callRequestElement.TryGetProperty("dynamicVariables", out var dynamicVariablesElement) && dynamicVariablesElement.ValueKind == JsonValueKind.Object)
+                if (callRequestElement.TryGetProperty("dynamicVariables", out var dynamicVariablesElement)
+                    && dynamicVariablesElement.ValueKind == JsonValueKind.Object)
                 {
                     callConfigData.DynamicVariables = new Dictionary<string, string>();
                     foreach (var dynamicVariableItem in dynamicVariablesElement.EnumerateObject())
@@ -270,7 +272,7 @@ namespace IqraInfrastructure.Managers.Business
                                     {
                                         return result.SetFailureResult(
                                             "QueueCallInitiationRequestAsync:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
-                                            $"Dynamic variable required not found in config data for {variableData.Key}."
+                                            $"Dynamic variable required not found in config data for {variableData.Key}. Telephony campaign rule."
                                         );
                                     }
                                 }
@@ -280,7 +282,7 @@ namespace IqraInfrastructure.Managers.Business
                                     {
                                         return result.SetFailureResult(
                                             "QueueCallInitiationRequestAsync:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
-                                            $"Dynamic variable cannot be empty in config data for {variableData.Key}."
+                                            $"Dynamic variable cannot be empty in config data for {variableData.Key}. Telephony campaign rule."
                                         );
                                     }
                                 }
@@ -290,7 +292,8 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 // Metadata
-                if (callRequestElement.TryGetProperty("metadata", out var metadataElement) && metadataElement.ValueKind == JsonValueKind.Object)
+                if (callRequestElement.TryGetProperty("metadata", out var metadataElement)
+                    && metadataElement.ValueKind == JsonValueKind.Object)
                 {
                     callConfigData.Metadata = new Dictionary<string, string>();
                     foreach (var metadataItem in metadataElement.EnumerateObject())
@@ -321,7 +324,7 @@ namespace IqraInfrastructure.Managers.Business
                                     {
                                         return result.SetFailureResult(
                                             "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
-                                            $"Metadata required not found in config data for {variableData.Key}."
+                                            $"Metadata required not found in config data for {variableData.Key}. Telephony campaign rule."
                                         );
                                     }
                                 }
@@ -331,7 +334,7 @@ namespace IqraInfrastructure.Managers.Business
                                     {
                                         return result.SetFailureResult(
                                             "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
-                                            $"Metadata cannot be empty in config data for {variableData.Key}."
+                                            $"Metadata cannot be empty in config data for {variableData.Key}. Telephony campaign rule."
                                         );
                                     }
                                 }
@@ -567,38 +570,6 @@ namespace IqraInfrastructure.Managers.Business
                 RecipientNumber = bulkCallRowData!.ToNumber;
             }
 
-            Dictionary<string, string> DynamicVariables = callConfig.DynamicVariables;
-            if (bulkCallRowData != null && bulkCallRowData.DynamicVariables != null)
-            {
-                foreach (var bulkDynamicVar in bulkCallRowData.DynamicVariables)
-                {
-                    if (!DynamicVariables.ContainsKey(bulkDynamicVar.Key))
-                    {
-                        DynamicVariables.Add(bulkDynamicVar.Key, bulkDynamicVar.Value);
-                    }
-                    else
-                    {
-                        DynamicVariables[bulkDynamicVar.Key] = bulkDynamicVar.Value;
-                    }
-                }
-            }
-
-            Dictionary<string, string> Metadata = callConfig.Metadata;
-            if (bulkCallRowData != null && bulkCallRowData.Metadata != null)
-            {
-                foreach (var bulkMetadata in bulkCallRowData.Metadata)
-                {
-                    if (!Metadata.ContainsKey(bulkMetadata.Key))
-                    {
-                        Metadata.Add(bulkMetadata.Key, bulkMetadata.Value);
-                    }
-                    else
-                    {
-                        Metadata[bulkMetadata.Key] = bulkMetadata.Value;
-                    }
-                }
-            }
-
             OutboundCallQueueData outboundCallQueueData = new OutboundCallQueueData()
             {
                 CreatedAt = DateTime.UtcNow,
@@ -617,17 +588,26 @@ namespace IqraInfrastructure.Managers.Business
                 CallingNumberProvider = businessNumberData.Provider,
                 RecipientNumber = RecipientNumber,
                 ScheduledForDateTime = DateTime.UtcNow.AddMinutes(1),
-                DynamicVariables = DynamicVariables,
-                Metadata = Metadata,
             };
             if (callConfig.Schedule.Type == OutboundCallScheduleType.Scheduled)
             {
                 outboundCallQueueData.ScheduledForDateTime = callConfig.Schedule.DateTimeUTC!.Value;
             }
+            if (callConfig.Number.Type == OutboundCallNumberType.Single)
+            {
+                outboundCallQueueData.DynamicVariables = callConfig.DynamicVariables;
+                outboundCallQueueData.Metadata = callConfig.Metadata;
+            }
+            else if (callConfig.Number.Type == OutboundCallNumberType.Bulk)
+            {
+                outboundCallQueueData.DynamicVariables = bulkCallRowData!.DynamicVariables;
+                outboundCallQueueData.Metadata = bulkCallRowData!.Metadata;
+            }
 
             return outboundCallQueueData;
         }
 
+        // Bulk CSV Row Builder
         private async Task<FunctionReturnResult<List<OutboundBulkCallRowData>?>> ValidateAndBuildBulkCSVCallFile(BusinessData businessData, BusinessAppTelephonyCampaign telephonyCampaignData, IFormFile formFile, MakeCallRequestDto callConfig)
         {
             var result = new FunctionReturnResult<List<OutboundBulkCallRowData>?>();
@@ -808,7 +788,7 @@ namespace IqraInfrastructure.Managers.Business
                                     {
                                         return result.SetFailureResult(
                                             "ValidateAndBuildBulkCSVCallFile:REQUIRED_DYNAMIC_VARIABLE_NOT_FOUND",
-                                            $"Required dynamic variable '{variableData.Key}' not found in row {currentRowLine}."
+                                            $"Required dynamic variable '{variableData.Key}' not found in row {currentRowLine}. Telephony campaign rule."
                                         );
                                     }
                                 }
@@ -818,7 +798,7 @@ namespace IqraInfrastructure.Managers.Business
                                     {
                                         return result.SetFailureResult(
                                             "ValidateAndBuildBulkCSVCallFile:REQUIRED_DYNAMIC_VARIABLE_NOT_FOUND",
-                                            $"Required dynamic variable '{variableData.Key}' cannot be empty in row {currentRowLine}."
+                                            $"Required dynamic variable '{variableData.Key}' cannot be empty in row {currentRowLine}. Telephony campaign rule."
                                         );
                                     }
                                 }

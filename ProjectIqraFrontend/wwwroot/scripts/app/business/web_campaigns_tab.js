@@ -39,15 +39,16 @@ const webCampaignAgentScriptSelect = webCampaignsManagerView.find("#web-campaign
 const webCampaignAgentLanguageSelect = webCampaignsManagerView.find("#web-campaign-agent-language-select");
 const webCampaignAgentTimezoneSelect = webCampaignsManagerView.find("#web-campaign-agent-timezone-select");
 
-// Region Tab
-const webCampaignRegionPolicyRadios = webCampaignsManagerView.find('input[name="web-campaign-region-policy-radio"]');
-const webCampaignFixedRegionOptionsContainer = webCampaignsManagerView.find('#web-campaign-fixed-region-options-container');
-const webCampaignFixedRegionSelect = webCampaignsManagerView.find('#web-campaign-fixed-region-select');
-
 // Configuration Tab
 const webCampaignSilenceNotifyInput = webCampaignsManagerView.find("#web-campaign-silence-notify-input");
 const webCampaignSilenceEndInput = webCampaignsManagerView.find("#web-campaign-silence-end-input");
 const webCampaignMaxConversationTimeInput = webCampaignsManagerView.find("#web-campaign-max-conversation-time-input");
+
+// Variables Tab
+const addWebCampaignDynamicVariable = webCampaignsManagerView.find("#addWebCampaignDynamicVariable");
+const webCampaignDynamicVariablesList = webCampaignsManagerView.find("#webCampaignDynamicVariablesList");
+const addWebCampaignMetadata = webCampaignsManagerView.find("#addWebCampaignMetadata");
+const webCampaignMetadataList = webCampaignsManagerView.find("#webCampaignMetadataList");
 
 // Actions Tab
 const webCampaignActionsTab = webCampaignsManagerView.find("#web-campaign-manager-actions");
@@ -165,9 +166,9 @@ function createDefaultWebCampaignObject() {
                 maxConversationTimeS: 600
             }
         },
-        regionRoute: {
-            policy: 'automatic',
-            fixedRegion: null
+        variables: {
+            dynamicVariables: [],
+            metadata: []
         },
         actions: {
             conversationInitiationFailureTool: {
@@ -205,20 +206,14 @@ function resetWebCampaignManager() {
     });
     webCampaignAgentTimezoneSelect.val("");
 
-    // Region
-    webCampaignRegionPolicyRadios.filter('[value="automatic"]').prop('checked', true).change();
-    webCampaignFixedRegionSelect.empty().append($(`<option value="" disabled selected>Select Region</option>`));
-    if (typeof SpecificationRegionsListData !== 'undefined') {
-        SpecificationRegionsListData.forEach((regionData) => {
-            const countryData = CountriesList[regionData.countryCode.toUpperCase()];
-            webCampaignFixedRegionSelect.append($(`<option value="${regionData.countryRegion}">${countryData.Country} (${regionData.countryRegion})</option>`));
-        });
-    }
-
     // Configuration
     webCampaignSilenceNotifyInput.val(10000);
     webCampaignSilenceEndInput.val(30000);
     webCampaignMaxConversationTimeInput.val(600);
+
+    // Variables Tab
+    webCampaignDynamicVariablesList.empty();
+    webCampaignMetadataList.empty();
 
     // Actions
     const actionSelects = [
@@ -267,18 +262,20 @@ function fillWebCampaignManager() {
     webCampaignAgentLanguageSelect.val(data.agent.language);
     if (data.agent.timezones && data.agent.timezones.length > 0) webCampaignAgentTimezoneSelect.val(data.agent.timezones[0]);
 
-    // Region
-    //if (data.regionRoute && data.regionRoute.policy === 'fixed') {
-    //    webCampaignRegionPolicyRadios.filter('[value="fixed"]').prop('checked', true).change();
-    //    webCampaignFixedRegionSelect.val(data.regionRoute.fixedRegion);
-    //} else {
-    //    webCampaignRegionPolicyRadios.filter('[value="automatic"]').prop('checked', true).change();
-    //}
-
     // Configuration
     webCampaignSilenceNotifyInput.val(data.configuration.timeouts.notifyOnSilenceMS);
     webCampaignSilenceEndInput.val(data.configuration.timeouts.endOnSilenceMS);
     webCampaignMaxConversationTimeInput.val(data.configuration.timeouts.maxConversationTimeS);
+
+    // Variables
+    data.variables.dynamicVariables.forEach((dynamicVariable) => {
+        const row = createWebCampaignVariableElement(dynamicVariable);
+        webCampaignDynamicVariablesList.append(row);
+    });
+    data.variables.metadata.forEach((metaData) => {
+        const row = createWebCampaignVariableElement(metaData);
+        webCampaignMetadataList.append(row);
+    });
 
     // Actions
     function fillWebActionTool(actionToolData, actionToolSelectElement) {
@@ -353,17 +350,6 @@ function checkWebCampaignChanges(enableDisableButton = true) {
         }
     }
 
-    function checkRegionTab() {
-        changes.regionRoute = {
-            policy: webCampaignRegionPolicyRadios.filter(':checked').val(),
-            fixedRegion: webCampaignRegionPolicyRadios.filter(':checked').val() === 'fixed' ? webCampaignFixedRegionSelect.val() : null
-        };
-        if (changes.regionRoute.policy !== original.regionRoute.policy ||
-            changes.regionRoute.fixedRegion !== original.regionRoute.fixedRegion) {
-            hasChanges = true;
-        }
-    }
-
     function checkConfigurationTab() {
         changes.configuration = {
             timeouts: {
@@ -375,6 +361,39 @@ function checkWebCampaignChanges(enableDisableButton = true) {
         if (changes.configuration.timeouts.notifyOnSilenceMS !== original.configuration.timeouts.notifyOnSilenceMS ||
             changes.configuration.timeouts.endOnSilenceMS !== original.configuration.timeouts.endOnSilenceMS ||
             changes.configuration.timeouts.maxConversationTimeS !== original.configuration.timeouts.maxConversationTimeS) {
+            hasChanges = true;
+        }
+    }
+
+    function checkVariablesTab() {
+        changes.variables = {
+            dynamicVariables: [],
+            metadata: []
+        };
+
+        changes.variables.dynamicVariables = getWebCampaignVariablesList(webCampaignDynamicVariablesList);
+        changes.variables.metadata = getWebCampaignVariablesList(webCampaignMetadataList);
+
+        // Check Changes
+        function areArraysOfObjectsEqual(arr1, arr2) {
+            if (arr1 === arr2) return true;
+            if (!arr1 || !arr2 || arr1.length !== arr2.length) return false;
+
+            for (let i = 0; i < arr1.length; i++) {
+                const obj1 = arr1[i];
+                const obj2 = arr2[i];
+                const keys1 = Object.keys(obj1);
+                const keys2 = Object.keys(obj2);
+                if (keys1.length !== keys2.length) return false;
+                for (const key of keys1) {
+                    if (obj1[key] !== obj2[key]) return false;
+                }
+            }
+            return true;
+        }
+
+        if (!areArraysOfObjectsEqual(changes.variables.dynamicVariables, original.variables.dynamicVariables) ||
+            !areArraysOfObjectsEqual(changes.variables.metadata, original.variables.metadata)) {
             hasChanges = true;
         }
     }
@@ -425,8 +444,8 @@ function checkWebCampaignChanges(enableDisableButton = true) {
     // Execute all checks
     checkGeneralTab();
     checkAgentTab();
-    //checkRegionTab();
     checkConfigurationTab();
+    checkVariablesTab();
     checkActionsTab();
 
     if (enableDisableButton) {
@@ -487,16 +506,6 @@ function validateWebCampaign(onlyRemove = true) {
         }
     }
 
-    // Region
-    function validateRegionTab() {
-        const policy = webCampaignRegionPolicyRadios.filter(':checked').val();
-        if (policy === 'fixed' && !webCampaignFixedRegionSelect.val()) {
-            validated = false;
-            errors.push("A fixed region must be selected when the policy is set to 'Fixed Region'.");
-            if (!onlyRemove) webCampaignFixedRegionSelect.addClass('is-invalid');
-        }
-    }
-
     // Configuration
     function validateConfigurationTab() {
         const silenceNotifyValue = parseInt(webCampaignSilenceNotifyInput.val());
@@ -517,6 +526,39 @@ function validateWebCampaign(onlyRemove = true) {
             errors.push("Max conversation time must be a valid number.");
             if (!onlyRemove) webCampaignMaxConversationTimeInput.addClass("is-invalid");
         }
+    }
+
+    // Variables
+    function validateVariablesTab() {
+        function checkVariableList(variablesList, listName) {
+            var currentAddedKeys = [];
+
+            variablesList.find(".web-campaign-variable-box").each((index, variableElement) => {
+                var variableKeyElement = $(variableElement).find('input[data-type="key"]');
+                var variableKey = variableKeyElement.val();
+
+                if (!variableKey || variableKey == "" || variableKey == null) {
+                    validated = false;
+                    errors.push(`${listName}: Variable key is required and can not be empty.`);
+                    if (!onlyRemove) variableKeyElement.addClass('is-invalid');
+                }
+                else {
+                    variableKey = variableKey.trim();
+
+                    if (currentAddedKeys.includes(variableKey)) {
+                        validated = false;
+                        errors.push(`${listName}: Variable key must be unique but is duplicate for ${variableKey}`);
+                        if (!onlyRemove) variableKeyElement.addClass('is-invalid');
+                    }
+                    else {
+                        currentAddedKeys.push(variableKey);
+                    }
+                }
+            });
+        }
+
+        checkVariableList(webCampaignDynamicVariablesList, "Dynamic Variables");
+        checkVariableList(webCampaignMetadataList, "Metadata");
     }
 
     // Actions
@@ -544,7 +586,6 @@ function validateWebCampaign(onlyRemove = true) {
     // Execute all validation checks
     validateGeneralTab();
     validateAgentTab();
-    //validateRegionTab();
     validateConfigurationTab();
     validateActionsTab();
 
@@ -655,11 +696,143 @@ function SetWebCampaignCardDynamicWidth() {
     }
 }
 
-/** HELPER FUNCTIONS **/
+// Agent Tab Functions
 function createWebCampaignAgentModalListElement(agentData) {
     return `<button type="button" class="list-group-item list-group-item-action" data-agent-id="${agentData.id}"><span>${agentData.general.emoji} ${agentData.general.name[BusinessDefaultLanguage]}</span></button>`;
 }
 
+function initWebAgentEventHandlers() {
+    const selectAgentButton = webCampaignsManagerView.find('button[data-bs-target="#web-campaign-select-agent-modal"]');
+
+    selectAgentButton.on('click', () => {
+        webCampaignsManagerSelectAgentModalList.empty();
+        const listGroup = $('<div class="list-group"></div>');
+        BusinessFullData.businessApp.agents.forEach(agent => {
+            const element = $(createWebCampaignAgentModalListElement(agent));
+            if (agent.id === currentWebCampaignAgentSelectedId) {
+                element.addClass('active');
+            }
+            listGroup.append(element);
+        });
+        webCampaignsManagerSelectAgentModalList.append(listGroup);
+        webCampaignSaveAgentButton.prop('disabled', true);
+    });
+
+    webCampaignsManagerSelectAgentModalList.on("click", "button", (event) => {
+        event.preventDefault();
+        const clickedButton = $(event.currentTarget);
+        if (clickedButton.hasClass("active")) return;
+        webCampaignsManagerSelectAgentModalList.find("button.active").removeClass("active");
+        clickedButton.addClass("active");
+        const selectedAgentId = clickedButton.data("agent-id");
+        webCampaignSaveAgentButton.prop("disabled", selectedAgentId === currentWebCampaignAgentSelectedId);
+    });
+
+    webCampaignSaveAgentButton.on("click", (event) => {
+        event.preventDefault();
+        const selectedAgentButton = webCampaignsManagerSelectAgentModalList.find("button.active");
+        if (selectedAgentButton.length === 0) return;
+
+        const newAgentId = selectedAgentButton.data("agent-id");
+        if (newAgentId === currentWebCampaignAgentSelectedId) return;
+
+        currentWebCampaignAgentSelectedId = newAgentId;
+        const agentData = BusinessFullData.businessApp.agents.find(agent => agent.id === newAgentId);
+
+        webCampaignAgentIconSpan.text(agentData.general.emoji);
+        webCampaignAgentNameInput.val(agentData.general.name[BusinessDefaultLanguage]);
+
+        webCampaignAgentScriptSelect.prop("disabled", false).empty();
+        webCampaignAgentScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
+        agentData.scripts.forEach(script => {
+            webCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
+        });
+
+        webCampaignSelectAgentModal.hide();
+        checkWebCampaignChanges();
+        validateWebCampaign(true);
+    });
+}
+
+// Variables Tab Functions
+function createWebCampaignVariableElement(data) {
+    let isRequiredCheckBoxIdUnique = `web-campaign-variable-required-${crypto.randomUUID()}`;
+    let isEmptyOrNullAllowedCheckBoxIdUnique = `web-campaign-variable-emptyOrNull-${crypto.randomUUID()}`;
+
+    return `
+        <div class="input-group mt-1 web-campaign-variable-box">
+			<input type="text" class="form-control" data-type="key" placeholder="Key" value="${data ? data.key : ""}">
+            <div class="input-group-text">
+                <input class="form-check-input mt-0" type="checkbox" id="${isRequiredCheckBoxIdUnique}" data-type="isRequired" ${data && data.isRequired ? "checked" : ""}>
+                <label class="form-check-label ms-1" for="${isRequiredCheckBoxIdUnique}">Required?</label>
+            </div>
+            <div class="input-group-text">
+                <input class="form-check-input mt-0" type="checkbox" id="${isEmptyOrNullAllowedCheckBoxIdUnique}" data-type="isEmptyOrNullAllowed" ${data && data.isEmptyOrNullAllowed ? "checked" : ""}>
+                <label class="form-check-label ms-1" for="${isEmptyOrNullAllowedCheckBoxIdUnique}">Empty Allowed?</label>
+            </div>
+			<button class="btn btn-danger" button-type="removeWebCampaignVariable">
+				<i class="fa-regular fa-trash"></i>
+			</button>
+		</div>
+    `;
+}
+
+function initWebCampaignVariablesEventHandlers() {
+    // Dynamic Variables
+    addWebCampaignDynamicVariable.on('click', (event) => {
+        var newElement = createWebCampaignVariableElement(null);
+        webCampaignDynamicVariablesList.append(newElement);
+
+        checkWebCampaignChanges();
+        validateWebCampaign(true);
+    });
+
+    webCampaignDynamicVariablesList.on('click', '.btn[button-type="removeWebCampaignVariable"]', onRemoveVariable);
+
+    // Metadata
+    addWebCampaignMetadata.on('click', (event) => {
+        var newElement = createWebCampaignVariableElement(null);
+        webCampaignMetadataList.append(newElement);
+
+        checkWebCampaignChanges();
+        validateWebCampaign(true);
+    });
+
+    webCampaignMetadataList.on('click', '.btn[button-type="removeWebCampaignVariable"]', onRemoveVariable);
+
+    // Common
+    function onRemoveVariable(event) {
+        event.preventDefault();
+
+        const currentElement = $(event.currentTarget);
+        currentElement.closest('.web-campaign-variable-box').remove();
+
+        checkWebCampaignChanges();
+        validateWebCampaign(true);
+    }
+}
+
+function getWebCampaignVariablesList(variablesList) {
+    var array = [];
+
+    variablesList.find(".web-campaign-variable-box").each((index, variableElement) => {
+        var variableKey = $(variableElement).find('input[data-type="key"]').val()?.trim();
+        var isRequired = $(variableElement).find('input[data-type="isRequired"]').is(":checked");
+        var isEmptyOrNullAllowed = $(variableElement).find('input[data-type="isEmptyOrNullAllowed"]').is(":checked");
+
+        var object = {
+            key: variableKey,
+            isRequired: isRequired,
+            isEmptyOrNullAllowed: isEmptyOrNullAllowed
+        };
+
+        array.push(object);
+    });
+
+    return array;
+}
+
+// Actions Tab Functions
 function handleWebCampaignActionToolChange(event) {
     const selectElement = $(event.currentTarget);
     const selectedToolId = selectElement.val();
@@ -743,70 +916,6 @@ function handleWebCampaignActionRemoveArgument(event) {
     validateWebCampaign(true);
 }
 
-/** EVENT HANDLER INITIALIZERS **/
-function initWebAgentEventHandlers() {
-    const selectAgentButton = webCampaignsManagerView.find('button[data-bs-target="#web-campaign-select-agent-modal"]');
-
-    selectAgentButton.on('click', () => {
-        webCampaignsManagerSelectAgentModalList.empty();
-        const listGroup = $('<div class="list-group"></div>');
-        BusinessFullData.businessApp.agents.forEach(agent => {
-            const element = $(createWebCampaignAgentModalListElement(agent));
-            if (agent.id === currentWebCampaignAgentSelectedId) {
-                element.addClass('active');
-            }
-            listGroup.append(element);
-        });
-        webCampaignsManagerSelectAgentModalList.append(listGroup);
-        webCampaignSaveAgentButton.prop('disabled', true);
-    });
-
-    webCampaignsManagerSelectAgentModalList.on("click", "button", (event) => {
-        event.preventDefault();
-        const clickedButton = $(event.currentTarget);
-        if (clickedButton.hasClass("active")) return;
-        webCampaignsManagerSelectAgentModalList.find("button.active").removeClass("active");
-        clickedButton.addClass("active");
-        const selectedAgentId = clickedButton.data("agent-id");
-        webCampaignSaveAgentButton.prop("disabled", selectedAgentId === currentWebCampaignAgentSelectedId);
-    });
-
-    webCampaignSaveAgentButton.on("click", (event) => {
-        event.preventDefault();
-        const selectedAgentButton = webCampaignsManagerSelectAgentModalList.find("button.active");
-        if (selectedAgentButton.length === 0) return;
-
-        const newAgentId = selectedAgentButton.data("agent-id");
-        if (newAgentId === currentWebCampaignAgentSelectedId) return;
-
-        currentWebCampaignAgentSelectedId = newAgentId;
-        const agentData = BusinessFullData.businessApp.agents.find(agent => agent.id === newAgentId);
-
-        webCampaignAgentIconSpan.text(agentData.general.emoji);
-        webCampaignAgentNameInput.val(agentData.general.name[BusinessDefaultLanguage]);
-
-        webCampaignAgentScriptSelect.prop("disabled", false).empty();
-        webCampaignAgentScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
-        agentData.scripts.forEach(script => {
-            webCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
-        });
-
-        webCampaignSelectAgentModal.hide();
-        checkWebCampaignChanges();
-        validateWebCampaign(true);
-    });
-}
-
-function initWebRegionEventHandlers() {
-    webCampaignRegionPolicyRadios.on('change', function () {
-        if ($(this).val() === 'fixed') {
-            webCampaignFixedRegionOptionsContainer.removeClass('d-none');
-        } else {
-            webCampaignFixedRegionOptionsContainer.addClass('d-none');
-        }
-    });
-}
-
 function initWebActionsEventHandlers() {
     // Main tool selection change handler
     webCampaignActionToolConversationInitiationFailureSelect.on('change', handleWebCampaignActionToolChange);
@@ -819,7 +928,6 @@ function initWebActionsEventHandlers() {
     // Remove argument button click handler
     webCampaignActionsTab.on('click', '[btn-action="remove-campaign-action-tool-argument"]', handleWebCampaignActionRemoveArgument);
 }
-
 
 /** INIT **/
 function initWebCampaignsTab() {
@@ -958,7 +1066,7 @@ function initWebCampaignsTab() {
 
         // Init All Handlers
         initWebAgentEventHandlers();
-        //initWebRegionEventHandlers();
+        initWebCampaignVariablesEventHandlers();
         initWebActionsEventHandlers();
 
         // Initial population

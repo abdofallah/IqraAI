@@ -1179,46 +1179,173 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                // Region Route Tab
-                if (!changes.RootElement.TryGetProperty("regionRoute", out var regionRouteElement))
+                // Variables Tab
+                if (!changes.RootElement.TryGetProperty("variables", out var variablesElement))
                 {
                     return result.SetFailureResult(
-                        "AddOrUpdateWebCampaignAsync:REGION_ROUTE_TAB_NOT_FOUND",
-                        "Region Route tab not found."
-                        );
+                        "AddOrUpdateWebCampaignAsync:VARIABLES_SECTION_MISSING",
+                        "Variables section 'variables' not found."
+                    );
                 }
                 else
                 {
-                    //if (!regionRouteElement.TryGetProperty("policy", out var policyProp) || string.IsNullOrWhiteSpace(policyProp.GetString()))
-                    //{
-                    //    return result.SetFailureResult(
-                    //        "AddOrUpdateWebCampaignAsync:REGION_POLICY_MISSING",
-                    //        "Region routing policy is required."
-                    //    );
-                    //}
-                    //var policy = policyProp.GetString()!;
-                    //if (policy != "automatic" && policy != "fixed")
-                    //{
-                    //    return result.SetFailureResult(
-                    //        "AddOrUpdateWebCampaignAsync:REGION_POLICY_INVALID",
-                    //        "Region routing policy must be 'automatic' or 'fixed'."
-                    //    );
-                    //}
-                    //newBusinessAppCampaignData.RegionRoute.Policy = policy;
+                    // Dynamic Variables
+                    if (!variablesElement.TryGetProperty("dynamicVariables", out var dynamicVariablesElement) ||
+                        dynamicVariablesElement.ValueKind != JsonValueKind.Array)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateWebCampaignAsync:DYNAMIC_VARIABLES_SECTION_MISSING",
+                            "Variables section 'dynamicVariables' not found or not an array."
+                        );
+                    }
+                    else
+                    {
+                        var dynamicVariablesEnumerator = dynamicVariablesElement.EnumerateArray().GetEnumerator();
 
-                    //if (policy == "fixed")
-                    //{
-                    //    if (!regionRouteElement.TryGetProperty("fixedRegion", out var fixedRegionProp) || string.IsNullOrWhiteSpace(fixedRegionProp.GetString()))
-                    //    {
-                    //        return result.SetFailureResult(
-                    //            "AddOrUpdateWebCampaignAsync:FIXED_REGION_MISSING",
-                    //            "A fixed region must be selected when the policy is 'fixed'."
-                    //        );
-                    //    }
-                    //    // Further validation can be added here to check if the region exists in a predefined list if necessary.
-                    //    newBusinessAppCampaignData.RegionRoute.FixedRegion = fixedRegionProp.GetString();
-                    //}
+                        foreach (var dynamicVariableElement in dynamicVariablesEnumerator)
+                        {
+                            var dynamicVariable = new BusinessAppCampaignVariableData();
+
+                            if (!dynamicVariableElement.TryGetProperty("key", out var nameElement)
+                                || nameElement.ValueKind != JsonValueKind.String)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateWebCampaignAsync:DYNAMIC_VARIABLE_KEY_INVALID",
+                                    "Invalid dynamic variable key or not found."
+                                );
+                            }
+                            else
+                            {
+                                var key = nameElement.GetString();
+                                if (string.IsNullOrWhiteSpace(key))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:DYNAMIC_VARIABLE_KEY_EMPTY",
+                                        "Dynamic variable key is empty."
+                                    );
+                                }
+
+                                if (newBusinessAppCampaignData.Variables.DynamicVariables.Any(x => x.Key.Equals(key, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:DYNAMIC_VARIABLE_KEY_EXISTS",
+                                        $"Dynamic variable key '{key}' already exists."
+                                    );
+                                }
+
+                                dynamicVariable.Key = key;
+                            }
+
+                            if (!dynamicVariableElement.TryGetProperty("isRequired", out var valueElement)
+                                || (valueElement.ValueKind != JsonValueKind.True && valueElement.ValueKind != JsonValueKind.False)
+                            )
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateWebCampaignAsync:DYNAMIC_VARIABLE_ISREQUIRED_INVALID",
+                                    "Invalid dynamic variable is required or not found."
+                                );
+                            }
+                            else
+                            {
+                                dynamicVariable.IsRequired = valueElement.GetBoolean();
+                            }
+
+                            if (!dynamicVariableElement.TryGetProperty("isEmptyOrNullAllowed", out var isEmptyOrNullAllowedElement)
+                                || (isEmptyOrNullAllowedElement.ValueKind != JsonValueKind.True && isEmptyOrNullAllowedElement.ValueKind != JsonValueKind.False))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateWebCampaignAsync:DYNAMIC_VARIABLE_ISREQUIRED_INVALID",
+                                    "Invalid dynamic variable is required or not found."
+                                );
+                            }
+                            else
+                            {
+                                dynamicVariable.IsEmptyOrNullAllowed = isEmptyOrNullAllowedElement.GetBoolean();
+                            }
+
+                            newBusinessAppCampaignData.Variables.DynamicVariables.Add(dynamicVariable);
+                        }
+                    }
+
+                    // Metadata Variables
+                    if (!variablesElement.TryGetProperty("metadata", out var metadataListElement) ||
+                        metadataListElement.ValueKind != JsonValueKind.Array)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateWebCampaignAsync:METADATA_SECTION_MISSING",
+                            "Variables section 'metadata' not found or not an array."
+                        );
+                    }
+                    else
+                    {
+                        var metadataListEnumerator = metadataListElement.EnumerateArray().GetEnumerator();
+
+                        foreach (var metadataVariableElement in metadataListEnumerator)
+                        {
+                            var metadata = new BusinessAppCampaignVariableData();
+
+                            if (!metadataVariableElement.TryGetProperty("key", out var nameElement)
+                                || nameElement.ValueKind != JsonValueKind.String)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateWebCampaignAsync:METADATA_KEY_INVALID",
+                                    "Invalid metadata key or not found."
+                                );
+                            }
+                            else
+                            {
+                                var key = nameElement.GetString();
+                                if (string.IsNullOrWhiteSpace(key))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:METADATA_KEY_EMPTY",
+                                        "Metadata key is empty."
+                                    );
+                                }
+
+                                if (newBusinessAppCampaignData.Variables.Metadata.Any(x => x.Key.Equals(key, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:METADATA_KEY_EXISTS",
+                                        $"Metadata key '{key}' already exists."
+                                    );
+                                }
+
+                                metadata.Key = key;
+                            }
+
+                            if (!metadataVariableElement.TryGetProperty("isRequired", out var valueElement)
+                                || (valueElement.ValueKind != JsonValueKind.True && valueElement.ValueKind != JsonValueKind.False)
+                            )
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateWebCampaignAsync:METADATA_ISREQUIRED_INVALID",
+                                    "Invalid metadata is required or not found."
+                                );
+                            }
+                            else
+                            {
+                                metadata.IsRequired = valueElement.GetBoolean();
+                            }
+
+                            if (!metadataVariableElement.TryGetProperty("isEmptyOrNullAllowed", out var isEmptyOrNullAllowedElement)
+                                || (isEmptyOrNullAllowedElement.ValueKind != JsonValueKind.True && isEmptyOrNullAllowedElement.ValueKind != JsonValueKind.False))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateWebCampaignAsync:METADATA_ISREQUIRED_INVALID",
+                                    "Invalid metadata is required or not found."
+                                );
+                            }
+                            else
+                            {
+                                metadata.IsEmptyOrNullAllowed = isEmptyOrNullAllowedElement.GetBoolean();
+                            }
+
+                            newBusinessAppCampaignData.Variables.Metadata.Add(metadata);
+                        }
+                    }
                 }
+
 
                 // Web Actions Tab
                 if (!changes.RootElement.TryGetProperty("actions", out var webActionsTabRootElement))
