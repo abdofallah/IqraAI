@@ -1,0 +1,142 @@
+﻿<!-- POST ANALYSIS TAB -->
+<div class="main-container fade d-none w-100" id="post-analysis-tab">
+    <!-- Header -->
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-magnifying-glass-chart'></i> <span>Post Analysis</span></h3>
+    <div class="inner-header-container w-100 mb-3 fade d-none" id="post-analysis-manager-header">
+        <div class="d-flex flex-column align-items-start justify-content-between">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item">
+                            <a href="#" id="back-to-post-analysis-list">Post Analysis</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page"><span id="pca-manager-name-breadcrumb">New Template</span></li>
+                    </ol>
+                </nav>
+                <div>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="save-pca-template-button" disabled>
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                        <div class="spinner-border save-button-spinner d-none" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation for PCA Manager -->
+            <ul class="nav w-100" id="post-analysis-manager-tabs" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="pca-manager-general-tab" data-bs-toggle="pill" data-bs-target="#pca-manager-general" type="button" role="tab" aria-controls="pca-manager-general" aria-selected="true">General</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="pca-manager-summary-tab" data-bs-toggle="pill" data-bs-target="#pca-manager-summary" type="button" role="tab" aria-controls="pca-manager-summary" aria-selected="false">Summary</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="pca-manager-tags-tab" data-bs-toggle="pill" data-bs-target="#pca-manager-tags" type="button" role="tab" aria-controls="pca-manager-tags" aria-selected="false">Conversation Tags</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pca-manager-extraction-tab" data-bs-toggle="pill" data-bs-target="#pca-manager-extraction" type="button" role="tab" aria-controls="pca-manager-extraction" aria-selected="false">Data Extraction</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="inner-container">
+        <!-- POST ANALYSIS: LIST VIEW -->
+        <div class="fade show" id="post-analysis-list-view">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 300px" class="me-4">
+                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="add-new-pca-template-button">
+                        <span>+ Add New Analysis Template</span>
+                    </button>
+                </div>
+                <div class="input-group w-100">
+                    <input type="text" class="form-control" placeholder="Search templates..." aria-label="Search Post Analysis Templates" id="search-pca-template-input">
+                    <button class="input-group-button btn btn-primary" id="search-pca-template-button">
+                        <i class='fa-regular fa-magnifying-glass'></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row" id="post-analysis-list-container">
+                <!-- Dynamically Generated PCA Template Cards will be loaded here -->
+            </div>
+        </div>
+
+        <!-- POST ANALYSIS: MANAGER VIEW -->
+        <div class="fade d-none" id="post-analysis-manager-view">
+            <div class="tab-content w-100" id="post-analysis-manager-tabContent">
+
+                <!-- General Tab -->
+                <div class="tab-pane fade show active w-100" id="pca-manager-general" role="tabpanel" aria-labelledby="pca-manager-general-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="pca-name-input">Template Name</label>
+                        <div class="input-group">
+                            <button class="btn btn-light" id="pca-icon-input">📊</button>
+                            <input type="text" class="form-control" id="pca-name-input" placeholder="e.g., Support Call Review">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="pca-description-input">Description</label>
+                        <textarea class="form-control" id="pca-description-input" placeholder="A brief description of this template's purpose." rows="3"></textarea>
+                    </div>
+                </div>
+
+                <!-- Summary Tab -->
+                <div class="tab-pane fade w-100" id="pca-manager-summary" role="tabpanel" aria-labelledby="pca-manager-summary-tab" tabindex="0">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="pca-summary-active-toggle" checked>
+                        <label class="form-check-label" for="pca-summary-active-toggle">Enable Summary Generation</label>
+                    </div>
+                    <div id="pca-summary-config-container">
+                        <div class="mb-3">
+                            <label for="pca-summary-prompt-input" class="form-label">
+                                Summary Prompt
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Provide clear instructions for the AI on how to structure the summary.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <textarea class="form-control" id="pca-summary-prompt-input" rows="5" placeholder="e.g., Summarize the conversation in three bullet points focusing on: customer's issue, agent's resolution, and any required follow-up actions."></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="pca-summary-maxlength-input" class="form-label">Max Length (words)</label>
+                                <input type="number" class="form-control" id="pca-summary-maxlength-input" value="150">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="pca-summary-format-select" class="form-label">Format</label>
+                                <select class="form-select" id="pca-summary-format-select">
+                                    <option value="Paragraph" selected>Paragraph</option>
+                                    <option value="BulletPoints">Bullet Points</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversation Tags Tab -->
+                <div class="tab-pane fade w-100" id="pca-manager-tags" role="tabpanel" aria-labelledby="pca-manager-tags-tab" tabindex="0">
+                    <button class="btn btn-light btn-sm mb-3" id="pca-add-tag-set-button">
+                        <i class="fa-regular fa-plus"></i> Add Tag Set
+                    </button>
+                    <div id="pca-tag-sets-list">
+                        <!-- Dynamically generated tag sets will be added here -->
+                        
+                    </div>
+                </div>
+
+                <!-- Data Extraction Tab -->
+                <div class="tab-pane fade w-100" id="pca-manager-extraction" role="tabpanel" aria-labelledby="pca-manager-extraction-tab" tabindex="0">
+                     <button class="btn btn-light btn-sm mb-3" id="pca-add-extraction-field-button">
+                        <i class="fa-regular fa-plus"></i> Add Field
+                    </button>
+                    <div id="pca-extraction-fields-list">
+                        <!-- Dynamically generated extraction fields will be added here -->
+                       
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

@@ -18,5 +18,6 @@ namespace IqraCore.Entities.Business
         public List<BusinessAppKnowledgeBase> KnowledgeBases { get; set; } = new List<BusinessAppKnowledgeBase>();
         public List<BusinessAppTelephonyCampaign> TelephonyCampaigns { get; set; } = new List<BusinessAppTelephonyCampaign>();
         public List<BusinessAppWebCampaign> WebCampaigns { get; set; } = new List<BusinessAppWebCampaign>();
+        public List<BusinessAppPostAnalysis> PostAnalysis { get; set; } = new List<BusinessAppPostAnalysis>();
     }
 }
