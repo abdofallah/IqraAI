@@ -58,6 +58,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessKnowledgeBaseManager? _businessKnowledgeBaseManager;
         private readonly BusinessCampaignManager? _businessCampaignManager;
         private readonly BusinessWebSessionManager? _businessWebSessionManager;
+        private readonly BusinessPostAnalysisManager? _businessPostAnalysisManager;
 
         public BusinessManager(
             ILoggerFactory loggerFactory,
@@ -199,6 +200,14 @@ namespace IqraInfrastructure.Managers.Business
                     throw new Exception("Null constructor input variable for BusinessWebSessionManager");
                 }
                 _businessWebSessionManager = new BusinessWebSessionManager(this, webSessionRepoistory, billingValidationManager, serverSelectionManager, regionManager, httpClientFactory);
+            }
+            if (_settings.InitalizePostAnalysisManager)
+            {
+                if (businessAppRepository == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessPostAnalysisManager");
+                }
+               _businessPostAnalysisManager = new BusinessPostAnalysisManager(this, businessAppRepository);
             }
         }
 
@@ -585,6 +594,11 @@ namespace IqraInfrastructure.Managers.Business
         {
             if (!_settings.InitalizeWebSessionManager || _businessWebSessionManager == null) throw new Exception("Web Session manager not initialized");
             return _businessWebSessionManager;
+        }
+    
+        public BusinessPostAnalysisManager GetPostAnalysisManager() {
+            if (!_settings.InitalizePostAnalysisManager || _businessPostAnalysisManager == null) throw new Exception("Post Analysis manager not initialized");
+            return _businessPostAnalysisManager;
         }
     }
 }

@@ -22,6 +22,7 @@
         public BusinessNumbersPermission Numbers { get; set; } = new BusinessNumbersPermission();
         public BusinessKnowledgeBasesPermission KnowledgeBases { get; set; } = new BusinessKnowledgeBasesPermission();
         public BusinessCampaignsPermission Campaigns { get; set; } = new BusinessCampaignsPermission();
+        public BusinessPostAnalysisPermission PostAnalysis { get; set; } = new BusinessPostAnalysisPermission();
 
         // Non-Client Facing Permissions
         public BusinessRecieveCallPermission RecieveCall { get; set; } = new BusinessRecieveCallPermission();

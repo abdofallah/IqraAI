@@ -1054,5 +1054,45 @@ namespace IqraInfrastructure.Repositories.Business
             var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(project).FirstOrDefaultAsync();
             return result != null;
         }
+
+        /**
+        * 
+        * Post Analysis
+        * 
+        **/
+
+        public async Task<BusinessAppPostAnalysis?> GetBusinessPostAnalysisTemplateById(long businessId, string templateId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, t => t.Id == templateId)
+            );
+
+            var businessApp = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            if (businessApp == null) return null;
+
+            return businessApp.PostAnalysis.FirstOrDefault(t => t.Id == templateId);
+        }
+
+        public async Task<bool> AddBusinessAppPostAnalysisTemplate(long businessId, BusinessAppPostAnalysis newTemplate)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.PostAnalysis, newTemplate);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> UpdateBusinessAppPostAnalysisTemplate(long businessId, BusinessAppPostAnalysis updatedTemplate)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, t => t.Id == updatedTemplate.Id)
+            );
+            var update = Builders<BusinessApp>.Update.Set(b => b.PostAnalysis.FirstMatchingElement(), updatedTemplate);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.IsAcknowledged;
+        }
     }
 }
