@@ -1,9 +1,4 @@
-﻿// --- 1. CONSTANTS & ENUMS ---
-const PCA_SUMMARY_FORMAT = {
-    Paragraph: 0,
-    BulletPoints: 1
-};
-
+﻿// CONSTANTS & ENUMS
 const PCA_EXTRACTION_FIELD_DATA_TYPE = {
     String: 0,
     Boolean: 1,
@@ -11,13 +6,20 @@ const PCA_EXTRACTION_FIELD_DATA_TYPE = {
     DateTime: 3,
     Enum: 4
 };
+const PCA_CONDITION_OPERATOR = {
+    Equals: 0,
+    NotEquals: 1,
+    Contains: 2,
+    GreaterThan: 3,
+    LessThan: 4
+};
 
-// --- 2. DYNAMIC VARIABLES ---
+// DYNAMIC VARIABLES
 let managePCAType = null; // 'new' or 'edit'
 let currentPCATemplateData = null; // Stores the original data of the template being edited
 let isSavingPCATemplate = false;
 
-// --- 3. ELEMENT VARIABLES ---
+// ELEMENT VARIABLES
 const postAnalysisTab = $("#post-analysis-tab");
 const pcaTooltipTriggerList = document.querySelectorAll('#post-analysis-tab [data-bs-toggle="tooltip"]');
 [...pcaTooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -58,8 +60,7 @@ const pcaTagSetsList = pcaManagerView.find("#pca-tag-sets-list");
 const pcaAddExtractionFieldButton = pcaManagerView.find("#pca-add-extraction-field-button");
 const pcaExtractionFieldsList = pcaManagerView.find("#pca-extraction-fields-list");
 
-
-// --- 4. API FUNCTIONS ---
+// API FUNCTIONS
 function savePCATemplate(formData, successCallback, errorCallback) {
     $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/postanalysis/save`,
@@ -79,7 +80,6 @@ function savePCATemplate(formData, successCallback, errorCallback) {
         },
     });
 }
-
 function deletePCATemplate(templateId, successCallback, errorCallback) {
     $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/postanalysis/delete`,
@@ -89,9 +89,7 @@ function deletePCATemplate(templateId, successCallback, errorCallback) {
     });
 }
 
-
-// --- 5. CORE UI & DATA FUNCTIONS ---
-
+// CORE UI & DATA FUNCTIONS
 function showPCAListView() {
     pcaManagerHeader.removeClass("show");
     pcaManagerView.removeClass("show");
@@ -105,7 +103,6 @@ function showPCAListView() {
         }, 10);
     }, 300);
 }
-
 function showPCAManagerView() {
     pcaListView.removeClass("show");
     setTimeout(() => {
@@ -119,7 +116,6 @@ function showPCAManagerView() {
         }, 10);
     }, 300);
 }
-
 function fillPCAList() {
     pcaListContainer.empty();
     const templates = BusinessFullData.businessApp.postAnalysisTemplates;
@@ -131,17 +127,26 @@ function fillPCAList() {
         });
     }
 }
-
 function createDefaultPCATemplateObject() {
     return {
         id: null,
-        general: { emoji: "📊", name: "", description: "" },
-        summary: { isActive: true, prompt: "", parameters: { maxLength: 150, format: PCA_SUMMARY_FORMAT.Paragraph } },
-        tagging: { tagSets: [] },
-        extraction: { fields: [] }
+        general: {
+            emoji: "📊",
+            name: "",
+            description: ""
+        },
+        summary: {
+            isActive: true,
+            prompt: ""
+        },
+        tagging: {
+            tags: []
+        },
+        extraction: {
+            fields: []
+        }
     };
 }
-
 function resetPCAManager() {
     pcaManagerView.find(".is-invalid").removeClass("is-invalid");
 
@@ -153,8 +158,6 @@ function resetPCAManager() {
     // Summary
     pcaSummaryActiveToggle.prop("checked", true).change();
     pcaSummaryPromptInput.val("");
-    pcaSummaryMaxLengthInput.val(150);
-    pcaSummaryFormatSelect.val(PCA_SUMMARY_FORMAT.Paragraph);
 
     // Tags & Extraction
     pcaTagSetsList.empty();
@@ -164,7 +167,6 @@ function resetPCAManager() {
     pcaManagerGeneralTabButton.click();
     savePCATemplateButton.prop("disabled", true);
 }
-
 function fillPCAManager(templateData) {
     // General
     pcaIconInput.text(templateData.general.emoji);
@@ -174,51 +176,13 @@ function fillPCAManager(templateData) {
     // Summary
     pcaSummaryActiveToggle.prop("checked", templateData.summary.isActive).change();
     pcaSummaryPromptInput.val(templateData.summary.prompt);
-    pcaSummaryMaxLengthInput.val(templateData.summary.parameters.maxLength);
-    pcaSummaryFormatSelect.val(templateData.summary.parameters.format);
 
     // Tags
-    templateData.tagging.tagSets.forEach(tagSet => {
-        const tagSetElement = $(createPCATagSetElement(tagSet));
-        tagSetElement.find('[data-type="setName"]').val(tagSet.name);
-        tagSetElement.find('[data-type="setDescription"]').val(tagSet.description);
-        tagSetElement.find('[data-type="setRequired"]').prop('checked', tagSet.rules.isRequired);
-        tagSetElement.find('[data-type="setAllowMultiple"]').prop('checked', tagSet.rules.allowMultiple);
-
-        const tagsListContainer = tagSetElement.find('.pca-tags-list-container');
-        tagSet.tags.forEach(tag => {
-            const tagElement = $(createPCATagDefinitionElement(tag));
-            tagElement.find('[data-type="tagName"]').val(tag.name);
-            tagElement.find('[data-type="tagDescription"]').val(tag.description);
-            // Parent ID will be set after all tags in the set are rendered
-            tagsListContainer.append(tagElement);
-        });
-
-        pcaTagSetsList.append(tagSetElement);
-        updateParentTagDropdowns(tagSetElement, tagSet);
-    });
+    renderTags(pcaTagSetsList, templateData.tagging.tags, 0);
 
     // Extraction
-    templateData.extraction.fields.forEach(field => {
-        const fieldElement = $(createPCAExtractionFieldElement(field));
-        fieldElement.find('[data-type="keyName"]').val(field.keyName);
-        fieldElement.find('[data-type="description"]').val(field.description);
-        fieldElement.find('[data-type="isRequired"]').prop('checked', field.isRequired);
-        const dataTypeSelect = fieldElement.find('[data-type="DataType"]');
-        dataTypeSelect.val(field.dataType);
-
-        // IMPORTANT: Trigger change to render conditional inputs
-        dataTypeSelect.trigger('change');
-
-        if (field.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
-            fieldElement.find('.field-options-container input').val(field.options.join(','));
-        } else if (field.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String) {
-            fieldElement.find('.field-options-container input').val(field.validation.pattern || '');
-        }
-        pcaExtractionFieldsList.append(fieldElement);
-    });
+    renderExtractionFields(pcaExtractionFieldsList, templateData.extraction.fields, 0);
 }
-
 function checkPCAChanges(enableDisableButton = true) {
     if (managePCAType === null) return { hasChanges: false, changes: {} };
 
@@ -228,53 +192,22 @@ function checkPCAChanges(enableDisableButton = true) {
 
     // Build current state from DOM
     const currentState = {
-        general: { emoji: pcaIconInput.text(), name: pcaNameInput.val().trim(), description: pcaDescriptionInput.val().trim() },
-        summary: { isActive: pcaSummaryActiveToggle.is(':checked'), prompt: pcaSummaryPromptInput.val().trim(), parameters: { maxLength: parseInt(pcaSummaryMaxLengthInput.val()) || 150, format: parseInt(pcaSummaryFormatSelect.val()) } },
-        tagging: { tagSets: [] },
-        extraction: { fields: [] }
-    };
-    pcaTagSetsList.find('.pca-tag-set-box').each((_, setEl) => {
-        const $setEl = $(setEl);
-        const tagSet = {
-            id: $setEl.data('set-id'),
-            name: $setEl.find('[data-type="setName"]').val().trim(),
-            description: $setEl.find('[data-type="setDescription"]').val().trim(),
-            rules: {
-                isRequired: $setEl.find('[data-type="setRequired"]').is(':checked'),
-                allowMultiple: $setEl.find('[data-type="setAllowMultiple"]').is(':checked'),
-            },
-            tags: []
-        };
-        $setEl.find('.pca-tag-def-box').each((_, tagEl) => {
-            const $tagEl = $(tagEl);
-            tagSet.tags.push({
-                id: $tagEl.data('tag-id'),
-                name: $tagEl.find('[data-type="tagName"]').val().trim(),
-                description: $tagEl.find('[data-type="tagDescription"]').val().trim(),
-                parentTagId: $tagEl.find('[data-type="parentTag"]').val() || null,
-            });
-        });
-        currentState.tagging.tagSets.push(tagSet);
-    });
-    pcaExtractionFieldsList.find('.pca-extraction-field-box').each((_, fieldEl) => {
-        const $fieldEl = $(fieldEl);
-        const dataType = parseInt($fieldEl.find('[data-type="DataType"]').val());
-        const field = {
-            id: $fieldEl.data('field-id'),
-            keyName: $fieldEl.find('[data-type="keyName"]').val().trim(),
-            description: $fieldEl.find('[data-type="description"]').val().trim(),
-            isRequired: $fieldEl.find('[data-type="isRequired"]').is(':checked'),
-            dataType: dataType,
-            options: [],
-            validation: { pattern: null }
-        };
-        if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
-            field.options = $fieldEl.find('.field-options-container input').val().split(',').map(s => s.trim()).filter(Boolean);
-        } else if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String) {
-            field.validation.pattern = $fieldEl.find('.field-options-container input').val().trim() || null;
+        general: {
+            emoji: pcaIconInput.text(),
+            name: pcaNameInput.val().trim(),
+            description: pcaDescriptionInput.val().trim()
+        },
+        summary: {
+            isActive: pcaSummaryActiveToggle.is(':checked'),
+            prompt: pcaSummaryPromptInput.val().trim()
+        },
+        tagging: {
+            tags: getTagsFromDOM(pcaTagSetsList) // todo
+        },
+        extraction: {
+            fields: getFieldsFromDOM(pcaExtractionFieldsList) // todo
         }
-        currentState.extraction.fields.push(field);
-    });
+    };
 
     // Compare General
     if (currentState.general.name !== original.general.name ||
@@ -286,64 +219,61 @@ function checkPCAChanges(enableDisableButton = true) {
 
     // Compare Summary
     if (currentState.summary.isActive !== original.summary.isActive ||
-        currentState.summary.prompt !== original.summary.prompt ||
-        currentState.summary.parameters.maxLength !== original.summary.parameters.maxLength ||
-        currentState.summary.parameters.format !== original.summary.parameters.format)
-    {
+        currentState.summary.prompt !== original.summary.prompt
+    ) {
         hasChanges = true;
     }
 
-    // Compare Tagging
-    if (currentState.tagging.tagSets.length !== original.tagging.tagSets.length) {
-        hasChanges = true;
-    } else {
-        for (const currentSet of currentState.tagging.tagSets) {
-            const originalSet = findById(original.tagging.tagSets, currentSet.id);
-            if (!originalSet || currentSet.name !== originalSet.name ||
-                currentSet.description !== originalSet.description ||
-                currentSet.rules.isRequired !== originalSet.rules.isRequired ||
-                currentSet.rules.allowMultiple !== originalSet.rules.allowMultiple ||
-                currentSet.tags.length !== originalSet.tags.length)
-            {
-                hasChanges = true; break;
-            }
-            for (const currentTag of currentSet.tags) {
-                const originalTag = findById(originalSet.tags, currentTag.id);
-                if (!originalTag || currentTag.name !== originalTag.name ||
-                    currentTag.description !== originalTag.description ||
-                    currentTag.parentTagId !== originalTag.parentTagId)
-                {
-                    hasChanges = true; break;
-                }
-            }
-            if (hasChanges) break;
-        }
-    }
+    //// Compare Tagging
+    //if (currentState.tagging.tagSets.length !== original.tagging.tagSets.length) {
+    //    hasChanges = true;
+    //} else {
+    //    for (const currentSet of currentState.tagging.tagSets) {
+    //        const originalSet = findById(original.tagging.tagSets, currentSet.id);
+    //        if (!originalSet || currentSet.name !== originalSet.name ||
+    //            currentSet.description !== originalSet.description ||
+    //            currentSet.rules.isRequired !== originalSet.rules.isRequired ||
+    //            currentSet.rules.allowMultiple !== originalSet.rules.allowMultiple ||
+    //            currentSet.tags.length !== originalSet.tags.length)
+    //        {
+    //            hasChanges = true; break;
+    //        }
+    //        for (const currentTag of currentSet.tags) {
+    //            const originalTag = findById(originalSet.tags, currentTag.id);
+    //            if (!originalTag || currentTag.name !== originalTag.name ||
+    //                currentTag.description !== originalTag.description ||
+    //                currentTag.parentTagId !== originalTag.parentTagId)
+    //            {
+    //                hasChanges = true; break;
+    //            }
+    //        }
+    //        if (hasChanges) break;
+    //    }
+    //}
     
-    // Compare Extraction
-    if (currentState.extraction.fields.length !== original.extraction.fields.length) {
-        hasChanges = true;
-    } else {
-        for (const currentField of currentState.extraction.fields) {
-            const originalField = findById(original.extraction.fields, currentField.id);
-            if (!originalField || currentField.keyName !== originalField.keyName ||
-                currentField.description !== originalField.description ||
-                currentField.isRequired !== originalField.isRequired ||
-                currentField.dataType !== originalField.dataType ||
-                JSON.stringify(currentField.options) !== JSON.stringify(originalField.options) ||
-                currentField.validation.pattern !== originalField.validation.pattern)
-            {
-                hasChanges = true; break;
-            }
-        }
-    }
+    //// Compare Extraction
+    //if (currentState.extraction.fields.length !== original.extraction.fields.length) {
+    //    hasChanges = true;
+    //} else {
+    //    for (const currentField of currentState.extraction.fields) {
+    //        const originalField = findById(original.extraction.fields, currentField.id);
+    //        if (!originalField || currentField.keyName !== originalField.keyName ||
+    //            currentField.description !== originalField.description ||
+    //            currentField.isRequired !== originalField.isRequired ||
+    //            currentField.dataType !== originalField.dataType ||
+    //            JSON.stringify(currentField.options) !== JSON.stringify(originalField.options) ||
+    //            currentField.validation.pattern !== originalField.validation.pattern)
+    //        {
+    //            hasChanges = true; break;
+    //        }
+    //    }
+    //}
 
     if (enableDisableButton) {
         savePCATemplateButton.prop("disabled", !hasChanges);
     }
     return { hasChanges, changes: currentState };
 }
-
 function validatePCATemplate(onlyRemove = true) {
     const errors = [];
     let validated = true;
@@ -357,42 +287,14 @@ function validatePCATemplate(onlyRemove = true) {
 
     // Tagging
     const tagSetNames = new Set();
-    pcaTagSetsList.find('.pca-tag-set-box').each((i, setEl) => {
-        const $setEl = $(setEl);
-        const setNameInput = $setEl.find('[data-type="setName"]');
-        if (!setNameInput.val().trim()) {
-            validated = false; errors.push(`Tag Set #${i + 1}: Name is required.`);
-            if (!onlyRemove) setNameInput.addClass('is-invalid');
-        }
-        $setEl.find('.pca-tag-def-box').each((j, tagEl) => {
-            const tagNameInput = $(tagEl).find('[data-type="tagName"]');
-            if (!tagNameInput.val().trim()) {
-                validated = false; errors.push(`Tag Set "${setNameInput.val() || 'Untitled'}", Tag #${j + 1}: Name is required.`);
-                if (!onlyRemove) tagNameInput.addClass('is-invalid');
-            }
-        });
-    });
+    validateTagsRecursive(pcaTagSetsList, errors, tagSetNames, onlyRemove);
 
     // Extraction
     const keyNames = new Set();
-    pcaExtractionFieldsList.find('.pca-extraction-field-box').each((i, fieldEl) => {
-        const $fieldEl = $(fieldEl);
-        const keyNameInput = $fieldEl.find('[data-type="keyName"]');
-        const keyName = keyNameInput.val().trim();
-        if (!keyName) {
-            validated = false; errors.push(`Extraction Field #${i + 1}: Key Name is required.`);
-            if (!onlyRemove) keyNameInput.addClass('is-invalid');
-        } else if (keyNames.has(keyName)) {
-            validated = false; errors.push(`Extraction Field #${i + 1}: Key Name "${keyName}" must be unique.`);
-            if (!onlyRemove) keyNameInput.addClass('is-invalid');
-        } else {
-            keyNames.add(keyName);
-        }
-    });
+    validateFieldsRecursive(pcaExtractionFieldsList, errors, keyNames, onlyRemove);
 
     return { validated, errors };
 }
-
 async function canLeavePCAManager(leaveMessage = "") {
     if (isSavingPCATemplate) {
         AlertManager.createAlert({ type: "warning", message: "Template is currently being saved. Please wait." });
@@ -411,7 +313,6 @@ async function canLeavePCAManager(leaveMessage = "") {
     }
     return true;
 }
-
 function handlePCARouting(subPath) {
     if (managePCAType === 'new' || managePCAType === 'edit') {
         const correctPath = managePCAType === 'new' ? 'postanalysis/new' : `postanalysis/${currentPCATemplateData.id}`;
@@ -439,8 +340,120 @@ function handlePCARouting(subPath) {
     }
 }
 
-// --- 6. DYNAMIC ELEMENT CREATORS ---
+// RECURSIVE HELPER FUNCTIONS (VALIDATION, UI, DATA GATHERING)
+function renderTags(container, tags, level) {
+    container.empty();
+    tags.forEach(tagData => {
+        const tagElement = $(createPCATagElement(tagData, level));
+        container.append(tagElement);
+        const subTagContainer = tagElement.find('.sub-tags-container').first();
+        if (tagData.subTags && tagData.subTags.length > 0) {
+            renderTags(subTagContainer, tagData.subTags, level + 1);
+        }
+    });
+}
+function renderExtractionFields(container, fields, level) {
+    container.empty();
+    fields.forEach(fieldData => {
+        const fieldElement = $(createPCAExtractionFieldElement(fieldData, level));
+        container.append(fieldElement);
+        const rulesContainer = fieldElement.find('.rules-container').first();
+        if (fieldData.conditionalRules && fieldData.conditionalRules.length > 0) {
+            fieldData.conditionalRules.forEach(ruleData => {
+                const ruleElement = $(createPCAConditionalRuleElement(ruleData, fieldData));
+                rulesContainer.append(ruleElement);
+                const dependentFieldsContainer = ruleElement.find('.dependent-fields-container').first();
+                renderExtractionFields(dependentFieldsContainer, ruleData.fieldsToExtract, level + 1);
+            });
+        }
+    });
+}
+function getTagsFromDOM(container) {
+    const tags = [];
+    container.children('.tag-box').each((_, el) => {
+        const $el = $(el);
+        const subTagsContainer = $el.find('.sub-tags-container').first();
+        tags.push({
+            id: $el.data('id'),
+            name: $el.find('[data-type="name"]').val().trim(),
+            description: $el.find('[data-type="description"]').val().trim(),
+            rules: {
+                allowMultiple: $el.find('[data-type="allowMultiple"]').is(':checked'),
+                isRequired: $el.find('[data-type="isRequired"]').is(':checked')
+            },
+            subTags: getTagsFromDOM(subTagsContainer)
+        });
+    });
+    return tags;
+}
 
+function getFieldsFromDOM(container) {
+    const fields = [];
+    container.children('.extraction-field-box').each((_, el) => {
+        const $el = $(el);
+        const rulesContainer = $el.find('.rules-container').first();
+        const dataType = parseInt($el.find('[data-type="DataType"]').val());
+        const field = {
+            id: $el.data('id'),
+            keyName: $el.find('[data-type="keyName"]').val().trim(),
+            description: $el.find('[data-type="description"]').val().trim(),
+            isRequired: $el.find('[data-type="isRequired"]').is(':checked'),
+            dataType: dataType,
+            options: [],
+            validation: { pattern: null },
+            conditionalRules: getRulesFromDOM($el)
+        };
+        if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) field.options = $el.find('.field-options-container input').val().split(',').map(s => s.trim()).filter(Boolean);
+        if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String) field.validation.pattern = $el.find('.field-options-container input').val().trim() || null;
+        fields.push(field);
+    });
+    return fields;
+}
+
+function getRulesFromDOM(fieldBox) {
+    const rules = [];
+    fieldBox.find('.rule-box').each((_, el) => {
+        const $el = $(el);
+        const dependentFieldsContainer = $el.find('.dependent-fields-container').first();
+        rules.push({
+            id: $el.data('id'),
+            condition: {
+                operator: parseInt($el.find('[data-type="conditionOperator"]').val()),
+                value: $el.find('[data-type="conditionValue"]').val()
+            },
+            fieldsToExtract: getFieldsFromDOM(dependentFieldsContainer)
+        });
+    });
+    return rules;
+}
+
+function validateTagsRecursive(container, errors, path = "Tags") {
+    container.children('.tag-box').each((i, el) => {
+        const $el = $(el);
+        const nameInput = $el.find('[data-type="name"]');
+        const currentPath = `${path} -> #${i + 1}`;
+        if (!nameInput.val().trim()) errors.push(`${currentPath}: Tag Name is required.`);
+        const subTagContainer = $el.find('.sub-tags-container').first();
+        validateTagsRecursive(subTagContainer, errors, currentPath);
+    });
+}
+
+function validateFieldsRecursive(container, errors, uniqueKeys, path = "Fields") {
+    container.children('.extraction-field-box').each((i, el) => {
+        const $el = $(el);
+        const keyNameInput = $el.find('[data-type="keyName"]');
+        const keyName = keyNameInput.val().trim();
+        const currentPath = `${path} -> #${i + 1}`;
+        if (!keyName) errors.push(`${currentPath}: Key Name is required.`);
+        else if (uniqueKeys.has(keyName)) errors.push(`${currentPath}: Key Name "${keyName}" must be unique across the entire template.`);
+        else uniqueKeys.add(keyName);
+        $el.find('.rule-box').each((j, ruleEl) => {
+            validateFieldsRecursive($(ruleEl).find('.dependent-fields-container').first(), errors, uniqueKeys, `${currentPath} -> Rule #${j + 1}`);
+        });
+    });
+}
+
+// DYNAMIC ELEMENT CREATORS
 function createPCAListElement(templateData) {
     return `
         <div class="col-lg-4 col-md-6 col-12">
@@ -461,83 +474,116 @@ function createPCAListElement(templateData) {
             </div>
         </div>`;
 }
-
-function createPCATagSetElement(tagSetData) {
-    const setId = (tagSetData && tagSetData.id) ? tagSetData.id : crypto.randomUUID();
+function createPCATagElement(tagData, level) {
+    const data = tagData || {};
+    const id = data.id || crypto.randomUUID();
+    const isRequired = data.rules ? data.rules.isRequired : false;
+    const allowMultiple = data.rules ? data.rules.allowMultiple : false;
     return `
-        <div class="p-3 border rounded mb-3 pca-tag-set-box" data-set-id="${setId}">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">Tag Set</h5>
-                <button class="btn btn-danger btn-sm" button-type="remove-tag-set"><i class="fa-regular fa-trash"></i></button>
+        <div class="p-3 border rounded mb-2 tag-box" data-id="${id}" data-level="${level}" style="margin-left: ${level * 25}px; background-color: rgba(255,255,255,${level * 0.03});">
+            <div class="d-flex align-items-center mb-2">
+                <input type="text" class="form-control me-2" placeholder="Tag Name" data-type="name" value="${data.name || ''}">
+                <button class="btn btn-danger btn-sm" button-type="remove-item"><i class="fa-regular fa-trash"></i></button>
             </div>
-            <div class="row">
-                <div class="col-md-6 mb-3"><input type="text" class="form-control" placeholder="Tag Set Name (e.g., Call Outcome)" data-type="setName"></div>
-                <div class="col-md-6 mb-3"><input type="text" class="form-control" placeholder="Description for AI" data-type="setDescription"></div>
-            </div>
-            <div class="d-flex mb-3">
-                <div class="form-check form-check-inline me-3">
-                    <input class="form-check-input" type="checkbox" id="tag-set-required-${setId}" data-type="setRequired">
-                    <label class="form-check-label" for="tag-set-required-${setId}">Required</label>
+            <textarea class="form-control form-control-sm mb-2" rows="2" placeholder="Description for AI..." data-type="description">${data.description || ''}</textarea>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <small class="text-muted me-3">Rules for Sub-Tags:</small>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="tag-required-${id}" data-type="isRequired" ${isRequired ? 'checked' : ''}>
+                        <label class="form-check-label" for="tag-required-${id}">Required</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="tag-multiple-${id}" data-type="allowMultiple" ${allowMultiple ? 'checked' : ''}>
+                        <label class="form-check-label" for="tag-multiple-${id}">Allow Multiple</label>
+                    </div>
                 </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="tag-set-multiple-${setId}" data-type="setAllowMultiple">
-                    <label class="form-check-label" for="tag-set-multiple-${setId}">Allow Multiple Selections</label>
-                </div>
+                <button class="btn btn-light btn-sm" button-type="add-sub-tag"><i class="fa-regular fa-plus"></i> Add Sub-Tag</button>
             </div>
-            <h6>Tags</h6>
-            <div class="pca-tags-list-container mb-2"></div>
-            <button class="btn btn-light btn-sm" button-type="add-tag-definition">
-                <i class="fa-regular fa-plus"></i> Add Tag
-            </button>
+            <div class="mt-2 sub-tags-container"></div>
         </div>`;
 }
+function createPCAExtractionFieldElement(fieldData, level) {
+    const data = fieldData || {};
+    const id = data.id || crypto.randomUUID();
+    const isRequired = data.isRequired || false;
 
-function createPCATagDefinitionElement(tagDefData) {
-    const tagId = (tagDefData && tagDefData.id) ? tagDefData.id : crypto.randomUUID();
-    return `
-        <div class="p-2 border-top pca-tag-def-box" data-tag-id="${tagId}">
-            <div class="input-group mb-2">
-                <input type="text" class="form-control" placeholder="Tag Name (e.g., Resolved)" data-type="tagName">
-                <select class="form-select" data-type="parentTag" style="max-width: 200px;"><option value="">No Parent</option></select>
-                <button class="btn btn-danger btn-sm" button-type="remove-tag-definition"><i class="fa-regular fa-trash"></i></button>
-            </div>
-            <textarea class="form-control form-control-sm" rows="2" placeholder="Description for AI to understand when to use this tag." data-type="tagDescription"></textarea>
-        </div>`;
-}
+    // Determine the data type, defaulting to String (0) if not provided
+    const dataType = (data.dataType !== undefined && data.dataType !== null) ? data.dataType : PCA_EXTRACTION_FIELD_DATA_TYPE.String;
 
-function createPCAExtractionFieldElement(fieldData) {
-    const fieldId = (fieldData && fieldData.id) ? fieldData.id : crypto.randomUUID();
     return `
-        <div class="p-3 border rounded mb-3 pca-extraction-field-box" data-field-id="${fieldId}">
+        <div class="p-3 border rounded mb-2 extraction-field-box" data-id="${id}" data-level="${level}" style="margin-left: ${level * 25}px; background-color: rgba(255,255,255,${level * 0.03});">
              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">Field Definition</h6>
-                <button class="btn btn-danger btn-sm" button-type="remove-extraction-field"><i class="fa-regular fa-trash"></i></button>
+                <h6 class="mb-0 text-muted">Field Definition</h6>
+                <button class="btn btn-danger btn-sm" button-type="remove-item"><i class="fa-regular fa-trash"></i></button>
             </div>
             <div class="row">
-                <div class="col-md-4 mb-3"><input type="text" class="form-control" placeholder="Key Name (e.g., customer_email)" data-type="keyName"></div>
-                <div class="col-md-8 mb-3"><input type="text" class="form-control" placeholder="Description for AI (e.g., Extract the customer's primary contact email.)" data-type="description"></div>
+                <div class="col-md-4 mb-3">
+                    <label for="field-key-${id}" class="form-label form-label-sm">Key Name</label>
+                    <input type="text" class="form-control form-control-sm" id="field-key-${id}" placeholder="e.g., customer_email" data-type="keyName" value="${data.keyName || ''}">
+                </div>
+                <div class="col-md-8 mb-3">
+                    <label for="field-desc-${id}" class="form-label form-label-sm">Description for AI</label>
+                    <input type="text" class="form-control form-control-sm" id="field-desc-${id}" placeholder="e.g., Extract the customer's primary contact email." data-type="description" value="${data.description || ''}">
+                </div>
             </div>
             <div class="row align-items-center">
                 <div class="col-md-3">
-                    <select class="form-select form-select-sm" data-type="DataType">
-                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.String}">String</option>
-                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.Boolean}">Boolean</option>
-                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.Number}">Number</option>
-                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.DateTime}">DateTime</option>
-                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.Enum}">Enum (Options)</option>
+                    <label for="field-type-${id}" class="form-label form-label-sm">Data Type</label>
+                    <select class="form-select form-select-sm" id="field-type-${id}" data-type="DataType">
+                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.String}" ${dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String ? 'selected' : ''}>String</option>
+                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.Boolean}" ${dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Boolean ? 'selected' : ''}>Boolean</option>
+                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.Number}" ${dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Number ? 'selected' : ''}>Number</option>
+                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.DateTime}" ${dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.DateTime ? 'selected' : ''}>DateTime</option>
+                        <option value="${PCA_EXTRACTION_FIELD_DATA_TYPE.Enum}" ${dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum ? 'selected' : ''}>Enum (Options)</option>
                     </select>
                 </div>
-                <div class="col-md-7 field-options-container d-none"></div>
+                <div class="col-md-7 field-options-container">
+                    <!-- This container will be populated by the 'change' event handler based on the Data Type selection -->
+                </div>
                 <div class="col-md-2 text-end">
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="field-required-${fieldId}" data-type="isRequired">
-                        <label class="form-check-label" for="field-required-${fieldId}">Required</label>
+                    <div class="form-check form-check-inline mt-3">
+                        <input class="form-check-input" type="checkbox" id="field-required-${id}" data-type="isRequired" ${isRequired ? 'checked' : ''}>
+                        <label class="form-check-label" for="field-required-${id}">Required</label>
                     </div>
                 </div>
             </div>
+            <div class="mt-2 rules-container">
+                <!-- Conditional rules will be appended here -->
+            </div>
+            <button class="btn btn-light btn-sm mt-2" button-type="add-conditional-rule">
+                <i class="fa-regular fa-plus"></i> Add Conditional Rule
+            </button>
         </div>`;
 }
-
+function createPCAConditionalRuleElement(ruleData, parentFieldData) {
+    const data = ruleData || {};
+    const id = data.id || crypto.randomUUID();
+    let valueInputHtml = '<input type="text" class="form-control form-control-sm" data-type="conditionValue">';
+    if (parentFieldData.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Boolean) {
+        valueInputHtml = `<select class="form-select form-select-sm" data-type="conditionValue"><option value="true">True</option><option value="false">False</option></select>`;
+    } else if (parentFieldData.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
+        const optionsHtml = parentFieldData.options.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+        valueInputHtml = `<select class="form-select form-select-sm" data-type="conditionValue">${optionsHtml}</select>`;
+    }
+    return `
+        <div class="p-2 mt-2 border rounded rule-box" data-id="${id}">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <strong class="me-2">IF Value</strong>
+                    <select class="form-select form-select-sm me-2" data-type="conditionOperator" style="width: auto;">
+                        <option value="${PCA_CONDITION_OPERATOR.Equals}">Equals</option>
+                        <option value="${PCA_CONDITION_OPERATOR.NotEquals}">Not Equals</option>
+                    </select>
+                    <div style="width: 150px;">${valueInputHtml}</div>
+                    <strong class="mx-2">THEN Extract:</strong>
+                </div>
+                <button class="btn btn-danger btn-sm" button-type="remove-item"><i class="fa-regular fa-trash"></i></button>
+            </div>
+            <div class="mt-2 dependent-fields-container"></div>
+            <button class="btn btn-light btn-sm mt-2" button-type="add-dependent-field"><i class="fa-regular fa-plus"></i> Add Field</button>
+        </div>`;
+}
 function updateParentTagDropdowns(tagSetElement, tagSetData = null) {
     const $tagSetElement = $(tagSetElement);
     const tags = [];
@@ -566,73 +612,47 @@ function updateParentTagDropdowns(tagSetElement, tagSetData = null) {
     });
 }
 
-
-// --- 7. EVENT HANDLER INITIALIZERS ---
-
+// EVENT HANDLER INITIALIZERS
 function initPCAManagerEventHandlers() {
-    // General Tab
     new EmojiPicker({ trigger: [{ selector: "#pca-icon-input", insertInto: "#pca-icon-input" }], closeOnInsert: true });
 
-    // Tags Tab
-    pcaAddTagSetButton.on('click', () => {
-        pcaTagSetsList.append(createPCATagSetElement(null));
-    });
-
-    pcaTagSetsList.on('click', 'button[button-type="remove-tag-set"]', (e) => {
-        $(e.currentTarget).closest('.pca-tag-set-box').remove();
-        checkPCAChanges();
-    });
-
-    pcaTagSetsList.on('click', 'button[button-type="add-tag-definition"]', (e) => {
-        const $tagSetBox = $(e.currentTarget).closest('.pca-tag-set-box');
-        $tagSetBox.find('.pca-tags-list-container').append(createPCATagDefinitionElement(null));
-        updateParentTagDropdowns($tagSetBox);
-    });
-
-    pcaTagSetsList.on('click', 'button[button-type="remove-tag-definition"]', (e) => {
-        const $tagSetBox = $(e.currentTarget).closest('.pca-tag-set-box');
-        $(e.currentTarget).closest('.pca-tag-def-box').remove();
-        updateParentTagDropdowns($tagSetBox);
-        checkPCAChanges();
-    });
-
-    pcaTagSetsList.on('input', 'input[data-type="tagName"]', (e) => {
-        const $tagSetBox = $(e.currentTarget).closest('.pca-tag-set-box');
-        updateParentTagDropdowns($tagSetBox);
-    });
-
-    // Extraction Tab
-    pcaAddExtractionFieldButton.on('click', () => {
-        pcaExtractionFieldsList.append(createPCAExtractionFieldElement(null));
-    });
-
-    pcaExtractionFieldsList.on('click', 'button[button-type="remove-extraction-field"]', (e) => {
-        $(e.currentTarget).closest('.pca-extraction-field-box').remove();
-        checkPCAChanges();
-    });
-
-    pcaExtractionFieldsList.on('change', 'select[data-type="DataType"]', (e) => {
-        const selectedType = parseInt($(e.currentTarget).val());
-        const optionsContainer = $(e.currentTarget).closest('.pca-extraction-field-box').find('.field-options-container');
-        optionsContainer.addClass('d-none').empty();
-        if (selectedType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
-            optionsContainer.removeClass('d-none').html('<input type="text" class="form-control form-control-sm" placeholder="Comma-separated options (e.g., Low,Medium,High)">');
-        } else if (selectedType === PCA_EXTRACTION_FIELD_DATA_TYPE.String) {
-            optionsContainer.removeClass('d-none').html('<input type="text" class="form-control form-control-sm" placeholder="Optional: Regex Pattern">');
-        }
-    });
-
     // Universal change listener
-    pcaManagerView.on('input change', 'input, select, textarea', () => {
-        if (managePCAType) {
-            checkPCAChanges();
-            validatePCATemplate(true);
-        }
+    pcaManagerView.on('input change', 'input, select, textarea', () => { if (managePCAType) checkPCAChanges(); });
+
+    // Top-level "Add" buttons
+    pcaAddTagSetButton.on('click', () => pcaTagSetsList.append(createPCATagElement(null, 0)));
+    pcaAddExtractionFieldButton.on('click', () => pcaExtractionFieldsList.append(createPCAExtractionFieldElement(null, 0)));
+
+    // Universal remove button (delegated)
+    pcaManagerView.on('click', '[button-type="remove-item"]', (e) => $(e.currentTarget).parent().parent().remove());
+
+    // --- Tagging specific delegation ---
+    pcaTagSetsList.on('click', '[button-type="add-sub-tag"]', (e) => {
+        const $parentBox = $(e.currentTarget).closest('.tag-box');
+        const level = parseInt($parentBox.data('level') || 0) + 1;
+        $parentBox.find('.sub-tags-container').first().append(createPCATagElement(null, level));
+    });
+
+    // --- Extraction specific delegation ---
+    pcaExtractionFieldsList.on('click', '[button-type="add-conditional-rule"]', (e) => {
+        const $fieldBox = $(e.currentTarget).closest('.extraction-field-box');
+        const parentFieldData = {
+            dataType: parseInt($fieldBox.find('[data-type="DataType"]').val()),
+            options: ($fieldBox.find('[data-type="DataType"]').val() == PCA_EXTRACTION_FIELD_DATA_TYPE.Enum)
+                ? $fieldBox.find('.field-options-container input').val().split(',').map(s => s.trim()).filter(Boolean)
+                : []
+        };
+        $fieldBox.find('.rules-container').first().append(createPCAConditionalRuleElement(null, parentFieldData));
+    });
+
+    pcaExtractionFieldsList.on('click', '[button-type="add-dependent-field"]', (e) => {
+        const $ruleBox = $(e.currentTarget).closest('.rule-box');
+        const level = parseInt($ruleBox.closest('.extraction-field-box').data('level') || 0) + 1;
+        $ruleBox.find('.dependent-fields-container').first().append(createPCAExtractionFieldElement(null, level));
     });
 }
 
-
-// --- 8. MAIN INITIALIZER ---
+// MAIN INITIALIZER
 function initPostAnalysisTab() {
     initPCAManagerEventHandlers();
 

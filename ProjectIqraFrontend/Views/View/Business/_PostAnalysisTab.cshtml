@@ -89,7 +89,7 @@
                         <label class="form-check-label" for="pca-summary-active-toggle">Enable Summary Generation</label>
                     </div>
                     <div id="pca-summary-config-container">
-                        <div class="mb-3">
+                        <div>
                             <label for="pca-summary-prompt-input" class="form-label">
                                 Summary Prompt
                                 <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Provide clear instructions for the AI on how to structure the summary.">
@@ -97,19 +97,6 @@
                                 </a>
                             </label>
                             <textarea class="form-control" id="pca-summary-prompt-input" rows="5" placeholder="e.g., Summarize the conversation in three bullet points focusing on: customer's issue, agent's resolution, and any required follow-up actions."></textarea>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="pca-summary-maxlength-input" class="form-label">Max Length (words)</label>
-                                <input type="number" class="form-control" id="pca-summary-maxlength-input" value="150">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="pca-summary-format-select" class="form-label">Format</label>
-                                <select class="form-select" id="pca-summary-format-select">
-                                    <option value="Paragraph" selected>Paragraph</option>
-                                    <option value="BulletPoints">Bullet Points</option>
-                                </select>
-                            </div>
                         </div>
                     </div>
                 </div>
