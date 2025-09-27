@@ -255,6 +255,38 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         callConfigData.DynamicVariables.Add(dynamicVariableItem.Name, dynamicVariableItem.Value.GetString()!);
                     }
+
+                    if (callConfigData.Number.Type == OutboundCallNumberType.Single)
+                    {
+                        if (telephonyCampaignData.Variables.DynamicVariables.Count > 0)
+                        {
+                            foreach (var variableData in telephonyCampaignData.Variables.DynamicVariables)
+                            {
+                                var dynamicVariableItem = callConfigData.DynamicVariables.FirstOrDefault(x => x.Key == variableData.Key);
+
+                                if (dynamicVariableItem.Key == null)
+                                {
+                                    if (variableData.IsRequired)
+                                    {
+                                        return result.SetFailureResult(
+                                            "QueueCallInitiationRequestAsync:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
+                                            $"Dynamic variable required not found in config data for {variableData.Key}."
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    if (string.IsNullOrEmpty(dynamicVariableItem.Value) && !variableData.IsEmptyOrNullAllowed)
+                                    {
+                                        return result.SetFailureResult(
+                                            "QueueCallInitiationRequestAsync:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
+                                            $"Dynamic variable cannot be empty in config data for {variableData.Key}."
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Metadata
@@ -274,6 +306,38 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         callConfigData.Metadata.Add(metadataItem.Name, metadataItem.Value.GetString()!);
                     }
+
+                    if (callConfigData.Number.Type == OutboundCallNumberType.Single)
+                    {
+                        if (telephonyCampaignData.Variables.Metadata.Count > 0)
+                        {
+                            foreach (var variableData in telephonyCampaignData.Variables.Metadata)
+                            {
+                                var metadataItem = callConfigData.Metadata.FirstOrDefault(x => x.Key == variableData.Key);
+
+                                if (metadataItem.Key == null)
+                                {
+                                    if (variableData.IsRequired)
+                                    {
+                                        return result.SetFailureResult(
+                                            "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
+                                            $"Metadata required not found in config data for {variableData.Key}."
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    if (string.IsNullOrEmpty(metadataItem.Value) && !variableData.IsEmptyOrNullAllowed)
+                                    {
+                                        return result.SetFailureResult(
+                                            "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
+                                            $"Metadata cannot be empty in config data for {variableData.Key}."
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -285,7 +349,6 @@ namespace IqraInfrastructure.Managers.Business
                     "Campaign agent not found in business."
                 );
             }
-            
 
             // first check if bulk data converted/valid
             FunctionReturnResult<List<OutboundBulkCallRowData>?>? bulkCallFileResult = null;
@@ -300,7 +363,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                bulkCallFileResult = await ValidateAndBuildBulkCSVCallFile(businessData, bulkCsvFile!, callConfigData);
+                bulkCallFileResult = await ValidateAndBuildBulkCSVCallFile(businessData, telephonyCampaignData, bulkCsvFile!, callConfigData);
                 if (!bulkCallFileResult.Success || bulkCallFileResult.Data == null)
                 {
                     return result.SetFailureResult(
@@ -565,7 +628,7 @@ namespace IqraInfrastructure.Managers.Business
             return outboundCallQueueData;
         }
 
-        private async Task<FunctionReturnResult<List<OutboundBulkCallRowData>?>> ValidateAndBuildBulkCSVCallFile(BusinessData businessData, IFormFile formFile, MakeCallRequestDto callConfig)
+        private async Task<FunctionReturnResult<List<OutboundBulkCallRowData>?>> ValidateAndBuildBulkCSVCallFile(BusinessData businessData, BusinessAppTelephonyCampaign telephonyCampaignData, IFormFile formFile, MakeCallRequestDto callConfig)
         {
             var result = new FunctionReturnResult<List<OutboundBulkCallRowData>?>();
             long businessId = businessData.Id;
@@ -587,7 +650,18 @@ namespace IqraInfrastructure.Managers.Business
 
                     foreach (var readRow in reader)
                     {
-                        var currentOutboundCallRow = new OutboundBulkCallRowData();
+                        OutboundBulkCallRowData currentOutboundCallRow = new OutboundBulkCallRowData();
+
+                        // Build Base Variables
+                        foreach (var dynamicVariableItem in callConfig.DynamicVariables)
+                        {
+                            currentOutboundCallRow.DynamicVariables.Add(dynamicVariableItem.Key, dynamicVariableItem.Value);
+                        }
+                        foreach (var metadataItem in callConfig.Metadata)
+                        {
+                            currentOutboundCallRow.Metadata.Add(metadataItem.Key, metadataItem.Value);
+                        }
+
                         var currentRowLine = readRow.LineNumberFrom;
 
                         try
@@ -660,7 +734,20 @@ namespace IqraInfrastructure.Managers.Business
                                     );
                                 }
                             }
-                            currentOutboundCallRow.DynamicVariables = dynamicVariablesDictionary;
+                            if (dynamicVariablesDictionary != null)
+                            {
+                                foreach (var dynamicVariableItem in dynamicVariablesDictionary)
+                                {
+                                    if (currentOutboundCallRow.DynamicVariables.ContainsKey(dynamicVariableItem.Key))
+                                    {
+                                        currentOutboundCallRow.DynamicVariables[dynamicVariableItem.Key] = dynamicVariableItem.Value;
+                                    }
+                                    else
+                                    {
+                                        currentOutboundCallRow.DynamicVariables.Add(dynamicVariableItem.Key, dynamicVariableItem.Value);
+                                    }
+                                }
+                            }
 
                             Dictionary<string, string>? metadataDictionary = null;
                             if (!string.IsNullOrWhiteSpace(metadata))
@@ -684,6 +771,20 @@ namespace IqraInfrastructure.Managers.Business
                                     );
                                 }
                             }
+                            if (metadataDictionary != null)
+                            {
+                                foreach (var metadataItem in metadataDictionary)
+                                {
+                                    if (currentOutboundCallRow.Metadata.ContainsKey(metadataItem.Key))
+                                    {
+                                        currentOutboundCallRow.Metadata[metadataItem.Key] = metadataItem.Value;
+                                    }
+                                    else
+                                    {
+                                        currentOutboundCallRow.Metadata.Add(metadataItem.Key, metadataItem.Value);
+                                    }
+                                }
+                            }
 
                             rowsDataList.Add(currentOutboundCallRow);
                         }
@@ -693,6 +794,62 @@ namespace IqraInfrastructure.Managers.Business
                                 "ValidateAndBuildBulkCSVCallFile:CSV_FILE_EXCEPTION",
                                 $"Error reading row {currentRowLine}: {ex.Message}"
                             );
+                        }
+
+                        // Validate Variables based on Campaign
+                        if (telephonyCampaignData.Variables.DynamicVariables.Count > 0)
+                        {
+                            foreach (var variableData in telephonyCampaignData.Variables.DynamicVariables)
+                            {
+                                var dynamicVariableItem = currentOutboundCallRow.DynamicVariables.FirstOrDefault(x => x.Key == variableData.Key);
+                                if (dynamicVariableItem.Key == null)
+                                {
+                                    if (variableData.IsRequired)
+                                    {
+                                        return result.SetFailureResult(
+                                            "ValidateAndBuildBulkCSVCallFile:REQUIRED_DYNAMIC_VARIABLE_NOT_FOUND",
+                                            $"Required dynamic variable '{variableData.Key}' not found in row {currentRowLine}."
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    if (string.IsNullOrWhiteSpace(dynamicVariableItem.Value) && !variableData.IsEmptyOrNullAllowed)
+                                    {
+                                        return result.SetFailureResult(
+                                            "ValidateAndBuildBulkCSVCallFile:REQUIRED_DYNAMIC_VARIABLE_NOT_FOUND",
+                                            $"Required dynamic variable '{variableData.Key}' cannot be empty in row {currentRowLine}."
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        if (telephonyCampaignData.Variables.Metadata.Count > 0)
+                        {
+                            foreach (var variableData in telephonyCampaignData.Variables.Metadata)
+                            {
+                                var metadataItem = currentOutboundCallRow.Metadata.FirstOrDefault(x => x.Key == variableData.Key);
+                                if (metadataItem.Key == null)
+                                {
+                                    if (variableData.IsRequired)
+                                    {
+                                        return result.SetFailureResult(
+                                            "ValidateAndBuildBulkCSVCallFile:REQUIRED_METADATA_NOT_FOUND",
+                                            $"Required metadata '{variableData.Key}' not found in row {currentRowLine}."
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    if (string.IsNullOrWhiteSpace(metadataItem.Value) && !variableData.IsEmptyOrNullAllowed)
+                                    {
+                                        return result.SetFailureResult(
+                                            "ValidateAndBuildBulkCSVCallFile:REQUIRED_METADATA_NOT_FOUND",
+                                            $"Required metadata '{variableData.Key}' cannot be empty in row {currentRowLine}."
+                                        );
+                                    }
+                                }
+                            }
                         }
 
                     }

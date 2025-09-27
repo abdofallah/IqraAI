@@ -2,8 +2,8 @@
 {
     public class OutboundBulkCallRowData
     {
-        public string? ToNumber { get; set; }
-        public Dictionary<string, string>? DynamicVariables { get; set; }
-        public Dictionary<string, string>? Metadata { get; set; }
+        public string ToNumber { get; set; }
+        public Dictionary<string, string> DynamicVariables { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
     }
 }
