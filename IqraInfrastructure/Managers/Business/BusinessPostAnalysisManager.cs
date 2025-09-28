@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
+using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
@@ -10,6 +11,7 @@ namespace IqraInfrastructure.Managers.Business
     {
         private BusinessManager _parent;
         private BusinessAppRepository _businessAppRepository;
+        private IntegrationConfigurationManager _integrationConfigurationManager;
 
         private const int MAX_PCA_TAG_LEVELS = 5;
         private const int MAX_PCA_TAGS_PER_LEVEL = 5;
@@ -17,10 +19,11 @@ namespace IqraInfrastructure.Managers.Business
         private const int MAX_PCA_FIELDS_PER_LEVEL = 5;
         private const int MAX_PCA_RULES_PER_FIELD = 5;
 
-        public BusinessPostAnalysisManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository)
+        public BusinessPostAnalysisManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, IntegrationConfigurationManager integrationConfigurationManager)
         {
             _parent = businessManager;
             _businessAppRepository = businessAppRepository;
+            _integrationConfigurationManager = integrationConfigurationManager;
         }
 
         public async Task<FunctionReturnResult<BusinessAppPostAnalysis?>> GetTemplateById(long businessId, string templateId)
@@ -122,6 +125,37 @@ namespace IqraInfrastructure.Managers.Business
                     newTemplate.General.Description = descProp.GetString()!;
                 }
 
+                // Configuration Tab
+                if (!changes.RootElement.TryGetProperty("configuration", out var configElement) ||
+                    configElement.ValueKind != JsonValueKind.Object
+                ) {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTemplate:CONFIG_TAB_MISSING",
+                        "Configuration tab data is missing."
+                    );
+                }
+                else
+                {
+                    if (!configElement.TryGetProperty("llmIntegration", out var llmIntegrationElement)
+                        || llmIntegrationElement.ValueKind != JsonValueKind.Object
+                        || llmIntegrationElement.ValueKind == JsonValueKind.Null
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:CONFIG_LLM_INTEGRATION_MISSING",
+                            "LLM integration in configuration is required but not provided."
+                        );
+                    }
+                    var llmValidationResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(businessId, llmIntegrationElement, "LLM");
+                    if (!llmValidationResult.Success || llmValidationResult.Data == null)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:" + llmValidationResult.Code,
+                            "Configuration for LLM Integration failed: " + llmValidationResult.Message
+                        );
+                    }
+                    newTemplate.Configuration.LLMIntegration = llmValidationResult.Data;
+                }
+
                 // Summary Tab
                 if (!changes.RootElement.TryGetProperty("summary", out var summaryElement) ||
                     summaryElement.ValueKind != JsonValueKind.Object
@@ -166,6 +200,17 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
+                    if (!taggingElement.TryGetProperty("isActive", out var activeProp) ||
+                        (activeProp.ValueKind != JsonValueKind.True && activeProp.ValueKind != JsonValueKind.False)
+                    )
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:TAGGING_ISACTIVE_INVALID",
+                            "Tagging 'isActive' flag is missing or invalid."
+                        );
+                    }
+                    newTemplate.Tagging.IsActive = activeProp.GetBoolean();
+
                     if (!taggingElement.TryGetProperty("tags", out var tagsArray) ||
                         tagsArray.ValueKind != JsonValueKind.Array)
                     {
@@ -197,6 +242,17 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
+                    if (!extractionElement.TryGetProperty("isActive", out var activeProp) ||
+                        (activeProp.ValueKind != JsonValueKind.True && activeProp.ValueKind != JsonValueKind.False)
+                    )
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:EXTRACTION_ISACTIVE_INVALID",
+                            "Extraction 'isActive' flag is missing or invalid."
+                        );
+                    }
+                    newTemplate.Extraction.IsActive = activeProp.GetBoolean();
+
                     if (!extractionElement.TryGetProperty("fields", out var fieldsArray) ||
                         fieldsArray.ValueKind != JsonValueKind.Array
                     ) {
@@ -316,36 +372,6 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 newTag.Description = descProp.GetString()!;
 
-                if (!tagElement.TryGetProperty("rules", out var rulesElement))
-                {
-                    return result.SetFailureResult(
-                        "ValidateTagsRecursive:RULES_MISSING",
-                        $"{currentPath}: Tag 'rules' array field is missing or invalid."
-                    );
-                }
-                else
-                {
-                    if (!rulesElement.TryGetProperty("allowMultiple", out var amProp) ||
-                        (amProp.ValueKind != JsonValueKind.True && amProp.ValueKind != JsonValueKind.False)
-                    ) {
-                        return result.SetFailureResult(
-                            "ValidateTagsRecursive:ALLOW_MULTIPLE_INVALID",
-                            $"{currentPath}: Tag Rule 'allowMultiple' is missing or invalid."
-                        );
-                    }
-                    newTag.Rules.AllowMultiple = amProp.GetBoolean();
-
-                    if (!rulesElement.TryGetProperty("isRequired", out var irProp) ||
-                        (irProp.ValueKind != JsonValueKind.True && irProp.ValueKind != JsonValueKind.False)
-                    ) {
-                        return result.SetFailureResult(
-                            "ValidateTagsRecursive:IS_REQUIRED_INVALID",
-                            $"{currentPath}: Tag Rule 'isRequired' is missing or invalid."
-                        );
-                    }
-                    newTag.Rules.IsRequired = irProp.GetBoolean();
-                }
-
                 if (!tagElement.TryGetProperty("subTags", out var subTagsArray)
                     || subTagsArray.ValueKind != JsonValueKind.Array
                 ) {
@@ -366,6 +392,41 @@ namespace IqraInfrastructure.Managers.Business
                     }
 
                     newTag.SubTags = subTagsResult.Data!;
+                }
+
+                if (newTag.SubTags.Count != 0)
+                {
+                    if (!tagElement.TryGetProperty("rules", out var rulesElement))
+                    {
+                        return result.SetFailureResult(
+                            "ValidateTagsRecursive:RULES_MISSING",
+                            $"{currentPath}: Tag 'rules' array field is missing or invalid."
+                        );
+                    }
+                    else
+                    {
+                        if (!rulesElement.TryGetProperty("allowMultiple", out var amProp) ||
+                            (amProp.ValueKind != JsonValueKind.True && amProp.ValueKind != JsonValueKind.False)
+                        )
+                        {
+                            return result.SetFailureResult(
+                                "ValidateTagsRecursive:ALLOW_MULTIPLE_INVALID",
+                                $"{currentPath}: Tag Rule 'allowMultiple' is missing or invalid."
+                            );
+                        }
+                        newTag.Rules.AllowMultiple = amProp.GetBoolean();
+
+                        if (!rulesElement.TryGetProperty("isRequired", out var irProp) ||
+                            (irProp.ValueKind != JsonValueKind.True && irProp.ValueKind != JsonValueKind.False)
+                        )
+                        {
+                            return result.SetFailureResult(
+                                "ValidateTagsRecursive:IS_REQUIRED_INVALID",
+                                $"{currentPath}: Tag Rule 'isRequired' is missing or invalid."
+                            );
+                        }
+                        newTag.Rules.IsRequired = irProp.GetBoolean();
+                    }
                 }
 
                 validatedTags.Add(newTag);
@@ -455,6 +516,17 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 newField.IsRequired = reqProp.GetBoolean();
 
+                if (!fieldElement.TryGetProperty("isEmptyOrNullAllowed", out var emptyOrNullProp) ||
+                    (emptyOrNullProp.ValueKind != JsonValueKind.True && emptyOrNullProp.ValueKind != JsonValueKind.False)
+                )
+                {
+                    return result.SetFailureResult(
+                        "ValidateFieldsRecursive:IS_EMPTY_OR_NULL_ALLOWED_INVALID",
+                        $"{currentPath}: Field 'isEmptyOrNullAllowed' flag is missing or invalid."
+                    );
+                }
+                newField.IsEmptyOrNullAllowed = emptyOrNullProp.GetBoolean();
+
                 if (!fieldElement.TryGetProperty("dataType", out var dtProp) ||
                     dtProp.ValueKind != JsonValueKind.Number ||
                     !dtProp.TryGetInt32(out var dtInt) ||
@@ -512,9 +584,84 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                if (!fieldElement.TryGetProperty("conditionalRules", out var rulesArray) || 
-                    rulesArray.ValueKind != JsonValueKind.Array
+                if (!fieldElement.TryGetProperty("validation", out var validationElement) &&
+                    validationElement.ValueKind != JsonValueKind.Object
                 ) {
+                    return result.SetFailureResult(
+                        "ValidateFieldsRecursive:VALIDATION_SECTION_INVALID",
+                        $"{currentPath}: Validation object is missing or invalid."
+                    );
+                }
+                else
+                {
+                    if (newField.DataType == BusinessAppPostAnalysisExtractionFieldDataType.String)
+                    {
+                        if (
+                            !validationElement.TryGetProperty("pattern", out var patternProp) &&
+                            patternProp.ValueKind != JsonValueKind.String
+                        )
+                        {
+                            return result.SetFailureResult(
+                                "ValidateFieldsRecursive:PATTERN_INVALID",
+                                $"{currentPath}: Field 'pattern' is missing or invalid. Can be string or empty."
+                            );
+                        }
+                        else
+                        {
+                            newField.Validation.Pattern = patternProp.GetString();
+                            // todo check if regex is valid
+                        }
+                    }
+                    else if (newField.DataType == BusinessAppPostAnalysisExtractionFieldDataType.Number)
+                    {
+                        if (!validationElement.TryGetProperty("minLength", out var minProp) &&
+                            (minProp.ValueKind != JsonValueKind.Number && minProp.ValueKind != JsonValueKind.Null)
+                        ) {
+                            return result.SetFailureResult(
+                                "ValidateFieldsRecursive:MIN_INVALID",
+                                $"{currentPath}: Field 'minLength' is missing or invalid. Can be null or number."
+                            );
+                        }
+                        else
+                        {
+                            if (minProp.ValueKind == JsonValueKind.Number)
+                            {
+                                newField.Validation.MinLength = minProp.GetInt32();
+                            }
+                        }
+
+                        if (!validationElement.TryGetProperty("maxLength", out var maxProp) &&
+                            (maxProp.ValueKind != JsonValueKind.Number && maxProp.ValueKind != JsonValueKind.Null)
+                        ) {
+                            return result.SetFailureResult(
+                                "ValidateFieldsRecursive:MAX_INVALID",
+                                $"{currentPath}: Field 'maxLength' is missing or invalid. Can be null or number."
+                            );
+                        }
+                        else
+                        {
+                            if (maxProp.ValueKind == JsonValueKind.Number)
+                            {
+                                newField.Validation.MaxLength = maxProp.GetInt32();
+                            }
+                        }
+
+                        if (newField.Validation.MinLength.HasValue &&
+                            newField.Validation.MaxLength.HasValue &&
+                            newField.Validation.MinLength > newField.Validation.MaxLength
+                        ) {
+                            return result.SetFailureResult(
+                                "ValidateFieldsRecursive:MIN_MAX_INVALID",
+                                $"{currentPath}: Min value cannot be greater than Max value."
+                            );
+                        }
+                    }
+                }
+
+                if (!fieldElement.TryGetProperty("conditionalRules", out var rulesArray) ||
+                    rulesArray.ValueKind != JsonValueKind.Array
+                )
+                {
                     return result.SetFailureResult(
                         "ValidateFieldsRecursive:RULES_MISSING",
                         $"{currentPath}: Field 'conditionalRules' is missing or invalid."
@@ -620,8 +767,15 @@ namespace IqraInfrastructure.Managers.Business
                             fieldsResult.Message
                         );
                     }
-
                     newRule.FieldsToExtract = fieldsResult.Data!;
+
+                    if (newRule.FieldsToExtract.Count == 0)
+                    {
+                        return result.SetFailureResult(
+                            "ValidateRulesRecursive:FIELDS_EMPTY",
+                            $"{currentPath}: A conditional rule must define at least one field to extract."
+                        );
+                    }
                 }
 
                 validatedRules.Add(newRule);

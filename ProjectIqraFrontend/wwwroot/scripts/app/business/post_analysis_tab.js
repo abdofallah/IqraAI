@@ -591,6 +591,18 @@ function validatePCATagsRecursive(container, errors, onlyRemove, level, path = "
 function validatePCAFieldsRecursive(container, errors, uniqueKeys, onlyRemove, level = 0, path = "Fields") {
     var isInvalid = false;
 
+    if (level >= MAX_PCA_EXTRACTION_LEVELS) {
+        errors.push(`${path}: Exceeded maximum field nesting depth of ${MAX_PCA_EXTRACTION_LEVELS}.`);      
+        isInvalid = true;
+
+        if (!onlyRemove) {
+            container.closest('.extraction-field-box, .rule-box').addClass('is-invalid'); // todo
+        }
+    }
+    else {
+        container.closest('.extraction-field-box, .rule-box').removeClass('is-invalid'); // todo
+    }
+
     if (level > 0 && container.children('.extraction-field-box').length > MAX_PCA_FIELDS_PER_LEVEL) {
         errors.push(`${path}: Exceeded maximum of ${MAX_PCA_FIELDS_PER_LEVEL} fields per level.`);
         isInvalid = true;
@@ -1017,8 +1029,13 @@ function createPCAExtractionFieldElement(fieldData, level) {
                     <label class="form-check-label" for="field-empty-allowed-${id}">Empty/Null Allowed</label>
                 </div>
             </div>
-            <div class="mt-3 rules-container"></div>
-            <button class="btn btn-light btn-sm mt-2" button-type="add-conditional-rule"><i class="fa-regular fa-plus"></i> Add Conditional Rule</button>
+            <div>
+                <label class="form-label mt-3 mb-0 d-block">Conditional Rules</label>
+                <button class="btn btn-light btn-sm mt-1" button-type="add-conditional-rule">
+                    <i class="fa-regular fa-plus"></i> Add Conditional Rule
+                </button>
+                <div class="mt-1 rules-container"></div>            
+            </div>
         </div>`;
 }
 function createPCAConditionalRuleElement(ruleData, parentFieldData) {
@@ -1072,10 +1089,11 @@ function createPCAConditionalRuleElement(ruleData, parentFieldData) {
                 </div>
                 <button class="btn btn-danger btn-sm" button-type="remove-item"><i class="fa-regular fa-trash"></i></button>
             </div>
-            <div class="mt-2 dependent-fields-container">
-                
+            <div>
+                <label class="form-label mt-3 mb-0 d-block">Dependent Fields</label>
+                <button class="btn btn-light btn-sm mt-1" button-type="add-dependent-field"><i class="fa-regular fa-plus"></i> Add Field</button>
+                <div class="mt-1 dependent-fields-container"></div>
             </div>
-            <button class="btn btn-light btn-sm mt-2" button-type="add-dependent-field"><i class="fa-regular fa-plus"></i> Add Field</button>
         </div>`;
 }
 

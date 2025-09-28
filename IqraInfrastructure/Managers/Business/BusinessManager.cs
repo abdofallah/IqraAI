@@ -203,11 +203,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizePostAnalysisManager)
             {
-                if (businessAppRepository == null)
+                if (businessAppRepository == null || integrationConfigurationManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessPostAnalysisManager");
                 }
-               _businessPostAnalysisManager = new BusinessPostAnalysisManager(this, businessAppRepository);
+               _businessPostAnalysisManager = new BusinessPostAnalysisManager(this, businessAppRepository, integrationConfigurationManager);
             }
         }
 
