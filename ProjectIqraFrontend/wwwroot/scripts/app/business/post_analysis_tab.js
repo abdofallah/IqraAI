@@ -448,20 +448,34 @@ function getPCAFieldsFromDOM(container) {
     container.children('.extraction-field-box').each((_, el) => {
         const $el = $(el);
         const rulesContainer = $el.find('.rules-container').first();
-        const dataType = parseInt($el.find('[data-type="DataType"]').val());
+        const dataType = parseInt($el.find('[data-type="DataType"]').first().find('option:selected').val());
         const field = {
             id: $el.data('id'),
-            keyName: $el.find('[data-type="keyName"]').val().trim(),
-            description: $el.find('[data-type="description"]').val().trim(),
-            isRequired: $el.find('[data-type="isRequired"]').is(':checked'),
-            isEmptyOrNullAllowed: $el.find('[data-type="isEmptyOrNullAllowed"]').is(':checked'),
+            keyName: $el.find('[data-type="keyName"]').first().val().trim(),
+            description: $el.find('[data-type="description"]').first().val().trim(),
+            isRequired: $el.find('[data-type="isRequired"]').first().is(':checked'),
+            isEmptyOrNullAllowed: $el.find('[data-type="isEmptyOrNullAllowed"]').first().is(':checked'),
             dataType: dataType,
             options: [],
             validation: { pattern: null },
             conditionalRules: getPCARulesFromDOM($el)
         };
-        if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) field.options = $el.find('.field-options-container input').val().split(',').map(s => s.trim()).filter(Boolean);
-        if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String) field.validation.pattern = $el.find('.field-options-container input').val()?.trim() ?? null;
+        if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
+            field.options = $el.find('.field-options-container input').first().val()?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
+        }
+        else if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Number) {
+            const minlengthValue = $el.find('[data-type="minLength"]').first().val()?.trim() ?? null;
+            const maxlengthValue = $el.find('[data-type="maxLength"]').first().val()?.trim() ?? null;
+
+            if (minlengthValue) field.validation.minLength = parseInt(minlengthValue);
+            if (maxlengthValue) field.validation.maxLength = parseInt(maxlengthValue);
+
+            fields.validation.minLength = (minlengthValue == null || isNaN(minlengthValue)) ? null : minlengthValue;
+            fields.validation.maxLength = (maxlengthValue == null || isNaN(maxlengthValue)) ? null : maxlengthValue;
+        }
+        else if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String) {
+            field.validation.pattern = $el.find('.field-options-container input').first().val()?.trim() ?? '';
+        }
         fields.push(field);
     });
     return fields;
@@ -620,7 +634,7 @@ function validatePCAFieldsRecursive(container, errors, uniqueKeys, onlyRemove, l
 
             if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
                 const optionsInput = $el.find('.field-options-container input[data-type="enum-options"]').first();
-                const options = optionsInput.val().split(',').map(s => s.trim()).filter(Boolean);
+                const options = optionsInput.val()?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
 
                 if (options.length === 0) {
                     isInvalid = true; errors.push(`${currentPath}: Enum options cannot be empty.`);
@@ -837,7 +851,12 @@ function resetPCARuleConditions($fieldBox) {
             valueInputHtml = `<select class="form-select form-select-sm" data-type="conditionValue"><option value="true">True</option><option value="false">False</option></select>`;
         } else if (newDataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
             const optionsHtml = newOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('');
-            valueInputHtml = `<select class="form-select form-select-sm" data-type="conditionValue">${optionsHtml}</select>`;
+            valueInputHtml = `
+                <select class="form-select form-select-sm" data-type="conditionValue">
+                        <option value="" disabled selected>Select Option</option>
+                        ${optionsHtml}
+                </select>
+            `;
         }
         $valueContainer.html(valueInputHtml);
     });
@@ -991,7 +1010,12 @@ function createPCAConditionalRuleElement(ruleData, parentFieldData) {
     else if (parentFieldData.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum)
     {
         const optionsHtml = parentFieldData.options.map(opt => `<option value="${opt}">${opt}</option>`).join('');
-        valueInputHtml = `<select class="form-select form-select-sm" data-type="conditionValue">${optionsHtml}</select>`;
+        valueInputHtml =
+            `<select class="form-select form-select-sm" data-type="conditionValue">
+                <option value="" disabled selected>Select Option</option>
+                ${optionsHtml}
+            </select>
+        `;
     }
 
     let operatorsHtml = `
@@ -1144,7 +1168,7 @@ function initPCAManagerEventHandlers() {
         }
 
         let dataType = $fieldBox.find('[data-type="DataType"]').first().find('option:selected').val();
-        if (!dataType || dataType == null) {
+        if (!dataType || dataType == null || dataType == '') {
             AlertManager.createAlert({
                 type: 'warning',
                 message: 'Select a data type before adding a conditional rule.',
@@ -1212,6 +1236,20 @@ function initPCAManagerEventHandlers() {
             AlertManager.createAlert({
                 type: 'info',
                 message: 'Data type changed. Please re-configure your conditional rules.',
+                timeout: 3000
+            });
+            resetPCARuleConditions($fieldBox);
+        }
+    });
+
+    pcaExtractionFieldsList.on('change', '[data-type="enum-options"]', (e) => {
+        const $input = $(e.currentTarget);
+        const $fieldBox = $input.closest('.extraction-field-box');
+
+        if ($fieldBox.find('.rules-container .rule-box').first().length > 0) {
+            AlertManager.createAlert({
+                type: 'info',
+                message: 'Enum options changed. Please re-configure your conditional rules.',
                 timeout: 3000
             });
             resetPCARuleConditions($fieldBox);
