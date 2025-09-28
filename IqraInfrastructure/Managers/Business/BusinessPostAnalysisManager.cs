@@ -554,6 +554,7 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
+                        newField.Options = new List<string>();
                         foreach (var opt in optsArray.EnumerateArray())
                         {
                             if (opt.ValueKind != JsonValueKind.String)
@@ -586,7 +587,7 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                if (!fieldElement.TryGetProperty("validation", out var validationElement) &&
+                if (!fieldElement.TryGetProperty("validation", out var validationElement) ||
                     validationElement.ValueKind != JsonValueKind.Object
                 ) {
                     return result.SetFailureResult(
@@ -599,7 +600,7 @@ namespace IqraInfrastructure.Managers.Business
                     if (newField.DataType == BusinessAppPostAnalysisExtractionFieldDataType.String)
                     {
                         if (
-                            !validationElement.TryGetProperty("pattern", out var patternProp) &&
+                            !validationElement.TryGetProperty("pattern", out var patternProp) ||
                             patternProp.ValueKind != JsonValueKind.String
                         )
                         {
@@ -630,41 +631,41 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else if (newField.DataType == BusinessAppPostAnalysisExtractionFieldDataType.Number)
                     {
-                        if (!validationElement.TryGetProperty("minLength", out var minProp) &&
+                        if (!validationElement.TryGetProperty("min", out var minProp) ||
                             (minProp.ValueKind != JsonValueKind.Number && minProp.ValueKind != JsonValueKind.Null)
                         ) {
                             return result.SetFailureResult(
                                 "ValidateFieldsRecursive:MIN_INVALID",
-                                $"{currentPath}: Field 'minLength' is missing or invalid. Can be null or number."
+                                $"{currentPath}: Field 'min' is missing or invalid. Can be null or number."
                             );
                         }
                         else
                         {
                             if (minProp.ValueKind == JsonValueKind.Number)
                             {
-                                newField.Validation.MinLength = minProp.GetInt32();
+                                newField.Validation.Min = minProp.GetInt32();
                             }
                         }
 
-                        if (!validationElement.TryGetProperty("maxLength", out var maxProp) &&
+                        if (!validationElement.TryGetProperty("max", out var maxProp) ||
                             (maxProp.ValueKind != JsonValueKind.Number && maxProp.ValueKind != JsonValueKind.Null)
                         ) {
                             return result.SetFailureResult(
                                 "ValidateFieldsRecursive:MAX_INVALID",
-                                $"{currentPath}: Field 'maxLength' is missing or invalid. Can be null or number."
+                                $"{currentPath}: Field 'max' is missing or invalid. Can be null or number."
                             );
                         }
                         else
                         {
                             if (maxProp.ValueKind == JsonValueKind.Number)
                             {
-                                newField.Validation.MaxLength = maxProp.GetInt32();
+                                newField.Validation.Max = maxProp.GetInt32();
                             }
                         }
 
-                        if (newField.Validation.MinLength.HasValue &&
-                            newField.Validation.MaxLength.HasValue &&
-                            newField.Validation.MinLength > newField.Validation.MaxLength
+                        if (newField.Validation.Min.HasValue &&
+                            newField.Validation.Max.HasValue &&
+                            newField.Validation.Min > newField.Validation.Max
                         ) {
                             return result.SetFailureResult(
                                 "ValidateFieldsRecursive:MIN_MAX_INVALID",
@@ -766,7 +767,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 if (!ruleElement.TryGetProperty("fieldsToExtract", out var fieldsArray) ||
-                    fieldsArray.ValueKind == JsonValueKind.Array
+                    fieldsArray.ValueKind != JsonValueKind.Array
                 ) {
                     return result.SetFailureResult(
                         "ValidateRulesRecursive:FIELDS_MISSING",

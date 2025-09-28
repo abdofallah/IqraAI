@@ -18,7 +18,8 @@
         public bool IsEmptyOrNullAllowed { get; set; } = false;
         public BusinessAppPostAnalysisExtractionFieldDataType DataType { get; set; } = BusinessAppPostAnalysisExtractionFieldDataType.String;
 
-        public List<string> Options { get; set; } = new List<string>();
+        // For enum data type
+        public List<string>? Options { get; set; } = null;
 
         public BusinessAppPostAnalysisExtractionFieldValidationRules Validation { get; set; } = new BusinessAppPostAnalysisExtractionFieldValidationRules();
 
@@ -37,8 +38,8 @@
     public class BusinessAppPostAnalysisExtractionFieldValidationRules
     {
         public string? Pattern { get; set; } = null;
-        public int? MinLength { get; set; } = null;
-        public int? MaxLength { get; set; } = null;
+        public int? Min { get; set; } = null;
+        public int? Max { get; set; } = null;
     }
 
     public class BusinessAppPostAnalysisExtractionConditionalRule

@@ -440,7 +440,9 @@ function renderPCAExtractionFields(container, fields, level) {
     fields.forEach(fieldData => {
         const fieldElement = $(createPCAExtractionFieldElement(fieldData, level));
         container.append(fieldElement);
-        const rulesContainer = fieldElement.find('.rules-container').first();
+        renderPCAFieldOptionsContainer(fieldElement.find('select[data-type="DataType"]').first());
+
+        const rulesContainer = fieldElement.children('.conditional-rules-container').children('.rules-container').first();
         if (fieldData.conditionalRules && fieldData.conditionalRules.length > 0) {
             fieldData.conditionalRules.forEach(ruleData => {
                 const ruleElement = $(createPCAConditionalRuleElement(ruleData, fieldData));
@@ -473,7 +475,7 @@ function getPCAFieldsFromDOM(container) {
     const fields = [];
     container.children('.extraction-field-box').each((_, el) => {
         const $el = $(el);
-        const rulesContainer = $el.children('.rules-container').first();
+        const rulesContainer = $el.children('.conditional-rules-container').children('.rules-container').first();
         const dataType = parseInt($el.find('[data-type="DataType"]').first().find('option:selected').val());
         const field = {
             id: $el.data('id'),
@@ -481,25 +483,29 @@ function getPCAFieldsFromDOM(container) {
             description: $el.find('[data-type="description"]').first().val().trim(),
             isRequired: $el.find('[data-type="isRequired"]').first().is(':checked'),
             isEmptyOrNullAllowed: $el.find('[data-type="isEmptyOrNullAllowed"]').first().is(':checked'),
-            dataType: dataType,
+            dataType: {
+                value: dataType
+            },
             validation: {},
             conditionalRules: getPCARulesFromDOM(rulesContainer)
         };
+
+        const optionsContainer = $el.children('.field-options-container').first();
         if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
-            field.options = $el.find('.field-options-container input').first().val()?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
+            field.options = optionsContainer.children('input[data-type="enum-options"]').first().val()?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
         }
         else if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Number) {
-            const minlengthValue = $el.find('[data-type="minLength"]').first().val()?.trim() ?? null;
-            const maxlengthValue = $el.find('[data-type="maxLength"]').first().val()?.trim() ?? null;
+            let minValue = optionsContainer.find('[data-type="min"]').first().val()?.trim() ?? null;
+            let maxValue = optionsContainer.find('[data-type="max"]').first().val()?.trim() ?? null;
 
-            if (minlengthValue) field.validation.minLength = parseInt(minlengthValue);
-            if (maxlengthValue) field.validation.maxLength = parseInt(maxlengthValue);
+            if (minValue && minValue != null) minValue = parseInt(minValue);
+            if (maxValue && maxValue != null) maxValue = parseInt(maxValue);
 
-            fields.validation.minLength = (minlengthValue == null || isNaN(minlengthValue)) ? null : minlengthValue;
-            fields.validation.maxLength = (maxlengthValue == null || isNaN(maxlengthValue)) ? null : maxlengthValue;
+            field.validation.min = (minValue == null || isNaN(minValue)) ? null : minValue;
+            field.validation.max = (maxValue == null || isNaN(maxValue)) ? null : maxValue;
         }
         else if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String) {
-            field.validation.pattern = $el.find('.field-options-container input').first().val()?.trim() ?? '';
+            field.validation.pattern = optionsContainer.children('input[data-type="pattern"]').first().val()?.trim() ?? '';
         }
         fields.push(field);
     });
@@ -510,10 +516,13 @@ function getPCARulesFromDOM(fieldBox) {
     fieldBox.children('.rule-box').each((_, el) => {
         const $el = $(el);
         const dependentFieldsContainer = $el.find('.dependent-fields-container').first();
+
         rules.push({
             id: $el.data('id'),
             condition: {
-                operator: parseInt($el.find('[data-type="conditionOperator"]').first().val()),
+                operator: {
+                   value: parseInt($el.find('[data-type="conditionOperator"]').first().val())
+                },
                 value: $el.find('[data-type="conditionValue"]').first().val()
             },
             fieldsToExtract: getPCAFieldsFromDOM(dependentFieldsContainer)
@@ -722,7 +731,7 @@ function validatePCAFieldsRecursive(container, errors, uniqueKeys, onlyRemove, l
             dataTypeInput.removeClass('is-invalid');
         }
 
-        const rulesContainer = $el.children('.rules-container').first();
+        const rulesContainer = $el.children('.conditional-rules-container').children('.rules-container').first();
         if (rulesContainer.children('.rule-box').length > MAX_PCA_RULES_PER_FIELD) {
             isInvalid = true;
             errors.push(`${currentPath}: Exceeded maximum of ${MAX_PCA_RULES_PER_FIELD} rules per field.`);
@@ -816,7 +825,7 @@ function compareRules(currentRules, originalRules) {
         const originalRule = originalRules.find(or => or.id === currentRule.id);
         if (!originalRule) return true; // A rule was replaced
 
-        if (currentRule.condition.operator !== originalRule.condition.operator ||
+        if (currentRule.condition.operator.value !== originalRule.condition.operator.value ||
             currentRule.condition.value !== originalRule.condition.value) {
             return true;
         }
@@ -839,14 +848,29 @@ function comparePCAFields(currentFields, originalFields) {
         if (currentField.keyName !== originalField.keyName ||
             currentField.description !== originalField.description ||
             currentField.isRequired !== originalField.isRequired ||
-            currentField.dataType !== originalField.dataType) {
+            currentField.isEmptyOrNullAllowed !== originalField.isEmptyOrNullAllowed ||
+            currentField.dataType.value !== originalField.dataType.value) {
             return true;
         }
 
-        // Compare complex properties
-        if (JSON.stringify(currentField.options) !== JSON.stringify(originalField.options) ||
-            currentField.validation.pattern !== originalField.validation.pattern) {
-            return true;
+        // Compare validation properties old vs new
+        if (currentField.dataType.value === originalField.dataType.value) {
+            if (currentField.dataType.value === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
+                if (JSON.stringify(currentField.options) !== JSON.stringify(originalField.options)) {
+                    return true;
+                }
+            }
+            else if (currentField.dataType.value === PCA_EXTRACTION_FIELD_DATA_TYPE.String) {
+                if (currentField.validation.pattern !== originalField.validation.pattern) {
+                    return true;
+                }
+            }
+            else if (currentField.dataType.value === PCA_EXTRACTION_FIELD_DATA_TYPE.Number) {
+                if (currentField.validation.min !== originalField.validation.min ||
+                    currentField.validation.max !== originalField.validation.max) {
+                    return true;
+                }
+            }
         }
 
         // Recursive call for conditional rules
@@ -862,7 +886,7 @@ function resetPCARuleConditions($fieldBox) {
         ? ($fieldBox.find('.field-options-container input').first().val() || '').split(',').map(s => s.trim()).filter(Boolean)
         : [];
 
-    $fieldBox.find('.rules-container').first().children('.rule-box').each((_, ruleEl) => {
+    $fieldBox.children('.conditional-rules-container').children('.rules-container').children('.rule-box').each((_, ruleEl) => {
         const $ruleBox = $(ruleEl);
         const $operatorSelect = $ruleBox.find('select[data-type="conditionOperator"]').first();
         const $valueContainer = $operatorSelect.next('div');
@@ -991,7 +1015,7 @@ function createPCAExtractionFieldElement(fieldData, level) {
     const id = data.id || crypto.randomUUID();
     const isRequired = data.isRequired || false;
     const isEmptyOrNullAllowed = data.isEmptyOrNullAllowed || false; // NEW
-    const dataType = (data.dataType !== undefined) ? data.dataType : null;
+    const dataType = data?.dataType?.value ?? null;
 
     return `
         <div class="p-3 border rounded mb-3 extraction-field-box" data-id="${id}" data-level="${level}" style="background-color: ${(level == 0 ? '#1a1a1a' : `rgba(255,255,255,${level * 0.03});`)}">
@@ -1029,7 +1053,7 @@ function createPCAExtractionFieldElement(fieldData, level) {
                     <label class="form-check-label" for="field-empty-allowed-${id}">Empty/Null Allowed</label>
                 </div>
             </div>
-            <div>
+            <div class="conditional-rules-container">
                 <label class="form-label mt-3 mb-0 d-block">Conditional Rules</label>
                 <button class="btn btn-light btn-sm mt-1" button-type="add-conditional-rule">
                     <i class="fa-regular fa-plus"></i> Add Conditional Rule
@@ -1041,39 +1065,46 @@ function createPCAExtractionFieldElement(fieldData, level) {
 function createPCAConditionalRuleElement(ruleData, parentFieldData) {
     const data = ruleData || {};
     const id = data.id || crypto.randomUUID();
-    const parentDataType = parentFieldData.dataType;
+    const parentDataType = parentFieldData?.dataType?.value ?? null;
+    const ruleOperator = data?.condition?.operator?.value ?? null;
 
-    let valueInputHtml = '<input type="text" class="form-control form-control-sm" data-type="conditionValue">';
-    if (parentFieldData.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Boolean)
+    const inputValue = ((ruleData?.condition?.value !== undefined) ? ruleData.condition.value : ruleData?.condition?.value) ?? '';
+
+    let valueInputHtml = `<input type="text" class="form-control form-control-sm" data-type="conditionValue" value="${inputValue}">`;
+    if (parentDataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Boolean)
     {
-        valueInputHtml = `<select class="form-select form-select-sm" data-type="conditionValue"><option value="true">True</option><option value="false">False</option></select>`;
+        valueInputHtml = `<select class="form-select form-select-sm" data-type="conditionValue">
+            <option value="" disabled ${(!ruleData.condition.value || ruleData.condition.value == "" || ruleData.condition.value == null) ? '' : 'selected'}>Select Value</option>
+            <option value="true" ${ruleData.condition.value === 'true' ? 'selected' : ''}>True</option>
+            <option value="false" ${ruleData.condition.value === 'false' ? 'selected' : ''}>False</option>
+        </select>`;
     }
-    else if (parentFieldData.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum)
+    else if (parentDataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum)
     {
-        const optionsHtml = parentFieldData.options.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+        const optionsHtml = parentFieldData.options.map(opt => `<option value="${opt}" ${inputValue === opt ? 'selected' : ''}>${opt}</option>`).join('');
         valueInputHtml =
             `<select class="form-select form-select-sm" data-type="conditionValue">
-                <option value="" disabled selected>Select Option</option>
+                <option value="" disabled ${(!inputValue || inputValue == "" || inputValue == null) ? '' : 'selected'}>Select Option</option>
                 ${optionsHtml}
             </select>
         `;
     }
 
     let operatorsHtml = `
-        <option value="" disabled selected>Select Operator</option>
-        <option value="${PCA_CONDITION_OPERATOR.Equals}">Equals</option>
-        <option value="${PCA_CONDITION_OPERATOR.NotEquals}">Not Equals</option>`;
+        <option value="" disabled ${(!ruleOperator || ruleOperator == "" || ruleOperator == null) ? '' : 'selected'}>Select Operator</option>
+        <option value="${PCA_CONDITION_OPERATOR.Equals}" ${ruleOperator === PCA_CONDITION_OPERATOR.Equals ? 'selected' : ''}>Equals</option>
+        <option value="${PCA_CONDITION_OPERATOR.NotEquals} ${ruleOperator === PCA_CONDITION_OPERATOR.NotEquals ? 'selected' : ''}">Not Equals</option>`;
     if (parentDataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String)
     {
-        operatorsHtml += `<option value="${PCA_CONDITION_OPERATOR.Contains}">Contains</option>`;
+        operatorsHtml += `<option value="${PCA_CONDITION_OPERATOR.Contains}" ${ruleOperator === PCA_CONDITION_OPERATOR.Contains ? 'selected' : ''}>Contains</option>`;
     }
     if (parentDataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Number || parentDataType === PCA_EXTRACTION_FIELD_DATA_TYPE.DateTime)
     {
         operatorsHtml += `
-            <option value="${PCA_CONDITION_OPERATOR.GreaterThan}">Greater Than</option>
-            <option value="${PCA_CONDITION_OPERATOR.GreaterThanOrEqual}">Greater Than Or Equal</option>
-            <option value="${PCA_CONDITION_OPERATOR.LessThan}">Less Than</option>
-            <option value="${PCA_CONDITION_OPERATOR.LessThanOrEqual}">Less Than Or Equal</option>`;
+            <option value="${PCA_CONDITION_OPERATOR.GreaterThan}" ${ruleOperator === PCA_CONDITION_OPERATOR.GreaterThan ? 'selected' : ''}">Greater Than</option>
+            <option value="${PCA_CONDITION_OPERATOR.GreaterThanOrEqual}" ${ruleOperator === PCA_CONDITION_OPERATOR.GreaterThanOrEqual ? 'selected' : ''}">Greater Than Or Equal</option>
+            <option value="${PCA_CONDITION_OPERATOR.LessThan}" ${ruleOperator === PCA_CONDITION_OPERATOR.LessThan ? 'selected' : ''}">Less Than</option>
+            <option value="${PCA_CONDITION_OPERATOR.LessThanOrEqual}" ${ruleOperator === PCA_CONDITION_OPERATOR.LessThanOrEqual ? 'selected' : ''}">Less Than Or Equal</option>`;
     }
 
     return `
@@ -1198,7 +1229,7 @@ function initPCAManagerEventHandlers() {
     // --- Extraction specific delegation ---
     pcaExtractionFieldsList.on('click', '[button-type="add-conditional-rule"]', (e) => {
         const $fieldBox = $(e.currentTarget).closest('.extraction-field-box');
-        const rulesContainer = $fieldBox.find('.rules-container').first();
+        const rulesContainer = $fieldBox.children('.conditional-rules-container').children('.rules-container').first();
 
         if (rulesContainer.children('.rule-box').length >= MAX_PCA_RULES_PER_FIELD) {
             AlertManager.createAlert({
@@ -1222,12 +1253,14 @@ function initPCAManagerEventHandlers() {
         let dataTypeEnum = parseInt(dataType);
 
         const parentFieldData = {
-            dataType: dataTypeEnum,
+            dataType: {
+                value: dataTypeEnum
+            },
             options: (dataTypeEnum == PCA_EXTRACTION_FIELD_DATA_TYPE.Enum)
                 ? $fieldBox.find('.field-options-container input').first().val().split(',').map(s => s.trim()).filter(Boolean)
                 : []
         };
-        $fieldBox.find('.rules-container').first().append(createPCAConditionalRuleElement(null, parentFieldData));
+        $fieldBox.children('.conditional-rules-container').children('.rules-container').first().append(createPCAConditionalRuleElement(null, parentFieldData));
 
         checkPCAChanges();
         validatePCATemplate(true);
@@ -1274,7 +1307,7 @@ function initPCAManagerEventHandlers() {
         renderPCAFieldOptionsContainer($select);
 
         // 2. Alert the user and reset child rule conditions if any exist
-        if ($fieldBox.find('.rules-container .rule-box').first().length > 0) {
+        if ($fieldBox.children('.conditional-rules-container').children('.rules-container').children('.rule-box').first().length > 0) {
             AlertManager.createAlert({
                 type: 'info',
                 message: 'Data type changed. Please re-configure your conditional rules.',
@@ -1288,7 +1321,7 @@ function initPCAManagerEventHandlers() {
         const $input = $(e.currentTarget);
         const $fieldBox = $input.closest('.extraction-field-box');
 
-        if ($fieldBox.find('.rules-container .rule-box').first().length > 0) {
+        if ($fieldBox.children('.conditional-rules-container').children('.rules-container').children('.rule-box').first().length > 0) {
             AlertManager.createAlert({
                 type: 'info',
                 message: 'Enum options changed. Please re-configure your conditional rules.',
@@ -1368,8 +1401,12 @@ function initPostAnalysisTab() {
         currentPCATemplateData = JSON.parse(JSON.stringify(templateData));
         pcaManagerNameBreadcrumb.text(currentPCATemplateData.general.name);
         resetPCAManager();
-        fillPCAManager(currentPCATemplateData);
+
         managePCAType = 'edit';
+        fillPCAManager(currentPCATemplateData);
+        setTimeout(() => {
+            checkPCAChanges(); // fix the save button
+        }, 100);
         showPCAManagerView();
         updateUrlForTab(`postanalysis/${templateId}`);
     });
