@@ -3,7 +3,9 @@ using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
+using System.Reactive.Joins;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -609,7 +611,21 @@ namespace IqraInfrastructure.Managers.Business
                         else
                         {
                             newField.Validation.Pattern = patternProp.GetString();
-                            // todo check if regex is valid
+                            
+                            if (!string.IsNullOrWhiteSpace(newField.Validation.Pattern))
+                            {
+                                try
+                                {
+                                    Regex regex = new Regex(newField.Validation.Pattern);
+                                }
+                                catch (ArgumentException ex)
+                                {
+                                    return result.SetFailureResult(
+                                        "ValidateFieldsRecursive:PATTERN_INVALID",
+                                        $"{currentPath}: Field 'pattern' is invalid: {ex.Message}"
+                                    );
+                                }
+                            }
                         }
                     }
                     else if (newField.DataType == BusinessAppPostAnalysisExtractionFieldDataType.Number)
