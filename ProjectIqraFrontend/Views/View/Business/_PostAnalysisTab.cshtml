@@ -30,6 +30,9 @@
                     <button class="nav-link active" id="pca-manager-general-tab" data-bs-toggle="pill" data-bs-target="#pca-manager-general" type="button" role="tab" aria-controls="pca-manager-general" aria-selected="true">General</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="pca-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#pca-manager-configuration" type="button" role="tab" aria-controls="pca-manager-configuration" aria-selected="false">Configuration</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="pca-manager-summary-tab" data-bs-toggle="pill" data-bs-target="#pca-manager-summary" type="button" role="tab" aria-controls="pca-manager-summary" aria-selected="false">Summary</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
@@ -82,6 +85,16 @@
                     </div>
                 </div>
 
+                <!-- Configuration Tab -->
+                <div class="tab-pane fade w-100" id="pca-manager-configuration" role="tabpanel">
+                    <div>
+                        <label class="form-label">LLM Integration</label>
+                        <div id="pca-llm-integration-selector">
+                            <!-- LLM integration selector will be rendered here by JS -->
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Summary Tab -->
                 <div class="tab-pane fade w-100" id="pca-manager-summary" role="tabpanel" aria-labelledby="pca-manager-summary-tab" tabindex="0">
                     <div class="form-check form-switch mb-3">
@@ -103,23 +116,35 @@
 
                 <!-- Conversation Tags Tab -->
                 <div class="tab-pane fade w-100" id="pca-manager-tags" role="tabpanel" aria-labelledby="pca-manager-tags-tab" tabindex="0">
-                    <button class="btn btn-light btn-sm mb-3" id="pca-add-tag-set-button">
-                        <i class="fa-regular fa-plus"></i> Add Tag Set
-                    </button>
-                    <div id="pca-tag-sets-list">
-                        <!-- Dynamically generated tag sets will be added here -->
-                        
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="pca-tags-active-toggle" checked>
+                        <label class="form-check-label" for="pca-tags-active-toggle">Enable Conversation Tagging</label>
+                    </div>
+                    <div id="pca-tags-config-container">
+                        <label class="form-label d-block">Tag Definitions</label>
+                        <button class="btn btn-light btn-sm mb-3" id="pca-add-tag-set-button">
+                            <i class="fa-regular fa-plus"></i> Add Tag
+                        </button>
+                        <div id="pca-tag-sets-list">
+                            <!-- Dynamically generated tag sets will be added here -->
+                        </div>
                     </div>
                 </div>
 
                 <!-- Data Extraction Tab -->
                 <div class="tab-pane fade w-100" id="pca-manager-extraction" role="tabpanel" aria-labelledby="pca-manager-extraction-tab" tabindex="0">
-                     <button class="btn btn-light btn-sm mb-3" id="pca-add-extraction-field-button">
-                        <i class="fa-regular fa-plus"></i> Add Field
-                    </button>
-                    <div id="pca-extraction-fields-list">
-                        <!-- Dynamically generated extraction fields will be added here -->
-                       
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="pca-extraction-active-toggle" checked>
+                        <label class="form-check-label" for="pca-extraction-active-toggle">Enable Data Extraction</label>
+                    </div>
+                    <div id="pca-extraction-config-container">
+                        <label class="form-label d-block">Field Definitions</label>
+                        <button class="btn btn-light btn-sm mb-3" id="pca-add-extraction-field-button">
+                            <i class="fa-regular fa-plus"></i> Add Field
+                        </button>
+                        <div id="pca-extraction-fields-list">
+                            <!-- Dynamically generated extraction fields will be added here -->
+                        </div>
                     </div>
                 </div>
 

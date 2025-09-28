@@ -2,6 +2,7 @@
 {
     public class BusinessAppPostAnalysisExtraction
     {
+        public bool IsActive { get; set; } = true;
         public List<BusinessAppPostAnalysisExtractionField> Fields { get; set; } = new List<BusinessAppPostAnalysisExtractionField>();
     }
 
@@ -14,6 +15,7 @@
         public string Description { get; set; } = string.Empty;
 
         public bool IsRequired { get; set; } = false;
+        public bool IsEmptyOrNullAllowed { get; set; } = false;
         public BusinessAppPostAnalysisExtractionFieldDataType DataType { get; set; } = BusinessAppPostAnalysisExtractionFieldDataType.String;
 
         public List<string> Options { get; set; } = new List<string>();
@@ -25,11 +27,11 @@
 
     public enum BusinessAppPostAnalysisExtractionFieldDataType
     {
-        String,
-        Boolean,
-        Number,
-        DateTime,
-        Enum
+        String = 0,
+        Boolean = 1,
+        Number = 2,
+        DateTime = 3,
+        Enum = 4
     }
 
     public class BusinessAppPostAnalysisExtractionFieldValidationRules
@@ -55,10 +57,13 @@
 
     public enum BusinessAppPostAnalysisExtractionConditionOperator
     {
-        Equals,
-        NotEquals,
-        Contains,
-        GreaterThan, // For numbers/datetime
-        LessThan     // For numbers/datetime
+        Equals = 0,
+        NotEquals = 1,
+        Contains = 2,
+        // For numbers/datetime
+        GreaterThan = 3,
+        GreaterThanOrEqual = 4,
+        LessThan = 5,
+        LessThanOrEqual = 6
     }
 }

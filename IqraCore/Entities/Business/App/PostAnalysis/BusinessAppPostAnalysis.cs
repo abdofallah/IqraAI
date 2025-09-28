@@ -5,6 +5,7 @@
         public string Id { get; set; } = Guid.NewGuid().ToString();
 
         public BusinessAppPostAnalysisGeneral General { get; set; } = new BusinessAppPostAnalysisGeneral();
+        public BusinessAppPostAnalysisConfiguration Configuration { get; set; } = new BusinessAppPostAnalysisConfiguration();
         public BusinessAppPostAnalysisSummary Summary { get; set; } = new BusinessAppPostAnalysisSummary();
         public BusinessAppPostAnalysisTagging Tagging { get; set; } = new BusinessAppPostAnalysisTagging();
         public BusinessAppPostAnalysisExtraction Extraction { get; set; } = new BusinessAppPostAnalysisExtraction();

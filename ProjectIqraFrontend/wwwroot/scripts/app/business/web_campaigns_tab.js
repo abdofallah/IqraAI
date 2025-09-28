@@ -990,6 +990,7 @@ function initWebCampaignsTab() {
             const campaignId = $(e.currentTarget).attr("data-campaign-id");
             const campaignData = BusinessFullData.businessApp.webCampaigns.find(c => c.id === campaignId);
             if (!campaignData) return;
+
             currentWebCampaignData = JSON.parse(JSON.stringify(campaignData));
             webCampaignManagerNameBreadcrumb.text(currentWebCampaignData.general.name);
             resetWebCampaignManager();

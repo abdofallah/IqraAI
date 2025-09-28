@@ -2,6 +2,7 @@
 {
     public class BusinessAppPostAnalysisTagging
     {
+        public bool IsActive { get; set; } = true;
         public List<BusinessAppPostAnalysisTagDefinition> Tags { get; set; } = new List<BusinessAppPostAnalysisTagDefinition>();
     }
 

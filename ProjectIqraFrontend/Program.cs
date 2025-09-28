@@ -648,7 +648,8 @@ namespace ProjectIqraFrontend
                         InitalizeMakeCallManager = true,
                         InitalizeKnowledgeBaseManager = true,
                         InitalizeCampaignManager = true,
-                        InitalizeWebSessionManager = true
+                        InitalizeWebSessionManager = true,
+                        InitalizePostAnalysisManager = true
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),

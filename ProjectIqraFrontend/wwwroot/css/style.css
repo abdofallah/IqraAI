@@ -2276,3 +2276,79 @@ table.table > thead > * > * {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
+
+
+.post-analysis-card
+{
+	padding: 2em;
+	background-color: var(--tcolor-light-green);
+	width: 100%;
+	border-radius: 16px;
+	margin-bottom: 30px;
+	color: var(--tcolor-dark);
+	border: 3px solid var(--tcolor-lighter-green);
+	transition: 0.15s ease-in-out;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+	cursor: pointer;
+	z-index: 9999;
+	position: relative;
+}
+
+.post-analysis-card:hover
+{
+	transform: scale(1.02);
+	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
+}
+
+.post-analysis-card .route-icon
+{
+	max-width: 100%;
+	width: 60px;
+	text-align: center;
+	font-size: 28px;
+	background-color: var(--tcolor-lighter-green);
+	border-radius: 10px;
+	padding: 8px;
+	transition: 1s;
+}
+
+.post-analysis-card:hover .route-icon
+{
+	transform: rotate(360deg);
+}
+
+.post-analysis-card h4
+{
+	margin: 0;
+	font-weight: 700;
+	line-height: normal;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.post-analysis-card .h5-info
+{
+	margin-bottom: 0;
+	font-weight: 600;
+	opacity: 0.7;
+	font-size: 18px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.post-analysis-card .card-data
+{
+	margin-left: 20px;
+}
+
+.post-analysis-card .card-data h6
+{
+	margin-bottom: 0px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
