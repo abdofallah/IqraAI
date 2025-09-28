@@ -44,7 +44,7 @@
         public string Id { get; set; } = Guid.NewGuid().ToString();
 
         public BusinessAppPostAnalysisExtractionFieldCondition Condition { get; set; } = new BusinessAppPostAnalysisExtractionFieldCondition();
-        public List<BusinessAppPostAnalysisExtraction> FieldsToExtract { get; set; } = new List<BusinessAppPostAnalysisExtraction>();
+        public List<BusinessAppPostAnalysisExtractionField> FieldsToExtract { get; set; } = new List<BusinessAppPostAnalysisExtractionField>();
     }
 
     public class BusinessAppPostAnalysisExtractionFieldCondition

@@ -11,6 +11,12 @@ namespace IqraInfrastructure.Managers.Business
         private BusinessManager _parent;
         private BusinessAppRepository _businessAppRepository;
 
+        private const int MAX_PCA_TAG_LEVELS = 5;
+        private const int MAX_PCA_TAGS_PER_LEVEL = 5;
+        private const int MAX_PCA_EXTRACTION_LEVELS = 5;
+        private const int MAX_PCA_FIELDS_PER_LEVEL = 5;
+        private const int MAX_PCA_RULES_PER_FIELD = 5;
+
         public BusinessPostAnalysisManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository)
         {
             _parent = businessManager;
@@ -169,7 +175,7 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
 
-                    var tagsValidationResult = ValidateTagsRecursive(tagsArray);
+                    var tagsValidationResult = ValidateTagsRecursive(tagsArray, 0);
                     if (!tagsValidationResult.Success)
                     {
                         return result.SetFailureResult(
@@ -201,7 +207,7 @@ namespace IqraInfrastructure.Managers.Business
                     }
 
                     var uniqueKeys = new HashSet<string>();
-                    var fieldsValidationResult = ValidateFieldsRecursive(fieldsArray, uniqueKeys);
+                    var fieldsValidationResult = ValidateFieldsRecursive(fieldsArray, uniqueKeys, 0);
                     if (!fieldsValidationResult.Success)
                     {
                         return result.SetFailureResult(
@@ -251,9 +257,25 @@ namespace IqraInfrastructure.Managers.Business
         }
 
         // Recursive Validation Helpers
-        private FunctionReturnResult<List<BusinessAppPostAnalysisTagDefinition>?> ValidateTagsRecursive(JsonElement tagsArray, string path = "Tags")
+        private FunctionReturnResult<List<BusinessAppPostAnalysisTagDefinition>?> ValidateTagsRecursive(JsonElement tagsArray, int currentLevel, string path = "Tags")
         {
             var result = new FunctionReturnResult<List<BusinessAppPostAnalysisTagDefinition>?>();
+
+            if (currentLevel >= MAX_PCA_TAG_LEVELS)
+            {
+                return result.SetFailureResult(
+                    "ValidateTagsRecursive:MAX_DEPTH_EXCEEDED",
+                    $"{path}: Exceeded maximum tag nesting depth of {MAX_PCA_TAG_LEVELS} levels."
+                );
+            }
+
+            if (tagsArray.GetArrayLength() > MAX_PCA_TAGS_PER_LEVEL)
+            {
+                return result.SetFailureResult(
+                    "ValidateTagsRecursive:MAX_COUNT_EXCEEDED",
+                    $"{path}: Exceeded maximum of {MAX_PCA_TAGS_PER_LEVEL} tags per level."
+                );
+            }
 
             var validatedTags = new List<BusinessAppPostAnalysisTagDefinition>();
             foreach (var (tagElement, i) in tagsArray.EnumerateArray().Select((value, i) => (value, i)))
@@ -308,7 +330,7 @@ namespace IqraInfrastructure.Managers.Business
                     ) {
                         return result.SetFailureResult(
                             "ValidateTagsRecursive:ALLOW_MULTIPLE_INVALID",
-                            $"{currentPath}: Tag Rule 'allowMultiple' is invalid."
+                            $"{currentPath}: Tag Rule 'allowMultiple' is missing or invalid."
                         );
                     }
                     newTag.Rules.AllowMultiple = amProp.GetBoolean();
@@ -318,15 +340,23 @@ namespace IqraInfrastructure.Managers.Business
                     ) {
                         return result.SetFailureResult(
                             "ValidateTagsRecursive:IS_REQUIRED_INVALID",
-                            $"{currentPath}: Tag Rule 'isRequired' is invalid."
+                            $"{currentPath}: Tag Rule 'isRequired' is missing or invalid."
                         );
                     }
                     newTag.Rules.IsRequired = irProp.GetBoolean();
                 }
 
-                if (tagElement.TryGetProperty("subTags", out var subTagsArray) && subTagsArray.ValueKind == JsonValueKind.Array)
+                if (!tagElement.TryGetProperty("subTags", out var subTagsArray)
+                    || subTagsArray.ValueKind != JsonValueKind.Array
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateTagsRecursive:SUB_TAGS_MISSING",
+                        $"{currentPath}: Tag 'subTags' array field is missing or invalid."
+                    );
+                }
+                else
                 {
-                    var subTagsResult = ValidateTagsRecursive(subTagsArray, $"{currentPath}.SubTags");
+                    var subTagsResult = ValidateTagsRecursive(subTagsArray, currentLevel + 1, $"{currentPath}.SubTags");
                     if (!subTagsResult.Success)
                     {
                         return result.SetFailureResult(
@@ -340,79 +370,263 @@ namespace IqraInfrastructure.Managers.Business
 
                 validatedTags.Add(newTag);
             }
+
             return result.SetSuccessResult(validatedTags);
         }
 
-        private FunctionReturnResult<List<BusinessAppPostAnalysisExtractionField>> ValidateFieldsRecursive(JsonElement fieldsArray, HashSet<string> uniqueKeys, string path = "Fields")
+        private FunctionReturnResult<List<BusinessAppPostAnalysisExtractionField>> ValidateFieldsRecursive(JsonElement fieldsArray, HashSet<string> uniqueKeys, int currentLevel, string path = "Fields")
         {
             var result = new FunctionReturnResult<List<BusinessAppPostAnalysisExtractionField>>();
-            var validatedFields = new List<BusinessAppPostAnalysisExtractionField>();
 
+            if (currentLevel >= MAX_PCA_EXTRACTION_LEVELS)
+            {
+                return result.SetFailureResult(
+                    "ValidateFieldsRecursive:MAX_DEPTH_EXCEEDED",
+                    $"{path}: Exceeded maximum field nesting depth of {MAX_PCA_EXTRACTION_LEVELS} levels."
+                );
+            }
+
+            if (fieldsArray.GetArrayLength() > MAX_PCA_FIELDS_PER_LEVEL)
+            {
+                return result.SetFailureResult(
+                    "ValidateFieldsRecursive:MAX_COUNT_EXCEEDED",
+                    $"{path}: Exceeded maximum of {MAX_PCA_FIELDS_PER_LEVEL} fields per level."
+                );
+            }
+
+            var validatedFields = new List<BusinessAppPostAnalysisExtractionField>();
             foreach (var (fieldElement, i) in fieldsArray.EnumerateArray().Select((value, i) => (value, i)))
             {
                 var newField = new BusinessAppPostAnalysisExtractionField();
                 string currentPath = $"{path}[{i}]";
 
-                if (!fieldElement.TryGetProperty("id", out var idProp) || string.IsNullOrWhiteSpace(idProp.GetString())) return result.SetFailureResult($"{currentPath}:ID_MISSING", "Field ID is missing.");
+                if (!fieldElement.TryGetProperty("id", out var idProp) ||
+                    idProp.ValueKind != JsonValueKind.String ||
+                    string.IsNullOrWhiteSpace(idProp.GetString())
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateFieldsRecursive:ID_MISSING",
+                        $"{currentPath}: Field ID is missing or invalid."
+                    );
+                }
                 newField.Id = idProp.GetString()!;
 
-                if (!fieldElement.TryGetProperty("keyName", out var keyProp) || string.IsNullOrWhiteSpace(keyProp.GetString())) return result.SetFailureResult($"{currentPath}:KEY_NAME_MISSING", "Field Key Name is required.");
-                var keyName = keyProp.GetString()!;
-                if (uniqueKeys.Contains(keyName)) return result.SetFailureResult($"{currentPath}:KEY_NAME_DUPLICATE", $"Field Key Name '{keyName}' must be unique.");
-                uniqueKeys.Add(keyName);
-                newField.KeyName = keyName;
+                if (!fieldElement.TryGetProperty("keyName", out var keyProp) ||
+                    keyProp.ValueKind != JsonValueKind.String ||
+                    string.IsNullOrWhiteSpace(keyProp.GetString())
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateFieldsRecursive:KEY_NAME_MISSING",
+                        $"{currentPath}: Field Key Name is missing or invalid."
+                    );
+                }
+                else
+                {
+                    var keyName = keyProp.GetString()!;
+                    if (uniqueKeys.Contains(keyName))
+                    {
+                        return result.SetFailureResult(
+                            "ValidateFieldsRecursive:KEY_NAME_DUPLICATE",
+                            $"{currentPath}: Field Key Name '{keyName}' must be unique."
+                        );
+                    }
+                    uniqueKeys.Add(keyName);
+                    newField.KeyName = keyName;
+                }
 
-                if (!fieldElement.TryGetProperty("description", out var descProp) || descProp.ValueKind != JsonValueKind.String) return result.SetFailureResult($"{currentPath}:DESC_MISSING", "Field Description is required.");
+                if (!fieldElement.TryGetProperty("description", out var descProp) ||
+                    descProp.ValueKind != JsonValueKind.String ||
+                    string.IsNullOrWhiteSpace(descProp.GetString())
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateFieldsRecursive:DESC_MISSING",
+                        $"{currentPath}: Field Description is missing or invalid."
+                    );
+                }
                 newField.Description = descProp.GetString()!;
 
-                if (!fieldElement.TryGetProperty("isRequired", out var reqProp) || (reqProp.ValueKind != JsonValueKind.True && reqProp.ValueKind != JsonValueKind.False)) return result.SetFailureResult($"{currentPath}:IS_REQUIRED_INVALID", "Field 'isRequired' flag is invalid.");
+                if (!fieldElement.TryGetProperty("isRequired", out var reqProp) ||
+                    (reqProp.ValueKind != JsonValueKind.True && reqProp.ValueKind != JsonValueKind.False)
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateFieldsRecursive:IS_REQUIRED_INVALID",
+                        $"{currentPath}: Field 'isRequired' flag is missing or invalid."
+                    );
+                }
                 newField.IsRequired = reqProp.GetBoolean();
 
-                if (!fieldElement.TryGetProperty("dataType", out var dtProp) || !dtProp.TryGetInt32(out var dtInt) || !Enum.IsDefined(typeof(FieldDataType), dtInt)) return result.SetFailureResult($"{currentPath}:DATATYPE_INVALID", "Field 'dataType' is invalid.");
-                newField.DataType = (BusinessAppPostAnalysisExtractionFieldDataType)dtInt;
-
-                if (newField.DataType == BusinessAppPostAnalysisExtractionFieldDataType.Enum)
+                if (!fieldElement.TryGetProperty("dataType", out var dtProp) ||
+                    dtProp.ValueKind != JsonValueKind.Number ||
+                    !dtProp.TryGetInt32(out var dtInt) ||
+                    !Enum.IsDefined(typeof(BusinessAppPostAnalysisExtractionFieldDataType), dtInt)
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateFieldsRecursive:DATATYPE_INVALID",
+                        $"{currentPath}: Field 'dataType' is missing or invalid."
+                    );
+                }
+                else
                 {
-                    if (!fieldElement.TryGetProperty("options", out var optsArray) || optsArray.ValueKind != JsonValueKind.Array) return result.SetFailureResult($"{currentPath}:OPTIONS_INVALID", "Enum field requires an 'options' array.");
-                    newField.Options = optsArray.EnumerateArray().Select(o => o.GetString()!).ToList();
+                    newField.DataType = (BusinessAppPostAnalysisExtractionFieldDataType)dtInt;
+
+                    if (newField.DataType == BusinessAppPostAnalysisExtractionFieldDataType.Enum)
+                    {
+                        if (!fieldElement.TryGetProperty("options", out var optsArray)
+                            || optsArray.ValueKind != JsonValueKind.Array
+                        ) {
+                            return result.SetFailureResult(
+                                $"{currentPath}:OPTIONS_INVALID",
+                                "Enum field requires an 'options' array."
+                            );
+                        }
+
+                        foreach (var opt in optsArray.EnumerateArray())
+                        {
+                            if (opt.ValueKind != JsonValueKind.String)
+                            {
+                                return result.SetFailureResult(
+                                    $"{currentPath}:OPTIONS_INVALID",
+                                    "Enum field options must be strings."
+                                );
+                            }
+
+                            var value = opt.GetString();
+                            if (string.IsNullOrWhiteSpace(value))
+                            {
+                                return result.SetFailureResult(
+                                    $"{currentPath}:OPTIONS_INVALID",
+                                    "Enum field options cannot be empty strings."
+                                );
+                            }
+
+                            if (newField.Options.Contains(value))
+                            {
+                                return result.SetFailureResult(
+                                    $"{currentPath}:OPTIONS_INVALID",
+                                    $"Enum field option '{value}' must be unique."
+                                );
+                            }
+
+                            newField.Options.Add(value);
+                        }
+                    }
                 }
 
-                if (fieldElement.TryGetProperty("conditionalRules", out var rulesArray) && rulesArray.ValueKind == JsonValueKind.Array)
-                {
-                    var rulesResult = ValidateRulesRecursive(rulesArray, uniqueKeys, $"{currentPath}.ConditionalRules");
-                    if (!rulesResult.Success) return rulesResult.ToGeneric<List<BusinessAppPostAnalysisExtractionField>>();
-                    newField.ConditionalRules = rulesResult.Data;
+                if (!fieldElement.TryGetProperty("conditionalRules", out var rulesArray) || 
+                    rulesArray.ValueKind != JsonValueKind.Array
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateFieldsRecursive:RULES_MISSING",
+                        $"{currentPath}: Field 'conditionalRules' is missing or invalid."
+                    );
                 }
+                else
+                {
+                    var rulesResult = ValidateRulesRecursive(rulesArray, uniqueKeys, currentLevel, $"{currentPath}.ConditionalRules");
+                    if (!rulesResult.Success)
+                    {
+                        return result.SetFailureResult(
+                            $"ValidateFieldsRecursive:{rulesResult}",
+                            rulesResult.Message
+                        );
+                    }
+
+                    newField.ConditionalRules = rulesResult.Data!;
+                }
+
                 validatedFields.Add(newField);
             }
+
             return result.SetSuccessResult(validatedFields);
         }
-
-        private FunctionReturnResult<List<BusinessAppPostAnalysisExtractionConditionalRule>> ValidateRulesRecursive(JsonElement rulesArray, HashSet<string> uniqueKeys, string path)
+        private FunctionReturnResult<List<BusinessAppPostAnalysisExtractionConditionalRule>> ValidateRulesRecursive(JsonElement rulesArray, HashSet<string> uniqueKeys, int parentFieldLevel, string path)
         {
             var result = new FunctionReturnResult<List<BusinessAppPostAnalysisExtractionConditionalRule>>();
+
+            if (rulesArray.GetArrayLength() > MAX_PCA_RULES_PER_FIELD)
+            {
+                return result.SetFailureResult(
+                    "ValidateRulesRecursive:MAX_RULES_EXCEEDED",
+                    $"{path}: Exceeded maximum of {MAX_PCA_RULES_PER_FIELD} rules per field."
+                );
+            }
+
             var validatedRules = new List<BusinessAppPostAnalysisExtractionConditionalRule>();
             foreach (var (ruleElement, i) in rulesArray.EnumerateArray().Select((value, i) => (value, i)))
             {
                 var newRule = new BusinessAppPostAnalysisExtractionConditionalRule();
                 string currentPath = $"{path}[{i}]";
 
-                if (!ruleElement.TryGetProperty("id", out var idProp) || string.IsNullOrWhiteSpace(idProp.GetString())) return result.SetFailureResult($"{currentPath}:ID_MISSING", "Rule ID is missing.");
+                if (!ruleElement.TryGetProperty("id", out var idProp) ||
+                    idProp.ValueKind != JsonValueKind.String ||
+                    string.IsNullOrWhiteSpace(idProp.GetString())
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateRulesRecursive:ID_INVALID",
+                        $"{currentPath}: Rule ID is missing or invalid."
+                    );
+                }
                 newRule.Id = idProp.GetString()!;
 
-                if (!ruleElement.TryGetProperty("condition", out var condElement)) return result.SetFailureResult($"{currentPath}:CONDITION_MISSING", "Rule condition is missing.");
-                if (!condElement.TryGetProperty("operator", out var opProp) || !opProp.TryGetInt32(out var opInt) || !Enum.IsDefined(typeof(BusinessAppPostAnalysisExtractionConditionOperator), opInt)) return result.SetFailureResult($"{currentPath}:OPERATOR_INVALID", "Rule condition operator is invalid.");
-                if (!condElement.TryGetProperty("value", out var valProp) || valProp.ValueKind != JsonValueKind.String) return result.SetFailureResult($"{currentPath}:VALUE_INVALID", "Rule condition value is invalid.");
-                newRule.Condition = new BusinessAppPostAnalysisExtractionFieldCondition { Operator = (BusinessAppPostAnalysisExtractionConditionOperator)opInt, Value = valProp.GetString()! };
-
-                if (ruleElement.TryGetProperty("fieldsToExtract", out var fieldsArray) && fieldsArray.ValueKind == JsonValueKind.Array)
-                {
-                    var fieldsResult = ValidateFieldsRecursive(fieldsArray, uniqueKeys, $"{currentPath}.FieldsToExtract");
-                    if (!fieldsResult.Success) return fieldsResult.ToGeneric<List<BusinessAppPostAnalysisExtractionConditionalRule>>();
-                    newRule.FieldsToExtract = fieldsResult.Data;
+                if (!ruleElement.TryGetProperty("condition", out var condElement) ||
+                    condElement.ValueKind != JsonValueKind.Object
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateRulesRecursive:CONDITION_INVALID",
+                        $"{currentPath}: Rule condition is missing or invalid."
+                    );
                 }
+                else
+                {
+                    if (!condElement.TryGetProperty("operator", out var opProp) ||
+                        opProp.ValueKind != JsonValueKind.Number ||
+                        !opProp.TryGetInt32(out var opInt) ||
+                        !Enum.IsDefined(typeof(BusinessAppPostAnalysisExtractionConditionOperator), opInt)
+                    ) {
+                        return result.SetFailureResult(
+                            "ValidateRulesRecursive:OPERATOR_INVALID",
+                            $"{currentPath}: Rule condition operator is missing or invalid."
+                        );
+                    }
+                    newRule.Condition.Operator = (BusinessAppPostAnalysisExtractionConditionOperator)opInt;
+
+                    if (!condElement.TryGetProperty("value", out var valProp) ||
+                        valProp.ValueKind != JsonValueKind.String ||
+                        string.IsNullOrWhiteSpace(valProp.GetString())
+                    ) {
+                        return result.SetFailureResult(
+                            "ValidateRulesRecursive:VALUE_INVALID",
+                            $"{currentPath}: Rule condition value is missing or invalid."
+                        );
+                    }
+                    newRule.Condition.Value = valProp.GetString()!;
+                }
+
+                if (!ruleElement.TryGetProperty("fieldsToExtract", out var fieldsArray) ||
+                    fieldsArray.ValueKind == JsonValueKind.Array
+                ) {
+                    return result.SetFailureResult(
+                        "ValidateRulesRecursive:FIELDS_MISSING",
+                        $"{currentPath}: Rule fieldsToExtract is missing or invalid."
+                    );
+                }
+                else
+                {
+                    var fieldsResult = ValidateFieldsRecursive(fieldsArray, uniqueKeys, parentFieldLevel + 1, $"{currentPath}.FieldsToExtract");
+                    if (!fieldsResult.Success)
+                    {
+                        return result.SetFailureResult(
+                            $"ValidateRulesRecursive:{fieldsResult}",
+                            fieldsResult.Message
+                        );
+                    }
+
+                    newRule.FieldsToExtract = fieldsResult.Data!;
+                }
+
                 validatedRules.Add(newRule);
             }
+
             return result.SetSuccessResult(validatedRules);
         }
     }

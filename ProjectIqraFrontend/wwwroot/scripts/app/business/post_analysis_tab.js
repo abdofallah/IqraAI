@@ -14,11 +14,11 @@ const PCA_CONDITION_OPERATOR = {
     LessThan: 4
 };
 
-const MAX_TAG_LEVELS = 5;
-const MAX_TAGS_PER_LEVEL = 5;
-const MAX_EXTRACTION_LEVELS = 5;
-const MAX_FIELDS_PER_LEVEL = 5;
-const MAX_RULES_PER_FIELD = 5;
+const MAX_PCA_TAG_LEVELS = 5;
+const MAX_PCA_TAGS_PER_LEVEL = 5;
+const MAX_PCA_EXTRACTION_LEVELS = 5;
+const MAX_PCA_FIELDS_PER_LEVEL = 5;
+const MAX_PCA_RULES_PER_FIELD = 5;
 
 // DYNAMIC VARIABLES
 let managePCAType = null; // 'new' or 'edit'
@@ -656,10 +656,10 @@ function initPCAManagerEventHandlers() {
 
     // Top-level "Add" buttons
     pcaAddTagSetButton.on('click', () => {
-        if (pcaTagSetsList.children('.tag-box').length >= MAX_TAGS_PER_LEVEL) {
+        if (pcaTagSetsList.children('.tag-box').length >= MAX_PCA_TAGS_PER_LEVEL) {
             AlertManager.createAlert({
                 type: 'warning',
-                message: `You can only add a maximum of ${MAX_TAGS_PER_LEVEL} tags at the top level.`,
+                message: `You can only add a maximum of ${MAX_PCA_TAGS_PER_LEVEL} tags at the top level.`,
                 timeout: 3000
             });
             return;
@@ -668,10 +668,10 @@ function initPCAManagerEventHandlers() {
     });
 
     pcaAddExtractionFieldButton.on('click', () => {
-        if (pcaExtractionFieldsList.children('.extraction-field-box').length >= MAX_FIELDS_PER_LEVEL) {
+        if (pcaExtractionFieldsList.children('.extraction-field-box').length >= MAX_PCA_FIELDS_PER_LEVEL) {
             AlertManager.createAlert({
                 type: 'warning',
-                message: `You can only add a maximum of ${MAX_FIELDS_PER_LEVEL} fields at the top level.`,
+                message: `You can only add a maximum of ${MAX_PCA_FIELDS_PER_LEVEL} fields at the top level.`,
                 timeout: 3000
             });
             return;
@@ -691,19 +691,19 @@ function initPCAManagerEventHandlers() {
         const currentLevel = parseInt($parentBox.data('level') || 0);
         const newLevel = currentLevel + 1;
 
-        if (newLevel >= MAX_TAG_LEVELS) {
+        if (newLevel >= MAX_PCA_TAG_LEVELS) {
             AlertManager.createAlert({
                 type: 'warning',
-                message: `Nesting is limited to a maximum of ${MAX_TAG_LEVELS} levels.`,
+                message: `Nesting is limited to a maximum of ${MAX_PCA_TAG_LEVELS} levels.`,
                 timeout: 3000
             });
             return;
         }
 
-        if (subTagContainer.children('.tag-box').length >= MAX_TAGS_PER_LEVEL) {
+        if (subTagContainer.children('.tag-box').length >= MAX_PCA_TAGS_PER_LEVEL) {
             AlertManager.createAlert({
                 type: 'warning',
-                message: `You can only add a maximum of ${MAX_TAGS_PER_LEVEL} sub-tags per level.`,
+                message: `You can only add a maximum of ${MAX_PCA_TAGS_PER_LEVEL} sub-tags per level.`,
                 timeout: 3000
             });
             return;
@@ -717,10 +717,10 @@ function initPCAManagerEventHandlers() {
         const $fieldBox = $(e.currentTarget).closest('.extraction-field-box');
         const rulesContainer = $fieldBox.find('.rules-container').first();
 
-        if (rulesContainer.children('.rule-box').length >= MAX_RULES_PER_FIELD) {
+        if (rulesContainer.children('.rule-box').length >= MAX_PCA_RULES_PER_FIELD) {
             AlertManager.createAlert({
                 type: 'warning',
-                message: `A field can have a maximum of ${MAX_RULES_PER_FIELD} conditional rules.`,
+                message: `A field can have a maximum of ${MAX_PCA_RULES_PER_FIELD} conditional rules.`,
                 timeout: 3000
             });
             return;
@@ -742,10 +742,10 @@ function initPCAManagerEventHandlers() {
         const parentFieldLevel = parseInt($parentFieldBox.data('level') || 0);
         const newLevel = parentFieldLevel + 1;
 
-        if (newLevel >= MAX_EXTRACTION_LEVELS) {
+        if (newLevel >= MAX_PCA_EXTRACTION_LEVELS) {
             AlertManager.createAlert({
                 type: 'warning',
-                message: `Nesting is limited to a maximum of ${MAX_EXTRACTION_LEVELS} levels.`,
+                message: `Nesting is limited to a maximum of ${MAX_PCA_EXTRACTION_LEVELS} levels.`,
                 timeout: 3000
             });
             return;
@@ -753,10 +753,10 @@ function initPCAManagerEventHandlers() {
 
         const totalSiblingFields = $parentFieldBox.find(`.extraction-field-box[data-level="${newLevel}"]`).length;
 
-        if (totalSiblingFields >= MAX_FIELDS_PER_LEVEL) {
+        if (totalSiblingFields >= MAX_PCA_FIELDS_PER_LEVEL) {
             AlertManager.createAlert({
                 type: 'warning',
-                message: `You can only add a maximum of ${MAX_FIELDS_PER_LEVEL} fields per level.`,
+                message: `You can only add a maximum of ${MAX_PCA_FIELDS_PER_LEVEL} fields per level.`,
                 timeout: 3000
             });
             return;
