@@ -27,6 +27,9 @@ let managePCAType = null; // 'new' or 'edit'
 let currentPCATemplateData = null; // Stores the original data of the template being edited
 let isSavingPCATemplate = false;
 
+// Integration Managers
+let pcaConfigurationLLMIntegrationManager = null;
+
 // ELEMENT VARIABLES
 const postAnalysisTab = $("#post-analysis-tab");
 const pcaTooltipTriggerList = document.querySelectorAll('#post-analysis-tab [data-bs-toggle="tooltip"]');
@@ -175,6 +178,9 @@ function resetPCAManager() {
     pcaNameInput.val("");
     pcaDescriptionInput.val("");
 
+    // Configuration
+    if (pcaConfigurationLLMIntegrationManager) pcaConfigurationLLMIntegrationManager.reset();
+
     // Summary
     pcaSummaryActiveToggle.prop("checked", true).change();
     pcaSummaryPromptInput.val("");
@@ -196,6 +202,9 @@ function fillPCAManager(templateData) {
     pcaIconInput.text(templateData.general.emoji);
     pcaNameInput.val(templateData.general.name);
     pcaDescriptionInput.val(templateData.general.description);
+
+    // Configuration
+    if (pcaConfigurationLLMIntegrationManager) pcaConfigurationLLMIntegrationManager.load(templateData.configuration.llmIntegration);
 
     // Summary
     pcaSummaryActiveToggle.prop("checked", templateData.summary.isActive).change();
@@ -223,6 +232,9 @@ function checkPCAChanges(enableDisableButton = true) {
             name: pcaNameInput.val().trim(),
             description: pcaDescriptionInput.val().trim()
         },
+        configuration: {
+            llmIntegration: pcaConfigurationLLMIntegrationManager.getData()
+        },
         summary: {
             isActive: pcaSummaryActiveToggle.is(':checked'),
             prompt: pcaSummaryPromptInput.val().trim()
@@ -242,6 +254,12 @@ function checkPCAChanges(enableDisableButton = true) {
         currentState.general.description !== original.general.description ||
         currentState.general.emoji !== original.general.emoji)
     {
+        hasChanges = true;
+    }
+
+    // Compare Configuration
+    // TODO better check
+    if (JSON.stringify(currentState.configuration.llmIntegration) !== JSON.stringify(original.configuration.llmIntegration)) {
         hasChanges = true;
     }
 
@@ -290,6 +308,14 @@ function validatePCATemplate(onlyRemove = true) {
     }
     else {
         pcaNameInput.removeClass('is-invalid');
+    }
+
+    // Compare Configuration
+    const llmValidation = pcaConfigurationLLMIntegrationManager.validate();
+    if (!llmValidation.isValid) {
+        validated = false;
+        errors.push(...llmValidation.errors.map(e => `Configuration LLM: ${e}`));
+        if (!onlyRemove) pcaConfigurationLLMIntegrationManager.getSelectElements().addClass('is-invalid');
     }
 
     // Tagging
@@ -447,7 +473,7 @@ function getPCAFieldsFromDOM(container) {
     const fields = [];
     container.children('.extraction-field-box').each((_, el) => {
         const $el = $(el);
-        const rulesContainer = $el.find('.rules-container').first();
+        const rulesContainer = $el.children('.rules-container').first();
         const dataType = parseInt($el.find('[data-type="DataType"]').first().find('option:selected').val());
         const field = {
             id: $el.data('id'),
@@ -456,9 +482,8 @@ function getPCAFieldsFromDOM(container) {
             isRequired: $el.find('[data-type="isRequired"]').first().is(':checked'),
             isEmptyOrNullAllowed: $el.find('[data-type="isEmptyOrNullAllowed"]').first().is(':checked'),
             dataType: dataType,
-            options: [],
-            validation: { pattern: null },
-            conditionalRules: getPCARulesFromDOM($el)
+            validation: {},
+            conditionalRules: getPCARulesFromDOM(rulesContainer)
         };
         if (dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
             field.options = $el.find('.field-options-container input').first().val()?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
@@ -482,14 +507,14 @@ function getPCAFieldsFromDOM(container) {
 }
 function getPCARulesFromDOM(fieldBox) {
     const rules = [];
-    fieldBox.find('.rule-box').each((_, el) => {
+    fieldBox.children('.rule-box').each((_, el) => {
         const $el = $(el);
         const dependentFieldsContainer = $el.find('.dependent-fields-container').first();
         rules.push({
             id: $el.data('id'),
             condition: {
-                operator: parseInt($el.find('[data-type="conditionOperator"]').val()),
-                value: $el.find('[data-type="conditionValue"]').val()
+                operator: parseInt($el.find('[data-type="conditionOperator"]').first().val()),
+                value: $el.find('[data-type="conditionValue"]').first().val()
             },
             fieldsToExtract: getPCAFieldsFromDOM(dependentFieldsContainer)
         });
@@ -904,7 +929,6 @@ function renderPCAFieldOptionsContainer($selectElement) {
     }
 }
 
-
 // DYNAMIC ELEMENT CREATORS
 function createPCAListElement(templateData) {
     return `
@@ -1259,6 +1283,22 @@ function initPCAManagerEventHandlers() {
 
 // MAIN INITIALIZER
 function initPostAnalysisTab() {
+    pcaConfigurationLLMIntegrationManager = new IntegrationConfigurationManager('#pca-llm-integration-selector', {
+        integrationType: 'LLM',
+        allIntegrations: BusinessFullData.businessApp.integrations,
+        providersData: BusinessLLMProvidersForIntegrations,
+        modalSelector: '#integrationConfigurationModal',
+        onSaveSuccessful: () => {
+            checkPCAChanges();
+            validatePCATemplate(true);
+        },
+        onIntegrationChange: () => {
+            checkPCAChanges();
+            validatePCATemplate(true);
+        },
+    });
+
+    // Event Handlers
     initPCAManagerEventHandlers();
 
     $(window).resize(() => {
