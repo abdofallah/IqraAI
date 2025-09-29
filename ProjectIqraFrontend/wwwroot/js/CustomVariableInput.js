@@ -612,7 +612,11 @@ class CustomVariableInput {
                         var variableArgumentData = this._findVariableById(`${functionName}.${argurmentName}`);
                         if (variableArgumentData) {
                             if (variableArgumentData.type === 'string') {
-                                args.push(`"${$(argValueNode).text()}"`);
+                                var text = $(argValueNode).text()
+                                    .replace(/\\/g, '\\\\') // IMPORTANT: escape backslashes FIRST
+                                    .replace(/"/g, '\\"');
+
+                                args.push(`"${text}"`);
                             }
                             else {
                                 args.push($(argValueNode).text());
@@ -820,8 +824,11 @@ class CustomVariableInput {
                     $argsContainer.append(inputNode);
                 } else {
                     let literalValue = argContent;
-                    if ((literalValue.startsWith("'") && literalValue.endsWith("'")) || (literalValue.startsWith('"') && literalValue.endsWith('"'))) {
-                        literalValue = literalValue.slice(1, -1);
+                    if (literalValue.startsWith('"') && literalValue.endsWith('"')) {
+                        literalValue = literalValue
+                            .slice(1, -1)
+                            .replace(/\\"/g, '"')
+                            .replace(/\\\\/g, '\\');
                     }
                     const inputNode = $('<span>', { class: 'arg-input', contenteditable: 'true', 'data-arg-name': argDef.name }).text(literalValue);
                     $argsContainer.append(inputNode);
