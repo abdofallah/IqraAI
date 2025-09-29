@@ -565,9 +565,24 @@ class CustomVariableInput {
         const parts = id.split('.');
         let level = this.variables,
             found = null;
+
+        let levelIsArgs = false;
         for (const part of parts) {
-            found = level.find(v => v.id === part);
-            if (found?.schema) level = found.schema;
+            if (levelIsArgs) {
+                found = level.find(v => v.name === part);
+            }
+            else {
+                found = level.find(v => v.id === part);
+            }
+
+            if (found?.schema) {
+                levelIsArgs = false;
+                level = found.schema;
+            }
+            if (found?.args) {
+                levelIsArgs = true;
+                level = found.args;
+            }
             else if (found) continue;
             else return null;
         }
@@ -589,15 +604,28 @@ class CustomVariableInput {
             // Instead of .children(), we use a specific selector to get ONLY the argument values.
             $node.find('.args-container').find('.arg-input, .arg-slot, .variable-pill').each((i, argValueNode) => {
                 if ($(argValueNode).hasClass('arg-input')) {
-                    // For literal inputs, we just take their text content.
-                    args.push($(argValueNode).text());
+                    if (!$(argValueNode).text()) {
+                        args.push('undefined');
+                    }
+                    else {
+                        const argurmentName = $(argValueNode).data('arg-name');
+                        var variableArgumentData = this._findVariableById(`${functionName}.${argurmentName}`);
+                        if (variableArgumentData) {
+                            if (variableArgumentData.type === 'string') {
+                                args.push(`"${$(argValueNode).text()}"`);
+                            }
+                            else {
+                                args.push($(argValueNode).text());
+                            }
+                        }
+                    }
                 } else {
                     // For variable pills or unfilled slots, we recurse to get their {={...}=} syntax.
                     args.push(this._getNodeValue(argValueNode));
                 }
             });
 
-            return `{={${functionName}(${args.join(', ')})=}}`;
+            return `{={${functionName}(${args.join(', ')})}=}`;
         }
 
         // Now, handle ANY other kind of pill (variable-pill, invalid-pill, arg-slot)
@@ -615,62 +643,219 @@ class CustomVariableInput {
         return node.textContent;
     }
 
+    _parseTopLevelVariables(textValue) {
+        const tokens = [];
+        if (!textValue) return tokens;
+
+        const openDelim = '{={';
+        const closeDelim = '}=}';
+        let currentIndex = 0;
+
+        while (currentIndex < textValue.length) {
+            const openerIndex = textValue.indexOf(openDelim, currentIndex);
+
+            // Case 1: No more openers found. The rest is plain text.
+            if (openerIndex === -1) {
+                tokens.push({ type: 'text', content: textValue.substring(currentIndex) });
+                break;
+            }
+
+            // Case 2: There is plain text before the next opener.
+            if (openerIndex > currentIndex) {
+                tokens.push({ type: 'text', content: textValue.substring(currentIndex, openerIndex) });
+            }
+
+            // Case 3: We found an opener. Now we must find its matching closer.
+            let nestingLevel = 1;
+            let searchIndex = openerIndex + openDelim.length;
+            let closerIndex = -1;
+
+            while (searchIndex < textValue.length) {
+                const nextOpener = textValue.indexOf(openDelim, searchIndex);
+                const nextCloser = textValue.indexOf(closeDelim, searchIndex);
+
+                // If a closer exists and it comes before the next opener (or there is no next opener)
+                if (nextCloser !== -1 && (nextOpener === -1 || nextCloser < nextOpener)) {
+                    nestingLevel--;
+                    if (nestingLevel === 0) {
+                        closerIndex = nextCloser;
+                        break; // Found our match!
+                    }
+                    searchIndex = nextCloser + closeDelim.length;
+                }
+                // If an opener comes first
+                else if (nextOpener !== -1) {
+                    nestingLevel++;
+                    searchIndex = nextOpener + openDelim.length;
+                }
+                // If no more delimiters are found, break the search
+                else {
+                    break;
+                }
+            }
+
+            if (closerIndex !== -1) {
+                // We found a complete, top-level block.
+                const content = textValue.substring(openerIndex + openDelim.length, closerIndex);
+                tokens.push({ type: 'variable', content: content });
+                currentIndex = closerIndex + closeDelim.length;
+            } else {
+                // An opener was found but not its matching closer. Treat it as plain text.
+                tokens.push({ type: 'text', content: textValue.substring(openerIndex) });
+                break;
+            }
+        }
+
+        return tokens;
+    }
+
     _createFragmentFromText(textValue) {
         const fragment = document.createDocumentFragment();
         if (!textValue) return fragment;
 
-        const regex = /(\{=\{([a-zA-Z0-9_.-]+)\}=\})/g;
-        let lastIndex = 0, match;
+        const tokens = this._parseTopLevelVariables(textValue);
 
-        while ((match = regex.exec(textValue)) !== null) {
-            // Append text before the variable
-            fragment.appendChild(document.createTextNode(textValue.substring(lastIndex, match.index)));
+        tokens.forEach(token => {
+            if (token.type === 'text' && token.content) {
+                fragment.appendChild(document.createTextNode(token.content));
+            } else if (token.type === 'variable') {
+                const pillNode = this._createPillNode(token.content);
+                fragment.appendChild(pillNode);
+                new bootstrap.Tooltip(pillNode); // Initialize tooltip
+            }
+        });
 
-            // --- USE THE NEW HELPER ---
-            const pillNode = this._createPillNode(match[2]);
-
-            fragment.appendChild(pillNode);
-            new bootstrap.Tooltip(pillNode); // Initialize tooltip
-
-            lastIndex = regex.lastIndex;
-        }
-
-        if (lastIndex < textValue.length) {
-            fragment.appendChild(document.createTextNode(textValue.substring(lastIndex)));
-        }
         return fragment;
     }
 
-    _createPillNode(variableId) {
-        const variableData = this._findVariableById(variableId);
+    _parseFunctionArgs(argsString) {
+        const args = [];
+        if (!argsString) return args;
+
+        let currentArg = '';
+        let nestingLevel = 0; // For {={ ... }=}
+        let inSingleQuotes = false;
+        let inDoubleQuotes = false;
+
+        for (let i = 0; i < argsString.length; i++) {
+            const char = argsString[i];
+            const nextThree = argsString.substring(i, i + 3);
+
+            if (inSingleQuotes) {
+                if (char === "'") inSingleQuotes = false;
+                currentArg += char;
+                continue;
+            }
+            if (inDoubleQuotes) {
+                if (char === '"') inDoubleQuotes = false;
+                currentArg += char;
+                continue;
+            }
+
+            if (nextThree === '{={') {
+                nestingLevel++;
+                currentArg += nextThree;
+                i += 2; // Skip the next two chars
+            } else if (nextThree === '}=}') {
+                nestingLevel--;
+                currentArg += nextThree;
+                i += 2; // Skip the next two chars
+            } else if (char === ',' && nestingLevel === 0) {
+                args.push(currentArg.trim());
+                currentArg = '';
+            } else {
+                if (char === "'") inSingleQuotes = true;
+                if (char === '"') inDoubleQuotes = true;
+                currentArg += char;
+            }
+        }
+
+        if (currentArg) {
+            args.push(currentArg.trim());
+        }
+
+        // Filter out any empty strings that might result from trailing commas
+        return args.filter(arg => arg);
+    }
+
+    _createPillNode(serializedContent) {
+        const functionRegex = /^([a-zA-Z0-9_.-]+)\s*\((.*)\)\s*$/;
+        const funcMatch = serializedContent.match(functionRegex);
         let pill;
 
-        if (variableData) {
-            // --- CASE 1: The variable is VALID ---
+        const variableData = this._findVariableById(funcMatch ? funcMatch[1] : serializedContent);
 
-            if (variableData.Type === 'function') {
-                // --- Build a FUNCTION pill ---
-                let functionTitle = `${variableData.Description}<br><br>Arguments:`;
-                const argsHtml = variableData.args.map(arg => {
-                    functionTitle += `<br>- ${arg.name}: ${arg.isLiteral ? 'A literal value' : 'Requires type(s) ' + arg.allowedTypes.join(', ')}`;
+        // --- CASE 1: The content is a FULLY SERIALIZED FUNCTION string ---
+        if (funcMatch && variableData && variableData.Type === 'function') {
+            const functionName = funcMatch[1];
+            const argsString = funcMatch[2];
 
-                    const nameLabel = `<span class="arg-name-label">${arg.name}: </span>`;
-                    if (arg.isLiteral) {
-                        return nameLabel + $('<span>', {
-                            class: 'arg-input',
-                            contenteditable: 'true',
-                            'data-arg-name': arg.name
-                        }).text(arg.defaultValue || '...')[0].outerHTML;
-                    } else {
-                        return nameLabel + `<span class="arg-slot pill" contenteditable="false" data-arg-name="${arg.name}" data-allowed-types='${JSON.stringify(arg.allowedTypes)}'>...</span>`;
+            let functionTitle = `${variableData.Description}`;
+            pill = $(`<span class="pill function-pill" contenteditable="false" data-id="${functionName}" data-type="function" data-bs-toggle="tooltip" data-bs-html="true" title="${functionTitle}"><span class="function-name">${variableData.Name}</span>(<span class="args-container"></span>)</span>`);
+            const $argsContainer = pill.find('.args-container');
+
+            const parsedArgs = this._parseFunctionArgs(argsString);
+
+            parsedArgs.forEach((argContent, index) => {
+                const argDef = variableData.args[index];
+                if (!argDef) return;
+
+                const nameLabel = `<span class="arg-name-label">${argDef.name}: </span>`;
+                $argsContainer.append(nameLabel);
+
+                if (argContent.startsWith('{={') && argContent.endsWith('}=}')) {
+                    const innerContent = argContent.slice(3, -3);
+                    const argPill = this._createPillNode(innerContent);
+                    new bootstrap.Tooltip(argPill);
+                    $argsContainer.append(argPill);
+                } else if (argContent === 'undefined') {
+                    let inputNode;
+                    if (argDef.isLiteral) {
+                        inputNode = $('<span>', { class: 'arg-input', contenteditable: 'true', 'data-arg-name': argDef.name });
                     }
-                }).join(',&nbsp;');
+                    else {
+                        inputNode = $('<span>', { class: 'arg-slot pill', contenteditable: 'false', 'data-arg-name': argDef.name, 'data-allowed-types': JSON.stringify(argDef.allowedTypes) }).text('...');
+                    }
 
-                pill = $(`<span class="pill function-pill" contenteditable="false" data-id="${variableData.id}" data-type="function" data-bs-toggle="tooltip" data-bs-html="true" title="${functionTitle}"><span class="function-name">${variableData.Name}</span>(<span class="args-container">${argsHtml}</span>)</span>`);
+                    $argsContainer.append(inputNode);
+                } else {
+                    let literalValue = argContent;
+                    if ((literalValue.startsWith("'") && literalValue.endsWith("'")) || (literalValue.startsWith('"') && literalValue.endsWith('"'))) {
+                        literalValue = literalValue.slice(1, -1);
+                    }
+                    const inputNode = $('<span>', { class: 'arg-input', contenteditable: 'true', 'data-arg-name': argDef.name }).text(literalValue);
+                    $argsContainer.append(inputNode);
+                }
 
-            } else {
-                // --- Build a VARIABLE or OBJECT pill ---
-                const pathParts = variableId.split('.');
+                if (index < parsedArgs.length - 1) {
+                    $argsContainer.append(',&nbsp;');
+                }
+            });
+        }
+        // --- CASE 2: The content is a FUNCTION ID ONLY (from _insertPill) ---
+        else if (!funcMatch && variableData && variableData.Type === 'function') {
+            let functionTitle = `${variableData.Description}<br><br>Arguments:`;
+            const argsHtml = variableData.args.map(arg => {
+                functionTitle += `<br>- ${arg.name}: ${arg.isLiteral ? 'A literal value' : 'Requires type(s) ' + arg.allowedTypes.join(', ')}`;
+                const nameLabel = `<span class="arg-name-label">${arg.name}: </span>`;
+
+                if (arg.isLiteral) {
+                    // Use default value from the variable definition
+                    const defaultValue = arg.defaultValue || '...';
+                    return nameLabel + $('<span>', { class: 'arg-input', contenteditable: 'true', 'data-arg-name': arg.name }).text(defaultValue)[0].outerHTML;
+                } else {
+                    // Create an empty slot
+                    return nameLabel + `<span class="arg-slot pill" contenteditable="false" data-arg-name="${arg.name}" data-allowed-types='${JSON.stringify(arg.allowedTypes)}'>...</span>`;
+                }
+            }).join(',&nbsp;');
+
+            pill = $(`<span class="pill function-pill" contenteditable="false" data-id="${variableData.id}" data-type="function" data-bs-toggle="tooltip" data-bs-html="true" title="${functionTitle}"><span class="function-name">${variableData.Name}</span>(<span class="args-container">${argsHtml}</span>)</span>`);
+        }
+        // --- CASE 3: The content is a SIMPLE VARIABLE or an INVALID pill ---
+        else {
+            if (variableData) {
+                // Build a standard variable/object pill
+                const pathParts = serializedContent.split('.');
                 const names = [];
                 let currentLevelItems = this.variables;
                 for (const part of pathParts) {
@@ -678,31 +863,17 @@ class CustomVariableInput {
                     if (item) {
                         names.push(item.Name);
                         currentLevelItems = item.schema || [];
-                    }
+                    } else { names.push(part); }
                 }
                 const displayText = names.join(' | ');
-                const tooltipText = variableData.Description;
-
-                pill = $(`<span class="pill variable-pill" contenteditable="false" 
-                        data-id="${variableId}" 
-                        data-type="${variableData.Type || 'string'}" 
-                        data-bs-toggle="tooltip" 
-                        title="${tooltipText}">
-                    ${displayText}
-                 </span>`);
+                pill = $(`<span class="pill variable-pill" contenteditable="false" data-id="${serializedContent}" data-type="${variableData.Type || 'string'}" data-bs-toggle="tooltip" title="${variableData.Description}">${displayText}</span>`);
+            } else {
+                // Variable not found, create an invalid pill
+                pill = $(`<span class="pill invalid-pill" contenteditable="false" data-id="${serializedContent}" data-bs-toggle="tooltip" title="Variable ID '${serializedContent}' not found.">${serializedContent} (invalid)</span>`);
             }
-
-        } else {
-            // --- CASE 2: The variable is INVALID ---
-            pill = $(`<span class="pill invalid-pill" contenteditable="false" 
-                        data-id="${variableId}" 
-                        data-bs-toggle="tooltip" 
-                        title="Variable ID '${variableId}' not found.">
-                    ${variableId} (invalid)
-                 </span>`);
         }
 
-        return pill[0]; // Return the raw DOM element
+        return pill[0];
     }
 
     // --- Public API Methods ---
@@ -727,25 +898,23 @@ class CustomVariableInput {
      */
     setValue(textValue = '') {
         this.$editor.empty();
-        if (!textValue) return this._updatePlaceholder();
-
-        const regex = /(\{=\{([a-zA-Z0-9_.-]+)\}=\})/g;
-        let lastIndex = 0, match;
-
-        while ((match = regex.exec(textValue)) !== null) {
-            // Append text before the variable
-            this.$editor.append(document.createTextNode(textValue.substring(lastIndex, match.index)));
-
-            // --- USE THE NEW HELPER ---
-            const pillNode = this._createPillNode(match[2]);
-
-            this.$editor.append(pillNode);
-            new bootstrap.Tooltip(pillNode); // Initialize tooltip on the new node
-
-            lastIndex = regex.lastIndex;
+        if (!textValue) {
+            this._updatePlaceholder();
+            return;
         }
 
-        if (lastIndex < textValue.length) this.$editor.append(document.createTextNode(textValue.substring(lastIndex)));
+        const tokens = this._parseTopLevelVariables(textValue);
+
+        tokens.forEach(token => {
+            if (token.type === 'text' && token.content) {
+                this.$editor.append(document.createTextNode(token.content));
+            } else if (token.type === 'variable') {
+                const pillNode = this._createPillNode(token.content);
+                this.$editor.append(pillNode);
+                new bootstrap.Tooltip(pillNode); // Initialize tooltip
+            }
+        });
+
         this._updatePlaceholder();
     }
 
