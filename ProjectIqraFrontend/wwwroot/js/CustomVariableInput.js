@@ -611,12 +611,20 @@ class CustomVariableInput {
                         const argurmentName = $(argValueNode).data('arg-name');
                         var variableArgumentData = this._findVariableById(`${functionName}.${argurmentName}`);
                         if (variableArgumentData) {
-                            if (variableArgumentData.type === 'string') {
+                            if (variableArgumentData.type === 'string' || variableArgumentData.type === 'datetime') {
                                 var text = $(argValueNode).text()
                                     .replace(/\\/g, '\\\\') // IMPORTANT: escape backslashes FIRST
                                     .replace(/"/g, '\\"');
 
                                 args.push(`"${text}"`);
+                            }
+                            else if (variableArgumentData.type === 'number') {
+                                var parsedInt = parseInt($(argValueNode).text());
+                                args.push(parsedInt);
+                            }
+                            else if (variableArgumentData.type === 'boolean') {
+                                var parsedBool = $(argValueNode).text().toLowerCase() === 'true';
+                                args.push(parsedBool);
                             }
                             else {
                                 args.push($(argValueNode).text());
@@ -794,61 +802,67 @@ class CustomVariableInput {
             const functionName = funcMatch[1];
             const argsString = funcMatch[2];
 
-            let functionTitle = `${variableData.Description}`;
-            pill = $(`<span class="pill function-pill" contenteditable="false" data-id="${functionName}" data-type="function" data-bs-toggle="tooltip" data-bs-html="true" title="${functionTitle}"><span class="function-name">${variableData.Name}</span>(<span class="args-container"></span>)</span>`);
+            let functionTitle = `${variableData.Description}<br><br>Arguments:`;
+            pill = $(`<span class="pill function-pill" contenteditable="false" data-id="${functionName}" data-type="function" data-bs-toggle="tooltip" data-bs-html="true"><span class="function-name">${variableData.Name}</span>(<span class="args-container"></span>)</span>`);
             const $argsContainer = pill.find('.args-container');
 
             const parsedArgs = this._parseFunctionArgs(argsString);
 
-            parsedArgs.forEach((argContent, index) => {
-                const argDef = variableData.args[index];
-                if (!argDef) return;
+            variableData.args.forEach((argDef, index) => {
+                var argContent = parsedArgs[index] || 'undefined';
+
+                functionTitle += `<br>- ${argDef.name}: ${argDef.isLiteral ? `Value of type ${argDef.type}` : 'Requires type(s) ' + argDef.allowedTypes.join(', ')}`;
 
                 const nameLabel = `<span class="arg-name-label">${argDef.name}: </span>`;
                 $argsContainer.append(nameLabel);
 
-                if (argContent.startsWith('{={') && argContent.endsWith('}=}')) {
-                    const innerContent = argContent.slice(3, -3);
-                    const argPill = this._createPillNode(innerContent);
-                    new bootstrap.Tooltip(argPill);
-                    $argsContainer.append(argPill);
-                } else if (argContent === 'undefined') {
-                    let inputNode;
-                    if (argDef.isLiteral) {
-                        inputNode = $('<span>', { class: 'arg-input', contenteditable: 'true', 'data-arg-name': argDef.name });
+                if (argDef.isLiteral) {
+                    if (argContent === 'undefined') {
+                        let inputNode = $('<span>', { class: 'arg-input', contenteditable: 'true', 'data-arg-name': argDef.name });
+                        $argsContainer.append(inputNode);
                     }
                     else {
-                        inputNode = $('<span>', { class: 'arg-slot pill', contenteditable: 'false', 'data-arg-name': argDef.name, 'data-allowed-types': JSON.stringify(argDef.allowedTypes) }).text('...');
+                        let literalValue = argContent;
+                        if (literalValue.startsWith('"') && literalValue.endsWith('"')) {
+                            literalValue = literalValue
+                                .slice(1, -1)
+                                .replace(/\\"/g, '"')
+                                .replace(/\\\\/g, '\\');
+                        }
+                        const inputNode = $('<span>', { class: 'arg-input', contenteditable: 'true', 'data-arg-name': argDef.name }).text(literalValue);
+                        $argsContainer.append(inputNode);
                     }
-
-                    $argsContainer.append(inputNode);
-                } else {
-                    let literalValue = argContent;
-                    if (literalValue.startsWith('"') && literalValue.endsWith('"')) {
-                        literalValue = literalValue
-                            .slice(1, -1)
-                            .replace(/\\"/g, '"')
-                            .replace(/\\\\/g, '\\');
+                }
+                else {
+                    if (argContent.startsWith('{={') && argContent.endsWith('}=}')) {
+                        const innerContent = argContent.slice(3, -3);
+                        const argPill = this._createPillNode(innerContent);
+                        new bootstrap.Tooltip(argPill);
+                        $argsContainer.append(argPill);
                     }
-                    const inputNode = $('<span>', { class: 'arg-input', contenteditable: 'true', 'data-arg-name': argDef.name }).text(literalValue);
-                    $argsContainer.append(inputNode);
+                    else {
+                        let inputNode = $('<span>', { class: 'arg-slot pill', contenteditable: 'false', 'data-arg-name': argDef.name, 'data-allowed-types': JSON.stringify(argDef.allowedTypes) }).text('...');
+                        $argsContainer.append(inputNode);
+                    }
                 }
 
                 if (index < parsedArgs.length - 1) {
                     $argsContainer.append(',&nbsp;');
                 }
             });
+
+            pill.attr('title', functionTitle);
         }
         // --- CASE 2: The content is a FUNCTION ID ONLY (from _insertPill) ---
         else if (!funcMatch && variableData && variableData.Type === 'function') {
             let functionTitle = `${variableData.Description}<br><br>Arguments:`;
             const argsHtml = variableData.args.map(arg => {
-                functionTitle += `<br>- ${arg.name}: ${arg.isLiteral ? 'A literal value' : 'Requires type(s) ' + arg.allowedTypes.join(', ')}`;
+                functionTitle += `<br>- ${arg.name}: ${arg.isLiteral ? `Value of type ${arg.type}` : 'Requires type(s) ' + arg.allowedTypes.join(', ')}`;
                 const nameLabel = `<span class="arg-name-label">${arg.name}: </span>`;
 
                 if (arg.isLiteral) {
                     // Use default value from the variable definition
-                    const defaultValue = arg.defaultValue || '...';
+                    const defaultValue = arg.defaultValue || '';
                     return nameLabel + $('<span>', { class: 'arg-input', contenteditable: 'true', 'data-arg-name': arg.name }).text(defaultValue)[0].outerHTML;
                 } else {
                     // Create an empty slot
