@@ -119,6 +119,7 @@ class CustomVariableInput {
             e.stopPropagation();
             this._handleArgSlotClick($(e.currentTarget));
         });
+        this.$editor.on('cut', (e) => this._handleCopy(e));
         this.$editor.on('copy', (e) => this._handleCopy(e));
         this.$editor.on('paste', (e) => this._handlePaste(e));
         this.$editor.on('click', '.arg-input', (e) => {
@@ -530,6 +531,10 @@ class CustomVariableInput {
         // Use the Clipboard API to set the plain text data
         e.originalEvent.clipboardData.setData('text/plain', copiedText);
         e.preventDefault(); // Stop the browser from copying the HTML
+
+        if (e.type === 'cut') {
+            range.deleteContents();
+        }
     }
 
     _handlePaste(e) {
