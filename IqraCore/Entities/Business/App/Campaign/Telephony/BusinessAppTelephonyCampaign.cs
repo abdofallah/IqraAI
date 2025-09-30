@@ -12,5 +12,6 @@ namespace IqraCore.Entities.Business
         public BusinessAppTelephonyCampaignNumberRoute NumberRoute { get; set; } = new BusinessAppTelephonyCampaignNumberRoute();
         public BusinessAppTelephonyCampaignActions Actions { get; set; } = new BusinessAppTelephonyCampaignActions();
         public BusinessAppCampaignVariables Variables { get; set; } = new BusinessAppCampaignVariables();
+        public BusinessAppCampaignPostAnalysis PostAnalysis { get; set; } = new BusinessAppCampaignPostAnalysis();
     }
 }

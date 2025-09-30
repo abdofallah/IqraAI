@@ -36,6 +36,9 @@
                 <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="web-campaign-manager-variables-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-variables" type="button" role="tab" aria-controls="web-campaign-manager-variables" aria-selected="false">Variables</button>
                 </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="web-campaign-manager-post-analysis-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-post-analysis" type="button" role="tab" aria-controls="web-campaign-manager-post-analysis" aria-selected="false">Post Analysis</button>
+                </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="web-campaign-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#web-campaign-manager-actions" type="button" role="tab" aria-controls="web-campaign-manager-actions" aria-selected="false">Actions</button>
                 </li>
@@ -185,7 +188,6 @@
 
                 <!-- Configuration Tab -->
                 <div class="tab-pane fade w-100" id="web-campaign-manager-configuration" role="tabpanel" aria-labelledby="web-campaign-manager-configuration-tab" tabindex="0">
-                    <h5 class="mb-3">Timeouts</h5>
                     <div class="mb-3">
                         <label class="form-label" for="web-campaign-silence-notify-input">Notify on silence (ms)</label>
                         <input type="number" class="form-control" id="web-campaign-silence-notify-input" value="10000">
@@ -216,6 +218,25 @@
                             <span>Add Metadata</span>
                         </button>
                         <div id="webCampaignMetadataList">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Post Analysis Tab -->
+                <div class="tab-pane fade w-100" id="web-campaign-manager-post-analysis" role="tabpanel" aria-labelledby="web-campaign-manager-post-analysis-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="webCampaignPostAnalysisTemplateSelect">Post Analysis</label>
+                        <select class="form-select" id="webCampaignPostAnalysisTemplateSelect">
+                            <!-- Dynamically Generated -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label d-block">Context Variables</label>
+                        <button class="btn btn-light btn-sm m-0 mb-2" id="addWebCampaignPostAnalysisVariable" disabled>
+                            <span>Add Context Variable</span>
+                        </button>
+                        <div id="webCampaignPostAnalysisVariablesList">
+                            <!-- Dynamically Generated -->
                         </div>
                     </div>
                 </div>

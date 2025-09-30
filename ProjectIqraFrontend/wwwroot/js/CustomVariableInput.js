@@ -58,7 +58,7 @@ class CustomVariableInput {
                 <div class="editor-placeholder text-muted">${this.options.placeholder}</div>
                 <button class="btn btn-sm btn-outline-secondary variable-trigger-btn" type="button" 
                         data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                    <i class="bi bi-braces"></i>
+                    <i class="fa fa-brackets-curly"></i>
                 </button>
                 <div class="dropdown-menu variable-dropdown p-2 shadow-lg">
                     <input type="text" class="form-control form-control-sm mb-2 variable-search" placeholder="Search...">
@@ -937,6 +937,49 @@ class CustomVariableInput {
         });
 
         this._updatePlaceholder();
+    }
+
+    /**
+     * Validates the current state of the input.
+     * Checks for invalid variables/functions and missing function arguments.
+     * @returns {{isValidated: boolean, errors: string[]}} An object indicating validity and a list of error strings.
+     */
+    validate() {
+        const errors = [];
+
+        // 1. Check for invalid pills (variables or functions that don't exist in the schema)
+        this.$editor.find('.invalid-pill').each((index, element) => {
+            const $pill = $(element);
+            const invalidId = $pill.data('id');
+            errors.push(`The variable or function "${invalidId}" is not valid or does not exist.`);
+        });
+
+        // 2. Check for functions with missing arguments
+        this.$editor.find('.function-pill').each((index, element) => {
+            const $functionPill = $(element);
+            const functionData = this._findVariableById($functionPill.data('id'));
+            const functionName = functionData ? functionData.Name : $functionPill.data('id');
+
+            // 2a. Check for unfilled variable slots
+            $functionPill.find('.arg-slot').each((i, slot) => {
+                const $slot = $(slot);
+                const argName = $slot.data('arg-name');
+                errors.push(`Missing variable argument for "${argName}" in the function "${functionName}".`);
+            });
+
+            // 2b. Check for empty literal inputs
+            $functionPill.find('.arg-input').each((i, input) => {
+                const $input = $(input);
+                if ($input.text().trim() === '') {
+                    const argName = $input.data('arg-name');
+                    errors.push(`Missing literal value for argument "${argName}" in the function "${functionName}".`);
+                }
+            });
+        });
+
+        const isValidated = errors.length === 0;
+
+        return { isValidated, errors };
     }
 
     /**

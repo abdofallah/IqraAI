@@ -1,4 +1,94 @@
-﻿/** Dynamic Variables **/
+﻿/** Global Static Variables **/
+const webCampaignPostAnalysisContextVariableArguments = [
+    // Web Session Data
+    {
+        "id": "web_session_id",
+        "Name": "Web Session Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web session that the conversation belongs to"
+    },
+    {
+        "id": "web_session_created_at",
+        "Name": "Web Session Created At",
+        "Type": "datetime",
+        "group": "Web Session Data",
+        "Description": "Date and time when the web session was created"
+    },
+    {
+        "id": "web_session_status",
+        "Name": "Web Session Status",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Status of the web session"
+    },
+    {
+        "id": "web_session_web_campaign_id",
+        "Name": "Web Session Web Campaign Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web campaign the web session is configured with"
+    },
+    {
+        "id": "web_session_client_identifier",
+        "Name": "Web Session Client Identifier",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Unique identifier of the client the web session was initiated with"
+    },
+    {
+        "id": "web_session_dynamic_variables",
+        "Name": "Web Session Dynamic Variables",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Dynamic variables the web session was initiated with",
+    },
+    {
+        "id": "web_session_metadata",
+        "Name": "Web Session Metadata",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Metadata the web session was initiated with",
+    },
+    // Conversation Data
+    {
+        "id": "conversation_id",
+        "Name": "Conversation Id",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Id of the conversation"
+    },
+    {
+        "id": "conversation_start_time",
+        "Name": "Conversation Start Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was started"
+    },
+    {
+        "id": "conversation_end_type",
+        "Name": "Conversation End Type",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Type the conversation was ended with"
+    },
+    {
+        "id": "conversation_end_time",
+        "Name": "Conversation End Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was ended"
+    },
+    {
+        "id": "conversation_turns",
+        "Name": "Conversation Turns",
+        "Type": "object",
+        "group": "Conversation Data",
+        "Description": "Complete System/Agent/User turns data of the conversation"
+    }
+];
+
+/** Dynamic Variables **/
 let manageWebCampaignType = null; // 'new' or 'edit'
 let currentWebCampaignData = null;
 
@@ -8,6 +98,8 @@ let isSavingWebCampaign = false;
 
 const webCampaignsTooltipTriggerList = document.querySelectorAll('#web-campaigns-tab [data-bs-toggle="tooltip"]');
 [...webCampaignsTooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
+
+var webCampaignPostAnalysisContextVariablesCustomInput = {};
 
 /** Element Variables **/
 const webCampaignsTab = $("#web-campaigns-tab");
@@ -49,6 +141,11 @@ const addWebCampaignDynamicVariable = webCampaignsManagerView.find("#addWebCampa
 const webCampaignDynamicVariablesList = webCampaignsManagerView.find("#webCampaignDynamicVariablesList");
 const addWebCampaignMetadata = webCampaignsManagerView.find("#addWebCampaignMetadata");
 const webCampaignMetadataList = webCampaignsManagerView.find("#webCampaignMetadataList");
+
+// Post Analysis Tab
+const webCampaignPostAnalysisTemplateSelect = webCampaignsManagerView.find("#webCampaignPostAnalysisTemplateSelect");
+const addWebCampaignPostAnalysisVariable = webCampaignsManagerView.find("#addWebCampaignPostAnalysisVariable");
+const webCampaignPostAnalysisVariablesList = webCampaignsManagerView.find("#webCampaignPostAnalysisVariablesList");
 
 // Actions Tab
 const webCampaignActionsTab = webCampaignsManagerView.find("#web-campaign-manager-actions");
@@ -170,6 +267,10 @@ function createDefaultWebCampaignObject() {
             dynamicVariables: [],
             metadata: []
         },
+        postAnalysis: {
+            postAnalysisId: null,
+            contextVariables: null
+        },
         actions: {
             conversationInitiationFailureTool: {
                 toolId: null,
@@ -214,6 +315,19 @@ function resetWebCampaignManager() {
     // Variables Tab
     webCampaignDynamicVariablesList.empty();
     webCampaignMetadataList.empty();
+
+    // Post Analysis Tab
+    webCampaignPostAnalysisTemplateSelect.empty();
+    webCampaignPostAnalysisTemplateSelect.append('<option value="" selected>No Post Analysis</option>');
+    BusinessFullData.businessApp.postAnalysis.forEach((template) => {
+        webCampaignPostAnalysisTemplateSelect.append(`<option value="${template.id}">${template.general.name}</option>`);
+    });
+    addWebCampaignPostAnalysisVariable.prop("disabled", true);
+    webCampaignPostAnalysisVariablesList.empty();
+    Object.keys(webCampaignPostAnalysisContextVariablesCustomInput).forEach((customInputId) => {
+        webCampaignPostAnalysisContextVariablesCustomInput[customInputId].destroy();
+    });
+    webCampaignPostAnalysisContextVariablesCustomInput = {};
 
     // Actions
     const actionSelects = [
@@ -276,6 +390,30 @@ function fillWebCampaignManager() {
         const row = createWebCampaignVariableElement(metaData);
         webCampaignMetadataList.append(row);
     });
+
+    // Post Analysis
+    if (data.postAnalysis.templateId != null) {
+        webCampaignPostAnalysisTemplateSelect.val(data.postAnalysis.templateId).change();
+        data.postAnalysis.contextVariables.forEach((contextVariable) => {
+            const uniqueGuid = crypto.randomUUID();
+
+            const contextVariableElement = $(createWebCampaignPostAnalysisContextVariableElement(uniqueGuid, contextVariable));
+            webCampaignPostAnalysisVariablesList.append(contextVariableElement);
+
+            const customInput = new CustomVariableInput(
+                $(contextVariableElement.find('.variable-input-container')[0]),
+                webCampaignPostAnalysisContextVariableArguments,
+                {
+                    placeholder: "Enter information or {={variable}=} for post analysis context..."
+                }
+            );
+
+            webCampaignPostAnalysisContextVariablesCustomInput[uniqueGuid] = customInput;
+
+            customInput.setValue(contextVariable.value);
+        });
+    }
+    
 
     // Actions
     function fillWebActionTool(actionToolData, actionToolSelectElement) {
@@ -398,6 +536,48 @@ function checkWebCampaignChanges(enableDisableButton = true) {
         }
     }
 
+    function checkPostAnalysisTab() {
+        changes.postAnalysis = {};
+
+        let postAnalysisId = webCampaignPostAnalysisTemplateSelect.find("option:selected").val();
+        if (!postAnalysisId || postAnalysisId == "" || postAnalysisId == null) {
+            postAnalysisId = null;
+        }
+        changes.postAnalysis.postAnalysisId = postAnalysisId;
+        if (changes.postAnalysis.postAnalysisId != original.postAnalysis.postAnalysisId) {
+            hasChanges = true;
+        }
+
+        if (postAnalysisId == null) {
+            changes.postAnalysis.contextVariables = null;
+        }
+        else {
+            changes.postAnalysis.contextVariables = [];
+
+            webCampaignPostAnalysisVariablesList.children().each((i, contextVariableElement) => {
+                const dataId = $(contextVariableElement).attr("data-id");
+
+                const contextVariableData = {
+                    name: $(contextVariableElement).find('.campaign-post-analysis-context-variable-name').val() ?? "",
+                    description: $(contextVariableElement).find('.campaign-post-analysis-context-variable-description').val() ?? "",
+                    value: webCampaignPostAnalysisContextVariablesCustomInput[dataId].getValue() ?? ""
+                };
+
+                changes.postAnalysis.contextVariables.push(contextVariableData);
+            });
+        }        
+
+        if (postAnalysisId != null && original.postAnalysis.postAnalysisId != null) {
+            if (changes.postAnalysis.contextVariables.length != original.postAnalysis.contextVariables.length) {
+                hasChanges = true;
+            }
+
+            if (JSON.stringify(changes.postAnalysis.contextVariables) != JSON.stringify(original.postAnalysis.contextVariables)) {
+                hasChanges = true;
+            }
+        }
+    }
+
     function checkActionsTab() {
         function collectToolArguments(selectElement) {
             const args = {};
@@ -446,6 +626,7 @@ function checkWebCampaignChanges(enableDisableButton = true) {
     checkAgentTab();
     checkConfigurationTab();
     checkVariablesTab();
+    checkPostAnalysisTab();
     checkActionsTab();
 
     if (enableDisableButton) {
@@ -561,6 +742,47 @@ function validateWebCampaign(onlyRemove = true) {
         checkVariableList(webCampaignMetadataList, "Metadata");
     }
 
+    // Post Analysis
+    function validatePostAnalysisTab() {
+        let postAnalysisId = webCampaignPostAnalysisTemplateSelect.find("option:selected").val();
+        if (postAnalysisId && postAnalysisId != "" && postAnalysisId != null) {
+            webCampaignPostAnalysisVariablesList.children().each((i, contextVariableElement) => {
+                const nameInput = $(contextVariableElement).find('.campaign-post-analysis-context-variable-name');
+                const nameValue = nameInput.val();
+                if (!nameValue || nameValue == "" || nameValue == null) {
+                    validated = false;
+                    errors.push("Context variable name is required and can not be empty.");
+                    if (!onlyRemove) nameInput.addClass("is-invalid");
+                }
+                else {
+                    nameInput.removeClass("is-invalid");
+                }
+
+                const descriptionInput = $(contextVariableElement).find('.campaign-post-analysis-context-variable-description');
+                const descriptionValue = descriptionInput.val();
+                if (!descriptionValue || descriptionValue == "" || descriptionValue == null) {
+                    validated = false;
+                    errors.push("Context variable description is required and can not be empty.");
+                    if (!onlyRemove) descriptionInput.addClass("is-invalid");
+                }
+                else {
+                    descriptionInput.removeClass("is-invalid");
+                }
+
+                const dataId = $(contextVariableElement).attr("data-id");
+                const validationResult = webCampaignPostAnalysisContextVariablesCustomInput[dataId].validate();
+                if (!validationResult.validated) {
+                    validated = false;
+                    errors.push(validationResult.error);
+                    if (!onlyRemove) $(contextVariableElement).addClass("is-invalid");
+                }
+                else {
+                    $(contextVariableElement).removeClass("is-invalid");
+                }
+            });
+        } 
+    }
+
     // Actions
     function validateActionsTab() {
         function validateToolArguments($toolSelect, errorPrefix) {
@@ -587,6 +809,8 @@ function validateWebCampaign(onlyRemove = true) {
     validateGeneralTab();
     validateAgentTab();
     validateConfigurationTab();
+    validatePostAnalysisTab();
+    validateVariablesTab();
     validateActionsTab();
 
     return {
@@ -832,6 +1056,84 @@ function getWebCampaignVariablesList(variablesList) {
     return array;
 }
 
+// Post Analysis Tab Functions
+function createWebCampaignPostAnalysisContextVariableElement(id, data = null) {
+    return `
+        <div class="input-group mt-1 campaign-post-analysis-context-variable" data-id="${id}">
+          <div class="d-flex flex-column" style="width: -webkit-fill-available;">
+            <div class="input-group">
+                <input type="text" class="form-control campaign-post-analysis-context-variable-name" placeholder="Name" data-type="variable-name" style="max-width: 30%;" value="${data ? data.name : ""}">
+                <input type="text" class="form-control campaign-post-analysis-context-variable-description" placeholder="Description" data-type="variable-description" style="max-width: 70%;" value="${data ? data.description : ""}">
+            </div>
+            <div class="variable-input-container"></div>
+          </div>
+          <button class="btn btn-danger" type="button" button-type="remove-variable"><i class="fa-regular fa-trash"></i></button>
+        </div>
+    `;
+}
+
+function initWebCampaignPostAnalysisEventHandlers() {
+    webCampaignPostAnalysisTemplateSelect.on('change', (e) => {
+        const currentElement = $(e.currentTarget);
+
+        const currentSelectedOption = currentElement.find('option:selected');
+        const currentValue = currentSelectedOption.val();
+
+        if (!currentValue || currentValue == "") {
+            addWebCampaignPostAnalysisVariable.prop("disabled", true);
+            Object.keys(webCampaignPostAnalysisContextVariablesCustomInput).forEach((customInputId) => {
+                webCampaignPostAnalysisContextVariablesCustomInput[customInputId].destroy();
+            });;
+            webCampaignPostAnalysisVariablesList.empty();
+        }
+        else {
+            addWebCampaignPostAnalysisVariable.prop("disabled", false);
+        }
+
+        checkWebCampaignChanges();
+        validateWebCampaign(true);
+    });
+
+    addWebCampaignPostAnalysisVariable.on('click', (event) => {
+        event.preventDefault();
+
+        const uniqueId = crypto.randomUUID();
+
+        const contextVariableElement = $(createWebCampaignPostAnalysisContextVariableElement(uniqueId, null));
+        webCampaignPostAnalysisVariablesList.append(contextVariableElement);
+
+        const customInput = new CustomVariableInput(
+            $(contextVariableElement.find('.variable-input-container')[0]),
+            webCampaignPostAnalysisContextVariableArguments,
+            {
+                placeholder: "Enter information or {={variable}=} for post analysis context..."
+            }
+        );
+
+        webCampaignPostAnalysisContextVariablesCustomInput[uniqueId] = customInput;
+
+        checkWebCampaignChanges();
+        validateWebCampaign(true);
+    });
+
+    webCampaignPostAnalysisVariablesList.on('click', '.btn[button-type="remove-variable"]', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const currentElement = $(event.currentTarget);
+        const parentContainer = currentElement.closest('.campaign-post-analysis-context-variable');
+        const parentId = parentContainer.attr('data-id');
+
+        webCampaignPostAnalysisContextVariablesCustomInput[parentId].destroy();
+        delete webCampaignPostAnalysisContextVariablesCustomInput[parentId];
+
+        parentContainer.remove();
+
+        checkWebCampaignChanges();
+        validateWebCampaign(true);
+    });
+}
+
 // Actions Tab Functions
 function handleWebCampaignActionToolChange(event) {
     const selectElement = $(event.currentTarget);
@@ -1068,6 +1370,7 @@ function initWebCampaignsTab() {
         // Init All Handlers
         initWebAgentEventHandlers();
         initWebCampaignVariablesEventHandlers();
+        initWebCampaignPostAnalysisEventHandlers();
         initWebActionsEventHandlers();
 
         // Initial population

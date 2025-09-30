@@ -2352,3 +2352,149 @@ table.table > thead > * > * {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
+
+/**
+
+ Custom Variable Input
+
+**/
+
+.custom-variable-input-wrapper .form-control[contenteditable] {
+    min-height: calc(1.5em + 0.75rem + 2px);
+    height: auto;
+}
+
+.custom-variable-input-wrapper .editor-placeholder {
+    position: absolute;
+    top: calc(50% - 12px);
+    left: 0.75rem;
+    pointer-events: none;
+    user-select: none;
+}
+
+.custom-variable-input-wrapper .variable-trigger-btn {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    z-index: 5;
+}
+
+.custom-variable-input-wrapper .variable-dropdown {
+    width: 300px;
+}
+
+.custom-variable-input-wrapper .variable-list {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.custom-variable-input-wrapper .pill {
+    display: inline-block;
+    padding: 0.1rem 0.6rem;
+    font-size: 0.85em;
+    font-weight: 500;
+    line-height: 1.5;
+    border-radius: 1rem;
+    margin: 0 2px;
+    user-select: none;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.custom-variable-input-wrapper .pill.is-selected {
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0a58ca;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+.custom-variable-input-wrapper .variable-pill {
+    background-color: #e0eafc;
+    color: #4a6dbd;
+    border: 1px solid #a8bdf0;
+}
+
+.custom-variable-input-wrapper .invalid-pill {
+    background-color: #f8d7da;
+    color: #842029;
+    border: 1px solid #f5c2c7;
+    text-decoration: line-through;
+}
+
+.custom-variable-input-wrapper .function-pill {
+    background-color: #d1ecdf;
+    color: #2c6e49;
+    border: 1px solid #a3d9b8;
+    padding: 0.2rem 0.2rem 0.2rem 0.6rem;
+}
+
+.custom-variable-input-wrapper .function-pill .function-name {
+    font-weight: bold;
+    margin-right: 2px;
+}
+
+.custom-variable-input-wrapper .function-pill .args-container {
+    display: inline-block;
+}
+
+.custom-variable-input-wrapper .function-pill .arg-slot {
+    background-color: rgba(255, 255, 255, 0.7);
+    border: 1px dashed #6c757d;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 0.9em;
+}
+
+.custom-variable-input-wrapper .function-pill .arg-slot:hover {
+    background-color: #fff;
+    border-color: #0d6efd;
+    color: #0d6efd;
+}
+
+.custom-variable-input-wrapper .function-pill .arg-name-label {
+    font-size: 0.8em;
+    color: #555;
+    font-weight: bold;
+}
+
+.custom-variable-input-wrapper .function-pill .arg-input {
+    display: inline-block;
+    background: none;
+    border: none;
+    border-bottom: 1px dashed #6c757d;
+    outline: none;
+    color: #2c6e49;
+    min-width: 80px;
+    text-align: center;
+    user-select: text;
+}
+
+.custom-variable-input-wrapper .function-pill .arg-input:focus {
+    border-bottom: 1px solid #0d6efd;
+}
+
+/** Campaigns Context Variables **/
+.campaign-post-analysis-context-variable
+{
+	flex-wrap: nowrap;
+}
+
+.campaign-post-analysis-context-variable .campaign-post-analysis-context-variable-name
+{
+	border-bottom-left-radius: 0px;
+}
+
+.campaign-post-analysis-context-variable .campaign-post-analysis-context-variable-description
+{
+	border-top-right-radius: 0px;
+	border-bottom-right-radius: 0px;
+}
+
+.campaign-post-analysis-context-variable .variable-input-container .editor-area.form-control {
+	border-top-left-radius: 0px;
+	border-top-right-radius: 0px;
+	border-top: 0px !important;
+}
