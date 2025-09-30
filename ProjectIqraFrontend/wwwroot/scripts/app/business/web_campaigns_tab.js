@@ -85,6 +85,13 @@ const webCampaignPostAnalysisContextVariableArguments = [
         "Type": "object",
         "group": "Conversation Data",
         "Description": "Complete System/Agent/User turns data of the conversation"
+    },
+    {
+        "id": "conversation_turns_simplified",
+        "Name": "Conversation Turns Simplified",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Simplified & already compiled `<role>: <content>` string of Conversations Turns"
     }
 ];
 
@@ -392,8 +399,8 @@ function fillWebCampaignManager() {
     });
 
     // Post Analysis
-    if (data.postAnalysis.templateId != null) {
-        webCampaignPostAnalysisTemplateSelect.val(data.postAnalysis.templateId).change();
+    if (data.postAnalysis.postAnalysisId != null) {
+        webCampaignPostAnalysisTemplateSelect.val(data.postAnalysis.postAnalysisId).change();
         data.postAnalysis.contextVariables.forEach((contextVariable) => {
             const uniqueGuid = crypto.randomUUID();
 
@@ -404,7 +411,11 @@ function fillWebCampaignManager() {
                 $(contextVariableElement.find('.variable-input-container')[0]),
                 webCampaignPostAnalysisContextVariableArguments,
                 {
-                    placeholder: "Enter information or {={variable}=} for post analysis context..."
+                    placeholder: "Enter information or {={variable}=} for post analysis context...",
+                    onValueChange: () => {
+                        checkWebCampaignChanges();
+                        validateWebCampaign(true);
+                    }
                 }
             );
 
@@ -412,8 +423,7 @@ function fillWebCampaignManager() {
 
             customInput.setValue(contextVariable.value);
         });
-    }
-    
+    }   
 
     // Actions
     function fillWebActionTool(actionToolData, actionToolSelectElement) {
@@ -647,7 +657,6 @@ function validateWebCampaign(onlyRemove = true) {
 
     const errors = [];
     let validated = true;
-    webCampaignsManagerView.find('.is-invalid').removeClass('is-invalid');
 
     // General
     function validateGeneralTab() {
@@ -656,10 +665,17 @@ function validateWebCampaign(onlyRemove = true) {
             errors.push("Campaign name is required.");
             if (!onlyRemove) webCampaignNameInput.addClass('is-invalid');
         }
+        else {
+            webCampaignNameInput.removeClass('is-invalid');
+        }
+
         if (!webCampaignDescriptionInput.val().trim()) {
             validated = false;
             errors.push("Campaign description is required.");
             if (!onlyRemove) webCampaignDescriptionInput.addClass('is-invalid');
+        }
+        else {
+            webCampaignDescriptionInput.removeClass('is-invalid');
         }
     }
 
@@ -670,20 +686,35 @@ function validateWebCampaign(onlyRemove = true) {
             errors.push("An agent must be selected.");
             if (!onlyRemove) webCampaignAgentNameInput.addClass('is-invalid');
         }
+        else {
+            webCampaignAgentNameInput.removeClass('is-invalid');
+        }
+
         if (!webCampaignAgentScriptSelect.val()) {
             validated = false;
             errors.push("An opening script is required.");
             if (!onlyRemove) webCampaignAgentScriptSelect.addClass('is-invalid');
         }
+        else {
+            webCampaignAgentScriptSelect.removeClass('is-invalid');
+        }
+
         if (!webCampaignAgentLanguageSelect.val()) {
             validated = false;
             errors.push("A language must be selected.");
             if (!onlyRemove) webCampaignAgentLanguageSelect.addClass('is-invalid');
         }
+        else {
+            webCampaignAgentLanguageSelect.removeClass('is-invalid');
+        }
+
         if (!webCampaignAgentTimezoneSelect.val()) {
             validated = false;
             errors.push("A timezone must be selected.");
             if (!onlyRemove) webCampaignAgentTimezoneSelect.addClass('is-invalid');
+        }
+        else {
+            webCampaignAgentTimezoneSelect.removeClass('is-invalid');
         }
     }
 
@@ -695,18 +726,30 @@ function validateWebCampaign(onlyRemove = true) {
             errors.push("Notify on silence must be a valid number.");
             if (!onlyRemove) webCampaignSilenceNotifyInput.addClass("is-invalid");
         }
+        else {
+            webCampaignSilenceNotifyInput.removeClass("is-invalid");
+        }
+
         const silenceEndValue = parseInt(webCampaignSilenceEndInput.val());
         if (isNaN(silenceEndValue) || silenceEndValue < 0) {
             validated = false;
             errors.push("End conversation on silence must be a valid number.");
             if (!onlyRemove) webCampaignSilenceEndInput.addClass("is-invalid");
         }
+        else {
+            webCampaignSilenceEndInput.removeClass("is-invalid");
+        }
+
         const maxConvoTimeValue = parseInt(webCampaignMaxConversationTimeInput.val());
         if (isNaN(maxConvoTimeValue) || maxConvoTimeValue < 0) {
             validated = false;
             errors.push("Max conversation time must be a valid number.");
             if (!onlyRemove) webCampaignMaxConversationTimeInput.addClass("is-invalid");
         }
+        else {
+            webCampaignMaxConversationTimeInput.removeClass("is-invalid");
+        }
+
     }
 
     // Variables
@@ -732,6 +775,7 @@ function validateWebCampaign(onlyRemove = true) {
                         if (!onlyRemove) variableKeyElement.addClass('is-invalid');
                     }
                     else {
+                        variableKeyElement.removeClass('is-invalid');
                         currentAddedKeys.push(variableKey);
                     }
                 }
@@ -769,15 +813,24 @@ function validateWebCampaign(onlyRemove = true) {
                     descriptionInput.removeClass("is-invalid");
                 }
 
+                const variableInputEditor = $(contextVariableElement).find('.variable-input-container .editor-area.form-control').first();
                 const dataId = $(contextVariableElement).attr("data-id");
                 const validationResult = webCampaignPostAnalysisContextVariablesCustomInput[dataId].validate();
-                if (!validationResult.validated) {
+                if (!validationResult.isValidated) {
                     validated = false;
-                    errors.push(validationResult.error);
-                    if (!onlyRemove) $(contextVariableElement).addClass("is-invalid");
+                    errors.push(validationResult.errors);
+                    if (!onlyRemove) variableInputEditor.addClass("is-invalid");
                 }
                 else {
-                    $(contextVariableElement).removeClass("is-invalid");
+                    var variableValue = webCampaignPostAnalysisContextVariablesCustomInput[dataId].getValue();
+                    if (!variableValue || variableValue == "" || variableValue == null) {
+                        validated = false;
+                        errors.push("Context variable value is required and can not be empty.");
+                        if (!onlyRemove) variableInputEditor.addClass("is-invalid");
+                    }
+                    else {
+                        variableInputEditor.removeClass("is-invalid");
+                    }
                 }
             });
         } 
@@ -1106,7 +1159,11 @@ function initWebCampaignPostAnalysisEventHandlers() {
             $(contextVariableElement.find('.variable-input-container')[0]),
             webCampaignPostAnalysisContextVariableArguments,
             {
-                placeholder: "Enter information or {={variable}=} for post analysis context..."
+                placeholder: "Enter information or {={variable}=} for post analysis context...",
+                onValueChange: () => {
+                    checkWebCampaignChanges();
+                    validateWebCampaign(true);
+                }
             }
         );
 

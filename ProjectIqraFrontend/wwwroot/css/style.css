@@ -2496,5 +2496,14 @@ table.table > thead > * > * {
 .campaign-post-analysis-context-variable .variable-input-container .editor-area.form-control {
 	border-top-left-radius: 0px;
 	border-top-right-radius: 0px;
-	border-top: 0px !important;
+}
+
+.campaign-post-analysis-context-variable .variable-input-container .editor-area.form-control:not(:focus)
+{
+	border-top-width: 0px !important;
+}
+
+.campaign-post-analysis-context-variable .variable-input-container .editor-area.form-control.is-invalid
+{
+	border-top-width: var(--bs-border-width) !important;
 }

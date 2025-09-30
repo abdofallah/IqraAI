@@ -37,10 +37,13 @@
                     <button class="nav-link" id="telephony-campaign-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-configuration" type="button" role="tab" aria-controls="telephony-campaign-manager-configuration" aria-selected="false">Configuration</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="telephony-campaign-manager-voicemail-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-voicemail" type="button" role="tab" aria-controls="telephony-campaign-manager-voicemail" aria-selected="false">Voicemail Detection</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="telephony-campaign-manager-variables-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-variables" type="button" role="tab" aria-controls="telephony-campaign-manager-variables" aria-selected="false">Variables</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link" id="telephony-campaign-manager-voicemail-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-voicemail" type="button" role="tab" aria-controls="telephony-campaign-manager-voicemail" aria-selected="false">Voicemail Detection</button>
+                    <button class="nav-link" id="telephony-campaign-manager-post-analysis-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-post-analysis" type="button" role="tab" aria-controls="telephony-campaign-manager-post-analysis" aria-selected="false">Post Analysis</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="telephony-campaign-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#telephony-campaign-manager-actions" type="button" role="tab" aria-controls="telephony-campaign-manager-actions" aria-selected="false">Actions</button>
@@ -305,27 +308,7 @@
                         <input type="number" class="form-control" id="telephony-campaign-max-call-time-input" value="600">
                     </div>
                 </div>
-
-                <!-- Variables Tab -->
-                <div class="tab-pane fade w-100" id="telephony-campaign-manager-variables" role="tabpanel" aria-labelledby="telephony-campaign-manager-variables-tab" tabindex="0">
-                    <div class="mb-3">
-                        <label class="form-label d-block">Dynamic Variables</label>
-                        <button class="btn btn-light btn-sm m-0 mb-2" id="addTelephonyCampaignDynamicVariable">
-                            <span>Add Dynamic Variable</span>
-                        </button>
-                        <div id="telephonyCampaignDynamicVariablesList">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="form-label d-block">Metadata</label>
-                        <button class="btn btn-light btn-sm m-0 mb-2" id="addTelephonyCampaignMetadata">
-                            <span>Add Metadata</span>
-                        </button>
-                        <div id="telephonyCampaignMetadataList">
-                        </div>
-                    </div>
-                </div>
-
+         
                 <!-- Voicemail Detection Tab -->
                 <div class="tab-pane fade w-100" id="telephony-campaign-manager-voicemail" role="tabpanel" aria-labelledby="telephony-campaign-manager-voicemail-tab" tabindex="0">
                     <div class="card card-body mb-4">
@@ -436,6 +419,45 @@
                                     <textarea class="form-control" id="telephony-campaign-voicemail-message-to-leave-textarea" rows="3" placeholder="Enter message..."></textarea>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Variables Tab -->
+                <div class="tab-pane fade w-100" id="telephony-campaign-manager-variables" role="tabpanel" aria-labelledby="telephony-campaign-manager-variables-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label d-block">Dynamic Variables</label>
+                        <button class="btn btn-light btn-sm m-0 mb-2" id="addTelephonyCampaignDynamicVariable">
+                            <span>Add Dynamic Variable</span>
+                        </button>
+                        <div id="telephonyCampaignDynamicVariablesList">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label d-block">Metadata</label>
+                        <button class="btn btn-light btn-sm m-0 mb-2" id="addTelephonyCampaignMetadata">
+                            <span>Add Metadata</span>
+                        </button>
+                        <div id="telephonyCampaignMetadataList">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Post Analysis Tab -->
+                <div class="tab-pane fade w-100" id="telephony-campaign-manager-post-analysis" role="tabpanel" aria-labelledby="telephony-campaign-manager-post-analysis-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="telephonyCampaignPostAnalysisTemplateSelect">Post Analysis</label>
+                        <select class="form-select" id="telephonyCampaignPostAnalysisTemplateSelect">
+                            <!-- Dynamically Generated -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label d-block">Context Variables</label>
+                        <button class="btn btn-light btn-sm m-0 mb-2" id="addTelephonyCampaignPostAnalysisVariable" disabled>
+                            <span>Add Context Variable</span>
+                        </button>
+                        <div id="telephonyCampaignPostAnalysisVariablesList">
+                            <!-- Dynamically Generated -->
                         </div>
                     </div>
                 </div>

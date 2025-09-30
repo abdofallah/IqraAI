@@ -105,7 +105,10 @@ class CustomVariableInput {
 
             this._updatePlaceholder()
         });
-        this.$editor.on('input', (e) => this._handleTriggerSequence(e));
+        this.$editor.on('input', (e) => {
+            this._handleTriggerSequence(e);
+            this._triggerValueChange();
+        });
         this.$editor.on('keydown', (e) => {
             this._handlePillDeletion(e);
             this._handleObjectPathTriggerKey(e);
@@ -124,6 +127,7 @@ class CustomVariableInput {
         this.$editor.on('paste', (e) => this._handlePaste(e));
         this.$editor.on('click', '.arg-input', (e) => {
             e.stopPropagation(); // Prevent this click from bubbling up to the wrapper
+            this._triggerValueChange();
         });
 
         // --- Dropdown Events ---
@@ -297,6 +301,7 @@ class CustomVariableInput {
         sel.removeAllRanges();
         sel.addRange(range);
         this._updatePlaceholder();
+        this._triggerValueChange();
     }
 
     // --- Private Event Handlers ---
@@ -354,6 +359,7 @@ class CustomVariableInput {
                 if ($parentPill.length) {
                     e.preventDefault();
                     $parentPill.remove();
+                    this._triggerValueChange();
                     return; // Exit after handling
                 }
                 nodeToDelete = range.startContainer.previousSibling;
@@ -367,6 +373,7 @@ class CustomVariableInput {
             if (nodeToDelete && $(nodeToDelete).hasClass('pill')) {
                 e.preventDefault();
                 $(nodeToDelete).remove();
+                this._triggerValueChange();
             }
         }
         // You can add similar robust logic for the 'Delete' key if needed
@@ -508,6 +515,7 @@ class CustomVariableInput {
         parentPill.data('id', newId).data('type', variableData.Type || 'string').text(`${parentName} . ${variableData.Name}`).attr('title', variableData.Description);
         this.activePillForPath = null;
         this._populateDropdown();
+        this._triggerValueChange();
     }
 
     _fillArgumentSlot(variableData) {
@@ -516,6 +524,7 @@ class CustomVariableInput {
         new bootstrap.Tooltip(pillNode);
         this.activeArgSlot = null;
         this._populateDropdown();
+        this._triggerValueChange();
     }
 
     _handleCopy(e) {
@@ -550,6 +559,12 @@ class CustomVariableInput {
         const range = sel.getRangeAt(0);
         range.deleteContents();
         range.insertNode(fragment);
+    }
+
+    _triggerValueChange() {
+        if (typeof this.options.onValueChange === 'function') {
+            this.options.onValueChange();
+        }
     }
 
     // --- Private Utility Methods ---
@@ -937,6 +952,7 @@ class CustomVariableInput {
         });
 
         this._updatePlaceholder();
+        this._triggerValueChange();
     }
 
     /**

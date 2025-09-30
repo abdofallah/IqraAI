@@ -1,9 +1,9 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.Campaign;
 using IqraCore.Entities.Helper.Call.Outbound;
-using IqraCore.Entities.Helper.Campaign;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
+using IqraInfrastructure.Helpers;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
@@ -18,6 +18,53 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
         private readonly IntegrationConfigurationManager _integrationConfigurationManager;
+
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> TelephonyCampaginPostAnalysisContextVariableArguementsList = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Call Queue Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_session_id", Name = "Call Queue Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_dynamic_variables", Name = "Call Queue Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_metadata", Name = "Call Queue Metadata", Type = VariableType.Object },
+
+            // --- Conversation Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
+        };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> WebCampaginPostAnalysisContextVariableArguementsList = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Web Session Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_created_at", Name = "Web Session Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_web_campaign_id", Name = "Web Session Web Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_client_identifier", Name = "Web Session Client Identifier", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_dynamic_variables", Name = "Web Session Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_metadata", Name = "Web Session Metadata", Type = VariableType.Object },
+
+            // --- Conversation Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String }, 
+        };
 
         public BusinessCampaignManager(
             BusinessManager businessManager,
@@ -376,6 +423,68 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     newBusinessAppCampaignData.Configuration.Timeouts.MaxCallTimeS = maxCallTime;
+                }
+
+                // Number Route Tab
+                if (!changes.RootElement.TryGetProperty("numberRoute", out var numberRouteProperty) || numberRouteProperty.ValueKind != JsonValueKind.Object)
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTelephonyCampaignAsync:NUMBER_ROUTE_TAB_NOT_FOUND",
+                        "Number Route not found."
+                    );
+                }
+                else
+                {
+                    if (!numberRouteProperty.TryGetProperty("defaultNumberId", out var defaultNumberIdProperty) || string.IsNullOrWhiteSpace(defaultNumberIdProperty.GetString()))
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTelephonyCampaignAsync:DEFAULT_NUMBER_ID_NOT_FOUND",
+                            "Default number id not found or invalid."
+                        );
+                    }
+                    var defaultNumberIdValue = defaultNumberIdProperty.GetString()!;
+                    if (!businessNumbers.Any(x => x.Id == defaultNumberIdValue))
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTelephonyCampaignAsync:DEFAULT_NUMBER_ID_NOT_FOUND_IN_BUSINESS",
+                            "Default number id not found in business numbers list."
+                        );
+                    }
+                    newBusinessAppCampaignData.NumberRoute.DefaultNumberId = defaultNumberIdValue;
+
+                    if (!numberRouteProperty.TryGetProperty("routeNumberList", out var routeNumberListProperty) || routeNumberListProperty.ValueKind != JsonValueKind.Object)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_NOT_FOUND",
+                            "Route number list not found or invalid."
+                        );
+                    }
+                    foreach (var routeNumberItem in routeNumberListProperty.EnumerateObject())
+                    {
+                        var routeNumberValue = routeNumberItem.Value.GetString();
+                        if (string.IsNullOrEmpty(routeNumberItem.Name) || string.IsNullOrWhiteSpace(routeNumberValue))
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_ITEM_INVALID",
+                                $"Route number list item is invalid for country code route '{routeNumberItem.Name}'."
+                            );
+                        }
+                        if (PhoneNumberUtil.GetInstance().GetCountryCodeForRegion(routeNumberItem.Name) == 0)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_ITEM_REGION_CODE_INVALID",
+                                $"Route number list item region code is invalid for country code route '{routeNumberItem.Name}'."
+                            );
+                        }
+                        if (!businessNumbers.Any(x => x.Id == routeNumberValue))
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_ITEM_NOT_FOUND_IN_BUSINESS",
+                                $"Route number list item not found for country code route {routeNumberItem.Name}."
+                            );
+                        }
+                        newBusinessAppCampaignData.NumberRoute.RouteNumberList.Add(routeNumberItem.Name, routeNumberValue);
+                    }
                 }
 
                 // Variables Tab
@@ -779,67 +888,98 @@ namespace IqraInfrastructure.Managers.Business
                     newBusinessAppCampaignData.VoicemailDetection = voicemailData;
                 }
 
-                // Number Route Tab
-                if (!changes.RootElement.TryGetProperty("numberRoute", out var numberRouteProperty) || numberRouteProperty.ValueKind != JsonValueKind.Object)
+                // Post Analysis Tab
+                if (!changes.RootElement.TryGetProperty("postAnalysis", out var postAnalysisElement))
                 {
                     return result.SetFailureResult(
-                        "AddOrUpdateTelephonyCampaignAsync:NUMBER_ROUTE_TAB_NOT_FOUND",
-                        "Number Route not found."
+                        "AddOrUpdateTelephonyCampaignAsync:POST_ANALYSIS_TAB_NOT_FOUND",
+                        "Post analysis tab not found."
                     );
                 }
                 else
                 {
-                    if (!numberRouteProperty.TryGetProperty("defaultNumberId", out var defaultNumberIdProperty) || string.IsNullOrWhiteSpace(defaultNumberIdProperty.GetString()))
+                    if (!postAnalysisElement.TryGetProperty("postAnalysisId", out var postAnalysisIdValue)
+                        || (postAnalysisIdValue.ValueKind != JsonValueKind.String && postAnalysisIdValue.ValueKind != JsonValueKind.Null)
+                        || (postAnalysisIdValue.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(postAnalysisIdValue.GetString()))
+                    )
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:DEFAULT_NUMBER_ID_NOT_FOUND",
-                            "Default number id not found or invalid."
+                            "AddOrUpdateTelephonyCampaignAsync:POST_ANALYSIS_TEMPLATE_ID_NOT_FOUND",
+                            "Post analysis 'postAnalysisId' not found or invalid."
                         );
                     }
-                    var defaultNumberIdValue = defaultNumberIdProperty.GetString()!;
-                    if (!businessNumbers.Any(x => x.Id == defaultNumberIdValue))
-                    {
-                        return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:DEFAULT_NUMBER_ID_NOT_FOUND_IN_BUSINESS",
-                            "Default number id not found in business numbers list."
-                        );
-                    }
-                    newBusinessAppCampaignData.NumberRoute.DefaultNumberId = defaultNumberIdValue;
 
-                    if (!numberRouteProperty.TryGetProperty("routeNumberList", out var routeNumberListProperty) || routeNumberListProperty.ValueKind != JsonValueKind.Object)
+                    if (postAnalysisIdValue.ValueKind == JsonValueKind.String)
                     {
-                        return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_NOT_FOUND",
-                            "Route number list not found or invalid."
-                        );
-                    }
-                    foreach (var routeNumberItem in routeNumberListProperty.EnumerateObject())
-                    {
-                        var routeNumberValue = routeNumberItem.Value.GetString();
-                        if (string.IsNullOrEmpty(routeNumberItem.Name) || string.IsNullOrWhiteSpace(routeNumberValue))
+                        newBusinessAppCampaignData.PostAnalysis.PostAnalysisId = postAnalysisIdValue.GetString()!;
+
+                        if (!postAnalysisElement.TryGetProperty("contextVariables", out var contextVariablesElement) ||
+                            contextVariablesElement.ValueKind != JsonValueKind.Array)
                         {
                             return result.SetFailureResult(
-                                "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_ITEM_INVALID",
-                                $"Route number list item is invalid for country code route '{routeNumberItem.Name}'."
+                                "AddOrUpdateTelephonyCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLES_NOT_FOUND",
+                                "Post analysis 'contextVariables' not found or not an array."
                             );
                         }
-                        if (PhoneNumberUtil.GetInstance().GetCountryCodeForRegion(routeNumberItem.Name) == 0)
+                        else
                         {
-                            return result.SetFailureResult(
-                                "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_ITEM_REGION_CODE_INVALID",
-                                $"Route number list item region code is invalid for country code route '{routeNumberItem.Name}'."
-                            );
+                            newBusinessAppCampaignData.PostAnalysis.ContextVariables = new List<BusinessAppCampaignPostAnalysisContextVariable>();
+
+                            foreach (var contextVariableElement in contextVariablesElement.EnumerateArray())
+                            {
+                                var contextVariable = new BusinessAppCampaignPostAnalysisContextVariable();
+
+                                if (!contextVariableElement.TryGetProperty("name", out var nameElement) ||
+                                    nameElement.ValueKind != JsonValueKind.String ||
+                                    string.IsNullOrWhiteSpace(nameElement.GetString())
+                                )
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLE_NAME_NOT_FOUND",
+                                        "Post analysis context variable 'name' not found or invalid."
+                                    );
+                                }
+                                contextVariable.Name = nameElement.GetString()!;
+
+                                if (!contextVariableElement.TryGetProperty("description", out var descriptionElement) ||
+                                    descriptionElement.ValueKind != JsonValueKind.String ||
+                                    string.IsNullOrWhiteSpace(descriptionElement.GetString())
+                                )
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLE_DESCRIPTION_NOT_FOUND",
+                                        "Post analysis context variable 'description' not found or invalid."
+                                    );
+                                }
+                                contextVariable.Description = descriptionElement.GetString()!;
+
+                                if (!contextVariableElement.TryGetProperty("value", out var valueElement) ||
+                                    valueElement.ValueKind != JsonValueKind.String ||
+                                    string.IsNullOrWhiteSpace(valueElement.GetString())
+                                )
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLE_VALUE_NOT_FOUND",
+                                        "Post analysis context variable 'value' not found or invalid."
+                                    );
+                                }
+                                contextVariable.Value = valueElement.GetString()!;
+
+                                var valueTemplateValidation = CustomVariableInputTemplateValidator.Validate(contextVariable.Value, TelephonyCampaginPostAnalysisContextVariableArguementsList);
+                                if (!valueTemplateValidation.IsValid)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLE_VALUE_INVALID",
+                                        $"Post analysis context variable 'value' is invalid:\n\n{string.Join("\n", valueTemplateValidation.Errors)}"
+                                    );
+                                }
+
+                                newBusinessAppCampaignData.PostAnalysis.ContextVariables.Add(contextVariable);
+                            }
                         }
-                        if (!businessNumbers.Any(x => x.Id == routeNumberValue))
-                        {
-                            return result.SetFailureResult(
-                                "AddOrUpdateTelephonyCampaignAsync:ROUTE_NUMBER_LIST_ITEM_NOT_FOUND_IN_BUSINESS",
-                                $"Route number list item not found for country code route {routeNumberItem.Name}."
-                            );
-                        }
-                        newBusinessAppCampaignData.NumberRoute.RouteNumberList.Add(routeNumberItem.Name, routeNumberValue);
                     }
                 }
+
 
                 // Telephony Actions Tab
                 if (!changes.RootElement.TryGetProperty("actions", out var telephonyActionsTabRootElement))
@@ -1179,6 +1319,94 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
+                // Post Analysis Tab
+                if (!changes.RootElement.TryGetProperty("postAnalysis", out var postAnalysisElement))
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateWebCampaignAsync:POST_ANALYSIS_TAB_NOT_FOUND",
+                        "Post analysis tab not found."
+                    );
+                }
+                else
+                {
+                    if (!postAnalysisElement.TryGetProperty("postAnalysisId", out var postAnalysisIdValue)
+                        || (postAnalysisIdValue.ValueKind != JsonValueKind.String && postAnalysisIdValue.ValueKind != JsonValueKind.Null)
+                        || (postAnalysisIdValue.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(postAnalysisIdValue.GetString()))
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateWebCampaignAsync:POST_ANALYSIS_TEMPLATE_ID_NOT_FOUND",
+                            "Post analysis 'postAnalysisId' not found or invalid."
+                        );
+                    }
+
+                    if (postAnalysisIdValue.ValueKind == JsonValueKind.String)
+                    {
+                        newBusinessAppCampaignData.PostAnalysis.PostAnalysisId = postAnalysisIdValue.GetString()!;
+
+                        if (!postAnalysisElement.TryGetProperty("contextVariables", out var contextVariablesElement) ||
+                            contextVariablesElement.ValueKind != JsonValueKind.Array)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateWebCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLES_NOT_FOUND",
+                                "Post analysis 'contextVariables' not found or not an array."
+                            );
+                        }
+                        else
+                        {
+                            newBusinessAppCampaignData.PostAnalysis.ContextVariables = new List<BusinessAppCampaignPostAnalysisContextVariable>();
+
+                            foreach (var contextVariableElement in contextVariablesElement.EnumerateArray())
+                            {
+                                var contextVariable = new BusinessAppCampaignPostAnalysisContextVariable();
+
+                                if (!contextVariableElement.TryGetProperty("name", out var nameElement) ||
+                                    nameElement.ValueKind != JsonValueKind.String ||
+                                    string.IsNullOrWhiteSpace(nameElement.GetString())
+                                ) {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLE_NAME_NOT_FOUND",
+                                        "Post analysis context variable 'name' not found or invalid."
+                                    );
+                                }
+                                contextVariable.Name = nameElement.GetString()!;
+
+                                if (!contextVariableElement.TryGetProperty("description", out var descriptionElement) ||
+                                    descriptionElement.ValueKind != JsonValueKind.String ||
+                                    string.IsNullOrWhiteSpace(descriptionElement.GetString())
+                                ) {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLE_DESCRIPTION_NOT_FOUND",
+                                        "Post analysis context variable 'description' not found or invalid."
+                                    );
+                                }
+                                contextVariable.Description = descriptionElement.GetString()!;
+
+                                if (!contextVariableElement.TryGetProperty("value", out var valueElement) ||
+                                    valueElement.ValueKind != JsonValueKind.String ||
+                                    string.IsNullOrWhiteSpace(valueElement.GetString())
+                                ) {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLE_VALUE_NOT_FOUND",
+                                        "Post analysis context variable 'value' not found or invalid."
+                                    );
+                                }
+                                contextVariable.Value = valueElement.GetString()!;
+
+                                var valueTemplateValidation = CustomVariableInputTemplateValidator.Validate(contextVariable.Value, WebCampaginPostAnalysisContextVariableArguementsList);
+                                if (!valueTemplateValidation.IsValid)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:POST_ANALYSIS_CONTEXT_VARIABLE_VALUE_INVALID",
+                                        $"Post analysis context variable 'value' is invalid:\n\n{string.Join("\n", valueTemplateValidation.Errors)}"
+                                    );
+                                }
+
+                                newBusinessAppCampaignData.PostAnalysis.ContextVariables.Add(contextVariable);
+                            }
+                        }
+                    }
+                }
+
                 // Variables Tab
                 if (!changes.RootElement.TryGetProperty("variables", out var variablesElement))
                 {
@@ -1345,7 +1573,6 @@ namespace IqraInfrastructure.Managers.Business
                         }
                     }
                 }
-
 
                 // Web Actions Tab
                 if (!changes.RootElement.TryGetProperty("actions", out var webActionsTabRootElement))
