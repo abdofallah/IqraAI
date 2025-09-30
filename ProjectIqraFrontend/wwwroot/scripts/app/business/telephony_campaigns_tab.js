@@ -2096,10 +2096,11 @@ function initTelephonyCampaignsTab() {
 
         // Init All Handlers
         initTelephonyConfigurationEventHandlers();
-        initTelephonyVoicemailDetectionEventHandlers();
         initTelephonyAgentEventHandlers();
-        initTelephonyCampaignVariablesEventHandlers();
         initTelephonyNumbersEventHandlers();
+        initTelephonyVoicemailDetectionEventHandlers();
+        initTelephonyCampaignVariablesEventHandlers();
+        initTelephonyCampaignPostAnalysisEventHandlers();
         initTelephonyActionsEventHandlers();
 
         // Initial population
