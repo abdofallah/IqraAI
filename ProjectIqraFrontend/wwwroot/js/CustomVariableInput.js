@@ -53,8 +53,7 @@ class CustomVariableInput {
     _render() {
         const html = `
             <div class="custom-variable-input-wrapper position-relative">
-                <div class="editor-area form-control" contenteditable="true" spellcheck="false" 
-                     aria-multiline="${this.options.isMultiLine}"></div>
+                <div class="editor-area form-control" contenteditable="true" spellcheck="false" aria-multiline="${this.options.isMultiLine}"></div>
                 <div class="editor-placeholder text-muted">${this.options.placeholder}</div>
                 <button class="btn btn-sm btn-outline-secondary variable-trigger-btn" type="button" 
                         data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">

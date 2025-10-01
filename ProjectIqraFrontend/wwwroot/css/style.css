@@ -2360,7 +2360,7 @@ table.table > thead > * > * {
 **/
 
 .custom-variable-input-wrapper {
-	overflow-x: hidden;
+	
 }
 
 .custom-variable-input-wrapper .form-control[contenteditable]
@@ -2376,8 +2376,11 @@ table.table > thead > * > * {
     left: 0.75rem;
     pointer-events: none;
     user-select: none;
-	text-overflow: ellipsis;
-    width: max-content;
+    right: 50px;
+    width: auto;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .custom-variable-input-wrapper .variable-trigger-btn {

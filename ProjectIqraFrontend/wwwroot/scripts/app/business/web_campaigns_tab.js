@@ -95,9 +95,227 @@ const webCampaignPostAnalysisContextVariableArguments = [
     }
 ];
 
-const webCampaignOnConversationInitiationFailureActionArgurments = [];
-const webCampaignOnConversationInitiatedActionArgurments = [];
-const webCampaignOnConversationEndedActionArgurments = [];
+const webCampaignOnConversationInitiationFailureActionArgurments = [
+    // Web Session Data
+    {
+        "id": "web_session_id",
+        "Name": "Web Session Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web session that the conversation belongs to"
+    },
+    {
+        "id": "web_session_created_at",
+        "Name": "Web Session Created At",
+        "Type": "datetime",
+        "group": "Web Session Data",
+        "Description": "Date and time when the web session was created"
+    },
+    {
+        "id": "web_session_status",
+        "Name": "Web Session Status",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Status of the web session"
+    },
+    {
+        "id": "web_session_web_campaign_id",
+        "Name": "Web Session Web Campaign Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web campaign the web session is configured with"
+    },
+    {
+        "id": "web_session_client_identifier",
+        "Name": "Web Session Client Identifier",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Unique identifier of the client the web session was initiated with"
+    },
+    {
+        "id": "web_session_dynamic_variables",
+        "Name": "Web Session Dynamic Variables",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Dynamic variables the web session was initiated with",
+    },
+    {
+        "id": "web_session_metadata",
+        "Name": "Web Session Metadata",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Metadata the web session was initiated with",
+    },
+    {
+        "id": "web_session_initiation_error",
+        "Name": "Web Session Initiation Error",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Error message of the web session initiation failure",
+    }
+];
+const webCampaignOnConversationInitiatedActionArgurments = [
+    // Web Session Data
+    {
+        "id": "web_session_id",
+        "Name": "Web Session Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web session that the conversation belongs to"
+    },
+    {
+        "id": "web_session_created_at",
+        "Name": "Web Session Created At",
+        "Type": "datetime",
+        "group": "Web Session Data",
+        "Description": "Date and time when the web session was created"
+    },
+    {
+        "id": "web_session_status",
+        "Name": "Web Session Status",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Status of the web session"
+    },
+    {
+        "id": "web_session_web_campaign_id",
+        "Name": "Web Session Web Campaign Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web campaign the web session is configured with"
+    },
+    {
+        "id": "web_session_client_identifier",
+        "Name": "Web Session Client Identifier",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Unique identifier of the client the web session was initiated with"
+    },
+    {
+        "id": "web_session_dynamic_variables",
+        "Name": "Web Session Dynamic Variables",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Dynamic variables the web session was initiated with",
+    },
+    {
+        "id": "web_session_metadata",
+        "Name": "Web Session Metadata",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Metadata the web session was initiated with",
+    },
+    // Conversation Data
+    {
+        "id": "conversation_id",
+        "Name": "Conversation Id",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Id of the conversation"
+    },
+    {
+        "id": "conversation_start_time",
+        "Name": "Conversation Start Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was started"
+    }
+];
+const webCampaignOnConversationEndedActionArgurments = [
+    // Web Session Data
+    {
+        "id": "web_session_id",
+        "Name": "Web Session Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web session that the conversation belongs to"
+    },
+    {
+        "id": "web_session_created_at",
+        "Name": "Web Session Created At",
+        "Type": "datetime",
+        "group": "Web Session Data",
+        "Description": "Date and time when the web session was created"
+    },
+    {
+        "id": "web_session_status",
+        "Name": "Web Session Status",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Status of the web session"
+    },
+    {
+        "id": "web_session_web_campaign_id",
+        "Name": "Web Session Web Campaign Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web campaign the web session is configured with"
+    },
+    {
+        "id": "web_session_client_identifier",
+        "Name": "Web Session Client Identifier",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Unique identifier of the client the web session was initiated with"
+    },
+    {
+        "id": "web_session_dynamic_variables",
+        "Name": "Web Session Dynamic Variables",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Dynamic variables the web session was initiated with",
+    },
+    {
+        "id": "web_session_metadata",
+        "Name": "Web Session Metadata",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Metadata the web session was initiated with",
+    },
+    // Conversation Data
+    {
+        "id": "conversation_id",
+        "Name": "Conversation Id",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Id of the conversation"
+    },
+    {
+        "id": "conversation_start_time",
+        "Name": "Conversation Start Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was started"
+    },
+    {
+        "id": "conversation_end_type",
+        "Name": "Conversation End Type",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Type the conversation was ended with"
+    },
+    {
+        "id": "conversation_end_time",
+        "Name": "Conversation End Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was ended"
+    },
+    {
+        "id": "conversation_turns",
+        "Name": "Conversation Turns",
+        "Type": "object",
+        "group": "Conversation Data",
+        "Description": "Complete System/Agent/User turns data of the conversation"
+    },
+    {
+        "id": "conversation_turns_simplified",
+        "Name": "Conversation Turns Simplified",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Simplified & already compiled `<role>: <content>` string of Conversations Turns"
+    }
+];
 
 /** Dynamic Variables **/
 let manageWebCampaignType = null; // 'new' or 'edit'
