@@ -657,7 +657,6 @@ const telephonyCampaignOnCallEndedActionArgurments = [
     }
 ];
 
-
 /** Dynamic Variables **/
 let manageTelephonyCampaignType = null; // 'new' or 'edit'
 let currentTelephonyCampaignData = null;
@@ -669,6 +668,13 @@ let currentTelephonyCampaignAgentSelectedId = "";
 let isSavingTelephonyCampaign = false;
 
 var telephonyCampaignPostAnalysisContextVariablesCustomInput = {};
+
+var telephonyCampaignOnCallInitiationFailureActionInputArgumentsCustomInput = {};
+var telephonyCampaignOnCallInitiatedActionInputArgumentsCustomInput = {};
+var telephonyCampaignOnCallMissedActionInputArgumentsCustomInput = {};
+var telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput = {};
+var telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput = {};
+var telephonyCampaignOnCallEndedActionInputArgumentsCustomInput = {};
 
 // Integration Managers for Voicemail Detection
 let telephonyCampaignVoicemailSTTIntegrationManager = null;
@@ -1043,6 +1049,21 @@ function resetTelephonyCampaignManager() {
         container.find('.custom-tool-input-arguments').addClass('d-none');
         container.find('[id$="-arguments-list"]').empty();
     });
+    const toolArgumentsListObjects = [
+        telephonyCampaignOnCallInitiationFailureActionInputArgumentsCustomInput,
+        telephonyCampaignOnCallInitiatedActionInputArgumentsCustomInput,
+        telephonyCampaignOnCallMissedActionInputArgumentsCustomInput,
+        telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput,
+        telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput,
+        telephonyCampaignOnCallEndedActionInputArgumentsCustomInput
+    ];
+    toolArgumentsListObjects.forEach(toolArgumentsListObject => {
+        Object.keys(toolArgumentsListObject).forEach((customInputId) => {
+            toolArgumentsListObject[customInputId].destroy();
+            delete toolArgumentsListObject[customInputId];
+        });
+        toolArgumentsListObject = {};
+    });
 
     // Reset state
     $("#telephony-campaign-manager-general-tab").click();
@@ -1153,7 +1174,7 @@ function fillTelephonyCampaignManager() {
     }
 
     // Actions
-    function fillTelephonyActionTool(actionToolData, actionToolSelectElement) {
+    function fillTelephonyActionTool(actionToolData, actionToolSelectElement, customInputArguments, customInputObject) {
         const container = actionToolSelectElement.closest('div');
         const argumentsContainer = container.find('.custom-tool-input-arguments');
         const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
@@ -1170,22 +1191,37 @@ function fillTelephonyCampaignManager() {
                     const argumentData = businessToolData.configuration.inputSchemea.find(arg => arg.id === argId);
 
                     if (argumentData) {
-                        var element = $(createTelephonyCampaignActionArgumentListElement(argumentData));
-                        element.find('input').val(value);
-
-                        argumentsList.append(element);
                         selectElement.find(`option[value="${argId}"]`).remove();
+
+                        var element = $(createTelephonyCampaignActionArgumentListElement(argumentData));
+                        argumentsList.append(element);
+
+                        const customInput = new CustomVariableInput(
+                            $(element.find('.variable-input-container')[0]),
+                            customInputArguments,
+                            {
+                                placeholder: `Enter '${argumentData.type.name}' value or select {={variable}=}...`,
+                                onValueChange: () => {
+                                    checkTelephonyCampaignChanges();
+                                    validateTelephonyCampaign(true);
+                                }
+                            }
+                        );
+
+                        customInputObject[argId] = customInput;
+                        customInput.setValue(value);
                     }
                 });
             }
         }
     }
-    fillTelephonyActionTool(data.actions.callInitiationFailureTool, telephonyCampaignActionToolCallInitiationFailureSelect);
-    fillTelephonyActionTool(data.actions.callInitiatedTool, telephonyCampaignActionToolCallInitiatedSelect);
-    fillTelephonyActionTool(data.actions.callDeclinedTool, telephonyCampaignActionToolCallDeclinedSelect);
-    fillTelephonyActionTool(data.actions.callMissedTool, telephonyCampaignActionToolCallMissedSelect);
-    fillTelephonyActionTool(data.actions.callAnsweredTool, telephonyCampaignActionToolCallAnsweredSelect);
-    fillTelephonyActionTool(data.actions.callEndedTool, telephonyCampaignActionToolCallEndedSelect);
+
+    fillTelephonyActionTool(data.actions.callInitiationFailureTool, telephonyCampaignActionToolCallInitiationFailureSelect, telephonyCampaignOnCallInitiationFailureActionArgurments, telephonyCampaignOnCallInitiationFailureActionInputArgumentsCustomInput);
+    fillTelephonyActionTool(data.actions.callInitiatedTool, telephonyCampaignActionToolCallInitiatedSelect, telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments, telephonyCampaignOnCallInitiatedActionInputArgumentsCustomInput);
+    fillTelephonyActionTool(data.actions.callDeclinedTool, telephonyCampaignActionToolCallDeclinedSelect, telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments, telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput);
+    fillTelephonyActionTool(data.actions.callMissedTool, telephonyCampaignActionToolCallMissedSelect, telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments, telephonyCampaignOnCallMissedActionInputArgumentsCustomInput);
+    fillTelephonyActionTool(data.actions.callAnsweredTool, telephonyCampaignActionToolCallAnsweredSelect, telephonyCampaignOnCallAnsweredActionArgurments, telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput);
+    fillTelephonyActionTool(data.actions.callEndedTool, telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionArgurments, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput);
 }
 
 function checkTelephonyCampaignChanges(enableDisableButton = true) {
@@ -1414,17 +1450,22 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
     }
 
     function checkActionsTab() {
-        function collectToolArguments(selectElement) {
+        function collectToolArguments(selectElement, inputArguementObject) {
             const args = {};
             const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
-            argumentsList.find(".input-group input").each((_, el) => {
-                const input = $(el);
-                args[input.attr("input_arguement")] = input.val().trim();
+            argumentsList.find(".variable-input-container").each((_, el) => {
+                const inputArguement = $(el).attr("input_arguement");
+
+                args[inputArguement] = inputArguementObject[inputArguement].getValue();
             });
             return Object.keys(args).length > 0 ? args : null;
         }
 
         function compareToolData(newTool, originalTool) {
+            if (!originalTool) originalTool = {
+                toolId: null,
+                arguments: null
+            };
             if (newTool.toolId !== originalTool.toolId) return true;
             if (JSON.stringify(newTool.arguments) !== JSON.stringify(originalTool.arguments)) return true;
             return false;
@@ -1433,27 +1474,27 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
         changes.actions = {
             callInitiationFailureTool: {
                 toolId: telephonyCampaignActionToolCallInitiationFailureSelect.val() === 'none' ? null : telephonyCampaignActionToolCallInitiationFailureSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallInitiationFailureSelect)
+                arguments: collectToolArguments(telephonyCampaignActionToolCallInitiationFailureSelect, telephonyCampaignOnCallInitiationFailureActionInputArgumentsCustomInput)
             },
             callInitiatedTool: {
                 toolId: telephonyCampaignActionToolCallInitiatedSelect.val() === 'none' ? null : telephonyCampaignActionToolCallInitiatedSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallInitiatedSelect)
+                arguments: collectToolArguments(telephonyCampaignActionToolCallInitiatedSelect, telephonyCampaignOnCallInitiatedActionInputArgumentsCustomInput)
             },
             callDeclinedTool: {
                 toolId: telephonyCampaignActionToolCallDeclinedSelect.val() === 'none' ? null : telephonyCampaignActionToolCallDeclinedSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallDeclinedSelect)
+                arguments: collectToolArguments(telephonyCampaignActionToolCallDeclinedSelect, telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput)
             },
             callMissedTool: {
                 toolId: telephonyCampaignActionToolCallMissedSelect.val() === 'none' ? null : telephonyCampaignActionToolCallMissedSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallMissedSelect)
+                arguments: collectToolArguments(telephonyCampaignActionToolCallMissedSelect, telephonyCampaignOnCallMissedActionInputArgumentsCustomInput)
             },
             callAnsweredTool: {
                 toolId: telephonyCampaignActionToolCallAnsweredSelect.val() === 'none' ? null : telephonyCampaignActionToolCallAnsweredSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallAnsweredSelect)
+                arguments: collectToolArguments(telephonyCampaignActionToolCallAnsweredSelect, telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput)
             },
             callEndedTool: {
                 toolId: telephonyCampaignActionToolCallEndedSelect.val() === 'none' ? null : telephonyCampaignActionToolCallEndedSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallEndedSelect)
+                arguments: collectToolArguments(telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput)
             },
         };
 
@@ -1713,31 +1754,45 @@ function validateTelephonyCampaign(onlyRemove = true) {
 
     // Actions
     function validateActionsTab() {
-        function validateToolArguments($toolSelect, errorPrefix) {
+        function validateToolArguments($toolSelect, inputArguementObject, errorPrefix) {
             if ($toolSelect.val() === "none") return;
-
             const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === $toolSelect.val());
             if (!toolData) return;
-
             const requiredArguments = toolData.configuration.inputSchemea.filter((arg) => arg.isRequired);
             const $argumentsContainer = $toolSelect.closest('div').find('.custom-tool-input-arguments');
 
+            $toolSelect.removeClass("is-invalid");
             requiredArguments.forEach((reqArg) => {
-                const $argInput = $argumentsContainer.find(`input[input_arguement="${reqArg.id}"]`);
-                if ($argInput.length === 0 || !$argInput.val().trim()) {
+                const arguementInput = inputArguementObject[reqArg.id];
+                if (!arguementInput) {
                     validated = false;
                     errors.push(`${errorPrefix}: ${reqArg.name[BusinessDefaultLanguage]} is required.`);
-                    if (!onlyRemove && $argInput.length > 0) $argInput.addClass("is-invalid");
+
+                    if (!onlyRemove) $toolSelect.addClass("is-invalid");
+                }
+                else {
+                    const arguementInputEditorField = $argumentsContainer.find(`.variable-input-container[input_arguement="${reqArg.id}"] .editor-area.form-control`);
+
+                    const value = arguementInput.getValue();
+                    if (!value || value == "" || value == null) {
+                        validated = false;
+                        errors.push(`${errorPrefix}: ${reqArg.name[BusinessDefaultLanguage]} is required.`);
+
+                        if (!onlyRemove) arguementInputEditorField.addClass("is-invalid");
+                    }
+                    else {
+                        arguementInputEditorField.removeClass("is-invalid");
+                    }
                 }
             });
         }
 
-        validateToolArguments(telephonyCampaignActionToolCallInitiationFailureSelect, "Call Initiation Failure tool");
-        validateToolArguments(telephonyCampaignActionToolCallInitiatedSelect, "Call Initiated tool");
-        validateToolArguments(telephonyCampaignActionToolCallDeclinedSelect, "Call Declined tool");
-        validateToolArguments(telephonyCampaignActionToolCallMissedSelect, "Call Missed tool");
-        validateToolArguments(telephonyCampaignActionToolCallAnsweredSelect, "Call Answered tool");
-        validateToolArguments(telephonyCampaignActionToolCallEndedSelect, "Call Ended tool");
+        validateToolArguments(telephonyCampaignActionToolCallInitiationFailureSelect, telephonyCampaignOnCallInitiationFailureActionInputArgumentsCustomInput, "Call Initiation Failure tool");
+        validateToolArguments(telephonyCampaignActionToolCallInitiatedSelect, telephonyCampaignOnCallInitiatedActionInputArgumentsCustomInput, "Call Initiated tool");
+        validateToolArguments(telephonyCampaignActionToolCallDeclinedSelect, telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput, "Call Declined tool");
+        validateToolArguments(telephonyCampaignActionToolCallMissedSelect, telephonyCampaignOnCallMissedActionInputArgumentsCustomInput, "Call Missed tool");
+        validateToolArguments(telephonyCampaignActionToolCallAnsweredSelect, telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput, "Call Answered tool");
+        validateToolArguments(telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput, "Call Ended tool");
     }
 
 
@@ -2148,9 +2203,9 @@ function handleTelephonyCampaignActionToolChange(event) {
 
 function createTelephonyCampaignActionArgumentListElement(argumentData) {
     return `
-            <div class="input-group mb-1">
-                <span class="input-group-text">${argumentData.name[BusinessDefaultLanguage]}${argumentData.isRequired ? "*" : ""}</span>
-                <input type="text" class="form-control" input_arguement="${argumentData.id}" placeholder="Enter ${argumentData.type.name} value" value="">
+            <div class="input-group mb-1 campaign-action-tool-argument">
+                <span class="input-group-text">${argumentData.isRequired ? "*" : ""}${argumentData.name[BusinessDefaultLanguage]}</span>
+                <div class="variable-input-container" input_arguement="${argumentData.id}"></div>
                 <button class="btn btn-danger" btn-action="remove-campaign-action-tool-argument" input_arguement="${argumentData.id}">
                     <i class="fa-regular fa-trash"></i>
                 </button>
@@ -2158,7 +2213,7 @@ function createTelephonyCampaignActionArgumentListElement(argumentData) {
         `;
 }
 
-function handleTelephonyCampaignActionAddArgument(event) {
+function handleTelephonyCampaignActionAddArgument(event, customInputArguments, customInputObject) {
     const selectElement = $(event.currentTarget);
     const selectedArgumentId = selectElement.val();
     if (!selectedArgumentId) return;
@@ -2172,21 +2227,38 @@ function handleTelephonyCampaignActionAddArgument(event) {
     const argumentData = toolData.configuration.inputSchemea.find(arg => arg.id === selectedArgumentId);
 
     if (argumentData) {
-        argumentsList.append(createTelephonyCampaignActionArgumentListElement(argumentData));
         selectElement.find(`option[value="${selectedArgumentId}"]`).remove();
         selectElement.val("");
+
+        var element = $(createTelephonyCampaignActionArgumentListElement(argumentData));
+        argumentsList.append(element);
+
+        const customInput = new CustomVariableInput(
+            $(element.find('.variable-input-container')[0]),
+            customInputArguments,
+            {
+                placeholder: `Enter '${argumentData.type.name}' value or select {={variable}=}...`,
+                onValueChange: () => {
+                    checkTelephonyCampaignChanges();
+                    validateTelephonyCampaign(true);
+                }
+            }
+        );
+
+        customInputObject[selectedArgumentId] = customInput;
     }
+
     checkTelephonyCampaignChanges();
     validateTelephonyCampaign(true);
 }
 
-function handleTelephonyCampaignActionRemoveArgument(event) {
+function handleTelephonyCampaignActionRemoveArgument(event, customInputObject) {
     event.preventDefault();
     const removeButton = $(event.currentTarget);
     const argumentIdToRemove = removeButton.attr('input_arguement');
     const inputGroup = removeButton.closest('.input-group');
     const container = removeButton.closest('.custom-tool-input-arguments');
-    const mainToolSelect = container.parent().parent().find('select').first();
+    const mainToolSelect = container.parent().find('select').first();
     const argumentsSelect = container.find('select');
     const selectedToolId = mainToolSelect.val();
 
@@ -2197,10 +2269,89 @@ function handleTelephonyCampaignActionRemoveArgument(event) {
         argumentsSelect.append(`<option value="${argumentData.id}">${argumentData.name[BusinessDefaultLanguage]}${argumentData.isRequired ? "*" : ""}</option>`);
     }
 
+    customInputObject[argumentIdToRemove].destroy();
+    delete customInputObject[argumentIdToRemove];
+
     inputGroup.remove();
+
     checkTelephonyCampaignChanges();
     validateTelephonyCampaign(true);
 }
+
+function initTelephonyActionsEventHandlers() {
+    // Main tool selection change handler
+    telephonyCampaignActionToolCallInitiationFailureSelect.on('change', handleTelephonyCampaignActionToolChange);
+    telephonyCampaignActionToolCallInitiatedSelect.on('change', handleTelephonyCampaignActionToolChange);
+    telephonyCampaignActionToolCallMissedSelect.on('change', handleTelephonyCampaignActionToolChange);
+    telephonyCampaignActionToolCallDeclinedSelect.on('change', handleTelephonyCampaignActionToolChange);
+    telephonyCampaignActionToolCallAnsweredSelect.on('change', handleTelephonyCampaignActionToolChange);
+    telephonyCampaignActionToolCallEndedSelect.on('change', handleTelephonyCampaignActionToolChange);
+
+    // Add argument dropdown change handler (uses event delegation on the tab content)
+    telephonyCampaignActionsTab.on('change', '#telephony-campaign-action-tool-call-initiation-failure-arguments-select', (event) => {
+        handleTelephonyCampaignActionAddArgument(
+            event,
+            telephonyCampaignOnCallInitiationFailureActionArgurments,
+            telephonyCampaignOnCallInitiationFailureActionInputArgumentsCustomInput
+        );
+    });
+    telephonyCampaignActionsTab.on('change', '#telephony-campaign-action-tool-call-initiated-arguments-select', (event) => {
+        handleTelephonyCampaignActionAddArgument(
+            event,
+            telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments,
+            telephonyCampaignOnCallInitiatedActionInputArgumentsCustomInput
+        );
+    });
+    telephonyCampaignActionsTab.on('change', '#telephony-campaign-action-tool-call-declined-arguments-select', (event) => {
+        handleTelephonyCampaignActionAddArgument(
+            event,
+            telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments,
+            telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput
+        );
+    });
+    telephonyCampaignActionsTab.on('change', '#telephony-campaign-action-tool-call-missed-arguments-select', (event) => {
+        handleTelephonyCampaignActionAddArgument(
+            event,
+            telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments,
+            telephonyCampaignOnCallMissedActionInputArgumentsCustomInput
+        );
+    });
+    telephonyCampaignActionsTab.on('change', '#telephony-campaign-action-tool-call-answered-arguments-select', (event) => {
+        handleTelephonyCampaignActionAddArgument(
+            event,
+            telephonyCampaignOnCallAnsweredActionArgurments,
+            telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput
+        );
+    });
+    telephonyCampaignActionsTab.on('change', '#telephony-campaign-action-tool-call-ended-arguments-select', (event) => {
+        handleTelephonyCampaignActionAddArgument(
+            event,
+            telephonyCampaignOnCallEndedActionArgurments,
+            telephonyCampaignOnCallEndedActionInputArgumentsCustomInput
+        );
+    });
+
+    // Remove argument button click handler
+    telephonyCampaignActionsTab.on('click', '#telephony-campaign-action-tool-call-initiation-failure-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleTelephonyCampaignActionRemoveArgument(event, telephonyCampaignOnCallInitiationFailureActionInputArgumentsCustomInput);
+    });
+    telephonyCampaignActionsTab.on('click', '#telephony-campaign-action-tool-call-initiated-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleTelephonyCampaignActionRemoveArgument(event, telephonyCampaignOnCallInitiatedActionInputArgumentsCustomInput);
+    });
+    telephonyCampaignActionsTab.on('click', '#telephony-campaign-action-tool-call-declined-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleTelephonyCampaignActionRemoveArgument(event, telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput);
+    });
+    telephonyCampaignActionsTab.on('click', '#telephony-campaign-action-tool-call-missed-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleTelephonyCampaignActionRemoveArgument(event, telephonyCampaignOnCallMissedActionInputArgumentsCustomInput);
+    });
+    telephonyCampaignActionsTab.on('click', '#telephony-campaign-action-tool-call-answered-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleTelephonyCampaignActionRemoveArgument(event, telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput);
+    });
+    telephonyCampaignActionsTab.on('click', '#telephony-campaign-action-tool-call-ended-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleTelephonyCampaignActionRemoveArgument(event, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput);
+    });
+}
+
 
 /** EVENT HANDLER INITIALIZERS **/
 function initTelephonyAgentEventHandlers() {
@@ -2410,22 +2561,6 @@ function initTelephonyVoicemailDetectionEventHandlers() {
         const currentLang = BusinessDefaultLanguage;
         currentTelephonyCampaignVoicemailMessageToLeaveMultiLangData[currentLang] = $(e.currentTarget).val();
     });
-}
-
-function initTelephonyActionsEventHandlers() {
-    // Main tool selection change handler
-    telephonyCampaignActionToolCallInitiationFailureSelect.on('change', handleTelephonyCampaignActionToolChange);
-    telephonyCampaignActionToolCallInitiatedSelect.on('change', handleTelephonyCampaignActionToolChange);
-    telephonyCampaignActionToolCallMissedSelect.on('change', handleTelephonyCampaignActionToolChange);
-    telephonyCampaignActionToolCallDeclinedSelect.on('change', handleTelephonyCampaignActionToolChange);
-    telephonyCampaignActionToolCallAnsweredSelect.on('change', handleTelephonyCampaignActionToolChange);
-    telephonyCampaignActionToolCallEndedSelect.on('change', handleTelephonyCampaignActionToolChange);
-
-    // Add argument dropdown change handler (uses event delegation on the tab content)
-    telephonyCampaignActionsTab.on('change', '.custom-tool-input-arguments > select', handleTelephonyCampaignActionAddArgument);
-
-    // Remove argument button click handler
-    telephonyCampaignActionsTab.on('click', '[btn-action="remove-campaign-action-tool-argument"]', handleTelephonyCampaignActionRemoveArgument);
 }
 
 /** INIT **/

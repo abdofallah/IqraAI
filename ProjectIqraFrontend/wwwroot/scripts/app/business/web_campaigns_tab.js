@@ -577,6 +577,18 @@ function resetWebCampaignManager() {
         container.find('.custom-tool-input-arguments').addClass('d-none');
         container.find('[id$="-arguments-list"]').empty();
     });
+    const toolArgumentsListObjects = [
+        webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput,
+        webCampaignOnConversationInitiatedActionInputArgumentsCustomInput,
+        webCampaignOnConversationEndedActionInputArgumentsCustomInput
+    ];
+    toolArgumentsListObjects.forEach(toolArgumentsListObject => {
+        Object.keys(toolArgumentsListObject).forEach((customInputId) => {
+            toolArgumentsListObject[customInputId].destroy();
+            delete toolArgumentsListObject[customInputId];
+        });
+        toolArgumentsListObject = {};
+    });
 
     // Reset state
     $("#web-campaign-manager-general-tab").click();
@@ -1110,6 +1122,7 @@ function validateWebCampaign(onlyRemove = true) {
                 }
             });
         }
+
         validateToolArguments(webCampaignActionToolConversationInitiationFailureSelect, webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput, "Conversation Initiation Failure tool");
         validateToolArguments(webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput, "Conversation Initiated tool");
         validateToolArguments(webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionInputArgumentsCustomInput, "Conversation Ended tool");
@@ -1548,6 +1561,7 @@ function handleWebCampaignActionRemoveArgument(event, customInputObject) {
     delete customInputObject[argumentIdToRemove];
 
     inputGroup.remove();
+
     checkWebCampaignChanges();
     validateWebCampaign(true);
 }

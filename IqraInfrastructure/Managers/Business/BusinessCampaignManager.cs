@@ -1996,24 +1996,41 @@ namespace IqraInfrastructure.Managers.Business
             {
                 foreach (var toolInputArgument in selectedToolData.Configuration.InputSchemea)
                 {
-                    if (
-                        (
-                            !argumentsProperty.TryGetProperty(toolInputArgument.Id, out var argumentValueProperty) ||
-                            argumentValueProperty.ValueKind != JsonValueKind.String ||
-                            string.IsNullOrWhiteSpace(argumentValueProperty.GetString())
-                        )
-                        &&
-                        toolInputArgument.IsRequired
-                    )
+                    var propertyFound = argumentsProperty.TryGetProperty(toolInputArgument.Id, out var argumentValueProperty);
+
+                    if (!propertyFound)
                     {
-                        return result.SetFailureResult(
-                            "ValidateBusinessCampaignActionData:REQUIRED_ARG_INVALID_OR_MISSING",
-                            $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} is missing or invalid. Required fields must not be empty."
-                        );
+                        if (toolInputArgument.IsRequired)
+                        {
+                            return result.SetFailureResult(
+                                "ValidateBusinessCampaignActionData:REQUIRED_ARG_MISSING",
+                                $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} is missing. Required fields must not be empty."
+                            );
+                        }
+                        else
+                        {
+                            continue;
+                        }
                     }
                     else
                     {
-                        var argurmentValue = argumentValueProperty.GetString()!;
+                        if (argumentValueProperty.ValueKind != JsonValueKind.String)
+                        {
+                            return result.SetFailureResult(
+                                "ValidateBusinessCampaignActionData:ARG_NOT_STRING",
+                                $"{actionType} tool input argument ${toolInputArgument.Name[businessDefaultLanguage]} 'value' must be a string."
+                            );
+                        }
+
+                        var argurmentValue = argumentValueProperty.GetString();
+
+                        if (string.IsNullOrWhiteSpace(argurmentValue) && toolInputArgument.IsRequired)
+                        {
+                            return result.SetFailureResult(
+                                "ValidateBusinessCampaignActionData:REQUIRED_ARG_MISSING",
+                                $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} is empty. Required fields must not be empty."
+                            );
+                        }
 
                         var valueTemplateValidation = CustomVariableInputTemplateValidator.Validate(argurmentValue, argurmentList);
                         if (!valueTemplateValidation.IsValid)
@@ -2023,6 +2040,8 @@ namespace IqraInfrastructure.Managers.Business
                                 $"{actionType} tool input argument 'value' is invalid:\n\n{string.Join("\n", valueTemplateValidation.Errors)}"
                             );
                         }
+
+                        resultData.Arguments.Add(toolInputArgument.Id, argurmentValue);
                     }
                 }
             }
