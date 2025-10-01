@@ -453,7 +453,13 @@ class CustomVariableInput {
         // First, clear any existing selection styles from our pills
         this.$editor.find('.pill.is-selected').removeClass('is-selected');
 
-        if ($(sel.anchorNode).hasClass('arg-input') || $(sel.anchorNode.parentElement).hasClass('arg-input')) {
+        if (
+            sel.anchorNode &&
+            (
+                $(sel.anchorNode).hasClass('arg-input') ||
+                (sel.anchorNode.parentElement && $(sel.anchorNode.parentElement).hasClass('arg-input'))
+            )
+        ) {
             this.$editor.find('.function-pill .arg-input.is-focused').removeClass('is-focused');
 
             var currentArgInput = $(sel.anchorNode).hasClass('arg-input') ? $(sel.anchorNode) : $(sel.anchorNode.parentElement);

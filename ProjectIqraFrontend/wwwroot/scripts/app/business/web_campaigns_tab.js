@@ -95,6 +95,10 @@ const webCampaignPostAnalysisContextVariableArguments = [
     }
 ];
 
+const webCampaignOnConversationInitiationFailureActionArgurments = [];
+const webCampaignOnConversationInitiatedActionArgurments = [];
+const webCampaignOnConversationEndedActionArgurments = [];
+
 /** Dynamic Variables **/
 let manageWebCampaignType = null; // 'new' or 'edit'
 let currentWebCampaignData = null;
@@ -107,6 +111,10 @@ const webCampaignsTooltipTriggerList = document.querySelectorAll('#web-campaigns
 [...webCampaignsTooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
 var webCampaignPostAnalysisContextVariablesCustomInput = {};
+
+var webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput = {};
+var webCampaignOnConversationInitiatedActionInputArgumentsCustomInput = {};
+var webCampaignOnConversationEndedActionInputArgumentsCustomInput = {};
 
 /** Element Variables **/
 const webCampaignsTab = $("#web-campaigns-tab");
@@ -420,13 +428,12 @@ function fillWebCampaignManager() {
             );
 
             webCampaignPostAnalysisContextVariablesCustomInput[uniqueGuid] = customInput;
-
             customInput.setValue(contextVariable.value);
         });
     }   
 
     // Actions
-    function fillWebActionTool(actionToolData, actionToolSelectElement) {
+    function fillWebActionTool(actionToolData, actionToolSelectElement, customInputArguments, customInputObject) {
         const container = actionToolSelectElement.closest('div');
         const argumentsContainer = container.find('.custom-tool-input-arguments');
         const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
@@ -443,19 +450,33 @@ function fillWebCampaignManager() {
                     const argumentData = businessToolData.configuration.inputSchemea.find(arg => arg.id === argId);
 
                     if (argumentData) {
-                        var element = $(createWebCampaignActionArgumentListElement(argumentData));
-                        element.find('input').val(value);
-
-                        argumentsList.append(element);
                         selectElement.find(`option[value="${argId}"]`).remove();
+
+                        var element = $(createWebCampaignActionArgumentListElement(argumentData));
+                        argumentsList.append(element);
+
+                        const customInput = new CustomVariableInput(
+                            $(element.find('.variable-input-container')[0]),
+                            customInputArguments,
+                            {
+                                placeholder: `Enter '${argumentData.type.name}' value or select {={variable}=}...`,
+                                onValueChange: () => {
+                                    checkWebCampaignChanges();
+                                    validateWebCampaign(true);
+                                }
+                            }
+                        );
+
+                        customInputObject[argId] = customInput;
+                        customInput.setValue(value);
                     }
                 });
             }
         }
     }
-    fillWebActionTool(data.actions.conversationInitiationFailureTool, webCampaignActionToolConversationInitiationFailureSelect);
-    fillWebActionTool(data.actions.conversationInitiatedTool, webCampaignActionToolConversationInitiatedSelect);
-    fillWebActionTool(data.actions.conversationEndedTool, webCampaignActionToolConversationEndedSelect);
+    fillWebActionTool(data.actions.conversationInitiationFailureTool, webCampaignActionToolConversationInitiationFailureSelect, webCampaignOnConversationInitiationFailureActionArgurments, webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput);
+    fillWebActionTool(data.actions.conversationInitiatedTool, webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionArgurments, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput);
+    fillWebActionTool(data.actions.conversationEndedTool, webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionArgurments, webCampaignOnConversationEndedActionInputArgumentsCustomInput);
 }
 
 function checkWebCampaignChanges(enableDisableButton = true) {
@@ -1113,7 +1134,7 @@ function getWebCampaignVariablesList(variablesList) {
 function createWebCampaignPostAnalysisContextVariableElement(id, data = null) {
     return `
         <div class="input-group mt-1 campaign-post-analysis-context-variable" data-id="${id}">
-          <div class="d-flex flex-column" style="width: -webkit-fill-available;">
+          <div class="d-flex flex-column" style="width: calc(100% - 41px);">
             <div class="input-group">
                 <input type="text" class="form-control campaign-post-analysis-context-variable-name" placeholder="Name" data-type="variable-name" style="max-width: 30%;" value="${data ? data.name : ""}">
                 <input type="text" class="form-control campaign-post-analysis-context-variable-description" placeholder="Description" data-type="variable-description" style="max-width: 70%;" value="${data ? data.description : ""}">
@@ -1221,9 +1242,9 @@ function handleWebCampaignActionToolChange(event) {
 
 function createWebCampaignActionArgumentListElement(argumentData) {
     return `
-            <div class="input-group mb-1">
-                <span class="input-group-text">${argumentData.name[BusinessDefaultLanguage]}${argumentData.isRequired ? "*" : ""}</span>
-                <input type="text" class="form-control" input_arguement="${argumentData.id}" placeholder="Enter ${argumentData.type.name} value" value="">
+            <div class="input-group mb-1 campaign-action-tool-argument">
+                <span class="input-group-text">${argumentData.isRequired ? "*" : ""}${argumentData.name[BusinessDefaultLanguage]}</span>
+                <div class="variable-input-container" input_arguement="${argumentData.id}"></div>
                 <button class="btn btn-danger" btn-action="remove-campaign-action-tool-argument" input_arguement="${argumentData.id}">
                     <i class="fa-regular fa-trash"></i>
                 </button>
@@ -1231,7 +1252,7 @@ function createWebCampaignActionArgumentListElement(argumentData) {
         `;
 }
 
-function handleWebCampaignActionAddArgument(event) {
+function handleWebCampaignActionAddArgument(event, customInputArguments, customInputObject) {
     const selectElement = $(event.currentTarget);
     const selectedArgumentId = selectElement.val();
     if (!selectedArgumentId) return;
@@ -1245,21 +1266,38 @@ function handleWebCampaignActionAddArgument(event) {
     const argumentData = toolData.configuration.inputSchemea.find(arg => arg.id === selectedArgumentId);
 
     if (argumentData) {
-        argumentsList.append(createWebCampaignActionArgumentListElement(argumentData));
         selectElement.find(`option[value="${selectedArgumentId}"]`).remove();
         selectElement.val("");
+
+        var element = $(createWebCampaignActionArgumentListElement(argumentData));
+        argumentsList.append(element);
+
+        const customInput = new CustomVariableInput(
+            $(element.find('.variable-input-container')[0]),
+            customInputArguments,
+            {
+                placeholder: `Enter '${argumentData.type.name}' value or select {={variable}=}...`,
+                onValueChange: () => {
+                    checkWebCampaignChanges();
+                    validateWebCampaign(true);
+                }
+            }
+        );
+
+        customInputObject[selectedArgumentId] = customInput;  
     }
+
     checkWebCampaignChanges();
     validateWebCampaign(true);
 }
 
-function handleWebCampaignActionRemoveArgument(event) {
+function handleWebCampaignActionRemoveArgument(event, customInputObject) {
     event.preventDefault();
     const removeButton = $(event.currentTarget);
     const argumentIdToRemove = removeButton.attr('input_arguement');
     const inputGroup = removeButton.closest('.input-group');
     const container = removeButton.closest('.custom-tool-input-arguments');
-    const mainToolSelect = container.parent().parent().find('select').first();
+    const mainToolSelect = container.parent().find('select').first();
     const argumentsSelect = container.find('select');
     const selectedToolId = mainToolSelect.val();
 
@@ -1269,6 +1307,9 @@ function handleWebCampaignActionRemoveArgument(event) {
     if (argumentData) {
         argumentsSelect.append(`<option value="${argumentData.id}">${argumentData.name[BusinessDefaultLanguage]}${argumentData.isRequired ? "*" : ""}</option>`);
     }
+
+    customInputObject[argumentIdToRemove].destroy();
+    delete customInputObject[argumentIdToRemove];
 
     inputGroup.remove();
     checkWebCampaignChanges();
@@ -1282,10 +1323,38 @@ function initWebActionsEventHandlers() {
     webCampaignActionToolConversationEndedSelect.on('change', handleWebCampaignActionToolChange);
 
     // Add argument dropdown change handler
-    webCampaignsManagerView.on('change', '.custom-tool-input-arguments > select', handleWebCampaignActionAddArgument);
+    webCampaignsManagerView.on('change', '#web-campaign-action-tool-conversation-initiation-failure-arguments-select', (event) => {
+        handleWebCampaignActionAddArgument(
+            event,
+            webCampaignOnConversationInitiationFailureActionArgurments,
+            webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput
+        );
+    });
+    webCampaignsManagerView.on('change', '#web-campaign-action-tool-conversation-initiated-arguments-select', (event) => {
+        handleWebCampaignActionAddArgument(
+            event,
+            webCampaignOnConversationInitiatedActionArgurments,
+            webCampaignOnConversationInitiatedActionInputArgumentsCustomInput
+        );
+    });
+    webCampaignsManagerView.on('change', '#web-campaign-action-tool-conversation-ended-arguments-select', (event) => {
+        handleWebCampaignActionAddArgument(
+            event,
+            webCampaignOnConversationEndedActionArgurments,
+            webCampaignOnConversationEndedActionInputArgumentsCustomInput
+        );
+    });
 
     // Remove argument button click handler
-    webCampaignActionsTab.on('click', '[btn-action="remove-campaign-action-tool-argument"]', handleWebCampaignActionRemoveArgument);
+    webCampaignActionsTab.on('click', '#web-campaign-action-tool-conversation-initiation-failure-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleWebCampaignActionRemoveArgument(event, webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput);
+    });
+    webCampaignActionsTab.on('click', '#web-campaign-action-tool-conversation-initiated-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleWebCampaignActionRemoveArgument(event, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput);
+    });
+    webCampaignActionsTab.on('click', '#web-campaign-action-tool-conversation-ended-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleWebCampaignActionRemoveArgument(event, webCampaignOnConversationEndedActionInputArgumentsCustomInput);
+    });
 }
 
 /** INIT **/

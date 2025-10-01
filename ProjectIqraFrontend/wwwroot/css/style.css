@@ -2359,9 +2359,15 @@ table.table > thead > * > * {
 
 **/
 
-.custom-variable-input-wrapper .form-control[contenteditable] {
-    min-height: calc(1.5em + 0.75rem + 2px);
-    height: auto;
+.custom-variable-input-wrapper {
+	overflow-x: hidden;
+}
+
+.custom-variable-input-wrapper .form-control[contenteditable]
+{
+	min-height: calc(1.5em + 0.75rem + 2px);
+	height: auto;
+	padding-right: 50px;
 }
 
 .custom-variable-input-wrapper .editor-placeholder {
@@ -2370,6 +2376,8 @@ table.table > thead > * > * {
     left: 0.75rem;
     pointer-events: none;
     user-select: none;
+	text-overflow: ellipsis;
+    width: max-content;
 }
 
 .custom-variable-input-wrapper .variable-trigger-btn {
@@ -2506,4 +2514,26 @@ table.table > thead > * > * {
 .campaign-post-analysis-context-variable .variable-input-container .editor-area.form-control.is-invalid
 {
 	border-top-width: var(--bs-border-width) !important;
+}
+
+.campaign-action-tool-argument {
+	flex-wrap: nowrap;
+}
+
+.campaign-action-tool-argument .input-group-text {
+	width: 30%;
+}
+
+.campaign-action-tool-argument .btn.btn-danger {
+	width: 41px;
+}
+
+.campaign-action-tool-argument .variable-input-container
+{
+	width: calc(70% - 41px);
+}
+
+.campaign-action-tool-argument .variable-input-container .editor-area.form-control
+{
+	border-radius: 0px;
 }

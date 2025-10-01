@@ -1533,7 +1533,7 @@ function fillTelephonyCampaignVoicemailTab() {
 function createTelephonyCampaignPostAnalysisContextVariableElement(id, data = null) {
     return `
         <div class="input-group mt-1 campaign-post-analysis-context-variable" data-id="${id}">
-          <div class="d-flex flex-column" style="width: -webkit-fill-available;">
+          <div class="d-flex flex-column" style="width: calc(100% - 41px);">
             <div class="input-group">
                 <input type="text" class="form-control campaign-post-analysis-context-variable-name" placeholder="Name" data-type="variable-name" style="max-width: 30%;" value="${data ? data.name : ""}">
                 <input type="text" class="form-control campaign-post-analysis-context-variable-description" placeholder="Description" data-type="variable-description" style="max-width: 70%;" value="${data ? data.description : ""}">
