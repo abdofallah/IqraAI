@@ -46,6 +46,99 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
         };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> TelephonyCampaignOnCallInitiationFailureActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Call Queue Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_session_id", Name = "Call Queue Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_dynamic_variables", Name = "Call Queue Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_metadata", Name = "Call Queue Metadata", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_initiation_error", Name = "Call Queue Initiation Error", Type = VariableType.String },
+        };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Call Queue Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_session_id", Name = "Call Queue Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_dynamic_variables", Name = "Call Queue Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_metadata", Name = "Call Queue Metadata", Type = VariableType.Object },
+    
+            // --- Conversation Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+        };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> TelephonyCampaignOnCallAnsweredActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Call Queue Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_session_id", Name = "Call Queue Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_dynamic_variables", Name = "Call Queue Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_metadata", Name = "Call Queue Metadata", Type = VariableType.Object },
+    
+            // --- Conversation Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+        };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> TelephonyCampaignOnCallEndedActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Call Queue Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_session_id", Name = "Call Queue Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_dynamic_variables", Name = "Call Queue Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_metadata", Name = "Call Queue Metadata", Type = VariableType.Object },
+    
+            // --- Conversation Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
+        };
+
         private readonly static List<CustomVariableInputTemplateVariableDefinition> WebCampaginPostAnalysisContextVariableArguementsList = new List<CustomVariableInputTemplateVariableDefinition>()
         {
             // --- Web Session Data ---
@@ -64,6 +157,52 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String }, 
+        };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> WebCampaignOnConversationInitiationFailureActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Web Session Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_created_at", Name = "Web Session Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_web_campaign_id", Name = "Web Session Web Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_client_identifier", Name = "Web Session Client Identifier", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_dynamic_variables", Name = "Web Session Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_metadata", Name = "Web Session Metadata", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_initiation_error", Name = "Web Session Initiation Error", Type = VariableType.String },
+        };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> WebCampaignOnConversationInitiatedActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Web Session Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_created_at", Name = "Web Session Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_web_campaign_id", Name = "Web Session Web Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_client_identifier", Name = "Web Session Client Identifier", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_dynamic_variables", Name = "Web Session Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_metadata", Name = "Web Session Metadata", Type = VariableType.Object },
+
+            // --- Conversation Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+        };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> WebCampaignOnConversationEndedActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Web Session Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_created_at", Name = "Web Session Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_web_campaign_id", Name = "Web Session Web Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_client_identifier", Name = "Web Session Client Identifier", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_dynamic_variables", Name = "Web Session Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_metadata", Name = "Web Session Metadata", Type = VariableType.Object },
+
+            // --- Conversation Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
         };
 
         public BusinessCampaignManager(
@@ -991,65 +1130,167 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    var callInitiationFailureToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], telephonyActionsTabRootElement.GetProperty("callInitiationFailureTool"), "CallInitiationFailure");
-                    if (!callInitiationFailureToolValidationResult.Success)
+                    if (!telephonyActionsTabRootElement.TryGetProperty("callInitiationFailureTool", out var callInitiationFailureToolElement) ||
+                        callInitiationFailureToolElement.ValueKind != JsonValueKind.Object)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:" + callInitiationFailureToolValidationResult.Code,
-                            callInitiationFailureToolValidationResult.Message
+                            "AddOrUpdateTelephonyCampaignAsync:TELEPHONY_ACTIONS_TAB_CALL_INITIATION_FAILURE_TOOL_NOT_FOUND",
+                            "Telephony actions tab 'callInitiationFailureTool' not found or not an object."
                         );
                     }
-                    newBusinessAppCampaignData.Actions.CallInitiationFailureTool = callInitiationFailureToolValidationResult.Data;
+                    else
+                    {
+                        var callInitiationFailureToolValidationResult = await ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            callInitiationFailureToolElement,
+                            "CallInitiationFailure",
+                            TelephonyCampaignOnCallInitiationFailureActionArguments
+                        );
+                        if (!callInitiationFailureToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:" + callInitiationFailureToolValidationResult.Code,
+                                callInitiationFailureToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.CallInitiationFailureTool = callInitiationFailureToolValidationResult.Data!;
+                    }
+                        
+                    if (!telephonyActionsTabRootElement.TryGetProperty("callInitiatedTool", out var callInitiatedToolElement) ||
+                        callInitiatedToolElement.ValueKind != JsonValueKind.Object)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTelephonyCampaignAsync:TELEPHONY_ACTIONS_TAB_CALL_INITIATED_TOOL_NOT_FOUND",
+                            "Telephony actions tab 'callInitiatedTool' not found or not an object."
+                        );
+                    }
+                    else
+                    {
+                        var callInitiatedToolValidationResult = await ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            telephonyActionsTabRootElement.GetProperty("callInitiatedTool"),
+                            "CallInitiated",
+                            TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments
+                        );
+                        if (!callInitiatedToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:" + callInitiatedToolValidationResult.Code,
+                                callInitiatedToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.CallInitiatedTool = callInitiatedToolValidationResult.Data!;
+                    }
+                        
+                    if (!telephonyActionsTabRootElement.TryGetProperty("callDeclinedTool", out var callDeclinedToolElement) ||
+                        callDeclinedToolElement.ValueKind != JsonValueKind.Object)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTelephonyCampaignAsync:TELEPHONY_ACTIONS_TAB_CALL_DECLINED_TOOL_NOT_FOUND",
+                            "Telephony actions tab 'callDeclinedTool' not found or not an object."
+                        );
+                    }
+                    else
+                    {
+                        var callDeclinedToolValidationResult = await ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            telephonyActionsTabRootElement.GetProperty("callDeclinedTool"),
+                            "CallDeclined",
+                            TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments
+                        );
+                        if (!callDeclinedToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:" + callDeclinedToolValidationResult.Code,
+                                callDeclinedToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.CallDeclinedTool = callDeclinedToolValidationResult.Data!;
+                    }
+                        
+                    if (!telephonyActionsTabRootElement.TryGetProperty("callMissedTool", out var callMissedToolElement) ||
+                        callMissedToolElement.ValueKind != JsonValueKind.Object)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTelephonyCampaignAsync:TELEPHONY_ACTIONS_TAB_CALL_MISSED_TOOL_NOT_FOUND",
+                            "Telephony actions tab 'callMissedTool' not found or not an object."
+                        );
+                    }
+                    else
+                    {
+                        var callMissedToolValidationResult = await ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            telephonyActionsTabRootElement.GetProperty("callMissedTool"),
+                            "CallMissed",
+                            TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments
+                        );
+                        if (!callMissedToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:" + callMissedToolValidationResult.Code,
+                                callMissedToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.CallMissedTool = callMissedToolValidationResult.Data!;
+                    }
 
-                    var callInitiatedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], telephonyActionsTabRootElement.GetProperty("callInitiatedTool"), "CallInitiated");
-                    if (!callInitiatedToolValidationResult.Success)
+                    if (!telephonyActionsTabRootElement.TryGetProperty("callAnsweredTool", out var callAnsweredToolElement) ||
+                        callAnsweredToolElement.ValueKind != JsonValueKind.Object)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:" + callInitiatedToolValidationResult.Code,
-                            callInitiatedToolValidationResult.Message
+                            "AddOrUpdateTelephonyCampaignAsync:TELEPHONY_ACTIONS_TAB_CALL_ANSWERED_TOOL_NOT_FOUND",
+                            "Telephony actions tab 'callAnsweredTool' not found or not an object."
                         );
                     }
-                    newBusinessAppCampaignData.Actions.CallInitiatedTool = callInitiatedToolValidationResult.Data;
+                    else
+                    {
+                        var callAnsweredToolValidationResult = await ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            telephonyActionsTabRootElement.GetProperty("callAnsweredTool"),
+                            "CallAnswered",
+                            TelephonyCampaignOnCallAnsweredActionArguments
+                        );
+                        if (!callAnsweredToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:" + callAnsweredToolValidationResult.Code,
+                                callAnsweredToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.CallAnsweredTool = callAnsweredToolValidationResult.Data!;
+                    }
 
-                    var callDeclinedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], telephonyActionsTabRootElement.GetProperty("callDeclinedTool"), "CallDeclined");
-                    if (!callDeclinedToolValidationResult.Success)
+                    if (!telephonyActionsTabRootElement.TryGetProperty("callEndedTool", out var callEndedToolElement) ||
+                        callEndedToolElement.ValueKind != JsonValueKind.Object)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:" + callDeclinedToolValidationResult.Code,
-                            callDeclinedToolValidationResult.Message
+                            "AddOrUpdateTelephonyCampaignAsync:TELEPHONY_ACTIONS_TAB_CALL_ENDED_TOOL_NOT_FOUND",
+                            "Telephony actions tab 'callEndedTool' not found or not an object."
                         );
                     }
-                    newBusinessAppCampaignData.Actions.CallDeclinedTool = callDeclinedToolValidationResult.Data;
-
-                    var callMissedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], telephonyActionsTabRootElement.GetProperty("callMissedTool"), "CallMissed");
-                    if (!callMissedToolValidationResult.Success)
+                    else
                     {
-                        return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:" + callMissedToolValidationResult.Code,
-                            callMissedToolValidationResult.Message
+                        var callEndedToolValidationResult = await ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            telephonyActionsTabRootElement.GetProperty("callEndedTool"),
+                            "CallEnded",
+                            TelephonyCampaignOnCallEndedActionArguments
                         );
+                        if (!callEndedToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:" + callEndedToolValidationResult.Code,
+                                callEndedToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.CallEndedTool = callEndedToolValidationResult.Data!;
                     }
-                    newBusinessAppCampaignData.Actions.CallMissedTool = callMissedToolValidationResult.Data;
-
-                    var callAnsweredToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], telephonyActionsTabRootElement.GetProperty("callAnsweredTool"), "CallAnswered");
-                    if (!callAnsweredToolValidationResult.Success)
-                    {
-                        return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:" + callAnsweredToolValidationResult.Code,
-                            callAnsweredToolValidationResult.Message
-                        );
-                    }
-                    newBusinessAppCampaignData.Actions.CallAnsweredTool = callAnsweredToolValidationResult.Data;
-
-                    var callEndedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], telephonyActionsTabRootElement.GetProperty("callEndedTool"), "CallEnded");
-                    if (!callEndedToolValidationResult.Success)
-                    {
-                        return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:" + callEndedToolValidationResult.Code,
-                            callEndedToolValidationResult.Message
-                        );
-                    }
-                    newBusinessAppCampaignData.Actions.CallEndedTool = callEndedToolValidationResult.Data;
                 }
 
                 // Save or Update in Database
@@ -1584,35 +1825,86 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    var conversationInitiationFailureToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], webActionsTabRootElement.GetProperty("conversationInitiationFailureTool"), "ConversationInitiationFailure");
-                    if (!conversationInitiationFailureToolValidationResult.Success)
+                    if (!webActionsTabRootElement.TryGetProperty("conversationInitiationFailureTool", out var conversationInitiationFailureToolElement) ||
+                        conversationInitiationFailureToolElement.ValueKind != JsonValueKind.Object)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateWebCampaignAsync:" + conversationInitiationFailureToolValidationResult.Code,
-                            conversationInitiationFailureToolValidationResult.Message
+                            "AddOrUpdateWebCampaignAsync:CONVERSATION_INITIATION_FAILURE_TOOL_NOT_FOUND",
+                            "Conversation Initiation Failure Tool not found."
                         );
                     }
-                    newBusinessAppCampaignData.Actions.ConversationInitiationFailureTool = conversationInitiationFailureToolValidationResult.Data;
+                    else
+                    {
+                        var conversationInitiationFailureToolValidationResult = await ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            conversationInitiationFailureToolElement,
+                            "ConversationInitiationFailure",
+                            WebCampaignOnConversationInitiationFailureActionArguments
+                        );
+                        if (!conversationInitiationFailureToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateWebCampaignAsync:" + conversationInitiationFailureToolValidationResult.Code,
+                                conversationInitiationFailureToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.ConversationInitiationFailureTool = conversationInitiationFailureToolValidationResult.Data!;
+                    }
+                        
+                    if (!webActionsTabRootElement.TryGetProperty("conversationInitiatedTool", out var conversationInitiatedToolElement) ||
+                        conversationInitiatedToolElement.ValueKind != JsonValueKind.Object)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateWebCampaignAsync:CONVERSATION_INITIATED_TOOL_NOT_FOUND",
+                            "Conversation Initiated Tool not found."
+                        );
+                    }
+                    else
+                    {
+                        var conversationInitiatedToolValidationResult = await ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            webActionsTabRootElement.GetProperty("conversationInitiatedTool"),
+                            "ConversationInitiated",
+                            WebCampaignOnConversationInitiatedActionArguments
+                        );
+                        if (!conversationInitiatedToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateWebCampaignAsync:" + conversationInitiatedToolValidationResult.Code,
+                                conversationInitiatedToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.ConversationInitiatedTool = conversationInitiatedToolValidationResult.Data!;
+                    }
 
-                    var conversationInitiatedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], webActionsTabRootElement.GetProperty("conversationInitiatedTool"), "ConversationInitiated");
-                    if (!conversationInitiatedToolValidationResult.Success)
+                    if (!webActionsTabRootElement.TryGetProperty("conversationEndedTool", out var conversationEndedToolElement) ||
+                        conversationEndedToolElement.ValueKind != JsonValueKind.Object)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateWebCampaignAsync:" + conversationInitiatedToolValidationResult.Code,
-                            conversationInitiatedToolValidationResult.Message
+                            "AddOrUpdateWebCampaignAsync:CONVERSATION_ENDED_TOOL_NOT_FOUND",
+                            "Conversation Ended Tool not found."
                         );
                     }
-                    newBusinessAppCampaignData.Actions.ConversationInitiatedTool = conversationInitiatedToolValidationResult.Data;
-
-                    var conversationEndedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], webActionsTabRootElement.GetProperty("conversationEndedTool"), "ConversationEnded");
-                    if (!conversationEndedToolValidationResult.Success)
+                    else
                     {
-                        return result.SetFailureResult(
-                            "AddOrUpdateWebCampaignAsync:" + conversationEndedToolValidationResult.Code,
-                            conversationEndedToolValidationResult.Message
+                        var conversationEndedToolValidationResult = await ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            webActionsTabRootElement.GetProperty("conversationEndedTool"),
+                            "ConversationEnded",
+                            WebCampaignOnConversationEndedActionArguments
                         );
+                        if (!conversationEndedToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateWebCampaignAsync:" + conversationEndedToolValidationResult.Code,
+                                conversationEndedToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.ConversationEndedTool = conversationEndedToolValidationResult.Data!;
                     }
-                    newBusinessAppCampaignData.Actions.ConversationEndedTool = conversationEndedToolValidationResult.Data;
                 }
 
                 // Save or Update in Database
@@ -1653,14 +1945,17 @@ namespace IqraInfrastructure.Managers.Business
         }
 
         // Common Helpers
-        private async Task<FunctionReturnResult<BusinessAppCampaignActionConfig>> ValidateBusinessCampaignActionData(long businessId, string businessDefaultLanguage, JsonElement actionToolElement, string actionType)
+        private async Task<FunctionReturnResult<BusinessAppCampaignActionConfig>> ValidateBusinessCampaignActionData(long businessId, string businessDefaultLanguage, JsonElement actionToolElement, string actionType, List<CustomVariableInputTemplateVariableDefinition> argurmentList)
         {
             var result = new FunctionReturnResult<BusinessAppCampaignActionConfig>();          
             var resultData = new BusinessAppCampaignActionConfig();
 
             if (!actionToolElement.TryGetProperty("toolId", out var toolIdProperty))
             {
-                throw new Exception($"{actionType} selected tool id not found.");
+                return result.SetFailureResult(
+                    "ValidateBusinessCampaignActionData:TOOL_ID_NOT_FOUND",
+                    $"{actionType} tool id not found. Must be null or id of the tool."
+                );
             }
 
             string? toolId = toolIdProperty.GetString();
@@ -1690,65 +1985,43 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
-            if (argumentsProperty.ValueKind == JsonValueKind.Object)
+            if (argumentsProperty.ValueKind != JsonValueKind.Object)
+            {
+                return result.SetFailureResult(
+                    "ValidateBusinessCampaignActionData:ARGS_NOT_OBJECT",
+                    $"{actionType} tool 'arguments' must be an object."
+                );
+            }
+            else
             {
                 foreach (var toolInputArgument in selectedToolData.Configuration.InputSchemea)
                 {
-                    bool foundProperty = argumentsProperty.TryGetProperty(toolInputArgument.Id, out var argumentValueProperty);
-
-                    if (!foundProperty && toolInputArgument.IsRequired)
+                    if (
+                        (
+                            !argumentsProperty.TryGetProperty(toolInputArgument.Id, out var argumentValueProperty) ||
+                            argumentValueProperty.ValueKind != JsonValueKind.String ||
+                            string.IsNullOrWhiteSpace(argumentValueProperty.GetString())
+                        )
+                        &&
+                        toolInputArgument.IsRequired
+                    )
                     {
                         return result.SetFailureResult(
-                            "ValidateBusinessCampaignActionData:REQUIRED_ARG_MISSING",
-                            $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} not found but is required."
+                            "ValidateBusinessCampaignActionData:REQUIRED_ARG_INVALID_OR_MISSING",
+                            $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} is missing or invalid. Required fields must not be empty."
                         );
                     }
-                    else if (foundProperty)
+                    else
                     {
-                        if (toolInputArgument.IsArray)
-                        {
-                            if (argumentValueProperty.ValueKind != JsonValueKind.Array)
-                            {
-                                return result.SetFailureResult(
-                                    "ValidateBusinessCampaignActionData:ARG_NOT_ARRAY",
-                                    $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} should be an array."
-                                );
-                            }
+                        var argurmentValue = argumentValueProperty.GetString()!;
 
-                            var arrayValues = new List<object>();
-                            foreach (var arrayElement in argumentValueProperty.EnumerateArray())
-                            {
-                                var validationResult = BusinessAppToolPropertyValidator.ValidateArgumentValue(businessDefaultLanguage, arrayElement, toolInputArgument, actionType);
-                                if (!validationResult.Success)
-                                {
-                                    return result.SetFailureResult(
-                                        $"ValidateBusinessCampaignActionData:{validationResult.Code}",
-                                        validationResult.Message
-                                        );
-                                }
-                                arrayValues.Add(validationResult.Data);
-                            }
-
-                            if (toolInputArgument.IsRequired && arrayValues.Count == 0)
-                            {
-                                return result.SetFailureResult(
-                                    "ValidateBusinessCampaignActionData:REQUIRED_ARRAY_EMPTY",
-                                    $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} array cannot be empty as it is required."
-                                );
-                            }
-                            resultData.Arguments.Add(toolInputArgument.Id, arrayValues);
-                        }
-                        else
+                        var valueTemplateValidation = CustomVariableInputTemplateValidator.Validate(argurmentValue, argurmentList);
+                        if (!valueTemplateValidation.IsValid)
                         {
-                            var validationResult = BusinessAppToolPropertyValidator.ValidateArgumentValue(businessDefaultLanguage, argumentValueProperty, toolInputArgument, actionType);
-                            if (!validationResult.Success)
-                            {
-                                return result.SetFailureResult(
-                                    $"ValidateBusinessCampaignActionData:{validationResult.Code}",
-                                    validationResult.Message
-                                );
-                            }
-                            resultData.Arguments.Add(toolInputArgument.Id, validationResult.Data);
+                            return result.SetFailureResult(
+                                "ValidateBusinessCampaignActionData:ACTION_ARG_VARIABLE_VALUE_INVALID",
+                                $"{actionType} tool input argument 'value' is invalid:\n\n{string.Join("\n", valueTemplateValidation.Errors)}"
+                            );
                         }
                     }
                 }

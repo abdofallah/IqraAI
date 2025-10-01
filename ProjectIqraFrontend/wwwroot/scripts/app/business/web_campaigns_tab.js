@@ -828,12 +828,13 @@ function checkWebCampaignChanges(enableDisableButton = true) {
     }
 
     function checkActionsTab() {
-        function collectToolArguments(selectElement) {
+        function collectToolArguments(selectElement, inputArguementObject) {
             const args = {};
             const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
-            argumentsList.find(".input-group input").each((_, el) => {
-                const input = $(el);
-                args[input.attr("input_arguement")] = input.val().trim();
+            argumentsList.find(".variable-input-container").each((_, el) => {
+                const inputArguement = $(el).attr("input_arguement");
+
+                args[inputArguement] = inputArguementObject[inputArguement].getValue();
             });
             return Object.keys(args).length > 0 ? args : null;
         }
@@ -851,15 +852,15 @@ function checkWebCampaignChanges(enableDisableButton = true) {
         changes.actions = {
             conversationInitiationFailureTool: {
                 toolId: webCampaignActionToolConversationInitiationFailureSelect.val() === 'none' ? null : webCampaignActionToolConversationInitiationFailureSelect.val(),
-                arguments: collectToolArguments(webCampaignActionToolConversationInitiationFailureSelect)
+                arguments: collectToolArguments(webCampaignActionToolConversationInitiationFailureSelect, webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput)
             },
             conversationInitiatedTool: {
                 toolId: webCampaignActionToolConversationInitiatedSelect.val() === 'none' ? null : webCampaignActionToolConversationInitiatedSelect.val(),
-                arguments: collectToolArguments(webCampaignActionToolConversationInitiatedSelect)
+                arguments: collectToolArguments(webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput)
             },
             conversationEndedTool: {
                 toolId: webCampaignActionToolConversationEndedSelect.val() === 'none' ? null : webCampaignActionToolConversationEndedSelect.val(),
-                arguments: collectToolArguments(webCampaignActionToolConversationEndedSelect)
+                arguments: collectToolArguments(webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionInputArgumentsCustomInput)
             }
         };
 
@@ -1077,24 +1078,41 @@ function validateWebCampaign(onlyRemove = true) {
 
     // Actions
     function validateActionsTab() {
-        function validateToolArguments($toolSelect, errorPrefix) {
+        function validateToolArguments($toolSelect, inputArguementObject, errorPrefix) {
             if ($toolSelect.val() === "none") return;
             const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === $toolSelect.val());
             if (!toolData) return;
             const requiredArguments = toolData.configuration.inputSchemea.filter((arg) => arg.isRequired);
             const $argumentsContainer = $toolSelect.closest('div').find('.custom-tool-input-arguments');
+
+            $toolSelect.removeClass("is-invalid");
             requiredArguments.forEach((reqArg) => {
-                const $argInput = $argumentsContainer.find(`input[input_arguement="${reqArg.id}"]`);
-                if ($argInput.length === 0 || !$argInput.val().trim()) {
+                const arguementInput = inputArguementObject[reqArg.id];
+                if (!arguementInput) {
                     validated = false;
                     errors.push(`${errorPrefix}: ${reqArg.name[BusinessDefaultLanguage]} is required.`);
-                    if (!onlyRemove && $argInput.length > 0) $argInput.addClass("is-invalid");
+
+                    if (!onlyRemove) $toolSelect.addClass("is-invalid");
+                }
+                else {
+                    const arguementInputEditorField = $argumentsContainer.find(`.variable-input-container[input_arguement="${reqArg.id}"] .editor-area.form-control`);
+
+                    const value = arguementInput.getValue();
+                    if (!value || value == "" || value == null) {
+                        validated = false;
+                        errors.push(`${errorPrefix}: ${reqArg.name[BusinessDefaultLanguage]} is required.`);
+
+                        if (!onlyRemove) arguementInputEditorField.addClass("is-invalid");
+                    }
+                    else {
+                        arguementInputEditorField.removeClass("is-invalid");
+                    }
                 }
             });
         }
-        validateToolArguments(webCampaignActionToolConversationInitiationFailureSelect, "Conversation Initiation Failure tool");
-        validateToolArguments(webCampaignActionToolConversationInitiatedSelect, "Conversation Initiated tool");
-        validateToolArguments(webCampaignActionToolConversationEndedSelect, "Conversation Ended tool");
+        validateToolArguments(webCampaignActionToolConversationInitiationFailureSelect, webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput, "Conversation Initiation Failure tool");
+        validateToolArguments(webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput, "Conversation Initiated tool");
+        validateToolArguments(webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionInputArgumentsCustomInput, "Conversation Ended tool");
     }
 
     // Execute all validation checks

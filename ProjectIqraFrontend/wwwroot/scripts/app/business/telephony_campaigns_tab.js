@@ -151,6 +151,513 @@ const telephonyCampaignPostAnalysisContextVariableArguments = [
     }
 ];
 
+const telephonyCampaignOnCallInitiationFailureActionArgurments = [
+    // Call Queue Data
+    {
+        "id": "call_queue_id",
+        "Name": "Call Queue Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique identifier of the call queue entry."
+    },
+    {
+        "id": "call_queue_created_at",
+        "Name": "Call Queue Created At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call queue entry was first created."
+    },
+    {
+        "id": "call_queue_enqueued_at",
+        "Name": "Call Queue Enqueued At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was officially placed in the queue."
+    },
+    {
+        "id": "call_queue_processing_started_at",
+        "Name": "Call Queue Processing Started At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the system started processing the call."
+    },
+    {
+        "id": "call_queue_completed_at",
+        "Name": "Call Queue Completed At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was completed."
+    },
+    {
+        "id": "call_queue_status",
+        "Name": "Call Queue Status",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
+    },
+    {
+        "id": "call_queue_session_id",
+        "Name": "Call Queue Session Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The session ID associated with the call, if any."
+    },
+    {
+        "id": "call_queue_campaign_id",
+        "Name": "Call Queue Campaign Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the telephony campaign this call belongs to."
+    },
+    {
+        "id": "call_queue_calling_number_id",
+        "Name": "Call Queue Calling Number Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the phone number used to make the call."
+    },
+    {
+        "id": "call_queue_calling_number_provider",
+        "Name": "Call Queue Calling Number Provider",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The telephony provider of the calling number (e.g., Twilio)."
+    },
+    {
+        "id": "call_queue_provider_call_id",
+        "Name": "Call Queue Provider Call Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique call identifier from the telephony provider (e.g., Twilio Call SID)."
+    },
+    {
+        "id": "call_queue_recipient_number",
+        "Name": "Call Queue Recipient Number",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The phone number of the person being called."
+    },
+    {
+        "id": "call_queue_scheduled_for_date_time",
+        "Name": "Call Queue Scheduled For",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "The date and time the call is scheduled to be made."
+    },
+    {
+        "id": "call_queue_dynamic_variables",
+        "Name": "Call Queue Dynamic Variables",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Dynamic variables associated with the call (key-value pairs)."
+    },
+    {
+        "id": "call_queue_metadata",
+        "Name": "Call Queue Metadata",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Metadata associated with the call (key-value pairs)."
+    },
+    {
+        "id": "call_queue_initiation_error",
+        "Name": "Call Queue Initiation Error",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "Error message of the call initiation failure",
+    }
+];
+const telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments = [
+    // Call Queue Data
+    {
+        "id": "call_queue_id",
+        "Name": "Call Queue Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique identifier of the call queue entry."
+    },
+    {
+        "id": "call_queue_created_at",
+        "Name": "Call Queue Created At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call queue entry was first created."
+    },
+    {
+        "id": "call_queue_enqueued_at",
+        "Name": "Call Queue Enqueued At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was officially placed in the queue."
+    },
+    {
+        "id": "call_queue_processing_started_at",
+        "Name": "Call Queue Processing Started At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the system started processing the call."
+    },
+    {
+        "id": "call_queue_completed_at",
+        "Name": "Call Queue Completed At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was completed."
+    },
+    {
+        "id": "call_queue_status",
+        "Name": "Call Queue Status",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
+    },
+    {
+        "id": "call_queue_session_id",
+        "Name": "Call Queue Session Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The session ID associated with the call, if any."
+    },
+    {
+        "id": "call_queue_campaign_id",
+        "Name": "Call Queue Campaign Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the telephony campaign this call belongs to."
+    },
+    {
+        "id": "call_queue_calling_number_id",
+        "Name": "Call Queue Calling Number Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the phone number used to make the call."
+    },
+    {
+        "id": "call_queue_calling_number_provider",
+        "Name": "Call Queue Calling Number Provider",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The telephony provider of the calling number (e.g., Twilio)."
+    },
+    {
+        "id": "call_queue_provider_call_id",
+        "Name": "Call Queue Provider Call Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique call identifier from the telephony provider (e.g., Twilio Call SID)."
+    },
+    {
+        "id": "call_queue_recipient_number",
+        "Name": "Call Queue Recipient Number",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The phone number of the person being called."
+    },
+    {
+        "id": "call_queue_scheduled_for_date_time",
+        "Name": "Call Queue Scheduled For",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "The date and time the call is scheduled to be made."
+    },
+    {
+        "id": "call_queue_dynamic_variables",
+        "Name": "Call Queue Dynamic Variables",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Dynamic variables associated with the call (key-value pairs)."
+    },
+    {
+        "id": "call_queue_metadata",
+        "Name": "Call Queue Metadata",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Metadata associated with the call (key-value pairs)."
+    },
+    // Conversation Data
+    {
+        "id": "conversation_id",
+        "Name": "Conversation Id",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Id of the conversation"
+    }
+];
+const telephonyCampaignOnCallAnsweredActionArgurments = [
+    // Call Queue Data
+    {
+        "id": "call_queue_id",
+        "Name": "Call Queue Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique identifier of the call queue entry."
+    },
+    {
+        "id": "call_queue_created_at",
+        "Name": "Call Queue Created At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call queue entry was first created."
+    },
+    {
+        "id": "call_queue_enqueued_at",
+        "Name": "Call Queue Enqueued At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was officially placed in the queue."
+    },
+    {
+        "id": "call_queue_processing_started_at",
+        "Name": "Call Queue Processing Started At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the system started processing the call."
+    },
+    {
+        "id": "call_queue_completed_at",
+        "Name": "Call Queue Completed At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was completed."
+    },
+    {
+        "id": "call_queue_status",
+        "Name": "Call Queue Status",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
+    },
+    {
+        "id": "call_queue_session_id",
+        "Name": "Call Queue Session Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The session ID associated with the call, if any."
+    },
+    {
+        "id": "call_queue_campaign_id",
+        "Name": "Call Queue Campaign Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the telephony campaign this call belongs to."
+    },
+    {
+        "id": "call_queue_calling_number_id",
+        "Name": "Call Queue Calling Number Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the phone number used to make the call."
+    },
+    {
+        "id": "call_queue_calling_number_provider",
+        "Name": "Call Queue Calling Number Provider",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The telephony provider of the calling number (e.g., Twilio)."
+    },
+    {
+        "id": "call_queue_provider_call_id",
+        "Name": "Call Queue Provider Call Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique call identifier from the telephony provider (e.g., Twilio Call SID)."
+    },
+    {
+        "id": "call_queue_recipient_number",
+        "Name": "Call Queue Recipient Number",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The phone number of the person being called."
+    },
+    {
+        "id": "call_queue_scheduled_for_date_time",
+        "Name": "Call Queue Scheduled For",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "The date and time the call is scheduled to be made."
+    },
+    {
+        "id": "call_queue_dynamic_variables",
+        "Name": "Call Queue Dynamic Variables",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Dynamic variables associated with the call (key-value pairs)."
+    },
+    {
+        "id": "call_queue_metadata",
+        "Name": "Call Queue Metadata",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Metadata associated with the call (key-value pairs)."
+    },
+    // Conversation Data
+    {
+        "id": "conversation_id",
+        "Name": "Conversation Id",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Id of the conversation"
+    },
+    {
+        "id": "conversation_start_time",
+        "Name": "Conversation Start Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was started"
+    }
+];
+const telephonyCampaignOnCallEndedActionArgurments = [
+    // Call Queue Data
+    {
+        "id": "call_queue_id",
+        "Name": "Call Queue Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique identifier of the call queue entry."
+    },
+    {
+        "id": "call_queue_created_at",
+        "Name": "Call Queue Created At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call queue entry was first created."
+    },
+    {
+        "id": "call_queue_enqueued_at",
+        "Name": "Call Queue Enqueued At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was officially placed in the queue."
+    },
+    {
+        "id": "call_queue_processing_started_at",
+        "Name": "Call Queue Processing Started At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the system started processing the call."
+    },
+    {
+        "id": "call_queue_completed_at",
+        "Name": "Call Queue Completed At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was completed."
+    },
+    {
+        "id": "call_queue_status",
+        "Name": "Call Queue Status",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
+    },
+    {
+        "id": "call_queue_session_id",
+        "Name": "Call Queue Session Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The session ID associated with the call, if any."
+    },
+    {
+        "id": "call_queue_campaign_id",
+        "Name": "Call Queue Campaign Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the telephony campaign this call belongs to."
+    },
+    {
+        "id": "call_queue_calling_number_id",
+        "Name": "Call Queue Calling Number Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the phone number used to make the call."
+    },
+    {
+        "id": "call_queue_calling_number_provider",
+        "Name": "Call Queue Calling Number Provider",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The telephony provider of the calling number (e.g., Twilio)."
+    },
+    {
+        "id": "call_queue_provider_call_id",
+        "Name": "Call Queue Provider Call Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique call identifier from the telephony provider (e.g., Twilio Call SID)."
+    },
+    {
+        "id": "call_queue_recipient_number",
+        "Name": "Call Queue Recipient Number",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The phone number of the person being called."
+    },
+    {
+        "id": "call_queue_scheduled_for_date_time",
+        "Name": "Call Queue Scheduled For",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "The date and time the call is scheduled to be made."
+    },
+    {
+        "id": "call_queue_dynamic_variables",
+        "Name": "Call Queue Dynamic Variables",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Dynamic variables associated with the call (key-value pairs)."
+    },
+    {
+        "id": "call_queue_metadata",
+        "Name": "Call Queue Metadata",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Metadata associated with the call (key-value pairs)."
+    },
+    // Conversation Data
+    {
+        "id": "conversation_id",
+        "Name": "Conversation Id",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Id of the conversation"
+    },
+    {
+        "id": "conversation_start_time",
+        "Name": "Conversation Start Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was started"
+    },
+    {
+        "id": "conversation_end_type",
+        "Name": "Conversation End Type",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Type the conversation was ended with"
+    },
+    {
+        "id": "conversation_end_time",
+        "Name": "Conversation End Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was ended"
+    },
+    {
+        "id": "conversation_turns",
+        "Name": "Conversation Turns",
+        "Type": "object",
+        "group": "Conversation Data",
+        "Description": "Complete System/Agent/User turns data of the conversation"
+    },
+    {
+        "id": "conversation_turns_simplified",
+        "Name": "Conversation Turns Simplified",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Simplified & already compiled `<role>: <content>` string of Conversations Turns"
+    }
+];
+
+
 /** Dynamic Variables **/
 let manageTelephonyCampaignType = null; // 'new' or 'edit'
 let currentTelephonyCampaignData = null;

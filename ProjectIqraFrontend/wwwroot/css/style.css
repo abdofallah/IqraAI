@@ -2516,6 +2516,7 @@ table.table > thead > * > * {
 
 .campaign-post-analysis-context-variable .variable-input-container .editor-area.form-control.is-invalid
 {
+	background-position: right calc(.375em + 2.6875rem) center;
 	border-top-width: var(--bs-border-width) !important;
 }
 
