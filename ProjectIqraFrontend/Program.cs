@@ -437,10 +437,10 @@ namespace ProjectIqraFrontend
                 );
             });
 
-            builder.Services.AddSingleton<ConversationUsageRepository>((sp) =>
+            builder.Services.AddSingleton<UserUsageRepository>((sp) =>
             {
-                return new ConversationUsageRepository(
-                    sp.GetRequiredService<ILogger<ConversationUsageRepository>>(),
+                return new UserUsageRepository(
+                    sp.GetRequiredService<ILogger<UserUsageRepository>>(),
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:ConversationUsageRepositoryDatabaseName"]
                 );
@@ -735,7 +735,7 @@ namespace ProjectIqraFrontend
             {
                 return new UserUsageManager(
                     sp.GetRequiredService<ILogger<UserUsageManager>>(),
-                    sp.GetRequiredService<ConversationUsageRepository>()
+                    sp.GetRequiredService<UserUsageRepository>()
                 );
             });
             builder.Services.AddSingleton<BillingValidationManager>((sp) =>

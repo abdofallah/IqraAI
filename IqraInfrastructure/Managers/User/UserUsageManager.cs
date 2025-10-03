@@ -1,8 +1,7 @@
-﻿using IqraCore.Entities.Billing.Usage;
-using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Helpers;
 using IqraCore.Models.Usage;
 using IqraCore.Models.User.Usage;
-using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.User;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using System.Globalization;
@@ -12,54 +11,43 @@ namespace IqraInfrastructure.Managers.User
     public class UserUsageManager
     {
         private readonly ILogger<UserUsageManager> _logger;
-        private readonly ConversationUsageRepository _conversationUsageRepository;
+        private readonly UserUsageRepository _usageRepository;
 
         public UserUsageManager(
             ILogger<UserUsageManager> logger,
-            ConversationUsageRepository usageRepository
+            UserUsageRepository usageRepository
         )
         {
             _logger = logger;
-            _conversationUsageRepository = usageRepository;
+            _usageRepository = usageRepository;
         }
 
         public async Task<FunctionReturnResult<GetUserUsageCountResponseModel?>> GetUsageCount(string masterUserEmail, GetUserUsageCountRequestModel request)
         {
             var result = new FunctionReturnResult<GetUserUsageCountResponseModel?>();
-
             try
             {
-                var currentCount = await _conversationUsageRepository.GetConversationsCountAsync(masterUserEmail, request.StartDate, request.EndDate, request.BusinessIds);
-
+                var currentCountsDict = await _usageRepository.GetUserUsageSourceTypeCountsAsync(masterUserEmail, request.StartDate, request.EndDate, request.BusinessIds);
                 var response = new GetUserUsageCountResponseModel
                 {
-                    CurrentCount = currentCount,
-                    PreviousCount = null
+                    CurrentCounts = currentCountsDict.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value)
                 };
 
-                // If a comparison with the previous period is requested.
                 if (request.ComparePrevious)
                 {
-                    // Calculate the timespan of the current period.
                     var timeSpan = request.EndDate - request.StartDate;
-
-                    // Determine the start and end dates for the previous period.
                     var previousStartDate = request.StartDate - timeSpan;
                     var previousEndDate = request.StartDate;
-
-                    // Fetch the count for the previous period.
-                    var previousCount = await _conversationUsageRepository.GetConversationsCountAsync(masterUserEmail, previousStartDate, previousEndDate, request.BusinessIds);
-                    response.PreviousCount = (int)previousCount;
+                    var previousCountsDict = await _usageRepository.GetUserUsageSourceTypeCountsAsync(masterUserEmail, previousStartDate, previousEndDate, request.BusinessIds);
+                    response.PreviousCounts = previousCountsDict.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value);
                 }
 
                 return result.SetSuccessResult(response);
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult(
-                    "GetUsageCount:EXCEPTION",
-                    $"An unexpected error occurred: {ex.Message}"
-                );
+                _logger.LogError(ex, "Failed to get usage counts for user {Email}", masterUserEmail);
+                return result.SetFailureResult("GET_USAGE_COUNT_FAILED", $"An unexpected error occurred: {ex.Message}");
             }
         }
 
@@ -83,13 +71,13 @@ namespace IqraInfrastructure.Managers.User
             var totalDaysInRange = (inclusiveEndDate - startDate).TotalDays;
             switch (request.GroupBy)
             {
-                case UsageGroupBy.Hour:
+                case UserUsageGroupBy.Hour:
                     if (totalDaysInRange > 1)
                     {
                         return result.SetFailureResult("INVALID_GROUPING", "Grouping by hour is only permitted for a single-day range.");
                     }
                     break;
-                case UsageGroupBy.Month:
+                case UserUsageGroupBy.Month:
                     if (startDate.Year == inclusiveEndDate.Year && startDate.Month == inclusiveEndDate.Month)
                     {
                         return result.SetFailureResult("INVALID_GROUPING", "Grouping by month requires a date range that spans across multiple months.");
@@ -101,114 +89,80 @@ namespace IqraInfrastructure.Managers.User
             var summary = new GetUserUsageSummaryModel();
             try
             {
-                // 2. Get Overall Summary Stats
-                var overallStats = await _conversationUsageRepository.GetOverallUsageStatsAsync(masterUserEmail, startDate, endDate);
-                if (overallStats != null)
-                {
-                    summary.TotalCalls = overallStats.TotalCalls;
-                    summary.TotalDurationMinutes = overallStats.TotalMinutes;
-                    summary.TotalCost = overallStats.TotalCost;
-                    summary.AverageDurationSeconds = (overallStats.TotalCalls > 0) ? (overallStats.TotalMinutes * 60) / overallStats.TotalCalls : 0;
-                    summary.AverageCallCost = (overallStats.TotalCalls > 0) ? overallStats.TotalCost / overallStats.TotalCalls : 0;
-                }
+                // 1. Get the new, detailed Overall Summary Stats
+                var overallStats = await _usageRepository.GetOverallUserUsageStatsByTypeAsync(masterUserEmail, startDate, endDate);
+                summary.OverallStats = overallStats;
+                summary.GrandTotalCost = overallStats.TotalCost;
 
-                // 3. Get Aggregated Data for Charts
+                // 2. Get Aggregated Data for Charts
                 string groupByFormat;
                 string labelFormat;
                 switch (request.GroupBy)
                 {
-                    case UsageGroupBy.Hour:
+                    case UserUsageGroupBy.Hour:
                         groupByFormat = "%H";
                         labelFormat = "h tt";
                         break;
-                    case UsageGroupBy.Month:
+                    case UserUsageGroupBy.Month:
                         groupByFormat = "%Y-%m";
                         labelFormat = "MMM yyyy";
                         break;
-                    case UsageGroupBy.Day:
+                    case UserUsageGroupBy.Day:
                     default:
                         groupByFormat = "%Y-%m-%d";
                         labelFormat = "MMM d";
                         break;
                 }
+                var aggregatedData = await _usageRepository.GetAggregatedUserUsageByPeriodAsync(masterUserEmail, startDate, endDate, groupByFormat);
 
-                var aggregatedData = await _conversationUsageRepository.GetAggregatedUsageByPeriodAsync(masterUserEmail, startDate, endDate, groupByFormat);
-
-                var uniqueBusinessIds = aggregatedData.Select(d => d.BusinessId).Distinct().ToList();
-                summary.DurationChart.Datasets = uniqueBusinessIds.Select(id => new StackedBarDataset { BusinessId = id }).ToList();
-                summary.CallsChart.Datasets = uniqueBusinessIds.Select(id => new StackedBarDataset { BusinessId = id }).ToList();
-                summary.CostChart.Datasets = uniqueBusinessIds.Select(id => new StackedBarDataset { BusinessId = id }).ToList();
-
-                var dataLookup = aggregatedData.ToDictionary(d => $"{d.Period}_{d.BusinessId}");
-
-                var xLabels = new List<string>();
-
-                switch (request.GroupBy)
+                if (!aggregatedData.Any())
                 {
-                    case UsageGroupBy.Hour:
-                        for (int i = 0; i < 24; i++)
-                        {
-                            var currentHour = startDate.AddHours(i);
-                            var periodKey = currentHour.Hour.ToString("D2");
-                            xLabels.Add(currentHour.ToString(labelFormat, CultureInfo.InvariantCulture));
-
-                            // For each business, find its data for this period
-                            for (int j = 0; j < uniqueBusinessIds.Count; j++)
-                            {
-                                var businessId = uniqueBusinessIds[j];
-                                var lookupKey = $"{periodKey}_{businessId}";
-                                var dataExists = dataLookup.TryGetValue(lookupKey, out var stats);
-
-                                summary.DurationChart.Datasets[j].Data.Add(dataExists ? stats.TotalMinutes : 0);
-                                summary.CallsChart.Datasets[j].Data.Add(dataExists ? stats.TotalCalls : 0);
-                                summary.CostChart.Datasets[j].Data.Add(dataExists ? stats.TotalCost : 0);
-                            }
-                        }
-                        break;
-
-                    case UsageGroupBy.Month:
-                        for (var currentMonth = new DateTime(startDate.Year, startDate.Month, 1); currentMonth <= inclusiveEndDate; currentMonth = currentMonth.AddMonths(1))
-                        {
-                            var periodKey = currentMonth.ToString("yyyy-MM");
-                            xLabels.Add(currentMonth.ToString(labelFormat, CultureInfo.InvariantCulture));
-                            for (int j = 0; j < uniqueBusinessIds.Count; j++)
-                            {
-                                var businessId = uniqueBusinessIds[j];
-                                var lookupKey = $"{periodKey}_{businessId}";
-                                var dataExists = dataLookup.TryGetValue(lookupKey, out var stats);
-
-                                summary.DurationChart.Datasets[j].Data.Add(dataExists ? stats.TotalMinutes : 0);
-                                summary.CallsChart.Datasets[j].Data.Add(dataExists ? stats.TotalCalls : 0);
-                                summary.CostChart.Datasets[j].Data.Add(dataExists ? stats.TotalCost : 0);
-                            }
-                        }
-                        break;
-                    case UsageGroupBy.Day:
-                    default:
-                        for (var currentDay = startDate; currentDay <= inclusiveEndDate; currentDay = currentDay.AddDays(1))
-                        {
-                            var periodKey = currentDay.ToString("yyyy-MM-dd");
-                            xLabels.Add(currentDay.ToString(labelFormat, CultureInfo.InvariantCulture));
-                            for (int j = 0; j < uniqueBusinessIds.Count; j++)
-                            {
-                                var businessId = uniqueBusinessIds[j];
-                                var lookupKey = $"{periodKey}_{businessId}";
-                                var dataExists = dataLookup.TryGetValue(lookupKey, out var stats);
-
-                                summary.DurationChart.Datasets[j].Data.Add(dataExists ? stats.TotalMinutes : 0);
-                                summary.CallsChart.Datasets[j].Data.Add(dataExists ? stats.TotalCalls : 0);
-                                summary.CostChart.Datasets[j].Data.Add(dataExists ? stats.TotalCost : 0);
-                            }
-                        }
-                        break;
+                    summary.ChartTitle = $"No usage data from {startDate:MMM d, yyyy} to {inclusiveEndDate:MMM d, yyyy}";
+                    return result.SetSuccessResult(summary);
                 }
 
-                summary.DurationChart.Labels = xLabels;
-                summary.CallsChart.Labels = xLabels;
-                summary.CostChart.Labels = xLabels;
+                // 3. Dynamically discover all features and businesses present in the data
+                var uniqueBusinessIds = aggregatedData.Select(d => d.BusinessId).Distinct().ToList();
+                var allFeatureKeys = aggregatedData.SelectMany(d => d.UsageByFeature.Keys).Distinct().ToList();
+
+                // 4. Initialize a chart for each discovered feature
+                foreach (var key in allFeatureKeys)
+                {
+                    summary.ChartsByFeature[key] = new StackedChartData
+                    {
+                        Datasets = uniqueBusinessIds.Select(id => new StackedBarDataset { BusinessId = id }).ToList()
+                    };
+                }
+
+                var dataLookup = aggregatedData.ToDictionary(d => $"{d.Period}_{d.BusinessId}");
+                var xLabels = new List<string>();
+
+                IEnumerable<(string PeriodKey, string Label)> timePeriods = GetTimePeriods(startDate, inclusiveEndDate, request.GroupBy, labelFormat);
+                foreach (var (periodKey, label) in timePeriods)
+                {
+                    xLabels.Add(label);
+                    foreach (var featureKey in allFeatureKeys)
+                    {
+                        var chart = summary.ChartsByFeature[featureKey];
+                        for (int j = 0; j < uniqueBusinessIds.Count; j++)
+                        {
+                            var businessId = uniqueBusinessIds[j];
+                            var lookupKey = $"{periodKey}_{businessId}";
+                            decimal value = dataLookup.TryGetValue(lookupKey, out var stats)
+                                ? stats.UsageByFeature.GetValueOrDefault(featureKey, 0)
+                                : 0;
+                            chart.Datasets[j].Data.Add(value);
+                        }
+                    }
+                }
+
+                // 6. Assign labels to all generated charts
+                foreach (var chart in summary.ChartsByFeature.Values)
+                {
+                    chart.Labels = xLabels;
+                }
 
                 summary.ChartTitle = $"Usage from {startDate:MMM d, yyyy} to {inclusiveEndDate:MMM d, yyyy}";
-
                 return result.SetSuccessResult(summary);
             }
             catch (Exception ex)
@@ -218,15 +172,15 @@ namespace IqraInfrastructure.Managers.User
             }
         }
 
-        public async Task<FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>>> GetUsageHistoryAsync(
+        public async Task<FunctionReturnResult<PaginatedResult<UserUsageRecordModel>>> GetUsageHistoryAsync(
             string masterUserEmail,
             int limit,
             string? nextCursor,
             string? previousCursor,
             List<long>? businessIds
         ) {
-            var result = new FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>>();
-            var paginatedResult = new PaginatedResult<MinuteUsageRecordModel> { PageSize = limit };
+            var result = new FunctionReturnResult<PaginatedResult<UserUsageRecordModel>>();
+            var paginatedResult = new PaginatedResult<UserUsageRecordModel> { PageSize = limit };
 
             bool fetchNext = string.IsNullOrWhiteSpace(previousCursor);
             string? currentCursor = fetchNext ? nextCursor : previousCursor;
@@ -235,41 +189,31 @@ namespace IqraInfrastructure.Managers.User
             try
             {
                 // Fetch usage records
-                var (usageRecords, hasMore) = await _conversationUsageRepository.GetUsageHistoryPaginatedAsync(masterUserEmail, limit, decodedCursor, fetchNext, businessIds);
-
+                var (usageRecords, hasMore) = await _usageRepository.GetUserUsageHistoryPaginatedAsync(masterUserEmail, limit, decodedCursor, fetchNext, businessIds);
                 if (usageRecords == null || !usageRecords.Any())
                 {
-                    return result.SetSuccessResult(new PaginatedResult<MinuteUsageRecordModel>());
+                    return result.SetSuccessResult(new PaginatedResult<UserUsageRecordModel>());
                 }
 
                 // Map to the final model
-                paginatedResult.Items = usageRecords.Select((r) =>
+                paginatedResult.Items = usageRecords.Select(r => new UserUsageRecordModel
                 {
-                    MinuteUsageRecordModel returnResult;
-
-                    if (r is FixedPlanMinuteUsageRecord fixedPlanRecord)
+                    Id = r.Id,
+                    Timestamp = r.CreatedAt,
+                    BusinessId = r.BusinessId,
+                    PlanId = r.PlanId,
+                    Description = r.Description,
+                    SourceType = r.SourceType,
+                    SourceId = r.SourceId,
+                    TotalCost = r.ConsumedFeatures.Sum(cf => cf.TotalUsage),
+                    ConsumedFeatures = r.ConsumedFeatures.Select(cf => new ConsumedFeatureModel
                     {
-                        returnResult = new FixedPlanMinuteUsageRecordModel()
-                        {
-                            TotalMinutesDeducted = fixedPlanRecord.TotalPlanMinutesDeducted,
-                            TotalOverageMinutesCharged = fixedPlanRecord.TotalOverageMinutesCharged,
-                            TotalOverageCost = fixedPlanRecord.TotalOverageCost
-                        };
-                    }
-                    else
-                    {
-                        returnResult = new MinuteUsageRecordModel();
-                    }
-
-                    returnResult.Id = r.Id;
-                    returnResult.Timestamp = r.CreatedAt;
-                    returnResult.BusinessId = r.BusinessId;
-                    returnResult.MinutesUsed = r.TotalMinutesUsed;
-                    returnResult.ConversationSessionId = r.ConversationSessionId;
-                    returnResult.PlanModel = r.PlanModel;
-                    returnResult.TotalCost = r.TotalCost;
-
-                    return returnResult;
+                        FeatureKey = cf.FeatureKey,
+                        Type = cf.Type.ToString(),
+                        Quantity = cf.Quantity,
+                        AppliedUnitUsage = cf.AppliedUnitUsage,
+                        TotalUsage = cf.TotalUsage
+                    }).ToList()
                 }).ToList();
 
                 // Set cursors
@@ -294,6 +238,32 @@ namespace IqraInfrastructure.Managers.User
             {
                 _logger.LogError(ex, "Failed to get usage history for user {Email}", masterUserEmail);
                 return result.SetFailureResult("USAGE_HISTORY_FAILED", "An error occurred while fetching usage history.");
+            }
+        }
+
+        private IEnumerable<(string PeriodKey, string Label)> GetTimePeriods(DateTime start, DateTime end, UserUsageGroupBy groupBy, string labelFormat)
+        {
+            switch (groupBy)
+            {
+                case UserUsageGroupBy.Hour:
+                    for (int i = 0; i < 24; i++)
+                    {
+                        var currentHour = start.AddHours(i);
+                        yield return (currentHour.Hour.ToString("D2"), currentHour.ToString(labelFormat, CultureInfo.InvariantCulture));
+                    }
+                    break;
+                case UserUsageGroupBy.Month:
+                    for (var currentMonth = new DateTime(start.Year, start.Month, 1); currentMonth <= end; currentMonth = currentMonth.AddMonths(1))
+                    {
+                        yield return (currentMonth.ToString("yyyy-MM"), currentMonth.ToString(labelFormat, CultureInfo.InvariantCulture));
+                    }
+                    break;
+                default: // Day
+                    for (var currentDay = start; currentDay <= end; currentDay = currentDay.AddDays(1))
+                    {
+                        yield return (currentDay.ToString("yyyy-MM-dd"), currentDay.ToString(labelFormat, CultureInfo.InvariantCulture));
+                    }
+                    break;
             }
         }
     }

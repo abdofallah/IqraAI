@@ -12,7 +12,6 @@ using IqraCore.Entities.Region;
 using IqraCore.Entities.Server;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Models.Server;
-using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call.Helper;
 using IqraInfrastructure.Managers.Conversation.Session;
@@ -29,6 +28,7 @@ using IqraInfrastructure.Managers.Server.Metrics;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
@@ -60,7 +60,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
-        private readonly BillingUsageManager _billingProcessingManager;
+        private readonly UserBillingUsageManager _billingProcessingManager;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
@@ -82,7 +82,7 @@ namespace IqraInfrastructure.Managers.Call
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            BillingUsageManager billingProcessingManager
+            UserBillingUsageManager billingProcessingManager
         )
         {
             _logger = logger;

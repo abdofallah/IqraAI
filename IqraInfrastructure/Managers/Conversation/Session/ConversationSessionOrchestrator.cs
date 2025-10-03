@@ -12,12 +12,12 @@ using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WebSession;
 using IqraCore.Interfaces.Conversation;
-using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Helpers;
+using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -32,7 +32,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly BusinessManager _businessManager;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
-        private readonly BillingUsageManager _billingProcessingManager;
+        private readonly UserBillingUsageManager _billingProcessingManager;
 
         private readonly string _sessionId;
         private readonly DateTime _createdAt;
@@ -113,7 +113,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             BusinessManager businessManager,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
-            BillingUsageManager billingProcessingManager,
+            UserBillingUsageManager billingProcessingManager,
             ILoggerFactory loggerFactory,
 
             CallQueueData? queueData = null,

@@ -11,11 +11,8 @@ namespace IqraCore.Entities.Usage
         public long BusinessId => Id["businessId"].AsInt64;
 
         [BsonRepresentation(BsonType.Decimal128)]
-        public decimal TotalMinutes { get; set; }
-
-        [BsonRepresentation(BsonType.Decimal128)]
         public decimal TotalCost { get; set; }
 
-        public int TotalCalls { get; set; }
+        public Dictionary<string, decimal> UsageByFeature { get; set; } = new Dictionary<string, decimal>();
     }
 }

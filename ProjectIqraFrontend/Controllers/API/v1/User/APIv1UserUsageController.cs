@@ -69,9 +69,9 @@ namespace ProjectIqraFrontend.Controllers.API.v1.User
         }
 
         [HttpPost("history")]
-        public async Task<FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>?>> GetUsageHistory([FromBody] GetUserUsageHistoryRequestModel modelData)
+        public async Task<FunctionReturnResult<PaginatedResult<UserUsageRecordModel>?>> GetUsageHistory([FromBody] GetUserUsageHistoryRequestModel modelData)
         {
-            var result = new FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>?>();
+            var result = new FunctionReturnResult<PaginatedResult<UserUsageRecordModel>?>();
 
             try
             {

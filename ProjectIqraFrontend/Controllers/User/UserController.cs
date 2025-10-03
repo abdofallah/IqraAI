@@ -216,9 +216,9 @@ namespace ProjectIqraFrontend.Controllers.User
         }
 
         [HttpPost("/app/user/usage/history")]
-        public async Task<FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>?>> GetUsageHistory([FromBody] GetUserUsageHistoryRequestModel request)
+        public async Task<FunctionReturnResult<PaginatedResult<UserUsageRecordModel>?>> GetUsageHistory([FromBody] GetUserUsageHistoryRequestModel request)
         {
-            var result = new FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>?>();
+            var result = new FunctionReturnResult<PaginatedResult<UserUsageRecordModel>?>();
 
             string? sessionId = Request.Cookies["sessionId"];
             string? authKey = Request.Cookies["authKey"];

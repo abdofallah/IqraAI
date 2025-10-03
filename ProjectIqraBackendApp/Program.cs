@@ -20,6 +20,7 @@ using IqraInfrastructure.Managers.Server.Metrics;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Managers.WebSession;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Billing;
@@ -436,10 +437,10 @@ namespace ProjectIqraBackendApp
                 );
             });
 
-            builder.Services.AddSingleton<ConversationUsageRepository>((sp) =>
+            builder.Services.AddSingleton<UserUsageRepository>((sp) =>
             {
-                return new ConversationUsageRepository(
-                    sp.GetRequiredService<ILogger<ConversationUsageRepository>>(),
+                return new UserUsageRepository(
+                    sp.GetRequiredService<ILogger<UserUsageRepository>>(),
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:ConversationUsageRepositoryDatabaseName"]
                 );
@@ -799,7 +800,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<BillingUsageManager>()
+                    sp.GetRequiredService<UserBillingUsageManager>()
                 );
             });
             builder.Services.AddSingleton<BackendWebSessionProcessorManager>((sp) =>
@@ -814,16 +815,16 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<BillingUsageManager>()
+                    sp.GetRequiredService<UserBillingUsageManager>()
                 );
             });
-            builder.Services.AddSingleton<BillingUsageManager>((sp) =>
+            builder.Services.AddSingleton<UserBillingUsageManager>((sp) =>
             {
-                return new BillingUsageManager(
-                    sp.GetRequiredService<ILogger<BillingUsageManager>>(),
+                return new UserBillingUsageManager(
+                    sp.GetRequiredService<ILogger<UserBillingUsageManager>>(),
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<ConversationUsageRepository>(),
+                    sp.GetRequiredService<UserUsageRepository>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<IMongoClient>()
                 );

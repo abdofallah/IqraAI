@@ -1,9 +1,17 @@
-﻿namespace IqraCore.Models.User.Usage
+﻿using IqraCore.Entities.Usage;
+
+namespace IqraCore.Models.User.Usage
 {
-    public class StackedBarDataset
+    public class GetUserUsageSummaryModel
     {
-        public long BusinessId { get; set; }
-        public List<decimal> Data { get; set; } = new List<decimal>();
+        // High-level stats
+        public decimal GrandTotalCost { get; set; }
+        public OverallUserUsageStatsByTypeResult OverallStats { get; set; }
+
+        // Dynamic charts
+        public Dictionary<string, StackedChartData> ChartsByFeature { get; set; } = new Dictionary<string, StackedChartData>();
+
+        public string ChartTitle { get; set; }
     }
 
     public class StackedChartData
@@ -12,18 +20,9 @@
         public List<StackedBarDataset> Datasets { get; set; } = new List<StackedBarDataset>();
     }
 
-    public class GetUserUsageSummaryModel
+    public class StackedBarDataset
     {
-        public int TotalCalls { get; set; }
-        public decimal TotalDurationMinutes { get; set; }
-        public decimal TotalCost { get; set; }
-        public decimal AverageDurationSeconds { get; set; }
-        public decimal AverageCallCost { get; set; }
-
-        public StackedChartData DurationChart { get; set; } = new StackedChartData();
-        public StackedChartData CallsChart { get; set; } = new StackedChartData();
-        public StackedChartData CostChart { get; set; } = new StackedChartData();
-
-        public string ChartTitle { get; set; } = string.Empty;
+        public long BusinessId { get; set; }
+        public List<decimal> Data { get; set; } = new List<decimal>();
     }
 }

@@ -2,7 +2,7 @@
 {
     public class GetUserUsageCountResponseModel
     {
-        public long CurrentCount { get; set; }
-        public long? PreviousCount { get; set; }
+        public Dictionary<string, long> CurrentCounts { get; set; } = new Dictionary<string, long>();
+        public Dictionary<string, long>? PreviousCounts { get; set; } = null;
     }
 }

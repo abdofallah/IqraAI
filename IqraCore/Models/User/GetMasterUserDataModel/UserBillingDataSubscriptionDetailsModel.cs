@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.User.Billing;
+using IqraCore.Entities.User.Billing.Enums;
 
 namespace IqraCore.Models.User.Billing
 {
