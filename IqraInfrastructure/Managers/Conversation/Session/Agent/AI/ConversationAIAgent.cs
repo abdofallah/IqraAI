@@ -25,8 +25,6 @@ using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Drawing;
-using static Google.Cloud.TextToSpeech.V1.MultiSpeakerMarkup.Types;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -73,6 +71,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public string AgentId => _agentState.AgentId;
         public ConversationAgentType AgentType => ConversationAgentType.AI;
         public ConversationAgentConfiguration AgentConfiguration => _agentConfiguration;
+        public ConversationAIAgentState AgentState => _agentState;
 
         // Events
         public event EventHandler<ConversationAudioGeneratedEventArgs>? AudioGenerated;

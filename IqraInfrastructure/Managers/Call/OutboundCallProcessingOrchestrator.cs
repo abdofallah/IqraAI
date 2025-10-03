@@ -24,7 +24,7 @@ namespace IqraInfrastructure.Managers.Call
     {
         private readonly ILogger<OutboundCallProcessingOrchestrator> _logger;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepo;
-        private readonly BillingValidationManager _billingValidationManager;
+        private readonly UserUsageValidationManager _billingValidationManager;
         private readonly ServerSelectionManager _serverSelectionManager;
         private readonly BusinessManager _businessManager;
         private readonly RegionManager _regionManager;
@@ -37,7 +37,7 @@ namespace IqraInfrastructure.Managers.Call
         public OutboundCallProcessingOrchestrator(
             ILogger<OutboundCallProcessingOrchestrator> logger,
             OutboundCallQueueRepository outboundCallQueueRepo,
-            BillingValidationManager billingValidationManager,
+            UserUsageValidationManager billingValidationManager,
             ServerSelectionManager serverSelectionManager,
             BusinessManager businessManager,
             RegionManager regionManager,
@@ -61,7 +61,7 @@ namespace IqraInfrastructure.Managers.Call
 
         public async Task ProcessCallAsync(OutboundCallQueueData call)
         {
-            var validationResult = await _billingValidationManager.CheckCreditAndConcurrencyAsync(call.BusinessId, "outbound call");
+            var validationResult = await _billingValidationManager.ValidateCallPermissionAsync(call.BusinessId, true);
             if (!validationResult.Success)
             {
                 if (

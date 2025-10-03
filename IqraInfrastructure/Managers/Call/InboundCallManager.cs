@@ -30,7 +30,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly TwilioManager _twilioManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
-        private readonly BillingValidationManager _billingValidationManager;
+        private readonly UserUsageValidationManager _billingValidationManager;
 
         private JsonSerializerOptions _seralizationOptionCamelCase = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -45,7 +45,7 @@ namespace IqraInfrastructure.Managers.Call
             TwilioManager twilioManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            BillingValidationManager billingValidationManager
+            UserUsageValidationManager billingValidationManager
         )
         {
             _logger = logger;
@@ -112,7 +112,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
                 callQueue.Id = callQueueId;
 
-                var planValidation = await _billingValidationManager.CheckCreditAndConcurrencyAsync(businessId, "inbound call");
+                var planValidation = await _billingValidationManager.ValidateCallPermissionAsync(businessId, true);
                 if (!planValidation.Success)
                 {
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"[{planValidation.Code}]: {planValidation.Message}", Type = CallQueueLogTypeEnum.Error });

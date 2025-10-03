@@ -12,10 +12,10 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
     public class APIv1BusinessWebSessionController : Controller
     {
         private readonly UserAPIValidationHelper _userAPIValidationHelper;
-        private readonly BillingValidationManager _billingValidationManager;
+        private readonly UserUsageValidationManager _billingValidationManager;
         private readonly BusinessManager _businessManager;
 
-        public APIv1BusinessWebSessionController(UserAPIValidationHelper userAPIValidationHelper, BillingValidationManager billingValidationManager, BusinessManager businessManager)
+        public APIv1BusinessWebSessionController(UserAPIValidationHelper userAPIValidationHelper, UserUsageValidationManager billingValidationManager, BusinessManager businessManager)
         {
             _userAPIValidationHelper = userAPIValidationHelper;
             _billingValidationManager = billingValidationManager;
@@ -50,7 +50,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                 }
 
                 // Check Balance/Package
-                var checkBalanceOrMinutes = await _billingValidationManager.CheckCreditOrPackageMinutesOnly(businessId, "websession");
+                var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId, false);
                 if (!checkBalanceOrMinutes.Success)
                 {
                     return result.SetFailureResult(

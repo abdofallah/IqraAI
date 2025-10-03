@@ -678,7 +678,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<KeywordExtractor>(),
                     sp.GetRequiredService<RAGKeywordStore>(),
                     sp.GetRequiredService<WebSessionRepository>(),
-                    sp.GetRequiredService<BillingValidationManager>(),
+                    sp.GetRequiredService<UserUsageValidationManager>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
                     sp.GetRequiredService<IHttpClientFactory>()
                 );
@@ -738,10 +738,10 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<UserUsageRepository>()
                 );
             });
-            builder.Services.AddSingleton<BillingValidationManager>((sp) =>
+            builder.Services.AddSingleton<UserUsageValidationManager>((sp) =>
             {
-                return new BillingValidationManager(
-                    sp.GetRequiredService<ILogger<BillingValidationManager>>(),
+                return new UserUsageValidationManager(
+                    sp.GetRequiredService<ILogger<UserUsageValidationManager>>(),
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<UserManager>(),

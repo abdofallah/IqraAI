@@ -8,11 +8,15 @@ namespace IqraCore.Models.User.Billing
         public UserBillingDataModel (UserBillingData userBillingData)
         {
             CreditBalance = userBillingData.CreditBalance;
+
             Subscription = userBillingData.Subscription != null ? new UserBillingDataSubscriptionDetailsModel(userBillingData.Subscription) : null;
-            AdditionalConcurrencySlots = userBillingData.AdditionalConcurrencySlots
-                .Select(slot => new UserBillingDataPurchasedConcurrencySlotModel(slot))
+
+            ActiveFeatureAddons = userBillingData.ActiveFeatureAddons
+                .Select(addon => new UserBillingDataFeatureAddonModel(addon))
                 .ToList();
-            Usage = new UserBillingDataCurrentBillingCycleUsageModel(userBillingData.Usage);
+
+            CurrentCycleUsage = new UserBillingDataCurrentBillingCycleUsageModel(userBillingData.CurrentCycleUsage);
+
             AutoRefill = new UserBillingDataAutoRefillSettingsModel(userBillingData.AutoRefill);
         }
 
@@ -20,9 +24,9 @@ namespace IqraCore.Models.User.Billing
 
         public UserBillingDataSubscriptionDetailsModel? Subscription { get; set; } = null;
 
-        public List<UserBillingDataPurchasedConcurrencySlotModel> AdditionalConcurrencySlots { get; set; } = new List<UserBillingDataPurchasedConcurrencySlotModel>();
+        public List<UserBillingDataFeatureAddonModel> ActiveFeatureAddons { get; set; } = new List<UserBillingDataFeatureAddonModel>();
 
-        public UserBillingDataCurrentBillingCycleUsageModel Usage { get; set; } = new UserBillingDataCurrentBillingCycleUsageModel();
+        public UserBillingDataCurrentBillingCycleUsageModel CurrentCycleUsage { get; set; } = new UserBillingDataCurrentBillingCycleUsageModel();
 
         public UserBillingDataAutoRefillSettingsModel AutoRefill { get; set; } = new UserBillingDataAutoRefillSettingsModel();
     }

@@ -329,7 +329,7 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<TwilioManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<BillingValidationManager>()
+                    sp.GetRequiredService<UserUsageValidationManager>()
                 );
             });
             builder.Services.AddSingleton<UserManager>((sp) =>
@@ -350,10 +350,10 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<BillingPlanRepository>()
                 );
             });
-            builder.Services.AddSingleton<BillingValidationManager>((sp) =>
+            builder.Services.AddSingleton<UserUsageValidationManager>((sp) =>
             {
-                return new BillingValidationManager(
-                    sp.GetRequiredService<ILogger<BillingValidationManager>>(),
+                return new UserUsageValidationManager(
+                    sp.GetRequiredService<ILogger<UserUsageValidationManager>>(),
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<UserManager>(),
@@ -366,7 +366,7 @@ namespace ProjectIqraBackendProxy
                 return new OutboundCallProcessingOrchestrator(
                     sp.GetRequiredService<ILogger<OutboundCallProcessingOrchestrator>>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
-                    sp.GetRequiredService<BillingValidationManager>(),
+                    sp.GetRequiredService<UserUsageValidationManager>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<RegionManager>(),

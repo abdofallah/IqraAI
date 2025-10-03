@@ -1,4 +1,6 @@
-﻿using IqraCore.Entities.Business;
+﻿using Deepgram.Models.Agent.v2.WebSocket;
+using IqraCore.Entities.Billing;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
@@ -10,6 +12,7 @@ using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.User.Usage.Enums;
 using IqraCore.Entities.WebSession;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
@@ -32,7 +35,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly BusinessManager _businessManager;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
-        private readonly UserBillingUsageManager _billingProcessingManager;
+        private readonly UserBillingUsageManager _userBillingUsageManager;
 
         private readonly string _sessionId;
         private readonly DateTime _createdAt;
@@ -128,7 +131,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             _businessManager = businessManager;
             _conversationStateRepository = conversationStateRepository;
             _audioStorageManager = audioStorageManager;
-            _billingProcessingManager = billingProcessingManager;
+            _userBillingUsageManager = billingProcessingManager;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<ConversationSessionOrchestrator>();
 
@@ -722,16 +725,40 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             await _conversationStateRepository.UpdateEndType(_sessionId, endType);
             await UpdateStateAsync(finalState, reason);
 
+            // Only Charge Active States
             if (originalState == ConversationSessionState.Active)
             {
-                double? durationSeconds = await UpdateFinalMetricsAsync();
+                decimal? durationSeconds = await UpdateFinalMetricsAsync();
                 if (durationSeconds == null)
                 {
                     _logger.LogError("Failed to update final metrics for session {SessionId}", _sessionId);
                     durationSeconds = 0;
                 }
 
-                await _billingProcessingManager.ProcessAndBillUsageAsync(_sessionId, _sessionBusinessData.Id, _sessionBusinessData.MasterUserEmail, durationSeconds.Value);
+                List<ConsumedFeatureInput> consumedFeatureInputs = new List<ConsumedFeatureInput>();
+                // Call Minutes Used
+                consumedFeatureInputs.Add(
+                    new ConsumedFeatureInput(
+                        BillingFeatureKey.CallMinutes,
+                        durationSeconds.Value
+                    )
+                );
+                // Voicemail Detection
+                var hasVoiceMailDetection = false;
+                if (IsOutboundCall)
+                {
+                    if (_sessionCallQueueTelephonyCampaignData!.VoicemailDetection.IsEnabled)
+                    {
+                        consumedFeatureInputs.Add(
+                            new ConsumedFeatureInput(
+                                BillingFeatureKey.VoicemailDetection,
+                                1
+                            )
+                        );
+                    }
+                }   
+
+                await _userBillingUsageManager.ProcessAndBillUsageAsync(_sessionBusinessData.MasterUserEmail, _sessionBusinessData.Id, consumedFeatureInputs, UserUsageSourceTypeEnum.Conversation, _sessionId, "Conversation Session Usage");
 
                 _ = Task.Run(async () =>
                 {
@@ -886,7 +913,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         }
 
         // Ending Methods
-        private async Task<double?> UpdateFinalMetricsAsync()
+        private async Task<decimal?> UpdateFinalMetricsAsync()
         {
             try
             {
@@ -904,7 +931,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 // Update metrics in the repository
                 await _conversationStateRepository.UpdateMetricsAsync(_sessionId, metrics);
 
-                return metrics.DurationSeconds;
+                return (decimal)metrics.DurationSeconds;
             }
             catch (Exception ex)
             {

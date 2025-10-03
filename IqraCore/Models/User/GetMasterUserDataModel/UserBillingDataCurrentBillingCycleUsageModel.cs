@@ -5,13 +5,13 @@ namespace IqraCore.Models.User.Billing
     public class UserBillingDataCurrentBillingCycleUsageModel
     {
         public UserBillingDataCurrentBillingCycleUsageModel() { }
-        public UserBillingDataCurrentBillingCycleUsageModel(UserBillingCurrentBillingCycleUsage usage)
+        public UserBillingDataCurrentBillingCycleUsageModel(UserBillingCycleUsage usage)
         {
-            MinutesUsed = usage.MinutesUsed;
+            CurrentUsage = usage.CurrentUsage;
             LastResetAt = usage.LastResetAt;
         }
 
-        public decimal MinutesUsed { get; set; } = 0.00m;
+        public Dictionary<string, decimal> CurrentUsage { get; set; } = new Dictionary<string, decimal>();
         public DateTime LastResetAt { get; set; } = DateTime.UtcNow;
     }
 }

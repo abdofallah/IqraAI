@@ -21,7 +21,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessManager _parentBusinessManager;
 
         private readonly WebSessionRepository _webSessionRepoistory;
-        private readonly BillingValidationManager _billingValidationManager;
+        private readonly UserUsageValidationManager _billingValidationManager;
         private readonly ServerSelectionManager _serverSelectionManager;
         private readonly RegionManager _regionManager;
         private readonly IHttpClientFactory _httpClientFactory;
@@ -31,7 +31,7 @@ namespace IqraInfrastructure.Managers.Business
         public BusinessWebSessionManager(
             BusinessManager parentManager,
             WebSessionRepository webSessionRepoistory,
-            BillingValidationManager billingValidationManager,
+            UserUsageValidationManager billingValidationManager,
             ServerSelectionManager serverSelectionManager,
             RegionManager regionManager,
             IHttpClientFactory httpClientFactory
@@ -319,7 +319,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                var checkBalanceOrMinutes = await _billingValidationManager.CheckCreditAndConcurrencyAsync(businessData.Id, "web session");
+                var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessData.Id, true);
                 if (!checkBalanceOrMinutes.Success)
                 {
                     await _webSessionRepoistory.UpdateStatusAndAddLogAsync(

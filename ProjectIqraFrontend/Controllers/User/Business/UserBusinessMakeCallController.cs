@@ -15,9 +15,9 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
-        private readonly BillingValidationManager _billingValidationManager;
+        private readonly UserUsageValidationManager _billingValidationManager;
 
-        public UserBusinessMakeCallController(UserSessionValidationHelper userSessionValidationHelper, UserManager userManager, BusinessManager businessManager, BillingValidationManager billingValidationManager)
+        public UserBusinessMakeCallController(UserSessionValidationHelper userSessionValidationHelper, UserManager userManager, BusinessManager businessManager, UserUsageValidationManager billingValidationManager)
         {
             _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;
@@ -49,7 +49,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             var userData = userSessionAndBusinessValidationResult.Data!.userData!;
             var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
-            var checkBalanceOrMinutes = await _billingValidationManager.CheckCreditOrPackageMinutesOnly(businessId, "outbound call");
+            var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId, false);
             if (!checkBalanceOrMinutes.Success)
             {
                 return result.SetFailureResult(

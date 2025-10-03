@@ -90,7 +90,7 @@ namespace IqraInfrastructure.Managers.Business
             KeywordExtractor? keywordExtractor,
             RAGKeywordStore? ragKeywordStore,
             WebSessionRepository? webSessionRepoistory,
-            BillingValidationManager? billingValidationManager,
+            UserUsageValidationManager? billingValidationManager,
             ServerSelectionManager? serverSelectionManager,
             IHttpClientFactory? httpClientFactory
         )

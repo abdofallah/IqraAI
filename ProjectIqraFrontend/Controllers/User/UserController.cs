@@ -99,9 +99,9 @@ namespace ProjectIqraFrontend.Controllers.User
         **/ 
 
         [HttpPost("/app/user/plan")]
-        public async Task<FunctionReturnResult<GetUserPlanDetailsModel?>> GetUserPlanDetailsModel()
+        public async Task<FunctionReturnResult<GetUserBillingPlanDetailsModel?>> GetUserPlanDetailsModel()
         {
-            var result = new FunctionReturnResult<GetUserPlanDetailsModel?>();
+            var result = new FunctionReturnResult<GetUserBillingPlanDetailsModel?>();
 
             string? sessionId = Request.Cookies["sessionId"];
             string? authKey = Request.Cookies["authKey"];
@@ -155,7 +155,7 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            GetUserPlanDetailsModel planDetailsModel = new GetUserPlanDetailsModel(planData.Data);
+            GetUserBillingPlanDetailsModel planDetailsModel = new GetUserBillingPlanDetailsModel(planData.Data);
 
             return result.SetSuccessResult(planDetailsModel);
         }
