@@ -1,6 +1,8 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.App.Configuration;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Entities.User.Billing;
+using IqraCore.Entities.User.Billing.Enums;
 using IqraCore.Models.Authentication;
 using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Managers.Mail;
@@ -52,8 +54,24 @@ namespace IqraInfrastructure.Managers.User
             return await _userDatabase.GetUserByEmail(email);
         }
 
-        public async Task<UserData> RegisterUser(RegisterModel model, decimal defaultCreditBalance)
+        public async Task<bool> CheckUserExistsByEmail(string email)
         {
+            return await _userDatabase.CheckUserExistsByEmail(email);
+        }
+
+        public async Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model)
+        {
+            var result = new FunctionReturnResult<UserData?>();
+
+            BillingPlanConfig? planConfig = await _appRepository.GetBillingPlanConfig();
+            if (planConfig == null || planConfig.NewUserCredit < 0 || string.IsNullOrEmpty(planConfig.NewUserPlanId))
+            {
+                return result.SetFailureResult(
+                    "RegisterUser:PLAN_CONFIG_NOT_FOUND",
+                    "Plan congfiguration not found or invalid"
+                );
+            }
+
             UserData newUser = new UserData
             {
                 Email = model.Email,
@@ -63,14 +81,25 @@ namespace IqraInfrastructure.Managers.User
                 PasswordSHA = HashPassword(model.Email, model.Password),
                 Billing = new UserBillingData()
                 {
-                    CreditBalance = defaultCreditBalance,
-                    Subscription = null
+                    CreditBalance = planConfig.NewUserCredit,
+                    Subscription = new UserBillingSubscriptionDetails()
+                    {
+                        PlanId = planConfig.NewUserPlanId,
+                        Status = UserBillingSubscriptionStatusEnum.Active
+                    }
                 }
             };
 
-            await _userDatabase.AddUserAsync(newUser);
+            var addResult = await _userDatabase.AddUserAsync(newUser);
+            if (!addResult)
+            {
+                return result.SetFailureResult(
+                    "RegisterUser:USER_CREATION_FAILED",
+                    "User creation failed in db."
+                );
+            }
 
-            return newUser;
+            return result.SetSuccessResult(newUser);
         }
 
         public async Task<bool> ResetPassword(string userEmail, string newPassword)

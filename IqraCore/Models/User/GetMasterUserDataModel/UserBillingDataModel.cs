@@ -9,7 +9,7 @@ namespace IqraCore.Models.User.Billing
         {
             CreditBalance = userBillingData.CreditBalance;
 
-            Subscription = userBillingData.Subscription != null ? new UserBillingDataSubscriptionDetailsModel(userBillingData.Subscription) : null;
+            Subscription = new UserBillingDataSubscriptionDetailsModel(userBillingData.Subscription);
 
             ActiveFeatureAddons = userBillingData.ActiveFeatureAddons
                 .Select(addon => new UserBillingDataFeatureAddonModel(addon))

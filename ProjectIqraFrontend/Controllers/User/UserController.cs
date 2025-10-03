@@ -129,25 +129,7 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            string userPlanId = "";
-            if (user.Billing.Subscription == null)
-            {
-                var billingConfigData = await _appRepository.GetBillingPlanConfig();
-                if (billingConfigData == null || string.IsNullOrWhiteSpace(billingConfigData.NewUserPlanId))
-                {
-                    result.Code = "GetUserPlanDetails:APP_BILLING_PLAN_NOT_FOUND";
-                    result.Message = "App billing configuration not found";
-                    return result;
-                }
-
-                userPlanId = billingConfigData.NewUserPlanId;
-            }
-            else
-            {
-                userPlanId = user.Billing.Subscription.PlanId;
-            }
-
-            var planData = await _planManager.GetPlanByIdAsync(userPlanId);
+            var planData = await _planManager.GetPlanByIdAsync(user.Billing.Subscription.PlanId);
             if (!planData.Success)
             {
                 result.Code = "GetUserPlanDetails:" + planData.Code;
@@ -155,7 +137,7 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            GetUserBillingPlanDetailsModel planDetailsModel = new GetUserBillingPlanDetailsModel(planData.Data);
+            GetUserBillingPlanDetailsModel planDetailsModel = new GetUserBillingPlanDetailsModel(planData.Data!);
 
             return result.SetSuccessResult(planDetailsModel);
         }

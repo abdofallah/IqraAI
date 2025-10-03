@@ -61,8 +61,8 @@ namespace ProjectIqraFrontend.Controllers
                     );
                 }
 
-                UserData? user = await _userManager.GetUserByEmail(model.Email);
-                if (user != null)
+                bool userAlreadyExists = await _userManager.CheckUserExistsByEmail(model.Email);
+                if (userAlreadyExists)
                 {
                     return result.SetFailureResult(
                         "Register:USER_ALREADY_EXISTS",
@@ -70,17 +70,16 @@ namespace ProjectIqraFrontend.Controllers
                     );
                 }
 
-                BillingPlanConfig? planConfig = await _appRepository.GetBillingPlanConfig();
-                if (planConfig == null || planConfig.NewUserCredit < 0)
+                var userAddResult = await _userManager.RegisterUser(model);
+                if (!userAddResult.Success)
                 {
                     return result.SetFailureResult(
-                        "Register:PLAN_CONFIG_NOT_FOUND",
-                        "Plan congfiguration not found or invalid"
+                        "Register:" + userAddResult.Code,
+                        userAddResult.Message
                     );
                 }
 
-                user = await _userManager.RegisterUser(model, planConfig.NewUserCredit);
-                var emailResult = await _userManager.GenerateAndSendUserRegisterVerifyEmail(user.Email);
+                var emailResult = await _userManager.GenerateAndSendUserRegisterVerifyEmail(userAddResult.Data!.Email);
                 if (!emailResult.Success)
                 {
                     return result.SetFailureResult(

@@ -76,5 +76,11 @@ namespace IqraInfrastructure.Repositories.User
             var filter = Builders<UserData>.Filter.Eq(u => u.EmailHash, emailHash);
             return await _usersCollection.Find(filter).FirstOrDefaultAsync();
         }
+
+        public async Task<bool> CheckUserExistsByEmail(string email)
+        {
+            var filter = Builders<UserData>.Filter.Eq(u => u.Email, email);
+            return await _usersCollection.Find(filter).AnyAsync();
+        }
     }
 }
