@@ -354,10 +354,10 @@ namespace ProjectIqraFrontend
                 );
             });
 
-            builder.Services.AddSingleton<PlanRepository>((sp) =>
+            builder.Services.AddSingleton<BillingPlanRepository>((sp) =>
             {
-                return new PlanRepository(
-                    sp.GetRequiredService<ILogger<PlanRepository>>(),
+                return new BillingPlanRepository(
+                    sp.GetRequiredService<ILogger<BillingPlanRepository>>(),
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:PlanRepositoryDatabaseName"]
                 );
@@ -728,7 +728,7 @@ namespace ProjectIqraFrontend
             {
                 return new PlanManager(
                     sp.GetRequiredService<ILogger<PlanManager>>(),
-                    sp.GetRequiredService<PlanRepository>()
+                    sp.GetRequiredService<BillingPlanRepository>()
                 );
             });
             builder.Services.AddSingleton<UserUsageManager>((sp) =>
