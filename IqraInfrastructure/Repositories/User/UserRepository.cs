@@ -66,6 +66,11 @@ namespace IqraInfrastructure.Repositories.User
             return _usersCollection.Find(_ => true).ToListAsync();
         }
 
+        public Task<List<UserData>> GetUsersAsync(FilterDefinition<UserData> filter)
+        {
+            return _usersCollection.Find(filter).ToListAsync();
+        }
+
         public Task<List<UserData>> GetUsersAsync(int page, int pageSize)
         {
             return _usersCollection.Find(_ => true).Skip(page * pageSize).Limit(pageSize).ToListAsync();

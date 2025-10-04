@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.Payment;
 using IqraCore.Entities.PaymentMethods;
-using IqraCore.Entities.User;
+using IqraCore.Entities.User.PaymentMethod;
 
 namespace IqraCore.Models.User
 {

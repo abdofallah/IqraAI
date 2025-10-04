@@ -1,6 +1,7 @@
 using HarmonyLib;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Frontend;
+using IqraCore.Entities.Payment.Providers.AmwalPay;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Helpers.User;
@@ -13,6 +14,7 @@ using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Mail;
+using IqraInfrastructure.Managers.Payment.Providers;
 using IqraInfrastructure.Managers.RAG.Extractors;
 using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.RAG.Processors;
@@ -37,6 +39,7 @@ using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.MinIO;
+using IqraInfrastructure.Repositories.Payment;
 using IqraInfrastructure.Repositories.RAG;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
@@ -87,6 +90,7 @@ namespace ProjectIqraFrontend
             // HTTP Client
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddHttpClient();
+            builder.Services.AddHttpClient("AmwalPay");
             builder.Services.AddHttpClient("ModemTelClient", client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(10);
@@ -513,6 +517,15 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<DistributedLockRepository>>()
                 );
             });
+
+            builder.Services.AddSingleton<PaymentTransactionRepository>((sp) =>
+            {
+                return new PaymentTransactionRepository(
+                    sp.GetRequiredService<ILogger<PaymentTransactionRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:PaymentTransactionRepositoryDatabaseName"]
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -820,6 +833,21 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
                     sp.GetRequiredService<DistributedLockRepository>()
+                );
+            });
+
+            builder.Services.AddScoped<AmwalPayPaymentService>((sp) =>
+            {
+                return new AmwalPayPaymentService(
+                    sp.GetRequiredService<IHttpClientFactory>().CreateClient("AmwalPay"),
+                    new AmwalPaySettings()
+                    {
+                        MerchantId = appConfig["AmwalPay:MerchantId"],
+                        TerminalId = appConfig["AmwalPay:TerminalId"],
+                        ApiBaseUrl = appConfig["AmwalPay:ApiBaseUrl"],
+                        SecureHashKey = appConfig["AmwalPay:SecureHashKey"]
+                    },
+                    sp.GetRequiredService<ILogger<AmwalPayPaymentService>>()
                 );
             });
         }

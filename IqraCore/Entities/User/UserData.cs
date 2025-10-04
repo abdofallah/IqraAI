@@ -1,5 +1,6 @@
 ﻿using IqraCore.Attributes;
 using IqraCore.Entities.User.Billing;
+using IqraCore.Entities.User.PaymentMethod;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.User
