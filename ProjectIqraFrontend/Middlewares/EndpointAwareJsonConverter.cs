@@ -1,6 +1,5 @@
 ﻿using IqraCore.Attributes;
 using IqraCore.Entities.Helper;
-using MathNet.Numerics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using System.Collections;
@@ -37,8 +36,25 @@ namespace ProjectIqraFrontend.Middlewares
             }
 
             var instance = Activator.CreateInstance(typeToConvert);
-            var properties = typeToConvert.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                          .ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+            var properties = new Dictionary<string, PropertyInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var property in typeToConvert.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (!property.CanWrite) continue;
+
+                var jsonPropertyNameAttr = property.GetCustomAttribute<JsonPropertyNameAttribute>();
+                string dictionaryKey;
+
+                if (jsonPropertyNameAttr != null)
+                {
+                    dictionaryKey = jsonPropertyNameAttr.Name;
+                }
+                else
+                {
+                    dictionaryKey = property.Name;
+                }
+
+                properties[dictionaryKey] = property;
+            }
 
             while (reader.Read())
             {
@@ -61,12 +77,25 @@ namespace ProjectIqraFrontend.Middlewares
 
                     var value = ReadObject(ref reader, underlyingType, options);
 
-                    property.SetValue(instance, value);
+                    try
+                    {
+                        var convertedValue = (value != null) ? Convert.ChangeType(value, underlyingType) : null;
+                        property.SetValue(instance, convertedValue);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new JsonException($"Failed to set value for property '{property.Name}'. Incoming value might be of the wrong type.", ex);
+                    }
                 }
                 else
                 {
                     reader.Skip();
                 }
+            }
+
+            if (reader.IsFinalBlock && (reader.TokenType == JsonTokenType.EndObject || reader.TokenType == JsonTokenType.None))
+            {
+                return instance;
             }
 
             throw new JsonException("JSON object is incomplete");
@@ -107,6 +136,14 @@ namespace ProjectIqraFrontend.Middlewares
             else if (underlyingType == typeof(DateTime))
             {
                 value = DeserializeDateTime(ref reader);
+            }
+            else if (underlyingType == typeof(decimal))
+            {
+                value = DeserializeDecimal(ref reader);
+            }
+            else if (underlyingType == typeof(bool))
+            {
+                value = DeserializeBool(ref reader);
             }
             else if (typeof(IEnumerable).IsAssignableFrom(underlyingType) && underlyingType.IsGenericType)
             {
@@ -149,6 +186,19 @@ namespace ProjectIqraFrontend.Middlewares
             }
 
             return value;
+        }
+
+        private bool DeserializeBool(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType == JsonTokenType.True)
+            {
+                return true;
+            }
+            else if (reader.TokenType == JsonTokenType.False)
+            {
+                return false;
+            }
+            throw new JsonException("Unable to deserialize bool value");
         }
 
         private int DeserializeInt(ref Utf8JsonReader reader)
@@ -215,6 +265,22 @@ namespace ProjectIqraFrontend.Middlewares
             throw new JsonException("Unable to deserialize double value");
         }
 
+        private decimal DeserializeDecimal(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType == JsonTokenType.Number)
+            {
+                return reader.GetDecimal();
+            }
+            else if (reader.TokenType == JsonTokenType.String)
+            {
+                if (decimal.TryParse(reader.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal result))
+                {
+                    return result;
+                }
+            }
+            throw new JsonException("Unable to deserialize decimal value");
+        }
+
         private object DeserializeEnum(ref Utf8JsonReader reader, Type enumType)
         {
             if (reader.TokenType == JsonTokenType.Number)
@@ -277,9 +343,16 @@ namespace ProjectIqraFrontend.Middlewares
             {
                 var propertyValue = property.GetValue(value);
 
-                string? propertyName = options.PropertyNamingPolicy?.ConvertName(property.Name) ?? property.Name;
-
-                writer.WritePropertyName(propertyName);
+                var propertyNameAttribute = property.GetCustomAttribute<JsonPropertyNameAttribute>();
+                if (propertyNameAttribute != null)
+                {
+                    writer.WritePropertyName(propertyNameAttribute.Name);
+                }
+                else
+                {
+                    string? propertyName = options.PropertyNamingPolicy?.ConvertName(property.Name) ?? property.Name;
+                    writer.WritePropertyName(propertyName);
+                }              
 
                 if (!WriteNoDepthProperties(writer, propertyValue, property.PropertyType, options, property))
                 {

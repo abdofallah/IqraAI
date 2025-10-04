@@ -11,7 +11,7 @@ using Microsoft.Extensions.Primitives;
 using PhoneNumbers;
 using System.Text.Json;
 
-namespace ProjectIqraFrontend.Controllers.User.Business
+namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessNumbersController : Controller
     {

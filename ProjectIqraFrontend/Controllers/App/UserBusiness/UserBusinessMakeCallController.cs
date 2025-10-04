@@ -8,7 +8,7 @@ using Microsoft.Extensions.Primitives;
 using ProjectIqraFrontend.Middlewares;
 using System.Text.Json;
 
-namespace ProjectIqraFrontend.Controllers.User.Business
+namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessMakeCallController : Controller
     {

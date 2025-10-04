@@ -14,6 +14,7 @@ using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Mail;
+using IqraInfrastructure.Managers.Payment;
 using IqraInfrastructure.Managers.Payment.Providers;
 using IqraInfrastructure.Managers.RAG.Extractors;
 using IqraInfrastructure.Managers.RAG.Keywords;
@@ -49,6 +50,7 @@ using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
+using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
 using System.Reflection;
@@ -75,6 +77,18 @@ namespace ProjectIqraFrontend
                     BusinessToolAudioURL = baseMinioUrl + "/" + appConfig["MinioStorage:BusinessToolAudioRepositoryBucketName"],
                     IntegrationLogoURL = baseMinioUrl + "/" + appConfig["MinioStorage:IntegrationsLogoRepositoryBucketName"],
                     BusinessAgentBackgroundAudioURL = baseMinioUrl + "/" + appConfig["MinioStorage:BusinessAgentAudioRepositoryBucketName"]
+                };
+            });
+            builder.Services.AddSingleton<AmwalPaySettings>((sp) =>
+            {
+                return new AmwalPaySettings()
+                {
+                    MerchantId = appConfig["AmwalPay:MerchantId"],
+                    TerminalId = appConfig["AmwalPay:TerminalId"],
+                    ApiBaseUrl = appConfig["AmwalPay:ApiBaseUrl"],
+                    SecureHashKey = appConfig["AmwalPay:SecureHashKey"],
+                    ClientScriptAPIUrl = appConfig["AmwalPay:ClientScriptAPIUrl"],
+                    ClientScriptURL = appConfig["AmwalPay:ClientScriptURL"]
                 };
             });
 
@@ -840,14 +854,31 @@ namespace ProjectIqraFrontend
             {
                 return new AmwalPayPaymentService(
                     sp.GetRequiredService<IHttpClientFactory>().CreateClient("AmwalPay"),
-                    new AmwalPaySettings()
-                    {
-                        MerchantId = appConfig["AmwalPay:MerchantId"],
-                        TerminalId = appConfig["AmwalPay:TerminalId"],
-                        ApiBaseUrl = appConfig["AmwalPay:ApiBaseUrl"],
-                        SecureHashKey = appConfig["AmwalPay:SecureHashKey"]
-                    },
+                    sp.GetRequiredService<AmwalPaySettings>(),
                     sp.GetRequiredService<ILogger<AmwalPayPaymentService>>()
+                );
+            });
+
+            builder.Services.AddScoped<PaymentManager>((sp) =>
+            {
+                return new PaymentManager(
+                    sp.GetRequiredService<ILogger<PaymentManager>>(),
+                    sp.GetRequiredService<AmwalPayPaymentService>(),
+                    sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<PlanManager>(),
+                    sp.GetRequiredService<PaymentTransactionRepository>(),
+                    sp.GetRequiredService<IMongoClient>()
+                );
+            });
+
+            builder.Services.AddScoped<UserSubscriptionManager>((sp) =>
+            {
+                return new UserSubscriptionManager(
+                    sp.GetRequiredService<ILogger<UserSubscriptionManager>>(),
+                    sp.GetRequiredService<AppRepository>(),
+                    sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<PlanManager>(),
+                    sp.GetRequiredService<PaymentManager>()
                 );
             });
         }

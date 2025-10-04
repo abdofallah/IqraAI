@@ -8,7 +8,7 @@ using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
-namespace ProjectIqraFrontend.Controllers.User.Business
+namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessIntegrationsController : Controller
     {

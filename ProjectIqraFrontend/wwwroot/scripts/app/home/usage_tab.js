@@ -448,6 +448,8 @@ function bindUsageTabEventHandlers() {
 
 /** INIT **/
 function InitUsageTab() {
+    return;
+
     console.log("Initializing Usage Tab...");
 
     // Only init if the tab is visible/part of the page

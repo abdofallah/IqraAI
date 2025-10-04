@@ -7,7 +7,6 @@ using IqraCore.Models.User;
 using IqraCore.Models.User.Billing;
 using IqraCore.Models.User.GetMasterUserDataModel;
 using IqraCore.Models.User.Usage;
-using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Languages;
@@ -17,7 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using PhoneNumbers;
 
-namespace ProjectIqraFrontend.Controllers.User
+namespace ProjectIqraFrontend.Controllers.App.User
 {
     public class UserController : Controller
     {
@@ -92,56 +91,7 @@ namespace ProjectIqraFrontend.Controllers.User
             return result.SetSuccessResult(userDataModel);
         }
 
-        /**
-         * 
-         * User Plan Details
-         * 
-        **/ 
-
-        [HttpPost("/app/user/plan")]
-        public async Task<FunctionReturnResult<GetUserBillingPlanDetailsModel?>> GetUserPlanDetailsModel()
-        {
-            var result = new FunctionReturnResult<GetUserBillingPlanDetailsModel?>();
-
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
-            {
-                result.Code = "GetUserPlanDetails:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "GetUserPlanDetails:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetUserPlanDetails:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            var planData = await _planManager.GetPlanByIdAsync(user.Billing.Subscription.PlanId);
-            if (!planData.Success)
-            {
-                result.Code = "GetUserPlanDetails:" + planData.Code;
-                result.Message = planData.Message;
-                return result;
-            }
-
-            GetUserBillingPlanDetailsModel planDetailsModel = new GetUserBillingPlanDetailsModel(planData.Data!);
-
-            return result.SetSuccessResult(planDetailsModel);
-        }
-
+        
         /**
          * 
          * User Usage

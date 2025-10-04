@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using ProjectIqraFrontend.Middlewares;
 
-namespace ProjectIqraFrontend.Controllers.User.Business
+namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessCacheController : Controller
     {

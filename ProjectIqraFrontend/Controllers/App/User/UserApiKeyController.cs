@@ -4,7 +4,7 @@ using IqraCore.Models.User;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ProjectIqraFrontend.Controllers.User
+namespace ProjectIqraFrontend.Controllers.App.User
 {
     [ApiController]
     public class UserApiKeyController : ControllerBase

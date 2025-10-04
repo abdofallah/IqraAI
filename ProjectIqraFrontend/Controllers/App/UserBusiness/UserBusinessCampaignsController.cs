@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using ProjectIqraFrontend.Middlewares;
 
-namespace ProjectIqraFrontend.Controllers.User.Business
+namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessCampaignsController : Controller
     {
@@ -54,7 +54,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             // Check New or Edit
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 return result.SetFailureResult(
                     "SaveBusinessTelephonyCampaign:INVALID_POST_TYPE",
@@ -165,7 +165,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             // Check New or Edit
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 return result.SetFailureResult(
                     "SaveBusinessWebCampaign:INVALID_POST_TYPE",

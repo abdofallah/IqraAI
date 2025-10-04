@@ -4,7 +4,7 @@ using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.App;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ProjectIqraFrontend.Controllers
+namespace ProjectIqraFrontend.Controllers.App
 {
     public class ViewController : Controller
     {
@@ -29,7 +29,7 @@ namespace ProjectIqraFrontend.Controllers
                 return View("Authentication");
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 return View("Authentication");
             }
@@ -49,7 +49,7 @@ namespace ProjectIqraFrontend.Controllers
                 return View("Authentication");
             }
 
-            if ((await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 return RedirectToAction("Login");
             }
@@ -69,7 +69,7 @@ namespace ProjectIqraFrontend.Controllers
                 return View("Authentication");
             }
 
-            if ((await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 return RedirectToAction("Login");
             }
@@ -99,7 +99,7 @@ namespace ProjectIqraFrontend.Controllers
                 return RedirectToAction("Login");
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 return RedirectToAction("Login");
             }
@@ -129,7 +129,7 @@ namespace ProjectIqraFrontend.Controllers
                 return RedirectToAction("Login");
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 return RedirectToAction("Login");
             }
@@ -155,7 +155,7 @@ namespace ProjectIqraFrontend.Controllers
                 return RedirectToAction("Login");
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 return RedirectToAction("Login");
             }

@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.User.Billing;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.User.Billing;
 
 namespace IqraCore.Models.User.Billing
 {
@@ -11,6 +12,7 @@ namespace IqraCore.Models.User.Billing
             LastResetAt = usage.LastResetAt;
         }
 
+        [KeepOriginalDictionaryKeyCase]
         public Dictionary<string, decimal> CurrentUsage { get; set; } = new Dictionary<string, decimal>();
         public DateTime LastResetAt { get; set; } = DateTime.UtcNow;
     }

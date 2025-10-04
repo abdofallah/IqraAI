@@ -10,7 +10,7 @@ using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
-namespace ProjectIqraFrontend.Controllers.User.Business
+namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessAgentsController : Controller
     {
@@ -304,7 +304,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             // Post type validation
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 result.Code = "SaveBusinessAgentScript:8";
                 result.Message = "Invalid post type";

@@ -46,6 +46,7 @@ namespace IqraInfrastructure.Managers.User
 
                         foreach (var user in usersToRenew)
                         {
+                            if (stoppingToken.IsCancellationRequested) break;
                             try
                             {
                                 await subscriptionManager.RenewSubscriptionAsync(user);
@@ -67,6 +68,7 @@ namespace IqraInfrastructure.Managers.User
 
                         foreach (var user in usersToCancel)
                         {
+                            if (stoppingToken.IsCancellationRequested) break;
                             try
                             {
                                 await subscriptionManager.CancelSubscriptionAsync(user, "Payment failed and grace period expired.");

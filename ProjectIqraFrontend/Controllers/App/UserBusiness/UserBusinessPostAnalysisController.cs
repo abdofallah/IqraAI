@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using ProjectIqraFrontend.Middlewares;
 
-namespace ProjectIqraFrontend.Controllers.User.Business
+namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessPostAnalysisController : Controller
     {
@@ -53,7 +53,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             // Basic Form Validation
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 return result.SetFailureResult(
                     "SavePostAnalysisTemplate:INVALID_POST_TYPE",

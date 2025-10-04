@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.Payment;
-using IqraCore.Entities.PaymentMethods;
 using IqraCore.Entities.User.PaymentMethod;
 
 namespace IqraCore.Models.User
@@ -12,7 +11,6 @@ namespace IqraCore.Models.User
             Id = userPaymentMethod.Id;
             DisplayName = userPaymentMethod.DisplayName;
             PaymentProviderType = userPaymentMethod.PaymentProviderType;
-            PaymentMethodType = userPaymentMethod.PaymentMethodType;
         }
 
         public string Id { get; set; } = string.Empty;
@@ -20,6 +18,5 @@ namespace IqraCore.Models.User
         public string DisplayName { get; set; } = string.Empty;
 
         public PaymentProviderTypeEnum PaymentProviderType { get; set; } = PaymentProviderTypeEnum.Unknown;
-        public PaymentMethodTypeEnum PaymentMethodType { get; set; } = PaymentMethodTypeEnum.Unknown;
     }
 }

@@ -151,9 +151,9 @@
                 });
             }
 
-            function FetchUserPlanDataFromAPI(successCallback, errorCallback) {
+            function FetchUserBillingPlanDataFromAPI(successCallback, errorCallback) {
                 $.ajax({
-                    url: '/app/user/plan',
+                    url: '/app/user/billing/plan',
                     type: 'POST',
                     dataType: "json",
                     success: (response) => {
@@ -289,7 +289,7 @@
                                     );
 
                                     // Fetch and init Billing Tab
-                                    FetchUserPlanDataFromAPI(
+                                    FetchUserBillingPlanDataFromAPI(
                                         (userPlanData) => {
                                             UserPlanData = userPlanData;
 

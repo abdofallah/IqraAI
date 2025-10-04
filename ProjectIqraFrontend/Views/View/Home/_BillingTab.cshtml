@@ -9,7 +9,7 @@
                 <button class="nav-link active" id="billing-overview-tab" data-bs-toggle="tab" data-bs-target="#billing-overview" type="button" role="tab" aria-selected="true">Overview</button>
             </li>
             <li class="nav-item me-2" role="presentation">
-                <button class="nav-link" id="billing-method-tab" data-bs-toggle="tab" data-bs-target="#billing-method" type="button" role="tab" aria-selected="false">Payment Methods</button>
+                <button class="nav-link" id="payment-methods-tab-button" data-bs-toggle="pill" data-bs-target="#payment-methods-content" type="button" role="tab" aria-controls="payment-methods-content" aria-selected="false">Payment Methods</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="billing-history-tab" data-bs-toggle="tab" data-bs-target="#billing-history" type="button" role="tab" aria-selected="false">Billing History</button>
@@ -22,77 +22,73 @@
             <!-- Overview Tab -->
             <div class="tab-pane fade show active" id="billing-overview" role="tabpanel" aria-labelledby="billing-overview-tab">
 
-                <!-- NEW: Balance & Plan Side-by-Side Card -->
+                <!-- Card 1: Balance & Plan Summary -->
                 <div class="card mb-4">
                     <div class="card-body d-flex flex-column flex-md-row p-0">
                         <!-- Left Side: Balance -->
                         <div class="p-4 w-100 w-md-50 d-flex flex-column justify-content-between">
-                            <h5 class="card-title m-0">Current Balance</h5>
-                            <!-- The color of this text will be changed by JS based on value -->
-                            <h2 class="fw-bold display-5 my-3" id="balanceValue">$0.00</h2>
+                            <div>
+                                <h5 class="card-title m-0">Current Balance</h5>
+                                <!-- The color of this text will be changed by JS based on value -->
+                                <h2 class="fw-bold display-5 my-3" id="balanceValue">$0.00</h2>
+                            </div>
                             <button class="btn btn-primary w-100 m-0" id="addFundsBtn" data-bs-toggle="modal" data-bs-target="#addFundsModal">
                                 <i class="fa-solid fa-plus me-1"></i> Add Funds
                             </button>
                         </div>
-                        <!-- Right Side: Plan -->
+                        <!-- Right Side: Plan Summary (Simplified) -->
                         <div class="p-4 w-100 w-md-50 d-flex flex-column justify-content-between border-top border-md-top-0 border-md-start">
-                            <h5 class="card-title m-0">Current Plan</h5>
-                            
-                            <div class="my-3">
-                                <h4 class="fw-bold mb-0" id="planName">Loading...</h4>
-                                <p class="text-muted mb-0" id="planNextBill">...</p>
+                            <div>
+                                <h5 class="card-title m-0">Current Plan</h5>
+                                <h4 class="fw-bold mt-3 mb-1" id="planName">Loading...</h4>
+                                <p class="text-muted small mb-0" id="planDescription">...</p>
                             </div>
-
-                            <!-- Plan-specific details will be shown here by JS -->
-                            <div class="mt-3 d-none" id="fixedPackageDetails">
-                                <label class="form-label">Monthly Included Minutes:</label>
-                                <span class="form-label fw-bold" id="usageProgressText">0 / 0</span>
-                                <div class="progress" style="height: 20px;">
-                                    <div class="progress-bar" role="progressbar" id="usageProgressBar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <small class="form-text text-muted mt-1" id="overagePriceText">Overage: ...</small>
-                            </div>
-                            <div class="d-none" id="payAsYouGoDetails">
-                                <!-- This section is for Standard Pay-As-You-Go -->
-                                <div id="standardPlanInfo">
-                                    <p class="mb-0">Your current price is <strong id="standardEffectivePrice">...</strong>.</p>
-                                </div>
-                                <!-- This section is for Volume-Tiered plans and will be shown/hidden by JS -->
-                                <div id="volumePlanInfo" class="d-none mt-3">
-                                    <ul class="list-group list-group-flush mt-2" id="volumeTiersList">
-                                        <!-- Tiers will be dynamically inserted here by JS -->
-                                    </ul>
-                                </div>
+                            <div class="mt-3">
+                                <p class="mb-1" id="planNextBill">...</p>
+                                <a href="#" id="changePlanLink" class="btn btn-outline-secondary btn-sm disabled">Change Plan</a> <!-- Disabled for now -->
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- NEW: Concurrency Card -->
-                <div class="card mb-4">
-                    <div class="card-body d-flex flex-column flex-md-row p-0">
-                        <!-- Left Side: Details -->
-                        <div class="p-4">
-                            <h5 class="card-title">Concurrency</h5>
-                            <h3 class="fw-bold" id="concurrencyTotal">0 Total Slots</h3>
-                            <p class="text-muted mb-0" id="concurrencyBreakdown">0 from plan + 0 purchased</p>
-                        </div>
-                        <!-- Right Side: Addons -->
-                        <div class="p-4 border-top border-md-top-0 border-md-start">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="fw-bold mb-0">Purchased Slots</h6>
-                                <button class="btn btn-outline-primary btn-sm" id="buyMoreSlotsBtn" data-bs-toggle="modal" data-bs-target="#buySlotsModal">
-                                    Buy More Slots
-                                </button>
-                            </div>
-                            <ul class="list-group list-group-flush" id="purchasedSlotsList">
-                                <!-- Dynamically populated -->
-                            </ul>
-                        </div>
+                <!-- Plan Usage -->
+                <div class="mb-4">
+                    <!-- Table 1: Usage-Based Features -->
+                    <div class="table-responsive mb-3">
+                        <table class="table mb-0" id="planUsageTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="ps-3">Usage-Based Features</th>
+                                    <th scope="col">Included</th>
+                                    <th scope="col" style="min-width: 250px;">Usage This Cycle</th>
+                                </tr>
+                            </thead>
+                            <tbody id="planUsageTableBody">
+                                <!-- Dynamically populated usage rows -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Table 2: Recurring Features -->
+                    <div class="table-responsive">
+                        <table class="table mb-0" id="planRecurringFeaturesTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="ps-3">Recurring Features</th>
+                                    <th scope="col">Included in Plan</th>
+                                    <th scope="col">Purchased Add-ons</th>
+                                    <th scope="col" style="min-width: 250px;">Usage</th>
+                                    <th scope="col" class="pe-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="planRecurringFeaturesTableBody">
+                                <!-- Dynamically populated recurring feature rows -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- NEW: Auto-Refill Card -->
+                <!-- Card 3: Auto-Refill -->
                 <div class="card mb-4">
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
@@ -111,17 +107,33 @@
                     </div>
                 </div>
 
-            </div> 
+            </div>
 
             <!-- Payment Methods Tab -->
-            <div class="tab-pane fade" id="billing-method" role="tabpanel" aria-labelledby="billing-method-tab">
-                <!-- This will be your existing payment method UI, with an "Add New Method" button -->
-                <div class="d-flex justify-content-end mb-3">
-                    <button class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Add New Method</button>
+            <div class="tab-pane fade" id="payment-methods-content" role="tabpanel" aria-labelledby="payment-methods-tab-button">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="mb-0">Saved Payment Methods</h4>
+                    <button class="btn btn-primary" id="addNewPaymentMethodBtn">
+                        <i class="fa-solid fa-plus me-1"></i> Add New Method
+                    </button>
                 </div>
 
-                <div class="row" id="paymentMethodsContainer">
-                    <!-- Payment Methods will be dynamically inserted here -->
+                <div id="paymentMethodsContainer" class="row gx-4 gy-4">
+                    <!-- Loading State -->
+                    <div class="col-12 text-center p-5" id="paymentMethodsLoading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading payment methods...</p>
+                    </div>
+
+                    <!-- Empty State (template) -->
+                    <div class="col-12 text-center p-5 d-none" id="paymentMethodsEmpty">
+                        <h5 class="text-muted">No Payment Methods Saved</h5>
+                        <p>Add a new method to get started with subscriptions and auto-refill.</p>
+                    </div>
+
+                    <!-- Dynamic payment method cards will be inserted here -->
                 </div>
             </div>
 
@@ -162,103 +174,113 @@
 </div>
 
 
-<!-- =================================================================
-                        MODALS FOR BILLING
-================================================================== -->
+<!-- ========================================================================= -->
+<!-- BILLING MODALS -->
+<!-- ========================================================================= -->
 
-<!-- Add Funds Modal -->
+<!-- Modal 1: Add Funds -->
 <div class="modal fade" id="addFundsModal" tabindex="-1" aria-labelledby="addFundsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addFundsModalLabel">Add Funds</h5>
+                <h5 class="modal-title" id="addFundsModalLabel">Add Funds to Balance</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Top up your account balance to pay for usage and services.</p>
+                <p class="text-muted">Select an amount to add to your credit balance. This will open a secure payment window.</p>
                 <div class="mb-3">
                     <label for="addFundsAmountInput" class="form-label">Amount (USD)</label>
                     <input type="number" class="form-control" id="addFundsAmountInput" placeholder="e.g., 25.00" min="5.00" step="0.01">
-                    <small class="text-muted" id="addFundsMinAmountText">Minimum amount: $5.00</small>
-                </div>
-                <div class="mb-3">
-                    <label for="addFundsPaymentMethodSelect" class="form-label">Payment Method</label>
-                    <select class="form-select" id="addFundsPaymentMethodSelect">
-                        <!-- Options will be populated by JS -->
-                        <option value="">Select a payment method...</option>
-                    </select>
+                    <div id="addFundsMinAmountText" class="form-text">Minimum amount: $5.00</div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer d-flex justify-content-between">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="addFundsConfirmBtn" disabled>
-                    Pay & Add <span id="addFundsButtonAmount">$0.00</span>
+                    Proceed to Pay <span id="addFundsButtonAmount" class="badge bg-light text-dark ms-1">$0.00</span>
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Buy More Concurrency Slots Modal -->
-<div class="modal fade" id="buySlotsModal" tabindex="-1" aria-labelledby="buySlotsModalLabel" aria-hidden="true">
+
+<!-- Modal 2: Purchase Add-on (Generic & Reusable) -->
+<div class="modal fade" id="purchaseAddonModal" tabindex="-1" aria-labelledby="purchaseAddonModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="buySlotsModalLabel">Buy More Concurrency Slots</h5>
+                <h5 class="modal-title" id="purchaseAddonModalLabel">Purchase Add-on</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Each additional slot allows one more concurrent call. You will be billed monthly for each slot you purchase.</p>
+                <!-- This hidden input will store the feature key we are buying -->
+                <input type="hidden" id="purchaseAddonFeatureKey" value="">
+
+                <p id="purchaseAddonDescription" class="text-muted">Purchase additional units for this feature.</p>
+
                 <div class="mb-3">
-                    <label for="buySlotsQuantityInput" class="form-label">How many additional slots?</label>
-                    <input type="number" class="form-control" id="buySlotsQuantityInput" value="1" min="1" max="100">
+                    <label for="purchaseAddonQuantityInput" class="form-label">Quantity</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="purchaseAddonQuantityInput" value="1" min="1" step="1">
+                        <span class="input-group-text" id="purchaseAddonUnitText">units</span>
+                    </div>
                 </div>
-                <div class="alert alert-info">
-                    <h6 class="fw-bold">Summary</h6>
-                    <ul class="list-unstyled mb-0">
-                        <li>Price per slot: <strong id="buySlotsPricePerSlotText">$7.00/month</strong></li>
-                        <li>Total new monthly cost: <strong id="buySlotsTotalCostText">$7.00</strong></li>
-                    </ul>
-                    <hr>
-                    <small>You will be charged immediately for the first month. This purchase is non-refundable.</small>
+
+                <div class="card bg-dark">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Price per unit:</span>
+                            <span class="fw-bold" id="purchaseAddonPricePerUnitText">$0.00</span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between align-items-center fw-bold">
+                            <span>Total Cost (per month):</span>
+                            <span id="purchaseAddonTotalCostText">$0.00</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="buySlotsPaymentMethodSelect" class="form-label">Payment Method</label>
-                    <select class="form-select" id="buySlotsPaymentMethodSelect">
-                        <!-- Options will be populated by JS -->
+
+                <div class="mt-3">
+                    <label for="purchaseAddonPaymentMethodSelect" class="form-label">Payment Method</label>
+                    <select class="form-select" id="purchaseAddonPaymentMethodSelect">
+                        <!-- Options populated by JS -->
                     </select>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer d-flex justify-content-between">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="buySlotsConfirmBtn">Purchase for <span id="buySlotsButtonAmount">$7.00</span></button>
+                <button type="button" class="btn btn-primary" id="purchaseAddonConfirmBtn">
+                    Confirm Purchase <span id="purchaseAddonButtonAmount" class="badge bg-light text-dark ms-1">$0.00</span>
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Edit Auto-Refill Modal -->
+
+<!-- Modal 3: Edit Auto-Refill -->
 <div class="modal fade" id="editAutoRefillModal" tabindex="-1" aria-labelledby="editAutoRefillModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="editAutoRefillModalLabel">Auto-Refill Settings</h5>
+                <h5 class="modal-title" id="editAutoRefillModalLabel">Edit Auto-Refill Settings</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>When your balance drops, we can automatically top it up for you so your service is never interrupted.</p>
+                <p class="text-muted">Automatically add funds to your balance when it drops below a certain amount.</p>
                 <div class="mb-3">
-                    <label for="autoRefillThresholdInput" class="form-label">When balance falls below:</label>
-                    <input type="number" class="form-control" id="autoRefillThresholdInput" placeholder="e.g., 10.00">
+                    <label for="autoRefillThresholdInput" class="form-label">When balance drops below (USD)</label>
+                    <input type="number" class="form-control" id="autoRefillThresholdInput" placeholder="e.g., 10.00" min="0" step="0.01">
                 </div>
                 <div class="mb-3">
-                    <label for="autoRefillAmountInput" class="form-label">Automatically add:</label>
-                    <input type="number" class="form-control" id="autoRefillAmountInput" placeholder="e.g., 25.00">
+                    <label for="autoRefillAmountInput" class="form-label">Refill with amount (USD)</label>
+                    <input type="number" class="form-control" id="autoRefillAmountInput" placeholder="e.g., 50.00" min="1.00" step="0.01">
                 </div>
                 <div class="mb-3">
-                    <label for="autoRefillPaymentMethodSelect" class="form-label">Using payment method:</label>
+                    <label for="autoRefillPaymentMethodSelect" class="form-label">Using payment method</label>
                     <select class="form-select" id="autoRefillPaymentMethodSelect">
-                        <!-- Options will be populated by JS -->
+                        <!-- Options populated by JS -->
                     </select>
                 </div>
             </div>

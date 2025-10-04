@@ -9,7 +9,7 @@ using Microsoft.Extensions.Primitives;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
 
-namespace ProjectIqraFrontend.Controllers.User.Business
+namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessKnowledgeBaseController : Controller
     {
@@ -65,7 +65,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             // Check New or Edit
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 return result.SetFailureResult(
                     "SaveKnowledgeBase:INVALID_POST_TYPE",

@@ -6,7 +6,7 @@ using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.App;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ProjectIqraFrontend.Controllers
+namespace ProjectIqraFrontend.Controllers.App
 {
     public class AuthenticationController : Controller
     {
@@ -36,7 +36,7 @@ namespace ProjectIqraFrontend.Controllers
                 }
                 if (appPermissionConfig.MaintenanceEnabledAt != null)
                 {
-                    string message = ("Maintenance is currently enabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicMaintenanceEnabledReason) ? "" : ": " + appPermissionConfig.PublicMaintenanceEnabledReason));
+                    string message = "Maintenance is currently enabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicMaintenanceEnabledReason) ? "" : ": " + appPermissionConfig.PublicMaintenanceEnabledReason);
 
                     return result.SetFailureResult(
                         "Register:MAINTENANCE_ENABLED",
@@ -45,7 +45,7 @@ namespace ProjectIqraFrontend.Controllers
                 }
                 if (appPermissionConfig != null && appPermissionConfig.RegisterationDisabledAt != null)
                 {
-                    string message = ("Registration is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicRegisterationDisabledReason) ? "" : ": " + appPermissionConfig.PublicRegisterationDisabledReason));
+                    string message = "Registration is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicRegisterationDisabledReason) ? "" : ": " + appPermissionConfig.PublicRegisterationDisabledReason);
 
                     return result.SetFailureResult(
                         "Register:REGISTERATION_DISABLED",
@@ -174,7 +174,7 @@ namespace ProjectIqraFrontend.Controllers
                 }
                 if (appPermissionConfig.MaintenanceEnabledAt != null)
                 {
-                    string message = ("Maintenance is currently enabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicMaintenanceEnabledReason) ? "" : ": " + appPermissionConfig.PublicMaintenanceEnabledReason));
+                    string message = "Maintenance is currently enabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicMaintenanceEnabledReason) ? "" : ": " + appPermissionConfig.PublicMaintenanceEnabledReason);
 
                     return result.SetFailureResult(
                         "Login:MAINTENANCE_ENABLED",
@@ -183,7 +183,7 @@ namespace ProjectIqraFrontend.Controllers
                 }
                 if (appPermissionConfig != null && appPermissionConfig.LoginDisabledAt != null)
                 {
-                    string message = ("Login is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicLoginDisabledReason) ? "." : ": " + appPermissionConfig.PublicLoginDisabledReason));
+                    string message = "Login is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicLoginDisabledReason) ? "." : ": " + appPermissionConfig.PublicLoginDisabledReason);
                     return result.SetFailureResult(
                         "Login:LOGIN_DISABLED",
                         message
@@ -217,7 +217,7 @@ namespace ProjectIqraFrontend.Controllers
                 UserPermission userPermission = user.Permission;
                 if (userPermission.DisableUserAt != null)
                 {
-                    var message = ("User is not allowed to login" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason));
+                    var message = "User is not allowed to login" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason);
                     return result.SetFailureResult(
                         "Login:USER_LOGIN_DISABLED",
                         message
@@ -327,7 +327,7 @@ namespace ProjectIqraFrontend.Controllers
                     );
                 }
 
-                if (!(await _userManager.ResetPassword(user.Email, model.NewPassword)))
+                if (!await _userManager.ResetPassword(user.Email, model.NewPassword))
                 {
                     return result.SetFailureResult(
                         "ResetPassword:3",
