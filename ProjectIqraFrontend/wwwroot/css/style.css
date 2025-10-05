@@ -430,6 +430,10 @@ a:focus {
 	margin-bottom: 4px;
 }
 
+.billing-method-card h6.card-number {
+	font-size: 30px;
+}
+
 .billing-method-card h6 {
 	margin-bottom: 0px;
 }

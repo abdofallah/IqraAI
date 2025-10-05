@@ -13,16 +13,14 @@ namespace IqraCore.Models.User
             PaymentProviderType = userPaymentMethod.PaymentProviderType;
             AddedAt = userPaymentMethod.AddedAt;
             IsPrimary = userPaymentMethod.IsPrimary;
+            HolderName = userPaymentMethod.HolderName;
         }
 
         public string Id { get; set; } = string.Empty;
-
         public string DisplayName { get; set; } = string.Empty;
-
+        public string HolderName { get; set; } = string.Empty;
         public PaymentProviderTypeEnum PaymentProviderType { get; set; } = PaymentProviderTypeEnum.Unknown;
-
         public DateTime AddedAt { get; set; }
-
         public bool IsPrimary { get; set; } = false;
     }
 }
