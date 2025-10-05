@@ -418,6 +418,22 @@ a:focus {
 	background: linear-gradient(90deg,rgba(111, 50, 163, 1) 0%, rgba(81, 68, 210, 1) 100%);
 }
 
+.billing-method-card.amwalpay-visa-card
+{
+	background: #1e1e5e;
+	background: -webkit-linear-gradient(90deg,rgba(30, 30, 94, 1) 0%, rgba(112, 89, 26, 1) 100%);
+	background: -moz-linear-gradient(90deg,rgba(30, 30, 94, 1) 0%, rgba(112, 89, 26, 1) 100%);
+	background: linear-gradient(90deg,rgba(30, 30, 94, 1) 0%, rgba(112, 89, 26, 1) 100%);
+}
+
+.billing-method-card.amwalpay-mastercard-card
+{
+	background: #611a1a;
+	background: -webkit-linear-gradient(90deg,rgba(97, 26, 26, 1) 0%, rgba(168, 102, 3, 1) 50%, rgba(1, 1, 79, 1) 100%);
+	background: -moz-linear-gradient(90deg,rgba(97, 26, 26, 1) 0%, rgba(168, 102, 3, 1) 50%, rgba(1, 1, 79, 1) 100%);
+	background: linear-gradient(90deg,rgba(97, 26, 26, 1) 0%, rgba(168, 102, 3, 1) 50%, rgba(1, 1, 79, 1) 100%);
+}
+
 .billing-method-card .method-type-icon img {
 	height: 50px;
 	border-radius: 12px;
@@ -436,6 +452,7 @@ a:focus {
 
 .billing-method-card h6 {
 	margin-bottom: 0px;
+	color: white;
 }
 
 .payment-method-cards-buttons i {

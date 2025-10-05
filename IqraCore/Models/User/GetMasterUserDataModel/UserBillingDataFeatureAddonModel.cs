@@ -13,7 +13,6 @@ namespace IqraCore.Models.User.Billing
             FeatureKey = addon.FeatureKey;
             Quantity = addon.Quantity;
             PurchasedAt = addon.PurchasedAt;
-            NextBillingDate = addon.NextBillingDate;
             Status = addon.Status;
         }
 
@@ -24,7 +23,6 @@ namespace IqraCore.Models.User.Billing
         public decimal Quantity { get; set; }
 
         public DateTime PurchasedAt { get; set; }
-        public DateTime NextBillingDate { get; set; }
         public UserBillingAddonStatusEnum Status { get; set; }
     }
 }

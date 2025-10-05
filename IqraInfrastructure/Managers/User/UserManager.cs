@@ -5,6 +5,7 @@ using IqraCore.Entities.User.Billing;
 using IqraCore.Entities.User.Billing.Enums;
 using IqraCore.Models.Authentication;
 using IqraInfrastructure.Helpers.User;
+using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Mail;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.User;
@@ -27,10 +28,19 @@ namespace IqraInfrastructure.Managers.User
         private readonly UserRepository _userDatabase;
         private readonly EmailManager _emailManager;
         private readonly UserApiKeyProcessor _apiKeyProcessor;
+        private readonly PlanManager _planManager;
 
         private readonly int _sessionDurationHours = 24;
 
-        public UserManager(ILogger<UserManager> logger, AppRepository appRepository, UserSessionRepository userSessionRepository, UserRepository userRepository, EmailManager emailManager, UserApiKeyProcessor apiKeyProcessor)
+        public UserManager(
+            ILogger<UserManager> logger,
+            AppRepository appRepository,
+            UserSessionRepository userSessionRepository,
+            UserRepository userRepository,
+            EmailManager emailManager,
+            UserApiKeyProcessor apiKeyProcessor,
+            PlanManager planManager
+        )
         {
             _logger = logger;
 
@@ -39,6 +49,7 @@ namespace IqraInfrastructure.Managers.User
             _userSessionDatabase = userSessionRepository;
             _emailManager = emailManager;
             _apiKeyProcessor = apiKeyProcessor;
+            _planManager = planManager;
         }
 
         public async Task AddBusinessIdToUser(string userEmail, long businessId, IClientSessionHandle mongoSession)
@@ -69,6 +80,15 @@ namespace IqraInfrastructure.Managers.User
                 return result.SetFailureResult(
                     "RegisterUser:PLAN_CONFIG_NOT_FOUND",
                     "Plan congfiguration not found or invalid"
+                );
+            }
+
+            var planDataResult = await _planManager.GetPlanByIdAsync(planConfig.NewUserPlanId);
+            if (!planDataResult.Success)
+            {
+                return result.SetFailureResult(
+                    "RegisterUser:PLAN_NOT_FOUND",
+                    "Plan not found"
                 );
             }
 
