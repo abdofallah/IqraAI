@@ -11,6 +11,8 @@ namespace IqraCore.Models.User
             Id = userPaymentMethod.Id;
             DisplayName = userPaymentMethod.DisplayName;
             PaymentProviderType = userPaymentMethod.PaymentProviderType;
+            AddedAt = userPaymentMethod.AddedAt;
+            IsPrimary = userPaymentMethod.IsPrimary;
         }
 
         public string Id { get; set; } = string.Empty;
@@ -18,5 +20,9 @@ namespace IqraCore.Models.User
         public string DisplayName { get; set; } = string.Empty;
 
         public PaymentProviderTypeEnum PaymentProviderType { get; set; } = PaymentProviderTypeEnum.Unknown;
+
+        public DateTime AddedAt { get; set; }
+
+        public bool IsPrimary { get; set; } = false;
     }
 }

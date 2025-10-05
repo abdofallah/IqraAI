@@ -16,17 +16,7 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
 
             BusinessPermission = new UserPermissionBusinessModel(userData.Permission.Business);
 
-            string? primaryPaymentMethodId = null;
-            PaymentMethods = userData.PaymentMethods.Select((pm) =>
-            {
-                if (pm.IsPrimary) 
-                {
-                    primaryPaymentMethodId = pm.Id;
-                }
-
-                return new UserPaymentMethodModel(pm);
-            }).ToList();
-            PrimaryPaymentMethodId = primaryPaymentMethodId;
+            PaymentMethods = userData.PaymentMethods.Select(x => new UserPaymentMethodModel(x)).ToList();
 
             Billing = new UserBillingDataModel(userData.Billing);
         }
@@ -40,7 +30,6 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
         public UserPermissionBusinessModel BusinessPermission { get; set; } = new UserPermissionBusinessModel();
 
         public List<UserPaymentMethodModel> PaymentMethods { get; set; } = new List<UserPaymentMethodModel>();
-        public string? PrimaryPaymentMethodId { get; set; } = null;
 
         public UserBillingDataModel Billing { get; set; } = new UserBillingDataModel();
     }

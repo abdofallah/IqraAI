@@ -410,14 +410,18 @@ a:focus {
 	background-color: #5c74bc;
 }
 
-.billing-method-card .method-type-icon {
-	background-color: white;
-	padding: 0px 20px;
-	border-radius: 12px;
+.billing-method-card.amwalpay-card
+{
+	background: #6F32A3;
+	background: -webkit-linear-gradient(90deg,rgba(111, 50, 163, 1) 0%, rgba(81, 68, 210, 1) 100%);
+	background: -moz-linear-gradient(90deg,rgba(111, 50, 163, 1) 0%, rgba(81, 68, 210, 1) 100%);
+	background: linear-gradient(90deg,rgba(111, 50, 163, 1) 0%, rgba(81, 68, 210, 1) 100%);
 }
 
 .billing-method-card .method-type-icon img {
 	height: 50px;
+	border-radius: 12px;
+	border: 1px solid white;
 }
 
 .billing-method-card .label {
