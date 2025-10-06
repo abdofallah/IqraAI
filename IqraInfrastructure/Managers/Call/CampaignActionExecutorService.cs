@@ -669,20 +669,21 @@ namespace IqraInfrastructure.Managers.Call
             {
                 if (turn.Type == ConversationTurnType.System)
                 {
-                    stringResult += $"[{turn.CreatedAt.ToString("G")}] SYSTEM ({turn.SystemInput!.Type})\n";
+                    stringResult += $"[{turn.CreatedAt.ToString("G")}] SYSTEM ({turn.SystemInput!.Type})\n\n";
                 }
                 else if (turn.Type == ConversationTurnType.User)
                 {
-                    stringResult += $"[{turn.UserInput!.StartedSpeakingAt.ToString("G")}] USER: {turn.UserInput.TranscribedText}\n";
+                    stringResult += $"[{turn.UserInput!.StartedSpeakingAt.ToString("G")}] USER: {turn.UserInput.TranscribedText}\n\n";
                 }
 
                 if (turn.Response.Type == ConversationTurnAgentResponseType.Speech)
                 {
-                    stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.SpokenSegments[0].StartedPlayingAt).ToString("G")}] ASSISTANT: {turn.Response.SpokenSegments.Select(d => $"{d.Text} ")}";
+                    stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.SpokenSegments[0].StartedPlayingAt).ToString("G")}] ASSISTANT: {turn.Response.SpokenSegments.Select(d => $"{d.Text} ")}\n\n";
                 }
                 else if (turn.Response.Type == ConversationTurnAgentResponseType.CustomTool || turn.Response.Type == ConversationTurnAgentResponseType.SystemTool)
                 {
-                    stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.LLMStreamingCompletedAt ?? turn.Response.LLMProcessStartedAt)?.ToString("G")}] ASSISTANT: {turn.Response.ToolExecution!.RawLLMInput}";
+                    stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.LLMStreamingCompletedAt ?? turn.Response.LLMProcessStartedAt)?.ToString("G")}] ASSISTANT: {turn.Response.ToolExecution!.RawLLMInput}\n\n";
+                    stringResult += $"[{(turn.Response.ToolExecution.CompletedAt)?.ToString("G")}] SYSTEM: {turn.Response.ToolExecution!.Result}\n\n";
                 }
             }
 
