@@ -16,11 +16,11 @@ using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Call.Queue;
 using IqraInfrastructure.Managers.Billing;
 
-namespace IqraInfrastructure.Managers.Call
+namespace IqraInfrastructure.Managers.Call.Inbound
 {
-    public class InboundCallManager
+    public class InboundCallService
     {
-        private readonly ILogger<InboundCallManager> _logger;
+        private readonly ILogger<InboundCallService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
 
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
@@ -34,8 +34,8 @@ namespace IqraInfrastructure.Managers.Call
 
         private JsonSerializerOptions _seralizationOptionCamelCase = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-        public InboundCallManager(
-            ILogger<InboundCallManager> logger,
+        public InboundCallService(
+            ILogger<InboundCallService> logger,
             IHttpClientFactory httpClientFactory,
 
             InboundCallQueueRepository inboundCallQueueRepository,

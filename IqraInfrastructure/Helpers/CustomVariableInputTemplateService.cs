@@ -1,4 +1,7 @@
-﻿namespace IqraInfrastructure.Helpers
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace IqraInfrastructure.Helpers
 {
     public enum VariableType { String, Number, Boolean, Datetime, Object, Function }
 
@@ -23,10 +26,15 @@
         public List<string> Errors { get; set; } = new List<string>();
     }
 
-    public static class CustomVariableInputTemplateValidator
+    public static class CustomVariableInputTemplateService
     {
         private const string Opener = "{={";
         private const string Closer = "}=}";
+
+        private static readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
 
         public static CustomVariableInputTemplateValidationResult Validate(string templateText, List<CustomVariableInputTemplateVariableDefinition> allowedDefinitions)
         {
@@ -151,6 +159,79 @@
             }
 
             return true; // The entire path was successfully traversed
+        }
+
+
+        public static string ProcessTemplate(string templateText, Dictionary<string, object> dataContext)
+        {
+            if (string.IsNullOrEmpty(templateText))
+            {
+                return string.Empty;
+            }
+
+            var processedText = templateText;
+            var tokens = ExtractTokens(templateText);
+
+            foreach (var token in tokens.Distinct())
+            {
+                var variableName = token.Trim();
+                string replacementValue = string.Empty;
+
+                if (dataContext.TryGetValue(variableName, out var value))
+                {
+                    switch (value)
+                    {
+                        case null:
+                            replacementValue = string.Empty;
+                            break;
+                        case string strValue:
+                            replacementValue = strValue;
+                            break;
+                        case DateTime dtValue:
+                            replacementValue = dtValue.ToUniversalTime().ToString("o");
+                            break;
+                        case var v when v.GetType().IsPrimitive || v is decimal:
+                            replacementValue = v.ToString();
+                            break;
+                        // For any other object (like Dictionaries), serialize to JSON
+                        default:
+                            replacementValue = JsonSerializer.Serialize(value, _jsonSerializerOptions);
+                            break;
+                    }
+                }
+
+                var placeholder = $"{Opener}{token}{Closer}";
+                processedText = processedText.Replace(placeholder, replacementValue);
+            }
+
+            return processedText;
+        }
+
+        public static object ProcessTemplateToObject(string templateText, Dictionary<string, object> dataContext)
+        {
+            if (string.IsNullOrEmpty(templateText))
+            {
+                return string.Empty;
+            }
+
+            var tokens = ExtractTokens(templateText);
+
+            if (tokens.Count == 1)
+            {
+                var singleToken = tokens[0];
+
+                var reconstructedPlaceholder = $"{Opener}{singleToken}{Closer}";
+
+                if (templateText.Trim() == reconstructedPlaceholder)
+                {
+                    if (dataContext.TryGetValue(singleToken.Trim(), out var value))
+                    {
+                        return value;
+                    }
+                }
+            }
+
+            return ProcessTemplate(templateText, dataContext);
         }
     }
 }

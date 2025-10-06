@@ -13,7 +13,6 @@ using IqraCore.Entities.Server;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.Call.Helper;
 using IqraInfrastructure.Managers.Conversation.Session;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
@@ -38,7 +37,7 @@ using PhoneNumbers;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 
-namespace IqraInfrastructure.Managers.Call
+namespace IqraInfrastructure.Managers.Call.Backend
 {
     internal class SessionComponents
     {
@@ -576,7 +575,7 @@ namespace IqraInfrastructure.Managers.Call
                 _activeSessions[sessionId] = conversationSession;
                 _ctsSessions[sessionId] = newSessionCTS;
 
-                conversationSession.SessionEnded += async (object? sender, object? e) => { await CleanupSessionAsync(sessionId); };
+                conversationSession.SessionEnded += async (sender, e) => { await CleanupSessionAsync(sessionId); };
 
                 return result.SetSuccessResult(conversationSession);
             }
@@ -594,7 +593,7 @@ namespace IqraInfrastructure.Managers.Call
             var result = new FunctionReturnResult<SessionComponents>();
 
             // 1. Determine Audio Configuration from Provider
-            TelephonyProviderEnum provider = (queueData is InboundCallQueueData inbound)
+            TelephonyProviderEnum provider = queueData is InboundCallQueueData inbound
                 ? inbound.RouteNumberProvider
                 : ((OutboundCallQueueData)queueData).CallingNumberProvider;
 

@@ -1047,7 +1047,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 CustomToolExecutionHelper endCallToolhelper = new CustomToolExecutionHelper(_loggerFactory);
                 endCallToolhelper.Initialize(_sessionBusinessAppData, _sessionContextData.Language.DefaultLanguageCode);
 
-                var endToolResult = await endCallToolhelper.ExecuteHttpRequestForToolAsync(
+                var endToolResult = await endCallToolhelper.ExecuteHttpRequestForToolWithObjectDictAsync(
                     endCallTool,
                     parsedArguments,
                     CancellationToken.None

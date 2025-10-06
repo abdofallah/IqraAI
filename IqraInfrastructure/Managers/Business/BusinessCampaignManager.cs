@@ -1104,7 +1104,7 @@ namespace IqraInfrastructure.Managers.Business
                                 }
                                 contextVariable.Value = valueElement.GetString()!;
 
-                                var valueTemplateValidation = CustomVariableInputTemplateValidator.Validate(contextVariable.Value, TelephonyCampaginPostAnalysisContextVariableArguementsList);
+                                var valueTemplateValidation = CustomVariableInputTemplateService.Validate(contextVariable.Value, TelephonyCampaginPostAnalysisContextVariableArguementsList);
                                 if (!valueTemplateValidation.IsValid)
                                 {
                                     return result.SetFailureResult(
@@ -1633,7 +1633,7 @@ namespace IqraInfrastructure.Managers.Business
                                 }
                                 contextVariable.Value = valueElement.GetString()!;
 
-                                var valueTemplateValidation = CustomVariableInputTemplateValidator.Validate(contextVariable.Value, WebCampaginPostAnalysisContextVariableArguementsList);
+                                var valueTemplateValidation = CustomVariableInputTemplateService.Validate(contextVariable.Value, WebCampaginPostAnalysisContextVariableArguementsList);
                                 if (!valueTemplateValidation.IsValid)
                                 {
                                     return result.SetFailureResult(
@@ -2032,7 +2032,7 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
-                        var valueTemplateValidation = CustomVariableInputTemplateValidator.Validate(argurmentValue, argurmentList);
+                        var valueTemplateValidation = CustomVariableInputTemplateService.Validate(argurmentValue, argurmentList);
                         if (!valueTemplateValidation.IsValid)
                         {
                             return result.SetFailureResult(

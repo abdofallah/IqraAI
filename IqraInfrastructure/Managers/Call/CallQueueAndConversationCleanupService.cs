@@ -6,17 +6,17 @@ using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Call
 {
-    public class CallQueueAndConversationCleanupManager : BackgroundService
+    public class CallQueueAndConversationCleanupService : BackgroundService
     {
-        private readonly ILogger<CallQueueAndConversationCleanupManager> _logger;
+        private readonly ILogger<CallQueueAndConversationCleanupService> _logger;
         private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BackendAppConfig _serverConfig;
 
         private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
 
-        public CallQueueAndConversationCleanupManager(
-            ILogger<CallQueueAndConversationCleanupManager> logger,
+        public CallQueueAndConversationCleanupService(
+            ILogger<CallQueueAndConversationCleanupService> logger,
             InboundCallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             BackendAppConfig serverConfig

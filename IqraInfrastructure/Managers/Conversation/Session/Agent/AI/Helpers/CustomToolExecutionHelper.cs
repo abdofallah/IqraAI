@@ -181,9 +181,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
         }
 
-        public async Task<FunctionReturnResult<string?>> ExecuteHttpRequestForToolAsync(
+        public async Task<FunctionReturnResult<string?>> ExecuteHttpRequestForToolWithObjectDictAsync(
             BusinessAppTool toolData,
-            Dictionary<string, object> parameters,
+            Dictionary<string, object?> parameters,
             CancellationToken cancellationToken
         )
         {
@@ -325,7 +325,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
         }
 
-        private async Task<FunctionReturnResult<HttpContent?>> BuildRequestBody(string toolId, BusinessAppToolConfiguration toolConfig, Dictionary<string, object> context)
+        private async Task<FunctionReturnResult<HttpContent?>> BuildRequestBody(string toolId, BusinessAppToolConfiguration toolConfig, Dictionary<string, object?> context)
         {
             var result = new FunctionReturnResult<HttpContent?>();
             try
@@ -712,7 +712,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
 
         // --- Scriban Integration ---
         private static readonly Func<string, DateTime> ParseDateTimeFunc = (inputString) => DateTime.Parse(inputString);
-        public static async Task<FunctionReturnResult<string?>> RenderScribanTemplateAsync(string? templateText, Dictionary<string, object> context)
+        public static async Task<FunctionReturnResult<string?>> RenderScribanTemplateAsync(string? templateText, Dictionary<string, object?> context)
         {
             var result = new FunctionReturnResult<string?>();
             if (string.IsNullOrEmpty(templateText))

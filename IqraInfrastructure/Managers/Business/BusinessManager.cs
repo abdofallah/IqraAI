@@ -120,12 +120,17 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository, langaugesManager);
             }
-            if (_settings.InitalizeToolsManager)
+            if (_settings.InitalizeToolsManager || _settings.InitalizeToolsCURDManager)
             {
-                if (businessToolAudioRepository == null)
+                if (_settings.InitalizeToolsManager && (businessAppRepository == null || businessRepository == null || businessToolAudioRepository == null))
                 {
                     throw new Exception("Null constructor input variable for BusinessToolsManager");
                 }
+                if (_settings.InitalizeToolsCURDManager && (businessAppRepository == null || businessRepository == null))
+                {
+                    throw new Exception("Null constructor input variable for BusinessToolsManager with CURD");
+                }
+
                 _businessToolsManager = new BusinessToolsManager(this, businessAppRepository, businessRepository, businessToolAudioRepository, _audioProcessor);
             }
             if (_settings.InitalizeContextManager)
@@ -184,11 +189,15 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, indexProcessorFactory, extractProcessor, keywordExtractor, embeddingProviderManager, ragKeywordStore);
             }
-            if (_settings.InitalizeCampaignManager)
+            if (_settings.InitalizeCampaignManager || _settings.InitalizeCampaignCURDManager)
             {
-                if (businessAppRepository == null || businessRepository == null || integrationConfigurationManager == null)
+                if (_settings.InitalizeCampaignManager && (businessAppRepository == null || businessRepository == null || integrationConfigurationManager == null))
                 {
                     throw new Exception("Null constructor input variable for BusinessCampaignManager");
+                }
+                if (_settings.InitalizeCampaignCURDManager && (businessAppRepository == null || businessRepository == null))
+                {
+                    throw new Exception("Null constructor input variable for BusinessCampaignManager with CURD");
                 }
 
                 _businessCampaignManager = new BusinessCampaignManager(this, businessAppRepository, businessRepository, integrationConfigurationManager);
@@ -527,7 +536,7 @@ namespace IqraInfrastructure.Managers.Business
 
         public BusinessToolsManager GetToolsManager()
         {
-            if (!_settings.InitalizeToolsManager || _businessToolsManager == null) throw new Exception("Tools manager not initalized");
+            if ((!_settings.InitalizeToolsManager && !_settings.InitalizeToolsCURDManager) || _businessToolsManager == null) throw new Exception("Tools manager not initalized");
             return _businessToolsManager;
         }
 
@@ -586,7 +595,7 @@ namespace IqraInfrastructure.Managers.Business
     
         public BusinessCampaignManager GetCampaignManager()
         {
-            if (!_settings.InitalizeCampaignManager || _businessCampaignManager == null) throw new Exception("Campaign manager not initialized");
+            if ((!_settings.InitalizeCampaignManager && !_settings.InitalizeCampaignCURDManager) || _businessCampaignManager == null) throw new Exception("Campaign manager not initialized");
             return _businessCampaignManager;
         }
     

@@ -1,7 +1,8 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Telephony.ModemTel;
 using IqraCore.Models.Telephony;
-using IqraInfrastructure.Managers.Call;
+using IqraInfrastructure.Managers.Call.Inbound;
+using IqraInfrastructure.Managers.Call.Proxy;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraBackendProxy.Controllers
@@ -11,13 +12,13 @@ namespace ProjectIqraBackendProxy.Controllers
     public class ModemTelWebhookController : ControllerBase
     {
         private readonly ILogger<ModemTelWebhookController> _logger;
-        private readonly InboundCallManager _inboundCallManager;
-        private readonly CallStatusManager _callStatusManager;
+        private readonly InboundCallService _inboundCallManager;
+        private readonly CallStatusService _callStatusManager;
 
         public ModemTelWebhookController(
             ILogger<ModemTelWebhookController> logger,
-            InboundCallManager inboundCallManager,
-            CallStatusManager callStatusManager
+            InboundCallService inboundCallManager,
+            CallStatusService callStatusManager
         )
         {
             _logger = logger;

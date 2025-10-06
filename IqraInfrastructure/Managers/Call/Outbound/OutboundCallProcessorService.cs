@@ -6,7 +6,7 @@ using IqraInfrastructure.Repositories.Call;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace IqraInfrastructure.Managers.Call
+namespace IqraInfrastructure.Managers.Call.Outbound
 {
     public class OutboundCallProcessorService : IHostedService, IDisposable
     {
@@ -135,10 +135,11 @@ namespace IqraInfrastructure.Managers.Call
 
                 try
                 {
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                        call.Id,
+                    await _outboundCallProcessingOrchestrator.OnUpdateCallQueueStatusAndSendCampaignAction(
+                        call,
                         CallQueueStatusEnum.Failed,
-                        new CallQueueLog {
+                        new CallQueueLog
+                        {
                             Type = CallQueueLogTypeEnum.Error,
                             Message = $"Unhandled error during processing: {ex.Message}"
                         },

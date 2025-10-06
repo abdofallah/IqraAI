@@ -40,113 +40,109 @@
                     </div>
                 </div>
                 
-
-                <div class="">
-                    <label class="form-label btn-ic-span-align" for="editMakeCallTypeInput">
-                        <span>Call Type </span>
-                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Choose 'Single' to call one number directly, or 'Bulk' to upload a CSV file for multiple calls.">
-                            <i class="fa-regular fa-circle-question"></i>
-                        </a>
-                    </label>
-                    <div class="row">
-                        <div class="col-md-6 col-12 mb-3">
-                            <div class="make-call-type-box-choose active" box-type="single">
-                                <div class="info-icon">
-                                    <i class="fa-regular fa-user"></i>
-                                </div>
-                                <div class="info-data">
-                                    <h4>Single</h4>
-                                    <p>Call only a single number</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 col-12 mb-3">
-                            <div class="make-call-type-box-choose" box-type="bulk">
-                                <div class="info-icon">
-                                    <i class="fa-regular fa-user-group"></i>
-                                </div>
-                                <div class="info-data">
-                                    <h4>Bulk</h4>
-                                    <p>Call in bulk with a CSV file</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Single Number Container -->
-                <div class="show fade mb-3" id="make-call-number-single-container">
+                <div class="card card-body mb-3">
                     <div class="">
-                        <label class="form-label" for="makeCallToNumberInput">Call To Number</label>
-                        <input type="tel" class="form-control" id="makeCallToNumberInput" placeholder="Enter number with country code (e.g., +1xxxxxxxxx)"> <!-- Changed type to tel -->
-                    </div>
-                </div>
-
-                <!-- Bulk Number Container -->
-                <div class="d-none fade mb-3" id="make-call-number-bulk-container">
-                    <div class="">
-                        <label class="form-label btn-ic-span-align" for="makeCallToNumberBulkInput">
-                            <span>Numbers CSV File </span>
-                            <a class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload a CSV File. Must contain a 'to_number' column. Optionally include columns for 'from_number', 'identifier', 'description', 'agent_id', 'script_id', 'timezone' to override defaults.">
-                                <i class='fa-regular fa-circle-question'></i>
+                        <label class="form-label btn-ic-span-align" for="editMakeCallTypeInput">
+                            <span>Call Type </span>
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Choose 'Single' to call one number directly, or 'Bulk' to upload a CSV file for multiple calls.">
+                                <i class="fa-regular fa-circle-question"></i>
                             </a>
-                            <a href="/path/to/sample/bulk_call_template.csv" download="bulk_call_template.csv" class="d-inline-block ms-2 small">(Download Template)</a> <!-- Add Template Link -->
                         </label>
-                        <input type="file" class="form-control" id="makeCallToNumberBulkInput" accept=".csv">
+                        <div class="row">
+                            <div class="col-md-6 col-12 mb-3">
+                                <div class="make-call-type-box-choose active" box-type="single">
+                                    <div class="info-icon">
+                                        <i class="fa-regular fa-user"></i>
+                                    </div>
+                                    <div class="info-data">
+                                        <h4>Single</h4>
+                                        <p>Call only a single number</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-12 mb-3">
+                                <div class="make-call-type-box-choose" box-type="bulk">
+                                    <div class="info-icon">
+                                        <i class="fa-regular fa-user-group"></i>
+                                    </div>
+                                    <div class="info-data">
+                                        <h4>Bulk</h4>
+                                        <p>Call in bulk with a CSV file</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Single Number Container -->
+                    <div class="show fade" id="make-call-number-single-container">
+                        <div class="">
+                            <label class="form-label" for="makeCallToNumberInput">Call To Number</label>
+                            <input type="tel" class="form-control" id="makeCallToNumberInput" placeholder="Enter number with country code (e.g., +1xxxxxxxxx)"> <!-- Changed type to tel -->
+                        </div>
+                    </div>
+
+                    <!-- Bulk Number Container -->
+                    <div class="d-none fade" id="make-call-number-bulk-container">
+                        <div class="">
+                            <label class="form-label btn-ic-span-align" for="makeCallToNumberBulkInput">
+                                <span>Numbers CSV File </span>
+                                <a class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload a CSV File. Must contain a 'to_number' column. Optionally include columns for 'from_number', 'identifier', 'description', 'agent_id', 'script_id', 'timezone' to override defaults.">
+                                    <i class='fa-regular fa-circle-question'></i>
+                                </a>
+                                <a href="/path/to/sample/bulk_call_template.csv" download="bulk_call_template.csv" class="d-inline-block ms-2 small">(Download Template)</a> <!-- Add Template Link -->
+                            </label>
+                            <input type="file" class="form-control" id="makeCallToNumberBulkInput" accept=".csv">
+                        </div>
+                    </div>
+
                 </div>
                 
                 <!-- Schedule / Call Now -->
-                <div class="mb-3">
-                    <label class="form-label btn-ic-span-align">
-                        <span>When to Call</span>
-                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Choose to initiate the call(s) immediately or schedule them for a future date and time.">
-                            <i class="fa-regular fa-circle-question"></i>
-                        </a>
-                    </label>
-                    <div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="makeCallScheduleType" id="makeCallScheduleTypeNow" value="now" checked>
-                            <label class="form-check-label" for="makeCallScheduleTypeNow">
-                                Call Now
-                            </label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="makeCallScheduleType" id="makeCallScheduleTypeLater" value="later">
-                            <label class="form-check-label" for="makeCallScheduleTypeLater">
-                                Schedule For Later
-                            </label>
-                        </div>
-                    </div>
-                    <div class="mt-2 d-none fade" id="makeCallScheduleDateTimeContainer">
+                <div class="mb-3 card card-body">
+                    <div class="mb-2" id="makeCallScheduleDateTimeContainer">
                         <label class="form-label" for="makeCallScheduleDateTimeInput">Schedule Date & Time</label>
                         <input type="datetime-local" class="form-control" id="makeCallScheduleDateTimeInput">
                     </div>
+
+                    <div class="mt-1" id="makeCallMaxScheduleDateTimeContainer">
+                        <label class="form-label btn-ic-span-align" for="makeCallMaxScheduleDateTimeInput">
+                            <span>Max Schedule Date & Time Try</span>
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The max time to attempt to initiate the call(s) in case they had been delayed to initiate due to any factor (usually not enough call cocurrency).">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <input type="datetime-local" class="form-control" id="makeCallMaxScheduleDateTimeInput">
+                    </div>
                 </div>
             
-                <div class="mb-3">
-                    <label class="form-label" id="makeCallDynamicVariablesSelectLabel" for="makeCallDynamicVariablesSelect">Dynamic Variables</label>
-                    <div class="input-group mb-2">
-                        <select class="form-select" id="makeCallDynamicVariablesSelect">
+                <div class="card card-body mb-3">
+                    <div class="">
+                        <label class="form-label" id="makeCallDynamicVariablesSelectLabel" for="makeCallDynamicVariablesSelect">Dynamic Variables</label>
+                        <div class="input-group mb-2">
+                            <select class="form-select" id="makeCallDynamicVariablesSelect">
+                                <!-- Dynamically Added -->
+                            </select>
+                            <button class="btn btn-primary" type="button" id="makeCallDynamicVariablesSelectAddButton">Add</button>
+                        </div>
+                        <div id="makeCallDynamicVariablesList">
                             <!-- Dynamically Added -->
-                        </select>
-                        <button class="btn btn-primary" type="button" id="makeCallDynamicVariablesSelectAddButton">Add</button>
-                    </div>
-                    <div id="makeCallDynamicVariablesList">
-                        <!-- Dynamically Added -->
+                        </div>
                     </div>
                 </div>
 
-                <div>
-                    <label class="form-label" id="makeCallMetadataSelectLabel" for="makeCallMetadataSelect">Metadata</label>
-                    <div class="input-group mb-2">
-                        <select class="form-select" id="makeCallMetadataSelect">
+                <div class="card card-body">
+                    <div class="">
+                        <label class="form-label" id="makeCallMetadataSelectLabel" for="makeCallMetadataSelect">Metadata</label>
+                        <div class="input-group mb-2">
+                            <select class="form-select" id="makeCallMetadataSelect">
+                                <!-- Dynamically Added -->
+                            </select>
+                            <button class="btn btn-primary" type="button" id="makeCallMetadataSelectAddButton">Add</button>
+                        </div>
+                        <div id="makeCallMetadataList">
                             <!-- Dynamically Added -->
-                        </select>
-                        <button class="btn btn-primary" type="button" id="makeCallMetadataSelectAddButton">Add</button>
-                    </div>
-                    <div id="makeCallMetadataList">
-                        <!-- Dynamically Added -->
+                        </div>
                     </div>
                 </div>
             </div>

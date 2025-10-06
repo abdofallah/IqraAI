@@ -360,6 +360,22 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
+        public async Task<bool> AddCallLogAsync(string queueId, CallQueueLog log)
+        {
+            try
+            {
+                var filter = Builders<OutboundCallQueueData>.Filter.Eq(c => c.Id, queueId);
+                var update = Builders<OutboundCallQueueData>.Update.Push(c => c.Logs, log);
+                var result = await _outboundQueueCollection.UpdateOneAsync(filter, update);
+                return result.IsAcknowledged;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding log for outbound call {QueueId}", queueId);
+                return false;
+            }
+        }
+
         public async Task<OutboundCallQueueData?> GetOutboundCallQueueByIdAsync(string queueId)
         {
             try

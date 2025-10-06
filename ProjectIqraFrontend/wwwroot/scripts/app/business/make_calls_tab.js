@@ -4,11 +4,6 @@ const OutboundCallNumberType = {
 	Bulk: 1,
 };
 
-const OutboundCallScheduleType = {
-	Now: 0,
-	Later: 1,
-};
-
 /** Dynamic State Variables **/
 let IsInitiatingCall = false;
 let CurrentMakeCallType = OutboundCallNumberType.Single;
@@ -36,10 +31,8 @@ const makeCallToNumberInput = makeCallsTab.find("#makeCallToNumberInput");
 const makeCallNumberBulkContainer = makeCallsTab.find("#make-call-number-bulk-container");
 const makeCallToNumberBulkInput = makeCallsTab.find("#makeCallToNumberBulkInput");
 // Schedule
-const makeCallScheduleTypeNowRadio = makeCallsTab.find("#makeCallScheduleTypeNow");
-const makeCallScheduleTypeLaterRadio = makeCallsTab.find("#makeCallScheduleTypeLater");
-const makeCallScheduleDateTimeContainer = makeCallsTab.find("#makeCallScheduleDateTimeContainer");
 const makeCallScheduleDateTimeInput = makeCallsTab.find("#makeCallScheduleDateTimeInput");
+const makeCallMaxScheduleDateTimeInput = makeCallsTab.find("#makeCallMaxScheduleDateTimeInput");
 // Dynamic Variables
 const makeCallDynamicVariablesSelectLabel = makeCallsTab.find("#makeCallDynamicVariablesSelectLabel");
 const makeCallDynamicVariablesSelect = makeCallsTab.find("#makeCallDynamicVariablesSelect");
@@ -92,10 +85,9 @@ function resetMakeCallForm() {
 
 	makeCallToNumberBulkInput.val(null); // Resets the file input
 
-	makeCallScheduleTypeNowRadio.prop("checked", true);
-	makeCallScheduleTypeLaterRadio.prop("checked", false);
-	makeCallScheduleDateTimeInput.val("");
-	makeCallScheduleDateTimeContainer.addClass("d-none").removeClass("show");
+	// Schedule
+	makeCallScheduleDateTimeInput.val(getCurrentLocalISOString());
+	makeCallMaxScheduleDateTimeInput.val("");
 
 	makeCallDynamicVariablesSelect.empty();
 	makeCallDynamicVariablesSelect.append("<option value='' is-custom='true' selected>Custom Variable</option>");
@@ -154,15 +146,27 @@ function validateMakeCallConfig(onlyRemoveErrors = false) {
 
 	// Schedule Validation
 	removeError(makeCallScheduleDateTimeInput);
-	if (makeCallScheduleTypeLaterRadio.is(":checked")) {
-		const scheduleValue = makeCallScheduleDateTimeInput.val();
-		if (!scheduleValue) addError("Schedule date and time must be set.", makeCallScheduleDateTimeInput);
-		else {
-			try {
-				if (new Date(scheduleValue) <= new Date()) addError("Scheduled time must be in the future.", makeCallScheduleDateTimeInput);
-			} catch (e) {
-				addError("Invalid date/time format for schedule.", makeCallScheduleDateTimeInput);
+	removeError(makeCallMaxScheduleDateTimeInput);
+	const scheduleValue = makeCallScheduleDateTimeInput.val();
+	const maxScheduleValue = makeCallMaxScheduleDateTimeInput.val();
+	if (!scheduleValue) {
+		addError("Schedule date and time must be set.", makeCallScheduleDateTimeInput);
+	}
+	if (!maxScheduleValue) {
+        addError("Max schedule date and time must be set.", makeCallMaxScheduleDateTimeInput);
+	}
+	if (scheduleValue && maxScheduleValue) {
+		try {
+			let scheduleDate = new Date(scheduleValue);
+			let maxScheduleDate = new Date(maxScheduleValue);
+
+			if (scheduleDate > maxScheduleDate) {
+				addError("Max schedule date and time must be greater than or equal to schedule date and time.", makeCallMaxScheduleDateTimeInput);
 			}
+		}
+		catch (e) {
+			addError("Schedule date and time is invalid.", makeCallScheduleDateTimeInput);
+			addError("Max Schedule date and time is invalid.", makeCallMaxScheduleDateTimeInput);
 		}
 	}
 
@@ -254,19 +258,12 @@ function gatherMakeCallConfig() {
 			toNumber: CurrentMakeCallType === OutboundCallNumberType.Single ? makeCallToNumberInput.val().trim() : null,
 		},
 		schedule: {
-			type: makeCallScheduleTypeLaterRadio.is(":checked") ? OutboundCallScheduleType.Later : OutboundCallScheduleType.Now
+			dateTimeUTC: makeCallScheduleDateTimeInput.val() ? new Date(makeCallScheduleDateTimeInput.val()).toISOString() : "",
+			maxDateTimeUTC: makeCallMaxScheduleDateTimeInput.val() ? new Date(makeCallMaxScheduleDateTimeInput.val()).toISOString() : "",
 		},
 		dynamicVariables: getVariableData(makeCallDynamicVariablesList),
 		metadata: getVariableData(makeCallMetadataList)
 	};
-
-	if (config.schedule.type === OutboundCallScheduleType.Later && makeCallScheduleDateTimeInput.val()) {
-		try {
-			config.schedule.dateTimeUTC = new Date(makeCallScheduleDateTimeInput.val()).toISOString();
-		} catch (e) {
-			console.error("Error parsing schedule date");
-		}
-	}
 
 	return config;
 }
@@ -278,8 +275,8 @@ function captureInitialFormState() {
 		callType: CurrentMakeCallType,
 		toNumber: makeCallToNumberInput.val(),
 		bulkFileSelected: !!SelectedBulkFromFileObject,
-		scheduleType: makeCallScheduleTypeLaterRadio.is(":checked") ? "later" : "now",
 		scheduleDateTime: makeCallScheduleDateTimeInput.val(),
+		maxScheduleDateTime: makeCallMaxScheduleDateTimeInput.val(),
 		dynamicVariables: {},
 		metadata: {}
 	};
@@ -295,9 +292,8 @@ function checkMakeCallTabHasChanges() {
 		if (makeCallFormInitialState.bulkFileSelected !== !!SelectedBulkFromFileObject) return true;
 	}
 
-	const currentScheduleType = makeCallScheduleTypeLaterRadio.is(":checked") ? "later" : "now";
-	if (makeCallFormInitialState.scheduleType !== currentScheduleType) return true;
-	if (currentScheduleType === "later" && makeCallFormInitialState.scheduleDateTime !== makeCallScheduleDateTimeInput.val()) return true;
+	if (makeCallFormInitialState.scheduleDateTime !== makeCallScheduleDateTimeInput.val()) return true;
+	if (makeCallFormInitialState.maxScheduleDateTime !== makeCallMaxScheduleDateTimeInput.val()) return true;
 
 	if (Object.keys(makeCallFormInitialState.dynamicVariables).length != 0) return true;
 	if (Object.keys(makeCallFormInitialState.metadata).length != 0) return true;
@@ -357,6 +353,14 @@ function fillMakeCallCampaignModalList() {
 	if (!campaignsFound) {
 		makeCallSelectCampaignModalList.append(`<span class="list-group-item">No campaigns found matching '${searchTerm}'.</span>`);
 	}
+}
+
+function getCurrentLocalISOString() {
+	const now = new Date();
+	// Adjust for the local timezone offset
+	const timezoneOffset = now.getTimezoneOffset() * 60000; // in milliseconds
+	const localISOTime = new Date(now - timezoneOffset).toISOString().slice(0, 16);
+	return localISOTime;
 }
 
 /** EVENT HANDLERS **/
@@ -443,21 +447,14 @@ function initMakeCallHandlers() {
 		SelectedBulkFromFileObject = event.target.files.length > 0 ? event.target.files[0] : null;
 		validateMakeCallConfig(true);
 	});
-	makeCallScheduleTypeNowRadio.on("change", () => {
-		makeCallScheduleDateTimeContainer.addClass("d-none").removeClass("show");
-		validateMakeCallConfig(true);
-	});
-	makeCallScheduleTypeLaterRadio.on("change", () => {
-		makeCallScheduleDateTimeContainer.removeClass("d-none").addClass("show");
-		validateMakeCallConfig(true);
-	});
 	makeCallScheduleDateTimeInput.on("input", () => validateMakeCallConfig(true));
+	makeCallMaxScheduleDateTimeInput.on("input", () => validateMakeCallConfig(true));
 
 	// Variables Handlers
 	function addVariableListElement(isCustom, key, isRequired) {
 		return `
 			<div class="input-group mt-1">
-			  <input type="text" class="form-control" placeholder="Key" data-type="key" ${(isCustom ? "" : `value="${key}" disabled`)}>
+			  <input type="text" class="form-control" placeholder="Key" data-type="key" ${(isCustom ? "" : `value="${key}" disabled`)} style="max-width: 300px">
 			  <input type="text" class="form-control" placeholder="Value" data-type="value">
 			  <button class="btn btn-danger" button-type="remove-variable" is-custom="${isCustom ? "true" : "false"}" ${(isCustom ? "" : `static-key="${key}" is-required="${isRequired ? "true" : "false"}"`)}><i class="fa-regular fa-trash"></i></button>
 			</div>

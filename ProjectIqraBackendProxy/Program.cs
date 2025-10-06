@@ -4,6 +4,9 @@ using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
+using IqraInfrastructure.Managers.Call.Inbound;
+using IqraInfrastructure.Managers.Call.Outbound;
+using IqraInfrastructure.Managers.Call.Proxy;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
@@ -15,11 +18,11 @@ using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Integrations;
-using IqraInfrastructure.Repositories.MinIO;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.User;
+using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using MongoDB.Driver;
 using System.Reflection;
@@ -229,6 +232,15 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>()
                 );
             });
+
+            builder.Services.AddSingleton<WebSessionRepository>((sp) =>
+            {
+                return new WebSessionRepository(
+                    sp.GetRequiredService<ILogger<WebSessionRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:WebSessionRepoistoryDatabaseName"]
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, ProxyAppConfig proxyAppConfig)
@@ -274,7 +286,9 @@ namespace ProjectIqraBackendProxy
                     new BusinessManagerInitalizationSettings()
                     {
                         InitalizeIntegrationsManager = true,
-                        InitalizeNumberManager = true
+                        InitalizeNumberManager = true,
+                        InitalizeCampaignCURDManager = true,
+                        InitalizeToolsCURDManager = true
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
@@ -317,10 +331,10 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<DistributedLockRepository>()
                 );
             });
-            builder.Services.AddSingleton<InboundCallManager>((sp) =>
+            builder.Services.AddSingleton<InboundCallService>((sp) =>
             {
-                return new InboundCallManager(
-                    sp.GetRequiredService<ILogger<InboundCallManager>>(),
+                return new InboundCallService(
+                    sp.GetRequiredService<ILogger<InboundCallService>>(),
                     sp.GetRequiredService<IHttpClientFactory>(),
                     sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
@@ -339,6 +353,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     sp.GetRequiredService<UserRepository>(),
+                    null,
                     null,
                     null
                 );
@@ -373,19 +388,32 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<ModemTelManager>(),
                     sp.GetRequiredService<TwilioManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
-                    sp.GetRequiredService<IHttpClientFactory>()
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    sp.GetRequiredService<CampaignActionExecutorService>()
                 );
             });
-            builder.Services.AddSingleton<CallStatusManager>((sp) =>
+            builder.Services.AddSingleton<CallStatusService>((sp) =>
             {
-                return new CallStatusManager(
-                    sp.GetRequiredService<ILogger<CallStatusManager>>(),
+                return new CallStatusService(
+                    sp.GetRequiredService<ILogger<CallStatusService>>(),
                     sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<IHttpClientFactory>()
                 );
             });
+            builder.Services.AddSingleton<CampaignActionExecutorService>((sp) =>
+            {
+                return new CampaignActionExecutorService(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
+                    sp.GetRequiredService<OutboundCallQueueRepository>(),
+                    sp.GetRequiredService<WebSessionRepository>(),
+                    sp.GetRequiredService<BusinessManager>()
+                );
+            });
+
+            // HOSTED
             builder.Services.AddHostedService<OutboundCallProcessorService>((sp) =>
             {
                 return new OutboundCallProcessorService(
@@ -394,7 +422,7 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<OutboundCallProcessingOrchestrator>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>()
                 );
-            });        
+            });
         }
 
         private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)

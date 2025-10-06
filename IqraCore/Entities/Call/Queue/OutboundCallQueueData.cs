@@ -15,7 +15,8 @@ namespace IqraCore.Entities.Call.Queue
         public string? ProviderCallId { get; set; } = null;
         public string RecipientNumber { get; set; } = string.Empty;
 
-        public DateTime ScheduledForDateTime { get; set; } = DateTime.UtcNow.AddHours(1);
+        public DateTime ScheduledForDateTime { get; set; } = DateTime.UtcNow;
+        public DateTime MaxScheduleForDateTime { get; set; } = DateTime.UtcNow.AddHours(1);
 
         // Override Config Related
         public Dictionary<string, string> DynamicVariables { get; set; } = new Dictionary<string, string>();

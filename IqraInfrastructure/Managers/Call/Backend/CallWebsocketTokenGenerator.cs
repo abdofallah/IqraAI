@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace IqraInfrastructure.Managers.Call.Helper
+namespace IqraInfrastructure.Managers.Call.Backend
 {
     public static class CallWebsocketTokenGenerator
     {

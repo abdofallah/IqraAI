@@ -23,7 +23,7 @@ namespace IqraCore.Models.Business.MakeCalls
 
     public class MakeCallScheduleDto
     {
-        public OutboundCallScheduleType? Type { get; set; } = null;
         public DateTime? DateTimeUTC { get; set; } = null;
+        public DateTime? MaxDateTimeUTC { get; set; } = null;
     }
 }

@@ -10,17 +10,17 @@ using IqraInfrastructure.Repositories.Call;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace IqraInfrastructure.Managers.Call
+namespace IqraInfrastructure.Managers.Call.Proxy
 {
-    public class CallStatusManager
+    public class CallStatusService
     {
-        private readonly ILogger<CallStatusManager> _logger;
+        private readonly ILogger<CallStatusService> _logger;
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
         private readonly RegionManager _regionManager;
         private readonly IHttpClientFactory _httpClientFactory;
 
-        public CallStatusManager(ILogger<CallStatusManager> logger, InboundCallQueueRepository inboundCallQueueRepository, OutboundCallQueueRepository outboundCallQueueRepository, RegionManager regionManager, IHttpClientFactory httpClientFactory)
+        public CallStatusService(ILogger<CallStatusService> logger, InboundCallQueueRepository inboundCallQueueRepository, OutboundCallQueueRepository outboundCallQueueRepository, RegionManager regionManager, IHttpClientFactory httpClientFactory)
         {
             _logger = logger;
             _inboundCallQueueRepository = inboundCallQueueRepository;

@@ -194,49 +194,46 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    if (!scheduleElement.TryGetProperty("type", out var scheduleTypeElement) || scheduleTypeElement.ValueKind != JsonValueKind.Number)
-                    {
+                    if (
+                        !scheduleElement.TryGetProperty("dateTimeUTC", out var dateTimeUTCElement) ||
+                        dateTimeUTCElement.ValueKind != JsonValueKind.String ||
+                        string.IsNullOrWhiteSpace(dateTimeUTCElement.GetString())
+                    ) {
                         return result.SetFailureResult(
-                            "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_TYPE_NOT_FOUND",
-                            "Schedule type not found in config data."
+                            "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_DATETIMEUTC_NOT_FOUND",
+                            "Date time UTC not found in config data."
                         );
                     }
-                    var scheduleTypeIntValue = scheduleTypeElement.GetInt32();
-                    if (!Enum.IsDefined(typeof(OutboundCallScheduleType), scheduleTypeIntValue))
+                    var dateTimeUTCValue = dateTimeUTCElement.GetString()!;
+                    if (!DateTime.TryParse(dateTimeUTCValue, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dateTimeUTC))
                     {
                         return result.SetFailureResult(
-                            "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_TYPE_UNDEFINED",
-                            "Schedule type enum not defined."
+                            "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_DATETIMEUTC_PARSE_ERROR",
+                            "Failed to parse schedule date time UTC."
                         );
                     }
-                    callConfigData.Schedule.Type = ((OutboundCallScheduleType)scheduleTypeIntValue);
+                    callConfigData.Schedule.DateTimeUTC = dateTimeUTC;
 
-                    if (callConfigData.Schedule.Type == OutboundCallScheduleType.Now)
+                    if (
+                            !scheduleElement.TryGetProperty("maxDateTimeUTC", out var maxDateTimeUTCElement) ||
+                            maxDateTimeUTCElement.ValueKind != JsonValueKind.String ||
+                            string.IsNullOrWhiteSpace(maxDateTimeUTCElement.GetString())
+                        )
                     {
-                        callConfigData.Schedule.DateTimeUTC = DateTime.UtcNow;
+                        return result.SetFailureResult(
+                            "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_MAXDATETIMEUTC_NOT_FOUND",
+                            "Max date time UTC not found in config data."
+                        );
                     }
-                    else if (callConfigData.Schedule.Type == OutboundCallScheduleType.Scheduled)
+                    var maxDateTimeUTCValue = maxDateTimeUTCElement.GetString()!;
+                    if (!DateTime.TryParse(maxDateTimeUTCValue, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var maxDateTimeUTC))
                     {
-                        if (
-                            !scheduleElement.TryGetProperty("dateTimeUTC", out var dateTimeUTCElement) ||
-                            dateTimeUTCElement.ValueKind != JsonValueKind.String ||
-                            string.IsNullOrWhiteSpace(dateTimeUTCElement.GetString())
-                        ) {
-                            return result.SetFailureResult(
-                                "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_DATETIMEUTC_NOT_FOUND",
-                                "Date time UTC not found in config data."
-                            );
-                        }
-                        var dateTimeUTCValue = dateTimeUTCElement.GetString()!;
-                        if (!DateTime.TryParse(dateTimeUTCValue, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dateTimeUTC))
-                        {
-                            return result.SetFailureResult(
-                                "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_DATETIMEUTC_PARSE_ERROR",
-                                "Failed to parse schedule date time UTC."
-                            );
-                        }
-                        callConfigData.Schedule.DateTimeUTC = dateTimeUTC;
+                        return result.SetFailureResult(
+                            "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_MAXDATETIMEUTC_PARSE_ERROR",
+                            "Failed to parse schedule max date time UTC."
+                        );
                     }
+                    callConfigData.Schedule.MaxDateTimeUTC = maxDateTimeUTC;
                 }
 
                 // DynamicVariables
@@ -587,12 +584,9 @@ namespace IqraInfrastructure.Managers.Business
                 ProviderCallId = null,
                 CallingNumberProvider = businessNumberData.Provider,
                 RecipientNumber = RecipientNumber,
-                ScheduledForDateTime = DateTime.UtcNow.AddMinutes(1),
+                ScheduledForDateTime = callConfig.Schedule.DateTimeUTC!.Value,
+                MaxScheduleForDateTime = callConfig.Schedule.MaxDateTimeUTC!.Value,
             };
-            if (callConfig.Schedule.Type == OutboundCallScheduleType.Scheduled)
-            {
-                outboundCallQueueData.ScheduledForDateTime = callConfig.Schedule.DateTimeUTC!.Value;
-            }
             if (callConfig.Number.Type == OutboundCallNumberType.Single)
             {
                 outboundCallQueueData.DynamicVariables = callConfig.DynamicVariables;

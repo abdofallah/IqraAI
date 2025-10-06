@@ -18,7 +18,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-namespace IqraInfrastructure.Managers.Call
+namespace IqraInfrastructure.Managers.Call.Outbound
 {
     public class OutboundCallProcessingOrchestrator
     {
@@ -32,6 +32,8 @@ namespace IqraInfrastructure.Managers.Call
         private readonly TwilioManager _twilioManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly CampaignActionExecutorService _campaignActionExecutorService;
+
         private readonly JsonSerializerOptions _camelCaseSerializationOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
         public OutboundCallProcessingOrchestrator(
@@ -44,7 +46,8 @@ namespace IqraInfrastructure.Managers.Call
             ModemTelManager modemTelManager,
             TwilioManager twilioManager,
             IntegrationsManager integrationsManager,
-            IHttpClientFactory httpClientFactory
+            IHttpClientFactory httpClientFactory,
+            CampaignActionExecutorService campaignActionExecutorService
         )
         {
             _logger = logger;
@@ -57,11 +60,25 @@ namespace IqraInfrastructure.Managers.Call
             _twilioManager = twilioManager;
             _integrationsManager = integrationsManager;
             _httpClientFactory = httpClientFactory;
+            _campaignActionExecutorService = campaignActionExecutorService;
         }
 
-        public async Task ProcessCallAsync(OutboundCallQueueData call)
+        public async Task ProcessCallAsync(OutboundCallQueueData callQueueData)
         {
-            var validationResult = await _billingValidationManager.ValidateCallPermissionAsync(call.BusinessId, true);
+            if (callQueueData.MaxScheduleForDateTime <= DateTime.UtcNow)
+            {
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
+                    CallQueueStatusEnum.Expired,
+                    new CallQueueLog {
+                        Type = CallQueueLogTypeEnum.Information,
+                        Message = "Call expired by reaching max schedule date time."
+                    },
+                    completedAt: DateTime.UtcNow
+                );
+            }
+
+            var validationResult = await _billingValidationManager.ValidateCallPermissionAsync(callQueueData.BusinessId, true);
             if (!validationResult.Success)
             {
                 if (
@@ -70,8 +87,8 @@ namespace IqraInfrastructure.Managers.Call
                     (validationResult.Code.Contains("USER_CONCURRENCY_LIMIT") || validationResult.Code.Contains("BUSINESS_CONCURRENCY_LIMIT"))
                 )
                 {
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                        call.Id,
+                    await OnUpdateCallQueueStatusAndSendCampaignAction(
+                        callQueueData,
                         CallQueueStatusEnum.Queued,
                         new CallQueueLog {
                             Message = $"Validation failed (will retry): {validationResult.Message}",
@@ -81,8 +98,8 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                    call.Id,
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
                     CallQueueStatusEnum.Canceled,
                     new CallQueueLog {
                         Message = $"Validation failed: [{validationResult.Code}] {validationResult.Message}",
@@ -93,28 +110,28 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            var businessPhoneNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(call.BusinessId, call.CallingNumberId);
+            var businessPhoneNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(callQueueData.BusinessId, callQueueData.CallingNumberId);
             if (businessPhoneNumber == null)
             {
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                    call.Id,
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
                     CallQueueStatusEnum.Canceled,
                     new CallQueueLog {
-                        Message = $"System error: Business number {call.CallingNumberId} not found.",
+                        Message = $"System error: Business number {callQueueData.CallingNumberId} not found.",
                         Type = CallQueueLogTypeEnum.Error
                     },
                     completedAt: DateTime.UtcNow
                 );
             }
 
-            var businessPhoneIntegration = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(call.BusinessId, businessPhoneNumber.IntegrationId);
+            var businessPhoneIntegration = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(callQueueData.BusinessId, businessPhoneNumber.IntegrationId);
             if (businessPhoneIntegration == null)
             {
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                    call.Id,
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
                     CallQueueStatusEnum.Canceled,
                     new CallQueueLog {
-                        Message = $"System error: Business number {call.CallingNumberId} integration {businessPhoneNumber.IntegrationId} not found.",
+                        Message = $"System error: Business number {callQueueData.CallingNumberId} integration {businessPhoneNumber.IntegrationId} not found.",
                         Type = CallQueueLogTypeEnum.Error
                     },
                     completedAt: DateTime.UtcNow
@@ -131,8 +148,8 @@ namespace IqraInfrastructure.Managers.Call
                         var currentNumberCalls = await _modemTelManager.GetCallsByStatusForPhoneNumber(_integrationsManager.DecryptField(businessPhoneIntegration.Data.EncryptedFields["apikey"]), businessPhoneIntegration.Data.Fields["endpoint"], modemTelPhonenumberId, modemtelStatusToCheck, 1);
                         if (!currentNumberCalls.Success)
                         {
-                            await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                                call.Id,
+                            await OnUpdateCallQueueStatusAndSendCampaignAction(
+                                callQueueData,
                                 CallQueueStatusEnum.Canceled,
                                 new CallQueueLog {
                                     Message = $"[{currentNumberCalls.Code}] {currentNumberCalls.Message}",
@@ -145,7 +162,7 @@ namespace IqraInfrastructure.Managers.Call
 
                         if (currentNumberCalls.Data.Count > 0)
                         {
-                            await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued);
+                            await OnUpdateCallQueueStatusAndSendCampaignAction(callQueueData, CallQueueStatusEnum.Queued);
                             return;
                         }
                         break;
@@ -153,14 +170,14 @@ namespace IqraInfrastructure.Managers.Call
 
                 case TelephonyProviderEnum.Twilio:
                     {
-                        await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued);
+                        await OnUpdateCallQueueStatusAndSendCampaignAction(callQueueData, CallQueueStatusEnum.Queued);
                         break;
                     }
 
                 default:
                     {
-                        await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                            call.Id,
+                        await OnUpdateCallQueueStatusAndSendCampaignAction(
+                            callQueueData,
                             CallQueueStatusEnum.Canceled,
                             new CallQueueLog {
                                 Message = $"Unknown calling number provider: {businessPhoneNumber.Provider}.",
@@ -172,8 +189,8 @@ namespace IqraInfrastructure.Managers.Call
                     }
             }
 
-            await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                call.Id,
+            await OnUpdateCallQueueStatusAndSendCampaignAction(
+                callQueueData,
                 CallQueueStatusEnum.ProcessingProxy,
                 new CallQueueLog {
                     Message = $"Processing Queue within proxy",
@@ -181,15 +198,15 @@ namespace IqraInfrastructure.Managers.Call
                 }
             );
 
-            var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(call.RegionId);
+            var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(callQueueData.RegionId);
             if (!serverSelectionResult.Success || !serverSelectionResult.Data.Any())
             {
                 // todo this should happen very critically but should we kill the queue because of it?
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                    call.Id,
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
                     CallQueueStatusEnum.Failed,
                     new CallQueueLog {
-                        Message = $"No backend server available for region {call.RegionId}. {serverSelectionResult.Message}",
+                        Message = $"No backend server available for region {callQueueData.RegionId}. {serverSelectionResult.Message}",
                         Type = CallQueueLogTypeEnum.Error
                     },
                     completedAt: DateTime.UtcNow
@@ -197,15 +214,15 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            RegionData? regionDetails = await _regionManager.GetRegionById(call.RegionId);
+            RegionData? regionDetails = await _regionManager.GetRegionById(callQueueData.RegionId);
             if (regionDetails == null)
             {
-                _logger.LogError("Region details not found for {RegionId} during call {QueueId} processing.", call.RegionId, call.Id);
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                    call.Id,
+                _logger.LogError("Region details not found for {RegionId} during call {QueueId} processing.", callQueueData.RegionId, callQueueData.Id);
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
                     CallQueueStatusEnum.Failed,
                     new CallQueueLog {
-                        Message = $"System error: Region details for {call.RegionId} not found.",
+                        Message = $"System error: Region details for {callQueueData.RegionId} not found.",
                         Type = CallQueueLogTypeEnum.Error
                     },
                     completedAt: DateTime.UtcNow
@@ -220,11 +237,11 @@ namespace IqraInfrastructure.Managers.Call
                 RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Endpoint == optimalServer.ServerEndpoint && s.Type == ServerTypeEnum.Backend);
                 if (backendServerDetails == null)
                 {
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                        call.Id,
+                    await OnUpdateCallQueueStatusAndSendCampaignAction(
+                        callQueueData,
                         CallQueueStatusEnum.Failed,
                         new CallQueueLog {
-                            Message = $"System error: Region details for {call.RegionId} not found.",
+                            Message = $"System error: Region details for {callQueueData.RegionId} not found.",
                             Type = CallQueueLogTypeEnum.Error
                         },
                         completedAt: DateTime.UtcNow
@@ -234,14 +251,14 @@ namespace IqraInfrastructure.Managers.Call
 
                 var requestDto = new BackendOutboundCallRequest
                 {
-                    QueueId = call.Id
+                    QueueId = callQueueData.Id
                 };
 
                 var forwardResponse = await ForwardToBackendAsync(backendServerDetails, requestDto);
                 if (!forwardResponse.Success)
                 {
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                        call.Id,
+                    await OnUpdateCallQueueStatusAndSendCampaignAction(
+                        callQueueData,
                         CallQueueStatusEnum.Failed,
                         new CallQueueLog
                         {
@@ -261,8 +278,8 @@ namespace IqraInfrastructure.Managers.Call
                         successfullyForwarded = false;
                         shouldRequeCall = backendResult.Data!.ShouldRequeue;
 
-                        await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                            call.Id,
+                        await OnUpdateCallQueueStatusAndSendCampaignAction(
+                            callQueueData,
                             CallQueueStatusEnum.Failed,
                             new CallQueueLog
                             {
@@ -284,8 +301,8 @@ namespace IqraInfrastructure.Managers.Call
 
             if (shouldRequeCall)
             {
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                    call.Id,
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
                     CallQueueStatusEnum.Queued,
                     new CallQueueLog
                     {
@@ -296,8 +313,8 @@ namespace IqraInfrastructure.Managers.Call
             }
             else if (!successfullyForwarded)
             {
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(
-                    call.Id,
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
                     CallQueueStatusEnum.Failed,
                     new CallQueueLog
                     {
@@ -376,6 +393,27 @@ namespace IqraInfrastructure.Managers.Call
                 _logger.LogError(ex, "Generic exception while forwarding call {QueueId} to {EndpointUrl}.", requestDto.QueueId, baseUri.ToString());
                 return result.SetFailureResult("ForwardToBackend:GenericError", $"Exception: {ex.Message}");
             }
+        }
+    
+        public async Task OnUpdateCallQueueStatusAndSendCampaignAction(
+            OutboundCallQueueData callQueueData, CallQueueStatusEnum newStatus,
+            CallQueueLog? log = null,
+            string? newProcessingServerId = null,
+            DateTime? processingStartedAt = null,
+            DateTime? completedAt = null,
+            Dictionary<string, string>? providerMetadata = null,
+            string? providerCallId = null)
+        {
+            await _outboundCallQueueRepo.UpdateCallStatusAsync(callQueueData.Id, newStatus, log, newProcessingServerId, processingStartedAt, completedAt, providerMetadata, providerCallId);
+
+            // Run action in background
+            var logMessage = "Unknown";
+            if (log != null)
+            {
+                logMessage = $"[{log.Type.ToString()}] {log.Message}";
+            }
+
+            _ = _campaignActionExecutorService.SendOutboundCallQueueTelephonyCampaignAction(callQueueData.Id, logMessage);
         }
     }
 }
