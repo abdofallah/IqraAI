@@ -36,7 +36,7 @@ namespace IqraInfrastructure.Helpers
             Converters = { new JsonStringEnumConverter() }
         };
 
-        public static CustomVariableInputTemplateValidationResult Validate(string templateText, List<CustomVariableInputTemplateVariableDefinition> allowedDefinitions)
+        public static CustomVariableInputTemplateValidationResult Validate(string templateText, List<CustomVariableInputTemplateVariableDefinition> allowedDefinitions, int maxTokenCount = 100)
         {
             var result = new CustomVariableInputTemplateValidationResult();
             if (string.IsNullOrEmpty(templateText))
@@ -45,6 +45,11 @@ namespace IqraInfrastructure.Helpers
             }
 
             var tokens = ExtractTokens(templateText);
+
+            if (tokens.Count >= maxTokenCount)
+            {
+                result.Errors.Add($"The maximum number of variables/tokens in a template is {maxTokenCount}.");
+            }
 
             foreach (var token in tokens)
             {
@@ -182,7 +187,7 @@ namespace IqraInfrastructure.Helpers
                     switch (value)
                     {
                         case null:
-                            replacementValue = string.Empty;
+                            replacementValue = "null";
                             break;
                         case string strValue:
                             replacementValue = strValue;
@@ -190,10 +195,10 @@ namespace IqraInfrastructure.Helpers
                         case DateTime dtValue:
                             replacementValue = dtValue.ToUniversalTime().ToString("o");
                             break;
-                        case var v when v.GetType().IsPrimitive || v is decimal:
+                        case var v when v.GetType().IsPrimitive || v is decimal || v is bool:
                             replacementValue = v.ToString();
                             break;
-                        // For any other object (like Dictionaries), serialize to JSON
+                        // For any other object (like Dictionaries/Lists), serialize to JSON
                         default:
                             replacementValue = JsonSerializer.Serialize(value, _jsonSerializerOptions);
                             break;
@@ -207,7 +212,7 @@ namespace IqraInfrastructure.Helpers
             return processedText;
         }
 
-        public static object ProcessTemplateToObject(string templateText, Dictionary<string, object> dataContext)
+        public static object? ProcessTemplateToObject(string templateText, Dictionary<string, object> dataContext)
         {
             if (string.IsNullOrEmpty(templateText))
             {

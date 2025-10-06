@@ -1,11 +1,11 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
 using IqraCore.Interfaces.Server;
-using IqraCore.Models.Server;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Call.Backend;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Embedding;
@@ -800,7 +800,8 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<UserBillingUsageManager>()
+                    sp.GetRequiredService<UserBillingUsageManager>(),
+                    sp.GetRequiredService<CampaignActionExecutorService>()
                 );
             });
             builder.Services.AddSingleton<BackendWebSessionProcessorManager>((sp) =>
@@ -815,7 +816,8 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<UserBillingUsageManager>()
+                    sp.GetRequiredService<UserBillingUsageManager>(),
+                    sp.GetRequiredService<CampaignActionExecutorService>()
                 );
             });
             builder.Services.AddSingleton<UserBillingUsageManager>((sp) =>
@@ -837,7 +839,6 @@ namespace ProjectIqraBackendApp
                 );
             });
 
-            // TTSAudioCacheManager
             builder.Services.AddSingleton<TTSAudioCacheManager>((sp) =>
             {
                 return new TTSAudioCacheManager(
@@ -847,6 +848,18 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<TTSAudioCacheStorageRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
                     appConfig["Server:RegionId"]
+                );
+            });
+
+            builder.Services.AddSingleton<CampaignActionExecutorService>((sp) =>
+            {
+                return new CampaignActionExecutorService(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
+                    sp.GetRequiredService<OutboundCallQueueRepository>(),
+                    sp.GetRequiredService<WebSessionRepository>(),
+                    sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<BusinessManager>()
                 );
             });
 

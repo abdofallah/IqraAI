@@ -76,6 +76,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                     },
                     completedAt: DateTime.UtcNow
                 );
+                return;
             }
 
             var validationResult = await _billingValidationManager.ValidateCallPermissionAsync(callQueueData.BusinessId, true);
@@ -195,7 +196,8 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 new CallQueueLog {
                     Message = $"Processing Queue within proxy",
                     Type = CallQueueLogTypeEnum.Information
-                }
+                },
+                processingStartedAt: DateTime.UtcNow
             );
 
             var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(callQueueData.RegionId);
@@ -230,8 +232,6 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 return;
             }
 
-            bool successfullyForwarded = false;
-            bool shouldRequeCall = false;
             foreach (var optimalServer in serverSelectionResult.Data)
             {
                 RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Endpoint == optimalServer.ServerEndpoint && s.Type == ServerTypeEnum.Backend);
@@ -246,7 +246,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                         },
                         completedAt: DateTime.UtcNow
                     );
-                    continue;
+                    return;
                 }
 
                 var requestDto = new BackendOutboundCallRequest
@@ -275,54 +275,40 @@ namespace IqraInfrastructure.Managers.Call.Outbound
 
                     if (!backendResult.Success)
                     {
-                        successfullyForwarded = false;
-                        shouldRequeCall = backendResult.Data!.ShouldRequeue;
-
-                        await OnUpdateCallQueueStatusAndSendCampaignAction(
-                            callQueueData,
-                            CallQueueStatusEnum.Failed,
-                            new CallQueueLog
-                            {
-                                Message = $"Backend call processing failure: [{backendResult.Code}] {backendResult.Message}",
-                                Type = CallQueueLogTypeEnum.Error
-                            },
-                            completedAt: DateTime.UtcNow
-                        );
+                        if (backendResult.Data!.ShouldRequeue)
+                        {
+                            string? requeueReason = backendResult.Message ?? "";
+                            await OnUpdateCallQueueStatusAndSendCampaignAction(
+                                callQueueData,
+                                CallQueueStatusEnum.Queued,
+                                new CallQueueLog
+                                {
+                                    Message = $"Requeuing call{(string.IsNullOrWhiteSpace(requeueReason) ? "" : $": {requeueReason}")}",
+                                    Type = CallQueueLogTypeEnum.Information
+                                }
+                            );
+                        }
+                        else
+                        {
+                            await OnUpdateCallQueueStatusAndSendCampaignAction(
+                                callQueueData,
+                                CallQueueStatusEnum.Failed,
+                                new CallQueueLog
+                                {
+                                    Message = $"Backend call processing failure: [{backendResult.Code}] {backendResult.Message}",
+                                    Type = CallQueueLogTypeEnum.Error
+                                },
+                                completedAt: DateTime.UtcNow
+                            );
+                        }
                     }
                     else
                     {
-                        successfullyForwarded = true;
-                        shouldRequeCall = false;
+                        // if success everything else related to queue is handled by backend app
                     }
 
                     break;
                 }
-            }
-
-            if (shouldRequeCall)
-            {
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
-                    callQueueData,
-                    CallQueueStatusEnum.Queued,
-                    new CallQueueLog
-                    {
-                        Message = "Requeuing call.",
-                        Type = CallQueueLogTypeEnum.Information
-                    }
-                );
-            }
-            else if (!successfullyForwarded)
-            {
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
-                    callQueueData,
-                    CallQueueStatusEnum.Failed,
-                    new CallQueueLog
-                    {
-                        Message = "Failed to forward to backend server.",
-                        Type = CallQueueLogTypeEnum.Error
-                    },
-                    completedAt: DateTime.UtcNow
-                );
             }
         }
 
@@ -413,7 +399,10 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 logMessage = $"[{log.Type.ToString()}] {log.Message}";
             }
 
-            _ = _campaignActionExecutorService.SendOutboundCallQueueTelephonyCampaignAction(callQueueData.Id, logMessage);
+            if (newStatus == CallQueueStatusEnum.Failed || newStatus == CallQueueStatusEnum.Canceled || newStatus == CallQueueStatusEnum.Expired)
+            {
+                _ = _campaignActionExecutorService.SendOutboundCallQueueTelephonyCampaignAction(callQueueData.Id, logMessage);
+            }
         }
     }
 }

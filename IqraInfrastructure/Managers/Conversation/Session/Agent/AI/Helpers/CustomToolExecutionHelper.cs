@@ -753,11 +753,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                 // Import custom functions
                 scriptObject.Import("datetimeparse", ParseDateTimeFunc);
 
-                // Import built-in objects (optional, but useful e.g., for date manipulation)
-                scriptObject.Import(typeof(DateTimeFunctions)); // Allows {{ date.now }}, {{ some_date | date.add_days 1 }}
-                scriptObject.Import(typeof(TimeSpanFunctions)); // Allows {{ timespan.from_days 1 }}
-                scriptObject.Import(typeof(StringFunctions));   // Allows {{ 'abc' | string.upcase }}
-                // Add other Scriban built-ins as needed (ArrayFunctions, MathFunctions, etc.)
+                scriptObject.Import(typeof(DateTimeFunctions));
+                scriptObject.Import(typeof(TimeSpanFunctions));
+                scriptObject.Import(typeof(StringFunctions));
+                scriptObject.Import(typeof(ObjectFunctions));
+                scriptObject.Import(typeof(ArrayFunctions));
+                scriptObject.Import(typeof(MathFunctions));
+                scriptObject.Import(typeof(RegexFunctions));
 
                 templateContext.PushGlobal(scriptObject);
 

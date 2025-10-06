@@ -16,6 +16,7 @@ using IqraCore.Entities.User.Usage.Enums;
 using IqraCore.Entities.WebSession;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
@@ -36,6 +37,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
         private readonly UserBillingUsageManager _userBillingUsageManager;
+        private readonly CampaignActionExecutorService _campaignActionExecutorService;
 
         private readonly string _sessionId;
         private readonly DateTime _createdAt;
@@ -87,7 +89,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         public event EventHandler<ConversationTurnEventArgs>? TurnCompleted;
         // --- END NEW ---
 
-        public event EventHandler<object>? SessionEnded;
+        public event Func<object, Task>? SessionEnded;
 
         // Public
         public string SessionId => _sessionId;
@@ -118,6 +120,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             ConversationAudioRepository audioStorageManager,
             UserBillingUsageManager billingProcessingManager,
             ILoggerFactory loggerFactory,
+            CampaignActionExecutorService campaignActionExecutorService,
 
             CallQueueData? queueData = null,
             WebSessionData? webSessionData = null
@@ -134,6 +137,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             _userBillingUsageManager = billingProcessingManager;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<ConversationSessionOrchestrator>();
+            _campaignActionExecutorService = campaignActionExecutorService;
 
             if (IsCallInitiated)
             {
@@ -760,16 +764,45 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
                 await _userBillingUsageManager.ProcessAndBillUsageAsync(_sessionBusinessData.MasterUserEmail, _sessionBusinessData.Id, consumedFeatureInputs, UserUsageSourceTypeEnum.Conversation, _sessionId, "Conversation Session Usage");
 
-                _ = Task.Run(async () =>
-                {
-                    await ExecuteEndCallAction();
-                });
-
                 // Run Audio Compilation in the background
                 RunAudioCompilationAsync();
             }  
 
-            SessionEnded?.Invoke(this, null);
+            if (SessionEnded != null)
+            {
+                try
+                {
+                    await SessionEnded.Invoke(this);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error invoking SessionEnded event handler for session {SessionId}", SessionId);
+                }
+            }
+
+            try
+            {
+                if (IsCallInitiated)
+                {
+                    if (IsOutboundCall)
+                    {
+                        _ = _campaignActionExecutorService.SendOutboundConversationSessionTelephonyCampaignAction(SessionId);
+                    }
+                    else if (IsInboundCall)
+                    {
+                        _ = _campaignActionExecutorService.SendInboundConversationSessionTelephonyCampaignAction(SessionId);
+                    }
+                }
+                else if (IsWebInitiated)
+                {
+                    _ = _campaignActionExecutorService.SendWebConversationSessionCampaignAction(SessionId);
+                }
+                
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invoking session actions for session {SessionId}", SessionId);
+            }
 
             // Dispose
             Dispose();

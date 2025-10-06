@@ -44,13 +44,6 @@ const telephonyCampaignPostAnalysisContextVariableArguments = [
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
     },
     {
-        "id": "call_queue_session_id",
-        "Name": "Call Queue Session Id",
-        "Type": "string",
-        "group": "Call Queue Data",
-        "Description": "The session ID associated with the call, if any."
-    },
-    {
         "id": "call_queue_campaign_id",
         "Name": "Call Queue Campaign Id",
         "Type": "string",
@@ -196,13 +189,6 @@ const telephonyCampaignOnCallInitiationFailureActionArgurments = [
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
     },
     {
-        "id": "call_queue_session_id",
-        "Name": "Call Queue Session Id",
-        "Type": "string",
-        "group": "Call Queue Data",
-        "Description": "The session ID associated with the call, if any."
-    },
-    {
         "id": "call_queue_campaign_id",
         "Name": "Call Queue Campaign Id",
         "Type": "string",
@@ -309,13 +295,6 @@ const telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments = [
         "Type": "string",
         "group": "Call Queue Data",
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
-    },
-    {
-        "id": "call_queue_session_id",
-        "Name": "Call Queue Session Id",
-        "Type": "string",
-        "group": "Call Queue Data",
-        "Description": "The session ID associated with the call, if any."
     },
     {
         "id": "call_queue_campaign_id",
@@ -425,13 +404,6 @@ const telephonyCampaignOnCallAnsweredActionArgurments = [
         "Type": "string",
         "group": "Call Queue Data",
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
-    },
-    {
-        "id": "call_queue_session_id",
-        "Name": "Call Queue Session Id",
-        "Type": "string",
-        "group": "Call Queue Data",
-        "Description": "The session ID associated with the call, if any."
     },
     {
         "id": "call_queue_campaign_id",
@@ -548,13 +520,6 @@ const telephonyCampaignOnCallEndedActionArgurments = [
         "Type": "string",
         "group": "Call Queue Data",
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
-    },
-    {
-        "id": "call_queue_session_id",
-        "Name": "Call Queue Session Id",
-        "Type": "string",
-        "group": "Call Queue Data",
-        "Description": "The session ID associated with the call, if any."
     },
     {
         "id": "call_queue_campaign_id",

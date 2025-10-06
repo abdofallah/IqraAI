@@ -409,6 +409,7 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<WebSessionRepository>(),
+                    sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<BusinessManager>()
                 );
             });

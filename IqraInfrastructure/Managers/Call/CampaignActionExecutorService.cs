@@ -5,6 +5,7 @@ using IqraInfrastructure.Helpers;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Repositories.Call;
+using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.Extensions.Logging;
 
@@ -17,6 +18,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepo;
         private readonly WebSessionRepository _webSessionRepository;
+        private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BusinessManager _businessManager;
 
         public CampaignActionExecutorService(
@@ -24,6 +26,7 @@ namespace IqraInfrastructure.Managers.Call
             InboundCallQueueRepository inboundCallQueueRepository,
             OutboundCallQueueRepository outboundCallQueueRepository,
             WebSessionRepository webSessionRepository,
+            ConversationStateRepository conversationStateRepository,
             BusinessManager businessManager
         ) {
             _loggerFactory = loggerFactory;
@@ -31,9 +34,11 @@ namespace IqraInfrastructure.Managers.Call
             _inboundCallQueueRepository = inboundCallQueueRepository;
             _outboundCallQueueRepo = outboundCallQueueRepository;
             _webSessionRepository = webSessionRepository;
+            _conversationStateRepository = conversationStateRepository;
             _businessManager = businessManager;
         }
 
+        // Outbound Telephony
         public async Task SendOutboundCallQueueTelephonyCampaignAction(string outboundCallQueueId, string logMessage)
         {
             var callQueueData = await _outboundCallQueueRepo.GetOutboundCallQueueByIdAsync(outboundCallQueueId);
@@ -142,7 +147,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
                 var callFailureArguments = callFailureArgumentsResult.Data!;
 
-                var finalToolArguments = new Dictionary<string, object>();
+                var finalToolArguments = new Dictionary<string, object?>();
                 var configuredArguments = telephonyCampaign.Actions.CallInitiationFailureTool.Arguments;
                 if (configuredArguments != null)
                 {
@@ -178,18 +183,153 @@ namespace IqraInfrastructure.Managers.Call
 
                     return;
                 }
+                else
+                {
+                    await _outboundCallQueueRepo.AddCallLogAsync(
+                        callQueueData.Id,
+                        new CallQueueLog
+                        {
+                            Message = $"Call queue campaign call initiation failure tool response:\n```{executeActionToolResult.Data}```",
+                            Type = CallQueueLogTypeEnum.Information
+                        }
+                    );
+                }
 
-                await _outboundCallQueueRepo.AddCallLogAsync(
-                    callQueueData.Id,
-                    new CallQueueLog
+                return;
+            }
+            else if (callQueueData.Status == CallQueueStatusEnum.ProcessedBackend)
+            {
+                if (string.IsNullOrEmpty(telephonyCampaign.Actions.CallInitiatedTool.ToolId)) return;
+
+                var callInitiatedToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(callQueueData.BusinessId, telephonyCampaign.Actions.CallInitiatedTool.ToolId);
+                if (callInitiatedToolData == null)
+                {
+                    await _outboundCallQueueRepo.AddCallLogAsync(
+                        callQueueData.Id,
+                        new CallQueueLog
+                        {
+                            Message = $"Unable to find call queue campaign call initiated tool to find and send campaign action.",
+                            Type = CallQueueLogTypeEnum.Error
+                        }
+                    );
+
+                    return;
+                }
+
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+
+                var callInitiatedArgumentsResult = GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(callQueueData, logMessage);
+                if (!callInitiatedArgumentsResult.Success)
+                {
+                    await _outboundCallQueueRepo.AddCallLogAsync(
+                        callQueueData.Id,
+                        new CallQueueLog
+                        {
+                            Message = $"Unable to get call queue campaign call initiated tool arguements. [{callInitiatedArgumentsResult.Code}] {callInitiatedArgumentsResult.Message} ",
+                            Type = CallQueueLogTypeEnum.Error
+                        }
+                    );
+
+                    return;
+                }
+                var callInitiatedArguments = callInitiatedArgumentsResult.Data!;
+
+                var finalToolArguments = new Dictionary<string, object?>();
+                var configuredArguments = telephonyCampaign.Actions.CallInitiatedTool.Arguments;
+                if (configuredArguments != null)
+                {
+                    foreach (var configuredArg in configuredArguments)
                     {
-                        Message = $"Call queue campaign call initiation failure tool response:\n```{executeActionToolResult.Message}```",
-                        Type = CallQueueLogTypeEnum.Information
+                        var argumentName = configuredArg.Key;
+                        var argumentTemplate = configuredArg.Value;
+
+                        var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
+                            argumentTemplate.ToString()!,
+                            callInitiatedArgumentsResult.Data!
+                        );
+
+                        finalToolArguments[argumentName] = processedValue;
                     }
+                }
+
+                var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
+                    callInitiatedToolData,
+                    finalToolArguments,
+                    CancellationToken.None
+                );
+                if (!executeActionToolResult.Success)
+                {
+                    await _outboundCallQueueRepo.AddCallLogAsync(
+                        callQueueData.Id,
+                        new CallQueueLog
+                        {
+                            Message = $"Unable to execute call queue campaign call initiated tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
+                            Type = CallQueueLogTypeEnum.Error
+                        }
+                    );
+
+                    return;
+                }
+                else
+                {
+                    await _outboundCallQueueRepo.AddCallLogAsync(
+                        callQueueData.Id,
+                        new CallQueueLog
+                        {
+                            Message = $"Call queue campaign call initiated tool response:\n```{executeActionToolResult.Message}```",
+                            Type = CallQueueLogTypeEnum.Information
+                        }
+                    );
+                }
+
+                return;
+            }
+        }
+        public async Task SendOutboundConversationSessionTelephonyCampaignAction(string outboundConversationSessionId)
+        {
+            // missed/busy, no-answer, ended
+        }
+        private FunctionReturnResult<Dictionary<string, object?>?> GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(OutboundCallQueueData callQueueData, string logMessage)
+        {
+            var result = new FunctionReturnResult<Dictionary<string, object?>?>();
+
+            try
+            {
+                var resultData = new Dictionary<string, object?>
+                {
+                    // Call Queue Data from the base class
+                    { "call_queue_id", callQueueData.Id },
+                    { "call_queue_created_at", callQueueData.CreatedAt },
+                    { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
+                    { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
+                    { "call_queue_completed_at", callQueueData.CompletedAt },
+                    { "call_queue_status", callQueueData.Status.ToString() },
+
+                    // OutboundCallQueueData specific fields
+                    { "call_queue_campaign_id", callQueueData.CampaignId },
+                    { "call_queue_calling_number_id", callQueueData.CallingNumberId },
+                    { "call_queue_calling_number_provider", callQueueData.CallingNumberProvider.ToString() },
+                    { "call_queue_provider_call_id", callQueueData.ProviderCallId },
+                    { "call_queue_recipient_number", callQueueData.RecipientNumber },
+                    { "call_queue_scheduled_for_date_time", callQueueData.ScheduledForDateTime },
+                    { "call_queue_dynamic_variables", callQueueData.DynamicVariables },
+                    { "call_queue_metadata", callQueueData.Metadata },
+            
+                    // Conversation related
+                    { "conversation_id", callQueueData.SessionId }
+                };
+
+                return result.SetSuccessResult(resultData);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements:EXCEPTION",
+                    $"Error getting telephony campaign call initiation/declined/missed arguements: {ex.Message}"
                 );
             }
         }
-
         private FunctionReturnResult<Dictionary<string, object?>?> GetTelephonyCampaignCallInitiationFailureArguements(OutboundCallQueueData callQueueData, string logMessage)
         {
             var result = new FunctionReturnResult<Dictionary<string, object?>?>();
@@ -230,6 +370,22 @@ namespace IqraInfrastructure.Managers.Call
                     $"Error getting telephony campaign call initiation failure arguements: {ex.Message}"
                 );
             }
+        }
+    
+        // Inbound Telephony
+        public async Task SendInboundConversationSessionTelephonyCampaignAction(string inboundConversationSessionId)
+        {
+
+        }
+
+        // Web Session
+        public async Task SendWebSessionCampaignAction(string webSessionId)
+        {
+            // initiation failure, initiated
+        }
+        public async Task SendWebConversationSessionCampaignAction(string webConversationSessionId)
+        {
+            // ended
         }
     }
 }

@@ -125,7 +125,7 @@ namespace ProjectIqraBackendProxy.Controllers
         }
 
         [HttpPost("voice/outbound/status/{businessId}/{sessionId}/{phoneNumberId}")]
-        public async Task<IActionResult> HandleSessionIncomingWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId, [FromRoute] string sessionId)
+        public async Task<IActionResult> HandleSessionIncomingWebhook([FromForm] TwilioWebhookDataModel webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId, [FromRoute] string sessionId)
         {
             if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || string.IsNullOrWhiteSpace(sessionId) || webhookData == null)
             {

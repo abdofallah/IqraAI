@@ -60,6 +60,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
         private readonly UserBillingUsageManager _billingProcessingManager;
+        private readonly CampaignActionExecutorService _campaignActionExecutorService;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
@@ -81,7 +82,8 @@ namespace IqraInfrastructure.Managers.Call.Backend
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            UserBillingUsageManager billingProcessingManager
+            UserBillingUsageManager billingProcessingManager,
+            CampaignActionExecutorService campaignActionExecutorService
         )
         {
             _logger = logger;
@@ -96,6 +98,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             _integrationsManager = integrationsManager;
             _regionManager = regionManager;
             _billingProcessingManager = billingProcessingManager;
+            _campaignActionExecutorService = campaignActionExecutorService;
         }
 
         public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> ProcessInboundCallAsync(string queueId)
@@ -225,8 +228,24 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 await _outboundCallQueueRepository.UpdateCallStatusAsync(
                     queueId,
                     CallQueueStatusEnum.ProcessingBackend,
+                    new CallQueueLog()
+                    {
+                        Type = CallQueueLogTypeEnum.Information,
+                        Message = "Being processed by backend app..."
+                    },
                     newProcessingServerId: _backendAppConfig.ServerId
                 );
+
+                if (!_serverMetricsMonitor.HasCapacity())
+                {
+                    resultData.ShouldRequeue = true;
+
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:NO_SERVER_CAPACITY",
+                        "No capacity available on server",
+                        resultData
+                    );
+                }
 
                 // --- Start of Outbound-Specific Logic ---
                 var businessNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(outboundQueueData.BusinessId, outboundQueueData.CallingNumberId);
@@ -270,7 +289,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 var anyRegionProxyServerData = regionData.Servers.FirstOrDefault(s => s.Type == ServerTypeEnum.Proxy);
                 if (anyRegionProxyServerData == null)
                 {
-                    resultData.ShouldRequeue = true;
                     return result.SetFailureResult(
                         "InitiateOutboundCallAsync:REGION_PROXY_SERVER_NOT_FOUND",
                         "Region proxy server not found",
@@ -284,7 +302,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 sessionResult = await CreateConversationSessionAsync(outboundQueueData);
                 if (!sessionResult.Success || sessionResult.Data == null)
                 {
-                    resultData.ShouldRequeue = true;
                     return result.SetFailureResult(
                         "InitiateOutboundCallAsync:SESSION_CREATION_FAILED",
                         sessionResult.Message,
@@ -296,7 +313,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 var startSessionResult = await session.InitializeAsync();
                 if (!startSessionResult.Success)
                 {
-                    resultData.ShouldRequeue = true;
                     return result.SetFailureResult(
                         "InitiateOutboundCallAsync:SESSION_INIT_FAILED",
                         startSessionResult.Message,
@@ -307,7 +323,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 var componentsResult = await BuildAndConfigureSessionAsync(session, outboundQueueData);
                 if (!componentsResult.Success || componentsResult.Data == null)
                 {
-                    resultData.ShouldRequeue = true;
                     return result.SetFailureResult(
                         "InitiateOutboundCallAsync:SESSION_COMPONENTS_FAILED",
                         componentsResult.Message,
@@ -374,6 +389,17 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     CallQueueStatusEnum.ProcessedBackend,
                     DateTime.UtcNow
                 );
+                await _outboundCallQueueRepository.AddCallLogAsync(
+                    queueId,
+                    new CallQueueLog()
+                    {
+                        Type = CallQueueLogTypeEnum.Information,
+                        Message = "Call initiated successfully by the backend.",
+                    }
+                );
+
+                _ = _campaignActionExecutorService.SendOutboundCallQueueTelephonyCampaignAction(queueId, "Call Inititated");
+
                 return result.SetSuccessResult(resultData);
             }
             catch (Exception ex)
@@ -447,6 +473,21 @@ namespace IqraInfrastructure.Managers.Call.Backend
                             // for outbound calls, we need to end the session and clean it up, check for retry logic and requeue if needed
 
                             _ = sessionData.EndAsync("Busy outbound call response", ConversationSessionEndType.UserDeclinedOrBusy);
+                            return result.SetSuccessResult();
+                        }
+
+                    case "no-answer":
+                        {
+                            // it should never be any other state than waiting if we get no answer
+                            if (sessionData.State != ConversationSessionState.WaitingForPrimaryClient)
+                            {
+                                return result.SetFailureResult("NotifyTelephonyClientStatus:INVALID_STATE", "Invalid state for no answer status");
+                            }
+
+                            // TODO we need to check for retry logic of the queue
+                            // for outbound calls, we need to end the session and clean it up, check for retry logic and requeue if needed
+
+                            _ = sessionData.EndAsync("No answer outbound call response", ConversationSessionEndType.UserDeclinedOrBusy);
                             return result.SetSuccessResult();
                         }
 
@@ -545,11 +586,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
         {
             var result = new FunctionReturnResult<ConversationSessionOrchestrator?>();
 
-            if (!_serverMetricsMonitor.HasCapacity())
-            {
-                return result.SetFailureResult("CreateConversationSessionAsync:NO_SERVER_CAPACITY", "No capacity available on server");
-            }
-
             // todo create ids better using database count system
             string sessionId = Guid.NewGuid().ToString();
             try
@@ -568,6 +604,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
                     _billingProcessingManager,
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
+                    _campaignActionExecutorService,
 
                     queueData: queueData
                 );
@@ -575,7 +612,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 _activeSessions[sessionId] = conversationSession;
                 _ctsSessions[sessionId] = newSessionCTS;
 
-                conversationSession.SessionEnded += async (sender, e) => { await CleanupSessionAsync(sessionId); };
+                conversationSession.SessionEnded += async (sender) => {
+                    await CleanupSessionAsync(sessionId);
+                };
 
                 return result.SetSuccessResult(conversationSession);
             }

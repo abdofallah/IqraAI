@@ -9,6 +9,7 @@ using IqraCore.Entities.WebSession;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Call.Backend;
 using IqraInfrastructure.Managers.Conversation.Session;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
@@ -47,6 +48,7 @@ namespace IqraInfrastructure.Managers.WebSession
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
         private readonly UserBillingUsageManager _billingProcessingManager;
+        private readonly CampaignActionExecutorService _campaignActionExecutorService;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
@@ -66,7 +68,8 @@ namespace IqraInfrastructure.Managers.WebSession
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            UserBillingUsageManager billingProcessingManager
+            UserBillingUsageManager billingProcessingManager,
+            CampaignActionExecutorService campaignActionExecutorService
         )
         {
             _logger = logger;
@@ -79,6 +82,7 @@ namespace IqraInfrastructure.Managers.WebSession
             _integrationsManager = integrationsManager;
             _regionManager = regionManager;
             _billingProcessingManager = billingProcessingManager;
+            _campaignActionExecutorService = campaignActionExecutorService;
         }
 
         public async Task<FunctionReturnResult<BackendInitiateWebSessionResultModel?>> InitiateWebSessionConversationAsync(string webSessionId)
@@ -278,6 +282,7 @@ namespace IqraInfrastructure.Managers.WebSession
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
                     _billingProcessingManager,
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
+                    _campaignActionExecutorService,
 
                     webSessionData: webSessionData
                 );
@@ -285,7 +290,9 @@ namespace IqraInfrastructure.Managers.WebSession
                 _activeSessions[sessionId] = conversationSession;
                 _ctsSessions[sessionId] = newSessionCTS;
 
-                conversationSession.SessionEnded += async (object? sender, object? e) => { await CleanupSessionAsync(sessionId); };
+                conversationSession.SessionEnded += async (sender) => {
+                    await CleanupSessionAsync(sessionId);
+                };
 
                 return result.SetSuccessResult(conversationSession);
             }
