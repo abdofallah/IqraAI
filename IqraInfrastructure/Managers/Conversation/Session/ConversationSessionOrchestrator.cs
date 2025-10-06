@@ -786,7 +786,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 {
                     if (IsOutboundCall)
                     {
-                        _ = _campaignActionExecutorService.SendOutboundConversationSessionTelephonyCampaignAction(SessionId);
+                        _ = _campaignActionExecutorService.SendOutboundConversationSessionEndedTelephonyCampaignAction(SessionId, reason);
                     }
                     else if (IsInboundCall)
                     {

@@ -167,7 +167,7 @@ namespace IqraInfrastructure.Helpers
         }
 
 
-        public static string ProcessTemplate(string templateText, Dictionary<string, object> dataContext)
+        public static string ProcessTemplate(string templateText, Dictionary<string, object?> dataContext)
         {
             if (string.IsNullOrEmpty(templateText))
             {
@@ -212,7 +212,7 @@ namespace IqraInfrastructure.Helpers
             return processedText;
         }
 
-        public static object? ProcessTemplateToObject(string templateText, Dictionary<string, object> dataContext)
+        public static object? ProcessTemplateToObject(string templateText, Dictionary<string, object?> dataContext)
         {
             if (string.IsNullOrEmpty(templateText))
             {
