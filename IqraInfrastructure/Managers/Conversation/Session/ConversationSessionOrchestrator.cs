@@ -638,6 +638,22 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 // Update state
                 await UpdateStateAsync(ConversationSessionState.Active, "Session active");
 
+                if (IsCallInitiated)
+                {
+                    if (IsOutboundCall)
+                    {
+                        _ = _campaignActionExecutorService.SendOutboundConversationSessionAnsweredTelephonyCampaignAction(SessionId);
+                    }
+                    else if (IsInboundCall)
+                    {
+                        _ = _campaignActionExecutorService.SendInboundConversationSessionAnsweredTelephonyCampaignAction(SessionId);
+                    }
+                }
+                else if (IsWebInitiated)
+                {
+                    // TODO
+                }
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)
@@ -790,7 +806,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     }
                     else if (IsInboundCall)
                     {
-                        _ = _campaignActionExecutorService.SendInboundConversationSessionTelephonyCampaignAction(SessionId);
+                        _ = _campaignActionExecutorService.SendInboundConversationSessionEndedTelephonyCampaignAction(SessionId);
                     }
                 }
                 else if (IsWebInitiated)
@@ -986,117 +1002,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     _logger.LogError(ex, "Error executing audio compilation background task for session {SessionId}", _sessionId);
                 }
             });
-        }
-        private async Task ExecuteEndCallAction()
-        {
-            try
-            {
-                if (_sessionContextData.CallEndedAction.SelectedToolId == null)
-                {
-                    return;
-                }
-
-                BusinessAppTool? endCallTool = _sessionBusinessAppData.Tools.Find(t => t.Id == _sessionContextData.CallEndedAction.SelectedToolId);
-                if (endCallTool == null)
-                {
-                    AddLogEntry(ConversationLogLevel.Error, "Call ended action failed", "Tool not found");
-                    return;
-                }
-
-                var parsedArguments = new Dictionary<string, object?>();
-
-                string? cachedConversation = null;
-                string? cachedMetadata = null;
-
-                foreach (var argument in _sessionContextData.CallEndedAction.Arguments)
-                {
-                    var argumentName = argument.Key;
-                    var argumentValue = argument.Value;
-
-                    if (argument.Value is string stringValue)
-                    {
-                        if (stringValue.Contains("{{conversation}}") || stringValue.Contains("{={conversation}=}"))
-                        {
-                            if (cachedConversation == null)
-                            {
-                                // TODO why not just use the current class turns
-                                var finalState = await _conversationStateRepository.GetByIdAsync(_sessionId);
-                                cachedConversation = JsonSerializer.Serialize(finalState.Turns);
-                            }
-
-                            stringValue = stringValue
-                                .Replace("{{conversation}}", cachedConversation)
-                                .Replace("{={conversation}=}", cachedConversation);
-                        }
-
-                        if (stringValue.Contains("{{metadata}}") || stringValue.Contains("{={metadata}=}"))
-                        {
-                            if (cachedMetadata == null)
-                            {
-                                cachedMetadata = JsonSerializer.Serialize(_sessionContextData.Metadata);
-                            }
-
-                            stringValue = stringValue
-                                .Replace("{{metadata}}", cachedMetadata)
-                                .Replace("{={metadata}=}", cachedMetadata);
-                        }
-
-                        if (IsCallInitiated)
-                        {
-                            if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
-                            {
-                                var callerNumber = (_sessionCallQueueData as InboundCallQueueData).CallerNumber;
-
-                                stringValue = stringValue
-                                    .Replace("{{from_number}}", callerNumber)
-                                    .Replace("{={from_number}=}", callerNumber);
-                            }
-                            else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
-                            {
-                                var recipientNumber = (_sessionCallQueueData as OutboundCallQueueData).RecipientNumber;
-
-                                stringValue = stringValue
-                                    .Replace("{{to_number}}", recipientNumber)
-                                    .Replace("{={to_number}=}", recipientNumber);
-                            }
-
-                            stringValue = stringValue
-                                .Replace("{{call_answered}}", _createdAt.ToString())
-                                .Replace("{={call_answered}=}", _createdAt.ToString());
-                        }
-                        else if (IsWebInitiated)
-                        {
-                            // TODO WEB
-                        }              
-
-                        parsedArguments[argumentName] = stringValue;
-                    }
-                    else
-                    {
-                        parsedArguments[argumentName] = argument.Value;
-                    }
-                }
-
-                CustomToolExecutionHelper endCallToolhelper = new CustomToolExecutionHelper(_loggerFactory);
-                endCallToolhelper.Initialize(_sessionBusinessAppData, _sessionContextData.Language.DefaultLanguageCode);
-
-                var endToolResult = await endCallToolhelper.ExecuteHttpRequestForToolWithObjectDictAsync(
-                    endCallTool,
-                    parsedArguments,
-                    CancellationToken.None
-                );
-                if (!endToolResult.Success)
-                {
-                    AddLogEntry(ConversationLogLevel.Error, "Call ended action failed", $"{endToolResult.Code}: {endToolResult.Message}");
-                    return;
-                }
-
-                AddLogEntry(ConversationLogLevel.Information, "Call ended action executed successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error executing call ended action for session {SessionId}", _sessionId);
-            }
         }
 
         // Turn Event Handlers

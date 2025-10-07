@@ -487,7 +487,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                             // TODO we need to check for retry logic of the queue
                             // for outbound calls, we need to end the session and clean it up, check for retry logic and requeue if needed
 
-                            _ = sessionData.EndAsync("No answer outbound call response", ConversationSessionEndType.UserDeclinedOrBusy);
+                            _ = sessionData.EndAsync("No answer outbound call response", ConversationSessionEndType.UserNoAnswer);
                             return result.SetSuccessResult();
                         }
 

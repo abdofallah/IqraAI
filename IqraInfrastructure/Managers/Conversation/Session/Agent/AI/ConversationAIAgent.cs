@@ -660,29 +660,33 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Tool Executor Handler
         private async Task OnToolResultAvailable(ConversationTurn turnWithResult)
         {
-            var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turnWithResult.ToolResultInput!.ResultOfTurnId);
-            if (resultOfTurn == null)
-            {
-                _logger.LogError("Agent {AgentId}: Tool result for turn {TurnId} not found.", _agentState.AgentId, turnWithResult.Id);
+            if (turnWithResult.Response.Type != ConversationTurnAgentResponseType.SystemTool &&
+                turnWithResult.Response.Type != ConversationTurnAgentResponseType.CustomTool
+            ) {
+                _logger.LogError("Agent {AgentId}: Invalid turn response type for tool result {TurnId} recieved for processing on tool result", _agentState.AgentId, turnWithResult.Id);
                 return;
             }
 
-            if (resultOfTurn.Type == ConversationTurnType.System && resultOfTurn.Response.ToolExecution.ToolName == "EndCall")
+            if (turnWithResult.Type == ConversationTurnType.ToolResult)
             {
-                await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
-                return;
-            }
-
-            if (_agentState.IsVoicemailDetected)
-            {
-                if (
-                    resultOfTurn.Type != ConversationTurnType.System ||
-                    resultOfTurn.SystemInput?.Type != "VoicemailDetected"
-                )
+                var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turnWithResult.ToolResultInput!.ResultOfTurnId);
+                if (resultOfTurn == null)
                 {
+                    _logger.LogError("Agent {AgentId}: Tool result for turn {TurnId} not found.", _agentState.AgentId, turnWithResult.Id);
                     return;
                 }
-            }
+
+                if (_agentState.IsVoicemailDetected)
+                {
+                    if (
+                        resultOfTurn.Type != ConversationTurnType.System ||
+                        resultOfTurn.SystemInput?.Type != "VoicemailDetected"
+                    )
+                    {
+                        return;
+                    }
+                }
+            }    
 
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
             var newToolResultTurn = new ConversationTurn()
@@ -845,7 +849,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         break;
                 }
 
-                // TODO GET THE CORRECT TURN WITHIN THE EVENT'S OBJECT
                 await _toolExecutor.FinalizeAndReportToolResult(args.Turn, wasSuccessful, resultMessage);
             }
         }
@@ -984,11 +987,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.LeaveMessageOnDetect)
             {
-                _agentState.PreviousTurn!.Response.ToolExecution!.Result = $"voicemail detected, execute end call action while leaving message: `{_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.MessageToLeave![_agentState.CurrentLanguageCode]}`.";
+                _agentState.PreviousTurn!.Response.ToolExecution!.Result = $"voicemail detected, execute end call system function while leaving message: `{_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.MessageToLeave![_agentState.CurrentLanguageCode]}`.";
             }
             else if (_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection.EndCallOnDetect)
             {
-                _agentState.PreviousTurn!.Response.ToolExecution!.Result = $"voicemail detected, execute end call action.";
+                _agentState.PreviousTurn!.Response.ToolExecution!.Result = $"voicemail detected, execute end call function without leaving message.";
             }
 
             await _llmHandler.ProcessToolResultAsync(_agentState.CurrentTurn!, _agentState.PreviousTurn!, _conversationCTS.Token);
