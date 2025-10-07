@@ -667,6 +667,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return;
             }
 
+            if (turnWithResult.Response.ToolExecution!.ToolName == "EndCall")
+            {
+                await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
+                return;
+            }
+
             if (turnWithResult.Type == ConversationTurnType.ToolResult)
             {
                 var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turnWithResult.ToolResultInput!.ResultOfTurnId);
@@ -686,7 +692,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         return;
                     }
                 }
-            }    
+            }
 
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
             var newToolResultTurn = new ConversationTurn()
