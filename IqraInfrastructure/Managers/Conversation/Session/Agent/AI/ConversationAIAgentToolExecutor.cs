@@ -85,11 +85,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         public async Task HandleSystemToolAsync(ConversationTurn turn, CancellationToken cancellationToken)
         {
-            var turnToolExecutionData = turn.Response.ToolExecution;
-            string functionContent = turnToolExecutionData.RawLLMInput;          
-
             try
             {
+                var turnToolExecutionData = turn.Response.ToolExecution;
+                string functionContent = turnToolExecutionData.RawLLMInput;
+
                 string prefix = "execute_system_function:";
                 functionContent = functionContent.Substring(prefix.Length).Trim();
 
@@ -680,11 +680,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         public async Task HandleCustomToolAsync(ConversationTurn turn, CancellationToken cancellationToken)
         {
-            string functionContent = turn.Response.ToolExecution.RawLLMInput;
-            var toolExecutionData = turn.Response.ToolExecution;
-
             try
             {
+                string functionContent = turn.Response.ToolExecution.RawLLMInput;
+                var toolExecutionData = turn.Response.ToolExecution;
+
                 // Format: execute_custom_function: string <reason>, string | null <message>, string <node_id>, Dictionary | null <vars>
                 List<string> arguments = ParseArguments(functionContent.Substring("execute_custom_function:".Length).Trim());
 

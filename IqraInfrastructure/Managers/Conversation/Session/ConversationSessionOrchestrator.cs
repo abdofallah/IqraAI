@@ -744,7 +744,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 consumedFeatureInputs.Add(
                     new ConsumedFeatureInput(
                         BillingFeatureKey.CallMinutes,
-                        durationSeconds.Value
+                        (decimal)(durationSeconds.Value / 60m)
                     )
                 );
                 // Voicemail Detection

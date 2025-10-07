@@ -678,7 +678,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 if (turn.Response.Type == ConversationTurnAgentResponseType.Speech)
                 {
-                    stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.SpokenSegments[0].StartedPlayingAt).ToString("G")}] ASSISTANT: {turn.Response.SpokenSegments.Select(d => $"{d.Text} ")}\n\n";
+                    stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.SpokenSegments[0].StartedPlayingAt).ToString("G")}] ASSISTANT: {string.Join(" ", turn.Response.SpokenSegments.Select(d => $"{d.Text}"))}\n\n";
                 }
                 else if (turn.Response.Type == ConversationTurnAgentResponseType.CustomTool || turn.Response.Type == ConversationTurnAgentResponseType.SystemTool)
                 {
