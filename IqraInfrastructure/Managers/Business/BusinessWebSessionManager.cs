@@ -5,9 +5,9 @@ using IqraCore.Entities.Region;
 using IqraCore.Entities.WebSession;
 using IqraCore.Models.Server;
 using IqraCore.Models.WebSession;
-using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Http;
 using System.Net.Http.Headers;
@@ -319,7 +319,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessData.Id, true);
+                var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessData.Id);
                 if (!checkBalanceOrMinutes.Success)
                 {
                     await _webSessionRepoistory.UpdateStatusAndAddLogAsync(

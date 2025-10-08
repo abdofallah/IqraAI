@@ -1,6 +1,5 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.MakeCalls;
-using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
@@ -49,7 +48,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var userData = userSessionAndBusinessValidationResult.Data!.userData!;
             var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
-            var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId, false);
+            var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
             if (!checkBalanceOrMinutes.Success)
             {
                 return result.SetFailureResult(

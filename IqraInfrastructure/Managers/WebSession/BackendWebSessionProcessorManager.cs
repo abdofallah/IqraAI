@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Conversation;
+﻿using IqraCore.Entities.Billing;
+using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Helper.Audio;
@@ -49,6 +50,7 @@ namespace IqraInfrastructure.Managers.WebSession
         private readonly RegionManager _regionManager;
         private readonly UserBillingUsageManager _billingProcessingManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
+        private readonly UserUsageValidationManager _userUsageValidationManager;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
@@ -69,7 +71,8 @@ namespace IqraInfrastructure.Managers.WebSession
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
             UserBillingUsageManager billingProcessingManager,
-            CampaignActionExecutorService campaignActionExecutorService
+            CampaignActionExecutorService campaignActionExecutorService,
+            UserUsageValidationManager userUsageValidationManager
         )
         {
             _logger = logger;
@@ -83,13 +86,21 @@ namespace IqraInfrastructure.Managers.WebSession
             _regionManager = regionManager;
             _billingProcessingManager = billingProcessingManager;
             _campaignActionExecutorService = campaignActionExecutorService;
+            _userUsageValidationManager = userUsageValidationManager;
         }
 
         public async Task<FunctionReturnResult<BackendInitiateWebSessionResultModel?>> InitiateWebSessionConversationAsync(string webSessionId)
         {
             var result = new FunctionReturnResult<BackendInitiateWebSessionResultModel?>();
 
+            // Session State
+            string sessionId = Guid.NewGuid().ToString();
             FunctionReturnResult<ConversationSessionOrchestrator?>? sessionResult = null;
+
+            // Call Concurrency State
+            bool hasIncreasedCallConcurrency = false;
+            long? webSessionBusinessId = null;
+
             try
             {
                 WebSessionData? webSessionData = await _webSessionRepoistory.GetWebSessionByIdAsync(webSessionId);
@@ -119,7 +130,18 @@ namespace IqraInfrastructure.Managers.WebSession
                     );
                 }
 
-                sessionResult = await CreateConversationSessionAsync(webSessionData);
+                var tryIncreaseCallConcurrency = await _userUsageValidationManager.TryIncreaseUsageConcurrency(webSessionData.BusinessId, BillingFeatureKey.CallConcurrency, sessionId, webSessionData.Id);
+                if (!tryIncreaseCallConcurrency.Success)
+                {
+                    return result.SetFailureResult(
+                        "InitiateWebSessionConversationAsync:" + tryIncreaseCallConcurrency.Code,
+                        tryIncreaseCallConcurrency.Message
+                    );
+                }
+                hasIncreasedCallConcurrency = true;
+                webSessionBusinessId = webSessionData.BusinessId;
+
+                sessionResult = await CreateConversationSessionAsync(webSessionData, sessionId);
                 if (!sessionResult.Success || sessionResult.Data == null)
                 {
                     return result.SetFailureResult(
@@ -171,10 +193,18 @@ namespace IqraInfrastructure.Managers.WebSession
             }
             finally
             {
-                if (!result.Success && sessionResult?.Data != null)
+                if (!result.Success)
                 {
-                    await sessionResult.Data.EndAsync("InitiateWebSessionConversationAsync Failed", ConversationSessionEndType.InitalizeError, ConversationSessionState.Error);
-                    await CleanupSessionAsync(sessionResult.Data.SessionId);
+                    if (sessionResult?.Data != null)
+                    {
+                        await sessionResult.Data.EndAsync("InitiateWebSessionConversationAsync Failed", ConversationSessionEndType.InitalizeError, ConversationSessionState.Error);
+                        await CleanupSessionAsync(sessionResult.Data.SessionId);
+                    }
+
+                    if (hasIncreasedCallConcurrency && webSessionBusinessId != null)
+                    {
+                        await _userUsageValidationManager.DecreaseUsageConcurrency(webSessionBusinessId.Value, BillingFeatureKey.CallConcurrency, sessionId, webSessionId);
+                    }
                 }
             }
         }
@@ -255,7 +285,7 @@ namespace IqraInfrastructure.Managers.WebSession
             }
         }
 
-        private async Task<FunctionReturnResult<ConversationSessionOrchestrator?>> CreateConversationSessionAsync(WebSessionData webSessionData)
+        private async Task<FunctionReturnResult<ConversationSessionOrchestrator?>> CreateConversationSessionAsync(WebSessionData webSessionData, string sessionId)
         {
             var result = new FunctionReturnResult<ConversationSessionOrchestrator?>();
 
@@ -264,8 +294,6 @@ namespace IqraInfrastructure.Managers.WebSession
                 return result.SetFailureResult("CreateConversationSessionAsync:NO_SERVER_CAPACITY", "No capacity available on server");
             }
 
-            // todo create ids better using database count system
-            string sessionId = Guid.NewGuid().ToString();
             try
             {
                 await _sessionCreationLock.WaitAsync(_processorCTS.Token);

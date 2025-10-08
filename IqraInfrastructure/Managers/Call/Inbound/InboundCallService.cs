@@ -14,7 +14,7 @@ using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Call;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Call.Queue;
-using IqraInfrastructure.Managers.Billing;
+using IqraInfrastructure.Managers.User;
 
 namespace IqraInfrastructure.Managers.Call.Inbound
 {
@@ -112,7 +112,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 }
                 callQueue.Id = callQueueId;
 
-                var planValidation = await _billingValidationManager.ValidateCallPermissionAsync(businessId, true);
+                var planValidation = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
                 if (!planValidation.Success)
                 {
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"[{planValidation.Code}]: {planValidation.Message}", Type = CallQueueLogTypeEnum.Error });

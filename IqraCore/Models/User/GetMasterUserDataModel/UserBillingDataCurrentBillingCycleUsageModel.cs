@@ -8,7 +8,7 @@ namespace IqraCore.Models.User.Billing
         public UserBillingDataCurrentBillingCycleUsageModel() { }
         public UserBillingDataCurrentBillingCycleUsageModel(UserBillingCycleUsage usage)
         {
-            CurrentUsage = usage.CurrentUsage;
+            CurrentUsage = usage.CurrentFeatureUsage;
             LastResetAt = usage.LastResetAt;
         }
 

@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.Billing;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
@@ -61,6 +62,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
         private readonly RegionManager _regionManager;
         private readonly UserBillingUsageManager _billingProcessingManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
+        private readonly UserUsageValidationManager _userUsageValidationManager;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
@@ -83,7 +85,8 @@ namespace IqraInfrastructure.Managers.Call.Backend
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
             UserBillingUsageManager billingProcessingManager,
-            CampaignActionExecutorService campaignActionExecutorService
+            CampaignActionExecutorService campaignActionExecutorService,
+            UserUsageValidationManager userUsageValidationManager
         )
         {
             _logger = logger;
@@ -99,12 +102,20 @@ namespace IqraInfrastructure.Managers.Call.Backend
             _regionManager = regionManager;
             _billingProcessingManager = billingProcessingManager;
             _campaignActionExecutorService = campaignActionExecutorService;
+            _userUsageValidationManager = userUsageValidationManager;
         }
 
         public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> ProcessInboundCallAsync(string queueId)
         {
             var result = new FunctionReturnResult<ProcessedInboundCallResponse?>();
+
+            // Session State
+            string sessionId = Guid.NewGuid().ToString();
             FunctionReturnResult<ConversationSessionOrchestrator?>? sessionResult = null;
+
+            // Call Concurrency State
+            bool hasIncreasedCallConcurrency = false;
+            long? callQueueBusinessId = null;
 
             try
             {
@@ -135,9 +146,20 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     );
                 }
 
+                var tryIncreaseCallConcurrency = await _userUsageValidationManager.TryIncreaseUsageConcurrency(inboundQueueData.BusinessId, BillingFeatureKey.CallConcurrency, sessionId, inboundQueueData.Id);
+                if (!tryIncreaseCallConcurrency.Success)
+                {
+                    return result.SetFailureResult(
+                        "ProcessInboundCallAsync:" + tryIncreaseCallConcurrency.Code,
+                        tryIncreaseCallConcurrency.Message
+                    );
+                }
+                hasIncreasedCallConcurrency = true;
+                callQueueBusinessId = inboundQueueData.BusinessId;
+
                 // --- Refactored Block Start ---
 
-                sessionResult = await CreateConversationSessionAsync(inboundQueueData);
+                sessionResult = await CreateConversationSessionAsync(inboundQueueData, sessionId);
                 if (!sessionResult.Success)
                 {
                     return result.SetFailureResult(
@@ -197,10 +219,18 @@ namespace IqraInfrastructure.Managers.Call.Backend
             }
             finally
             {
-                if (!result.Success && sessionResult?.Data != null)
+                if (!result.Success)
                 {
-                    await sessionResult.Data.EndAsync("ProcessInboundCall Failed", ConversationSessionEndType.InitalizeError, ConversationSessionState.Error);
-                    await CleanupSessionAsync(sessionResult.Data.SessionId);
+                    if (sessionResult?.Data != null)
+                    {
+                        await sessionResult.Data.EndAsync("ProcessInboundCall Failed", ConversationSessionEndType.InitalizeError, ConversationSessionState.Error);
+                        await CleanupSessionAsync(sessionResult.Data.SessionId);
+                    }
+
+                    if (hasIncreasedCallConcurrency && callQueueBusinessId != null)
+                    {
+                        await _userUsageValidationManager.DecreaseUsageConcurrency(callQueueBusinessId.Value, BillingFeatureKey.CallConcurrency, sessionId, queueId);
+                    }
                 }
             }
         }
@@ -212,7 +242,13 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 ShouldRequeue = false
             };
 
+            // Session State
+            string sessionId = Guid.NewGuid().ToString();     
             FunctionReturnResult<ConversationSessionOrchestrator?>? sessionResult = null;
+
+            // Call Concurrency State
+            bool hasIncreasedCallConcurrency = false;
+            long? callQueueBusinessId = null;
 
             try
             {
@@ -296,10 +332,23 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     );
                 }
                 // --- End of Outbound-Specific Logic ---
+                
+                var tryIncreaseCallConcurrency = await _userUsageValidationManager.TryIncreaseUsageConcurrency(outboundQueueData.BusinessId, BillingFeatureKey.CallConcurrency, sessionId, outboundQueueData.Id);
+                if (!tryIncreaseCallConcurrency.Success)
+                {
+                    resultData.ShouldRequeue = true;
 
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:" + tryIncreaseCallConcurrency.Code,
+                        tryIncreaseCallConcurrency.Message,
+                        resultData
+                    );
+                }
+                hasIncreasedCallConcurrency = true;
+                callQueueBusinessId = outboundQueueData.BusinessId;
 
                 // --- Start of Refactored Session Setup Block ---
-                sessionResult = await CreateConversationSessionAsync(outboundQueueData);
+                sessionResult = await CreateConversationSessionAsync(outboundQueueData, sessionId);
                 if (!sessionResult.Success || sessionResult.Data == null)
                 {
                     return result.SetFailureResult(
@@ -412,10 +461,18 @@ namespace IqraInfrastructure.Managers.Call.Backend
             }
             finally
             {
-                if (!result.Success && sessionResult?.Data != null)
+                if (!result.Success)
                 {
-                    await sessionResult.Data.EndAsync("InitiateOutboundCall Failed", ConversationSessionEndType.InitalizeError, ConversationSessionState.Error);
-                    await CleanupSessionAsync(sessionResult.Data.SessionId);
+                    if (sessionResult?.Data != null)
+                    {
+                        await sessionResult.Data.EndAsync("InitiateOutboundCall Failed", ConversationSessionEndType.InitalizeError, ConversationSessionState.Error);
+                        await CleanupSessionAsync(sessionResult.Data.SessionId);
+                    }
+
+                    if (hasIncreasedCallConcurrency && callQueueBusinessId != null)
+                    {
+                        await _userUsageValidationManager.DecreaseUsageConcurrency(callQueueBusinessId.Value, BillingFeatureKey.CallConcurrency, sessionId, queueId);
+                    }
                 }
             }
         }
@@ -582,12 +639,10 @@ namespace IqraInfrastructure.Managers.Call.Backend
             }
         }
         
-        private async Task<FunctionReturnResult<ConversationSessionOrchestrator?>> CreateConversationSessionAsync(CallQueueData queueData)
+        private async Task<FunctionReturnResult<ConversationSessionOrchestrator?>> CreateConversationSessionAsync(CallQueueData queueData, string sessionId)
         {
             var result = new FunctionReturnResult<ConversationSessionOrchestrator?>();
 
-            // todo create ids better using database count system
-            string sessionId = Guid.NewGuid().ToString();
             try
             {
                 await _sessionCreationLock.WaitAsync(_processorCTS.Token);    

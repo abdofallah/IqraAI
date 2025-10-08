@@ -6,12 +6,12 @@ using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraCore.Models.Server;
-using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
+using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Call;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
@@ -79,31 +79,14 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 return;
             }
 
-            var validationResult = await _billingValidationManager.ValidateCallPermissionAsync(callQueueData.BusinessId, true);
+            var validationResult = await _billingValidationManager.ValidateCallPermissionAsync(callQueueData.BusinessId);
             if (!validationResult.Success)
             {
-                if (
-                    !string.IsNullOrWhiteSpace(validationResult.Code)
-                    &&
-                    (validationResult.Code.Contains("USER_CONCURRENCY_LIMIT") || validationResult.Code.Contains("BUSINESS_CONCURRENCY_LIMIT"))
-                )
-                {
-                    await OnUpdateCallQueueStatusAndSendCampaignAction(
-                        callQueueData,
-                        CallQueueStatusEnum.Queued,
-                        new CallQueueLog {
-                            Message = $"Validation failed (will retry): {validationResult.Message}",
-                            Type = CallQueueLogTypeEnum.Information
-                        }
-                    );
-                    return;
-                }
-
                 await OnUpdateCallQueueStatusAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Canceled,
                     new CallQueueLog {
-                        Message = $"Validation failed: [{validationResult.Code}] {validationResult.Message}",
+                        Message = $"Billing validation failed: [{validationResult.Code}] {validationResult.Message}",
                         Type = CallQueueLogTypeEnum.Error
                     },
                     completedAt: DateTime.UtcNow

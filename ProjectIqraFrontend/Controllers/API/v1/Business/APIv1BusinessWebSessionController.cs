@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Models.WebSession;
-using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using ProjectIqraFrontend.Middlewares;
 
@@ -50,7 +50,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                 }
 
                 // Check Balance/Package
-                var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId, false);
+                var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
                 if (!checkBalanceOrMinutes.Success)
                 {
                     return result.SetFailureResult(

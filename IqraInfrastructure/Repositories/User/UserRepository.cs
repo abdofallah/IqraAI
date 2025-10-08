@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.User;
+using IqraCore.Entities.User.Billing;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -86,6 +87,42 @@ namespace IqraInfrastructure.Repositories.User
         {
             var filter = Builders<UserData>.Filter.Eq(u => u.Email, email);
             return await _usersCollection.Find(filter).AnyAsync();
+        }
+
+        public async Task<bool> TryIncrementConcurrencyUsageAsync(string userEmail, string featureKey, long maxConcurrency, UserBillingCycleConcurrencyFeatureUsage usageItem)
+        {
+            string arrayFieldPath = $"Billing.CurrentCycleUsage.CurrentConcurrencyFeatureUsage.{featureKey}";
+
+            var filterBuilder = Builders<UserData>.Filter;
+
+            var userFilter = filterBuilder.Eq(u => u.Email, userEmail);
+
+            var concurrencyLimitFilter = filterBuilder.Not(filterBuilder.Exists($"{arrayFieldPath}.{maxConcurrency - 1}"));
+
+            var finalFilter = filterBuilder.And(userFilter, concurrencyLimitFilter);
+            var update = Builders<UserData>.Update.Push(arrayFieldPath, usageItem);
+            var result = await _usersCollection.UpdateOneAsync(finalFilter, update);
+
+            return result.IsAcknowledged && result.ModifiedCount == 1;
+        }
+
+        public async Task<bool> DecrementConcurrencyUsageAsync(string userEmail, string featureKey, long businessId, object parentReference, object? childReference)
+        {
+            string arrayFieldPath = $"Billing.CurrentCycleUsage.CurrentConcurrencyFeatureUsage.{featureKey}";
+
+            var userFilter = Builders<UserData>.Filter.Eq(u => u.Email, userEmail);
+
+            var update = Builders<UserData>.Update.PullFilter(
+                arrayFieldPath,
+                Builders<UserBillingCycleConcurrencyFeatureUsage>.Filter.And(
+                    Builders<UserBillingCycleConcurrencyFeatureUsage>.Filter.Eq(i => i.BusinessId, businessId),
+                    Builders<UserBillingCycleConcurrencyFeatureUsage>.Filter.Eq(i => i.ParentReference, parentReference),
+                    Builders<UserBillingCycleConcurrencyFeatureUsage>.Filter.Eq(i => i.ChildReference, childReference)
+                )
+            );
+
+            var result = await _usersCollection.UpdateOneAsync(userFilter, update);
+            return result.IsAcknowledged && result.ModifiedCount == 1;
         }
     }
 }
