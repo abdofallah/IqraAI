@@ -318,7 +318,21 @@ namespace IqraInfrastructure.Managers.WebSession
                 _activeSessions[sessionId] = conversationSession;
                 _ctsSessions[sessionId] = newSessionCTS;
 
-                conversationSession.SessionEnded += async (sender) => {
+                conversationSession.SessionEnded += async (sessionDataAsSender) => {
+                    if (sessionDataAsSender is ConversationSessionOrchestrator sessionOrchestrator)
+                    {
+                        if (sessionOrchestrator.IsWebInitiated)
+                        {
+                            await _userUsageValidationManager.DecreaseUsageConcurrency(
+                                sessionOrchestrator.BusinessData!.MasterUserEmail,
+                                sessionOrchestrator.BusinessData!.Id,
+                                BillingFeatureKey.CallConcurrency,
+                                sessionOrchestrator.SessionId,
+                                sessionOrchestrator.WebSessionData!.Id
+                            );
+                        }
+                    }
+
                     await CleanupSessionAsync(sessionId);
                 };
 

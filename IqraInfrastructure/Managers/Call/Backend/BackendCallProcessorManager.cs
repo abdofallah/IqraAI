@@ -667,7 +667,34 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 _activeSessions[sessionId] = conversationSession;
                 _ctsSessions[sessionId] = newSessionCTS;
 
-                conversationSession.SessionEnded += async (sender) => {
+                conversationSession.SessionEnded += async (sessionDataAsSender) => {
+                    if (sessionDataAsSender is ConversationSessionOrchestrator sessionOrchestrator)
+                    {
+                        if (sessionOrchestrator.IsCallInitiated)
+                        {
+                            if (sessionOrchestrator.IsOutboundCall)
+                            {
+                                await _userUsageValidationManager.DecreaseUsageConcurrency(
+                                    sessionOrchestrator.BusinessData!.MasterUserEmail,
+                                    sessionOrchestrator.BusinessData!.Id,
+                                    BillingFeatureKey.CallConcurrency,
+                                    sessionOrchestrator.SessionId,
+                                    sessionOrchestrator.CallQueueData!.Id
+                                );
+                            }
+                            else if (sessionOrchestrator.IsInboundCall)
+                            {
+                                await _userUsageValidationManager.DecreaseUsageConcurrency(
+                                    sessionOrchestrator.BusinessData!.MasterUserEmail,
+                                    sessionOrchestrator.BusinessData!.Id,
+                                    BillingFeatureKey.CallConcurrency,
+                                    sessionOrchestrator.SessionId,
+                                    sessionOrchestrator.CallQueueData!.Id
+                                );
+                            }
+                        }                    
+                    }
+
                     await CleanupSessionAsync(sessionId);
                 };
 
