@@ -8,7 +8,16 @@ namespace IqraCore.Models.User.Billing
         public UserBillingDataCurrentBillingCycleUsageModel() { }
         public UserBillingDataCurrentBillingCycleUsageModel(UserBillingCycleUsage usage)
         {
-            CurrentUsage = usage.CurrentFeatureUsage;
+            CurrentUsage = new Dictionary<string, decimal>();
+            foreach (var item in usage.CurrentFeatureUsage)
+            {
+                CurrentUsage.Add(item.Key, item.Value);
+            }
+            foreach (var item in usage.CurrentConcurrencyFeatureUsage)
+            {
+                CurrentUsage.Add(item.Key, item.Value.Count);
+            }
+
             LastResetAt = usage.LastResetAt;
         }
 

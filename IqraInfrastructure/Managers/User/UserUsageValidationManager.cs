@@ -20,7 +20,6 @@ namespace IqraInfrastructure.Managers.User
         private readonly AppRepository _appRepository;
         private readonly BusinessRepository _businessRepository;
         private readonly UserRepository _userRepository;
-        private readonly UserManager _userManager;
         private readonly PlanManager _planManager;
         private readonly ConversationStateRepository _conversationStateRepository;
 
@@ -29,7 +28,6 @@ namespace IqraInfrastructure.Managers.User
             AppRepository appRepository,
             BusinessRepository businessRepository,
             UserRepository userRepository,
-            UserManager userManager,
             PlanManager planManager,
             ConversationStateRepository conversationStateRepository)
         {
@@ -37,7 +35,6 @@ namespace IqraInfrastructure.Managers.User
             _appRepository = appRepository;
             _businessRepository = businessRepository;
             _userRepository = userRepository;
-            _userManager = userManager;
             _planManager = planManager;
             _conversationStateRepository = conversationStateRepository;
         }
@@ -229,7 +226,7 @@ namespace IqraInfrastructure.Managers.User
                 return (result.SetFailureResult($"{logPrefix}:BUSINESS_NOT_FOUND", "Business not found."), null, null, null);
             }
 
-            UserData? masterUserData = await _userManager.GetUserByEmail(businessData.MasterUserEmail);
+            UserData? masterUserData = await _userRepository.GetUserByEmail(businessData.MasterUserEmail);
             if (masterUserData == null)
             {
                 return (result.SetFailureResult($"{logPrefix}:USER_NOT_FOUND", "Master user not found."), businessData, null, null);

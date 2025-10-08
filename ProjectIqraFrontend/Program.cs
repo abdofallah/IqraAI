@@ -772,7 +772,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<UserUsageValidationManager>>(),
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<BusinessRepository>(),
-                    sp.GetRequiredService<UserManager>(),
+                    sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<ConversationStateRepository>()
                 );

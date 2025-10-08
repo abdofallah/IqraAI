@@ -801,7 +801,19 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<UserBillingUsageManager>(),
-                    sp.GetRequiredService<CampaignActionExecutorService>()
+                    sp.GetRequiredService<CampaignActionExecutorService>(),
+                    sp.GetRequiredService<UserUsageValidationManager>()
+                );
+            });
+            builder.Services.AddSingleton<UserUsageValidationManager>((sp) =>
+            {
+                return new UserUsageValidationManager(
+                    sp.GetRequiredService<ILogger<UserUsageValidationManager>>(),
+                    sp.GetRequiredService<AppRepository>(),
+                    sp.GetRequiredService<BusinessRepository>(),
+                    sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<PlanManager>(),
+                    sp.GetRequiredService<ConversationStateRepository>()
                 );
             });
             builder.Services.AddSingleton<BackendWebSessionProcessorManager>((sp) =>
@@ -817,7 +829,8 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<UserBillingUsageManager>(),
-                    sp.GetRequiredService<CampaignActionExecutorService>()
+                    sp.GetRequiredService<CampaignActionExecutorService>(),
+                    sp.GetRequiredService<UserUsageValidationManager>()
                 );
             });
             builder.Services.AddSingleton<UserBillingUsageManager>((sp) =>

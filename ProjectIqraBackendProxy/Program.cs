@@ -24,6 +24,7 @@ using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using System.Reflection;
 
@@ -371,7 +372,7 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<ILogger<UserUsageValidationManager>>(),
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<BusinessRepository>(),
-                    sp.GetRequiredService<UserManager>(),
+                    sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<ConversationStateRepository>()
                 );
