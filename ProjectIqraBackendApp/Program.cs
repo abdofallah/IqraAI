@@ -356,6 +356,15 @@ namespace ProjectIqraBackendApp
                 );
             });
 
+            builder.Services.AddSingleton<ConversationStateLogsRepository>(sp =>
+            {
+                return new ConversationStateLogsRepository(
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:ConversationStateRepositoryDatabaseName"],
+                    sp.GetRequiredService<ILogger<ConversationStateLogsRepository>>()
+                );
+            });
+
             builder.Services.AddSingleton<ConversationAudioRepository>(sp =>
             {
                 return new ConversationAudioRepository(
@@ -797,6 +806,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<OutboundCallQueueGroupRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<ConversationStateLogsRepository>(),
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
@@ -825,6 +835,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ServerMetricsMonitor>(),
                     sp.GetRequiredService<WebSessionRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<ConversationStateLogsRepository>(),
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
@@ -872,6 +883,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<WebSessionRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<ConversationStateLogsRepository>(),
                     sp.GetRequiredService<BusinessManager>()
                 );
             });

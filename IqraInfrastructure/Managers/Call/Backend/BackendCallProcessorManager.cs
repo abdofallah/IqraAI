@@ -1,9 +1,10 @@
 ﻿using IqraCore.Entities.Billing;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
-using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Logs;
+using IqraCore.Entities.Conversation.Logs.Enums;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Server;
@@ -57,6 +58,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
         private readonly OutboundCallQueueGroupRepository _outboundCallCampaignRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
+        private readonly ConversationStateLogsRepository _conversationStateLogsRepository;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
@@ -81,6 +83,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             OutboundCallQueueRepository outboundCallQueueRepository,
             OutboundCallQueueGroupRepository outboundCallCampaignRepository,
             ConversationStateRepository conversationStateRepository,
+            ConversationStateLogsRepository conversationStateLogsRepository,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
@@ -97,6 +100,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             _outboundCallQueueRepository = outboundCallQueueRepository;
             _outboundCallCampaignRepository = outboundCallCampaignRepository;
             _conversationStateRepository = conversationStateRepository;
+            _conversationStateLogsRepository = conversationStateLogsRepository;
             _businessManager = businessManager;
             _integrationsManager = integrationsManager;
             _regionManager = regionManager;
@@ -579,11 +583,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 {
                     if (baseClient.Transport is DeferredClientTransport deferredTransport)
                     {
-                        var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
-
                         var realTransport = new WebSocketClientTransport(
                             webSocket,
-                            loggerFactory.CreateLogger<WebSocketClientTransport>(),
+                            sessionManager.SessionLoggerFactory.CreateLogger<WebSocketClientTransport>(),
                             sessionOverallCts.Token
                         );
 
@@ -656,6 +658,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
 
                     _businessManager,
                     _conversationStateRepository,
+                    _conversationStateLogsRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
                     _billingProcessingManager,
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
@@ -769,8 +772,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 var agentResult = await CreateAIAgentAsync(session, agentConfig);
                 if (!agentResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                        new ConversationLogEntry {
+                    await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationStateLogEntry {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                             Timestamp = DateTime.UtcNow,
                             Message = $"[BuildAndConfigureSessionAsync:{agentResult.Code}] {agentResult.Message}"
                         });
@@ -782,8 +786,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 var clientResult = await CreateTelephonyClient(queueData, session);
                 if (!clientResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                        new ConversationLogEntry {
+                    await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationStateLogEntry {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                             Timestamp = DateTime.UtcNow,
                             Message = $"[BuildAndConfigureSessionAsync:{clientResult.Code}] {clientResult.Message}"
                         });
@@ -796,8 +801,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 var addAgentResult = await session.AddPrimaryAgent(agent);
                 if (!addAgentResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                        new ConversationLogEntry {
+                    await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationStateLogEntry {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                             Timestamp = DateTime.UtcNow,
                             Message = $"[BuildAndConfigureSessionAsync:{addAgentResult.Code}] {addAgentResult.Message}"
                         });
@@ -810,8 +816,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 var addClientResult = await session.AddPrimaryClient(client, clientConfig);
                 if (!addClientResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                        new ConversationLogEntry {
+                    await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationStateLogEntry {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                             Timestamp = DateTime.UtcNow,
                             Message = $"[BuildAndConfigureSessionAsync:{addClientResult.Code}] {addClientResult.Message}"
                         });
@@ -825,8 +832,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
             }
             catch (Exception ex)
             {
-                await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                    new ConversationLogEntry {
+                await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                    new ConversationStateLogEntry {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                         Timestamp = DateTime.UtcNow,
                         Message = $"[BuildAndConfigureSessionAsync:EXCEPTION] {ex.Message}"
                     });
@@ -899,7 +907,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             {
                 case TelephonyProviderEnum.ModemTel:
                     {
-                        var deferredTransport = new DeferredClientTransport(_serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<DeferredClientTransport>());
+                        var deferredTransport = new DeferredClientTransport(sessionManager.SessionLoggerFactory.CreateLogger<DeferredClientTransport>());
                         return result.SetSuccessResult(
                             new ModemTelConversationClient(
                                 clientId,
@@ -918,7 +926,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
 
                 case TelephonyProviderEnum.Twilio:
                     {
-                        var deferredTransport = new DeferredClientTransport(_serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<DeferredClientTransport>());
+                        var deferredTransport = new DeferredClientTransport(sessionManager.SessionLoggerFactory.CreateLogger<DeferredClientTransport>());
                         return result.SetSuccessResult(
                             new TwilioConversationClient(
                                 clientId,
@@ -948,7 +956,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             try
             {
                 var AIAgent = new ConversationAIAgent(
-                    _serviceProvider.GetRequiredService<ILoggerFactory>(),
+                    sessionManager.SessionLoggerFactory,
                     sessionManager,
                     agentId,
                     agentConfiguration,

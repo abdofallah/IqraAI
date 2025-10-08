@@ -1,5 +1,7 @@
 ﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Logs;
+using IqraCore.Entities.Conversation.Logs.Enums;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.Conversations;
@@ -249,25 +251,6 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<bool> AddLogEntryAsync(string conversationId, ConversationLogEntry logEntry, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId);
-                var update = Builders<ConversationState>.Update
-                    .Push(c => c.Logs, logEntry);
-
-                var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
-
-                return result.ModifiedCount > 0;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding log entry to conversation {Id}", conversationId);
-                throw;
-            }
-        }
-
         public async Task<bool> AddClientInfoAsync(string conversationId, ConversationClientInfo clientInfo, CancellationToken cancellationToken = default)
         {
             try
@@ -500,8 +483,7 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var update = Builders<ConversationState>.Update
                     .Set(c => c.Status, ConversationSessionState.Ended)
-                    .Set(c => c.EndTime, DateTime.UtcNow)
-                    .Push(c => c.Logs, new ConversationLogEntry() { Level = ConversationLogLevel.Critical, Message = "Expected endtime reached for conversation but it wasnt ended, so manually cleaned up" });
+                    .Set(c => c.EndTime, DateTime.UtcNow);
 
                 var result = await _conversationStateCollection.UpdateManyAsync(filter, update);
 

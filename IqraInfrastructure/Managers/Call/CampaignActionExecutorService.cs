@@ -1,6 +1,8 @@
 ﻿using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Logs;
+using IqraCore.Entities.Conversation.Logs.Enums;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helpers;
@@ -22,6 +24,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly OutboundCallQueueRepository _outboundCallQueueRepo;
         private readonly WebSessionRepository _webSessionRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
+        private readonly ConversationStateLogsRepository _conversationStateLogsRepository;
         private readonly BusinessManager _businessManager;
 
         public CampaignActionExecutorService(
@@ -30,6 +33,7 @@ namespace IqraInfrastructure.Managers.Call
             OutboundCallQueueRepository outboundCallQueueRepository,
             WebSessionRepository webSessionRepository,
             ConversationStateRepository conversationStateRepository,
+            ConversationStateLogsRepository conversationStateLogsRepository,
             BusinessManager businessManager
         ) {
             _loggerFactory = loggerFactory;
@@ -38,6 +42,7 @@ namespace IqraInfrastructure.Managers.Call
             _outboundCallQueueRepo = outboundCallQueueRepository;
             _webSessionRepository = webSessionRepository;
             _conversationStateRepository = conversationStateRepository;
+            _conversationStateLogsRepository = conversationStateLogsRepository;
             _businessManager = businessManager;
         }
 
@@ -318,11 +323,12 @@ namespace IqraInfrastructure.Managers.Call
             {
                 _logger.LogError("Outbound conversation session id {OutboundConversationSessionId} invalid status (not ended/error/waiting for client) {Status} to run action for reason {Reason}.", outboundConversationSessionId, converationStateData.Status.ToString(), reason);
 
-                await _conversationStateRepository.AddLogEntryAsync(
+                await _conversationStateLogsRepository.AddLogEntryAsync(
                     outboundConversationSessionId,
-                    new ConversationLogEntry
+                    new ConversationStateLogEntry
                     {
-                        Level = ConversationLogLevel.Error,
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
                         Message = $"Outbound conversation session id {outboundConversationSessionId} invalid status to run action if any for reason {reason}.",
                     }
                 );
@@ -335,11 +341,12 @@ namespace IqraInfrastructure.Managers.Call
             {
                 _logger.LogError("Unable to find outbound call queue data for outbound conversation session id {OutboundConversationSessionId}.", outboundConversationSessionId);
 
-                await _conversationStateRepository.AddLogEntryAsync(
+                await _conversationStateLogsRepository.AddLogEntryAsync(
                     outboundConversationSessionId,
-                    new ConversationLogEntry
+                    new ConversationStateLogEntry
                     {
-                        Level = ConversationLogLevel.Error,
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
                         Message = $"Unable to find outbound call queue data for outbound conversation session id {outboundConversationSessionId} to run action if any for reason {reason}.",
                     }
                 );
@@ -352,11 +359,12 @@ namespace IqraInfrastructure.Managers.Call
             {
                 _logger.LogError("Unable to find business data for outbound call queue id {OutboundCallQueueId} for outbound conversation session id {OutboundConversationSessionId}.", outboundConversationSessionId, outboundCallQueueData.Id);
 
-                await _conversationStateRepository.AddLogEntryAsync(
+                await _conversationStateLogsRepository.AddLogEntryAsync(
                     outboundConversationSessionId,
-                    new ConversationLogEntry
+                    new ConversationStateLogEntry
                     {
-                        Level = ConversationLogLevel.Error,
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
                         Message = $"Unable to find business data for outbound call queue id {outboundCallQueueData.Id} to send session telephony campaign action if any for reason {reason}.",
                     }
                 );
@@ -369,11 +377,12 @@ namespace IqraInfrastructure.Managers.Call
             {
                 _logger.LogError("Unable to find business app data for business id {BusinessId} for outbound conversation session id {OutboundConversationSessionId}.", outboundConversationSessionId, businessData.Id);
 
-                await _conversationStateRepository.AddLogEntryAsync(
+                await _conversationStateLogsRepository.AddLogEntryAsync(
                     outboundConversationSessionId,
-                    new ConversationLogEntry
+                    new ConversationStateLogEntry
                     {
-                        Level = ConversationLogLevel.Error,
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
                         Message = $"Unable to find business app data for business id {businessData.Id} to send session telephony campaign action if any for reason {reason}.",
                     }
                 );
@@ -386,11 +395,12 @@ namespace IqraInfrastructure.Managers.Call
             {
                 _logger.LogError("Unable to find telephony campaign data for business id {BusinessId} for outbound conversation session id {OutboundConversationSessionId}.", outboundConversationSessionId, businessData.Id);
 
-                await _conversationStateRepository.AddLogEntryAsync(
+                await _conversationStateLogsRepository.AddLogEntryAsync(
                     outboundConversationSessionId,
-                    new ConversationLogEntry
+                    new ConversationStateLogEntry
                     {
-                        Level = ConversationLogLevel.Error,
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
                         Message = $"Unable to find telephony campaign data to send session telephony campaign action if any for reason {reason}.",
                     }
                 );
@@ -411,11 +421,12 @@ namespace IqraInfrastructure.Managers.Call
                 var conversationEndedToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(outboundCallQueueData.BusinessId, telephonyCampaign.Actions.CallEndedTool.ToolId!);
                 if (conversationEndedToolData == null)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Error,
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
                             Message = $"Unable to find conversation ended tool data with id {telephonyCampaign.Actions.CallEndedTool.ToolId} for outbound conversation session id {outboundConversationSessionId} to send conversation end action.",
                         }
                     );
@@ -428,12 +439,13 @@ namespace IqraInfrastructure.Managers.Call
                 var callEndedArgumentsResult = GetTelephonyCampaignCallEndArguements(outboundCallQueueData, converationStateData);
                 if (!callEndedArgumentsResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Error,
-                            Message = $"Unable to get call failure arguments for outbound conversation session id {outboundConversationSessionId} to send conversation end action.",
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
+                            Message = $"Unable to get call end arguments for outbound conversation session id {outboundConversationSessionId} to send conversation end action: [{callEndedArgumentsResult.Code}] {callEndedArgumentsResult.Message}.",
                         }
                     );
 
@@ -466,11 +478,12 @@ namespace IqraInfrastructure.Managers.Call
                 );
                 if (!executeActionToolResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Error,
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
                             Message = $"Unable to execute conversation ended tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
                         }
                     );
@@ -479,11 +492,12 @@ namespace IqraInfrastructure.Managers.Call
                 }
                 else
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Information,
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Information,
                             Message = $"Telephony campaign call ended tool response:\n```{executeActionToolResult.Data}```",
                         }
                     );
@@ -498,11 +512,12 @@ namespace IqraInfrastructure.Managers.Call
                 var conversationDeclinedOrBusyToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(outboundCallQueueData.BusinessId, telephonyCampaign.Actions.CallDeclinedTool.ToolId!);
                 if (conversationDeclinedOrBusyToolData == null)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Error,
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
                             Message = $"Unable to find conversation declined or busy tool data with id {telephonyCampaign.Actions.CallDeclinedTool.ToolId} for outbound conversation session id {outboundConversationSessionId} to send conversation end (declined or busy) action.",
                         }
                     );
@@ -515,12 +530,13 @@ namespace IqraInfrastructure.Managers.Call
                 var callDeclinedOrBusyArgumentsResult = GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(outboundCallQueueData);
                 if (!callDeclinedOrBusyArgumentsResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Error,
-                            Message = $"Unable to get call declined or busy arguments for outbound conversation session id {outboundConversationSessionId} to send conversation end (declined or busy) action.",
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
+                            Message = $"Unable to get call declined or busy arguments for outbound conversation session id {outboundConversationSessionId} to send conversation end (declined or busy) action: [{callDeclinedOrBusyArgumentsResult.Code}] {callDeclinedOrBusyArgumentsResult.Message}.",
                         }
                     );
 
@@ -553,11 +569,12 @@ namespace IqraInfrastructure.Managers.Call
                 );
                 if (!executeActionToolResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Error,
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
                             Message = $"Unable to execute conversation declined or busy tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
                         }
                     );
@@ -566,11 +583,12 @@ namespace IqraInfrastructure.Managers.Call
                 }
                 else
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Information,
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Information,
                             Message = $"Telephony campaign call declined or busy tool response:\n```{executeActionToolResult.Data}```",
                         }
                     );
@@ -585,11 +603,12 @@ namespace IqraInfrastructure.Managers.Call
                 var conversationMissedToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(outboundCallQueueData.BusinessId, telephonyCampaign.Actions.CallMissedTool.ToolId!);
                 if (conversationMissedToolData == null)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Error,
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
                             Message = $"Unable to find conversation missed tool data with id {telephonyCampaign.Actions.CallMissedTool.ToolId} for outbound conversation session id {outboundConversationSessionId} to send conversation end (missed) action.",
                         }
                     );
@@ -602,12 +621,13 @@ namespace IqraInfrastructure.Managers.Call
                 var callMissedArgumentsResult = GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(outboundCallQueueData);
                 if (!callMissedArgumentsResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Error,
-                            Message = $"Unable to get call missed arguments for outbound conversation session id {outboundConversationSessionId} to send conversation end (missed) action.",
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
+                            Message = $"Unable to get call missed arguments for outbound conversation session id {outboundConversationSessionId} to send conversation end (missed) action: [{callMissedArgumentsResult.Code}] {callMissedArgumentsResult.Message}",
                         }
                     );
 
@@ -640,11 +660,12 @@ namespace IqraInfrastructure.Managers.Call
                 );
                 if (!executeActionToolResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Error,
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
                             Message = $"Unable to execute conversation missed tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
                         }
                     );
@@ -653,11 +674,12 @@ namespace IqraInfrastructure.Managers.Call
                 }
                 else
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
                         outboundConversationSessionId,
-                        new ConversationLogEntry
+                        new ConversationStateLogEntry
                         {
-                            Level = ConversationLogLevel.Information,
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Information,
                             Message = $"Telephony campaign call missed tool response:\n```{executeActionToolResult.Data}```",
                         }
                     );
@@ -857,27 +879,43 @@ namespace IqraInfrastructure.Managers.Call
 
             foreach (var turn in turns)
             {
-                if (turn.Type == ConversationTurnType.System)
+                try
                 {
-                    stringResult += $"[{turn.CreatedAt.ToString("G")}] SYSTEM ({turn.SystemInput!.Type})\n\n";
+                    if (turn.Type == ConversationTurnType.System)
+                    {
+                        stringResult += $"[{turn.CreatedAt.ToString("G")}] SYSTEM ({turn.SystemInput!.Type})\n\n";
+                    }
+                    else if (turn.Type == ConversationTurnType.User)
+                    {
+                        stringResult += $"[{turn.UserInput!.StartedSpeakingAt.ToString("G")}] USER: {turn.UserInput.TranscribedText}\n\n";
+                    }
                 }
-                else if (turn.Type == ConversationTurnType.User)
+                catch (Exception ex)
                 {
-                    stringResult += $"[{turn.UserInput!.StartedSpeakingAt.ToString("G")}] USER: {turn.UserInput.TranscribedText}\n\n";
+                    _logger.LogError(ex, "Error simplifying conversation turns.");
+                    stringResult += $"-- FAILED TO PARSE TURN TO SIMPLIFICATION FOR TURN ID ({turn.Id}) --\n\n";
                 }
 
-                if (turn.Response.Type == ConversationTurnAgentResponseType.Speech)
+                try
                 {
-                    stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.SpokenSegments[0].StartedPlayingAt).ToString("G")}] ASSISTANT: {string.Join(" ", turn.Response.SpokenSegments.Select(d => $"{d.Text}"))}\n\n";
-                }
-                else if (turn.Response.Type == ConversationTurnAgentResponseType.CustomTool || turn.Response.Type == ConversationTurnAgentResponseType.SystemTool)
-                {
-                    stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.LLMStreamingCompletedAt ?? turn.Response.LLMProcessStartedAt)?.ToString("G")}] ASSISTANT: {turn.Response.ToolExecution!.RawLLMInput}\n\n";
-                    
-                    if (!string.IsNullOrWhiteSpace(turn.Response.ToolExecution!.Result))
+                    if (turn.Response.Type == ConversationTurnAgentResponseType.Speech)
                     {
-                        stringResult += $"[{(turn.Response.ToolExecution.CompletedAt)?.ToString("G")}] SYSTEM: {turn.Response.ToolExecution!.Result}\n\n";
+                        stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.SpokenSegments[0].StartedPlayingAt).ToString("G")}] ASSISTANT: {string.Join(" ", turn.Response.SpokenSegments.Select(d => $"{d.Text}"))}\n\n";
                     }
+                    else if (turn.Response.Type == ConversationTurnAgentResponseType.CustomTool || turn.Response.Type == ConversationTurnAgentResponseType.SystemTool)
+                    {
+                        stringResult += $"[{(turn.Response.LLMStreamingStartedAt ?? turn.Response.LLMStreamingCompletedAt ?? turn.Response.LLMProcessStartedAt)?.ToString("G")}] ASSISTANT: {turn.Response.ToolExecution!.RawLLMInput}\n\n";
+
+                        if (!string.IsNullOrWhiteSpace(turn.Response.ToolExecution!.Result))
+                        {
+                            stringResult += $"[{(turn.Response.ToolExecution.CompletedAt)?.ToString("G")}] SYSTEM: {turn.Response.ToolExecution!.Result}\n\n";
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error simplifying conversation turns.");
+                    stringResult += $"-- FAILED TO PARSE TURN TO SIMPLIFICATION FOR TURN ID ({turn.Id}) --\n\n";
                 }
             }
 

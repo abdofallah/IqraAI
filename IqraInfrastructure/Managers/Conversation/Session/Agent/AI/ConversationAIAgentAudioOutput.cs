@@ -6,6 +6,7 @@ using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.TTS;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Conversation.Session.Logger;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.TTS.Helpers;
 using IqraInfrastructure.Repositories.Business;
@@ -46,6 +47,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public event EventHandler<object?>? OnAudioBufferCleared;
         public event EventHandler<ConversationTurn>? TurnUpdate;
 
+        private readonly SessionLoggerFactory _sessionLoggerFactory;
         private readonly ILogger<ConversationAIAgentAudioOutput> _logger;
         private readonly ConversationSessionOrchestrator _conversationSession;
         private readonly ConversationAIAgentState _agentState;
@@ -87,7 +89,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private SemaphoreSlim _synthesisSemaphore = new SemaphoreSlim(1, 1);
 
         public ConversationAIAgentAudioOutput(
-            ILoggerFactory loggerFactory,
+            SessionLoggerFactory sessionLoggerFactory,
             ConversationAIAgentState agentState,
             TTSProviderManager ttsProviderManager,
             BusinessAgentAudioRepository audioRepository,
@@ -96,7 +98,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             ConversationSessionOrchestrator conversationSession
         )
         {
-            _logger = loggerFactory.CreateLogger<ConversationAIAgentAudioOutput>();
+            _sessionLoggerFactory = sessionLoggerFactory;
+            _logger = sessionLoggerFactory.CreateLogger<ConversationAIAgentAudioOutput>();
             _agentState = agentState;
             _ttsProviderManager = ttsProviderManager;
             _audioRepository = audioRepository;
@@ -151,7 +154,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             _agentState.TTSBusinessIntegrationData = ttsBusinessIntegrationDataResult.Data;
 
-            var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_agentState.TTSBusinessIntegrationData, defaultTTSServiceInfo, _agentState.AgentConfiguration.SampleRate, _agentState.AgentConfiguration.BitsPerSample, _agentState.AgentConfiguration.AudioEncodingType);
+            var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_sessionLoggerFactory, _agentState.TTSBusinessIntegrationData, defaultTTSServiceInfo, _agentState.AgentConfiguration.SampleRate, _agentState.AgentConfiguration.BitsPerSample, _agentState.AgentConfiguration.AudioEncodingType);
             if (!ttsServiceResult.Success || ttsServiceResult.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Failed to build TTS service with error: {ErrorMessage}", _agentState.AgentId, ttsServiceResult.Message);
@@ -167,7 +170,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (string.IsNullOrWhiteSpace(_agentState.BusinessAppAgent?.Settings?.BackgroundAudioUrl))
             {
-                _logger.LogInformation("Agent {AgentId}: No background audio URL configured.", _agentState.AgentId);
                 _agentState.IsBackgroundMusicEnabled = false;
                 _agentState.IsBackgroundMusicLoaded = false;
                 return;
@@ -261,7 +263,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 // Success
                 _agentState.BackgroundAudioData = rawPcmData;
-                _logger.LogInformation("Agent {AgentId}: Background audio loaded and converted successfully ({Length} bytes of raw PCM).", _agentState.AgentId, _agentState.BackgroundAudioData.Length);
                 // enable bkg audio in begin conversation
                 _agentState.IsBackgroundMusicLoaded = true;
                 _backgroundAudioPosition = 0;
@@ -340,7 +341,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                     if (audioData == null || audioData.Length == 0 || audioDuration == null || audioDuration.Value <= TimeSpan.Zero)
                     {
-                        _logger.LogWarning("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                        _logger.LogError("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                         return (false, TimeSpan.Zero);
                     }
 
@@ -371,7 +372,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
                 catch (OperationCanceledException) when (ttsToken.IsCancellationRequested || _audioSendingCTS.Token.IsCancellationRequested)
                 {
-                    _logger.LogInformation("Agent {AgentId}: TTS synthesis cancelled for text: \"{Text}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                     return (false, TimeSpan.Zero);
                 }
                 catch (InvalidOperationException) when (_speechAudioQueue.IsAddingCompleted)
@@ -775,7 +775,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             catch (OperationCanceledException)
             {
                 // TODO handle the completion of turn
-                _logger.LogInformation("Agent {AgentId}: Audio sending task cancelled.", _agentState.AgentId);
             }
             catch (Exception ex)
             {

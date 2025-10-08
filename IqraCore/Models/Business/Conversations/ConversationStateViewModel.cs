@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Logs.Enums;
 
 namespace IqraCore.Models.Business.Conversations
 {
@@ -55,7 +56,7 @@ namespace IqraCore.Models.Business.Conversations
 
     public class ConversationStateLogViewModel
     {
-        public ConversationLogLevel Level { get; set; }
+        public ConversationStateLogLevelEnum Level { get; set; }
         public string Message { get; set; }
         public DateTime Timestamp { get; set; }
     }

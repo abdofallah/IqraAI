@@ -489,7 +489,7 @@ namespace IqraInfrastructure.Managers.TTS
             return result;
         }
 
-        public async Task<FunctionReturnResult<ITTSService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, int targetSampleRate, int targetBitsPerSample, AudioEncodingTypeEnum targetAudioEncoding)
+        public async Task<FunctionReturnResult<ITTSService?>> BuildProviderServiceByIntegration(ILoggerFactory loggerFactory, BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, int targetSampleRate, int targetBitsPerSample, AudioEncodingTypeEnum targetAudioEncoding)
         {
             var result = new FunctionReturnResult<ITTSService?>();
 
@@ -544,7 +544,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new ElevenLabsTTSService(apiKey, config); // Assuming constructor is updated
+                            var service = new ElevenLabsTTSService(loggerFactory.CreateLogger<ElevenLabsTTSService>(), apiKey, config); // Assuming constructor is updated
                             return result.SetSuccessResult(service);
                         }
 

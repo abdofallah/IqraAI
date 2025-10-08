@@ -354,6 +354,15 @@ namespace ProjectIqraFrontend
                 );
             });
 
+            builder.Services.AddSingleton<ConversationStateLogsRepository>(sp =>
+            {
+                return new ConversationStateLogsRepository(
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:ConversationStateRepositoryDatabaseName"],
+                    sp.GetRequiredService<ILogger<ConversationStateLogsRepository>>()
+                );
+            });
+
             builder.Services.AddSingleton<OutboundCallQueueRepository>((sp) =>
             {
                 return new OutboundCallQueueRepository(

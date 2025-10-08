@@ -2,6 +2,8 @@
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Logs;
+using IqraCore.Entities.Conversation.Logs.Enums;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
@@ -45,6 +47,7 @@ namespace IqraInfrastructure.Managers.WebSession
         private readonly ServerMetricsMonitor _serverMetricsMonitor;
         private readonly WebSessionRepository _webSessionRepoistory;
         private readonly ConversationStateRepository _conversationStateRepository;
+        private readonly ConversationStateLogsRepository _conversationStateLogsRepository;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
@@ -67,6 +70,7 @@ namespace IqraInfrastructure.Managers.WebSession
             ServerMetricsMonitor serverMetricsMonitor,
             WebSessionRepository webSessionRepoistory,
             ConversationStateRepository conversationStateRepository,
+            ConversationStateLogsRepository conversationStateLogsRepository,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
@@ -81,6 +85,7 @@ namespace IqraInfrastructure.Managers.WebSession
             _serverMetricsMonitor = serverMetricsMonitor;
             _webSessionRepoistory = webSessionRepoistory;
             _conversationStateRepository = conversationStateRepository;
+            _billingProcessingManager = billingProcessingManager;
             _businessManager = businessManager;
             _integrationsManager = integrationsManager;
             _regionManager = regionManager;
@@ -307,6 +312,7 @@ namespace IqraInfrastructure.Managers.WebSession
 
                     _businessManager,
                     _conversationStateRepository,
+                    _conversationStateLogsRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
                     _billingProcessingManager,
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
@@ -385,9 +391,10 @@ namespace IqraInfrastructure.Managers.WebSession
                 var agentResult = await CreateAIAgentAsync(session, agentConfig);
                 if (!agentResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                        new ConversationLogEntry
+                    await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationStateLogEntry
                         {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                             Timestamp = DateTime.UtcNow,
                             Message = $"[BuildAndConfigureSessionAsync:{agentResult.Code}] {agentResult.Message}"
                         });
@@ -399,9 +406,10 @@ namespace IqraInfrastructure.Managers.WebSession
                 var clientResult = await CreateWebSocketClient(webSessionData, session);
                 if (!clientResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                        new ConversationLogEntry
+                    await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationStateLogEntry
                         {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                             Timestamp = DateTime.UtcNow,
                             Message = $"[BuildAndConfigureSessionAsync:{clientResult.Code}] {clientResult.Message}"
                         });
@@ -414,9 +422,10 @@ namespace IqraInfrastructure.Managers.WebSession
                 var addAgentResult = await session.AddPrimaryAgent(agent);
                 if (!addAgentResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                        new ConversationLogEntry
+                    await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationStateLogEntry
                         {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                             Timestamp = DateTime.UtcNow,
                             Message = $"[BuildAndConfigureSessionAsync:{addAgentResult.Code}] {addAgentResult.Message}"
                         });
@@ -429,9 +438,10 @@ namespace IqraInfrastructure.Managers.WebSession
                 var addClientResult = await session.AddPrimaryClient(client, clientConfig);
                 if (!addClientResult.Success)
                 {
-                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                        new ConversationLogEntry
+                    await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationStateLogEntry
                         {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                             Timestamp = DateTime.UtcNow,
                             Message = $"[BuildAndConfigureSessionAsync:{addClientResult.Code}] {addClientResult.Message}"
                         });
@@ -445,9 +455,10 @@ namespace IqraInfrastructure.Managers.WebSession
             }
             catch (Exception ex)
             {
-                await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
-                    new ConversationLogEntry
+                await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
+                    new ConversationStateLogEntry
                     {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                         Timestamp = DateTime.UtcNow,
                         Message = $"[BuildAndConfigureSessionAsync:EXCEPTION] {ex.Message}"
                     });
@@ -472,7 +483,7 @@ namespace IqraInfrastructure.Managers.WebSession
         {
             var result = new FunctionReturnResult<IConversationClient?>();
 
-            var deferredTransport = new DeferredClientTransport(_serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<DeferredClientTransport>());
+            var deferredTransport = new DeferredClientTransport(sessionManager.SessionLoggerFactory.CreateLogger<DeferredClientTransport>());
             return result.SetSuccessResult(
                 new WebAppConversationClient(
                     webSessionData.ClientIdentifier,
@@ -490,7 +501,7 @@ namespace IqraInfrastructure.Managers.WebSession
             try
             {
                 var AIAgent = new ConversationAIAgent(
-                    _serviceProvider.GetRequiredService<ILoggerFactory>(),
+                    sessionManager.SessionLoggerFactory,
                     sessionManager,
                     agentId,
                     agentConfiguration,

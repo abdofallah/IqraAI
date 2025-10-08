@@ -10,6 +10,7 @@ using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
+using IqraInfrastructure.Managers.Conversation.Session.Logger;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.KnowledgeBase;
@@ -30,7 +31,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
     public class ConversationAIAgent : IConversationAgent
     {
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly SessionLoggerFactory _sessionLoggerFactory;
         private readonly ILogger<ConversationAIAgent> _logger;
 
         private readonly ConversationAgentConfiguration _agentConfiguration;
@@ -80,7 +81,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public event EventHandler<ConversationAgentErrorEventArgs>? ErrorOccurred;
 
         public ConversationAIAgent(
-            ILoggerFactory loggerFactory,
+            SessionLoggerFactory sessionLoggerFactory,
             ConversationSessionOrchestrator sessionManager,
             string agentId, // Agent ID passed in
             ConversationAgentConfiguration agentConfiguration,
@@ -99,8 +100,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             IServiceProvider serviceProvider
         )
         {
-            _loggerFactory = loggerFactory;
-            _logger = loggerFactory.CreateLogger<ConversationAIAgent>();
+            _sessionLoggerFactory = sessionLoggerFactory;
+            _logger = sessionLoggerFactory.CreateLogger<ConversationAIAgent>();
 
             _agentConfiguration = agentConfiguration;
 
@@ -119,13 +120,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _agentState.AgentConfiguration = _agentConfiguration;
 
             // Instantiate Helper Modules
-            _scriptAccessor = new ScriptExecutionManager(loggerFactory.CreateLogger<ScriptExecutionManager>()); // Now primarily data access
-            _customToolHelper = new CustomToolExecutionHelper(loggerFactory); // New helper for tool execution
-            _sendSMSToolExecutionHelper = new SendSMSToolExecutionHelper(loggerFactory, integrationManager, modemTelManager, twilioManager);
+            _scriptAccessor = new ScriptExecutionManager(sessionLoggerFactory.CreateLogger<ScriptExecutionManager>()); // Now primarily data access
+            _customToolHelper = new CustomToolExecutionHelper(sessionLoggerFactory); // New helper for tool execution
+            _sendSMSToolExecutionHelper = new SendSMSToolExecutionHelper(sessionLoggerFactory, integrationManager, modemTelManager, twilioManager);
 
             // Instantiate Core Modules
             _ragManager = new ConversationAIAgentRAGManager(
-                _loggerFactory,
+                _sessionLoggerFactory,
                 _agentState,
                 _businessManager,
                 serviceProvider.GetRequiredService<KnowledgeBaseVectorRepository>(),
@@ -138,16 +139,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 serviceProvider.GetRequiredService<LLMProviderManager>(),
                 _conversationSessionManager.SessionId
             );
-            _dtmfSessionManager = new ConversationAIAgentDTMFSessionManager(_loggerFactory, _agentState);
-            _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager, _conversationSessionManager);
-            _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator, _conversationSessionManager, _ragManager);
-            _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper, _ragManager);
-            _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _llmHandler, _audioOutputHandler, _agentState, _llmProviderManager, _businessManager);
-            _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
-            _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
+            _dtmfSessionManager = new ConversationAIAgentDTMFSessionManager(_sessionLoggerFactory, _agentState);
+            _audioOutputHandler = new ConversationAIAgentAudioOutput(_sessionLoggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager, _conversationSessionManager);
+            _llmHandler = new ConversationAIAgentLLMHandler(_sessionLoggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator, _conversationSessionManager, _ragManager);
+            _toolExecutor = new ConversationAIAgentToolExecutor(_sessionLoggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper, _ragManager);
+            _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_sessionLoggerFactory, _llmHandler, _audioOutputHandler, _agentState, _llmProviderManager, _businessManager);
+            _audioInputHandler = new ConversationAIAgentAudioInput(_sessionLoggerFactory, _agentState);
+            _sttHandler = new ConversationAIAgentSTTHandler(_sessionLoggerFactory, _agentState, _sttProviderManager, _businessManager);
             if (_conversationSessionManager.IsOutboundCall)
             {
-                _voicemailDetector = new ConversationAIAgentVoicemailDetector(_loggerFactory, _agentState, _sttProviderManager, _llmProviderManager);
+                _voicemailDetector = new ConversationAIAgentVoicemailDetector(_sessionLoggerFactory, _agentState, _sttProviderManager, _llmProviderManager);
             }
 
             // Wire up Events between Modules and Orchestrator
@@ -249,7 +250,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     SampleRate = _agentState.AgentConfiguration.SampleRate,
                     BitsPerSample = _agentState.AgentConfiguration.BitsPerSample
                 };
-                _agentState.SileroVadCore = new SileroVadCore(_loggerFactory.CreateLogger<SileroVadCore>(), vadOptions, _conversationCTS.Token);
+                _agentState.SileroVadCore = new SileroVadCore(_sessionLoggerFactory.CreateLogger<SileroVadCore>(), vadOptions, _conversationCTS.Token);
 
                 // Initialize Modules
                 await _llmHandler.InitializeAsync();
@@ -365,7 +366,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (!_agentState.IsInitialized && _conversationCTS.IsCancellationRequested)
             {
-                _logger.LogInformation("AI Agent {AgentId} shutdown already in progress or completed.", AgentId);
+                _logger.LogWarning("AI Agent {AgentId} shutdown already in progress or completed.", AgentId);
                 return;
             }
             _logger.LogInformation("AI Agent {AgentId} shutting down. Reason: {Reason}", AgentId, reason);
@@ -421,8 +422,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_agentState.CurrentTurn != null)
             {
                 var turnToFinalize = _agentState.CurrentTurn;
+
                 turnToFinalize.Status = finalStatus;
-                turnToFinalize.CompletedAt = DateTime.UtcNow;
+                if (turnToFinalize.CompletedAt == null)
+                {
+                    turnToFinalize.CompletedAt = DateTime.UtcNow;
+                }
 
                 await _conversationSessionManager.NotifyTurnUpdated(turnToFinalize);
             }
@@ -667,12 +672,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return;
             }
 
-            if (turnWithResult.Response.ToolExecution!.ToolName == "EndCall")
-            {
-                await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
-                return;
-            }
-
             if (turnWithResult.Type == ConversationTurnType.ToolResult)
             {
                 var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turnWithResult.ToolResultInput!.ResultOfTurnId);
@@ -722,18 +721,26 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private async Task OnEndConversationRequested(ConversationTurn turn)
         {
+            _agentState.AreTurnsPaused = true;
+
             string? reason = turn.Response.ToolExecution?.ReasonForExecution ?? "Agent requested end of conversation, no reason provided.";
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed); 
 
-            var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turn.ToolResultInput!.ResultOfTurnId);
-            if (resultOfTurn.Type == ConversationTurnType.System || resultOfTurn.SystemInput?.Type == "VoicemailDetected")
+            if (turn.Type == ConversationTurnType.ToolResult)
             {
-                await _conversationSessionManager.EndAsync(reason, ConversationSessionEndType.VoicemailDetected);
+                var resultOfTurn = await _conversationSessionManager.GetTurnAsync(turn.ToolResultInput!.ResultOfTurnId);
+                if (
+                    resultOfTurn != null &&
+                    resultOfTurn.Type == ConversationTurnType.System &&
+                    resultOfTurn.SystemInput?.Type == "VoicemailDetected"
+                ) {
+                    await _conversationSessionManager.EndAsync(reason, ConversationSessionEndType.VoicemailDetected);
+                }
             }
             else
             {
                 await _conversationSessionManager.EndAsync(reason, ConversationSessionEndType.AgentEndedCall);
-            } 
+            }  
         }
 
         // Audio Output Handlers

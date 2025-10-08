@@ -31,52 +31,42 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<List<string>?>();
 
-            // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
-                Request,
-                businessId,
-                checkUserDisabled: true,
-                checkBusinessesDisabled: true,
-                checkBusinessesEditingEnabled: true
-            );
-            if (!userSessionAndBusinessValidationResult.Success)
-            {
-                result.Code = $"SaveBusinessCampaign:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
-            }
-            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-            var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
-            if (!checkBalanceOrMinutes.Success)
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:" + checkBalanceOrMinutes.Code,
-                    checkBalanceOrMinutes.Message
-                );
-            }
-
-            if (businessData.Permission.MakeCall.DisabledCallingAt != null)
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:8",
-                    "Outbound calling is disabled for this business" + (string.IsNullOrWhiteSpace(businessData.Permission.MakeCall.DisabledCallingReason) ? "" : ": " + businessData.Permission.MakeCall.DisabledCallingReason)
-                );
-            }
-            if (businessData.AllocatedMonthlyMinuteCap.HasValue)
-            {
-                if (businessData.CurrentMonthlyMinuteUsage >= businessData.AllocatedMonthlyMinuteCap.Value)
-                {
-                    return result.SetFailureResult(
-                        "InitiateCalls:9",
-                        "Monthly minute cap exceeded for business"
-                    );
-                }
-            }
-
             try
             {
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkBusinessesDisabled: true,
+                    checkBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    result.Code = $"SaveBusinessCampaign:{userSessionAndBusinessValidationResult.Code}";
+                    result.Message = userSessionAndBusinessValidationResult.Message;
+                    return result;
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                if (businessData.Permission.MakeCall.DisabledCallingAt != null)
+                {
+                    return result.SetFailureResult(
+                        "InitiateCalls:8",
+                        "Outbound calling is disabled for this business" + (string.IsNullOrWhiteSpace(businessData.Permission.MakeCall.DisabledCallingReason) ? "" : ": " + businessData.Permission.MakeCall.DisabledCallingReason)
+                    );
+                }
+
+                var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
+                if (!checkBalanceOrMinutes.Success)
+                {
+                    return result.SetFailureResult(
+                        "InitiateCalls:" + checkBalanceOrMinutes.Code,
+                        checkBalanceOrMinutes.Message
+                    );
+                }
+
                 var forwardResult = await _businessManager.GetMakeCallManager().QueueCallInitiationRequestAsync(businessData, formData);
                 if (!forwardResult.Success)
                 {

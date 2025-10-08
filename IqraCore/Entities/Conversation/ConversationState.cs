@@ -32,7 +32,6 @@ namespace IqraCore.Entities.Conversation
         public List<ConversationAgentInfo> Agents { get; set; } = new List<ConversationAgentInfo>();
 
         public List<ConversationTurn> Turns { get; set; } = new List<ConversationTurn>();
-        public List<ConversationLogEntry> Logs { get; set; } = new List<ConversationLogEntry>();
 
         public ConversationMetrics Metrics { get; set; } = new ConversationMetrics();
     }

@@ -45,6 +45,9 @@ namespace IqraInfrastructure.Managers.Call
                     // Check for expired conversations
                     int expiredConversations = await _conversationStateRepository.CleanupMaxDurationReachedConversationsAsync(_serverConfig.RegionId, _serverConfig.ServerId, DateTime.UtcNow.AddMinutes(5));
 
+                    // todo log to conversation logs repo
+                    //.Push(c => c.Logs, new ConversationStateLogEntry() { Level = ConversationStateLogLevelEnum.Critical, Message = "Expected endtime reached for conversation but it wasnt ended, so manually cleaned up" });
+
                     // TODO we should log these 3 if they are not 0 for analytics as this should only happen when there seems to be a major error
                     // for now just log
                     if (expiredQueues > 0 || orphanedQueues > 0 || expiredConversations > 0)

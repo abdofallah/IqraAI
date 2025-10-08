@@ -1,5 +1,4 @@
-﻿using Deepgram.Models.Agent.v2.WebSocket;
-using IqraCore.Entities.Billing;
+﻿using IqraCore.Entities.Billing;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
@@ -8,6 +7,8 @@ using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Context.Action;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Conversation.Logs;
+using IqraCore.Entities.Conversation.Logs.Enums;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
@@ -18,23 +19,23 @@ using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
-using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Helpers;
+using IqraInfrastructure.Managers.Conversation.Session.Logger;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Conversation.Session
 {
     public class ConversationSessionOrchestrator : IDisposable
     {
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly SessionLoggerFactory _sessionLoggerFactory;
         private readonly ILogger<ConversationSessionOrchestrator> _logger;
 
         private readonly BusinessManager _businessManager;
         private readonly ConversationStateRepository _conversationStateRepository;
+        private readonly ConversationStateLogsRepository _conversationStateLogsRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
         private readonly UserBillingUsageManager _userBillingUsageManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
@@ -92,6 +93,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         public event Func<object, Task>? SessionEnded;
 
         // Public
+        public SessionLoggerFactory SessionLoggerFactory => _sessionLoggerFactory;
         public string SessionId => _sessionId;
         public ConversationSessionState State => _state;
         public bool IsCallInitiated => _sessionInitiationType == ConversationSessionInitiationType.Telephony;
@@ -117,6 +119,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             BusinessManager businessManager,
             ConversationStateRepository conversationStateRepository,
+            ConversationStateLogsRepository conversationStateLogsRepository,
             ConversationAudioRepository audioStorageManager,
             UserBillingUsageManager billingProcessingManager,
             ILoggerFactory loggerFactory,
@@ -133,10 +136,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             _businessManager = businessManager;
             _conversationStateRepository = conversationStateRepository;
+            _conversationStateLogsRepository = conversationStateLogsRepository;
             _audioStorageManager = audioStorageManager;
             _userBillingUsageManager = billingProcessingManager;
-            _loggerFactory = loggerFactory;
-            _logger = loggerFactory.CreateLogger<ConversationSessionOrchestrator>();
+
+            _sessionLoggerFactory = new SessionLoggerFactory(loggerFactory, _sessionId, _conversationStateLogsRepository);
+
+            _logger = _sessionLoggerFactory.CreateLogger<ConversationSessionOrchestrator>();
             _campaignActionExecutorService = campaignActionExecutorService;
 
             if (IsCallInitiated)
@@ -189,6 +195,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 }
 
                 await _conversationStateRepository.CreateAsync(conversationState);
+
+                _sessionLoggerFactory.ActivateDatabaseLogging();
+                _logger.LogInformation("Database logging activated for session {SessionId}.", _sessionId);
 
                 return result.SetSuccessResult();
             }
@@ -784,18 +793,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 RunAudioCompilationAsync();
             }  
 
-            if (SessionEnded != null)
-            {
-                try
-                {
-                    await SessionEnded.Invoke(this);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error invoking SessionEnded event handler for session {SessionId}", SessionId);
-                }
-            }
-
             try
             {
                 if (IsCallInitiated)
@@ -820,40 +817,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 _logger.LogError(ex, "Error invoking session actions for session {SessionId}", SessionId);
             }
 
+            // On SessionEnded Cleanup for Parent Manager
+            if (SessionEnded != null)
+            {
+                try
+                {
+                    await SessionEnded.Invoke(this);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error invoking SessionEnded event handler for session {SessionId}", SessionId);
+                }
+            }
+
             // Dispose
             Dispose();
-        }
-        public void AddLogEntry(ConversationLogLevel level, string message, object? data = null)
-        {
-            try
-            {
-                string? dataJson = null;
-                if (data != null)
-                {
-                    dataJson = System.Text.Json.JsonSerializer.Serialize(data);
-                }
-
-                var logEntry = new ConversationLogEntry
-                {
-                    Level = level,
-                    Message = message,
-                    Timestamp = DateTime.UtcNow,
-                    DataJson = dataJson
-                };
-
-                _conversationStateRepository.AddLogEntryAsync(_sessionId, logEntry)
-                    .ContinueWith(t =>
-                    {
-                        if (t.IsFaulted)
-                        {
-                            _logger.LogError(t.Exception, "Error adding log entry to conversation {SessionId}", _sessionId);
-                        }
-                    });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating log entry");
-            }
         }
         public async Task UpdateStateAsync(ConversationSessionState newState, string reason)
         {
@@ -864,7 +842,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             await _conversationStateRepository.UpdateStatusAsync(_sessionId, newState);
 
             // Add a log entry
-            AddLogEntry(ConversationLogLevel.Information, $"State changed from {oldState} to {newState}: {reason}");
+            _logger.LogInformation($"State changed from {oldState} to {newState}: {reason}");
 
             // Notify event subscribers
             StateChanged?.Invoke(this, new ConversationSessionStateChangedEventArgs(oldState, newState, reason));
@@ -994,7 +972,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             {
                 try
                 {
-                    var compileService = new SessionAudioCompilationService(_loggerFactory.CreateLogger<SessionAudioCompilationService>(), _conversationStateRepository, _audioStorageManager);
+                    var compileService = new SessionAudioCompilationService(_sessionLoggerFactory.CreateLogger<SessionAudioCompilationService>(), _conversationStateRepository, _audioStorageManager);
                     await compileService.CompileConversationAudioAsync(_sessionId);
                 }
                 catch (Exception ex)
@@ -1226,7 +1204,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 return;
 
             // Log the thought process
-            AddLogEntry(ConversationLogLevel.Debug, $"Agent {agent.AgentId} thinking: {e.ThoughtProcess}");
+            _logger.LogInformation($"Agent {agent.AgentId} thinking: {e.ThoughtProcess}");
         }
         private void OnAgentErrorOccurred(object? sender, ConversationAgentErrorEventArgs e)
         {
@@ -1239,15 +1217,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 return;
 
             _logger.LogError(e.Exception, "Agent {AgentId} error: {ErrorMessage}", agent.AgentId, e.ErrorMessage);
-
-            // Log the error
-            AddLogEntry(
-                e.Severity == ConversationErrorSeverity.Critical
-                    ? ConversationLogLevel.Critical
-                    : ConversationLogLevel.Error,
-                $"Agent {agent.AgentId} error: {e.ErrorMessage}",
-                new { Exception = e.Exception?.ToString() }
-            );
 
             // End the session if it's a critical error
             if (e.Severity == ConversationErrorSeverity.Critical)

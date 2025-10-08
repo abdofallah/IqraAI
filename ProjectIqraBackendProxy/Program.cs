@@ -225,6 +225,15 @@ namespace ProjectIqraBackendProxy
                 );
             });
 
+            builder.Services.AddSingleton<ConversationStateLogsRepository>(sp =>
+            {
+                return new ConversationStateLogsRepository(
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:ConversationStateRepositoryDatabaseName"],
+                    sp.GetRequiredService<ILogger<ConversationStateLogsRepository>>()
+                );
+            });
+
             builder.Services.AddSingleton<OutboundCallQueueRepository>(sp =>
             {
                 return new OutboundCallQueueRepository(
@@ -411,6 +420,7 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<WebSessionRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<ConversationStateLogsRepository>(),
                     sp.GetRequiredService<BusinessManager>()
                 );
             });

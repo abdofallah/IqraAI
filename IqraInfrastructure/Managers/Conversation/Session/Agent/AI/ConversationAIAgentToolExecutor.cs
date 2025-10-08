@@ -144,8 +144,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         await PlaySpeechRequested.Invoke(turn, messageToSpeak, cancellationToken);
                     }
 
-                    await FinalizeAndReportToolResult(turn, true, null);
-                    await EndConversationRequested?.Invoke(turn);
+                    await EndConversationRequested?.Invoke(turn); // turn finalization handled by orchestrator event
                     return;
                 }
                 else if (toolName.Equals("change_language", StringComparison.OrdinalIgnoreCase))

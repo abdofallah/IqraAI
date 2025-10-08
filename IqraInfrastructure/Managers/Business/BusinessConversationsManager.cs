@@ -681,17 +681,17 @@ namespace IqraInfrastructure.Managers.Business
                 resultModel.Messages.Add(agentMessageModel);
             }
 
-            foreach (var log in state.Logs)
-            {
-                var logModel = new ConversationStateLogViewModel()
-                {
-                    Level = log.Level,
-                    Timestamp = log.Timestamp,
-                    Message = log.Message
-                };
+            //foreach (var log in state.Logs)
+            //{
+            //    var logModel = new ConversationStateLogViewModel()
+            //    {
+            //        Level = log.Level,
+            //        Timestamp = log.Timestamp,
+            //        Message = log.Message
+            //    };
 
-                resultModel.Logs.Add(logModel);
-            }
+            //    resultModel.Logs.Add(logModel);
+            //}
 
             return resultModel;
         }

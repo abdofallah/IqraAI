@@ -7,12 +7,15 @@ using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.TTS.Helpers;
+using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class ElevenLabsTTSService : ITTSService
     {
+        private readonly ILogger<ElevenLabsTTSService> _logger;
+
         private readonly string _apiKey;
         private readonly ElevenLabsConfig _serviceConfig;
 
@@ -33,8 +36,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private List<string> _previousRequestIds = new List<string>();   
 
-        public ElevenLabsTTSService(string apiKey, ElevenLabsConfig config)
+        public ElevenLabsTTSService(ILogger<ElevenLabsTTSService> logger, string apiKey, ElevenLabsConfig config)
         {
+            _logger = logger;
+
             _apiKey = apiKey;
             
             _serviceConfig = config;
@@ -134,7 +139,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 return finalAudioData;
             }
             catch (Exception ex) {
-                // todo log it
+                _logger.LogError(ex, ex.Message);
             }
             
 

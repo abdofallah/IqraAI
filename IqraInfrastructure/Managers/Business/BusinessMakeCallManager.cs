@@ -244,14 +244,14 @@ namespace IqraInfrastructure.Managers.Business
                     foreach (var dynamicVariableItem in dynamicVariablesElement.EnumerateObject())
                     {
                         if (
-                            dynamicVariableItem.Value.ValueKind != JsonValueKind.String ||
-                            string.IsNullOrWhiteSpace(dynamicVariableItem.Value.GetString())
+                            dynamicVariableItem.Value.ValueKind != JsonValueKind.String
                         ) {
                             return result.SetFailureResult(
                                 "QueueCallInitiationRequestAsync:CONFIG_DYNAMIC_VARIABLES_VALUE_INVALID",
                                 $"Dynamic variable value not found or invalid in config data for {dynamicVariableItem.Name}. Must be string."
                             );
                         }
+
                         callConfigData.DynamicVariables.Add(dynamicVariableItem.Name, dynamicVariableItem.Value.GetString()!);
                     }
 
@@ -296,8 +296,7 @@ namespace IqraInfrastructure.Managers.Business
                     foreach (var metadataItem in metadataElement.EnumerateObject())
                     {
                         if (
-                            metadataItem.Value.ValueKind != JsonValueKind.String ||
-                            string.IsNullOrWhiteSpace(metadataItem.Value.GetString())
+                            metadataItem.Value.ValueKind != JsonValueKind.String
                         ) {
                             return result.SetFailureResult(
                                 "QueueCallInitiationRequestAsync:CONFIG_METADATA_VALUE_INVALID",

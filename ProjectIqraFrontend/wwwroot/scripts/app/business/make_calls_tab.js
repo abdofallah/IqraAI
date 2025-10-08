@@ -239,11 +239,13 @@ function gatherMakeCallConfig() {
 	function getVariableData(elementList) {
 		const data = {};
 
-		elementList.find(".make-call-variable-data").each((index, element) => {
+		elementList.find(".input-group").each((index, element) => {
 			const key = $(element).find('[data-type="key"]').val()?.trim();
-			const value = $(element).find('[data-type="value"]').val()?.trim();
+			var value = $(element).find('[data-type="value"]').val()?.trim();
 
-			if (!key || !value) return;
+			if (!key) return;
+
+			if (!value || value == null) value = "";
 
 			data[key] = value;
 		});
@@ -572,8 +574,6 @@ function initMakeCallsTab() {
 						timeout: 5000
 					});
 					console.error("Failed to queue call:", response);
-
-					return;
 				}
 				else {
 					AlertManager.createAlert({
@@ -582,7 +582,7 @@ function initMakeCallsTab() {
 						timeout: 5000
 					});
 
-					resetMakeCallForm();
+					//resetMakeCallForm(); todo make configurable
 				}		
 
 				IsInitiatingCall = false;

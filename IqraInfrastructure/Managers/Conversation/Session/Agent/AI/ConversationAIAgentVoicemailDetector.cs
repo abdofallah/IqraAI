@@ -232,7 +232,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                     _voicemailMlPrediction = _voicemailMLModel.Predict(currentChunk);
                     _hasCompletedMLCheck = true;
-                    _logger.LogInformation("Agent {AgentId}: ML Prediction: {MLPrediction}", _agentState.AgentId, _voicemailMlPrediction.Value.Item1);
 
                     break;
                 }

@@ -2,8 +2,7 @@
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM.Providers.GroqCloud;
 using IqraCore.Interfaces.AI;    
-using Microsoft.Extensions.Logging; 
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -30,6 +29,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         private string _systemPrompt;
         private List<GroqCloudMessage> _initialMessages;
         private List<GroqCloudMessage> _messagesMemory;
+        private object _messageLock = new();
 
         public event EventHandler<ConversationAgentEventLLMStreamed>? MessageStreamed;
         public void ClearMessageStreamed() => MessageStreamed = null;
@@ -206,30 +206,65 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public void AddUserMessage(string message)
         {
-            _messagesMemory.Add(new GroqCloudMessage("user", message));
+            lock (_messageLock)
+            {
+                if (_messagesMemory.Count > 0)
+                {
+                    var lastMessage = _messagesMemory[_messagesMemory.Count - 1];
+
+                    if (lastMessage.Role == "user")
+                    {
+                        _messagesMemory[_messagesMemory.Count - 1] = new GroqCloudMessage("user", (lastMessage.Content + "\n" + message));
+                        return;
+                    }
+                }
+
+                _messagesMemory.Add(new GroqCloudMessage("user", message));
+            }
         }
 
         public void AddAssistantMessage(string message)
         {
-            _messagesMemory.Add(new GroqCloudMessage("assistant", message));
+            lock (_messageLock)
+            {
+                if (_messagesMemory.Count > 0)
+                {
+                    var lastMessage = _messagesMemory[_messagesMemory.Count - 1];
+
+                    if (lastMessage.Role == "assistant")
+                    {
+                        _messagesMemory[_messagesMemory.Count - 1] = new GroqCloudMessage("assistant", (lastMessage.Content + "\n" + message));
+                        return;
+                    }
+                }
+
+                _messagesMemory.Add(new GroqCloudMessage("assistant", message));
+            }
         }
 
         public void EditMessage(int index, string message)
         {
-            if (index >= 0 && index < _messagesMemory.Count)
+            lock (_messageLock)
             {
-                var existing = _messagesMemory[index];
-                _messagesMemory[index] = new GroqCloudMessage(existing.Role, message);
-            }
-            else
-            {
-                Console.WriteLine($"Warning: EditMessage index {index} out of bounds for Groq message memory.");
+                if (index >= 0 && index < _messagesMemory.Count)
+                {
+                    var existing = _messagesMemory[index];
+                    _messagesMemory[index] = new GroqCloudMessage(existing.Role, message);
+                }
+                else
+                {
+                    // todo add logger
+                    Console.WriteLine($"Warning: EditMessage index {index} out of bounds for Groq message memory.");
+                }
             }
         }
 
         public void ClearMessages()
         {
-            _messagesMemory.Clear();
+            lock (_messageLock)
+            {
+                _messagesMemory.Clear();
+            }
         }
 
         public string GetModel()

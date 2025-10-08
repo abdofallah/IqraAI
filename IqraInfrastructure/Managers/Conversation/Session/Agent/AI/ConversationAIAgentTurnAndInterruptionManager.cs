@@ -288,6 +288,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public async Task ProcessTranscriptionForTurnAnalysis(string text, bool isFinal)
         {
             if (_agentState.IsVoicemailDetected) return;
+            if (_agentState.AreTurnsPaused) return;
 
             await _transcriptionProcessingLock.WaitAsync();
 
@@ -342,6 +343,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 if (isFinal)
                 {
+                    if (string.IsNullOrEmpty(currentUtterance))
+                    {
+                        _logger.LogError("Final transcript is empty.");
+                        return;
+                    }
+
                     _sttHasProvidedFinalTranscript = true;
 
                     if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI)
@@ -467,6 +474,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async Task TryConcludeUserTurn()
         {
             if (_agentState.IsVoicemailDetected) return;
+            if (_agentState.AreTurnsPaused) return;
 
             bool canConclude = false;
 
@@ -590,6 +598,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private void HandleSTTPauseTrigger(string newTextChunk)
         {
             if (_agentState.IsVoicemailDetected) return;
+            if (_agentState.AreTurnsPaused) return;
 
             if (_config.PauseTrigger?.Type == AgentInterruptionPauseTriggerTypeENUM.STT)
             {
@@ -609,6 +618,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private void OnPauseTriggerVadSpeechStarted(TimeSpan duration)
         {
             if (_agentState.IsVoicemailDetected) return;
+            if (_agentState.AreTurnsPaused) return;
+
             if (_agentState.CurrentTurn == null) return;
 
             if (
@@ -626,6 +637,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async Task OnTurnEndVadSpeechStarted()
         {
             if (_agentState.IsVoicemailDetected) return;
+            if (_agentState.AreTurnsPaused) return;
 
             await _transcriptionProcessingLock.WaitAsync();
 
@@ -641,6 +653,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async Task OnTurnEndVadSpeechEnded()
         {
             if (_agentState.IsVoicemailDetected) return;
+            if (_agentState.AreTurnsPaused) return;
 
             await _transcriptionProcessingLock.WaitAsync();
 
@@ -663,11 +676,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_turnEndLLMService == null || string.IsNullOrWhiteSpace(currentUtterance)) return;
 
             // Cancel any previous, now-outdated check
-            if (_turnEndLLMTask != null && !_turnEndLLMTask.IsCompleted)
+            try
             {
                 _turnEndLLMCTS.Cancel();
-                _turnEndLLMCTS = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken);
             }
+            catch { }
+            _turnEndLLMCTS = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken);
+            _turnEndLLMTask = null;
             if (_turnEndLLMInputBuffer.Length > 0) _turnEndLLMInputBuffer.Clear();
 
             try
@@ -730,11 +745,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_interruptionVerificationLLMService == null || string.IsNullOrWhiteSpace(currentUtterance)) return;
 
             // Cancel any previous, now-outdated check
-            if (_interruptionVerificationLLMTask != null && !_interruptionVerificationLLMTask.IsCompleted)
+            try
             {
                 _interruptionVerificationLLMCTS.Cancel();
-                _interruptionVerificationLLMCTS = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken);
             }
+            catch { }
+            _interruptionVerificationLLMCTS = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken);
             if (_interruptionVerificationLLMInputBuffer.Length > 0) _interruptionVerificationLLMInputBuffer.Clear();
 
             try
@@ -798,6 +814,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async Task OnMLTurnVadSpeechStarted()
         {
             if (_agentState.IsVoicemailDetected) return;
+            if (_agentState.AreTurnsPaused) return;
 
             await _transcriptionProcessingLock.WaitAsync();
 
@@ -813,6 +830,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async Task OnMLTurnVadSpeechEnded()
         {
             if (_agentState.IsVoicemailDetected) return;
+            if (_agentState.AreTurnsPaused) return;
 
             await _transcriptionProcessingLock.WaitAsync();
 
