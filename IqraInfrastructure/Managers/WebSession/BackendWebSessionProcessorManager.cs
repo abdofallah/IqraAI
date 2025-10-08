@@ -85,6 +85,7 @@ namespace IqraInfrastructure.Managers.WebSession
             _serverMetricsMonitor = serverMetricsMonitor;
             _webSessionRepoistory = webSessionRepoistory;
             _conversationStateRepository = conversationStateRepository;
+            _conversationStateLogsRepository = conversationStateLogsRepository;
             _billingProcessingManager = billingProcessingManager;
             _businessManager = businessManager;
             _integrationsManager = integrationsManager;

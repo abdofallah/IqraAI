@@ -1,5 +1,4 @@
 ﻿using IqraCore.Attributes;
-using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.User
@@ -7,7 +6,6 @@ namespace IqraCore.Entities.User
     public class UserApiKey
     {
         [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
 
         public string FriendlyName { get; set; } = string.Empty;

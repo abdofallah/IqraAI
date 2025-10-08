@@ -62,7 +62,7 @@ namespace IqraInfrastructure.Managers.RAG.Processors
 
             var processedChunks = textChunks.Select(textChunk => new ProcessedDocumentChunkModel
             {
-                Id = ObjectId.GenerateNewId().ToString(),
+                Id = Guid.NewGuid().ToString(),
                 Text = textChunk,
                 Hash = GenerateHash(textChunk),
                 OriginalDocumentId = documentId,

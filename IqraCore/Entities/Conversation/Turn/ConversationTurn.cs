@@ -6,8 +6,7 @@ namespace IqraCore.Entities.Conversation.Turn
     public class ConversationTurn
     {
         [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         public int Sequence { get; set; }
 

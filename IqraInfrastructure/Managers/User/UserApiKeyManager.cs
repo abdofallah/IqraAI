@@ -31,7 +31,7 @@ namespace IqraInfrastructure.Managers.User
 
             try
             {
-                var newKeyObjectId = ObjectId.GenerateNewId().ToString();
+                var newKeyObjectId = Guid.NewGuid().ToString();
 
                 // 1. Generate the full, final API key using the processor
                 string rawApiKey = _apiKeyProcessor.Generate(user, newKeyObjectId);

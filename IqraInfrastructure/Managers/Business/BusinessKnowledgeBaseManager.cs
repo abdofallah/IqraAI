@@ -903,7 +903,7 @@ namespace IqraInfrastructure.Managers.Business
             // Database Changes
             if (postType == "new")
             {
-                newKnowledgeBaseData.Id = ObjectId.GenerateNewId().ToString();
+                newKnowledgeBaseData.Id = Guid.NewGuid().ToString();
                 string collectionName = $"b{businessId}_kb{newKnowledgeBaseData.Id}";
 
                 bool vectorCollectionCreated = await _documentVectorRepository.CreateCollectionAsync(
@@ -1300,7 +1300,7 @@ namespace IqraInfrastructure.Managers.Business
                 // Add General and Parent chunks first to generate their backend IDs
                 foreach (var addedChunk in documentUpdateChunksModel.Added.Where(c => c.Type != KnowledgeBaseDocumentType.Child))
                 {
-                    var newChunkId = ObjectId.GenerateNewId().ToString();
+                    var newChunkId = Guid.NewGuid().ToString();
                     frontendToBackendIdMap[addedChunk.Id] = newChunkId;
                     BusinessAppKnowledgeBaseDocumentChunk newMongoChunk;
 
@@ -1338,7 +1338,7 @@ namespace IqraInfrastructure.Managers.Business
                 // Add Child chunks, linking them to existing or new parents
                 foreach (var addedChunk in documentUpdateChunksModel.Added.Where(c => c.Type == KnowledgeBaseDocumentType.Child))
                 {
-                    var newChunkId = ObjectId.GenerateNewId().ToString();
+                    var newChunkId = Guid.NewGuid().ToString();
                     frontendToBackendIdMap[addedChunk.Id] = newChunkId;
 
                     // Find the backend ID for the parent

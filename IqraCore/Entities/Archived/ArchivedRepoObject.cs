@@ -6,8 +6,7 @@ namespace IqraCore.Entities.Archived
     public class ArchivedRepoObject<T>
     {
         [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public ObjectId Id { get; set; }
+        public string Id { get; set; } = Guid.NewGuid().ToString();
         public DateTime ArchivedAt { get; set; } = DateTime.UtcNow;
 
         public string ObjectId { get; set; } = string.Empty;

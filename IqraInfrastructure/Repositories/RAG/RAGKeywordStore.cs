@@ -1,5 +1,4 @@
-﻿using IqraCore.Interfaces.RAG;
-using IqraInfrastructure.Managers.RAG.Keywords;
+﻿using IqraInfrastructure.Managers.RAG.Keywords;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -10,7 +9,7 @@ namespace IqraInfrastructure.Repositories.RAG
     public class KeywordIndex
     {
         [BsonId]
-        public ObjectId Id { get; set; }
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         [BsonElement("KnowledgeBaseId")]
         public string KnowledgeBaseId { get; set; } = string.Empty;

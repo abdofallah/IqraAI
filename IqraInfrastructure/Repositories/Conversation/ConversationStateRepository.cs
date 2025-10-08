@@ -1,7 +1,5 @@
 ﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
-using IqraCore.Entities.Conversation.Logs;
-using IqraCore.Entities.Conversation.Logs.Enums;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.Conversations;

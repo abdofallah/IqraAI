@@ -101,10 +101,8 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<List<BusinessAppKnowledgeBaseDocumentChunk>> GetChunksByIdsAsync(List<string> chunkIds, long? documentIdHint = null)
         {
-            var objectIdChunkIds = chunkIds.Select(id => new ObjectId(id)).ToList();
-
             var filterBuilder = Builders<BusinessAppKnowledgeBaseDocument>.Filter;
-            var filter = filterBuilder.In("Chunks._id", objectIdChunkIds);
+            var filter = filterBuilder.In("Chunks._id", chunkIds);
 
             // If a documentId is provided, we can make the initial match more efficient
             if (documentIdHint.HasValue)
@@ -116,7 +114,7 @@ namespace IqraInfrastructure.Repositories.Business
             {
                 new BsonDocument("$match", filter.ToBsonDocument()),
                 new BsonDocument("$unwind", "$Chunks"),
-                new BsonDocument("$match", new BsonDocument("Chunks._id", new BsonDocument("$in", new BsonArray(objectIdChunkIds)))),
+                new BsonDocument("$match", new BsonDocument("Chunks._id", new BsonDocument("$in", new BsonArray(chunkIds)))),
                 new BsonDocument("$replaceRoot", new BsonDocument("newRoot", "$Chunks"))
             };
 

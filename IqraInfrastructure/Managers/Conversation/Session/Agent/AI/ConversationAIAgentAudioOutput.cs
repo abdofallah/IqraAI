@@ -601,7 +601,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 var newCacheAudio = new BusinessAppCacheAudio
                 {
-                    Id = ObjectId.GenerateNewId().ToString(), // Generate a new unique ID
+                    Id = Guid.NewGuid().ToString(), // Generate a new unique ID
                     Query = text,
                     UnusedExpiryHours = autoCacheSettings.AutoCacheAudioResponsesDefaultExpiryHours ?? 24
                 };
