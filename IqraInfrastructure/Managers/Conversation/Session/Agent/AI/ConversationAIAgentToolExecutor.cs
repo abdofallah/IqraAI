@@ -117,6 +117,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 turnToolExecutionData.ToolName = toolName;
                 TurnUpdate?.Invoke(this, turn);
 
+                _logger.LogDebug("Agent {AgentId}: Executing System Tool {ToolName} for turn {TurnId}.", _agentState.AgentId, toolName, turn.Id);
+
                 // Tool Specific Logic
                 if (toolName.Equals("end_call", StringComparison.OrdinalIgnoreCase))
                 {
@@ -657,6 +659,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             catch (OperationCanceledException)
             {
+                _logger.LogDebug("Agent {AgentId}: System tool execution cancelled for turn {TurnId}.", _agentState.AgentId, turn.Id);
+
                 await FinalizeAndReportToolResult(
                     turn,
                     false,
@@ -720,6 +724,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 var toolData = nodeDetailsResult.Data;
                 toolExecutionData.ToolName = toolData.General.Name[_conversationSession.BusinessData.DefaultLanguage];
                 TurnUpdate?.Invoke(this, turn);
+
+                _logger.LogDebug("Agent {AgentId}: Executing custom Tool {ToolName} for turn {TurnId}.", _agentState.AgentId, toolExecutionData.ToolName, turn.Id);
 
                 // Parse Variables
                 Dictionary<string, JsonElement>? nodeVariables = null;
@@ -802,6 +808,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             catch (OperationCanceledException)
             {
+                _logger.LogDebug("Agent {AgentId}: Custom tool execution cancelled for turn {TurnId}.", _agentState.AgentId, turn.Id);
+
                 await FinalizeAndReportToolResult(
                     turn,
                     false,

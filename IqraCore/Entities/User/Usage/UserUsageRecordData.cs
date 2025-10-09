@@ -6,7 +6,7 @@ namespace IqraCore.Entities.User.Usage
     public class UserUsageRecordData
     {
         [BsonId]
-        public string Id { get; set; } = string.Empty;
+        public string Id { get; set; } = Guid.NewGuid().ToString();
         public string BusinessMasterUserEmail { get; set; } = string.Empty;
         public long BusinessId { get; set; }
         public string PlanId { get; set; } = string.Empty;

@@ -425,6 +425,11 @@ namespace IqraInfrastructure.Managers.Business
                                     Type = WebSessionLogTypeEnum.Error
                                 }
                             );
+
+                            return result.SetFailureResult(
+                                "InitiateWebSession:BACKEND_CALL_PROCESS_FAIL",
+                                $"[InitiateWebSession:BACKEND_CALL_PROCESS_FAIL] Backend call processing failure:\n\n[{backendResult.Code}] {backendResult.Message}"
+                            );
                         }
                         else
                         {
@@ -438,15 +443,6 @@ namespace IqraInfrastructure.Managers.Business
 
                 if (!successfullyForwarded)
                 {
-                    await _webSessionRepoistory.UpdateStatusAndAddLogAsync(
-                        newWebSessionData.Id,
-                        WebSessionStatusEnum.Failed,
-                        new WebSessionLog {
-                            Message = $"[InitiateWebSession:BACKEND_CALL_PROCESS_FAIL] Failed to forward to backend server.",
-                            Type = WebSessionLogTypeEnum.Error
-                        }
-                    );
-
                     return result.SetFailureResult(
                         "InitiateWebSession:BACKEND_CALL_PROCESS_FAIL",
                         "Failed to forward to backend server."

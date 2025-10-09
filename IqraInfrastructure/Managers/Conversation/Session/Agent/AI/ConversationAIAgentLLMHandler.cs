@@ -199,7 +199,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public async Task ProcessUserTurnAsync(ConversationTurn turn, CancellationToken externalToken)
         {
             using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
-            string messageToSend = $"customer_query: {turn.UserInput.TranscribedText}";
+            string messageToSend = $"customer_query: {turn.UserInput!.TranscribedText}";
+
+            _logger.LogDebug("ProcessUserTurnAsync: Processing turn {turnId} for Agent {AgentId} with messageToSend: {messageToSend}.", turn.Id, _agentState.AgentId, ((messageToSend.Length > 100) ? messageToSend.Substring(0, 100) : messageToSend));
+
             _agentState.LLMService!.AddUserMessage(messageToSend);
             await ProcessLLMInputForTurn(turn, false, combinedCTS.Token);
         }
@@ -207,6 +210,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
             var messageToSend = $"response_from_system: {turnWithToolResult.Response.ToolExecution!.Result}";
+
+            _logger.LogDebug("ProcessToolResultAsync: Processing turn tool result for {turnWithToolResultId} for turn {newToolResultTurn} for Agent {AgentId} with messageToSend: {messageToSend}.", turnWithToolResult.Id, newToolResultTurn.Id, _agentState.AgentId, ((messageToSend.Length > 100) ? messageToSend.Substring(0, 100) : messageToSend));
+
             _agentState.LLMService!.AddUserMessage(messageToSend);
             await ProcessLLMInputForTurn(newToolResultTurn, true, combinedCTS.Token);
         }
@@ -279,7 +285,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             // Since knowledge base retrieval takes time, turn could be cancelled in between so we need to check
-            if (cancellationToken.IsCancellationRequested) return;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogDebug("ProcessLLMInputForTurn: turn {turnId} for Agent {AgentId} was cancelled before llm process started.", turn.Id, _agentState.AgentId);
+                return;
+            }
 
             var currentDateTimeData = await _systemPromptGenerator.GenerateDateTimeInformationForMessage(
                 null, _agentState.CurrentSessionContext!.Agent.Timezones);
@@ -293,16 +303,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 var cacheableResult = await IsTextCacheable(turn.UserInput.TranscribedText!);
                 if (cacheableResult.isCacheable && cacheableResult.cachedQuery != null)
                 {
+                    _logger.LogDebug("Agent {AgentId}: Text '{Text}' is eligible for caching and using cached result '{CachedQuery}'.", _agentState.AgentId, (turn.UserInput.TranscribedText!.Length > 100) ? turn.UserInput.TranscribedText!.Substring(0, 100) + "..." : turn.UserInput.TranscribedText!, (cacheableResult.cachedQuery.Length > 100) ? cacheableResult.cachedQuery.Substring(0, 100) + "..." : cacheableResult.cachedQuery);
+
                     OnLLMMessageStreamed(this, new ConversationAgentEventLLMStreamed($"response_to_customer: {cacheableResult.cachedQuery}", true));
                     return;
                 }
             }
-            
 
             turn.Response.LLMProcessStartedAt = DateTime.UtcNow;
             await _conversationSession.NotifyTurnUpdated(turn);
 
             _llmTask = _agentState.LLMService!.ProcessInputAsync(cancellationToken, beforeMessageContext, null);
+            _logger.LogDebug("Agent {AgentId}: LLM process started for turn {TurnId}", _agentState.AgentId, turn.Id);
             await _llmTask;
         }
         private async Task<(bool isCacheable, string? cachedQuery)> IsTextCacheable(string text)
@@ -339,7 +351,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var currentTurn = _agentState.CurrentTurn;
             if (currentTurn == null)
             {
-                _logger.LogError("LLM stream received but there is no active turn in the agent state.");
+                _logger.LogError(" Agent {AgentId}: LLM stream received but there is no active turn in the agent state.", _agentState.AgentId);
                 return;
             }
 
@@ -357,6 +369,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);
             if (combinedCancellationToken.IsCancellationRequested)
             {
+                _logger.LogDebug("Agent {AgentId}: LLM stream processing cancelled for turn {TurnId}.", _agentState.AgentId, currentTurn.Id);
                 return;
             }
 
@@ -366,6 +379,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             catch (OperationCanceledException ex)
             {
+                _logger.LogError(ex, "Agent {AgentId}: LLM stream processing cancelled during response lock wait for turn {TurnId}.", _agentState.AgentId, currentTurn.Id);
                 return;
             }
 
@@ -388,7 +402,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(eventData.ResponseObject, _agentState.LLMService!.GetProviderType());
                     if (!chunkExtractResult.Success || !chunkExtractResult.Data.HasValue)
                     {
-                        _logger.LogError("Agent {AgentId}: Error extracting LLM chunk, {Reason}", _agentState.AgentId, chunkExtractResult.Message);
+                        _logger.LogError("Agent {AgentId}: Error extracting LLM chunk for turn {TurnId}, {Reason}", _agentState.AgentId, currentTurn.Id, chunkExtractResult.Message);
                         // TODO: Raise error? Stop processing this response?
                         return;
                     }
@@ -411,6 +425,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Response.Type = ConversationTurnAgentResponseType.Speech;
                         currentTurn.Status = ConversationTurnStatus.AgentRespondingSpeech;
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
+
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a speech response.", currentTurn.Id, _agentState.AgentId);
                     }
                     else if (fullText.StartsWith("execute_system_function:"))
                     {
@@ -418,6 +434,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Status = ConversationTurnStatus.AgentExecutingTool;
                         currentTurn.Response.ToolExecution = new ConversationTurnToolExecutionData { ToolType = ConversationTurnAgentToolType.System };
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
+
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a system tool response.", currentTurn.Id, _agentState.AgentId);
                     }
                     else if (fullText.StartsWith("execute_custom_function:"))
                     {
@@ -425,6 +443,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Status = ConversationTurnStatus.AgentExecutingTool;
                         currentTurn.Response.ToolExecution = new ConversationTurnToolExecutionData { ToolType = ConversationTurnAgentToolType.Custom };
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
+
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a custom tool response.", currentTurn.Id, _agentState.AgentId);
                     }
                 }
 
@@ -474,6 +494,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                                     }
                                 }
 
+                                _logger.LogDebug("Agent {AgentId}: Synthesizing text chunk of length {ChunkSize} for turn {TurnId}.", _agentState.AgentId, chunkSize, currentTurn.Id);
+
                                 await SynthesizeTextSegmentRequested?.Invoke(currentTurn, textToSynthesize, isEndOfResponse);
                                 _currentResponseBufferReadPosition += chunkSize;
                             }
@@ -492,10 +514,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                         if (currentTurn.Response.Type == ConversationTurnAgentResponseType.SystemTool)
                         {
+                            _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, executing system tool.", currentTurn.Id, _agentState.AgentId);
+
                             await SystemToolExecutionRequested?.Invoke(currentTurn);
                         }
                         else
                         {
+                            _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, executing custom tool.", currentTurn.Id, _agentState.AgentId);
+
                             await CustomToolExecutionRequested?.Invoke(currentTurn);
                         }
 
@@ -506,6 +532,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Response.LLMStreamingCompletedAt = DateTime.UtcNow;
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
+                        _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, speech is completed.", currentTurn.Id, _agentState.AgentId);
                         // todo, check remaning buffer?
 
                         return;

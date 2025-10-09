@@ -21,7 +21,7 @@ namespace IqraCore.Entities.Business
         }
 
         [BsonId]
-        public string Id { get; set; } = string.Empty;
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         public string CountryCode { get; set; } = string.Empty;
         public string Number { get; set; } = string.Empty;

@@ -6,7 +6,7 @@ namespace IqraCore.Entities.User
     public class UserApiKey
     {
         [BsonId]
-        public string Id { get; set; } = string.Empty;
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         public string FriendlyName { get; set; } = string.Empty;
 

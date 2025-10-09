@@ -295,6 +295,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _speechAudioQueue.CompleteAdding();
                     }
 
+                    _logger.LogWarning("Agent {AgentId}: Text is empty or TTS service is not configured for turn {TurnId} for text '{Text}'.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
                     return (false, TimeSpan.Zero);
                 }
 
@@ -327,6 +328,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             {
                                 _speechAudioQueue.CompleteAdding();
                             }
+
+                            _logger.LogDebug("Agent {AgentId}: Returning cached audio for turn {TurnId} with text {Text}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
+
                             return (true, cachedSegment.Duration);
                         }
                     }
@@ -336,17 +340,20 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     generationLatencyStopwatch.Stop();
                     if (ttsToken.IsCancellationRequested)
                     {
+                        _logger.LogWarning("Agent {AgentId}: TTS service was cancelled for turn {TurnId} with text {Text}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
                         return (false, TimeSpan.Zero);
                     }
 
                     if (audioData == null || audioData.Length == 0 || audioDuration == null || audioDuration.Value <= TimeSpan.Zero)
                     {
-                        _logger.LogError("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                        _logger.LogError("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\"", _agentState.AgentId, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
                         return (false, TimeSpan.Zero);
                     }
 
                     if (isCacheable && audioData.Length != 0)
                     {
+                        _logger.LogDebug("Agent {AgentId}: Caching audio for turn {TurnId} with text {Text}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
+
                         _ = _cacheManager.StoreAudioAsync(
                             cacheKey,
                             audioData,
@@ -372,16 +379,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
                 catch (OperationCanceledException) when (ttsToken.IsCancellationRequested || _audioSendingCTS.Token.IsCancellationRequested)
                 {
+                    _logger.LogWarning("Agent {AgentId}: Cancelled synthesizing speech for text: {Text}", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                     return (false, TimeSpan.Zero);
                 }
                 catch (InvalidOperationException) when (_speechAudioQueue.IsAddingCompleted)
                 {
-                    _logger.LogWarning("Agent {AgentId}: Could not queue speech segment as queue is completed.", _agentState.AgentId);
+                    _logger.LogWarning("Agent {AgentId}: Could not queue speech segment as queue is completed for turn {TurnId} with text {Text}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
                     return (false, TimeSpan.Zero);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Agent {AgentId}: Error synthesizing speech for text: {Text}", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                    _logger.LogError(ex, "Agent {AgentId}: Error synthesizing speech for turn {TurnId} with text: {Text}", _agentState.AgentId, turn.Id, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                     // TODO: Raise error event
                     return (false, TimeSpan.Zero);
                 }
@@ -436,13 +444,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
                 else if (!success)
                 {
-                    _logger.LogError("Agent {AgentId}: Failed to synthesize speech for blocking message: {Text}", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                    _logger.LogError("Agent {AgentId}: Failed to synthesize speech for turn {TurnId} with blocking message: {Text}", turn.Id, _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                     // Handle error - maybe log, maybe try fallback?
                 }
             }
             catch (OperationCanceledException) { /* Expected */ }
             catch (Exception ex) {
-                _logger.LogError(ex, "Agent {AgentId}: Error synthesizing speech for blocking message: {Text}", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                _logger.LogError(ex, "Agent {AgentId}: Error synthesizing speech for turn {TurnId} with blocking message: {Text}", _agentState.AgentId, turn.Id, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                 // Handle error - maybe log, maybe try fallback?
             }
         }
@@ -515,6 +523,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 turnBeingCancelled.Response.Type == ConversationTurnAgentResponseType.Speech &&
                 (turnBeingCancelled.Status == ConversationTurnStatus.AgentProcessing || turnBeingCancelled.Status == ConversationTurnStatus.AgentRespondingSpeech)
             ) {
+                _logger.LogDebug("Agent {AgentId}: Interrupting current turn segment for turn {TurnId}.", turnBeingCancelled.Id, _agentState.AgentId);
+
                 var activeSegment = turnBeingCancelled.Response.SpokenSegments.Find(s => s.Id == _currentSpeechSegmentId);
 
                 if (activeSegment != null)
