@@ -217,6 +217,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         public async Task InitializeAsync()
         {
+            _logger.LogDebug("Initializing AI Agent {AgentId}.", AgentId);
+
             if (_agentState.IsInitialized)
             {
                 _logger.LogWarning("AI Agent {AgentId} is already initialized.", AgentId);
@@ -231,7 +233,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 BusinessApp businessAppData = _conversationSessionManager.BusinessApp!;
                 ConversationSessionContext contextData = _conversationSessionManager.Context!;
                 
-
                 // Populate Initial State
                 _agentState.BusinessApp = businessAppData;
                 _agentState.CurrentSessionContext = contextData;
@@ -239,6 +240,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _agentState.BusinessAppAgent = businessAppData.Agents.Find(a => a.Id == contextData.Agent.SelectedAgentId);
                 if (_agentState.BusinessAppAgent == null)
                 {
+                    _logger.LogError("Agent {AgentId}: Business app agent {AgentId} not found", _agentState.AgentId, contextData.Agent.SelectedAgentId);
                     throw new InvalidOperationException($"Business app agent {contextData.Agent.SelectedAgentId} not found");
                 }
                 _agentState.BackgroundMusicVolume = (float)((float)(_agentState.BusinessAppAgent.Settings?.BackgroundAudioVolume ?? 30) / 100); // Get from config
@@ -272,6 +274,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
 
                 _agentState.IsInitialized = true;
+                _logger.LogDebug("AI Agent {AgentId} initialized.", AgentId);
             }
             catch (Exception ex)
             {
@@ -291,6 +294,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogWarning("Agent {AgentId}: Cannot notify start - not initialized or shutting down.", AgentId);
                 return;
             }
+
+            if (_isConversationStarted)
+            {
+                _logger.LogWarning("Agent {AgentId}: Conversation already started.", AgentId);
+                return;
+            }
+
+            _logger.LogDebug("Agent {AgentId}: Notifying conversation started.", AgentId);
 
             // Check if language selection is required
             bool requiresLanguageSelection = _agentState.CurrentSessionContext?.Language.MultiLanguageEnabled == true &&
@@ -327,6 +338,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (requiresLanguageSelection)
             {
+                _logger.LogDebug("Agent {AgentId}: Language selection required.", AgentId);
                 await SetupLanguageSelectionViaDTMFAsync(newTurn);
             }
             else
@@ -569,6 +581,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Begin Conversation
         private async Task BeginAgentConversationFlowAsync(ConversationTurn turn)
         {
+            _logger.LogDebug("Agent {AgentId}: Starting conversation flow.", AgentId);
+
             if (_agentState.IsBackgroundMusicLoaded)
             {
                 _agentState.IsBackgroundMusicEnabled = true; // Logic to start/mix music is in AudioOutputHandler
@@ -602,6 +616,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // string openingMessage = "User starts the conversation."; // Example internal note
                 // _agentState.LLMService?.AddAssistantMessage(openingMessage); // Or maybe not needed
             }
+
+            _logger.LogDebug("Agent {AgentId}: Conversation flow started, waiting for user input.", AgentId);
 
             // Enable listening after potential greeting
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed);

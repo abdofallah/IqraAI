@@ -842,7 +842,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             await _conversationStateRepository.UpdateStatusAsync(_sessionId, newState);
 
             // Add a log entry
-            _logger.LogInformation($"State changed from {oldState} to {newState}: {reason}");
+            _logger.LogDebug($"State changed from {oldState} to {newState}: {reason}");
 
             // Notify event subscribers
             StateChanged?.Invoke(this, new ConversationSessionStateChangedEventArgs(oldState, newState, reason));
@@ -904,7 +904,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         }
         private async Task EndSessionOnMaxDuration(object? state)
         {
-            _logger.LogInformation("Ending session {SessionId} due to max duration", _sessionId);
+            _logger.LogDebug("Ending session {SessionId} due to max duration", _sessionId);
 
             bool isAnyAIAgentToEndCall = false;
             foreach (var agent in _agents)
@@ -1202,9 +1202,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             if (sender is not IConversationAgent agent)
                 return;
-
-            // Log the thought process
-            _logger.LogInformation($"Agent {agent.AgentId} thinking: {e.ThoughtProcess}");
         }
         private void OnAgentErrorOccurred(object? sender, ConversationAgentErrorEventArgs e)
         {
