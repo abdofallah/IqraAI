@@ -12,6 +12,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Logger
         private readonly string _sessionId;
         private readonly string _categoryName;
         private readonly ConversationStateLogsRepository _repository;
+        private readonly SemaphoreSlim _sessionSemaphore;
+
         private bool _isDatabaseLoggingActive = false;
 
         public SessionLogger(
@@ -19,6 +21,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Logger
             string sessionId,
             string categoryName,
             ConversationStateLogsRepository repository,
+            SemaphoreSlim sessionSemaphore,
             bool isDatabaseLoggingActive = false)
         {
             _defaultLogger = defaultLogger;
@@ -39,38 +42,39 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Logger
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (_defaultLogger.IsEnabled(logLevel))
-            {
-                _defaultLogger.Log(logLevel, eventId, state, exception, formatter);
-            }
-
-            if (!_isDatabaseLoggingActive)
-            {
-                return;
-            }
-
-            var message = formatter(state, exception);
-            var logEntry = new ConversationStateLogEntry
-            {
-                Id = eventId.ToString(),
-                SenderType = ConversationStateLogSenderTypeEnum.System,
-                SystemSenderReference = _categoryName,
-                Timestamp = DateTime.UtcNow,
-                Level = MapLogLevel(logLevel),
-                Message = message,
-                ExceptionDataJson = SerializeException(exception)
-            };
-
             _ = Task.Run(async () =>
             {
                 try
                 {
+                    await _sessionSemaphore.WaitAsync();
+
+                    if (!_isDatabaseLoggingActive)
+                    {
+                        return;
+                    }
+
+                    var message = formatter(state, exception);
+                    var logEntry = new ConversationStateLogEntry
+                    {
+                        Id = eventId.ToString(),
+                        SenderType = ConversationStateLogSenderTypeEnum.System,
+                        SystemSenderReference = _categoryName,
+                        Timestamp = DateTime.UtcNow,
+                        Level = MapLogLevel(logLevel),
+                        Message = message,
+                        ExceptionDataJson = SerializeException(exception)
+                    };
+
                     await _repository.AddLogEntryAsync(_sessionId, logEntry);
                 }
                 catch (Exception ex)
                 {
                     // Log failure to write log to console to avoid infinite loops
                     _defaultLogger.LogError(ex, "Failed to write session log to database for SessionId: {SessionId}", _sessionId);
+                }
+                finally
+                {
+                    _sessionSemaphore.Release();
                 }
             });
         }

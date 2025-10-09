@@ -12,6 +12,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Logger
         private readonly ConversationStateLogsRepository _repository;
         private readonly ConcurrentDictionary<string, SessionLogger> _loggers = new();
         private bool _isDatabaseLoggingActive = false;
+        private SemaphoreSlim _sessionSemaphore = new SemaphoreSlim(1, 1);
 
         public SessionLoggerFactory(ILoggerFactory defaultFactory, string sessionId, ConversationStateLogsRepository repository)
         {
@@ -41,7 +42,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Logger
             return _loggers.GetOrAdd(categoryName, name =>
             {
                 var defaultLogger = _defaultFactory.CreateLogger(name);
-                return new SessionLogger(defaultLogger, _sessionId, categoryName, _repository, _isDatabaseLoggingActive);
+                return new SessionLogger(defaultLogger, _sessionId, categoryName, _repository, _sessionSemaphore, _isDatabaseLoggingActive);
             });
         }
 

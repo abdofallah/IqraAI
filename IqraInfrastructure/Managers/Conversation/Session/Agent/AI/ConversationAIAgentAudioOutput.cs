@@ -375,6 +375,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     {
                         _speechAudioQueue.CompleteAdding();
                     }
+
+                    _logger.LogDebug("Agent {AgentId}: Returning audio for turn {TurnId} with text {Text}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
+
                     return (true, segment.Duration);
                 }
                 catch (OperationCanceledException) when (ttsToken.IsCancellationRequested || _audioSendingCTS.Token.IsCancellationRequested)
@@ -456,6 +459,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         public async Task CancelCurrentSpeechPlaybackAsync()
         {
+            _logger.LogDebug("Agent {AgentId}: Canceling current speech playback.", _agentState.AgentId);
+
             try
             {
                 _currentTtsTaskCTS?.Cancel();
@@ -500,6 +505,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         public Task PausePlaybackAsync()
         {
+            _logger.LogDebug("Agent {AgentId}: Pausing playback.", _agentState.AgentId);
+
             if (!_isPlaybackPaused)
             {
                 _playbackPausedAt = DateTime.UtcNow;
@@ -509,6 +516,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         public Task ResumePlaybackAsync()
         {
+            _logger.LogDebug("Agent {AgentId}: Resuming playback.", _agentState.AgentId);
+
             if (_isPlaybackPaused)
             {
                 _playbackPausedAt = null;
@@ -774,7 +783,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Response.LLMStreamingCompletedAt != null &&
                         currentTurn.Response.SpeechCompletedAt == null &&
                         (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&
-                        _speechAudioQueue.IsCompleted
+                        (_speechAudioQueue.IsAddingCompleted && _speechAudioQueue.Count == 0)
                     )
                     {
                         currentTurn.Response.SpeechCompletedAt = DateTime.UtcNow;

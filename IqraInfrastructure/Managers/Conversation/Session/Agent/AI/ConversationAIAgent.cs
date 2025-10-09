@@ -765,6 +765,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var currentTurnText = string.Join(" ", turn.Response.SpokenSegments.Select(x => x.Text).ToArray());
             _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
 
+            _logger.LogDebug("Agent {AgentId}: Agent response playback complete for turn {TurnId} with text {TurnText}.", _agentState.AgentId, turn.Id, (currentTurnText.Length > 100 ? currentTurnText.Substring(0, 100) : currentTurnText));
+
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
         }
 
