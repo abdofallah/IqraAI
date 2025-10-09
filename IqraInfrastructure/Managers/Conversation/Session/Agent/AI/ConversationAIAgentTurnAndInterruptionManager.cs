@@ -9,8 +9,14 @@ using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using IqraInfrastructure.Managers.TurnEnd;
 using IqraInfrastructure.Managers.VAD;
+using Microsoft.CognitiveServices.Speech.Transcription;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver.Core.Misc;
+using NAudio.SoundFont;
+using System;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -202,7 +208,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             _turnEndLLMService = llmResult.Data;
-            _turnEndLLMService.SetSystemPrompt("You are an expert at analyzing real-time speech transcripts. Your task is to determine if a user has finished their turn. Analyze the user's utterance. Respond with ONLY ONE of the following words: 'CONTINUE' if the user is likely still speaking or has paused mid-sentence. 'END' if the user has likely finished their complete thought or question.");
+            _turnEndLLMService.SetSystemPrompt("You are a highly advanced AI specializing in real-time conversational turn-taking analysis. Your primary function is to analyze a user's speech transcript and determine with high accuracy whether they have finished their turn. Your analysis must be nuanced, considering both grammatical structure and conversational context.\r\n\r\n**OUTPUT INSTRUCTIONS**\r\n\r\nYour response MUST STRICTLY follow the format below.\r\n1.  **Explanation:** First, provide a brief, one-sentence explanation of your reasoning.\r\n2.  **Result Label:** On a new line, write the literal string `Result:`.\r\n3.  **JSON Object:** Immediately following the label, provide a code block containing a single, well-formed JSON object.\r\n\r\n**JSON Object Structure:**\r\n*   `\"Classification\"`: (String) Must be either \"END\" or \"CONTINUE\".\r\n*   `\"Reasoning\"`: (String) A concise, machine-readable explanation for the classification (e.g., \"User asked a complete question\", \"User is dictating an email address\").\r\n*   `\"WaitBeforeConsideringEndMilliseconds\"`: (Integer) This key MUST be included ONLY if the `\"Classification\"` is \"CONTINUE\". The value should be an integer representing the recommended wait time in milliseconds.\r\n\r\n---\r\n\r\n**EXAMPLE RESPONSES**\r\n\r\n**Example for a CONTINUING turn:**\r\nI have determined the user is likely to continue because they are pausing while dictating a sequence of numbers.\r\nResult:\r\n```json\r\n{\r\n  \"Classification\": \"CONTINUE\",\r\n  \"Reasoning\": \"User is dictating a confirmation code, indicating high cognitive load.\",\r\n  \"WaitBeforeConsideringEndMilliseconds\": 2800\r\n}\r\n```\r\n\r\n**Example for an ENDED turn:**\r\nThe user has finished their turn by asking a complete and direct question.\r\nResult:\r\n```json\r\n{\r\n  \"Classification\": \"END\",\r\n  \"Reasoning\": \"User has asked a complete question.\"\r\n}\r\n```\r\n\r\n---\r\n\r\n**ANALYSIS HEURISTICS & RULES**\r\n\r\nYour analysis based on these rules should inform both your top-level explanation and the `Reasoning` field within the JSON.\r\n\r\n**1. Criteria for \"Classification: END\"**\r\n*   The user has formed a complete sentence, question, or command.\r\n*   The user's intonation suggests finality (infer this from complete thoughts).\r\n*   **Crucial Rule:** The utterance consists of phrases used to regain the AI's attention, such as \"hello?\", \"are you there?\", \"did you get that?\", or similar. This strongly indicates the user *already* finished their turn. Classify this as 'END' with high priority.\r\n\r\n**2. Criteria for \"Classification: CONTINUE\"**\r\n*   The utterance is grammatically incomplete (e.g., \"I was thinking about the...\").\r\n*   The user ends on a conjunction like \"and\", \"but\", \"so\", or \"because\".\r\n*   The user uses filler words like \"um\", \"uh\", or \"like\" followed by a pause.\r\n\r\n**3. Determining \"WaitBeforeConsideringEndMilliseconds\"**\r\nThis value is critical and must be determined based on the context of the pause.\r\n*   **Standard Pauses (700-1200ms):** For a typical mid-sentence pause to breathe or think.\r\n    *   *Example:* \"I need to book a flight to Jakarta and, um... [pause]\" -> `\"WaitBeforeConsideringEndMilliseconds\": 900`\r\n*   **Cognitive Load Pauses (1500-3000ms):** When the user is performing a mentally demanding task, provide a more generous wait time. This applies when the user is:\r\n    *   Recalling or dictating numbers (phone, ID, etc.).\r\n    *   Spelling out a name or an email address.\r\n    *   Recalling a specific memory or formulating a complex idea.\r\n    *   *Example:* \"My email address is myname... [pause] ...@gmail.com\" -> `\"WaitBeforeConsideringEndMilliseconds\": 2500`\r\n");
             _turnEndLLMService.MessageStreamed += async (sender, e) =>
             {
                 await OnAITurnEndLLMMessageStream(sender, e);
@@ -724,7 +730,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 _turnEndLLMService.ClearMessages();
 
-                var requestText = $"Agent Previous Utterance: \"{CalculatePreviousTurnAgentSpokenText()}\"\n\nUser Utterance: \"{currentUtterance}\"";
+                var requestText = $"**TASK**\n\nAnalyze the user utterance provided below and respond ONLY with the classification and, if applicable, the wait time, following the exact format specified.\n\nAgent Utterance: \"{CalculatePreviousTurnAgentSpokenText()}\"\nUser Utterance: \"{currentUtterance}\"";
                 
                 _turnEndLLMService.AddUserMessage(requestText);
                 _turnEndLLMTask = _turnEndLLMService.ProcessInputAsync(_turnEndLLMCTS.Token);
@@ -756,29 +762,87 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
                 if (result.Data.Value.isEndOfResponse)
                 {
-                    var bufferString = _turnEndLLMInputBuffer.ToString();
+                    var fullResponseText = _turnEndLLMInputBuffer.ToString();
+                    TurnEndResponse? turnEndData = null;
 
-                    string trimmedText = bufferString.Replace("\n", " ").Replace("\r", " ").Replace("\t", " ").Trim();
-                    int lastSpaceIndex = trimmedText.LastIndexOf(' ');
-                    string lastWord;
-
-                    if (lastSpaceIndex == -1) // No spaces, the whole string is the word
+                    try
                     {
-                        lastWord = trimmedText;
+                        string jsonText = string.Empty;
+
+                        const string jsonMarker = "```json";
+                        const string genericMarker = "```";
+
+                        int startIndex = fullResponseText.IndexOf(jsonMarker, StringComparison.OrdinalIgnoreCase);
+                        int endIndex = -1;
+
+                        if (startIndex != -1)
+                        {
+                            startIndex += jsonMarker.Length; // Move past the marker itself.
+                            endIndex = fullResponseText.LastIndexOf(genericMarker);
+                        }
+                        else
+                        {
+                            //  If "```json" isn't found, try to find a generic "```" block.
+                            startIndex = fullResponseText.IndexOf(genericMarker);
+                            if (startIndex != -1)
+                            {
+                                startIndex += genericMarker.Length;
+                                endIndex = fullResponseText.LastIndexOf(genericMarker);
+                            }
+                        }
+
+                        if (startIndex != -1 && endIndex > startIndex)
+                        {
+                            jsonText = fullResponseText.Substring(startIndex, endIndex - startIndex).Trim();
+                        }
+                        else
+                        {
+                            int firstBrace = fullResponseText.IndexOf('{');
+                            int lastBrace = fullResponseText.LastIndexOf('}');
+                            if (firstBrace != -1 && lastBrace > firstBrace)
+                            {
+                                jsonText = fullResponseText.Substring(firstBrace, lastBrace - firstBrace + 1).Trim();
+                            }
+                        }
+
+                        if (string.IsNullOrWhiteSpace(jsonText))
+                        {
+                            throw new JsonException("Could not find a valid JSON code block or object in the LLM response.");
+                        }
+
+                        turnEndData = JsonSerializer.Deserialize<TurnEndResponse>(jsonText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        lastWord = trimmedText.Substring(lastSpaceIndex + 1);
-                    }
-
-                    if (_turnEndLLMCTS.IsCancellationRequested) return;
-
-                    if (lastWord == "END")
-                    {
-                        _logger.LogDebug("Agent {AgentId}: AI Turn End detected.", _agentState.AgentId);
+                        _logger.LogError(ex, "Agent {AgentId}: Failed to parse AI Turn End response. Defaulting to END. Raw response: {RawResponse}", _agentState.AgentId, fullResponseText);
                         _aiHasIndicatedTurnEnd = true;
                         _turnEndLLMTask = null;
                         await TryConcludeUserTurn();
+                        return;
+                    }
+
+                    switch (turnEndData.Classification.ToUpperInvariant())
+                    {
+                        case "END":
+                            _logger.LogDebug("Agent {AgentId}: AI Turn End detected. Reason: {Reason}", _agentState.AgentId, turnEndData.Reasoning);
+                            _aiHasIndicatedTurnEnd = true;
+                            _turnEndLLMTask = null;
+                            await TryConcludeUserTurn();
+                            break;
+
+                        case "CONTINUE":
+                            _logger.LogDebug("Agent {AgentId}: AI detected user turn is continuing. Reason: {Reason}. Suggested wait: {WaitMs}ms",
+                                _agentState.AgentId, turnEndData.Reasoning, turnEndData.WaitBeforeConsideringEndMilliseconds ?? 0);
+                            _aiHasIndicatedTurnEnd = false;
+                            _turnEndLLMTask = null;
+                            break;
+
+                        default:
+                            _logger.LogWarning("Agent {AgentId}: AI returned unknown classification '{Classification}'. Defaulting to END.", _agentState.AgentId, turnEndData.Classification);
+                            _aiHasIndicatedTurnEnd = true;
+                            _turnEndLLMTask = null;
+                            await TryConcludeUserTurn();
+                            break;
                     }
                 }
             }
@@ -966,5 +1030,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             catch (ObjectDisposedException) { /* Expected */ }
         }
+    }
+
+    internal class TurnEndResponse
+    {
+        [JsonPropertyName("Classification")]
+        public string Classification { get; set; }
+
+        [JsonPropertyName("Reasoning")]
+        public string Reasoning { get; set; }
+
+        [JsonPropertyName("WaitBeforeConsideringEndMilliseconds")]
+        public int? WaitBeforeConsideringEndMilliseconds { get; set; }
     }
 }

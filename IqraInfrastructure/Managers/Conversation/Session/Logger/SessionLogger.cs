@@ -28,6 +28,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Logger
             _sessionId = sessionId;
             _categoryName = categoryName;
             _repository = repository;
+            _sessionSemaphore = sessionSemaphore;
             _isDatabaseLoggingActive = isDatabaseLoggingActive;
         }
 
