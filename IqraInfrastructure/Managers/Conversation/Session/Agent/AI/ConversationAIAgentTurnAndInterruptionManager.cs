@@ -241,43 +241,62 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 await OnAIInterruptionVerificationMessageStream(sender, e);
             };
         }
-        public void ResetForNewTurn()
+        public async Task ResetForNewTurn()
         {
-            CancelMlFallbackTimer();
+            await _transcriptionProcessingLock.WaitAsync();
 
-            if (_config.UseTurnByTurnMode && !_config.IncludeInterruptedSpeechInTurnByTurnMode!.Value)
+            try
             {
-                _userTurnTextBuffer.Clear();
-                _userTurnTextFinalBuffer.Clear();
-            }
+                _logger.LogDebug("Agent {AgentId}: Resetting for new turn.", _agentState.AgentId);
 
-            if (_interruptionVerificationLLMTask != null)
+                CancelMlFallbackTimer();
+
+                if (_config.UseTurnByTurnMode && !_config.IncludeInterruptedSpeechInTurnByTurnMode!.Value)
+                {
+                    _userTurnTextBuffer.Clear();
+                    _userTurnTextFinalBuffer.Clear();
+                }
+
+                if (_interruptionVerificationLLMTask != null)
+                {
+                    try
+                    {
+                        _interruptionVerificationLLMCTS.Cancel();
+                    }
+                    catch { /* Expected */ }
+                    _interruptionVerificationLLMTask = null;
+                }
+
+                if (_turnEndLLMTask != null)
+                {
+                    try
+                    {
+                        _turnEndLLMCTS.Cancel();
+                    }
+                    catch { /* Expected */ }
+                    _turnEndLLMTask = null;
+                }
+
+                _userTurnAudioBuffer.Clear();
+                _currentTurnWordCount = 0;
+                _isUserTurnActive = false;
+                _isAgentPaused = false;
+                _vadHasIndicatedTurnEnd = false;
+                _sttHasProvidedFinalTranscript = false;
+                _turnEndVadTracker?.Reset();
+                _pauseTriggerVadTracker?.Reset();
+                _aiHasIndicatedTurnEnd = false;
+                _mlHasIndicatedTurnEnd = false;
+                _isAwaitingVerification = false;
+                _canInterruptAgentAfterVerificaiton = false;
+                _hasVerifiedInterruptionResult = false;
+                _turnEndLLMInputBuffer.Clear();
+                _interruptionVerificationLLMInputBuffer.Clear();
+            }
+            finally
             {
-                _interruptionVerificationLLMCTS.Cancel();
-                _interruptionVerificationLLMTask = null;
+                _transcriptionProcessingLock.Release();
             }
-
-            if (_turnEndLLMTask != null)
-            {
-                _turnEndLLMCTS.Cancel();
-                _turnEndLLMTask = null;
-            }
-
-            _userTurnAudioBuffer.Clear();  
-            _currentTurnWordCount = 0;
-            _isUserTurnActive = false;
-            _isAgentPaused = false;
-            _vadHasIndicatedTurnEnd = false;
-            _sttHasProvidedFinalTranscript = false;
-            _turnEndVadTracker?.Reset();
-            _pauseTriggerVadTracker?.Reset();
-            _aiHasIndicatedTurnEnd = false;
-            _mlHasIndicatedTurnEnd = false;
-            _isAwaitingVerification = false;
-            _canInterruptAgentAfterVerificaiton = false;
-            _hasVerifiedInterruptionResult = false;
-            _turnEndLLMInputBuffer.Clear();
-            _interruptionVerificationLLMInputBuffer.Clear();
         }
         public void SetUserTurnActive()
         {
@@ -287,13 +306,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Management
         public async Task ProcessTranscriptionForTurnAnalysis(string text, bool isFinal)
         {
-            if (_agentState.IsVoicemailDetected) return;
-            if (_agentState.AreTurnsPaused) return;
-
             await _transcriptionProcessingLock.WaitAsync();
 
             try
             {
+                if (_agentState.IsVoicemailDetected) return;
+                if (_agentState.AreTurnsPaused) return;
+
                 await CreateNewUserTurn();
 
                 if (isFinal)
@@ -343,17 +362,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 if (isFinal)
                 {
+                    _logger.LogDebug("Agent {AgentId}: Final transcript recived for turn {TurnId}: {Transcript}.", _agentState.AgentId, _agentState.CurrentTurn.Id, currentUtterance);
+
                     if (string.IsNullOrEmpty(currentUtterance))
                     {
-                        _logger.LogError("Final transcript is empty.");
+                        _logger.LogError("Agent {AgentId}: Final transcript is empty for turn {TurnId}.", _agentState.AgentId, _agentState.CurrentTurn.Id);
                         return;
                     }
 
                     _sttHasProvidedFinalTranscript = true;
-
                     if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI)
                     {
-                        _ = CheckAITurnEndAsync(currentUtterance);
+                        await CheckAITurnEndAsync(currentUtterance);
                     }
                     else
                     {
@@ -476,6 +496,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_agentState.IsVoicemailDetected) return;
             if (_agentState.AreTurnsPaused) return;
 
+            _logger.LogDebug("Agent {AgentId}: Attempting to conclude user turn.", _agentState.AgentId);
+
             bool canConclude = false;
 
             switch (_config.TurnEnd.Type)
@@ -496,6 +518,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (!canConclude)
             {
+                _logger.LogDebug("Agent {AgentId}: Conditions not yet met for concluding user turn.", _agentState.AgentId);
                 return; // Conditions not yet met.
             }
 
@@ -517,6 +540,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 if (UserTurnFinalized != null)
                 {
+                    _logger.LogDebug("Agent {AgentId}: Finalizing user turn with id {TurnId}.", _agentState.AgentId, turnToFinalize.Id);
                     _ = UserTurnFinalized.Invoke(turnToFinalize);
                 }
             }
@@ -636,13 +660,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Vad Turn End Event Handlers
         private async Task OnTurnEndVadSpeechStarted()
         {
-            if (_agentState.IsVoicemailDetected) return;
-            if (_agentState.AreTurnsPaused) return;
-
             await _transcriptionProcessingLock.WaitAsync();
 
             try
             {
+                if (_agentState.IsVoicemailDetected) return;
+                if (_agentState.AreTurnsPaused) return;
+
                 await CreateNewUserTurn();
             }
             finally
@@ -652,13 +676,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private async Task OnTurnEndVadSpeechEnded()
         {
-            if (_agentState.IsVoicemailDetected) return;
-            if (_agentState.AreTurnsPaused) return;
-
             await _transcriptionProcessingLock.WaitAsync();
 
             try
             {
+                if (_agentState.IsVoicemailDetected) return;
+                if (_agentState.AreTurnsPaused) return;
+
                 if (_config.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.VAD && _isUserTurnActive)
                 {
                     _vadHasIndicatedTurnEnd = true;
@@ -673,12 +697,23 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // AI Turn End
         private async Task CheckAITurnEndAsync(string currentUtterance)
         {
-            if (_turnEndLLMService == null || string.IsNullOrWhiteSpace(currentUtterance)) return;
+            if (_turnEndLLMService == null || string.IsNullOrWhiteSpace(currentUtterance))
+            {
+                _logger.LogWarning("Agent {AgentId}: AI Turn End check skipped, LLM service is null or current utterance is empty.", _agentState.AgentId);
+                return;
+            }
+
+            _logger.LogDebug("Agent {AgentId}: Checking AI Turn End.", _agentState.AgentId);
 
             // Cancel any previous, now-outdated check
             try
             {
                 _turnEndLLMCTS.Cancel();
+                if (_turnEndLLMTask != null)
+                {
+                    _logger.LogDebug("Agent {AgentId}: AI Turn End check already running, canceling.", _agentState.AgentId);
+                    await _turnEndLLMTask;
+                }
             }
             catch { }
             _turnEndLLMCTS = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken);
@@ -693,6 +728,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 
                 _turnEndLLMService.AddUserMessage(requestText);
                 _turnEndLLMTask = _turnEndLLMService.ProcessInputAsync(_turnEndLLMCTS.Token);
+                _logger.LogDebug("Agent {AgentId}: AI Turn End check llm process started.", _agentState.AgentId);
                 await _turnEndLLMTask;
             }
             catch (OperationCanceledException){ /* Expected */ }
@@ -703,41 +739,54 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private async Task OnAITurnEndLLMMessageStream(object? sender, ConversationAgentEventLLMStreamed? data)
         {
-            FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> result = LLMStreamingChunkDataExtractHelper.GetChunkData(data.ResponseObject, _turnEndLLMService.GetProviderType());
-
-            if (!result.Success || !result.Data.HasValue)
+            try
             {
-                _logger.LogError("Agent {AgentId}: Error extracting AI turn end LLM chunk, {Reason}", _agentState.AgentId, result.Message);
-                return;
+                if (_turnEndLLMCTS.IsCancellationRequested) return;
+
+                FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> result = LLMStreamingChunkDataExtractHelper.GetChunkData(data.ResponseObject, _turnEndLLMService.GetProviderType());
+                if (!result.Success || !result.Data.HasValue)
+                {
+                    _logger.LogError("Agent {AgentId}: Error extracting AI turn end LLM chunk, {Reason}", _agentState.AgentId, result.Message);
+                    return;
+                }
+
+                if (!string.IsNullOrEmpty(result.Data.Value.deltaText))
+                {
+                    _turnEndLLMInputBuffer.Append(result.Data.Value.deltaText);
+                }
+                if (result.Data.Value.isEndOfResponse)
+                {
+                    var bufferString = _turnEndLLMInputBuffer.ToString();
+
+                    string trimmedText = bufferString.Replace("\n", " ").Replace("\r", " ").Replace("\t", " ").Trim();
+                    int lastSpaceIndex = trimmedText.LastIndexOf(' ');
+                    string lastWord;
+
+                    if (lastSpaceIndex == -1) // No spaces, the whole string is the word
+                    {
+                        lastWord = trimmedText;
+                    }
+                    else
+                    {
+                        lastWord = trimmedText.Substring(lastSpaceIndex + 1);
+                    }
+
+                    if (_turnEndLLMCTS.IsCancellationRequested) return;
+
+                    if (lastWord == "END")
+                    {
+                        _logger.LogDebug("Agent {AgentId}: AI Turn End detected.", _agentState.AgentId);
+                        _aiHasIndicatedTurnEnd = true;
+                        _turnEndLLMTask = null;
+                        await TryConcludeUserTurn();
+                    }
+                }
             }
-
-            if (!string.IsNullOrEmpty(result.Data.Value.deltaText))
+            catch (OperationCanceledException){ /* Expected */ }
+            catch (Exception ex)
             {
-                _turnEndLLMInputBuffer.Append(result.Data.Value.deltaText);
+                _logger.LogError(ex, "An error occurred during AI turn end check.");
             }
-            if (result.Data.Value.isEndOfResponse)
-            {
-                var bufferString = _turnEndLLMInputBuffer.ToString();
-
-                string trimmedText = bufferString.Replace("\n", " ").Replace("\r", " ").Replace("\t", " ").Trim();
-                int lastSpaceIndex = trimmedText.LastIndexOf(' ');
-                string lastWord;
-
-                if (lastSpaceIndex == -1) // No spaces, the whole string is the word
-                {
-                    lastWord = trimmedText;
-                }
-                else
-                {
-                    lastWord = trimmedText.Substring(lastSpaceIndex + 1);
-                }
-
-                if (lastWord == "END")
-                {
-                    _aiHasIndicatedTurnEnd = true;
-                    await TryConcludeUserTurn();
-                }
-            }      
         }
         // AI Interuption Verification
         private async Task CheckAIInterruptionVerificationAsync(string currentUtterance)
@@ -748,6 +797,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             try
             {
                 _interruptionVerificationLLMCTS.Cancel();
+                if (_interruptionVerificationLLMTask != null)
+                {
+                    await _interruptionVerificationLLMTask;
+                }
             }
             catch { }
             _interruptionVerificationLLMCTS = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken);
@@ -813,13 +866,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // ML Turn End
         private async Task OnMLTurnVadSpeechStarted()
         {
-            if (_agentState.IsVoicemailDetected) return;
-            if (_agentState.AreTurnsPaused) return;
-
             await _transcriptionProcessingLock.WaitAsync();
 
             try
             {
+                if (_agentState.IsVoicemailDetected) return;
+                if (_agentState.AreTurnsPaused) return;
+
                 await CreateNewUserTurn();
             }
             finally
@@ -829,13 +882,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private async Task OnMLTurnVadSpeechEnded()
         {
-            if (_agentState.IsVoicemailDetected) return;
-            if (_agentState.AreTurnsPaused) return;
-
             await _transcriptionProcessingLock.WaitAsync();
 
             try
             {
+                if (_agentState.IsVoicemailDetected) return;
+                if (_agentState.AreTurnsPaused) return;
+
                 if (_isUserTurnActive && _mlTurnService != null && _userTurnAudioBuffer.Count > 0)
                 {
                     var turnAudio = _userTurnAudioBuffer.ToArray();
