@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Models.User;
+using IqraCore.Models.User.GetMasterUserDataModel;
 using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Repositories.User;
 using Microsoft.Extensions.Logging;
@@ -25,9 +26,9 @@ namespace IqraInfrastructure.Managers.User
             _apiKeyProcessor = apiKeyProcessor;
         }
 
-        public async Task<FunctionReturnResult<UserApiKeyCreateModel>> CreateUserApiKeyAsync(UserData user, string friendlyName, List<long> restrictedBusinessIds)
+        public async Task<FunctionReturnResult<UserApiKeyCreateModel?>> CreateUserApiKeyAsync(UserData user, string friendlyName, List<long> restrictedBusinessIds)
         {
-            var result = new FunctionReturnResult<UserApiKeyCreateModel>();
+            var result = new FunctionReturnResult<UserApiKeyCreateModel?>();
 
             try
             {
@@ -57,16 +58,18 @@ namespace IqraInfrastructure.Managers.User
                 var filter = Builders<UserData>.Filter.Eq(u => u.Email, user.Email);
                 var update = Builders<UserData>.Update.AddToSet(u => u.UserApiKeys, newKey);
                 bool updateResult = await _userRepository.UpdateUser(filter, update);
-
                 if (!updateResult)
                 {
-                    return result.SetFailureResult("CREATE_API_KEY:DB_UPDATE_FAILED", "Could not save the new API key.");
+                    return result.SetFailureResult(
+                        "CREATE_API_KEY:DB_UPDATE_FAILED",
+                        "Could not save the new API key."
+                    );
                 }
 
                 var createdModel = new UserApiKeyCreateModel
                 {
                     RawApiKey = rawApiKey,
-                    CreatedKey = newKey
+                    CreatedKey = new UserApiKeyModel(newKey)
                 };
 
                 return result.SetSuccessResult(createdModel);

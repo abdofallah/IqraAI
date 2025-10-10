@@ -19,6 +19,8 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
             PaymentMethods = userData.PaymentMethods.Select(x => new UserPaymentMethodModel(x)).ToList();
 
             Billing = new UserBillingDataModel(userData.Billing);
+
+            ApiKeys = userData.UserApiKeys.Select(x => new UserApiKeyModel(x)).ToList();
         }
 
         public string Email { get; set; } = string.Empty;
@@ -32,5 +34,7 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
         public List<UserPaymentMethodModel> PaymentMethods { get; set; } = new List<UserPaymentMethodModel>();
 
         public UserBillingDataModel Billing { get; set; } = new UserBillingDataModel();
+
+        public List<UserApiKeyModel> ApiKeys { get; set; } = new List<UserApiKeyModel>();
     }
 }

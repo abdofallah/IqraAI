@@ -49,7 +49,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                     );
                 }
 
-                FunctionReturnResult<List<BusinessWhiteLabelDomain>?> businessWhiteLabelDomainResult = await _businessManager.GetSettingsManager().GetUserBusinessWhiteLabelDomainByIds(businessData.WhiteLabelDomainIds, businessId, userData.Email);
+                FunctionReturnResult<List<BusinessWhiteLabelDomain>?> businessWhiteLabelDomainResult = await _businessManager.GetSettingsManager().GetUserBusinessWhiteLabelDomainByIds(userData.Email, businessId, businessData.WhiteLabelDomainIds);
                 if (!businessWhiteLabelDomainResult.Success)
                 {
                     return result.SetFailureResult(

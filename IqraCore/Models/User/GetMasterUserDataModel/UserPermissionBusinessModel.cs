@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.User;
 
-namespace IqraCore.Models.User
+namespace IqraCore.Models.User.GetMasterUserDataModel
 {
     public class UserPermissionBusinessModel
     {

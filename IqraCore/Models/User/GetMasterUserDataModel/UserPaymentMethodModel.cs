@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Payment;
 using IqraCore.Entities.User.PaymentMethod;
 
-namespace IqraCore.Models.User
+namespace IqraCore.Models.User.GetMasterUserDataModel
 {
     public class UserPaymentMethodModel
     {

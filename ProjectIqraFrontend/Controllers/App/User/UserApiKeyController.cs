@@ -1,157 +1,143 @@
 ﻿using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
 using IqraCore.Models.User;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
+using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App.User
 {
     [ApiController]
     public class UserApiKeyController : ControllerBase
     {
-        private readonly UserManager _userManager;
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserApiKeyManager _userApiKeyManager;
 
-        public UserApiKeyController(UserManager userManager, UserApiKeyManager userApiKeyManager)
+        public UserApiKeyController(UserSessionValidationHelper userSessionValidationHelper, UserApiKeyManager userApiKeyManager)
         {
-            _userManager = userManager;
+            _userSessionValidationHelper = userSessionValidationHelper;
             _userApiKeyManager = userApiKeyManager;
         }
 
-        /// <summary>
-        /// A private helper to validate the user's session and retrieve their data,
-        /// reducing code duplication in each endpoint.
-        /// </summary>
-        private async Task<(FunctionReturnResult<T> Result, UserData? User)> ValidateSessionAndGetUserAsync<T>()
-        {
-            var result = new FunctionReturnResult<T>();
-
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
-            {
-                result.Code = "SESSION_INVALID";
-                result.Message = "Invalid session data. Please log in again.";
-                return (result, null);
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SESSION_VALIDATION_FAILED";
-                result.Message = "Session validation failed. Please log in again.";
-                return (result, null);
-            }
-
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "USER_NOT_FOUND";
-                result.Message = "User not found.";
-                return (result, null);
-            }
-
-            return (result, user);
-        }
-
-        [HttpPost("/app/api-keys/list")]
-        public async Task<FunctionReturnResult<List<UserApiKey>>> ListUserApiKeys()
-        {
-            var (validationResult, user) = await ValidateSessionAndGetUserAsync<List<UserApiKey>>();
-            if (user == null)
-            {
-                return validationResult;
-            }
-
-            // TODO better to return a model instead of data from db
-
-            return validationResult.SetSuccessResult(user.UserApiKeys);
-        }
-
         [HttpPost("/app/api-keys/create")]
-        public async Task<FunctionReturnResult<CreateUserApiKeyResponseModel?>> CreateUserApiKey([FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<UserApiKeyCreateModel?>> CreateUserApiKey([FromForm] IFormCollection formData)
         {
-            var (validationResult, user) = await ValidateSessionAndGetUserAsync<CreateUserApiKeyResponseModel?>();
-            if (user == null)
-            {
-                return validationResult;
-            }
+            var result = new FunctionReturnResult<UserApiKeyCreateModel?>();
 
-            string? friendlyName = formData["FriendlyName"];
-            if (string.IsNullOrWhiteSpace(friendlyName))
+            try
             {
-                return validationResult.SetFailureResult("CREATE:INVALID_NAME", "Friendly name is required.");
-            }
-
-            var restrictedBusinessIdsRaw = formData["RestrictedBusinessIds[]"];
-            var restrictedBusinessIds = new List<long>();
-            foreach (var idStr in restrictedBusinessIdsRaw)
-            {
-                if (long.TryParse(idStr, out long id))
+                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request, checkUserDisabled: true);
+                if (!validationResult.Success)
                 {
-                    // Security Check: Ensure the user owns the business they are restricting the key to.
-                    if (!user.Businesses.Contains(id))
-                    {
-                        return validationResult.SetFailureResult("CREATE:PERMISSION_DENIED", $"You do not have permission to use business ID {id}.");
-                    }
-                    restrictedBusinessIds.Add(id);
+                    return result.SetFailureResult(
+                        $"CreateUserApiKey:{validationResult.Code}",
+                        validationResult.Message
+                    );
                 }
+                var userData = validationResult.Data!;
+
+                string? friendlyName = formData["FriendlyName"];
+                if (string.IsNullOrWhiteSpace(friendlyName))
+                {
+                    return result.SetFailureResult(
+                        "CreateUserApiKey:INVALID_NAME",
+                        "Friendly name is required."
+                    );
+                }
+
+                var restrictedBusinessIdsRaw = formData["RestrictedBusinessIds[]"];
+                var restrictedBusinessIds = new List<long>();
+                foreach (var idStr in restrictedBusinessIdsRaw)
+                {
+                    if (!long.TryParse(idStr, out long parsedId))
+                    {
+                        return result.SetFailureResult(
+                            "CreateUserApiKey:INVALID_ID",
+                            $"Invalid business ID '{idStr}'."
+                        );
+                    }
+
+                    if (!userData.Businesses.Contains(parsedId))
+                    {
+                        return result.SetFailureResult(
+                            "CreateUserApiKey:PERMISSION_DENIED",
+                            $"You do not have permission to use business ID {parsedId}."
+                        );
+                    }
+                    restrictedBusinessIds.Add(parsedId);
+                }
+
+                var creationResult = await _userApiKeyManager.CreateUserApiKeyAsync(userData, friendlyName, restrictedBusinessIds);
+                if (!creationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"CreateUserApiKey:{creationResult.Code}",
+                        creationResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(creationResult.Data);
             }
-
-            var creationResult = await _userApiKeyManager.CreateUserApiKeyAsync(user, friendlyName, restrictedBusinessIds);
-            if (!creationResult.Success)
+            catch (Exception ex)
             {
-                validationResult.Code = creationResult.Code;
-                validationResult.Message = creationResult.Message;
-                return validationResult;
+                return result.SetFailureResult(
+                    "CreateUserApiKey:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
             }
-
-            // Map the result from the manager to the specific response model the frontend expects.
-            var responseModel = new CreateUserApiKeyResponseModel
-            {
-                Id = creationResult.Data.CreatedKey.Id,
-                FriendlyName = creationResult.Data.CreatedKey.FriendlyName,
-                DisplayName = creationResult.Data.CreatedKey.DisplayName,
-                ApiKey = creationResult.Data.RawApiKey,
-                Created = creationResult.Data.CreatedKey.CreatedUtc,
-                LastUsed = creationResult.Data.CreatedKey.LastUsedUtc
-            };
-
-            return validationResult.SetSuccessResult(responseModel);
         }
 
         [HttpPost("/app/api-keys/delete")]
         public async Task<FunctionReturnResult> DeleteUserApiKey([FromForm] IFormCollection formData)
         {
-            var (validationResult, user) = await ValidateSessionAndGetUserAsync<object>(); // Type param doesn't matter for this one
-            if (user == null)
+            var result = new FunctionReturnResult();
+
+            try
             {
-                return validationResult;
-            }
+                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request, checkUserDisabled: true);
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteUserApiKey:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+                var userData = validationResult.Data!;
 
-            string? userApiKeyId = formData["apiKeyId"];
-            if (string.IsNullOrWhiteSpace(userApiKeyId))
+                string? userApiKeyId = formData["apiKeyId"];
+                if (string.IsNullOrWhiteSpace(userApiKeyId))
+                {
+                    return result.SetFailureResult(
+                        "DeleteUserApiKey:INVALID_ID",
+                        "API Key ID is required."
+                    );
+                }
+
+                if (!userData.UserApiKeys.Any(key => key.Id == userApiKeyId))
+                {
+                    return result.SetFailureResult(
+                        "DeleteUserApiKey:NOT_FOUND",
+                        "The specified API Key does not exist or you do not have permission to delete it."
+                    );
+                }
+
+                var deletionResult = await _userApiKeyManager.DeleteUserApiKeyAsync(userData.Email, userApiKeyId);
+                if (!deletionResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteUserApiKey:{deletionResult.Code}",
+                        deletionResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
             {
-                return validationResult.SetFailureResult("DELETE:INVALID_ID", "API Key ID is required.");
+                return result.SetFailureResult(
+                    "DeleteUserApiKey:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
             }
-
-            // Security Check: Ensure the key being deleted actually belongs to the user.
-            if (!user.UserApiKeys.Any(key => key.Id == userApiKeyId))
-            {
-                return validationResult.SetFailureResult("DELETE:NOT_FOUND", "The specified API Key does not exist or you do not have permission to delete it.");
-            }
-
-            var deletionResult = await _userApiKeyManager.DeleteUserApiKeyAsync(user.Email, userApiKeyId);
-
-            if (!deletionResult.Success)
-            {
-                validationResult.Code = deletionResult.Code;
-                validationResult.Message = deletionResult.Message;
-                return validationResult;
-            }
-
-            return validationResult.SetSuccessResult();
         }
     }
 }

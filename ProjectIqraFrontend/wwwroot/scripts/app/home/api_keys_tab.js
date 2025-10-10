@@ -1,5 +1,4 @@
 ﻿/** Global Variables */
-var CurrentApiKeysList = [];
 var isDeletingApiKey = false;
 
 var searchTimeout = null;
@@ -25,26 +24,6 @@ const generatedApiKeyValueInput = apiKeyGeneratedModal.find("#generatedApiKeyVal
 const copyApiKeyButton = apiKeyGeneratedModal.find("#copyApiKeyButton");
 
 /** API Functions **/
-function FetchApiKeysFromAPI(successCallback, errorCallback) {
-    $.ajax({
-        url: '/app/api-keys/list',
-        type: 'POST',
-        dataType: "json",
-        success: (response) => {
-            if (!response.success) {
-                errorCallback(response);
-                return;
-            }
-
-            CurrentApiKeysList = response.data;
-            successCallback(response.data);
-        },
-        error: (error) => {
-            errorCallback(error);
-        }
-    });
-}
-
 function CreateNewApiKeyToAPI(formData, successCallback, errorCallback) {
     $.ajax({
         url: '/app/api-keys/create',
@@ -59,7 +38,7 @@ function CreateNewApiKeyToAPI(formData, successCallback, errorCallback) {
                 return;
             }
 
-            CurrentApiKeysList.push(response.data);
+            MasterUserData.apiKeys.push(response.data);
             successCallback(response.data);
         },
         error: (error) => {
@@ -84,9 +63,9 @@ function DeleteApiKeyFromAPI(formData, successCallback, errorCallback) {
                 return;
             }
 
-            const index = CurrentApiKeysList.findIndex(key => key.id === keyIdToDelete);
+            const index = MasterUserData.apiKeys.findIndex(key => key.id === keyIdToDelete);
             if (index > -1) {
-                CurrentApiKeysList.splice(index, 1);
+                MasterUserData.apiKeys.splice(index, 1);
             }
             successCallback(response.data);
         },
@@ -120,12 +99,12 @@ function CreateApiKeyTableRow(apiKeyData) {
 
 function FillApiKeysList() {
     apiKeysTableBody.empty();
-    if (CurrentApiKeysList.length === 0) {
+    if (MasterUserData.apiKeys.length === 0) {
         showNoApiResultsMessage(true, "", true); // Show an initial empty message
         return;
     }
     hideNoApiResultsMessage();
-    CurrentApiKeysList.forEach((apiKeyData) => {
+    MasterUserData.apiKeys.forEach((apiKeyData) => {
         const apiKeyRowElement = CreateApiKeyTableRow(apiKeyData);
         apiKeysTableBody.append(apiKeyRowElement);
     });
@@ -190,7 +169,7 @@ function clearApiKeySearch() {
     isSearchActive = false;
     hideNoApiResultsMessage();
     apiKeysTableBody.find('tr').fadeIn(200);
-    if (CurrentApiKeysList.length === 0) {
+    if (MasterUserData.apiKeys.length === 0) {
         showNoApiResultsMessage(true, "", true);
     }
 }
@@ -243,14 +222,6 @@ function debounceSearch(searchTerm) {
 
 /** INIT **/
 function InitApiKeysTab() {
-    FetchApiKeysFromAPI(
-        (apiKeys) => FillApiKeysList(),
-        (error) => {
-            AlertManager.createAlert({ type: "danger", message: "Error fetching API Keys.", enableDismiss: false });
-            console.error("Error fetching API Keys: ", error);
-        }
-    );
-
     // Event Handlers
     addNewApiKeyButton.on("click", () => FillAddApiKeyModalBusinesses());
     addApiKeyNameInput.on("input", () => ValidateAddApiKeyModal(true));
@@ -280,8 +251,11 @@ function InitApiKeysTab() {
 
         CreateNewApiKeyToAPI(
             formData,
-            (newKeyData) => {
+            (response) => {
                 hideNoApiResultsMessage(); // Remove "No keys" message if it exists
+                var newKeyData = response.createdKey;
+                var rawApiKey = response.rawApiKey;
+
                 const newRow = CreateApiKeyTableRow(newKeyData);
                 apiKeysTableBody.append(newRow).children().last().hide().fadeIn(300);
 
@@ -290,7 +264,7 @@ function InitApiKeysTab() {
                 }
 
                 addApiKeyModal.modal("hide");
-                generatedApiKeyValueInput.val(newKeyData.apiKey);
+                generatedApiKeyValueInput.val(rawApiKey);
                 apiKeyGeneratedModal.modal("show");
                 createApiKeyConfirmButton.prop("disabled", false);
                 createApiKeyButtonSpinner.addClass("d-none");
@@ -333,7 +307,7 @@ function InitApiKeysTab() {
                 rowElement.fadeOut(400, function () { $(this).remove(); });
                 if (isSearchActive) {
                     performApiKeySearch(searchApiKeysInput.val());
-                } else if (CurrentApiKeysList.length === 0) {
+                } else if (MasterUserData.apiKeys.length === 0) {
                     showNoApiResultsMessage(true, "", true);
                 }
                 isDeletingApiKey = false;
@@ -384,4 +358,7 @@ function InitApiKeysTab() {
 
     searchApiKeysInput.on("focus", () => searchApiKeysInput.parent().addClass('input-group-focus'));
     searchApiKeysInput.on("blur", () => searchApiKeysInput.parent().removeClass('input-group-focus'));
+
+    // Init
+    FillApiKeysList();
 }

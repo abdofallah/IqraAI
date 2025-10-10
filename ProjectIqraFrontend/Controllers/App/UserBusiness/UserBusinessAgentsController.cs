@@ -5,7 +5,6 @@ using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using ProjectIqraFrontend.Middlewares;
@@ -14,7 +13,6 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessAgentsController : Controller
     {
-        private readonly UserManager _userManager
         private readonly BusinessManager _businessManager;
         private readonly LLMProviderManager _llmProviderManager;
         private readonly STTProviderManager _sttProviderManager;
@@ -22,7 +20,6 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
 
         public UserBusinessAgentsController(
-            UserManager userManager,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
             LLMProviderManager llmProviderManager,
@@ -31,7 +28,6 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             UserSessionValidationHelper userSessionValidationHelper
         )
         {
-            _userManager = userManager;
             _businessManager = businessManager;
             _llmProviderManager = llmProviderManager;
             _sttProviderManager = sttProviderManager;
