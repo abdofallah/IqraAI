@@ -39,8 +39,24 @@ namespace IqraInfrastructure.Managers.Business
             _integrationConfigurationManager = integrationConfigurationManager;
         }
 
+        // CURD
+        public async Task<bool> CheckAgentExists(long businessId, string agentId)
+        {
+            return await _businessAppRepository.CheckAgentExists(businessId, agentId);
+        }
+
+        public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
+        {
+            return await _businessAppRepository.GetAgentById(businessId, agentId); ;
+        }
+
+        public async Task<bool> CheckAgentScriptExists(long businessId, string agentId, string scriptId)
+        {
+            return await _businessAppRepository.CheckAgentScriptExists(businessId, agentId, scriptId);
+        }
+
         // SAVING/ADDING AGENT
-        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, BusinessAppAgent? existingAgentData, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
+        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, string? exisitingAgentId, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
         {
             var result = new FunctionReturnResult<BusinessAppAgent?>();
 
@@ -1224,19 +1240,30 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else if (backgroundAudioUrl == "previous")
                     {
-                        if (string.IsNullOrWhiteSpace(existingAgentData.Settings.BackgroundAudioUrl))
+                        if (postType != "edit")
                         {
-                            result.Code = "AddOrUpdateAgent:28";
-                            result.Message = "Previous background audio url not found.";
-                            return result;
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:PREVIOUS_BACKGROUND_AUDIO_URL_INVALID",
+                                "Invalid background audio url type. Previous is only allowed when editing an agent."
+                            );
                         }
-                        newAgentData.Settings.BackgroundAudioUrl = existingAgentData.Settings.BackgroundAudioUrl;
+
+                        var exisitingAgentSettingsBackgroundAudioUrl = await _businessAppRepository.GetAgentSettingsBackgroundAudioUrl(businessId, exisitingAgentId!);
+                        if (string.IsNullOrWhiteSpace(exisitingAgentSettingsBackgroundAudioUrl))
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:PREVIOUS_BACKGROUND_AUDIO_URL_NOTFOUND",
+                                "Previous background audio url not found."
+                            );
+                        }
+                        newAgentData.Settings.BackgroundAudioUrl = exisitingAgentSettingsBackgroundAudioUrl;
                     }
                     else
                     {
-                        result.Code = "AddOrUpdateAgent:29";
-                        result.Message = "Invalid background audio url type (allowed custom or previous).";
-                        return result;
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:INVALID_BACKGROUND_AUDIO_URL_TYPE",
+                            "Invalid background audio url type (allowed custom or previous)."
+                        );
                     }
 
                     if (!settingsTabElement.TryGetProperty("backgroundAudioVolume", out var backgroundAudioVolumeElement))
@@ -1271,10 +1298,9 @@ namespace IqraInfrastructure.Managers.Business
             }
             else if (postType == "edit")
             {
-                newAgentData.Id = existingAgentData.Id;
-                newAgentData.Scripts = existingAgentData.Scripts;
+                newAgentData.Id = exisitingAgentId!;
 
-                var updateAgentResult = await _businessAppRepository.UpdateAgent(businessId, newAgentData);
+                var updateAgentResult = await _businessAppRepository.UpdateAgentDataExceptScripts(businessId, newAgentData);
                 if (!updateAgentResult)
                 {
                     result.Code = "AddOrUpdateAgent:21";
@@ -1283,21 +1309,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
-            result.Success = true;
-            result.Data = newAgentData;
-            return result;
-        }
-
-        public async Task<bool> CheckAgentExists(long businessId, string agentId)
-        {
-            var result = await _businessAppRepository.CheckAgentExists(businessId, agentId);
-            return result;
-        }
-
-        public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
-        {
-            var result = await _businessAppRepository.GetAgentById(businessId, agentId);
-            return result;
+            return result.SetSuccessResult(newAgentData);
         }
 
         // SAVING/ADDING SCRIPT
@@ -1306,7 +1318,7 @@ namespace IqraInfrastructure.Managers.Business
             string agentId,
             string postType,
             IFormCollection formData,
-            BusinessAppAgentScript? existingScriptData
+            string? existingScriptId
         )
         {
             var result = new FunctionReturnResult<BusinessAppAgentScript?>();
@@ -1382,15 +1394,14 @@ namespace IqraInfrastructure.Managers.Business
                 return result;
             }
 
-            var validateNodesResult = await ValidateAndCreateNodes(businessId, agentId, existingScriptData?.Id, nodesElement, businessLanguages);
+            var validateNodesResult = await ValidateAndCreateNodes(businessId, agentId, existingScriptId, nodesElement, businessLanguages);
             if (!validateNodesResult.Success)
             {
                 result.Code = "AddOrUpdateAgentScript:" + validateNodesResult.Code;
                 result.Message = validateNodesResult.Message;
                 return result;
             }
-
-            newScriptData.Nodes = validateNodesResult.Data;
+            newScriptData.Nodes = validateNodesResult.Data!;
 
             // Edges Section
             if (!changesRootElement.TryGetProperty("edges", out var edgesElement))
@@ -1407,8 +1418,7 @@ namespace IqraInfrastructure.Managers.Business
                 result.Message = validateEdgesResult.Message;
                 return result;
             }
-
-            newScriptData.Edges = validateEdgesResult.Data;
+            newScriptData.Edges = validateEdgesResult.Data!;
 
             // Additional Validations
             if (newScriptData.Nodes.Count == 0)
@@ -1441,7 +1451,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    newScriptData.Id = existingScriptData.Id;
+                    newScriptData.Id = existingScriptId!;
 
                     var updateResult = await _businessAppRepository.UpdateAgentScript(businessId, agentId, newScriptData);
                     if (!updateResult)

@@ -9,6 +9,7 @@ using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
@@ -20,6 +21,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         private readonly LLMProviderManager _llmProviderManager;
         private readonly STTProviderManager _sttProviderManager;
         private readonly TTSProviderManager _ttsProviderManager;
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
 
         public UserBusinessAgentsController(
             UserManager userManager,
@@ -27,7 +29,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             IntegrationsManager integrationsManager,
             LLMProviderManager llmProviderManager,
             STTProviderManager sttProviderManager,
-            TTSProviderManager ttsProviderManager
+            TTSProviderManager ttsProviderManager,
+            UserSessionValidationHelper userSessionValidationHelper
         )
         {
             _userManager = userManager;
@@ -35,6 +38,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             _llmProviderManager = llmProviderManager;
             _sttProviderManager = sttProviderManager;
             _ttsProviderManager = ttsProviderManager;
+            _userSessionValidationHelper = userSessionValidationHelper;
         }
 
         [HttpPost("/app/user/business/{businessId}/agents/save")]
@@ -42,165 +46,112 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppAgent?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveBusinessAgent:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessAgent:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessAgent:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessAgent:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkBusinessesDisabled: true,
+                    checkBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    return result.SetFailureResult(
+                        $"SaveBusinessAgent:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Business Agents Permission
+                if (businessData.Permission.Agents.DisabledFullAt != null)
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessAgent:BUSINESS_AGENTS_DISABLED_FULL",
+                        $"Business does not have permission to access agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledFullReason) ? "." : ": " + businessData.Permission.Agents.DisabledFullReason)}"
+                    );
                 }
 
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
                 {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
+                    return result.SetFailureResult(
+                        "SaveBusinessAgent:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
                 }
 
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessAgent:5";
-                result.Message = "User does not own this business";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessAgent:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessAgent:8";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                string? exisitingAgentId = null;
+                if (postType == "new")
                 {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Agents.DisabledFullAt != null)
-            {
-                result.Code = "SaveBusinessAgent:9";
-                result.Message = "Business does not have permission to access agents";
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Agents.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Agents.DisabledFullReason;
-                }
-
-                return result;
-            }
-
-            string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
-            {
-                result.Code = "SaveBusinessAgent:10";
-                result.Message = "Invalid post type";
-                return result;
-            }
-
-            formData.TryGetValue("agentId", out StringValues existingAgentIdValue);
-            string? existingAgentId = existingAgentIdValue.ToString();
-            BusinessAppAgent? existingAgentData = null;
-
-            if (postType == "new")
-            {
-                if (businessResult.Data.Permission.Agents.DisabledAddingAt != null)
-                {
-                    result.Code = "SaveBusinessAgent:11";
-                    result.Message = "Business does not have permission to add new agents";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Agents.DisabledAddingReason))
+                    if (businessData.Permission.Agents.DisabledAddingAt != null)
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Agents.DisabledAddingReason;
+                        return result.SetFailureResult(
+                            "SaveBusinessAgent:BUSINESS_AGENTS_DISABLED_ADDING",
+                            $"Business does not have permission to add new agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledAddingReason) ? "." : ": " + businessData.Permission.Agents.DisabledAddingReason)}"
+                        );
+                    }
+                }
+                else if (postType == "edit")
+                {
+                    if (businessData.Permission.Agents.DisabledEditingAt != null)
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessAgent:BUSINESS_AGENTS_DISABLED_EDITING",
+                            $"Business does not have permission to edit agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledEditingReason) ? "." : ": " + businessData.Permission.Agents.DisabledEditingReason)}"
+                        );
                     }
 
-                    return result;
-                }
-            }
-            else if (postType == "edit")
-            {
-                if (businessResult.Data.Permission.Agents.DisabledEditingAt != null)
-                {
-                    result.Code = "SaveBusinessAgent:12";
-                    result.Message = "Business does not have permission to edit agents";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Agents.DisabledEditingReason))
+                    if (!formData.TryGetValue("agentId", out StringValues existingAgentIdValue))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Agents.DisabledEditingReason;
+                        return result.SetFailureResult(
+                            "SaveBusinessAgent:MISSING_EXISTING_AGENT_ID",
+                            "Existing Agent ID is required for edit mode."
+                        );
+                    }
+                    exisitingAgentId = existingAgentIdValue.ToString();
+                    if (string.IsNullOrWhiteSpace(exisitingAgentId))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessAgent:INVALID_EXISTING_AGENT_ID",
+                            "Existing Agent ID is invalid."
+                        );
                     }
 
-                    return result;
+                    var checkAgentExists = await _businessManager.GetAgentsManager().CheckAgentExists(businessId, exisitingAgentId);
+                    if (checkAgentExists == false)
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessAgent:AGENT_DOES_NOT_EXIST",
+                            "Agent does not exist for business."
+                        );
+                    }
                 }
 
-                if (string.IsNullOrWhiteSpace(existingAgentId))
+                // Forward Result
+                var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, exisitingAgentId, _llmProviderManager, _sttProviderManager, _ttsProviderManager);
+                if (!addOrUpdateResult.Success)
                 {
-                    result.Code = "SaveBusinessAgent:13";
-                    result.Message = "Missing existing agent id";
-                    return result;
+                    return result.SetFailureResult(
+                        $"SaveBusinessAgent:{addOrUpdateResult.Code}",
+                        addOrUpdateResult.Message
+                    );
                 }
 
-                existingAgentData = await _businessManager.GetAgentsManager().GetAgentById(businessId, existingAgentId);
-                if (existingAgentData == null)
-                {
-                    result.Code = "SaveBusinessAgent:14";
-                    result.Message = "Agent does not exist";
-                    return result;
-                }
+                return result.SetSuccessResult(addOrUpdateResult.Data);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "SaveBusinessAgent:EXCEPTION",
+                    $"Internal Server Error: {ex.Message}"
+                );
             }
             
-            var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, existingAgentData, _llmProviderManager, _sttProviderManager, _ttsProviderManager);
-            if (!addOrUpdateResult.Success)
-            {
-                result.Code = "SaveBusinessAgent:" + addOrUpdateResult.Code;
-                result.Message = addOrUpdateResult.Message;
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = addOrUpdateResult.Data;
-            return result;
         }
 
         [HttpPost("/app/user/business/{businessId}/agents/script/save")]
@@ -208,167 +159,130 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppAgentScript?>();
 
-            // Session validation
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveBusinessAgentScript:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessAgentScript:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            // User validation
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessAgentScript:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            // User permissions
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessAgentScript:4";
-                result.Message = "User does not have permission to edit businesses";
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkBusinessesDisabled: true,
+                    checkBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    return result.SetFailureResult(
+                        $"SaveBusinessAgentScript:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
                 }
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Agents Permission
+                if (businessData.Permission.Agents.DisabledFullAt != null)
                 {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
+                    return result.SetFailureResult(
+                        "SaveBusinessAgentScript:BUSINESS_AGENTS_DISABLED_FULL",
+                        $"Business does not have permission to access agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledFullReason) ? "." : ": " + businessData.Permission.Agents.DisabledFullReason)}"
+                    );
                 }
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessAgentScript:5";
-                result.Message = "User does not own this business";
-                return result;
-            }
-
-            // Business validation
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessAgentScript:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            // Business permissions
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessAgentScript:6";
-                result.Message = "Business is currently disabled";
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                if (businessData.Permission.Agents.DisabledEditingAt != null)
                 {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-                return result;
-            }
-
-            // Agents Permissions
-            if (businessResult.Data.Permission.Agents.DisabledFullAt != null || businessResult.Data.Permission.Agents.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessAgentScript:7";
-                result.Message = "Business does not have permission to access agents";
-
-                if (businessResult.Data.Permission.Agents.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.Agents.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Agents.DisabledFullReason;
-                }
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Agents.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Agents.DisabledEditingReason;
+                    return result.SetFailureResult(
+                        "SaveBusinessAgentScript:BUSINESS_AGENTS_DISABLED_EDITING",
+                        $"Business does not have permission to edit agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledEditingReason) ? "." : ": " + businessData.Permission.Agents.DisabledEditingReason)}"
+                    );
                 }
 
-                return result;
-            }
-
-            // Post type validation
-            string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
-            {
-                result.Code = "SaveBusinessAgentScript:8";
-                result.Message = "Invalid post type";
-                return result;
-            }
-
-            // Agent validation
-            formData.TryGetValue("agentId", out StringValues agentIdValue);
-            string? agentId = agentIdValue.ToString();
-            if (string.IsNullOrWhiteSpace(agentId))
-            {
-                result.Code = "SaveBusinessAgentScript:9";
-                result.Message = "Agent ID is required";
-                return result;
-            }
-
-            var agent = await _businessManager.GetAgentsManager().GetAgentById(businessId, agentId);
-            if (agent == null)
-            {
-                result.Code = "SaveBusinessAgentScript:10";
-                result.Message = "Agent not found";
-                return result;
-            }
-
-            // Script validation for edit mode
-            BusinessAppAgentScript? existingScriptData = null;
-            if (postType == "edit")
-            {
-                formData.TryGetValue("scriptId", out StringValues scriptIdValue);
-                string? scriptId = scriptIdValue.ToString();
-                if (string.IsNullOrWhiteSpace(scriptId))
+                // Post type validation
+                string? postType = formData["postType"].ToString();
+                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
                 {
-                    result.Code = "SaveBusinessAgentScript:11";
-                    result.Message = "Script ID is required for edit mode";
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessAgentScript:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
                 }
 
-                existingScriptData = agent.Scripts.FirstOrDefault(s => s.Id == scriptId);
-                if (existingScriptData == null)
+                // Agent Id/Data validation
+                if (!formData.TryGetValue("agentId", out StringValues agentIdValue))
                 {
-                    result.Code = "SaveBusinessAgentScript:12";
-                    result.Message = "Script not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessAgentScript:MISSING_AGENT_ID",
+                        "Agent ID is missing."
+                    );
                 }
+                var agentId = agentIdValue.ToString();
+                if (string.IsNullOrWhiteSpace(agentId))
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessAgentScript:INVALID_AGENT_ID",
+                        "Agent ID is required."
+                    );
+                }
+                var agentExists = await _businessManager.GetAgentsManager().CheckAgentExists(businessId, agentId);
+                if (!agentExists)
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessAgentScript:AGENT_NOT_FOUND",
+                        "Agent not found for business."
+                    );
+                }
+
+                // Script validation for edit mode
+                string? existingScriptId = null;
+                if (postType == "edit")
+                {
+                    if (!formData.TryGetValue("scriptId", out StringValues scriptIdValue))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessAgentScript:MISSING_AGENT_SCRIPT_ID",
+                            "Agent Script ID is missing for edit mode"
+                        );
+                    }
+                    existingScriptId = scriptIdValue.ToString();
+                    if (string.IsNullOrWhiteSpace(existingScriptId))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessAgentScript:INVALID_AGENT_SCRIPT_ID",
+                            "Agent Script ID is required for edit mode"
+                        );
+                    }
+                    var agentScriptExists = await _businessManager.GetAgentsManager().CheckAgentScriptExists(businessId, agentId, existingScriptId);
+                    if (!agentScriptExists)
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessAgentScript:AGENT_SCRIPT_NOT_FOUND",
+                            "Agent script not found"
+                        );
+                    }
+                }
+
+                var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgentScript(
+                    businessId,
+                    agentId,
+                    postType,
+                    formData,
+                    existingScriptId
+                );
+                if (!addOrUpdateResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessAgentScript:" + addOrUpdateResult.Code,
+                        addOrUpdateResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(addOrUpdateResult.Data);
             }
-
-            var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgentScript(
-                businessId,
-                agentId,
-                postType,
-                formData,
-                existingScriptData
-            );
-
-            if (!addOrUpdateResult.Success)
+            catch (Exception ex)
             {
-                result.Code = "SaveBusinessAgentScript:" + addOrUpdateResult.Code;
-                result.Message = addOrUpdateResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessAgentScript:EXCEPTION",
+                    $"Internal Server Error: {ex.Message}"
+                );
             }
-
-            result.Success = true;
-            result.Data = addOrUpdateResult.Data;
-            return result;
         }
     }
 

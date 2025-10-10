@@ -2,7 +2,7 @@
 {
     public class BusinessAppAgent
     {
-        public string Id { get; set; }
+        public string Id { get; set; } = Guid.NewGuid().ToString();
         public BusinessAppAgentGeneral General { get; set; } = new BusinessAppAgentGeneral();
         public BusinessAppAgentContext Context { get; set; } = new BusinessAppAgentContext();
         public BusinessAppAgentPersonality Personality { get; set; } = new BusinessAppAgentPersonality();

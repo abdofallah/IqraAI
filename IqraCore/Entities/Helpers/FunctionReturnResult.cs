@@ -2,7 +2,7 @@
 {
     public class FunctionReturnResult<T> : FunctionReturnResult
     {
-        public T? Data { get; set; } = default(T); // todo set as internal set
+        public T? Data { get; set; } = default(T);
 
         public FunctionReturnResult<T> SetSuccessResult(T? data, string? message = null)
         {
@@ -26,9 +26,9 @@
 
     public class FunctionReturnResult
     {
-        public bool Success { get; set; } = false; // todo set as internal set
-        public string? Message { get; set; } = null; // todo set as internal set
-        public string? Code { get; set; } = null; // todo set as internal set
+        public bool Success { get; set; } = false;
+        public string? Message { get; set; } = null;
+        public string? Code { get; set; } = null;
 
         public FunctionReturnResult SetSuccessResult()
         {

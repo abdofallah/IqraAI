@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Archived;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.KnowledgeBase;
+using IqraInfrastructure.Helpers.MongoDB;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -598,95 +599,134 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, t => t.Id == existingAgentId)
             );
 
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> AddAgent(long businessId, BusinessAppAgent agent)
         {
-            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.Not(
+                    Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agent.Id)
+                )
+            );
+
             var update = Builders<BusinessApp>.Update.Push(b => b.Agents, agent);
+
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+
+            return result.IsAcknowledged && result.ModifiedCount > 0;
         }
 
-        public async Task<bool> UpdateAgent(long businessId, BusinessAppAgent agent)
+        public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
+        {
+            var agentQuery = _businessAppCollection.AsQueryable()
+                .Where(b => b.Id == businessId)
+                .SelectMany(b => b.Agents)
+                .Where(agent => agent.Id == agentId);
+
+            return await agentQuery.FirstOrDefaultAsync();
+        }
+
+        public async Task<string?> GetAgentSettingsBackgroundAudioUrl(long businessId, string agentId)
+        {
+            var urlQuery = _businessAppCollection.AsQueryable()
+                .Where(b => b.Id == businessId)
+                .SelectMany(b => b.Agents)
+                .Where(agent => agent.Id == agentId)
+                .Select(agent => agent.Settings.BackgroundAudioUrl);
+
+            return await urlQuery.FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> UpdateAgentDataExceptScripts(long businessId, BusinessAppAgent agent)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, g => g.Id == agent.Id)
             );
-            var update = Builders<BusinessApp>.Update.Set(
-                $"Agents.$",
-                new BsonDocument(agent.ToBsonDocument())
-            );
+
+            var update = Builders<BusinessApp>.Update
+                .Set(d => d.Agents.FirstMatchingElement().General, agent.General)
+                .Set(d => d.Agents.FirstMatchingElement().Context, agent.Context)
+                .Set(d => d.Agents.FirstMatchingElement().Personality, agent.Personality)
+                .Set(d => d.Agents.FirstMatchingElement().Utterances, agent.Utterances)
+                .Set(d => d.Agents.FirstMatchingElement().Interruptions, agent.Interruptions)
+                .Set(d => d.Agents.FirstMatchingElement().KnowledgeBase, agent.KnowledgeBase)
+                .Set(d => d.Agents.FirstMatchingElement().Integrations, agent.Integrations)
+                .Set(d => d.Agents.FirstMatchingElement().Cache, agent.Cache)
+                .Set(d => d.Agents.FirstMatchingElement().Settings, agent.Settings);
+
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+
+            return result.IsAcknowledged && result.ModifiedCount > 0;
         }
 
-        public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
-        {
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, t => t.Id == agentId)
-            );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result?.Agents.FirstOrDefault(t => t.Id == agentId);
-        }
-
+        // Agent Scripts
         public async Task<bool> AddAgentScript(long businessId, string agentId, BusinessAppAgentScript newScriptData)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, agent =>
+                    agent.Id == agentId &&
+                    !agent.Scripts.Any(script => script.Id == newScriptData.Id)
+                )
             );
 
-            var update = Builders<BusinessApp>.Update.Push(
-                "Agents.$.Scripts",
-                newScriptData
-            );
+            var update = Builders<BusinessApp>.Update.Push(d => d.Agents.FirstMatchingElement().Scripts, newScriptData);
 
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged && result.ModifiedCount > 0;
         }
-
+        
         public async Task<bool> UpdateAgentScript(long businessId, string agentId, BusinessAppAgentScript updatedScriptData)
         {
-            // Simpler filter - we just need to match the business ID
-            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            const string UpdateAgentScriptAgentPathIdentifier = "agentElem";
+            const string UpdateAgentScriptScriptPathIdentifier = "scriptElem";
+            const string UpdateAgentScriptUpdatePath = $"{nameof(BusinessApp.Agents)}.$[{UpdateAgentScriptAgentPathIdentifier}].{nameof(BusinessAppAgent.Scripts)}.$[{UpdateAgentScriptScriptPathIdentifier}]";
 
-            // Update with proper positional operator syntax
-            var update = Builders<BusinessApp>.Update.Set(
-                "Agents.$[agentElem].Scripts.$[scriptElem]",
-                updatedScriptData
-            );
-
-            // Array filters with correct syntax
-            var arrayFilters = new List<ArrayFilterDefinition>
+            try
             {
-                new BsonDocumentArrayFilterDefinition<BsonDocument>(
-                    new BsonDocument("agentElem._id", agentId)
-                ),
-                new BsonDocumentArrayFilterDefinition<BsonDocument>(
-                    new BsonDocument("scriptElem._id", updatedScriptData.Id)
-                )
-            };
+                var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents,
+                        a => a.Id == agentId &&
+                        a.Scripts.Any(s => s.Id == updatedScriptData.Id)
+                    )
+                );
 
-            var updateOptions = new UpdateOptions { ArrayFilters = arrayFilters };
+                var update = Builders<BusinessApp>.Update.Set(UpdateAgentScriptUpdatePath, updatedScriptData);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update, updateOptions);
-            return result.ModifiedCount > 0;
+                var arrayFilters = new List<ArrayFilterDefinition>
+                {
+                    TypeSafeArrayFilter.Create<BusinessAppAgent>(UpdateAgentScriptAgentPathIdentifier, agent => agent.Id == agentId),
+                    TypeSafeArrayFilter.Create<BusinessAppAgentScript>(UpdateAgentScriptScriptPathIdentifier, script => script.Id == updatedScriptData.Id)
+                };
+
+                var updateOptions = new UpdateOptions { ArrayFilters = arrayFilters };
+
+                var result = await _businessAppCollection.UpdateOneAsync(filter, update, updateOptions);
+                return result.IsAcknowledged && result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
         }
 
         public async Task<bool> CheckAgentScriptExists(long businessId, string agentId, string scriptId)
         {
+            var agentFilter = Builders<BusinessAppAgent>.Filter.And(
+                Builders<BusinessAppAgent>.Filter.Eq(agent => agent.Id, agentId),
+                Builders<BusinessAppAgent>.Filter.ElemMatch(agent => agent.Scripts, script => script.Id == scriptId)
+            );
+
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, t => t.Id == agentId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents.FirstMatchingElement().Scripts, t => t.Id == scriptId)
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, agentFilter)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         /**

@@ -1,8 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using ProjectIqraFrontend.Middlewares;
@@ -38,13 +36,15 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = $"SaveBusinessMessageGroup:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    $"SaveBusinessMessageGroup:{userSessionAndBusinessValidationResult.Code}",
+                    userSessionAndBusinessValidationResult.Message
+                );
             }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
+            // Business Cache Permissions
             if (businessData.Permission.Cache.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessMessageGroup:9";
@@ -57,7 +57,6 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 
                 return result;
             }
-
             if (businessData.Permission.Cache.MessageGroup.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessMessageGroup:10";
@@ -156,12 +155,13 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = $"SaveBusinessMessageGroupMessage:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    $"SaveBusinessMessageGroupMessage:{userSessionAndBusinessValidationResult.Code}",
+                    userSessionAndBusinessValidationResult.Message
+                );
             }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
             if (businessData.Permission.Cache.DisabledFullAt != null)
             {
@@ -319,12 +319,13 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = $"SaveBusinessAudioGroup:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    $"SaveBusinessAudioGroup:{userSessionAndBusinessValidationResult.Code}",
+                    userSessionAndBusinessValidationResult.Message
+                );
             }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
             if (businessData.Permission.Cache.DisabledFullAt != null)
             {
@@ -437,12 +438,13 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = $"SaveBusinessAudioGroupAudio:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    $"SaveBusinessAudioGroupAudio:{userSessionAndBusinessValidationResult.Code}",
+                    userSessionAndBusinessValidationResult.Message
+                );
             }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
             if (businessData.Permission.Cache.DisabledFullAt != null)
             {
@@ -600,12 +602,13 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = $"SaveBusinessEmbeddingGroup:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    $"SaveBusinessEmbeddingGroup:{userSessionAndBusinessValidationResult.Code}",
+                    userSessionAndBusinessValidationResult.Message
+                );
             }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
             if (businessData.Permission.Cache.DisabledFullAt != null)
             {
@@ -716,12 +719,13 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = $"SaveBusinessEmbeddingGroupEmbedding:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    $"SaveBusinessEmbeddingGroupEmbedding:{userSessionAndBusinessValidationResult.Code}",
+                    userSessionAndBusinessValidationResult.Message
+                );
             }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
             if (businessData.Permission.Cache.DisabledFullAt != null)
             {
