@@ -23,9 +23,9 @@ namespace ProjectIqraFrontend.Middlewares
             _businessManager = businessManager;
         }
 
-        public async Task<FunctionReturnResult<UserData>> ValidateUserSessionAsync(HttpRequest Request, bool checkUserDisabled = true)
+        public async Task<FunctionReturnResult<string?>> ValidateUserSessionAsync(HttpRequest Request)
         {
-            var result = new FunctionReturnResult<UserData>();
+            var result = new FunctionReturnResult<string?>();
 
             // Validate session
             string? sessionId = Request.Cookies["sessionId"];
@@ -34,25 +34,43 @@ namespace ProjectIqraFrontend.Middlewares
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                return result.SetFailureResult("ValidateSessionAsync:INVALID_SESSION_DATA", "Invalid session data");
+                return result.SetFailureResult("ValidateUserSessionAsync:INVALID_SESSION_DATA", "Invalid session data");
             }
 
             if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
-                return result.SetFailureResult("ValidateSessionAsync:SESSION_VALIDATION_FAILED", "Session validation failed");
+                return result.SetFailureResult("ValidateUserSessionAsync:SESSION_VALIDATION_FAILED", "Session validation failed");
             }
+
+            return result.SetSuccessResult(userEmail);
+        }
+
+        public async Task<FunctionReturnResult<UserData>> ValidateUserSessionAndGetUserAsync(HttpRequest Request, bool checkUserDisabled = true)
+        {
+            var result = new FunctionReturnResult<UserData>();
+
+            // Validate session
+            var validateUserSessionResult = await ValidateUserSessionAsync(Request);
+            if (!validateUserSessionResult.Success)
+            {
+                return result.SetFailureResult(
+                    $"ValidateUserSessionAndGetUserAsync:{validateUserSessionResult.Code}",
+                    validateUserSessionResult.Message
+                );
+            }
+            var userEmail = validateUserSessionResult.Data!;
 
             // Get and validate user
             var userData = await _userManager.GetUserByEmail(userEmail);
             if (userData == null)
             {
-                return result.SetFailureResult("ValidateSessionAsync:USER_DATA_NOT_FOUND", "User not found");
+                return result.SetFailureResult("ValidateUserSessionAndGetUserAsync:USER_DATA_NOT_FOUND", "User not found");
             }
 
             if (checkUserDisabled && userData.Permission.DisableUserAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateSessionAsync:USER_DISABLED",
+                    "ValidateUserSessionAndGetUserAsync:USER_DISABLED",
                     $"User is disabled: {userData.Permission.UserDisabledReason}"
                 );
             }
@@ -60,7 +78,7 @@ namespace ProjectIqraFrontend.Middlewares
             return result.SetSuccessResult(userData);
         }
 
-        public async Task<FunctionReturnResult<ValidateUserAndBusinessResult?>> ValidateUserAndBusinessSessionAsync(
+        public async Task<FunctionReturnResult<ValidateUserAndBusinessResult?>> ValidateUserSessionAndGetUserAndBusinessAsync(
             HttpRequest Request,
             long businessId,
 
@@ -74,11 +92,11 @@ namespace ProjectIqraFrontend.Middlewares
         {
             var result = new FunctionReturnResult<ValidateUserAndBusinessResult?>();
 
-            var userSessionValidationResult = await ValidateUserSessionAsync(Request, checkUserDisabled);
+            var userSessionValidationResult = await ValidateUserSessionAndGetUserAsync(Request, checkUserDisabled);
             if (!userSessionValidationResult.Success)
             {
                 return result.SetFailureResult(
-                    $"ValidateUserAndBusinessSessionAsync:{userSessionValidationResult.Code}",
+                    $"ValidateUserSessionAndGetUserAndBusinessAsync:{userSessionValidationResult.Code}",
                     userSessionValidationResult.Message
                 );
             }
@@ -88,7 +106,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (checkBusinessesDisabled && userData.Permission.Business.DisableBusinessesAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateUserAndBusinessSessionAsync:BUSINESSES_DISABLED",
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESSES_DISABLED",
                     $"Bussinesses are disabled for the user: {userData.Permission.Business.DisableBusinessesReason}"
                 );
             }
@@ -97,7 +115,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (checkBusinessesAddingEnabled && userData.Permission.Business.AddBusinessDisabledAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateUserAndBusinessSessionAsync:BUSINESSES_ADDING_DISABLED",
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESSES_ADDING_DISABLED",
                     $"Bussinesses adding is disabled for the user: {userData.Permission.Business.AddBusinessDisableReason}"
                 );
             }
@@ -106,7 +124,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (checkBusinessesEditingEnabled && userData.Permission.Business.EditBusinessDisabledAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateUserAndBusinessSessionAsync:BUSINESSES_EDITING_DISABLED",
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESSES_EDITING_DISABLED",
                     $"Bussinesses editing is disabled for the user: {userData.Permission.Business.EditBusinessDisableReason}"
                 );
             }
@@ -115,7 +133,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (checkBusinessDeletingEnabled && userData.Permission.Business.DeleteBusinessDisableAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateUserAndBusinessSessionAsync:BUSINESSES_DELETING_DISABLED",
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESSES_DELETING_DISABLED",
                     $"Bussinesses deleting is disabled for the user: {userData.Permission.Business.DeleteBusinessDisableReason}"
                 );
             }
@@ -125,7 +143,7 @@ namespace ProjectIqraFrontend.Middlewares
             if (!businessGetResult.Success)
             {
                 return result.SetFailureResult(
-                    $"ValidateUserAndBusinessSessionAsync:{businessGetResult.Code}",
+                    $"ValidateUserSessionAndGetUserAndBusinessAsync:{businessGetResult.Code}",
                     businessGetResult.Message
                 );
             }

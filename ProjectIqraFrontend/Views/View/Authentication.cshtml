@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=no" />
     <title>Login | Iqra AI</title>
+    <meta name="description" content="Iqra AI - Conversational AI Agents - Authentication Page for logging in, signing up or password reset.">
     <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="~/css/style.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="/img/favicon/favicon-96x96.png" sizes="96x96" />
@@ -225,6 +226,25 @@
             font-weight: 600;
         }
 
+        .toggle-password-icon
+        {
+            position: absolute;
+            top: 50%;
+            right: 1rem;
+            transform: translateY(-50%);
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+            filter: invert(95%);
+            opacity: 0.7;
+            transition: opacity 0.2s, filter 0.2s;
+        }
+
+            .toggle-password-icon:hover
+            {
+            opacity: 1;
+        }
+
         @@media (max-width: 768px) {
             .w-md-100 {
                 width: 100% !important;
@@ -250,7 +270,7 @@
                 <img src="~/img/logo/logo-colored-light.png" alt="Logo" class="logo d-block d-md-none">
                 <div>
                     <h1 class="text-center mb-0" style="letter-spacing: 3px;">Iqra AI</h1>
-                    <h6 class="text-center mb-4" style="font-weight: 400; opacity: 0.7;">AI Powered Support</h6>
+                    <h6 class="text-center mb-4" style="font-weight: 400; opacity: 0.7;">Conversational AI Agents</h6>
                 </div>
             </div>
 
@@ -271,7 +291,11 @@
                     </div>
                     <div class="mb-2">
                         <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" required>
+                        <div class="position-relative">
+                            <input type="password" class="form-control" id="password" required>
+                            <!-- Use an <img> tag for the SVG icon -->
+                            <img class="toggle-password-icon" src="/libs/fontawesome-pro-6.5.1-web-dist/svgs/solid/eye-slash.svg" alt="Show password">
+                        </div>
                         <div class="invalid-feedback">Invalid Input</div>
                     </div>
                     <div class="mb-4">
@@ -314,12 +338,18 @@
                     </div>
                     <div class="mb-2">
                         <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" required>
+                        <div class="position-relative">
+                            <input type="password" class="form-control" id="password" required>
+                            <img src="/libs/fontawesome-pro-6.5.1-web-dist/svgs/solid/eye-slash.svg" class="toggle-password-icon" alt="Show password">
+                        </div>
                         <div class="invalid-feedback">Password must be at least 8 characters.</div>
                     </div>
                     <div class="mb-4">
                         <label for="confirm-password" class="form-label">Confirm Password</label>
-                        <input type="password" class="form-control" id="confirm-password" required>
+                        <div class="position-relative">
+                            <input type="password" class="form-control" id="confirm-password" required>
+                            <img src="/libs/fontawesome-pro-6.5.1-web-dist/svgs/solid/eye-slash.svg" class="toggle-password-icon" alt="Show password">
+                        </div>
                         <div class="invalid-feedback">Passwords do not match.</div>
                     </div>
                     <button type="submit" data-umami-event="Authentication | Register Button" class="btn btn-primary w-100 mb-4">

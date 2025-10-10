@@ -27,7 +27,7 @@
                         setCookie('authKey', response.data.authKey, 24);
 
                         setTimeout(() => {
-                            window.location.href = '/';
+                            window.location.href = redirectUrl;
                         }, 10);
                     }
                     else {
@@ -63,5 +63,22 @@
         setTimeout(() => {
             $('.login-container #successMessage').addClass('d-none');
         }, 200);
+    });
+
+    const eyeIconPath = '/libs/fontawesome-pro-6.5.1-web-dist/svgs/solid/eye.svg';
+    const eyeSlashIconPath = '/libs/fontawesome-pro-6.5.1-web-dist/svgs/solid/eye-slash.svg';
+    $('.login-container .toggle-password-icon').on('click', function () {
+        const passwordField = $('#password');
+        const icon = $(this);
+
+        if (passwordField.attr('type') === 'password') {
+            passwordField.attr('type', 'text');
+            icon.attr('src', eyeIconPath);
+            icon.attr('alt', 'Hide password');
+        } else {
+            passwordField.attr('type', 'password');
+            icon.attr('src', eyeSlashIconPath);
+            icon.attr('alt', 'Show password');
+        }
     });
 });

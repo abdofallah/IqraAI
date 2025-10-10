@@ -27,7 +27,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppTelephonyCampaign?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,
@@ -138,7 +138,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppWebCampaign?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,

@@ -27,7 +27,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppCacheMessageGroup?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,
@@ -146,7 +146,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppCacheMessage?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,
@@ -310,7 +310,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppCacheAudioGroup?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,
@@ -429,7 +429,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppCacheAudio?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,
@@ -593,7 +593,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppCacheEmbeddingGroup?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,
@@ -710,7 +710,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppCacheEmbedding?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,

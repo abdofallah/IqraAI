@@ -1,9 +1,17 @@
 ﻿var titleTemplate = '{{authType}} | Iqra AI';
-
 var currentAuthType = 'login';
+
+var redirectUrl = '/';
 
 $(document).ready(() => {   
     const urlParams = new URLSearchParams(window.location.search);
+
+    if (urlParams.has('redirectTo')) {
+        const redirectToPath = urlParams.get('redirectTo');
+        if (redirectToPath && redirectToPath.trim() !== '' && redirectToPath.startsWith('/')) {
+            redirectUrl = redirectToPath;
+        }
+    }
 
     const URLPath = window.location.pathname;
     if (URLPath === '/register') {

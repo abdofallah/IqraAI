@@ -34,7 +34,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                     Request,
                     businessId,
                     checkUserDisabled: true,

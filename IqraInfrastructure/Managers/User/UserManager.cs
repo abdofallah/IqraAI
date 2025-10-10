@@ -52,6 +52,7 @@ namespace IqraInfrastructure.Managers.User
             _planManager = planManager;
         }
 
+        // CURD
         public async Task AddBusinessIdToUser(string userEmail, long businessId, IClientSessionHandle mongoSession)
         {
             var updateDefinition = Builders<UserData>.Update
@@ -70,6 +71,12 @@ namespace IqraInfrastructure.Managers.User
             return await _userDatabase.CheckUserExistsByEmail(email);
         }
 
+        public async Task<bool> CheckUserIsAdmin(string email)
+        {
+            return await _userDatabase.CheckUserIsAdmin(email);
+        }
+
+        // Management
         public async Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model)
         {
             var result = new FunctionReturnResult<UserData?>();

@@ -1,18 +1,19 @@
 ﻿using IqraCore.Entities.Frontend;
-using IqraCore.Entities.User;
 using IqraInfrastructure.Managers.User;
-using IqraInfrastructure.Repositories.App;
 using Microsoft.AspNetCore.Mvc;
+using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App
 {
     public class ViewController : Controller
     {
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserManager _userManager;
         private readonly ViewLinkConfiguration _viewLinkConfiguration;
 
-        public ViewController(UserManager userManager, ViewLinkConfiguration viewLinkConfiguration)
+        public ViewController(UserSessionValidationHelper userSessionValidationHelper, UserManager userManager, ViewLinkConfiguration viewLinkConfiguration)
         {
+            _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;
             _viewLinkConfiguration = viewLinkConfiguration;
         }
@@ -20,16 +21,7 @@ namespace ProjectIqraFrontend.Controllers.App
         [HttpGet("/login")]
         public async Task<IActionResult> Login()
         {
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
-            {
-                return View("Authentication");
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
+            if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
             {
                 return View("Authentication");
             }
@@ -40,41 +32,23 @@ namespace ProjectIqraFrontend.Controllers.App
         [HttpGet("/register")]
         public async Task<IActionResult> Register()
         {
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
             {
                 return View("Authentication");
             }
 
-            if (await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                return RedirectToAction("Login");
-            }
-
-            return View("Authentication");
+            return RedirectToAction("App");
         }
 
         [HttpGet("/forget")]
         public async Task<IActionResult> Forget()
         {
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
             {
                 return View("Authentication");
             }
 
-            if (await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                return RedirectToAction("Login");
-            }
-
-            return View("Authentication");
+            return RedirectToAction("App");
         }
 
         [HttpGet("/logout")]
@@ -90,18 +64,10 @@ namespace ProjectIqraFrontend.Controllers.App
         [HttpGet("/")]
         public async Task<IActionResult> App()
         {
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
             {
-                return RedirectToAction("Login");
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                return RedirectToAction("Login");
+                string originalPath = Request.Path + Request.QueryString;
+                return RedirectToAction("Login", new { redirectTo = originalPath });
             }
 
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
@@ -110,7 +76,7 @@ namespace ProjectIqraFrontend.Controllers.App
         }
 
         [HttpGet("/business")]
-        public async Task<IActionResult> Business()
+        public async Task<IActionResult> AppBusiness()
         {
             return RedirectToAction("App");
         }
@@ -120,60 +86,38 @@ namespace ProjectIqraFrontend.Controllers.App
         [HttpGet("/business/{businessId}/{*tabPath}")]
         public async Task<IActionResult> Business(long? businessId)
         {
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
             {
-                return RedirectToAction("Login");
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                return RedirectToAction("Login");
+                string originalPath = Request.Path + Request.QueryString;
+                return RedirectToAction("Login", new { redirectTo = originalPath });
             }
 
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
             TempData.TryAdd("BusinessToolAudioURL", _viewLinkConfiguration.BusinessToolAudioURL);
             TempData.TryAdd("BusinessAgentBackgroundAudioURL", _viewLinkConfiguration.BusinessAgentBackgroundAudioURL);
             TempData.TryAdd("IntegrationLogoURL", _viewLinkConfiguration.IntegrationLogoURL);
-
-
             return View("Business/Business");
         }
 
         [HttpGet("/admin")]
         public async Task<IActionResult> Admin()
         {
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            var validationResult = await _userSessionValidationHelper.ValidateUserSessionAsync(Request);
+            if (!validationResult.Success)
             {
-                return RedirectToAction("Login");
+                string originalPath = Request.Path + Request.QueryString;
+                return RedirectToAction("Login", new { redirectTo = originalPath });
             }
+            var userEmail = validationResult.Data!;
 
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                return RedirectToAction("Login");
-            }
-
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                return RedirectToAction("Login");
-            }
-
-            if (!user.Permission.IsAdmin)
+            var isUserAdmin = await _userManager.CheckUserIsAdmin(userEmail);
+            if (!isUserAdmin)
             {
                 return RedirectToAction("App");
             }
 
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
             TempData.TryAdd("IntegrationLogoURL", _viewLinkConfiguration.IntegrationLogoURL);
-
             return View("Admin/Admin");
         }
     }

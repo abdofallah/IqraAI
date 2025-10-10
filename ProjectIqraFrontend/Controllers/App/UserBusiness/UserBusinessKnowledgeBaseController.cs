@@ -38,7 +38,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppKnowledgeBase?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,
@@ -149,7 +149,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,
@@ -234,7 +234,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>();
 
             // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request,
                 businessId,
                 checkUserDisabled: true,
@@ -289,7 +289,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                     Request,
                     businessId,
                     checkUserDisabled: true,
@@ -388,7 +388,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                     Request,
                     businessId,
                     checkUserDisabled: true,

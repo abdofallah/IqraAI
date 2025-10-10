@@ -27,7 +27,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var result = new FunctionReturnResult<BusinessAppPostAnalysis?>();
 
             // Validate Session & Business
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request, businessId,
                 checkUserDisabled: true,
                 checkBusinessesDisabled: true,

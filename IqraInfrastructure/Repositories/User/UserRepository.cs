@@ -89,6 +89,16 @@ namespace IqraInfrastructure.Repositories.User
             return await _usersCollection.Find(filter).AnyAsync();
         }
 
+        public async Task<bool> CheckUserIsAdmin(string email)
+        {
+            var filter = Builders<UserData>.Filter.And(
+                Builders<UserData>.Filter.Eq(u => u.Email, email),
+                Builders<UserData>.Filter.Eq(u => u.Permission.IsAdmin, true)
+            );
+
+            return await _usersCollection.Find(filter).AnyAsync();
+        }
+
         public async Task<bool> TryIncrementConcurrencyUsageAsync(string userEmail, string featureKey, long maxConcurrency, UserBillingCycleConcurrencyFeatureUsage usageItem)
         {
             string arrayFieldPath = $"Billing.CurrentCycleUsage.CurrentConcurrencyFeatureUsage.{featureKey}";

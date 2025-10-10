@@ -594,28 +594,12 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<bool> CheckAgentExists(long businessId, string existingAgentId)
         {
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, t => t.Id == existingAgentId)
-            );
+            var query = _businessAppCollection.AsQueryable()
+                .Where(b => b.Id == businessId)
+                .SelectMany(b => b.Agents)
+                .AnyAsync(agent => agent.Id == existingAgentId);
 
-            return await _businessAppCollection.Find(filter).AnyAsync();
-        }
-
-        public async Task<bool> AddAgent(long businessId, BusinessAppAgent agent)
-        {
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.Not(
-                    Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agent.Id)
-                )
-            );
-
-            var update = Builders<BusinessApp>.Update.Push(b => b.Agents, agent);
-
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-
-            return result.IsAcknowledged && result.ModifiedCount > 0;
+            return await query;
         }
 
         public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
@@ -637,6 +621,22 @@ namespace IqraInfrastructure.Repositories.Business
                 .Select(agent => agent.Settings.BackgroundAudioUrl);
 
             return await urlQuery.FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> AddAgent(long businessId, BusinessAppAgent agent)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.Not(
+                    Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agent.Id)
+                )
+            );
+
+            var update = Builders<BusinessApp>.Update.Push(b => b.Agents, agent);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.IsAcknowledged && result.ModifiedCount > 0;
         }
 
         public async Task<bool> UpdateAgentDataExceptScripts(long businessId, BusinessAppAgent agent)
@@ -663,6 +663,18 @@ namespace IqraInfrastructure.Repositories.Business
         }
 
         // Agent Scripts
+        public async Task<bool> CheckAgentScriptExists(long businessId, string agentId, string scriptId)
+        {
+            var query = _businessAppCollection.AsQueryable()
+                .Where(b => b.Id == businessId)
+                .SelectMany(b => b.Agents)
+                .Where(agent => agent.Id == agentId)
+                .SelectMany(agent => agent.Scripts)
+                .AnyAsync(script => script.Id == scriptId);
+
+            return await query;
+        }
+
         public async Task<bool> AddAgentScript(long businessId, string agentId, BusinessAppAgentScript newScriptData)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -712,22 +724,7 @@ namespace IqraInfrastructure.Repositories.Business
             {
                 return false;
             }
-        }
-
-        public async Task<bool> CheckAgentScriptExists(long businessId, string agentId, string scriptId)
-        {
-            var agentFilter = Builders<BusinessAppAgent>.Filter.And(
-                Builders<BusinessAppAgent>.Filter.Eq(agent => agent.Id, agentId),
-                Builders<BusinessAppAgent>.Filter.ElemMatch(agent => agent.Scripts, script => script.Id == scriptId)
-            );
-
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, agentFilter)
-            );
-
-            return await _businessAppCollection.Find(filter).AnyAsync();
-        }
+        }     
 
         /**
         * 
