@@ -66,6 +66,21 @@ namespace IqraInfrastructure.Managers.User
             return await _userDatabase.GetUserByEmail(email);
         }
 
+        public async Task<UserData?> GetUserDataForLoginValidation(string email)
+        {
+            return await _userDatabase.GetUserDataForLoginValidation(email);
+        }
+
+        public async Task<UserData?> GetUserDataForResetPasswordValidation(string email)
+        {
+            return await _userDatabase.GetUserDataForResetPasswordValidation(email);
+        }
+
+        public async Task<UserData?> GetUserDataForRequestResetPasswordValiation(string email)
+        {
+            return await _userDatabase.GetUserDataForRequestResetPasswordValiation(email);
+        }
+
         public async Task<bool> CheckUserExistsByEmail(string email)
         {
             return await _userDatabase.CheckUserExistsByEmail(email);
@@ -187,11 +202,11 @@ namespace IqraInfrastructure.Managers.User
             return userSession;
         }
 
-        public async Task<FunctionReturnResult> ValidateResetPasswordToken(UserData user, string token)
+        public async Task<FunctionReturnResult> ValidateResetPasswordToken(string userEmail, List<UserResetPassword> userResetPasswordTokens, string token)
         {
             var result = new FunctionReturnResult();
 
-            var foundResetPasswordWithToken = user.ResetPasswordTokens.FirstOrDefault(d => d.Token == token);
+            var foundResetPasswordWithToken = userResetPasswordTokens.FirstOrDefault(d => d.Token == token);
             if (foundResetPasswordWithToken == null || foundResetPasswordWithToken.IsUsed)
             {
                 return result.SetFailureResult(
@@ -214,7 +229,7 @@ namespace IqraInfrastructure.Managers.User
             }
             finally
             {
-                var filter = Builders<UserData>.Filter.Eq(u => u.Email, user.Email) & Builders<UserData>.Filter.ElemMatch(u => u.ResetPasswordTokens, d => d.Token == token);
+                var filter = Builders<UserData>.Filter.Eq(u => u.Email, userEmail) & Builders<UserData>.Filter.ElemMatch(u => u.ResetPasswordTokens, d => d.Token == token);
                 var updateDefinition = Builders<UserData>.Update.Set(u => u.ResetPasswordTokens.FirstMatchingElement().IsUsed, true);
                 await _userDatabase.UpdateUser(filter, updateDefinition);
             } 
@@ -258,12 +273,12 @@ namespace IqraInfrastructure.Managers.User
             return Convert.ToBase64String(result);
         }
 
-        public bool ValidatePassword(UserData user, string password)
+        public bool ValidatePassword(string userEmail, string userPasswordSHA, string password)
         {
             try
             {
                 // Decode the stored hash+salt
-                var storedBytes = Convert.FromBase64String(user.PasswordSHA);
+                var storedBytes = Convert.FromBase64String(userPasswordSHA);
 
                 // Extract salt (first 16 bytes) and hash (remaining bytes)
                 var salt = new byte[16];
@@ -272,7 +287,7 @@ namespace IqraInfrastructure.Managers.User
                 Array.Copy(storedBytes, 16, storedHash, 0, storedHash.Length);
 
                 // Hash the provided password with the stored salt
-                var computedHash = ComputeArgon2Hash(password, user.Email, salt);
+                var computedHash = ComputeArgon2Hash(password, userEmail, salt);
 
                 // Constant-time comparison to prevent timing attacks
                 return CryptographicOperations.FixedTimeEquals(storedHash, computedHash);
@@ -431,13 +446,14 @@ namespace IqraInfrastructure.Managers.User
             return result;
         }
 
-        public async Task UpdateLastLoginAndIncreaseCount(UserData user)
+        public async Task UpdateLastLoginAndIncreaseCount(string userEmail, UserLoginEntry userLoginEntry)
         {
             var updateDefiniton = Builders<UserData>.Update
                 .Set(u => u.Analytics.LastLogin, DateTime.UtcNow)
-                .Inc(u => u.Analytics.LoginCount, 1);
+                .Inc(u => u.Analytics.LoginCount, 1)
+                .Push(u => u.Analytics.LoginHistory, userLoginEntry);
 
-            await _userDatabase.UpdateUser(user.Email, updateDefiniton);
+            await _userDatabase.UpdateUser(userEmail, updateDefiniton);
         }
 
         public async Task VerifyUserEmail(string email)

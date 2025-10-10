@@ -10,11 +10,13 @@ namespace ProjectIqraFrontend.Controllers.App
 {
     public class AuthenticationController : Controller
     {
+        private readonly ILogger<AuthenticationController> _logger;
         private readonly UserManager _userManager;
         private readonly AppRepository _appRepository;
 
-        public AuthenticationController(UserManager userManager, AppRepository appRepository)
+        public AuthenticationController(ILogger<AuthenticationController> logger, UserManager userManager, AppRepository appRepository)
         {
+            _logger = logger;
             _userManager = userManager;
             _appRepository = appRepository;
         }
@@ -29,6 +31,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 AppPermissionConfig? appPermissionConfig = await _appRepository.GetAppPermissionConfig();
                 if (appPermissionConfig == null)
                 {
+                    _logger.LogCritical("App permission configuration not found when trying to register user.");
                     return result.SetFailureResult(
                         "Register:PERMISSION_CONFIG_NOT_FOUND",
                         "App permission configuration not found. Notify us right away!"
@@ -57,7 +60,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 {
                     return result.SetFailureResult(
                         "Register:MODEL_VALIDATION_FAILED",
-                        "Register data validation failed"
+                        "Register data validation failed:\n" + string.Join("\n", ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage))
                     );
                 }
 
@@ -66,7 +69,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 {
                     return result.SetFailureResult(
                         "Register:USER_ALREADY_EXISTS",
-                        "User already exists"
+                        "User already exists with this email."
                     );
                 }
 
@@ -82,9 +85,10 @@ namespace ProjectIqraFrontend.Controllers.App
                 var emailResult = await _userManager.GenerateAndSendUserRegisterVerifyEmail(userAddResult.Data!.Email);
                 if (!emailResult.Success)
                 {
+                    _logger.LogCritical("Email registeration successful but failed to send verify email: [{Code}] {Message}", emailResult.Code, emailResult.Message);
                     return result.SetFailureResult(
-                        "Register:" + emailResult.Code,
-                        "Email registeration successful but failed to send verify email: " + emailResult.Message
+                        "Register:SUCCESS_BUT_FAILED_TO_SEND_VERIFY_EMAIL",
+                        "Email registeration successful but failed to send verify email. Please contact support."
                     );
                 }
 
@@ -94,7 +98,7 @@ namespace ProjectIqraFrontend.Controllers.App
             {
                 return result.SetFailureResult(
                     "Register:EXCEPTION",
-                    "Internal server error occured while trying to register."
+                    $"Internal server error occured while trying to register: {ex.Message}"
                 );
             }
         }
@@ -109,7 +113,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
                 {
                     return result.SetFailureResult(
-                        "Verify:1",
+                        "Verify:INVALID_EMAIL_OR_TOKEN",
                         "Invalid email or token"
                     );
                 }
@@ -118,7 +122,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 if (user == null)
                 {
                     return result.SetFailureResult(
-                        "Verify:2",
+                        "Verify:USER_NOT_FOUND",
                         "User not found"
                     );
                 }
@@ -126,7 +130,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 if (string.IsNullOrWhiteSpace(user.VerifyEmailToken))
                 {
                     return result.SetFailureResult(
-                        "Verify:3",
+                        "Verify:ALREADY_VERIFIED",
                         "User is already verified"
                     );
                 }
@@ -134,7 +138,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 if (user.VerifyEmailToken != token)
                 {
                     return result.SetFailureResult(
-                        "Verify:4",
+                        "Verify:INVALID_TOKEN",
                         "Invalid verify token"
                     );
                 }
@@ -143,6 +147,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 var emailResult = await _userManager.SendUserRegisterWelcomeEmail(user.Email, user.FirstName, user.LastName);
                 if (!emailResult.Success)
                 {
+                    _logger.LogCritical("Email registeration successful but failed to send registeration welcome email: [{Code}] {Message}", emailResult.Code, emailResult.Message);
                     // The user does not need to know this but we are logging it to find out why this happened
                 }
 
@@ -151,8 +156,8 @@ namespace ProjectIqraFrontend.Controllers.App
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "Verify:-1",
-                    "Internal server error occured while trying to verify."
+                    "Verify:EXCEPTION",
+                    $"Internal server error occured while trying to verify: {ex.Message}"
                 );
             }
         }
@@ -194,33 +199,31 @@ namespace ProjectIqraFrontend.Controllers.App
                 {
                     return result.SetFailureResult(
                         "Login:MODEL_VALIDATION_FAILED",
-                        "Login data validation failed"
+                        "Login data validation failed:\n" + string.Join("\n", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage))
                     );
                 }
 
-                UserData? user = await _userManager.GetUserByEmail(model.Email);
-                if (user == null || !_userManager.ValidatePassword(user, model.Password))
+                UserData? user = await _userManager.GetUserDataForLoginValidation(model.Email);
+                if (user == null || !_userManager.ValidatePassword(user.Email, user.PasswordSHA, model.Password))
                 {
                     return result.SetFailureResult(
                         "Login:INVALID_EMAIL_OR_PASSWORD",
                         "Invalid email or password"
                     );
                 }
-
+                UserPermission userPermission = user.Permission;
+                if (userPermission.DisableUserAt != null)
+                {
+                    var message = "User is disabled" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason);
+                    return result.SetFailureResult(
+                        "Login:USER_DISABLED",
+                        message
+                    );
+                }
                 if (!string.IsNullOrWhiteSpace(user.VerifyEmailToken)) {
                     return result.SetFailureResult(
                         "Login:USER_NOT_VERIFIED",
                         "User is not verified"
-                    );
-                }
-
-                UserPermission userPermission = user.Permission;
-                if (userPermission.DisableUserAt != null)
-                {
-                    var message = "User is not allowed to login" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason);
-                    return result.SetFailureResult(
-                        "Login:USER_LOGIN_DISABLED",
-                        message
                     );
                 }
 
@@ -233,7 +236,15 @@ namespace ProjectIqraFrontend.Controllers.App
                     );
                 }
 
-                await _userManager.UpdateLastLoginAndIncreaseCount(user);
+                var userLoginEntry = new UserLoginEntry()
+                {
+                    Date = DateTime.UtcNow,
+                    SessionId = session.Id,
+                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "",
+                    UserAgent = (Request.Headers.TryGetValue("User-Agent", out var userAgent) ? userAgent.ToString() : "")
+                };
+
+                await _userManager.UpdateLastLoginAndIncreaseCount(user.Email, userLoginEntry);
                 return result.SetSuccessResult(new LoginResponseModel()
                     {
                         SessionId = session.Id,
@@ -260,26 +271,43 @@ namespace ProjectIqraFrontend.Controllers.App
                 if (!TryValidateModel(model))
                 {
                     return result.SetFailureResult(
-                        "RequestResetPassword:1",
-                        "Invalid email"
+                        "RequestResetPassword:VALIDATION_FAILED",
+                        "Reset password data validation failed:\n" + string.Join("\n", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage))
                     );
                 }
 
-                UserData? user = await _userManager.GetUserByEmail(model.Email);
+                UserData? user = await _userManager.GetUserDataForRequestResetPasswordValiation(model.Email);
                 if (user == null)
                 {
                     return result.SetFailureResult(
-                        "RequestResetPassword:2",
+                        "RequestResetPassword:USER_NOT_FOUND",
                         "User not found"
                     );
                 }
-
-                var emailResult = await _userManager.GenerateAndSendPasswordResetEmail(user.Email, HttpContext.Connection.RemoteIpAddress?.ToString());
-                if (!emailResult.Success)
+                UserPermission userPermission = user.Permission;
+                if (userPermission.DisableUserAt != null)
+                {
+                    var message = "User is disabled" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason);
+                    return result.SetFailureResult(
+                        "RequestResetPassword:USER_DISABLED",
+                        message
+                    );
+                }
+                if (!string.IsNullOrWhiteSpace(user.VerifyEmailToken))
                 {
                     return result.SetFailureResult(
-                        "RequestResetPassword:" + emailResult.Code,
-                        emailResult.Message
+                        "RequestResetPassword:USER_NOT_VERIFIED",
+                        "User is not verified"
+                    );
+                }
+
+                var emailResult = await _userManager.GenerateAndSendPasswordResetEmail(model.Email, HttpContext.Connection.RemoteIpAddress?.ToString());
+                if (!emailResult.Success)
+                {
+                    _logger.LogCritical("Failed to send password reset email: [{Code}] {Message}", emailResult.Code, emailResult.Message);
+                    return result.SetFailureResult(
+                        "RequestResetPassword:FAILED_TO_SEND_EMAIL",
+                        "Failed to send password reset email. Please contact support."
                     );
                 }
 
@@ -288,8 +316,8 @@ namespace ProjectIqraFrontend.Controllers.App
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "RequestResetPassword:-1",
-                    "Internal server error occured while trying to request reset password."
+                    "RequestResetPassword:EXCEPTION",
+                    $"Internal server error occured while trying to request reset password: {ex.Message}"
                 );
             }
         }
@@ -304,21 +332,37 @@ namespace ProjectIqraFrontend.Controllers.App
                 if (!TryValidateModel(model))
                 {
                     return result.SetFailureResult(
-                        "ResetPassword:1",
-                        "Invalid email or token or password"
+                        "ResetPassword:INVALID_REQUEST",
+                        "Invalid reset password request:\n" + string.Join("\n", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage))
                     );
                 }
 
-                UserData? user = await _userManager.GetUserByEmail(model.Email);
+                UserData? user = await _userManager.GetUserDataForResetPasswordValidation(model.Email);
                 if (user == null)
                 {
                     return result.SetFailureResult(
-                        "ResetPassword:2",
+                        "ResetPassword:USER_NOT_FOUND",
                         "User not found"
                     );
                 }
+                UserPermission userPermission = user.Permission;
+                if (userPermission.DisableUserAt != null)
+                {
+                    var message = "User is disabled" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason);
+                    return result.SetFailureResult(
+                        "ResetPassword:USER_DISABLED",
+                        message
+                    );
+                }
+                if (!string.IsNullOrWhiteSpace(user.VerifyEmailToken))
+                {
+                    return result.SetFailureResult(
+                        "ResetPassword:USER_NOT_VERIFIED",
+                        "User is not verified"
+                    );
+                }
 
-                var validateResult = await _userManager.ValidateResetPasswordToken(user, model.Token);
+                var validateResult = await _userManager.ValidateResetPasswordToken(user.Email, user.ResetPasswordTokens, model.Token);
                 if (!validateResult.Success)
                 {
                     return result.SetFailureResult(
@@ -330,7 +374,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 if (!await _userManager.ResetPassword(user.Email, model.NewPassword))
                 {
                     return result.SetFailureResult(
-                        "ResetPassword:3",
+                        "ResetPassword:FAILED_TO_RESET_PASSWORD",
                         "Error while resetting password"
                     );
                 }
@@ -340,8 +384,8 @@ namespace ProjectIqraFrontend.Controllers.App
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "ResetPassword:-1",
-                    "Internal server error occured while trying to reset password."
+                    "ResetPassword:EXCEPTION",
+                    $"Internal server error occured while trying to reset password: {ex.Message}"
                 );
             }
         }

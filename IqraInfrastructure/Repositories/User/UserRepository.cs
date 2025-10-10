@@ -37,6 +37,44 @@ namespace IqraInfrastructure.Repositories.User
             return await _usersCollection.Find(filter).FirstOrDefaultAsync();
         }
 
+        public async Task<UserData?> GetUserDataForLoginValidation(string email)
+        {
+            var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);
+
+            var project = Builders<UserData>.Projection
+                .Include(b => b.Email)
+                .Include(b => b.PasswordSHA)
+                .Include(b => b.VerifyEmailToken)
+                .Include(b => b.Permission);
+
+            return await _usersCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        public async Task<UserData?> GetUserDataForResetPasswordValidation(string email)
+        {
+            var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);
+
+            var project = Builders<UserData>.Projection
+                .Include(b => b.Email)
+                .Include(b => b.ResetPasswordTokens)
+                .Include(b => b.VerifyEmailToken)
+                .Include(b => b.Permission);
+
+            return await _usersCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        public async Task<UserData?> GetUserDataForRequestResetPasswordValiation(string email)
+        {
+            var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);
+
+            var project = Builders<UserData>.Projection
+                .Include(b => b.Email)
+                .Include(b => b.VerifyEmailToken)
+                .Include(b => b.Permission);
+
+            return await _usersCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
         public async Task<bool> UpdateUser(string email, UpdateDefinition<UserData> updateDefinition)
         {
             var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);

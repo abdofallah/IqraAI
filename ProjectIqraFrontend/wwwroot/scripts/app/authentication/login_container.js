@@ -2,6 +2,12 @@
     $('#loginForm').on('submit', (event) => {
         event.preventDefault();
 
+        const loginButton = $('.login-container button');
+        const buttonSpinner = loginButton.find('.spinner-border');
+
+        loginButton.prop('disabled', true);
+        buttonSpinner.removeClass('d-none');
+
         var email = $('.login-container #email').val();
         var password = $('.login-container #password').val();
 
@@ -13,7 +19,13 @@
             if (source && source.trim() !== '') {
                 trackEvent.source = source;
             }
-            umami.track('Authentication | Login Function', { loginEvent: trackEvent });
+
+            if (umami) {
+                try {
+                    umami.track('Authentication | Login Function', { loginEvent: trackEvent });
+                }
+                catch { }
+            }
 
             $.ajax({
                 url: '/auth/login',
@@ -35,6 +47,8 @@
                         setTimeout(() => {
                             $('.login-container #errorMessage').addClass('show').html('<span>' + response.message + '</span>');
                         }, 10);
+                        loginButton.prop('disabled', false);
+                        buttonSpinner.addClass('d-none');
                     }
                 },
                 error: (xhr, status, error) => {
@@ -43,10 +57,16 @@
                     setTimeout(() => {
                         $('.login-container #errorMessage').addClass('show').html('<span>Error occured while logging in.<br>Check console logs.</span>');
                     }, 10);
+
+                    loginButton.prop('disabled', false);
+                    buttonSpinner.addClass('d-none');
                 }
             });
         } else {
             $('#loginForm').addClass('was-validated');
+
+            loginButton.prop('disabled', false);
+            buttonSpinner.addClass('d-none');
         }
     });
 

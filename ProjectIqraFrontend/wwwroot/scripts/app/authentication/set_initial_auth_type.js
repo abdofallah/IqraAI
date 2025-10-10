@@ -37,7 +37,14 @@ $(document).ready(() => {
             object.source = source;
         }
     }
-    umami.track('Authentication | Visit', { visitEvent: object });
+
+    if (umami) {
+        try {
+            umami.track('Authentication | Visit', { visitEvent: object });
+        }
+        catch { }
+    }
+    
 
     $("#switchToRegister").on('click', (event) => {
         event.preventDefault();

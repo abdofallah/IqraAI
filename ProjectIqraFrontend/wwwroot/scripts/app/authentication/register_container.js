@@ -2,6 +2,12 @@
     $('#registerForm').on('submit', (event) => {
         event.preventDefault();
 
+        const registerButton = $('.register-container button');
+        const buttonSpinner = registerButton.find('.spinner-border');
+
+        registerButton.prop('disabled', true);
+        buttonSpinner.removeClass('d-none');
+
         var firstName = $('.register-container #firstname').val();
         var lastName = $('.register-container #lastname').val();
         var email = $('.register-container #email').val();
@@ -26,7 +32,13 @@
             if (source && source.trim() !== '') {
                 trackEvent.source = source;
             }
-            umami.track('Authentication | Register Function', { registerEvent: trackEvent });
+
+            if (umami) {
+                try {
+                    umami.track('Authentication | Register Function', { registerEvent: trackEvent });
+                }
+                catch { }
+            }    
 
             $.ajax({
                 url: '/auth/register',
@@ -42,12 +54,17 @@
                         setTimeout(() => {
                             $(".register-container #successMessage").addClass("show").html('<span>Thank you for registering!<br><br>Please verify your email before you can login.</span>');
                         }, 10);
+
+                        buttonSpinner.addClass('d-none');
                     }
                     else {
                         $('.register-container #errorMessage').removeClass('d-none');
                         setTimeout(() => {
                             $('.register-container #errorMessage').addClass('show').html('<span>' + response.message + '</span>');
                         }, 10);
+
+                        registerButton.prop('disabled', false);
+                        buttonSpinner.addClass('d-none');
                     }
                 },
                 error: (xhr, status, error) => {
@@ -57,6 +74,9 @@
                     setTimeout(() => {
                         $('.register-container #errorMessage').addClass('show').html('<span>Invalid email or password.</span>');
                     }, 10);
+
+                    registerButton.prop('disabled', false);
+                    buttonSpinner.addClass('d-none');
                 }
             });
         } else {
@@ -82,6 +102,9 @@
             if (password !== confirmPassword) {
                 $('.register-container #confirm-password').addClass('is-invalid');
             }
+
+            registerButton.prop('disabled', false);
+            buttonSpinner.addClass('d-none');
         }
     });
 
