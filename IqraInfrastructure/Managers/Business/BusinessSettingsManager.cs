@@ -287,7 +287,7 @@ namespace IqraInfrastructure.Managers.Business
          * 
         **/
 
-        public async Task<FunctionReturnResult<List<BusinessWhiteLabelDomain>?>> GetUserBusinessWhiteLabelDomainByIds(List<long> whitelabelDomainId, long businessId, string email)
+        public async Task<FunctionReturnResult<List<BusinessWhiteLabelDomain>?>> GetUserBusinessWhiteLabelDomainByIds(string email, long businessId, List<long> whitelabelDomainId)
         {
             var result = new FunctionReturnResult<List<BusinessWhiteLabelDomain>?>();
 

@@ -42,8 +42,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 Request,
                 businessId,
                 checkUserDisabled: true,
-                checkBusinessesDisabled: true,
-                checkBusinessesEditingEnabled: true
+                checkUserBusinessesDisabled: true,
+                checkUserBusinessesEditingEnabled: true
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
@@ -153,8 +153,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 Request,
                 businessId,
                 checkUserDisabled: true,
-                checkBusinessesDisabled: true,
-                checkBusinessesEditingEnabled: true
+                checkUserBusinessesDisabled: true,
+                checkUserBusinessesEditingEnabled: true
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
@@ -238,8 +238,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 Request,
                 businessId,
                 checkUserDisabled: true,
-                checkBusinessesDisabled: true,
-                checkBusinessesEditingEnabled: true
+                checkUserBusinessesDisabled: true,
+                checkUserBusinessesEditingEnabled: true
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
@@ -293,7 +293,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     Request,
                     businessId,
                     checkUserDisabled: true,
-                    checkBusinessesDisabled: true
+                    checkUserBusinessesDisabled: true
                 );
 
                 if (!userSessionAndBusinessValidationResult.Success)
@@ -392,8 +392,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     Request,
                     businessId,
                     checkUserDisabled: true,
-                    checkBusinessesDisabled: true,
-                    checkBusinessesEditingEnabled: true
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {

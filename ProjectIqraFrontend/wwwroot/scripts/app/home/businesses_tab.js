@@ -46,11 +46,11 @@ function AddNewUserBusinessToAPI(formData, successCallback, errorCallback) {
 	});
 }
 
-function DeleteBusinessFromAPI(formData, successCallback, errorCallback) {
+function DeleteBusinessFromAPI(businessId, successCallback, errorCallback) {
     $.ajax({
-        url: '/app/user/business/delete',
+		url: `/app/user/business/${businessId}/delete`,
 		type: 'POST',
-		data: formData,
+		data: null,
 		dataType: "json",
 		processData: false,
 		contentType: false,
@@ -376,11 +376,8 @@ function InitBusinessesTab() {
 
 		isDeletingBusiness = true;
 
-		const formData = new FormData();
-        formData.append("businessId", businessDataId);
-
 		DeleteBusinessFromAPI(
-			formData,
+			businessDataId,
 			(successResponse) => {
 				var businessIndex = CurrentBusinessesList.findIndex((business) => business.id == businessDataId);
 				CurrentBusinessesList.splice(businessIndex, 1);

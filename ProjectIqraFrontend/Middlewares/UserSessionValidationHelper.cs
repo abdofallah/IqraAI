@@ -82,12 +82,16 @@ namespace ProjectIqraFrontend.Middlewares
             HttpRequest Request,
             long businessId,
 
-            bool checkUserDisabled = true,
+            bool checkUserDisabled = true,       
             
-            bool checkBusinessesDisabled = true,
-            bool checkBusinessesAddingEnabled = false,
-            bool checkBusinessesEditingEnabled = false,
-            bool checkBusinessDeletingEnabled = false
+            bool checkUserBusinessesDisabled = true,
+            bool checkUserBusinessesAddingEnabled = false,
+            bool checkUserBusinessesEditingEnabled = false,
+            bool checkUserBusinessesDeletingEnabled = false,
+
+            bool checkBusinessIsDisabled = true,
+            bool checkBusinessCanBeEdited = false,
+            bool checkBusinessCanBeDeleted = false
         )
         {
             var result = new FunctionReturnResult<ValidateUserAndBusinessResult?>();
@@ -100,41 +104,41 @@ namespace ProjectIqraFrontend.Middlewares
                     userSessionValidationResult.Message
                 );
             }
-            var userData = userSessionValidationResult.Data;
+            var userData = userSessionValidationResult.Data!;
 
-            // Check Business Editing Enabled
-            if (checkBusinessesDisabled && userData.Permission.Business.DisableBusinessesAt != null)
+            // Check User Businesses Full Enabled
+            if (checkUserBusinessesDisabled && userData.Permission.Business.DisableBusinessesAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESSES_DISABLED",
-                    $"Bussinesses are disabled for the user: {userData.Permission.Business.DisableBusinessesReason}"
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:USER_BUSINESSES_DISABLED",
+                    $"Bussinesses are disabled for the user{(string.IsNullOrWhiteSpace(userData.Permission.Business.DisableBusinessesReason) ? "" : ": " + userData.Permission.Business.DisableBusinessesReason)}"
                 );
             }
 
-            // Check Business Adding Enabled
-            if (checkBusinessesAddingEnabled && userData.Permission.Business.AddBusinessDisabledAt != null)
+            // Check User Businesses Adding Enabled
+            if (checkUserBusinessesAddingEnabled && userData.Permission.Business.AddBusinessDisabledAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESSES_ADDING_DISABLED",
-                    $"Bussinesses adding is disabled for the user: {userData.Permission.Business.AddBusinessDisableReason}"
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:USER_BUSINESSES_ADDING_DISABLED",
+                    $"Bussinesses adding is disabled for the user{(string.IsNullOrWhiteSpace(userData.Permission.Business.AddBusinessDisableReason) ? "" : ": " + userData.Permission.Business.AddBusinessDisableReason)}"
                 );
             }
 
-            // Check Business Editing Enabled
-            if (checkBusinessesEditingEnabled && userData.Permission.Business.EditBusinessDisabledAt != null)
+            // Check User Businesses Editing Enabled
+            if (checkUserBusinessesEditingEnabled && userData.Permission.Business.EditBusinessDisabledAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESSES_EDITING_DISABLED",
-                    $"Bussinesses editing is disabled for the user: {userData.Permission.Business.EditBusinessDisableReason}"
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:USER_BUSINESSES_EDITING_DISABLED",
+                    $"Bussinesses editing is disabled for the user{(string.IsNullOrWhiteSpace(userData.Permission.Business.EditBusinessDisableReason) ? "" : ": " + userData.Permission.Business.EditBusinessDisableReason)}"
                 );
             }
 
-            // Check Business Deleting Enabled
-            if (checkBusinessDeletingEnabled && userData.Permission.Business.DeleteBusinessDisableAt != null)
+            // Check User Businesses Deleting Enabled
+            if (checkUserBusinessesDeletingEnabled && userData.Permission.Business.DeleteBusinessDisableAt != null)
             {
                 return result.SetFailureResult(
-                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESSES_DELETING_DISABLED",
-                    $"Bussinesses deleting is disabled for the user: {userData.Permission.Business.DeleteBusinessDisableReason}"
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:USER_BUSINESSES_DELETING_DISABLED",
+                    $"Bussinesses deleting is disabled for the user{(string.IsNullOrWhiteSpace(userData.Permission.Business.DeleteBusinessDisableReason) ? "" : ": " + userData.Permission.Business.DeleteBusinessDisableReason)}"
                 );
             }
 
@@ -147,8 +151,36 @@ namespace ProjectIqraFrontend.Middlewares
                     businessGetResult.Message
                 );
             }
+            var businessData = businessGetResult.Data!;
 
-            return result.SetSuccessResult(new ValidateUserAndBusinessResult() { userData = userData, businessData = businessGetResult.Data });
+            // Check Business Full Disabled
+            if (checkBusinessIsDisabled && businessData.Permission.DisabledFullAt != null)
+            {
+                return result.SetFailureResult(
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESS_DISABLED",
+                    $"Business is disabled{(string.IsNullOrWhiteSpace(businessData.Permission.DisabledFullReason) ? "" : ": " + businessData.Permission.DisabledFullReason)}"
+                );
+            }
+
+            // Check Business Editing Disabled
+            if (checkBusinessCanBeEdited && businessData.Permission.DisabledEditingAt != null)
+            {
+                return result.SetFailureResult(
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESS_EDITING_DISABLED",
+                    $"Business editing is disabled{(string.IsNullOrWhiteSpace(businessData.Permission.DisabledEditingReason) ? "" : ": " + businessData.Permission.DisabledEditingReason)}"
+                );
+            }
+
+            // Check Business Deleting Disabled
+            if (checkBusinessCanBeDeleted && businessData.Permission.DisabledDeletingAt != null)
+            {
+                return result.SetFailureResult(
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESS_DELETING_DISABLED",
+                    $"Business deleting is disabled{(string.IsNullOrWhiteSpace(businessData.Permission.DisabledDeletingReason) ? "" : ": " + businessData.Permission.DisabledDeletingReason)}"
+                );
+            }
+
+            return result.SetSuccessResult(new ValidateUserAndBusinessResult() { userData = userData, businessData = businessData });
         }
     }
 }

@@ -30,8 +30,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
                 Request, businessId,
                 checkUserDisabled: true,
-                checkBusinessesDisabled: true,
-                checkBusinessesEditingEnabled: true
+                checkUserBusinessesDisabled: true,
+                checkUserBusinessesEditingEnabled: true
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {

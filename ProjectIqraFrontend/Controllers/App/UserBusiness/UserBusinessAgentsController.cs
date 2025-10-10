@@ -1,6 +1,5 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.LLM;
@@ -15,9 +14,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessAgentsController : Controller
     {
-        private readonly UserManager _userManager;
+        private readonly UserManager _userManager
         private readonly BusinessManager _businessManager;
-        private readonly IntegrationsManager _integrationsManager;
         private readonly LLMProviderManager _llmProviderManager;
         private readonly STTProviderManager _sttProviderManager;
         private readonly TTSProviderManager _ttsProviderManager;
@@ -53,8 +51,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     Request,
                     businessId,
                     checkUserDisabled: true,
-                    checkBusinessesDisabled: true,
-                    checkBusinessesEditingEnabled: true
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
@@ -166,8 +164,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     Request,
                     businessId,
                     checkUserDisabled: true,
-                    checkBusinessesDisabled: true,
-                    checkBusinessesEditingEnabled: true
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
