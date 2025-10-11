@@ -51,7 +51,7 @@
      --white-color: #F7F6FB;
      --body-font: 'Roboto', sans-serif;
      --normal-font-size: 1rem;
-     --z-fixed: 100;
+     --z-fixed: 1005;
      --nav-show-width: 200px;
 
      --body-padding: 2em;
@@ -110,15 +110,15 @@ body {
      justify-content: space-between;
      padding: 0;
      padding-right: var(--body-padding);
-     z-index: var(--z-fixed);
+     z-index: 1000;
      transition: .5s;
      backdrop-filter: blur(6px)
 }
 
-.header_toggle {
-     color: var(--white-color);
-     font-size: 1.5rem;
-     cursor: pointer
+.header_toggle, .header_notification {
+    color: var(--white-color);
+    font-size: 1.5rem;
+    cursor: pointer
 }
 
 .l-navbar {

@@ -127,13 +127,92 @@ a:focus {
 }
 
 .header_toggle,
+.header_notification,
 .tab-title,
 .nav_icon,
-.nav_name {
+.nav_name
+{
 	color: var(--tcolor-light-cream) !important;
 }
 
-.new-business-type-card {
+#header-notification
+{
+	background: unset;
+	border: unset;
+}
+#header-notification::after {
+	all: unset;
+}
+.header_notification .dropdown-menu
+{
+	margin-top: 10px !important;
+	width: 420px;
+	max-width: 90vw;
+	cursor: initial;
+	box-shadow: 0 0.5rem 1rem rgba(0,0,0,.8);
+}
+.header_notification p {
+	margin-bottom: 0px;
+}
+
+.notification-item
+{
+	padding: 0.75rem 1.25rem;
+	border-bottom: 1px solid #393939;
+	transition: background-color 0.2s ease-in-out;
+}
+
+.notification-item:last-child
+{
+	border-bottom: none;
+	border-bottom-left-radius: var(--bs-dropdown-border-radius);
+	border-bottom-right-radius: var(--bs-dropdown-border-radius);
+}
+
+.notification-item.unread
+{
+	background-color: #222;
+	cursor: pointer;
+}
+
+.notification-item.unread:hover
+{
+	background-color: #1a1a1a;
+}
+
+.notification-icon
+{
+	font-size: 1.5rem;
+	width: 40px;
+	text-align: center;
+}
+
+.notification-content .title
+{
+	font-weight: 600;
+}
+
+.notification-content .description
+{
+	font-size: 0.875em;
+	color: #6c757d;
+}
+
+.notification-meta
+{
+	font-size: 0.75em;
+	color: #6c757d;
+}
+
+/* Badge specific styles */
+#notification-counter
+{
+	font-size: 0.4em;
+	padding: 0.4em 0.6em;
+}
+
+.new-business-type-card
+{
 	padding: 1.3em 1em;
 	background-color: var(--tcolor-lighter-green);
 	width: 100%;

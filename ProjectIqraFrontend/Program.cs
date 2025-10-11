@@ -164,11 +164,11 @@ namespace ProjectIqraFrontend
 
             // OpenAPI
             builder.Services.AddTransient<OpenApiDocumentTransformer>();
-            builder.Services.AddTransient<EnumSchemaTransformer>();
+            builder.Services.AddTransient<OpenApiEnumSchemaTransformer>();
             builder.Services.AddOpenApi(options =>
             {
                 options.AddDocumentTransformer<OpenApiDocumentTransformer>();
-                options.AddSchemaTransformer<EnumSchemaTransformer>();
+                options.AddSchemaTransformer<OpenApiEnumSchemaTransformer>();
             });
 
             var app = builder.Build();

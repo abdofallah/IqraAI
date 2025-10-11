@@ -33,7 +33,34 @@
     </div>
 
     <header class="header header-body-pd" id="header">
-        <div class="header_toggle"> <i class='fa-regular fa-bars fa-bars' id="header-toggle"></i> </div>
+        <div class="header_toggle">
+            <i class='fa-regular fa-bars fa-bars' id="header-toggle"></i>
+        </div>
+        <div class="header_notification">
+            <div class="btn-group">
+                <button type="button" id="header-notification" class="dropdown-toggle position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-regular fa-bell fa-bell"></i>
+                    <span id="notification-counter" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">
+                        0
+                    </span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end dropdown-menu-lg p-0">
+                    <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Notifications</h6>
+                        <a href="#" id="mark-all-read" class="text-muted small">Mark all as read</a>
+                    </div>
+
+                    <!-- The list will be dynamically populated here -->
+                    <div class="p-0" id="notifications-list" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Example of an empty state -->
+                        <div id="notification-empty-state" class="text-center p-4 text-muted">
+                            <i class="fa-regular fa-check-circle fa-2x mb-2"></i>
+                            <p>You're all caught up!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </header>
 
     <!-- Sidebar -->
@@ -115,6 +142,7 @@
         <!-- Custom Scripts -->
         <script src="~/js/countries_list.js"></script>
         <script src="~/js/alert_manager.js"></script>
+        <script src="~/js/notifications_manager.js"></script>
         <script src="~/js/confirm_dialog.js"></script>
         <script src="~/js/script.js"></script>
 
@@ -125,7 +153,8 @@
 
         <!-- Global -->
         <script>
-            var AlertManager = new BootstrapAlertManager();
+            const AlertManager = new BootstrapAlertManager();
+            const notificationManager = new NotificationsManager();
 
             var MasterUserData = null;
             var UserPlanData = null;
