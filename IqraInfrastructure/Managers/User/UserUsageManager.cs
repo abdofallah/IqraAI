@@ -1,10 +1,15 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Billing;
+using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Usage;
+using IqraCore.Entities.User.Usage.Enums;
 using IqraCore.Models.Usage;
 using IqraCore.Models.User.Usage;
+using IqraCore.Models.User.Usage.Summary;
 using IqraInfrastructure.Repositories.User;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using System.Globalization;
+using static TorchSharp.torch.utils;
 
 namespace IqraInfrastructure.Managers.User
 {
@@ -51,9 +56,9 @@ namespace IqraInfrastructure.Managers.User
             }
         }
 
-        public async Task<FunctionReturnResult<GetUserUsageSummaryModel?>> GetUsageSummaryAsync(string masterUserEmail, GetUserUsageSummaryRequestModel request)
+        public async Task<FunctionReturnResult<UserUsageSummaryResponseModel?>> GetUsageSummaryAsync(string masterUserEmail, UserUsageSummaryRequestModel request)
         {
-            var result = new FunctionReturnResult<GetUserUsageSummaryModel?>();
+            var result = new FunctionReturnResult<UserUsageSummaryResponseModel?>();
 
             var startDate = request.StartDate.ToUniversalTime().Date;
             var endDate = request.EndDate.ToUniversalTime().Date.AddDays(1);
@@ -86,15 +91,9 @@ namespace IqraInfrastructure.Managers.User
             }
             // END: VALIDATION
 
-            var summary = new GetUserUsageSummaryModel();
+            var response = new UserUsageSummaryResponseModel();
             try
             {
-                // 1. Get the new, detailed Overall Summary Stats
-                var overallStats = await _usageRepository.GetOverallUserUsageStatsByTypeAsync(masterUserEmail, startDate, endDate);
-                summary.OverallStats = overallStats;
-                summary.GrandTotalCost = overallStats.TotalCost;
-
-                // 2. Get Aggregated Data for Charts
                 string groupByFormat;
                 string labelFormat;
                 switch (request.GroupBy)
@@ -113,57 +112,201 @@ namespace IqraInfrastructure.Managers.User
                         labelFormat = "MMM d";
                         break;
                 }
-                var aggregatedData = await _usageRepository.GetAggregatedUserUsageByPeriodAsync(masterUserEmail, startDate, endDate, groupByFormat);
 
-                if (!aggregatedData.Any())
+                // STEP 1: Execute all aggregation queries in parallel for maximum efficiency
+                var mainStatsTask = _usageRepository.GetUserUsageMainStatsAsync(masterUserEmail, startDate, endDate);
+                var sourceCountsTask = _usageRepository.GetUserUsageUniqueSourceCountsAsync(masterUserEmail, startDate, endDate);
+
+                // We can create multiple chart data tasks for different metrics
+                var featureTotalUsageChartDataTask = _usageRepository.GetUserUsageAggregatedChartDataAsync(masterUserEmail, startDate, endDate, groupByFormat, "$ConsumedFeatures.TotalUsage");
+                var featureQuantityChartDataTask = _usageRepository.GetUserUsageAggregatedChartDataAsync(masterUserEmail, startDate, endDate, groupByFormat, "$ConsumedFeatures.Quantity");
+                var callCountChartDataTask = _usageRepository.GetAggregatedSourceCountByPeriodAsync(masterUserEmail, startDate, endDate, groupByFormat, UserUsageSourceTypeEnum.Conversation);
+
+                await Task.WhenAll(mainStatsTask, featureTotalUsageChartDataTask, featureQuantityChartDataTask, callCountChartDataTask);
+
+                var mainStatsResults = await mainStatsTask;
+                var featureTotalUsageChartDataResults = await featureTotalUsageChartDataTask;
+                var featureQuantityChartDataResults = await featureQuantityChartDataTask;
+                var callCountChartDataResults = await callCountChartDataTask;
+                var sourceCountResults = await sourceCountsTask;
+
+                // STEP 2: Process Main Stats to populate Overall, ByBusiness, and ByFeature dictionaries
+                foreach (var stat in mainStatsResults)
                 {
-                    summary.ChartTitle = $"No usage data from {startDate:MMM d, yyyy} to {inclusiveEndDate:MMM d, yyyy}";
-                    return result.SetSuccessResult(summary);
-                }
-
-                // 3. Dynamically discover all features and businesses present in the data
-                var uniqueBusinessIds = aggregatedData.Select(d => d.BusinessId).Distinct().ToList();
-                var allFeatureKeys = aggregatedData.SelectMany(d => d.UsageByFeature.Keys).Distinct().ToList();
-
-                // 4. Initialize a chart for each discovered feature
-                foreach (var key in allFeatureKeys)
-                {
-                    summary.ChartsByFeature[key] = new StackedChartData
+                    // Update Overall totals
+                    if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo || stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
                     {
-                        Datasets = uniqueBusinessIds.Select(id => new StackedBarDataset { BusinessId = id }).ToList()
-                    };
-                }
+                        response.TotalCost += stat.TotalCost;
 
-                var dataLookup = aggregatedData.ToDictionary(d => $"{d.Period}_{d.BusinessId}");
-                var xLabels = new List<string>();
-
-                IEnumerable<(string PeriodKey, string Label)> timePeriods = GetTimePeriods(startDate, inclusiveEndDate, request.GroupBy, labelFormat);
-                foreach (var (periodKey, label) in timePeriods)
-                {
-                    xLabels.Add(label);
-                    foreach (var featureKey in allFeatureKeys)
-                    {
-                        var chart = summary.ChartsByFeature[featureKey];
-                        for (int j = 0; j < uniqueBusinessIds.Count; j++)
+                        if (stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
                         {
-                            var businessId = uniqueBusinessIds[j];
-                            var lookupKey = $"{periodKey}_{businessId}";
-                            decimal value = dataLookup.TryGetValue(lookupKey, out var stats)
-                                ? stats.UsageByFeature.GetValueOrDefault(featureKey, 0)
-                                : 0;
-                            chart.Datasets[j].Data.Add(value);
+                            response.TotalOverageCost += stat.TotalCost;
                         }
+                        else if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo)
+                        {
+                            response.TotalPayAsYouGoCost += stat.TotalCost;
+                        }
+                    }
+
+                    // Update ByBusiness
+                    if (!response.ByBusiness.ContainsKey(stat.BusinessId)) response.ByBusiness[stat.BusinessId] = new UserUsageSummaryBusinessMetricsModel();
+                    var businessMetrics = response.ByBusiness[stat.BusinessId];
+                    if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo || stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                    {
+                        businessMetrics.TotalCost += stat.TotalCost;
+
+                        if (stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                        {
+                            businessMetrics.TotalOverageCost += stat.TotalCost;
+                        }
+                        else if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo)
+                        {
+                            businessMetrics.TotalPayAsYouGoCost += stat.TotalCost;
+                        }
+                    }
+                    // Business > By Feature
+                    if (!businessMetrics.ConsumptionByFeature.ContainsKey(stat.FeatureKey)) businessMetrics.ConsumptionByFeature[stat.FeatureKey] = new UserUsageSummaryBusinessMetricsByFeatureModel();
+                    var currentBusinessFeatureConsumption = businessMetrics.ConsumptionByFeature[stat.FeatureKey];
+                    currentBusinessFeatureConsumption.TotalCount += stat.Count;
+                    currentBusinessFeatureConsumption.TotalQuantity += stat.TotalQuantity;
+                    if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo || stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                    {
+                        currentBusinessFeatureConsumption.TotalCost += stat.TotalCost;
+
+                        if (stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                        {
+                            currentBusinessFeatureConsumption.TotalOverageCost += stat.TotalCost;
+                            currentBusinessFeatureConsumption.TotalOverageQuantity += stat.TotalQuantity;
+                        }
+                        else
+                        {
+                            currentBusinessFeatureConsumption.TotalPayAsYouGoCost += stat.TotalCost;
+                            currentBusinessFeatureConsumption.TotalPayAsYouGoQuantity += stat.TotalQuantity;
+                        }
+                    }
+                    else
+                    {
+                        currentBusinessFeatureConsumption.TotalIncludedUsage += stat.TotalCost;
+                    }
+                    // Business > By Source
+                    if (!businessMetrics.ConsumptionBySource.ContainsKey(stat.SourceType)) businessMetrics.ConsumptionBySource[stat.SourceType] = new UserUsageSummaryBusinessMetricsBySourceModel();
+                    var currentBusinessSourceConsumption = businessMetrics.ConsumptionBySource[stat.SourceType];
+                    if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo || stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                    {
+                        currentBusinessSourceConsumption.TotalCost += stat.TotalCost;
+
+                        if (stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                        {
+                            currentBusinessSourceConsumption.TotalOverageCost += stat.TotalCost;
+                        }
+                        else
+                        {
+                            currentBusinessSourceConsumption.TotalPayAsYouGoCost += stat.TotalCost;
+                        }
+                    }
+
+                    // Update BySource
+                    if (!response.BySource.ContainsKey(stat.SourceType)) response.BySource[stat.SourceType] = new UserUsageSummarySourceMetricsModel();
+                    var sourceMetrics = response.BySource[stat.SourceType];
+                    if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo || stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                    {
+                        sourceMetrics.TotalCost += stat.TotalCost;
+
+                        if (stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                        {
+                            sourceMetrics.TotalOverageCost += stat.TotalCost;
+                        }
+                        else if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo)
+                        {
+                            sourceMetrics.TotalPayAsYouGoCost += stat.TotalCost;
+                        }
+                    }
+                    // BySource > By Feature
+                    if (!sourceMetrics.ConsumptionByFeature.ContainsKey(stat.FeatureKey)) sourceMetrics.ConsumptionByFeature[stat.FeatureKey] = new UserUsageSummarySourceMetricsByFeaturesModel();
+                    var currentSourceFeatureConsumption = sourceMetrics.ConsumptionByFeature[stat.FeatureKey];
+                    currentSourceFeatureConsumption.TotalCount += stat.Count;
+                    currentSourceFeatureConsumption.TotalQuantity += stat.TotalQuantity;
+                    if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo || stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                    {
+                        currentSourceFeatureConsumption.TotalCost += stat.TotalCost;
+
+                        if (stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                        {
+                            currentSourceFeatureConsumption.TotalOverageCost += stat.TotalCost;
+                            currentSourceFeatureConsumption.TotalOverageQuantity += stat.TotalQuantity;
+                        }
+                        else
+                        {
+                            currentSourceFeatureConsumption.TotalPayAsYouGoCost += stat.TotalCost;
+                            currentSourceFeatureConsumption.TotalPayAsYouGoQuantity += stat.TotalQuantity;
+                        }
+                    }
+                    else
+                    {
+                        currentSourceFeatureConsumption.TotalIncludedUsage += stat.TotalCost;
+                    }
+
+                    // Update ByFeature
+                    if (!response.ByFeature.ContainsKey(stat.FeatureKey)) response.ByFeature[stat.FeatureKey] = new UserUsageSummaryFeatureMetricsModel();
+                    var featureMetrics = response.ByFeature[stat.FeatureKey];
+                    featureMetrics.TotalCount += stat.Count;
+                    featureMetrics.TotalQuantity += stat.TotalQuantity;
+                    if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo || stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                    {
+                        featureMetrics.TotalCost += stat.TotalCost;
+
+                        if (stat.ConsumedType == UserUsageConsumedTypeEnum.Overage)
+                        {
+                            featureMetrics.TotalOverageCost += stat.TotalCost;
+                            featureMetrics.TotalOverageQuantity += stat.TotalQuantity;
+                        }
+                        else if (stat.ConsumedType == UserUsageConsumedTypeEnum.PayAsYouGo)
+                        {
+                            featureMetrics.TotalPayAsYouGoCost += stat.TotalCost;
+                            featureMetrics.TotalPayAsYouGoQuantity += stat.TotalQuantity;
+                        }
+                    }
+                    else if (stat.ConsumedType == UserUsageConsumedTypeEnum.Included)
+                    {
+                        featureMetrics.TotalIncludedUsage += stat.TotalCost;
+                    } 
+                }
+
+                foreach (var sourceCount in sourceCountResults)
+                {
+                    if (response.ByBusiness.ContainsKey(sourceCount.BusinessId))
+                    {
+                        response.ByBusiness[sourceCount.BusinessId].TotalCount += sourceCount.Count;
+
+                        if (response.ByBusiness[sourceCount.BusinessId].ConsumptionBySource.ContainsKey(sourceCount.SourceType))
+                        {
+                            response.ByBusiness[sourceCount.BusinessId].ConsumptionBySource[sourceCount.SourceType].TotalCount += sourceCount.Count;
+                        }
+                    }
+
+                    if (response.BySource.ContainsKey(sourceCount.SourceType))
+                    {
+                        response.BySource[sourceCount.SourceType].TotalCount += sourceCount.Count;
                     }
                 }
 
-                // 6. Assign labels to all generated charts
-                foreach (var chart in summary.ChartsByFeature.Values)
-                {
-                    chart.Labels = xLabels;
-                }
+                // STEP 4: Process and build the charts
+                var chargeableData = featureTotalUsageChartDataResults.Where(r => r.ConsumedType != UserUsageConsumedTypeEnum.Included).ToList();
+                response.Charts["overallCostChart"] = BuildChart(chargeableData, startDate, inclusiveEndDate, request.GroupBy, labelFormat);
 
-                summary.ChartTitle = $"Usage from {startDate:MMM d, yyyy} to {inclusiveEndDate:MMM d, yyyy}";
-                return result.SetSuccessResult(summary);
+                // For calls duration chart, we need to filter the results to only include the "Call Minutes" feature
+                var callDurationData = featureQuantityChartDataResults.Where(d => d.FeatureKey == BillingFeatureKey.CallMinutes).ToList();
+                response.Charts["durationChart"] = BuildChart(callDurationData, startDate, inclusiveEndDate, request.GroupBy, labelFormat, isIntValue: true);
+
+                var callCountForChartHelper = callCountChartDataResults.Select(r => new UserUsageAggregatedChartDataResult
+                {
+                    Period = r.Period,
+                    BusinessId = r.BusinessId,
+                    Value = r.Count // Convert int Count to decimal Value
+                }).ToList();
+                response.Charts["callCountChart"] = BuildChart(callCountForChartHelper, startDate, inclusiveEndDate, request.GroupBy, labelFormat, isIntValue: true);
+
+                return result.SetSuccessResult(response);
             }
             catch (Exception ex)
             {
@@ -203,9 +346,8 @@ namespace IqraInfrastructure.Managers.User
                     BusinessId = r.BusinessId,
                     PlanId = r.PlanId,
                     Description = r.Description,
-                    SourceType = r.SourceType,
+                    SourceType = r.SourceType.ToString(),
                     SourceId = r.SourceId,
-                    TotalCost = r.ConsumedFeatures.Sum(cf => cf.TotalUsage),
                     ConsumedFeatures = r.ConsumedFeatures.Select(cf => new ConsumedFeatureModel
                     {
                         FeatureKey = cf.FeatureKey,
@@ -241,6 +383,7 @@ namespace IqraInfrastructure.Managers.User
             }
         }
 
+        // Helpers
         private IEnumerable<(string PeriodKey, string Label)> GetTimePeriods(DateTime start, DateTime end, UserUsageGroupBy groupBy, string labelFormat)
         {
             switch (groupBy)
@@ -265,6 +408,32 @@ namespace IqraInfrastructure.Managers.User
                     }
                     break;
             }
+        }
+
+        private UserUsageSummaryStackedChartDataModel BuildChart(List<UserUsageAggregatedChartDataResult> data, DateTime startDate, DateTime inclusiveEndDate, UserUsageGroupBy groupBy, string labelFormat, bool isIntValue = false)
+        {
+            var chart = new UserUsageSummaryStackedChartDataModel();
+            if (!data.Any()) return chart;
+
+            var uniqueBusinessIds = data.Select(d => d.BusinessId).Distinct().ToList();
+            chart.Datasets = uniqueBusinessIds.Select(id => new UserUsageSummaryStackedBarDatasetModel { BusinessId = id }).ToList();
+
+            var dataLookup = data.ToLookup(d => $"{d.Period}_{d.BusinessId}");
+
+            IEnumerable<(string PeriodKey, string Label)> timePeriods = GetTimePeriods(startDate, inclusiveEndDate, groupBy, labelFormat);
+            foreach (var (periodKey, label) in timePeriods)
+            {
+                chart.Labels.Add(label);
+                for (int i = 0; i < uniqueBusinessIds.Count; i++)
+                {
+                    var businessId = uniqueBusinessIds[i];
+                    var lookupKey = $"{periodKey}_{businessId}";
+                    // Sum up values for all features for this business in this period
+                    var value = dataLookup[lookupKey].Sum(d => d.Value);
+                    chart.Datasets[i].Data.Add(value);
+                }
+            }
+            return chart;
         }
     }
 }

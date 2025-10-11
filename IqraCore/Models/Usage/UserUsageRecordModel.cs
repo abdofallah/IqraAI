@@ -9,9 +9,8 @@ namespace IqraCore.Models.Usage
         public long BusinessId { get; set; }
         public string PlanId { get; set; }
         public string Description { get; set; }
-        public UserUsageSourceTypeEnum SourceType { get; set; }
+        public string SourceType { get; set; }
         public string SourceId { get; set; }
-        public decimal TotalCost { get; set; }
         public List<ConsumedFeatureModel> ConsumedFeatures { get; set; } = new List<ConsumedFeatureModel>();
     }
 

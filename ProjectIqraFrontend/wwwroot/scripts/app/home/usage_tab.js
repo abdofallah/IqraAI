@@ -23,11 +23,12 @@ const usageDateRangePicker = usageTab.find("#usageDateRangePicker");
 const usageGroupBySelect = usageTab.find("#usageGroupBySelect");
 
 // Summary Cards
+const usageOverallCostText = usageTab.find("#usageOverallCostText");
 const usageTotalCallText = usageTab.find("#usageTotalCallText");
 const usageTotalCallDurationText = usageTab.find("#usageTotalCallDurationText");
 const usageAverageCallDurationText = usageTab.find("#usageAverageCallDurationText");
 const usageAverageCallCostText = usageTab.find("#usageAverageCallCostText");
-const usageTotalCostText = usageTab.find("#usageTotalCostText");
+const usageTotalCallCostText = usageTab.find("#usageTotalCallCostText");
 
 // Duration Chart
 const usageChartCanvas = usageTab.find("#usageChart");
@@ -38,8 +39,8 @@ const usageCallsChartCanvas = usageTab.find("#usageCallsChart");
 const usageCallsChartSpinner = usageTab.find("#usageCallsChartSpinner");
 
 // Cost Chart
-const usageCostChartCanvas = usageTab.find("#usageCostChart");
-const usageCostChartSpinner = usageTab.find("#usageCostChartSpinner");
+const usageOverallCostChartCanvas = usageTab.find("#usageOverallCostChart");
+const usageOverallCostChartSpinner = usageTab.find("#usageOverallCostChartSpinner");
 
 // History Table
 const usageHistoryTableBody = usageTab.find("#usageHistoryTable tbody");
@@ -172,13 +173,16 @@ function loadUsageOverview() {
     usageChartCanvas.addClass('d-none');
     usageCallsChartSpinner.removeClass('d-none');
     usageCallsChartCanvas.addClass('d-none');
-    usageCostChartSpinner.removeClass('d-none');
-    usageCostChartCanvas.addClass('d-none');
-    usageTotalCallText.text("...");
-    usageTotalCallDurationText.text("...");
-    usageAverageCallDurationText.text("...");
-    usageAverageCallCostText.text("...");
-    usageTotalCostText.text("...");
+    usageOverallCostChartSpinner.removeClass('d-none');
+    usageOverallCostChartCanvas.addClass('d-none');
+
+    // Reset summary cards to loading state
+    updateSummaryCard(usageOverallCostText);
+    updateSummaryCard(usageTotalCallText);
+    updateSummaryCard(usageTotalCallDurationText);
+    updateSummaryCard(usageAverageCallDurationText);
+    updateSummaryCard(usageTotalCallCostText);
+    updateSummaryCard(usageAverageCallCostText);
 
     // 2. Get parameters from controls
     const picker = usageDateRangePicker.data('daterangepicker');
@@ -200,25 +204,57 @@ function loadUsageOverview() {
     // 3. Call the updated API function
     FetchUsageSummaryFromAPI(startDate, endDate, groupBy,
         (data) => {
-            // Update Summary Cards
-            usageTotalCallText.text(data.totalCalls.toLocaleString());
-            usageTotalCallDurationText.text(`${data.totalDurationMinutes.toFixed(2)} min`);
-            usageAverageCallDurationText.text(`${data.averageDurationSeconds.toFixed(1)} sec`);
-            usageAverageCallCostText.text(formatCurrency(data.averageCallCost));
-            usageTotalCostText.text(formatCurrency(data.totalCost));
+            // 4. Update Summary Cards using the new data model
 
-            // Update all charts
-            updateStackedChart(usageChartInstance, data.durationChart);
-            updateStackedChart(usageCallsChartInstance, data.callsChart);
-            updateStackedChart(usageCostChartInstance, data.costChart);
+            // Get key metrics, providing defaults to avoid errors if data is missing
+            const totalCalls = data.bySource?.conversation?.totalCount ?? 0;
+            const callMinutesFeature = data.byFeature['Call_Minutes'];
+            const totalCallDuration = callMinutesFeature?.totalQuantity ?? 0;
 
-            // Hide loading state
+            const callVoicemailDetectionFeature = data.byFeature['Call_VoicemailDetection'];
+
+            const totalCallCost = (callMinutesFeature?.totalCost ?? 0) + (callVoicemailDetectionFeature?.totalCost ?? 0);
+
+            updateSummaryCard(usageOverallCostText, data.totalCost, 'currency');
+            updateSummaryCard(usageTotalCallText, totalCalls, 'number');
+            updateSummaryCard(usageTotalCallDurationText, totalCallDuration, 'minutes');
+
+            const avgDuration = totalCalls > 0 ? totalCallDuration / totalCalls : 0;
+            updateSummaryCard(usageAverageCallDurationText, avgDuration, 'minutes');
+
+            const avgCost = totalCalls > 0 ? totalCallCost / totalCalls : 0;
+            updateSummaryCard(usageAverageCallCostText, avgCost, 'currency');
+
+            updateSummaryCard(usageTotalCallCostText, totalCallCost, 'currency');
+
+            // 5. Update all charts using the 'data.charts' dictionary
+            if (data.charts?.overallCostChart) {
+                updateStackedChart(usageCostChartInstance, data.charts.overallCostChart);
+            }
+
+            if (data.charts?.durationChart) {
+                usageChartCanvas.parent().parent().parent().removeClass('d-none');
+                updateStackedChart(usageChartInstance, data.charts.durationChart);
+            } else {
+                usageChartCanvas.parent().parent().parent().addClass('d-none');
+            }
+
+            if (data.charts?.callCountChart) {
+                usageCallsChartCanvas.parent().parent().parent().removeClass('d-none');
+                updateStackedChart(usageCallsChartInstance, data.charts.callCountChart);
+            } else {
+                usageCallsChartCanvas.parent().parent().parent().addClass('d-none');
+            }
+
+            // --- END OF NEW LOGIC ---
+
+            // 6. Hide loading state (this part remains the same)
             usageChartSpinner.addClass('d-none');
             usageChartCanvas.removeClass('d-none');
             usageCallsChartSpinner.addClass('d-none');
             usageCallsChartCanvas.removeClass('d-none');
-            usageCostChartSpinner.addClass('d-none');
-            usageCostChartCanvas.removeClass('d-none');
+            usageOverallCostChartSpinner.addClass('d-none');
+            usageOverallCostChartCanvas.removeClass('d-none');
         },
         (error) => {
             console.error("Failed to load usage overview data", error);
@@ -234,51 +270,85 @@ function loadUsageOverview() {
 // Table & Pagination Functions
 
 function renderUsageHistoryTable(items) {
+    const usageHistoryTableBody = $('#usageHistoryTable tbody');
     usageHistoryTableBody.empty();
+
     if (!items || items.length === 0) {
         usageHistoryTableBody.append(`
             <tr>
-                <td colspan="5" class="text-center p-4 text-muted">No usage history found.</td>
+                <td colspan="4" class="text-center p-4 text-muted">No usage history found.</td>
             </tr>
         `);
         return;
     }
 
     items.forEach(item => {
-        let billingDetailsHtml = '';
-
-        if (item.planModel.value === PLAN_MODELS.FixedPricePackage) {
-            billingDetailsHtml = `
-                Deducted: <strong>${Number(item.totalMinutesDeducted).toFixed(3)} min</strong>
-            `;
-
-            if (item.totalOverageCost > 0) {
-                billingDetailsHtml += `
-                    <br>
-                    <small class="text-danger">Overage: ${formatCurrency(item.totalOverageCost)}</small>
-                `;
-            }
-        } else {
-            billingDetailsHtml = formatCurrency(item.totalCost);
-        }
-
-        var businessName = `Unknown (${item.businessId})`;
-        var businessData = CurrentBusinessesList.find(b => b.id == item.businessId);
+        // --- 1. Find Business Name (re-using your existing logic) ---
+        let businessName = `${item.businessId} | Unknown`;
+        const businessData = CurrentBusinessesList.find(b => b.id == item.businessId);
         if (businessData) {
-            businessName = businessData.name;
+            businessName = `${item.businessId} | ${businessData.name}`;
         }
 
+        // --- 2. Build the Consumption Column HTML ---
+        // This is the core new logic. We loop through each consumed feature.
+        let consumptionHtml = '';
+        if (item.consumedFeatures && item.consumedFeatures.length > 0) {
+            item.consumedFeatures.forEach(feature => {
+                // Find the feature's display name from the global plan data
+                const featureInfo = UserPlanData.features.find(f => f.key === feature.featureKey);
+                const featureDisplayName = featureInfo ? featureInfo.displayName : feature.featureKey;
+
+                // Get a styled badge for the consumption type (Included, Overage, etc.)
+                const typeBadge = getConsumptionTypeBadge(feature.type);
+
+                // Format the quantity. We use 'appliedUnitUsage' as it represents the plan consumption.
+                const formattedQuantity = Number(feature.quantity).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 4
+                });
+
+                // Create a styled block for this single feature consumption
+                consumptionHtml += `
+                    <div class="d-flex justify-content-between align-items-center p-2 mb-1 rounded" style="background-color: #111111;">
+                        <span>
+                            <strong>${featureDisplayName}</strong><br>
+                            - Quantity: ${formattedQuantity}/${featureInfo.unitPlural}
+                            ${(feature.type == "PayAsYouGo" || feature.consumedType == "Overage") ? `<br>- Usage Cost: ${formatUsageTabCurrency(feature.totalUsage)}` : ''}
+                        </span>
+                        ${typeBadge}
+                    </div>
+                `;
+            });
+        } else {
+            consumptionHtml = '<span class="text-muted">No features consumed.</span>';
+        }
+
+        // --- 3. Assemble the Final Table Row ---
         const rowHtml = `
             <tr>
-                <td>${formatDate(item.timestamp)}</td>
+                <td>${formatUsageTabDate(item.timestamp)}</td>
                 <td>${businessName}</td>
-                <td>${Number(item.minutesUsed).toFixed(3)} min</td>
-                <td>${billingDetailsHtml}</td>
-                <td><code>${item.conversationSessionId}</code></td>
+                <td>${item.sourceType}</td>
+                <td>${consumptionHtml}</td>
             </tr>
         `;
         usageHistoryTableBody.append(rowHtml);
     });
+}
+
+function getConsumptionTypeBadge(consumptionType) {
+    switch (consumptionType) {
+        case 'Included':
+            return '<span class="badge bg-success">Included</span>';
+        case 'Overage':
+            return '<span class="badge bg-danger">Overage</span>';
+        case 'PayAsYouGo':
+            return '<span class="badge bg-primary">Pay-as-you-go</span>';
+        case 'Unknown':
+        default:
+            return '<span class="badge bg-secondary">Unknown</span>';
+    }
 }
 
 function updatePaginationButtons(hasNext, hasPrev) {
@@ -358,6 +428,36 @@ function loadUsageHistory(cursor = null, direction = 'next') {
     );
 }
 
+function updateSummaryCard(element, value, format = 'number') {
+    let formattedValue = '...';
+    if (value !== undefined && value !== null) {
+        switch (format) {
+            case 'currency':
+                formattedValue = formatUsageTabCurrency(value);
+                break;
+            case 'minutes':
+                formattedValue = `${Number(value).toFixed(2)} min`;
+                break;
+            case 'seconds':
+                formattedValue = `${Number(value).toFixed(1)} sec`;
+                break;
+            case 'number':
+            default:
+                formattedValue = Number(value).toLocaleString();
+                break;
+        }
+    }
+    element.text(formattedValue);
+}
+
+function formatUsageTabCurrency(value, decimals = 4) {
+    return `$${Number(value).toFixed(decimals)}`;
+}
+
+function formatUsageTabDate(dateString) {
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+}
 
 // Event Handlers
 function initializeUsageControls() {
@@ -448,23 +548,6 @@ function bindUsageTabEventHandlers() {
 
 /** INIT **/
 function InitUsageTab() {
-    return;
-
-    console.log("Initializing Usage Tab...");
-
-    // Only init if the tab is visible/part of the page
-    if (usageTab.length === 0) {
-        console.log("Usage Tab not found, skipping initialization.");
-        return;
-    }
-
-    if (typeof Chart === 'undefined' || typeof moment === 'undefined' || typeof $.fn.daterangepicker === 'undefined') {
-        console.error("A required library (Chart.js, Moment.js, or Daterangepicker) is not loaded.");
-        // Display a more comprehensive error message
-        usageTab.find('.inner-container').html('<p class="text-center text-danger p-5">Error: A required library failed to load. The usage dashboard cannot be displayed.</p>');
-        return;
-    }
-
     usageChartInstance = createUsageChart(usageChartCanvas, true, (value) => {
         return `${Number(value).toFixed(3)} min`;
     });
@@ -473,8 +556,8 @@ function InitUsageTab() {
         return Number.isInteger(value) ? value : '';
     });
 
-    usageCostChartInstance = createUsageChart(usageCostChartCanvas, true, (value) => {
-        return formatCurrency(value);
+    usageCostChartInstance = createUsageChart(usageOverallCostChartCanvas, true, (value) => {
+        return formatUsageTabCurrency(value);
     });
 
     initializeUsageControls();
@@ -483,6 +566,4 @@ function InitUsageTab() {
 
     loadUsageOverview();
     loadUsageHistory();
-
-    console.log("Usage Tab Initialized successfully.");
 }

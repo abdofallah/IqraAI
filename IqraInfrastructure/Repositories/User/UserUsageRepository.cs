@@ -112,99 +112,143 @@ namespace IqraInfrastructure.Repositories.User
         }
 
         // Dynamic Aggregation Methods
-        public async Task<OverallUserUsageStatsByTypeResult> GetOverallUserUsageStatsByTypeAsync(string userEmail, DateTime startDate, DateTime endDate)
+        public async Task<List<UserUsageMainStatsResult>> GetUserUsageMainStatsAsync(string masterUserEmail, DateTime startDate, DateTime endDate)
         {
             var pipeline = new BsonDocument[]
             {
-                // Match the relevant user records and time frame.
-                new BsonDocument("$match", new BsonDocument {
-                    { "BusinessMasterUserEmail", userEmail },
-                    { "CreatedAt", new BsonDocument { { "$gte", startDate }, { "$lt", endDate } } }
-                }),
-                new BsonDocument("$unwind", "$ConsumedFeatures"),
-                // Group by both FeatureKey and the consumption Type
-                new BsonDocument("$group", new BsonDocument {
-                    { "_id", new BsonDocument {
+            new BsonDocument("$match", new BsonDocument
+            {
+                { "BusinessMasterUserEmail", masterUserEmail },
+                { "CreatedAt", new BsonDocument { { "$gte", startDate }, { "$lt", endDate } } }
+            }),
+            new BsonDocument("$unwind", "$ConsumedFeatures"),
+            new BsonDocument("$group", new BsonDocument
+            {
+                { "_id", new BsonDocument
+                    {
+                        { "businessId", "$BusinessId" },
                         { "featureKey", "$ConsumedFeatures.FeatureKey" },
-                        { "type", "$ConsumedFeatures.Type" }
-                    }},
-                    { "TotalQuantity", new BsonDocument("$sum", "$ConsumedFeatures.Quantity") },
-                    { "TotalCost", new BsonDocument("$sum", "$ConsumedFeatures.TotalUsage") }
-                }),
-                // Group again by just the feature to bundle the types together
-                new BsonDocument("$group", new BsonDocument {
-                    { "_id", "$_id.featureKey" },
-                    { "TotalFeatureCost", new BsonDocument("$sum", "$TotalCost") },
-                    { "Breakdown", new BsonDocument("$push", new BsonDocument {
-                        { "type", "$_id.type" },
-                        { "quantity", "$TotalQuantity" }
-                    })}
-                }),
-                // Final grouping to get the grand total and structure the final object
-                new BsonDocument("$group", new BsonDocument {
-                    { "_id", BsonNull.Value },
-                    { "GrandTotalCost", new BsonDocument("$sum", "$TotalFeatureCost") },
-                    { "Features", new BsonDocument("$push", new BsonDocument {
-                        { "k", "$_id" }, // Feature Key
-                        { "v", new BsonDocument("breakdown", "$Breakdown") }
-                    })}
-                }),
-                new BsonDocument("$project", new BsonDocument {
-                    { "_id", 0 },
-                    { "TotalCost", "$GrandTotalCost" },
-                    { "UsageByFeature", new BsonDocument("$arrayToObject", "$Features") }
-                })
+                        { "consumedType", "$ConsumedFeatures.Type" },
+                        { "sourceType", "$SourceType" }
+                    }
+                },
+                { "totalQuantity", new BsonDocument("$sum", "$ConsumedFeatures.Quantity") },
+                { "totalCost", new BsonDocument("$sum", "$ConsumedFeatures.TotalUsage") },
+                { "count", new BsonDocument("$sum", 1) }
+            }),
+            new BsonDocument("$project", new BsonDocument
+            {
+                { "_id", 0 },
+                { "BusinessId", "$_id.businessId" },
+                { "FeatureKey", "$_id.featureKey" },
+                { "ConsumedType", "$_id.consumedType" },
+                { "SourceType", "$_id.sourceType" },
+                { "TotalQuantity", "$totalQuantity" },
+                { "TotalCost", "$totalCost" },
+                { "Count", "$count" }
+            })
             };
 
-            var result = await _userUsageCollection.Aggregate<OverallUserUsageStatsByTypeResult>(pipeline).FirstOrDefaultAsync();
-            return result ?? new OverallUserUsageStatsByTypeResult(); // Return an empty stats object if no usage is found
+            return await _userUsageCollection.Aggregate<UserUsageMainStatsResult>(pipeline).ToListAsync();
         }
 
-        public Task<List<AggregatedUsageStatsResult>> GetAggregatedUserUsageByPeriodAsync(string userEmail, DateTime startDate, DateTime endDate, string groupByFormat)
+        public async Task<List<UserUsageUniqueSourceCountResult>> GetUserUsageUniqueSourceCountsAsync(string masterUserEmail, DateTime startDate, DateTime endDate)
         {
             var pipeline = new BsonDocument[]
             {
-                new BsonDocument("$match", new BsonDocument {
-                    { "BusinessMasterUserEmail", userEmail },
+                new BsonDocument("$match", new BsonDocument
+                {
+                    { "BusinessMasterUserEmail", masterUserEmail },
                     { "CreatedAt", new BsonDocument { { "$gte", startDate }, { "$lt", endDate } } }
                 }),
-                new BsonDocument("$unwind", "$ConsumedFeatures"),
-
-                // Stage 1: Group by the time period AND the feature key
-                new BsonDocument("$group", new BsonDocument {
-                    { "_id", new BsonDocument {
-                        { "period", new BsonDocument("$dateToString", new BsonDocument {
-                            { "format", groupByFormat }, { "date", "$CreatedAt" }, { "timezone", "UTC" }
-                        })},
-                        { "businessId", "$BusinessId" },
-                        { "featureKey", "$ConsumedFeatures.FeatureKey" }
-                    }},
-                    { "TotalQuantity", new BsonDocument("$sum", "$ConsumedFeatures.Quantity") },
-                    { "TotalCost", new BsonDocument("$sum", "$ConsumedFeatures.TotalUsage") }
+                new BsonDocument("$group", new BsonDocument
+                {
+                    { "_id", new BsonDocument
+                        {
+                            { "businessId", "$BusinessId" },
+                            { "sourceType", "$SourceType" }
+                        }
+                    },
+                    { "count", new BsonDocument("$sum", 1) }
                 }),
-
-                // Stage 2: Group again by just the period to bundle the features together
-                new BsonDocument("$group", new BsonDocument {
-                    { "_id", new BsonDocument {
-                        { "period", "$_id.period" },
-                        { "businessId", "$_id.businessId" }
-                    }},
-                    { "TotalCost", new BsonDocument("$sum", "$TotalCost") },
-                    { "Features", new BsonDocument("$push", new BsonDocument {
-                        { "k", "$_id.featureKey" },
-                        { "v", "$TotalQuantity" }
-                    })}
-                }),
-
-                // Stage 3: Project to the final shape with the dictionary
-                new BsonDocument("$project", new BsonDocument {
-                    { "TotalCost", 1 },
-                    { "UsageByFeature", new BsonDocument("$arrayToObject", "$Features") }
-                }),
-                new BsonDocument("$sort", new BsonDocument { { "_id.period", 1 } })
+                new BsonDocument("$project", new BsonDocument
+                {
+                    { "_id", 0 },
+                    { "BusinessId", "$_id.businessId" },
+                    { "SourceType", "$_id.sourceType" },
+                    { "Count", "$count" }
+                })
             };
+            return await _userUsageCollection.Aggregate<UserUsageUniqueSourceCountResult>(pipeline).ToListAsync();
+        }
 
-            return _userUsageCollection.Aggregate<AggregatedUsageStatsResult>(pipeline).ToListAsync();
+        public async Task<List<UserUsageAggregatedChartDataResult>> GetUserUsageAggregatedChartDataAsync(string masterUserEmail, DateTime startDate, DateTime endDate, string groupByFormat, string valueField)
+        {
+            var pipeline = new BsonDocument[]
+            {
+            new BsonDocument("$match", new BsonDocument
+            {
+                { "BusinessMasterUserEmail", masterUserEmail },
+                { "CreatedAt", new BsonDocument { { "$gte", startDate }, { "$lt", endDate } } }
+            }),
+            new BsonDocument("$unwind", "$ConsumedFeatures"),
+            new BsonDocument("$group", new BsonDocument
+            {
+                { "_id", new BsonDocument
+                    {
+                        { "period", new BsonDocument("$dateToString", new BsonDocument { { "format", groupByFormat }, { "date", "$CreatedAt" } }) },
+                        { "businessId", "$BusinessId" },
+                        { "featureKey", "$ConsumedFeatures.FeatureKey" },
+                        { "consumedType", "$ConsumedFeatures.Type" }
+                    }
+                },
+                { "value", new BsonDocument("$sum", valueField) }
+            }),
+            new BsonDocument("$project", new BsonDocument
+            {
+                { "_id", 0 },
+                { "Period", "$_id.period" },
+                { "BusinessId", "$_id.businessId" },
+                { "FeatureKey", "$_id.featureKey" },
+                { "ConsumedType", "$_id.consumedType" },
+                { "Value", "$value" }
+            })
+            };
+            return await _userUsageCollection.Aggregate<UserUsageAggregatedChartDataResult>(pipeline).ToListAsync();
+        }
+
+        public async Task<List<UserUsageAggregatedSourceCountByPeriodResult>> GetAggregatedSourceCountByPeriodAsync(string masterUserEmail, DateTime startDate, DateTime endDate, string groupByFormat, UserUsageSourceTypeEnum sourceType)
+        {
+            var pipeline = new BsonDocument[]
+            {
+                // Stage 1: Filter efficiently by the exact source type we want to count
+                new BsonDocument("$match", new BsonDocument
+                {
+                    { "BusinessMasterUserEmail", masterUserEmail },
+                    { "SourceType", (int)sourceType }, // Filter for 'Conversation'
+                    { "CreatedAt", new BsonDocument { { "$gte", startDate }, { "$lt", endDate } } }
+                }),
+                // Stage 2: Group by period and business, collecting unique source IDs
+                new BsonDocument("$group", new BsonDocument
+                {
+                    { "_id", new BsonDocument
+                        {
+                            { "period", new BsonDocument("$dateToString", new BsonDocument { { "format", groupByFormat }, { "date", "$CreatedAt" } }) },
+                            { "businessId", "$BusinessId" }
+                        }
+                    },
+                    { "uniqueSourceIds", new BsonDocument("$addToSet", "$SourceId") }
+                }),
+                // Stage 3: Project the final count from the size of the unique set
+                new BsonDocument("$project", new BsonDocument
+                {
+                    { "_id", 0 },
+                    { "Period", "$_id.period" },
+                    { "BusinessId", "$_id.businessId" },
+                    { "Count", new BsonDocument("$size", "$uniqueSourceIds") }
+                })
+            };
+            return await _userUsageCollection.Aggregate<UserUsageAggregatedSourceCountByPeriodResult>(pipeline).ToListAsync();
         }
 
         public async Task<Dictionary<UserUsageSourceTypeEnum, long>> GetUserUsageSourceTypeCountsAsync(string userEmail, DateTime startDate, DateTime endDate, List<long>? businessIds = null)

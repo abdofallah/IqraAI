@@ -7,8 +7,6 @@ namespace IqraCore.Entities.User.Usage
     public class UserUsageConsumedFeature
     {
         public string FeatureKey { get; set; } = string.Empty;
-
-        [BsonRepresentation(BsonType.String)]
         public UserUsageConsumedTypeEnum Type { get; set; } = UserUsageConsumedTypeEnum.Unknown;
 
         [BsonRepresentation(BsonType.Decimal128)]

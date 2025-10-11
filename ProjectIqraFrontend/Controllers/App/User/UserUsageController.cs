@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Models.Usage;
 using IqraCore.Models.User.Usage;
+using IqraCore.Models.User.Usage.Summary;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using ProjectIqraFrontend.Middlewares;
@@ -22,9 +23,9 @@ namespace ProjectIqraFrontend.Controllers.App.User
         }
 
         [HttpPost("/app/user/usage/summary")]
-        public async Task<FunctionReturnResult<GetUserUsageSummaryModel?>> GetUsageSummary([FromBody] GetUserUsageSummaryRequestModel request)
+        public async Task<FunctionReturnResult<UserUsageSummaryResponseModel?>> GetUsageSummary([FromBody] UserUsageSummaryRequestModel request)
         {
-            var result = new FunctionReturnResult<GetUserUsageSummaryModel?>();
+            var result = new FunctionReturnResult<UserUsageSummaryResponseModel?>();
 
             try
             {

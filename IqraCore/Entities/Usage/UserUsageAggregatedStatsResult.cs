@@ -2,7 +2,7 @@
 using MongoDB.Bson.Serialization.Attributes;
 namespace IqraCore.Entities.Usage
 {
-    public class AggregatedUsageStatsResult
+    public class UserUsageAggregatedStatsResult
     {
         [BsonElement("_id")]
         public BsonDocument Id { get; set; }
