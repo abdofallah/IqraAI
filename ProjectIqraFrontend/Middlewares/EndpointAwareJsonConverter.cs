@@ -30,59 +30,15 @@ namespace ProjectIqraFrontend.Middlewares
 
         public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            if (reader.TokenType != JsonTokenType.StartObject)
+            var newOptions = new JsonSerializerOptions(options);
+
+            JsonConverter self = newOptions.Converters.FirstOrDefault(c => c.GetType() == this.GetType());
+            if (self != null)
             {
-                throw new JsonException("JSON token is not a start object");
+                newOptions.Converters.Remove(self);
             }
 
-            var instance = Activator.CreateInstance(typeToConvert);
-            var properties = new Dictionary<string, PropertyInfo>(StringComparer.OrdinalIgnoreCase);
-            foreach (var property in typeToConvert.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-            {
-                if (!property.CanWrite) continue;
-
-                var jsonPropertyNameAttr = property.GetCustomAttribute<JsonPropertyNameAttribute>();
-                string dictionaryKey;
-
-                if (jsonPropertyNameAttr != null)
-                {
-                    dictionaryKey = jsonPropertyNameAttr.Name;
-                }
-                else
-                {
-                    dictionaryKey = property.Name;
-                }
-
-                properties[dictionaryKey] = property;
-            }
-
-            while (reader.Read())
-            {
-                if (reader.TokenType == JsonTokenType.EndObject)
-                {
-                    return instance;
-                }
-
-                if (reader.TokenType != JsonTokenType.PropertyName)
-                {
-                    throw new JsonException("JSON token is not a property name");
-                }
-
-                string propertyName = reader.GetString() ?? throw new JsonException("Property name is null");
-                reader.Read();
-
-                if (properties.TryGetValue(propertyName, out PropertyInfo? property))
-                {
-                    var value = JsonSerializer.Deserialize(ref reader, property.PropertyType, options);
-                    property.SetValue(instance, value);
-                }
-                else
-                {
-                    reader.Skip();
-                }
-            }
-
-            throw new JsonException("JSON object is incomplete");
+            return JsonSerializer.Deserialize(ref reader, typeToConvert, newOptions);
         }
 
         public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
@@ -243,6 +199,17 @@ namespace ProjectIqraFrontend.Middlewares
             }
 
             if (underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                writer.WriteStartArray();
+                foreach (var item in (IEnumerable)value)
+                {
+                    JsonSerializer.Serialize(writer, item, options);
+                }
+                writer.WriteEndArray();
+                return true;
+            }
+
+            if (underlyingType.IsArray)
             {
                 writer.WriteStartArray();
                 foreach (var item in (IEnumerable)value)
