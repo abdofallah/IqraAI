@@ -6,7 +6,6 @@ using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App.User
 {
-    [ApiController]
     public class UserApiKeyController : ControllerBase
     {
         private readonly UserSessionValidationHelper _userSessionValidationHelper;

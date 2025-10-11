@@ -47,6 +47,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Logger
             {
                 try
                 {
+                    var timestamp = DateTime.UtcNow;
+
                     await _sessionSemaphore.WaitAsync();
 
                     if (!_isDatabaseLoggingActive)
@@ -60,7 +62,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Logger
                         Id = eventId.ToString(),
                         SenderType = ConversationStateLogSenderTypeEnum.System,
                         SystemSenderReference = _categoryName,
-                        Timestamp = DateTime.UtcNow,
+                        Timestamp = timestamp,
                         Level = MapLogLevel(logLevel),
                         Message = message,
                         ExceptionDataJson = SerializeException(exception)

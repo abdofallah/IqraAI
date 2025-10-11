@@ -50,9 +50,13 @@ using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
+using ProjectIqraFrontend.Transformer;
+using Scalar.AspNetCore;
 using System.Reflection;
 
 namespace ProjectIqraFrontend
@@ -62,6 +66,15 @@ namespace ProjectIqraFrontend
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                // In a real production environment, you should limit known proxies and networks.
+                // For example:
+                // options.KnownProxies.Add(IPAddress.Parse("10.0.0.1"));
+            });
+
 
             // Configuration
             var appConfig = builder.Configuration;
@@ -149,6 +162,13 @@ namespace ProjectIqraFrontend
                     .AllowAnyHeader());
             });
 
+            // OpenAPI
+            builder.Services.AddTransient<OpenApiDocumentTransformer>();
+            builder.Services.AddOpenApi(options =>
+            {
+                options.AddDocumentTransformer<OpenApiDocumentTransformer>();
+            });
+
             var app = builder.Build();
 
             // Initalize All Singleton Services
@@ -165,12 +185,22 @@ namespace ProjectIqraFrontend
             var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
             customJSONMiddleware.SetHttpContextAccessor(httpContextAccessor);
 
+            //app.UseForwardedHeaders();
+
             app.UseCors("AllowedOrigins");
            
             app.UseRouting();
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            app.MapOpenApi();
+            app.MapScalarApiReference("/api", options =>
+            {
+                options.WithTitle("Iqra AI API");
+                options.WithTheme(ScalarTheme.Saturn);
+                options.WithDarkMode();
+            });       
 
             app.MapStaticAssets();
             app.MapControllerRoute(

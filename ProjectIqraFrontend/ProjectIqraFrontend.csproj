@@ -10,10 +10,13 @@
     <PackageReference Include="AngleSharp" Version="1.3.0" />
     <PackageReference Include="AngleSharp.Css" Version="0.17.0" />
     <PackageReference Include="AngleSharp.Js" Version="0.15.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
     <PackageReference Include="Microsoft.TypeScript.MSBuild" Version="5.8.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Scalar.AspNetCore" Version="2.8.11" />
+    <PackageReference Include="Scalar.AspNetCore.Microsoft" Version="2.8.11" />
   </ItemGroup>
 
   <ItemGroup>
