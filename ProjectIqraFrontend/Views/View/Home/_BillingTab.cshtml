@@ -343,4 +343,54 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Renew Add-on -->
+    <div class="modal fade" id="renewAddonModal" tabindex="-1" aria-labelledby="renewAddonModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="renewAddonModalLabel">Renew Add-on</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Hidden input to store the addon ID we are renewing -->
+                    <input type="hidden" id="renewAddonId" value="">
+
+                    <p id="renewAddonDescription" class="text-muted">You are renewing this add-on for another full month.</p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Quantity: </label>
+                        <p class="form-control-plaintext d-inline" id="renewAddonQuantityText"><strong>...</strong></p>
+                    </div>
+
+                    <div class="card bg-dark">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <span>Price per unit (monthly):</span>
+                                <strong id="renewAddonPricePerUnitText"></strong>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between h5">
+                                <strong>Total for next month:</strong>
+                                <strong id="renewAddonTotalCostText"></strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label for="renewAddonPaymentMethodSelect" class="form-label">Payment Method</label>
+                        <select class="form-select" id="renewAddonPaymentMethodSelect">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="renewAddonConfirmBtn">
+                        Confirm Renewal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
