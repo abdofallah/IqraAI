@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.User.Billing;
-using IqraCore.Entities.User.Billing.Enums;
 
 namespace IqraCore.Models.User.Billing
 {
@@ -13,7 +12,8 @@ namespace IqraCore.Models.User.Billing
             FeatureKey = addon.FeatureKey;
             Quantity = addon.Quantity;
             PurchasedAt = addon.PurchasedAt;
-            Status = addon.Status;
+            PurchaseValidUntil = addon.PurchaseValidUntil;
+            CancelledAt = addon.CancelledAt;
         }
 
         public string Id { get; set; }
@@ -23,6 +23,8 @@ namespace IqraCore.Models.User.Billing
         public decimal Quantity { get; set; }
 
         public DateTime PurchasedAt { get; set; }
-        public UserBillingAddonStatusEnum Status { get; set; }
+        public DateTime PurchaseValidUntil { get; set; }
+
+        public DateTime? CancelledAt { get; set; }
     }
 }

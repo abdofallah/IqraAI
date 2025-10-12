@@ -119,7 +119,7 @@ namespace IqraInfrastructure.Managers.User
                 // Calculate total user concurrency from the plan and any active add-ons
                 decimal baseConcurrency = concurrencyFeature.IncludedLimit;
                 decimal purchasedConcurrency = masterUserData.Billing.ActiveFeatureAddons
-                    .Where(a => a.FeatureKey == featureKey && a.Status == UserBillingAddonStatusEnum.Active)
+                    .Where(a => a.FeatureKey == featureKey && a.PurchaseValidUntil >= DateTime.UtcNow)
                     .Sum(a => a.Quantity);
                 long totalUserConcurrency = (long)(baseConcurrency + purchasedConcurrency);
 

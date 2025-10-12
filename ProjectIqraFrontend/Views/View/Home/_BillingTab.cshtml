@@ -302,4 +302,45 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Manage Add-ons -->
+    <div class="modal fade" id="manageAddonsModal" tabindex="-1" aria-labelledby="manageAddonsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="manageAddonsModalLabel">Manage Add-ons</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- This hidden input will store the feature key we are managing -->
+                    <input type="hidden" id="manageAddonFeatureKey" value="">
+
+                    <p id="manageAddonSummaryText" class="text-muted">...</p>
+
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Quantity</th>
+                                    <th>Purchased At</th>
+                                    <th>Status</th>
+                                    <th>Renews/Expires On</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manageAddonsTableBody">
+                                <!-- Add-on rows will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-outline-primary" id="manageAddonPurchaseMoreBtn">
+                        <i class="fa-solid fa-plus me-1"></i> Purchase More
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
