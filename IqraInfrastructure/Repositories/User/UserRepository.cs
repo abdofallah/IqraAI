@@ -85,20 +85,20 @@ namespace IqraInfrastructure.Repositories.User
         public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition)
         {
             var result = await _usersCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.IsAcknowledged;
+            return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 
         public async Task<bool> UpdateUser(string email, UpdateDefinition<UserData> updateDefinition, IClientSessionHandle session)
         {
             var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);
             var result = await _usersCollection.UpdateOneAsync(session, filter, updateDefinition);
-            return result.IsAcknowledged;
+            return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 
         public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition, IClientSessionHandle session)
         {
             var result = await _usersCollection.UpdateOneAsync(session, filter, updateDefinition);
-            return result.IsAcknowledged;
+            return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 
         public Task<List<UserData>> GetUsersAsync()
@@ -152,7 +152,7 @@ namespace IqraInfrastructure.Repositories.User
             var update = Builders<UserData>.Update.Push(arrayFieldPath, usageItem);
             var result = await _usersCollection.UpdateOneAsync(finalFilter, update);
 
-            return result.IsAcknowledged && result.ModifiedCount == 1;
+            return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 
         public async Task<bool> DecrementConcurrencyUsageAsync(string userEmail, string featureKey, long businessId, object parentReference, object? childReference)
@@ -171,7 +171,7 @@ namespace IqraInfrastructure.Repositories.User
             );
 
             var result = await _usersCollection.UpdateOneAsync(userFilter, update);
-            return result.IsAcknowledged && result.ModifiedCount == 1;
+            return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 
         public async Task<bool> TrySetAddonRenewalInProgressAsync(string userEmail, string addonId)
@@ -187,7 +187,7 @@ namespace IqraInfrastructure.Repositories.User
             var update = Builders<UserData>.Update.Set(d => d.Billing.ActiveFeatureAddons.FirstMatchingElement().IsRenewInProgress, true);
 
             var result = await _usersCollection.UpdateOneAsync(filter, update);
-            return result.IsAcknowledged && result.ModifiedCount == 1;
+            return result.IsAcknowledged && result.ModifiedCount != 0;
         }
     }
 }
