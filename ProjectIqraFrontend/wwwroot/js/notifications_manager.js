@@ -2,6 +2,7 @@
     constructor() {
         // Main container for notifications data
         this.notifications = [];
+        this.timestampUpdater = null;
 
         // jQuery element references
         this.$bell = $('#header-notification');
@@ -12,6 +13,9 @@
 
         // Initial setup
         this.init();
+
+        // Start the timestamp update loop
+        this.startTimestampUpdater();
     }
 
     /**
@@ -38,6 +42,21 @@
                 e.stopPropagation();
             }
         });
+    }
+
+    /**
+     * Starts the interval to periodically update timestamps.
+     */
+    startTimestampUpdater() {
+        // Clear any existing interval before starting a new one
+        if (this.timestampUpdater) {
+            clearInterval(this.timestampUpdater);
+        }
+
+        // Set an interval to run the update function every 5 seconds (5000 ms)
+        this.timestampUpdater = setInterval(() => {
+            this._updateTimestamps();
+        }, 5000);
     }
 
     /**
@@ -174,6 +193,8 @@
         const timeAgo = this._timeSince(new Date(notification.timestamp));
         const unreadClass = notification.isRead ? '' : 'unread';
 
+        const isoTimestamp = new Date(notification.timestamp).toISOString();
+
         let actionButtonHTML = '';
         if (notification.action) {
             actionButtonHTML = `<div class="mt-2">
@@ -196,12 +217,28 @@
                             <b class="title">${notification.title}</b>
                             <p class="description mb-0">${notification.description}</p>
                         </div>
-                        <small class="notification-meta ms-2 text-nowrap">${timeAgo}</small>
+                        <small class="notification-meta ms-2 text-nowrap" data-timestamp="${isoTimestamp}">${timeAgo}</small>
                     </div>
                     ${actionButtonHTML}
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Updates the "time ago" text of all visible notifications.
+     * This is called by an interval to keep times current.
+     * @private
+     */
+    _updateTimestamps() {
+        this.$list.find('.notification-meta').each((index, element) => {
+            const $el = $(element);
+            const timestamp = $el.data('timestamp');
+            if (timestamp) {
+                const newTimeAgo = this._timeSince(new Date(timestamp));
+                $el.text(newTimeAgo);
+            }
+        });
     }
 
     /**

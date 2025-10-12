@@ -29,8 +29,7 @@
                         <div class="p-4 w-100 w-md-50 d-flex flex-column justify-content-between">
                             <div>
                                 <h5 class="card-title m-0">Current Balance</h5>
-                                <!-- The color of this text will be changed by JS based on value -->
-                                <h2 class="fw-bold display-5 my-3" id="balanceValue">$0.00</h2>
+                                <h2 class="fw-bold display-6 my-3" id="balanceValue">$0.00</h2>
                             </div>
                             <button class="btn btn-primary w-100 m-0" id="addFundsBtn" data-bs-toggle="modal" data-bs-target="#addFundsModal">
                                 <i class="fa-solid fa-plus me-1"></i> Add Funds
@@ -43,9 +42,8 @@
                                 <h4 class="fw-bold mt-3 mb-1" id="planName">Loading...</h4>
                                 <p class="text-muted small mb-0" id="planDescription">...</p>
                             </div>
-                            <div class="mt-3">
-                                <p class="mb-1" id="planNextBill">...</p>
-                                <a href="#" id="changePlanLink" class="btn btn-outline-secondary btn-sm disabled">Change Plan</a> <!-- Disabled for now -->
+                            <div>
+                                <p class="m-0 mt-3" id="planNextBill">...</p>
                             </div>
                         </div>
                     </div>
@@ -94,16 +92,12 @@
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <h5 class="card-title mb-0">Auto-Refill</h5>
-                            <div id="autoRefillSettings" class="d-none">
-                                <p class="mb-1 mt-2" id="autoRefillDetailsText">...</p>
-                                <small class="text-muted" id="autoRefillPaymentMethod">...</small>
-                            </div>
                         </div>
                         <div class="d-flex align-items-center">
                             <div class="form-check form-switch me-3">
                                 <input class="form-check-input" type="checkbox" role="switch" id="autoRefillSwitch" style="transform: scale(1.4);">
                             </div>
-                            <button class="btn btn-outline-secondary btn-sm" id="editAutoRefillBtn" data-bs-toggle="modal" data-bs-target="#editAutoRefillModal">Edit Settings</button>
+                            <button class="btn btn-outline-secondary btn-sm d-none" id="editAutoRefillBtn" data-bs-toggle="modal" data-bs-target="#editAutoRefillModal">Edit Settings</button>
                         </div>
                     </div>
                 </div>
@@ -292,6 +286,7 @@
                     <div class="mb-3">
                         <label for="autoRefillAmountInput" class="form-label">Refill with amount (USD)</label>
                         <input type="number" class="form-control" id="autoRefillAmountInput" placeholder="e.g., 50.00" min="1.00" step="0.01">
+                        <div id="autoRefillMinAmountText" class="form-text"></div>
                     </div>
                     <div class="mb-3">
                         <label for="autoRefillPaymentMethodSelect" class="form-label">Using payment method</label>

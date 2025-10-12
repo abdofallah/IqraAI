@@ -4,6 +4,7 @@ using IqraCore.Entities.User;
 using IqraCore.Entities.User.Billing;
 using IqraCore.Entities.User.Billing.Enums;
 using IqraCore.Models.Authentication;
+using IqraCore.Models.User.Billing;
 using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Mail;
@@ -474,6 +475,103 @@ namespace IqraInfrastructure.Managers.User
             await _userDatabase.UpdateUser(userEmail, updateDefinition, mongoSession);
 
             return result.SetSuccessResult();
+        }
+
+        public async Task<FunctionReturnResult<UserBillingAutoRefillSettings?>> UpdateAutoRefillSettingsAsync(UserData user, UpdateAutoRefillSettingsRequestModel settings)
+        {
+            var result = new FunctionReturnResult<UserBillingAutoRefillSettings?>();
+
+            try
+            {
+                if (settings == null)
+                {
+                    return result.SetFailureResult(
+                        "UpdateAutoRefillSettings:INVALID_REQUEST",
+                        "Invalid request body."
+                    );
+                }
+
+                var newAutoRefillSettings = new UserBillingAutoRefillSettings();
+
+                if (settings.Status == UserBillingAutoRefillStatusEnum.Enabled)
+                {
+                    var planResult = await _planManager.GetPlanByIdAsync(user.Billing.Subscription.PlanId);
+                    if (!planResult.Success || planResult.Data == null)
+                    {
+                        _logger.LogWarning("Could not find plan {PlanId} for user {Email} while updating auto-refill.", user.Billing.Subscription.PlanId, user.Email);
+                        return result.SetFailureResult(
+                            "UpdateAutoRefillSettings:PLAN_NOT_FOUND",
+                            "Your current billing plan could not be found."
+                        );
+                    }
+                    var planData = planResult.Data;
+
+                    if (settings.RefillWhenBalanceBelow == null || settings.RefillWhenBalanceBelow <= 0)
+                    {
+                        return result.SetFailureResult(
+                            "UpdateAutoRefillSettings:INVALID_THRESHOLD",
+                            "Threshold amount must be a positive number."
+                        );
+                    }
+                    if (settings.RefillAmount == null || settings.RefillAmount < planData.MinimumTopUpAmount || settings.RefillAmount <= 0)
+                    {
+                        return result.SetFailureResult(
+                            "UpdateAutoRefillSettings:MINIMUM_REFILL_ERROR",
+                            $"Refill amount must be at least ${planData.MinimumTopUpAmount}."
+                        );
+                    }
+                    if (string.IsNullOrWhiteSpace(settings.DefaultPaymentMethodId))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateAutoRefillSettings:PAYMENT_METHOD_REQUIRED",
+                            "A payment method is required to enable auto-refill."
+                        );
+                    }
+
+                    var paymentMethodExists = user.PaymentMethods.Any(pm => pm.Id == settings.DefaultPaymentMethodId);
+                    if (!paymentMethodExists)
+                    {
+                        return result.SetFailureResult(
+                            "UpdateAutoRefillSettings:PAYMENT_METHOD_NOT_FOUND",
+                            "The selected payment method was not found on your account."
+                        );
+                    }
+
+                    newAutoRefillSettings.Status = UserBillingAutoRefillStatusEnum.Enabled;
+                    newAutoRefillSettings.RefillWhenBalanceBelow = settings.RefillWhenBalanceBelow;
+                    newAutoRefillSettings.RefillAmount = settings.RefillAmount;
+                    newAutoRefillSettings.DefaultPaymentMethodId = settings.DefaultPaymentMethodId;
+                }
+                else
+                {
+                    newAutoRefillSettings.Status = UserBillingAutoRefillStatusEnum.Disabled;
+                    newAutoRefillSettings.RefillWhenBalanceBelow = null;
+                    newAutoRefillSettings.RefillAmount = null;
+                    newAutoRefillSettings.DefaultPaymentMethodId = null;
+                    newAutoRefillSettings.LastAttemptStatusMessage = null;
+                }
+
+                var updateDefinition = Builders<UserData>.Update
+                    .Set(u => u.Billing.AutoRefill, newAutoRefillSettings);
+                var updateSuccess = await _userDatabase.UpdateUser(user.Email, updateDefinition);
+                if (!updateSuccess)
+                {
+                    _logger.LogError("Failed to update auto-refill settings in database for user {email}", user.Email);
+                    return result.SetFailureResult(
+                        "UpdateAutoRefillSettings:DB_UPDATE_FAILED",
+                        "Could not save settings to the database."
+                    );
+                }
+
+                return result.SetSuccessResult(newAutoRefillSettings);
+            }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Exception occurred while updating auto-refill settings for user {email}", user.Email);
+                return result.SetFailureResult(
+                    "UpdateAutoRefillSettings:EXCEPTION",
+                    "An unexpected error occurred."
+                );
+            }
         }
     }
 }
