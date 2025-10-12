@@ -189,5 +189,23 @@ namespace IqraInfrastructure.Repositories.User
             var result = await _usersCollection.UpdateOneAsync(filter, update);
             return result.IsAcknowledged && result.ModifiedCount != 0;
         }
+
+        public async Task<UserBillingFeatureAddon?> GetUserBillingFeatureAddonAsync(string userEmail, string addonId)
+        {
+            var query = _usersCollection.AsQueryable()
+                .Where(u => (u.Email == userEmail && u.Billing.ActiveFeatureAddons.Any(a => a.Id == addonId)))
+                .Select(u => u.Billing.ActiveFeatureAddons.FirstOrDefault());
+
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> UserHasAnyPrimaryPaymentMethod(string userEmail)
+        {
+            var query = _usersCollection.AsQueryable()
+                .Where(u => (u.Email == userEmail && u.PaymentMethods.Any(pm => pm.IsPrimary)))
+                .AnyAsync();
+
+            return await query;
+        }
     }
 }
