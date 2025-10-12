@@ -2,6 +2,7 @@
 using IqraCore.Entities.User.Billing;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 
 namespace IqraInfrastructure.Repositories.User
 {
@@ -170,6 +171,22 @@ namespace IqraInfrastructure.Repositories.User
             );
 
             var result = await _usersCollection.UpdateOneAsync(userFilter, update);
+            return result.IsAcknowledged && result.ModifiedCount == 1;
+        }
+
+        public async Task<bool> TrySetAddonRenewalInProgressAsync(string userEmail, string addonId)
+        {
+            var filter = Builders<UserData>.Filter.And(
+                Builders<UserData>.Filter.Eq(u => u.Email, userEmail),
+                Builders<UserData>.Filter.ElemMatch(
+                    u => u.Billing.ActiveFeatureAddons,
+                    addon => addon.Id == addonId && !addon.IsRenewInProgress
+                )
+            );
+
+            var update = Builders<UserData>.Update.Set(d => d.Billing.ActiveFeatureAddons.FirstMatchingElement().IsRenewInProgress, true);
+
+            var result = await _usersCollection.UpdateOneAsync(filter, update);
             return result.IsAcknowledged && result.ModifiedCount == 1;
         }
     }

@@ -917,7 +917,6 @@ namespace ProjectIqraFrontend
             {
                 return new UserSubscriptionManager(
                     sp.GetRequiredService<ILogger<UserSubscriptionManager>>(),
-                    sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<PaymentManager>()
