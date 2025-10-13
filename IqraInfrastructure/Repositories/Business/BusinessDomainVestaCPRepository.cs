@@ -47,6 +47,10 @@ namespace IqraInfrastructure.Repositories.Business
         {
             _logger = logger;
 
+            _logger.LogCritical("[BusinessDomainVestaCPRepository] DISABLED. NOT INITALIZED.");
+
+            return;
+
             _hostname = hostname;
             _adminUsername = adminUsername;
             _businessesUsername = businessesUsername;

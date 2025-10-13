@@ -923,6 +923,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<PaymentManager>()
                 );
             });
+
+            builder.Services.AddHostedService<PaymentTransactionStatusUpdateService>();
         }
 
         private static void SetupDependencies(IServiceProvider serviceProvider)
