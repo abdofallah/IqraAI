@@ -21,6 +21,30 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
             Billing = new UserBillingDataModel(userData.Billing);
 
             ApiKeys = userData.UserApiKeys.Select(x => new UserApiKeyModel(x)).ToList();
+
+            Notifications = userData.Notifications
+                .Where(n =>
+                {
+                    if (n.DeleteAfter.HasValue)
+                    {
+                        return n.CreatedAt.Add(n.DeleteAfter.Value) > DateTime.UtcNow;
+                    }
+
+                    if (!n.ReadOn.HasValue)
+                    {
+                        return true;
+                    }
+
+                    if (!n.OnReadDeleteAfter.HasValue)
+                    {
+                        return true;
+                    }
+
+                    return n.ReadOn.Value.Add(n.OnReadDeleteAfter.Value) > DateTime.UtcNow;
+                }
+            )
+            .Select(x => new UserNotificationDataModel(x))
+            .ToList();
         }
 
         public string Email { get; set; } = string.Empty;
@@ -36,5 +60,7 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
         public UserBillingDataModel Billing { get; set; } = new UserBillingDataModel();
 
         public List<UserApiKeyModel> ApiKeys { get; set; } = new List<UserApiKeyModel>();
+
+        public List<UserNotificationDataModel> Notifications { get; set; } = new List<UserNotificationDataModel>();
     }
 }

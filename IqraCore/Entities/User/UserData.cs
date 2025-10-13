@@ -1,5 +1,6 @@
 ﻿using IqraCore.Attributes;
 using IqraCore.Entities.User.Billing;
+using IqraCore.Entities.User.Notifcation;
 using IqraCore.Entities.User.PaymentMethod;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -19,6 +20,8 @@ namespace IqraCore.Entities.User
         public UserPermission Permission { get; set; } = new UserPermission();
         public List<UserPaymentMethod> PaymentMethods { get; set; } = new List<UserPaymentMethod>();
         public UserBillingData Billing { get; set; } = new UserBillingData();
+
+        public List<UserNotificationData> Notifications { get; set; } = new List<UserNotificationData>();
 
         [ExcludeInAllEndpoints]
         public string PasswordSHA { get; set; } = string.Empty;

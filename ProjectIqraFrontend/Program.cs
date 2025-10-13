@@ -5,6 +5,7 @@ using IqraCore.Entities.Payment.Providers.AmwalPay;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Helpers.User;
+using IqraInfrastructure.HostedServices.User;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Embedding;
@@ -14,7 +15,6 @@ using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Mail;
-using IqraInfrastructure.Managers.Payment;
 using IqraInfrastructure.Managers.Payment.Providers;
 using IqraInfrastructure.Managers.RAG.Extractors;
 using IqraInfrastructure.Managers.RAG.Keywords;
@@ -902,10 +902,10 @@ namespace ProjectIqraFrontend
                 );
             });
 
-            builder.Services.AddScoped<PaymentManager>((sp) =>
+            builder.Services.AddScoped<UserPaymentManager>((sp) =>
             {
-                return new PaymentManager(
-                    sp.GetRequiredService<ILogger<PaymentManager>>(),
+                return new UserPaymentManager(
+                    sp.GetRequiredService<ILogger<UserPaymentManager>>(),
                     sp.GetRequiredService<AmwalPayPaymentService>(),
                     sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<PlanManager>(),
@@ -920,11 +920,9 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<UserSubscriptionManager>>(),
                     sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<PlanManager>(),
-                    sp.GetRequiredService<PaymentManager>()
+                    sp.GetRequiredService<UserPaymentManager>()
                 );
             });
-
-            builder.Services.AddHostedService<PaymentTransactionStatusUpdateService>();
         }
 
         private static void SetupDependencies(IServiceProvider serviceProvider)

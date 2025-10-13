@@ -236,7 +236,38 @@
                         errorCallback(error);
                     }
                 });
-            }     
+            }
+
+            function MarkNotificationAsReadAPI(notificationId, successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/user/notification/read',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ notificationId: notificationId }),
+                    success: successCallback,
+                    error: errorCallback
+                });
+            }
+
+            function MarkNotificationActionClickedAPI(notificationId, actionId, successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/user/notification/action/click',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ notificationId: notificationId, actionId: actionId }),
+                    success: successCallback,
+                    error: errorCallback
+                });
+            }
+
+            function MarkAllNotificationsAsReadAPI(successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/user/notification/read-all',
+                    type: 'POST',
+                    success: successCallback,
+                    error: errorCallback
+                });
+            }
         </script>
 
         <!-- PageLoader -->
@@ -293,6 +324,72 @@
                         FetchMasterUserDataFromAPI(
                             (masterUserData) => {
                                 MasterUserData = masterUserData;
+
+                                // Add Notifications
+                                masterUserData.notifications.forEach((backendNotification) => {
+                                    function getIconForNotificationType(typeEnum) {
+                                        switch (typeEnum) {
+                                            case 0: // General / Info
+                                                return 'fa-regular fa-circle-info';
+                                            case 1: // Success
+                                                return 'fa-regular fa-circle-check text-success';
+                                            case 2: // Warning
+                                                return 'fa-regular fa-triangle-exclamation text-warning';
+                                            case 3: // Error
+                                                return 'fa-regular fa-circle-xmark text-danger';
+                                            default:
+                                                return 'fa-regular fa-bell';
+                                        }
+                                    }
+
+                                    const frontendNotification = {
+                                        id: backendNotification.id,
+                                        icon: getIconForNotificationType(backendNotification.type.value),
+                                        title: backendNotification.title,
+                                        description: backendNotification.body,
+                                        timestamp: new Date(backendNotification.createdAt),
+                                        isRead: backendNotification.isRead,
+                                        isFixed: backendNotification.isFixed,
+                                        source: 'backend'
+                                    };
+
+                                    frontendNotification.onRead = (notificationId) => {
+                                        MarkNotificationAsReadAPI(notificationId,
+                                            (response) => {
+                                                if (!response.success) console.error(`Failed to mark notification ${notificationId} as read on server.`);
+                                            },
+                                            (error) => console.error(`API error marking notification ${notificationId} as read:`, error)
+                                        );
+                                    };
+
+                                    if (backendNotification.actions && backendNotification.actions.length > 0) {
+                                        const firstAction = backendNotification.actions[0];
+
+                                        frontendNotification.action = {
+                                            text: firstAction.title,
+                                            class: 'btn-outline-primary',
+                                            callback: () => {
+                                                MarkNotificationActionClickedAPI(backendNotification.id, firstAction.id,
+                                                    (response) => {
+                                                        if (response.success) {
+                                                            try {
+                                                                new Function(firstAction.callbackJavascript)();
+                                                            } catch (e) {
+                                                                console.error("Error executing callback javascript:", e);
+                                                            }
+                                                        } else {
+                                                            console.error("Server failed to acknowledge action click.");
+                                                        }
+                                                    },
+                                                    (error) => console.error("API error clicking action:", error)
+                                                );
+                                            }
+                                        };
+                                    }
+
+                                    // 4. Add the fully constructed notification to the manager
+                                    notificationManager.addNotification(frontendNotification);
+                                });
 
                                 if (!MasterUserData.businessPermission.disableBusinesses) {
                                     // Fetch and Init Businesses Tab

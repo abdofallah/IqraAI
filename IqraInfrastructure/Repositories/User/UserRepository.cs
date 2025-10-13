@@ -1,5 +1,7 @@
 ﻿using IqraCore.Entities.User;
 using IqraCore.Entities.User.Billing;
+using IqraCore.Entities.User.Notifcation;
+using IqraInfrastructure.Helpers.MongoDB;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -206,6 +208,68 @@ namespace IqraInfrastructure.Repositories.User
                 .AnyAsync();
 
             return await query;
+        }
+
+        public async Task<bool> AddUserNotification(string userEmail, UserNotificationData userNotificationData)
+        {
+            var filter = Builders<UserData>.Filter.Eq(u => u.Email, userEmail);
+            var update = Builders<UserData>.Update.Push(u => u.Notifications, userNotificationData);
+            var result = await _usersCollection.UpdateOneAsync(filter, update);
+
+            return result.IsAcknowledged && result.ModifiedCount != 0;
+        }
+
+        public async Task<bool> SetNotificationAsRead(string userEmail, string notificationId)
+        {
+            var filter = Builders<UserData>.Filter.And(
+                Builders<UserData>.Filter.Eq(u => u.Email, userEmail),
+                Builders<UserData>.Filter.ElemMatch(u => u.Notifications, n => (n.Id == notificationId && n.ReadOn != null))
+            );
+
+            var update = Builders<UserData>.Update.Set(d => d.Notifications.FirstMatchingElement().ReadOn, DateTime.UtcNow);
+
+            var result = await _usersCollection.UpdateOneAsync(filter, update);
+            return result.IsAcknowledged && result.ModifiedCount != 0;
+        }
+
+        public async Task<bool> SetNotificationActionAsClicked(string userEmail, string notificationId, string actionId)
+        {
+            const string notificationIdentifier = "notificationElem";
+            const string actionIdentifier = "actionElem";
+            const string updatePath = $"{nameof(UserData.Notifications)}.$[{notificationIdentifier}].{nameof(UserNotificationData.Actions)}.$[{actionIdentifier}].{nameof(UserNotificationActionData.ClickedOn)}";
+
+            var filter = Builders<UserData>.Filter.And(
+                Builders<UserData>.Filter.Eq(u => u.Email, userEmail),
+                Builders<UserData>.Filter.ElemMatch(u => u.Notifications,
+                    n => n.Id == notificationId && n.Actions.Any(a => a.Id == actionId && a.ClickedOn == null)
+                )
+            );
+            var update = Builders<UserData>.Update.Set(updatePath, DateTime.UtcNow);
+            var arrayFilters = new List<ArrayFilterDefinition>
+            {
+                TypeSafeArrayFilter.Create<UserNotificationData>(notificationIdentifier, notif => notif.Id == notificationId),
+                TypeSafeArrayFilter.Create<UserNotificationActionData>(actionIdentifier, action => action.Id == actionId)
+            };
+            var updateOptions = new UpdateOptions { ArrayFilters = arrayFilters };
+
+            var result = await _usersCollection.UpdateOneAsync(filter, update, updateOptions);
+            return result.IsAcknowledged && result.ModifiedCount > 0;
+        }
+
+        public async Task<List<UserNotificationData>> GetUnreadNotifications(string userEmail)
+        {
+            var filter = Builders<UserData>.Filter.Eq(u => u.Email, userEmail);
+
+            var projection = Builders<UserData>.Projection.Expression(u =>
+                u.Notifications.Where(n => n.ReadOn == null)
+            );
+
+            var unreadNotifications = await _usersCollection
+                .Find(filter)
+                .Project(projection)
+                .FirstOrDefaultAsync();
+
+            return unreadNotifications.ToList() ?? new List<UserNotificationData>();
         }
     }
 }

@@ -1,8 +1,11 @@
 ﻿using IqraCore.Entities.TTS;
 using IqraInfrastructure.Repositories.TTS.Cache;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
-namespace IqraBackgroundProcessor.Services.TTS.Cache
+namespace IqraInfrastructure.HostedServices.TTS
 {
     public class OrphanedTTSAudioCacheCleanupService : BackgroundService
     {
