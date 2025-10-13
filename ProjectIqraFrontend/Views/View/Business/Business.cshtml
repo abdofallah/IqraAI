@@ -407,7 +407,7 @@
         function FetchBusinessDataFromAPI(businessId, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/user/business/' + businessId,
-                type: 'POST',
+                type: 'GET',
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -425,7 +425,7 @@
         function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback) {
             $.ajax({
                 url: '/app/specification/languages/',
-                type: 'POST',
+                type: 'GET',
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -443,7 +443,7 @@
         function FetchSpecificationRegionsDataFromAPI(successCallback, errorCallback) {
             $.ajax({
                 url: '/app/specification/regions/',
-                type: 'POST',
+                type: 'GET',
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -461,7 +461,7 @@
         function FetchSpecificationIntegrationsDataFromAPI(successCallback, errorCallback) {
             $.ajax({
                 url: '/app/specification/integrations/',
-                type: 'POST',
+                type: 'GET',
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -476,13 +476,10 @@
             });
         }
 
-        function FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+        function FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(type, successCallback, errorCallback) {
             $.ajax({
-                url: '/app/specification/llmproviders/getbyintegration',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
+                url: `/app/specification/llmproviders/getbyintegration/${type}`,
+                type: 'GET',
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -497,13 +494,10 @@
             });
         }
 
-        function FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+        function FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(type, successCallback, errorCallback) {
             $.ajax({
-                url: '/app/specification/sttproviders/getbyintegration',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
+                url: `/app/specification/sttproviders/getbyintegration/${type}`,
+                type: 'GET',
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -518,13 +512,10 @@
             });
         }
 
-        function FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+        function FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(type, successCallback, errorCallback) {
             $.ajax({
-                url: '/app/specification/ttsproviders/getbyintegration',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
+                url: `/app/specification/ttsproviders/getbyintegration/${type}`,
+                type: 'GET',
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -539,13 +530,10 @@
             });
         }
 
-        function FetchSpecificationEmbeddingProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+        function FetchSpecificationEmbeddingProviderDataByIntegrationTypeFromAPI(type, successCallback, errorCallback) {
             $.ajax({
-                url: '/app/specification/embeddingproviders/getbyintegration',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
+                url: `/app/specification/embeddingproviders/getbyintegration/${type}`,
+                type: 'GET',
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -560,13 +548,10 @@
             });
         }
 
-        function FetchSpecificationRerankProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+        function FetchSpecificationRerankProviderDataByIntegrationTypeFromAPI(type, successCallback, errorCallback) {
             $.ajax({
-                url: '/app/specification/rerankproviders/getbyintegration',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
+                url: `/app/specification/rerankproviders/getbyintegration/${type}`,
+                type: 'GET',
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -795,10 +780,8 @@
 
                                     SpecificationIntegrationsListData.forEach((integration) => {
                                         if (integration.type.includes("LLM")) {
-                                            const formData = new FormData();
-                                            formData.append("integrationtype", integration.id);
                                             FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(
-                                                formData,
+                                                integration.id,
                                                 (LLMProviderResult) => {
                                                     temporaryLLMProvidersForIntegrations.push(LLMProviderResult);
                                                 },
@@ -817,10 +800,8 @@
                                         }
 
                                         if (integration.type.includes("STT") || integration.type.includes("SPEECH2TEXT")) {
-                                            const formData = new FormData();
-                                            formData.append("integrationtype", integration.id);
                                             FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(
-                                                formData,
+                                                integration.id,
                                                 (STTProviderResult) => {
                                                     temporarySTTProvidersForIntegrations.push(STTProviderResult);
                                                 },
@@ -839,10 +820,8 @@
                                         }
 
                                         if (integration.type.includes("TTS") || integration.type.includes("TEXT2SPEECH")) {
-                                            const formData = new FormData();
-                                            formData.append("integrationtype", integration.id);
                                             FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(
-                                                formData,
+                                                integration.id,
                                                 (TTSProviderResult) => {
                                                     temporaryTTSProvidersForIntegrations.push(TTSProviderResult);
                                                 },
@@ -862,10 +841,8 @@
 
                                         if (integration.type.includes("Embedding"))
                                         {
-                                            const formData = new FormData();
-                                            formData.append("integrationtype", integration.id);
                                             FetchSpecificationEmbeddingProviderDataByIntegrationTypeFromAPI(
-                                                formData,
+                                                integration.id,
                                                 (EmbeddingProviderResult) => {
                                                     temporaryEmbeddingProvidersForIntegrations.push(EmbeddingProviderResult);
                                                 },
@@ -885,10 +862,8 @@
 
                                         if (integration.type.includes("Rerank"))
                                         {
-                                            const formData = new FormData();
-                                            formData.append("integrationtype", integration.id);
                                             FetchSpecificationRerankProviderDataByIntegrationTypeFromAPI(
-                                                formData,
+                                                integration.id,
                                                 (RerankProviderResult) => {
                                                     temporaryRerankProvidersForIntegrations.push(RerankProviderResult);
                                                 },

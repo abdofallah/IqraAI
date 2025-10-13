@@ -32,7 +32,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
         }
 
 
-        [HttpPost("/app/user/businesses")]
+        [HttpGet("/app/user/businesses")]
         public async Task<FunctionReturnResult<List<BusinessData>?>> GetUserBusinesses()
         {
             var result = new FunctionReturnResult<List<BusinessData>?>();
@@ -78,7 +78,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
             }
         }
 
-        [HttpPost("/app/user/business/{businessId}")]
+        [HttpGet("/app/user/business/{businessId}")]
         public async Task<FunctionReturnResult<GetUserBusinessFullReturnModel?>> GetUserBusiness(long businessId)
         {
             var result = new FunctionReturnResult<GetUserBusinessFullReturnModel?>();

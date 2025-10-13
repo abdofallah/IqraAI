@@ -5,13 +5,13 @@ using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App
 {
-    public class ViewController : Controller
+    public class AppViewController : Controller
     {
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserManager _userManager;
         private readonly ViewLinkConfiguration _viewLinkConfiguration;
 
-        public ViewController(UserSessionValidationHelper userSessionValidationHelper, UserManager userManager, ViewLinkConfiguration viewLinkConfiguration)
+        public AppViewController(UserSessionValidationHelper userSessionValidationHelper, UserManager userManager, ViewLinkConfiguration viewLinkConfiguration)
         {
             _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;

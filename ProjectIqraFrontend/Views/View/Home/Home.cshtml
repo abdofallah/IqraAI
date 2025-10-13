@@ -222,8 +222,7 @@
             function FetchUserBusinessesFromAPI(successCallback, errorCallback) {
                 $.ajax({
                     url: '/app/user/businesses',
-                    type: 'POST',
-                    dataType: "json",
+                    type: 'GET',
                     success: (response) => {
                         if (!response.success) {
                             errorCallback(response);

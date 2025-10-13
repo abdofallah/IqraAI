@@ -8,13 +8,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers.App
 {
-    public class AuthenticationController : Controller
+    public class AppAuthenticationController : Controller
     {
-        private readonly ILogger<AuthenticationController> _logger;
+        private readonly ILogger<AppAuthenticationController> _logger;
         private readonly UserManager _userManager;
         private readonly AppRepository _appRepository;
 
-        public AuthenticationController(ILogger<AuthenticationController> logger, UserManager userManager, AppRepository appRepository)
+        public AppAuthenticationController(ILogger<AppAuthenticationController> logger, UserManager userManager, AppRepository appRepository)
         {
             _logger = logger;
             _userManager = userManager;
