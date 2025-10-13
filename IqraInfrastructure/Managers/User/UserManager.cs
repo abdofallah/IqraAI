@@ -1,5 +1,7 @@
 ﻿using IqraCore.Entities.App.Configuration;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Payment.Transaction;
+using IqraCore.Entities.Payment.Transaction.Enums;
 using IqraCore.Entities.User;
 using IqraCore.Entities.User.Billing;
 using IqraCore.Entities.User.Billing.Enums;
@@ -9,6 +11,7 @@ using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Mail;
 using IqraInfrastructure.Repositories.App;
+using IqraInfrastructure.Repositories.Payment;
 using IqraInfrastructure.Repositories.User;
 using Konscious.Security.Cryptography;
 using Microsoft.Extensions.Logging;
@@ -30,6 +33,7 @@ namespace IqraInfrastructure.Managers.User
         private readonly EmailManager _emailManager;
         private readonly UserApiKeyProcessor _apiKeyProcessor;
         private readonly PlanManager _planManager;
+        private readonly PaymentTransactionRepository _paymentTransactionRepository;
 
         private readonly int _sessionDurationHours = 24;
 
@@ -40,7 +44,8 @@ namespace IqraInfrastructure.Managers.User
             UserRepository userRepository,
             EmailManager emailManager,
             UserApiKeyProcessor apiKeyProcessor,
-            PlanManager planManager
+            PlanManager planManager,
+            PaymentTransactionRepository paymentTransactionRepository
         )
         {
             _logger = logger;
@@ -51,6 +56,7 @@ namespace IqraInfrastructure.Managers.User
             _emailManager = emailManager;
             _apiKeyProcessor = apiKeyProcessor;
             _planManager = planManager;
+            _paymentTransactionRepository = paymentTransactionRepository;
         }
 
         // CURD
@@ -572,6 +578,78 @@ namespace IqraInfrastructure.Managers.User
                     "An unexpected error occurred."
                 );
             }
+        }
+
+        public async Task<FunctionReturnResult<PaginatedResult<UserBillingHistoryModel>?>> GetBillingHistoryAsync(string userEmail, int limit, string? nextCursor, string? previousCursor)
+        {
+            var result = new FunctionReturnResult<PaginatedResult<UserBillingHistoryModel>?>();
+            var paginatedResult = new PaginatedResult<UserBillingHistoryModel> { PageSize = limit };
+
+            bool fetchNext = string.IsNullOrWhiteSpace(previousCursor);
+            string? currentCursor = fetchNext ? nextCursor : previousCursor;
+            var decodedCursor = PaginationCursor<PaginationCursorNoFilterHelper>.Decode(currentCursor);
+
+            try
+            {
+                var (transactions, hasMore) = await _paymentTransactionRepository.GetUserTransactionsPaginatedAsync(userEmail, limit, decodedCursor, fetchNext);
+                if (!transactions.Any())
+                {
+                    return result.SetSuccessResult(new PaginatedResult<UserBillingHistoryModel>());
+                }
+
+                paginatedResult.Items = transactions.Select(t => new UserBillingHistoryModel
+                {
+                    Id = t.Id,
+                    CreatedAt = t.CreatedAt,
+                    Description = GenerateTransactionDescription(t), // Helper function to generate description
+                    USDAmount = t.USDAmount,
+                    Status = t.Status,
+                    Type = t.Type,
+                    FailureReason = t.FailureReason,
+                    CardDisplay = t.CardNumber, // Already masked "Visa **** 1234" from payment provider
+                    UserPaymentMethodId = t.UserPaymentMethodId,
+                    CardHolderName = t.CardHolderName,
+                    AddonQuantity = t.FeatureAddonQuantity,
+                    AddonUnitPrice = t.FeatureAddonUnitPrice,
+                    AddonFeatureKey = t.FeatureAddonKey,
+                    AddonId = t.FeatureAddonId
+                }).ToList();
+
+                // Cursor logic
+                if (fetchNext)
+                {
+                    paginatedResult.HasNextPage = hasMore;
+                    paginatedResult.NextCursor = hasMore ? new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = transactions.Last().CreatedAt, Id = transactions.Last().Id }.Encode() : null;
+                    paginatedResult.PreviousCursor = decodedCursor != null ? new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = transactions.First().CreatedAt, Id = transactions.First().Id }.Encode() : null;
+                    paginatedResult.HasPreviousPage = decodedCursor != null;
+                }
+                else // previous
+                {
+                    paginatedResult.HasPreviousPage = hasMore;
+                    paginatedResult.PreviousCursor = hasMore ? new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = transactions.First().CreatedAt, Id = transactions.First().Id }.Encode() : null;
+                    paginatedResult.NextCursor = new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = transactions.Last().CreatedAt, Id = transactions.Last().Id }.Encode();
+                    paginatedResult.HasNextPage = true;
+                }
+
+                return result.SetSuccessResult(paginatedResult);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get billing history for user {Email}", userEmail);
+                return result.SetFailureResult("BILLING_HISTORY_FAILED", "An error occurred while fetching billing history.");
+            }
+        }
+        private string GenerateTransactionDescription(PaymentTransaction transaction)
+        {
+            return transaction.Type switch
+            {
+                PaymentTransactionTypeEnum.TopUp => "Credit Top-up",
+                PaymentTransactionTypeEnum.Subscription => "Monthly Subscription",
+                PaymentTransactionTypeEnum.AddCard => "New Card Added (Verification)",
+                PaymentTransactionTypeEnum.FeatureAddonPurchase => $"Add-on Purchase",
+                PaymentTransactionTypeEnum.FeatureAddonRenewal => $"Add-on Renewal",
+                _ => "General Transaction",
+            };
         }
     }
 }

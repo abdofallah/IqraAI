@@ -199,7 +199,22 @@ function SaveBusinessTool(changes, successCallback, errorCallback) {
 }
 
 // Functions
+function ShowToolsListTab() {
+	toolManagerHeader.removeClass("show");
+	toolManagerTab.removeClass("show");
 
+	setTimeout(() => {
+		toolManagerTab.addClass("d-none");
+		toolManagerHeader.addClass("d-none");
+
+		toolListTab.removeClass("d-none");
+
+		setDynamicBodyHeight();
+		setTimeout(() => {
+			toolListTab.addClass("show");
+		}, 10);
+	}, 300);
+}
 function ShowToolsManageTab() {
 	toolListTab.removeClass("show");
 	setTimeout(() => {
@@ -439,23 +454,6 @@ function ResetAndEmptyToolsManageTab() {
 	confirmPublishToolButton.prop("disabled", true);
 
 	toolManagerTab.find(".is-invalid").removeClass("is-invalid");
-}
-
-function ShowToolsListTab() {
-	toolManagerHeader.removeClass("show");
-	toolManagerTab.removeClass("show");
-
-	setTimeout(() => {
-		toolManagerTab.addClass("d-none");
-		toolManagerHeader.addClass("d-none");
-
-		toolListTab.removeClass("d-none");
-
-		setDynamicBodyHeight();
-		setTimeout(() => {
-			toolListTab.addClass("show");
-		}, 10);
-	}, 300);
 }
 
 function CreateToolsDefaultToolObject() {

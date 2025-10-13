@@ -154,6 +154,8 @@
         <!-- Global -->
         <script>
             const AlertManager = new BootstrapAlertManager();
+            window.AlertManager = AlertManager; // needed for iframes
+
             const notificationManager = new NotificationsManager();
 
             var MasterUserData = null;

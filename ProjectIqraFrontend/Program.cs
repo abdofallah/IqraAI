@@ -686,7 +686,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<EmailManager>(),
                     sp.GetRequiredService<UserApiKeyProcessor>(),
-                    sp.GetRequiredService<PlanManager>()
+                    sp.GetRequiredService<PlanManager>(),
+                    sp.GetRequiredService<PaymentTransactionRepository>()
                 );
             });
             builder.Services.AddSingleton<IntegrationConfigurationManager>((sp) =>

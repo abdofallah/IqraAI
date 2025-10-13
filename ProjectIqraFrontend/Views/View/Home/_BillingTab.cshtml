@@ -132,37 +132,92 @@
                 </div>
             </div>
 
+
             <!-- Billing History Tab -->
             <div class="tab-pane fade" id="billing-history" role="tabpanel" aria-labelledby="billing-history-tab">
-                <table class="table table-hover w-100" id="billing-history-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Invoice</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Example Row: Subscription -->
-                        <tr>
-                            <td>5/1/2024</td>
-                            <td>Monthly Subscription (Fixed Package)</td>
-                            <td>$50.00</td>
-                            <td><span class="badge bg-success">Paid</span></td>
-                            <td><a href="#" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-download"></i> Download</a></td>
-                        </tr>
-                        <!-- Example Row: Top-up -->
-                        <tr>
-                            <td>4/28/2024</td>
-                            <td>Credit Top-up</td>
-                            <td>$25.00</td>
-                            <td><span class="badge bg-success">Paid</span></td>
-                            <td><a href="#" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-download"></i> Download</a></td>
-                        </tr>
-                    </tbody>
-                </table>
+
+                <!-- View 1: History List Container -->
+                <div id="billingHistoryListContainer" class="fade show">
+                    <table class="table table-hover w-100" id="billing-history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="billing-history-table-body">
+                            <!-- Rows will be dynamically inserted here -->
+                        </tbody>
+                    </table>
+
+                    <!-- Pagination Controls -->
+                    <nav class="d-flex justify-content-between align-items-center mt-3">
+                        <button class="btn btn-outline-secondary" id="billing-history-prev-btn" disabled>Previous</button>
+                        <span id="billing-history-page-info" class="text-muted small">Page 1</span>
+                        <button class="btn btn-outline-secondary" id="billing-history-next-btn" disabled>Next</button>
+                    </nav>
+                </div>
+
+                <!-- View 2: History Detail Container -->
+                <div id="billingHistoryDetailContainer" class="fade d-none">
+                    <div class="mb-4 d-flex align-items-center">
+                        <button class="btn btn-sm btn-outline-secondary me-3" id="backToBillingHistoryList">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Back
+                        </button>
+                        <h4 class="mb-0">Transaction Details</h4>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <small class="text-muted">Transaction ID</small>
+                                    <p class="fw-bold" id="detail-trans-id">...</p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <small class="text-muted">Date & Time</small>
+                                    <p class="fw-bold" id="detail-trans-date">...</p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <small class="text-muted">Amount (USD)</small>
+                                    <p class="fw-bold h5" id="detail-trans-amount">...</p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <small class="text-muted">Status</small>
+                                    <div id="detail-trans-status">...</div>
+                                </div>
+                                <div class="col-12"><hr></div>
+                            </div>
+
+                            <div class="row" id="detail-trans-payment-info">
+                                <div class="col-md-6 mb-3">
+                                    <small class="text-muted">Payment Method</small>
+                                    <p class="fw-bold" id="detail-trans-card">...</p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <small class="text-muted">Card Holder</small>
+                                    <p class="fw-bold" id="detail-trans-holder">...</p>
+                                </div>
+                            </div>
+
+                            <div class="row" id="detail-trans-addon-info" class="d-none">
+                                <!-- Addon specific details will be built by JS -->
+                            </div>
+
+                            <div id="detail-trans-failure-reason-container" class="d-none">
+                                <hr>
+                                <small class="text-muted text-danger">Failure Reason</small>
+                                <p class="fw-bold text-danger" id="detail-trans-failure-reason">...</p>
+                            </div>
+                        </div>
+                        <div class="card-footer text-end">
+                            <a href="#" class="btn btn-sm btn-outline-secondary disabled" title="Coming Soon"><i class="fa-solid fa-download"></i> Download Invoice</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
