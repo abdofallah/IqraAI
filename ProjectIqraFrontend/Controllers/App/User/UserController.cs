@@ -16,7 +16,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
             _userSessionValidationHelper = userSessionValidationHelper;
         }
 
-        [HttpPost("/app/user")]
+        [HttpGet("/app/user")]
         public async Task<FunctionReturnResult<GetMasterUserDataModel?>> GetMasterUserDataModel()
         {
             var result = new FunctionReturnResult<GetMasterUserDataModel?>();

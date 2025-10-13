@@ -167,8 +167,7 @@
             function FetchMasterUserDataFromAPI(successCallback, errorCallback) {
                 $.ajax({
                     url: '/app/user',
-                    type: 'POST',
-                    dataType: "json",
+                    type: 'GET',
                     success: (response) => {
                         if (!response.success) {
                             errorCallback(response);
@@ -186,8 +185,7 @@
             function FetchUserBillingPlanDataFromAPI(successCallback, errorCallback) {
                 $.ajax({
                     url: '/app/user/billing/plan',
-                    type: 'POST',
-                    dataType: "json",
+                    type: 'GET',
                     success: (response) => {
                         if (!response.success) {
                             errorCallback(response);
@@ -204,7 +202,7 @@
             function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback) {
                 $.ajax({
                     url: '/app/specification/languages/',
-                    type: 'POST',
+                    type: 'GET',
                     success: (response) => {
                         if (!response.success) {
                             errorCallback(response);
