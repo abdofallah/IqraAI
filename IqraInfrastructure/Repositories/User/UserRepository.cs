@@ -34,7 +34,7 @@ namespace IqraInfrastructure.Repositories.User
             return true;
         }
 
-        public async Task<UserData?> GetUserByEmail(string email)
+        public async Task<UserData?> GetFullUserByEmail(string email)
         {
             var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);
             return await _usersCollection.Find(filter).FirstOrDefaultAsync();
@@ -138,6 +138,16 @@ namespace IqraInfrastructure.Repositories.User
             );
 
             return await _usersCollection.Find(filter).AnyAsync();
+        }
+
+        public async Task<UserBillingData?> GetUserBillingData(string email)
+        {
+            var query = _usersCollection.AsQueryable()
+                .Where(u => u.Email == email)
+                .Select(u => u.Billing)
+                .FirstOrDefaultAsync();
+
+            return await query;
         }
 
         public async Task<bool> TryIncrementConcurrencyUsageAsync(string userEmail, string featureKey, long maxConcurrency, UserBillingCycleConcurrencyFeatureUsage usageItem)

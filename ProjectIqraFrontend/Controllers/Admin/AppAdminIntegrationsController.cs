@@ -43,7 +43,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetIntegrations:3";
@@ -94,7 +94,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveIntegration:3";

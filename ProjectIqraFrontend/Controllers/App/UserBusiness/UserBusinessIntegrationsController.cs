@@ -51,7 +51,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             }
 
             // User validation
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveBusinessIntegration:3";

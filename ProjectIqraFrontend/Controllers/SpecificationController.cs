@@ -80,7 +80,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetAppLanguages:3";
@@ -124,7 +124,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetAvailableIntegrations:3";
@@ -168,7 +168,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetRegions:3";
@@ -212,7 +212,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetLLMProviderByIntegrationType:3";
@@ -270,7 +270,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetSTTProviderByIntegrationType:3";
@@ -329,7 +329,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetTTSProviderByIntegrationType:3";
@@ -388,7 +388,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetEmbeddingProviderByIntegrationType:3";
@@ -447,7 +447,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetRerankProviderByIntegrationType:3";

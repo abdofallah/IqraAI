@@ -42,7 +42,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveBusinessTools:3";

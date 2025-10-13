@@ -68,9 +68,9 @@ namespace IqraInfrastructure.Managers.User
             await _userDatabase.UpdateUser(userEmail, updateDefinition, mongoSession);
         }
 
-        public async Task<UserData?> GetUserByEmail(string email)
+        public async Task<UserData?> GetFullUserByEmail(string email)
         {
-            return await _userDatabase.GetUserByEmail(email);
+            return await _userDatabase.GetFullUserByEmail(email);
         }
 
         public async Task<UserData?> GetUserDataForLoginValidation(string email)

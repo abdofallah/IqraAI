@@ -44,7 +44,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             }
 
             // Get and validate user
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveBusinessRoute:3";

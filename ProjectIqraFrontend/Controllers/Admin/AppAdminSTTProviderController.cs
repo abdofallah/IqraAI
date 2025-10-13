@@ -48,7 +48,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            var user = await _userManager.GetUserByEmail(userEmail);
+            var user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetSTTProviders:3";
@@ -100,7 +100,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            var user = await _userManager.GetUserByEmail(userEmail);
+            var user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveSTTProvider:3";
@@ -175,7 +175,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            var user = await _userManager.GetUserByEmail(userEmail);
+            var user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveSTTProviderModel:3";

@@ -45,7 +45,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetLLMProviders:3";
@@ -96,7 +96,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveLLMProvider:3";
@@ -170,7 +170,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveLLMProviderModel:3";

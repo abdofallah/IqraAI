@@ -61,7 +61,7 @@ namespace ProjectIqraFrontend.Middlewares
             var userEmail = validateUserSessionResult.Data!;
 
             // Get and validate user
-            var userData = await _userManager.GetUserByEmail(userEmail);
+            var userData = await _userManager.GetFullUserByEmail(userEmail);
             if (userData == null)
             {
                 return result.SetFailureResult("ValidateUserSessionAndGetUserAsync:USER_DATA_NOT_FOUND", "User not found");

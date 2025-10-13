@@ -42,7 +42,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveBusinessContextBranding:3";
@@ -163,7 +163,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveBusinessContextBranch:3";
@@ -334,7 +334,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveBusinessContextService:3";
@@ -511,7 +511,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "SaveBusinessContextProduct:3";

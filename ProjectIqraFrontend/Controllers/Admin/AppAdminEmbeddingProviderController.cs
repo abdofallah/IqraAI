@@ -41,7 +41,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result.SetFailureResult("GetEmbeddingProviders:2", "Session validation failed");
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 return result.SetFailureResult("GetEmbeddingProviders:3", "User not found");
@@ -80,7 +80,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result.SetFailureResult("SaveEmbeddingProvider:2", "Session validation failed");
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 return result.SetFailureResult("SaveEmbeddingProvider:3", "User not found");
@@ -136,7 +136,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result.SetFailureResult("SaveEmbeddingProviderModel:2", "Session validation failed");
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 return result.SetFailureResult("SaveEmbeddingProviderModel:3", "User not found");

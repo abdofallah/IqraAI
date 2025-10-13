@@ -118,7 +118,7 @@ namespace ProjectIqraFrontend.Controllers.App
                     );
                 }
 
-                UserData? user = await _userManager.GetUserByEmail(email);
+                UserData? user = await _userManager.GetFullUserByEmail(email);
                 if (user == null)
                 {
                     return result.SetFailureResult(

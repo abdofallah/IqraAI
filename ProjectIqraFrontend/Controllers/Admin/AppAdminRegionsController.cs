@@ -41,7 +41,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = "GetRegions:3";

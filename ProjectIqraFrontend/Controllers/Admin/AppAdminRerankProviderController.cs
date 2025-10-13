@@ -41,7 +41,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result.SetFailureResult("GetRerankProviders:2", "Session validation failed");
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 return result.SetFailureResult("GetRerankProviders:3", "User not found");
@@ -80,7 +80,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result.SetFailureResult("SaveRerankProvider:2", "Session validation failed");
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 return result.SetFailureResult("SaveRerankProvider:3", "User not found");
@@ -136,7 +136,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result.SetFailureResult("SaveRerankProviderModel:2", "Session validation failed");
             }
 
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
             if (user == null)
             {
                 return result.SetFailureResult("SaveRerankProviderModel:3", "User not found");

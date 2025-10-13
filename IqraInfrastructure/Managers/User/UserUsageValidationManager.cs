@@ -45,7 +45,7 @@ namespace IqraInfrastructure.Managers.User
             string logPrefix = "ValidateCallPermission";
 
             // --- Load all necessary data using the new helper method ---
-            var (loadResult, businessData, masterUserData, userBillingPlan) = await LoadUserAndPlanAsync(businessId, logPrefix);
+            var (loadResult, businessData, userBillingData, userBillingPlan) = await LoadUserBillingAndPlanAsync(businessId, logPrefix);
             if (!loadResult.Success)
             {
                 return loadResult;
@@ -60,15 +60,15 @@ namespace IqraInfrastructure.Managers.User
 
             if (userBillingPlan is FixedPackagePlanDefinition)
             {
-                if (masterUserData!.Billing.CurrentCycleUsage.CurrentFeatureUsage.ContainsKey(BillingFeatureKey.CallMinutes) == false)
+                if (userBillingData!.CurrentCycleUsage.CurrentFeatureUsage.ContainsKey(BillingFeatureKey.CallMinutes) == false)
                 {
                     return result.SetFailureResult($"{logPrefix}:NO_CURRENT_MINUTES_USAGE", $"No current usage data found for call minutes.");
                 }
 
-                decimal minutesUsed = masterUserData!.Billing.CurrentCycleUsage.CurrentFeatureUsage.GetValueOrDefault(BillingFeatureKey.CallMinutes);
+                decimal minutesUsed = userBillingData!.CurrentCycleUsage.CurrentFeatureUsage.GetValueOrDefault(BillingFeatureKey.CallMinutes);
 
                 // If the user is out of included minutes, they must have a positive credit balance for overages.
-                if (minutesUsed >= minutesFeature.IncludedLimit && masterUserData.Billing.CreditBalance <= 0)
+                if (minutesUsed >= minutesFeature.IncludedLimit && userBillingData!.CreditBalance <= 0)
                 {
                     return result.SetFailureResult($"{logPrefix}:EXCEEDED_PACKAGE_AND_CREDIT", "Exceeded plan minutes and insufficient credit balance for overage.");
                 }
@@ -76,14 +76,14 @@ namespace IqraInfrastructure.Managers.User
             else // StandardPayAsYouGo or VolumeBasedTiered
             {
                 // User must have a positive credit balance to start a new call.
-                if (masterUserData.Billing.CreditBalance <= 0)
+                if (userBillingData!.CreditBalance <= 0)
                 {
                     return result.SetFailureResult($"{logPrefix}:INSUFFICIENT_BALANCE", "Insufficient credit balance to make a call.");
                 }
             }
 
             // --- Validate Business-Level Minute Cap (unchanged) ---
-            if (businessData.AllocatedMonthlyMinuteCap.HasValue)
+            if (businessData!.AllocatedMonthlyMinuteCap.HasValue)
             {
                 if (businessData.CurrentMonthlyMinuteUsage >= businessData.AllocatedMonthlyMinuteCap.Value)
                 {
@@ -101,13 +101,13 @@ namespace IqraInfrastructure.Managers.User
 
             try
             {
-                var (loadResult, businessData, masterUserData, userBillingPlan) = await LoadUserAndPlanAsync(businessId, logPrefix);
+                var (loadResult, businessData, userBillingData, userBillingPlan) = await LoadUserBillingAndPlanAsync(businessId, logPrefix);
                 if (!loadResult.Success)
                 {
                     return loadResult;
                 }
 
-                var concurrencyFeature = userBillingPlan.GetFeature(featureKey);
+                var concurrencyFeature = userBillingPlan!.GetFeature(featureKey);
                 if (concurrencyFeature == null)
                 {
                     return result.SetFailureResult(
@@ -118,7 +118,7 @@ namespace IqraInfrastructure.Managers.User
 
                 // Calculate total user concurrency from the plan and any active add-ons
                 decimal baseConcurrency = concurrencyFeature.IncludedLimit;
-                decimal purchasedConcurrency = masterUserData.Billing.ActiveFeatureAddons
+                decimal purchasedConcurrency = userBillingData!.ActiveFeatureAddons
                     .Where(a => a.FeatureKey == featureKey && a.PurchaseValidUntil >= DateTime.UtcNow)
                     .Sum(a => a.Quantity);
                 long totalUserConcurrency = (long)(baseConcurrency + purchasedConcurrency);
@@ -138,7 +138,7 @@ namespace IqraInfrastructure.Managers.User
                     ChildReference = childReference
                 };
 
-                bool increased = await _userRepository.TryIncrementConcurrencyUsageAsync(masterUserData.Email, featureKey, totalUserConcurrency, usageItem);
+                bool increased = await _userRepository.TryIncrementConcurrencyUsageAsync(businessData!.MasterUserEmail, featureKey, totalUserConcurrency, usageItem);
                 if (!increased)
                 {
                     return result.SetFailureResult(
@@ -216,7 +216,7 @@ namespace IqraInfrastructure.Managers.User
             }
         }
 
-        private async Task<(FunctionReturnResult result, BusinessData? business, UserData? user, BillingPlanDefinitionBase? plan)> LoadUserAndPlanAsync(long businessId, string logPrefix)
+        private async Task<(FunctionReturnResult result, BusinessData? business, UserBillingData? userBilling, BillingPlanDefinitionBase? plan)> LoadUserBillingAndPlanAsync(long businessId, string logPrefix)
         {
             var result = new FunctionReturnResult();
 
@@ -226,19 +226,19 @@ namespace IqraInfrastructure.Managers.User
                 return (result.SetFailureResult($"{logPrefix}:BUSINESS_NOT_FOUND", "Business not found."), null, null, null);
             }
 
-            UserData? masterUserData = await _userRepository.GetUserByEmail(businessData.MasterUserEmail);
-            if (masterUserData == null)
+            UserBillingData? userBillingData = await _userRepository.GetUserBillingData(businessData.MasterUserEmail);
+            if (userBillingData == null)
             {
-                return (result.SetFailureResult($"{logPrefix}:USER_NOT_FOUND", "Master user not found."), businessData, null, null);
+                return (result.SetFailureResult($"{logPrefix}:USER_NOT_FOUND", "Master user billing data not found."), businessData, null, null);
             }
 
-            var planResult = await _planManager.GetPlanByIdAsync(masterUserData!.Billing.Subscription.PlanId);
+            var planResult = await _planManager.GetPlanByIdAsync(userBillingData.Subscription.PlanId);
             if (!planResult.Success || planResult.Data == null)
             {
-                return (result.SetFailureResult($"{logPrefix}:PLAN_NOT_FOUND", $"Plan with ID '{masterUserData!.Billing.Subscription.PlanId}' could not be found."), businessData, masterUserData, null);
+                return (result.SetFailureResult($"{logPrefix}:PLAN_NOT_FOUND", $"Plan with ID '{userBillingData.Subscription.PlanId}' could not be found."), businessData, userBillingData, null);
             }
 
-            return (result.SetSuccessResult(), businessData, masterUserData, planResult.Data);
+            return (result.SetSuccessResult(), businessData, userBillingData, planResult.Data);
         }
     }
 }
