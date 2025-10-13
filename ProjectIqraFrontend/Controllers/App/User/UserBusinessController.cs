@@ -13,18 +13,21 @@ namespace ProjectIqraFrontend.Controllers.App.User
 {
     public class UserBusinessController : Controller
     {
+        private readonly ILogger<UserBusinessController> _logger;
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly IMongoClient _mongoClient;
 
         public UserBusinessController(
+            ILogger<UserBusinessController> logger,
             UserSessionValidationHelper userSessionValidationHelper,
             UserManager userManager,
             BusinessManager businessManager,
             IMongoClient mongoClient
         )
         {
+            _logger = logger;
             _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;
             _businessManager = businessManager;
@@ -270,6 +273,9 @@ namespace ProjectIqraFrontend.Controllers.App.User
                                 removeUserBusinessResult.Message
                             );
                         }
+
+                        _logger.LogCritical("IMPLEMENT KILLING ALL CALL QUEUES PENDING OR ANYTHING THAT IS RUNNING FOR THE BUSINESS");
+                        // TODO
 
                         await mongoSession.CommitTransactionAsync();
                         return result.SetSuccessResult();

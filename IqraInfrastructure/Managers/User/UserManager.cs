@@ -498,7 +498,6 @@ namespace IqraInfrastructure.Managers.User
                 }
 
                 var newAutoRefillSettings = new UserBillingAutoRefillSettings();
-
                 if (settings.Status == UserBillingAutoRefillStatusEnum.Enabled)
                 {
                     var planResult = await _planManager.GetPlanByIdAsync(user.Billing.Subscription.PlanId);
