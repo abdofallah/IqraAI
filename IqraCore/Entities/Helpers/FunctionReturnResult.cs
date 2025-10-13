@@ -30,9 +30,11 @@
         public string? Message { get; set; } = null;
         public string? Code { get; set; } = null;
 
-        public FunctionReturnResult SetSuccessResult()
+        public FunctionReturnResult SetSuccessResult(string? code = null, string? message = null)
         {
             this.Success = true;
+            this.Code = code;
+            this.Message = message;
 
             return this;
         }
