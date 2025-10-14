@@ -18,8 +18,6 @@
 	}
 }
 
-
-
 [data-bs-theme=dark]
 {
 	--bs-body-bg: #1a1a1a !important;
@@ -50,6 +48,17 @@ img {
 	background-color: var(--tcolor-light-green);
 	border-color: var(--tcolor-light-green);
 	color: var(--tcolor-dark);
+}
+
+input:autofill
+{
+	box-shadow: 0 0 0 40px var(--tcolor-darker-green) inset !important;
+}
+
+.form-control:focus
+{
+	border-color: var(--tcolor-lighter-green);
+	box-shadow: 0 0 0 .25rem rgba(203, 229, 78, 0.18);
 }
 
 .btn-outline-primary
