@@ -13,24 +13,33 @@ let initialTabState = null;
  * the available window height, it sets a fixed height and enables scrolling.
  */
 function setDynamicNavHeight() {
+	const navBar = $("#nav-bar");
 	const navList = $(".nav_list");
 	const navLogo = $('.nav_logo');
+	const navUpper = $('.upper-navigation');
 	const navBottom = $('.bottom-navigation');
 
-	var navLogoHeight = navLogo.outerHeight() * 1.5;
-	var navListHeight = navList[0].scrollHeight;
-	var navBottomHeight = navBottom.height() * 1.5;
+	var navLogoHeight = navLogo.outerHeight(true);
+	var navListHeight = 0;
+	navList.children().each(function () {
+		navListHeight += $(this).outerHeight(true);
+	});
+	var navBottomHeight = navBottom.height();
 
 	var totalAboveHeight = navLogoHeight + navListHeight + navBottomHeight;
 	var windowHeight = window.innerHeight;
 
-	if (totalAboveHeight > windowHeight) {
-		var giveHeight = (windowHeight - (navBottomHeight + navLogoHeight));
+	var giveHeight = (windowHeight - (navBottomHeight + navLogoHeight));
+
+	navUpper.stop(true, true);
+	navList.stop(true, true);
+	navUpper.animate({ "height": (navLogoHeight + giveHeight) }, { duration: 300 });
+	if (totalAboveHeight > windowHeight) {	
 		navList.css("overflow-y", "scroll").css("box-shadow", "inset rgb(203 229 78 / 10%) 0px -20px 10px -10px");
-		navList.animate({ "height": giveHeight }, { duration: 300 });
+		navList.animate({ "height": giveHeight, "overflow-y": "scroll" }, { duration: 300 });
 	} else {
 		navList.css("overflow-y", "hidden").css("box-shadow", "");
-		navList.animate({ "height": "100%" }, { duration: 300 });
+		navList.animate({ "height": giveHeight, "overflow-y": "hidden" }, { duration: 300 });
 	}
 }
 
@@ -65,6 +74,7 @@ function setDynamicBodyHeight(containerId = null) {
 		detail: { containerId, targetHeight: bodyCalculatedHeight },
 	});
 
+	$innerContainer.stop(true);
 	$innerContainer.animate(
 		{ "min-height": bodyCalculatedHeight },
 		{
@@ -105,10 +115,14 @@ function changeActiveSidebarLink(toggleId, navId, bodyId, headerId) {
 			bodypd.classList.toggle("body-pd");
 			headerpd.classList.toggle("header-body-pd");
 
-			setTimeout(() => {
+
+			var interval = setInterval(() => {
 				setDynamicNavHeight();
 				setDynamicBodyHeight();
 			}, 50);
+			setTimeout(() => {
+				clearInterval(interval);
+			}, 500);
 		});
 	}
 }
@@ -326,11 +340,16 @@ $(document).ready(() => {
 
 	// Handles window resize events to keep the layout responsive.
 	$(window).on("resize", () => {
+		console.log("resize");
+		const $body = $("body");
+		$body.css("overflow", "hidden");
+		makeSureNavToggleIconIsCorrect();
 		if (resizeTimeout) {
 			clearTimeout(resizeTimeout);
 		}
-		makeSureNavToggleIconIsCorrect();
 		resizeTimeout = setTimeout(() => {
+			console.log("resize complete");
+			$body.css("overflow", "initial");
 			const currentWidth = $(window).width();
 			const currentHeight = $(window).height();
 			if (lastRecordedWidth !== currentWidth || lastRecordedHeight !== currentHeight) {

@@ -1,4 +1,5 @@
-﻿<html data-bs-theme="dark">
+﻿<!DOCTYPE html>
+<html data-bs-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -66,7 +67,7 @@
     <!-- Sidebar -->
     <div class="l-navbar show" id="nav-bar">
         <nav class="nav">
-            <div class="upper-navigation">
+            <div class="upper-navigation w-100">
                 <a href="/" class="nav_logo">
                     <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
                 </a>
@@ -87,14 +88,22 @@
                         <i class='fa-regular fa-credit-card nav_icon'></i>
                         <span class="nav_name">Billing</span>
                     </a>
+                    <a class="nav_link" for="support-tab">
+                        <i class='fa-regular fa-ticket nav_icon'></i>
+                        <span class="nav_name">Support</span>
+                    </a>
                     <a class="nav_link disabled mb-0" for="settings-tab">
                         <i class='fa-regular fa-gear nav_icon'></i>
                         <span class="nav_name">Settings</span>
                     </a>
                 </div>
             </div>
-            <div class="bottom-navigation">
-                <a href="/logout" class="nav_link mt-0">
+            <div class="bottom-navigation w-100">
+                <a href="https://docs.iqra.bot/" target="_blank" class="nav_link mt-0">
+                    <i class='fa-regular fa-circle-question nav_icon'></i>
+                    <span class="nav_name">Documentation</span>
+                </a>
+                <a href="/logout" class="nav_link mt-2">
                     <i class='fa-regular fa-right-from-bracket nav_icon'></i>
                     <span class="nav_name">Log out</span>
                 </a>
@@ -406,7 +415,7 @@
                                         (userBusinessesError) => {
                                             AlertManager.createAlert({
                                                 type: "danger",
-                                                message: "Error occured while fetching user businesses. Check browser console for logs.",
+                                                message: "Error occured while fetching user businesses.<br>Check browser console for logs.<br>Refresh page to try again.",
                                                 enableDismiss: false,
                                             });
 
@@ -425,7 +434,7 @@
                                         (userPlanDataError) => {
                                             AlertManager.createAlert({
                                                 type: "danger",
-                                                message: "Error occured while fetching user plan data. Check browser console for logs.",
+                                                message: "Error occured while fetching user plan data.<br>Check browser console for logs.<br>Refresh page to try again.",
                                                 enableDismiss: false,
                                             });
                                             console.error("Error occured while fetching user plan data: ", userPlanDataError);
@@ -441,10 +450,19 @@
                                         alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                     }
 
+                                    notificationManager.addNotification({
+                                        icon: 'fa-regular fa-circle-xmark text-danger',
+                                        title: "Bussinesses Disabled",
+                                        description: alertMessage,
+                                        timestamp: new Date(MasterUserData.businessPermission.disableBusinesses),
+                                        isFixed: true,
+                                        source: "backend",
+                                    });
+
                                     AlertManager.createAlert({
                                         type: "danger",
                                         message: alertMessage,
-                                        enableDismiss: false,
+                                        enableDismiss: true,
                                     });
                                 }
 
@@ -461,10 +479,19 @@
                                             alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                         }
 
+                                        notificationManager.addNotification({
+                                            icon: 'fa-regular fa-circle-xmark text-danger',
+                                            title: "Bussiness Adding Disabled",
+                                            description: alertMessage,
+                                            timestamp: new Date(MasterUserData.businessPermission.addBusinessDisabled),
+                                            isFixed: true,
+                                            source: 'backend'
+                                        })
+
                                         AlertManager.createAlert({
                                             type: "danger",
                                             message: alertMessage,
-                                            enableDismiss: false,
+                                            enableDismiss: true,
                                         });
                                     } else {
                                         AddNewBusinessButton.prop("disabled", false);
@@ -480,10 +507,19 @@
                                             alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                         }
 
+                                        notificationManager.addNotification({
+                                            icon: 'fa-regular fa-circle-xmark text-danger',
+                                            title: "Bussiness Editing Disabled",
+                                            description: alertMessage,
+                                            timestamp: new Date(MasterUserData.businessPermission.editBusinessDisabled),
+                                            isFixed: true,
+                                            source: 'backend'
+                                        })
+
                                         AlertManager.createAlert({
                                             type: "danger",
                                             message: alertMessage,
-                                            enableDismiss: false,
+                                            enableDismiss: true,
                                         });
                                     }
 
@@ -497,10 +533,19 @@
                                             alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                         }
 
+                                        notificationManager.addNotification({
+                                            icon: 'fa-regular fa-circle-xmark text-danger',
+                                            title: "Bussiness Deleting Disabled",
+                                            description: alertMessage,
+                                            timestamp: new Date(MasterUserData.businessPermission.deleteBusinessDisable),
+                                            isFixed: true,
+                                            source: 'backend'
+                                        })
+
                                         AlertManager.createAlert({
                                             type: "danger",
                                             message: alertMessage,
-                                            enableDismiss: false,
+                                            enableDismiss: true,
                                         });
                                     }
                                 }

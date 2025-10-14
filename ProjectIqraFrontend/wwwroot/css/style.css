@@ -1,4 +1,5 @@
-﻿:root {
+﻿:root
+{
 	--tcolor-light-cream: rgb(241, 236, 232);
 	--tcolor-cream: #d1bfae;
 	--tcolor-lighter-green: #e7f88f;
@@ -7,6 +8,17 @@
 	--tcolor-darker-green: #5f6833;
 	--tcolor-dark: #1a1a1a;
 }
+
+@supports (-moz-appearance: none)
+{
+	*
+	{
+		scrollbar-width: thin;
+		scrollbar-color: #94b447 #f1ece8 !important;
+	}
+}
+
+
 
 [data-bs-theme=dark]
 {
@@ -126,8 +138,6 @@ a:focus {
 	vertical-align: middle;
 }
 
-.header_toggle,
-.header_notification,
 .tab-title,
 .nav_icon,
 .nav_name
