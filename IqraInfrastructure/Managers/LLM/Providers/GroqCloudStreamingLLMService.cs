@@ -34,7 +34,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public event EventHandler<ConversationAgentEventLLMStreamed>? MessageStreamed;
         public void ClearMessageStreamed() => MessageStreamed = null;
 
-        public event EventHandler MessageStreamedCancelled;
+        public event EventHandler<ConversationAgentEventLLMStreamCancelled> MessageStreamedCancelled;
 
         private JsonSerializerOptions requestJsonOptions = new JsonSerializerOptions
         {
@@ -43,9 +43,9 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         };
 
         // Consider using IHttpClientFactory in a real application
-        public GroqCloudStreamingLLMService(string apiKey, string model)
+        public GroqCloudStreamingLLMService(ILogger<GroqCloudStreamingLLMService> logger, string apiKey, string model)
         {
-            _logger = null; // todo
+            _logger = logger;
             _cts = new();
 
             _apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
@@ -104,7 +104,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             {
                 // Handle case where there are no user messages if necessary
                 // For now, assume AddUserMessage was called before ProcessInputAsync
-                Console.WriteLine("Warning: No user messages found for Groq request.");
+                _logger.LogWarning("No user messages found for Groq request.");
                 return; // Or throw an exception
             }
 
@@ -127,7 +127,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             try
             {
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, combinedCancellationToken);
-                response.EnsureSuccessStatusCode(); // Throw if API returned an error, todo
+                response.EnsureSuccessStatusCode();
 
                 using var responseStream = await response.Content.ReadAsStreamAsync(combinedCancellationToken);
                 using var reader = new StreamReader(responseStream);
@@ -155,7 +155,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                         }
                         catch (JsonException jsonEx)
                         {
-                            Console.WriteLine($"Error deserializing Groq stream chunk: {jsonEx.Message}. JSON: {dataJson}");
+                            _logger.LogError($"Error deserializing Groq stream chunk: {jsonEx.Message}. JSON: {dataJson}");
                             // Decide how to handle malformed chunks (e.g., log, skip, raise error event)
                         }
                     }
@@ -165,21 +165,29 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             }
             catch (OperationCanceledException) when (combinedCancellationToken.IsCancellationRequested)
             {
-                MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
+                MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled()
+                {
+                    Type = ConversationAgentEventLLMStreamCancelledTypeEnum.OperationCancelled
+                });
             }
             catch (HttpRequestException httpEx)
             {
-                // Handle HTTP errors (network issues, API errors like 4xx, 5xx)
-                Console.WriteLine($"Error calling Groq API: {httpEx.Message} (StatusCode: {httpEx.StatusCode})");
-                // Optionally check status code and provide more specific feedback
-                // Consider invoking MessageStreamedCancelled or a new error event
-                MessageStreamedCancelled?.Invoke(this, EventArgs.Empty); // Or a dedicated error event
+                _logger.LogError($"Error calling Groq API: {httpEx.Message} (StatusCode: {httpEx.StatusCode})");
+                MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled()
+                {
+                    Type = ConversationAgentEventLLMStreamCancelledTypeEnum.HttpRequestNotSuccess,
+                    ResponseCode = httpEx.StatusCode,
+                    ResponseMessage = httpEx.Message
+                });
             }
             catch (Exception ex)
             {
-                // Catch unexpected errors during streaming or processing
-                Console.WriteLine($"Unexpected error processing Groq stream: {ex.Message}");
-                MessageStreamedCancelled?.Invoke(this, EventArgs.Empty); // Or a dedicated error event
+                _logger.LogError($"Unexpected error processing Groq stream: {ex.Message}");
+                MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled()
+                {
+                    Type = ConversationAgentEventLLMStreamCancelledTypeEnum.InternalExceptionError,
+                    ResponseMessage = ex.Message
+                });
             }
         }
 

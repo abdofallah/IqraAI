@@ -31,7 +31,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public event EventHandler<ConversationAgentEventLLMStreamed>? MessageStreamed;
         public void ClearMessageStreamed() => MessageStreamed = null;
 
-        public event EventHandler MessageStreamedCancelled;
+        public event EventHandler<ConversationAgentEventLLMStreamCancelled> MessageStreamedCancelled;
 
         public AzureOpenAIStreamingLLMService(string resourceEndpoint, string resounseAPIKey, string modelDeploymentName)
         {
@@ -105,7 +105,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             {
                 if (!(ex is TaskCanceledException || ex is OperationCanceledException))
                 {
-                    MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
+                    MessageStreamedCancelled?.Invoke(this, null);
                     // TODO IMPLEMENT LOGGER
                     Console.WriteLine("ProcessInputAsync Cancelled");
                 }

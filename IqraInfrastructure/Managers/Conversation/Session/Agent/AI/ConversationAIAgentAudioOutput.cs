@@ -295,7 +295,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _speechAudioQueue.CompleteAdding();
                     }
 
-                    _logger.LogWarning("Agent {AgentId}: Text is empty or TTS service is not configured for turn {TurnId} for text '{Text}'.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
+                    _logger.LogWarning("Agent {AgentId}: Text is empty or TTS service is not configured for turn {TurnId} for text '{Text}' with adding complete {IsAddingCompleted}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text), markTurnAsCompleteAfterThis);
                     return (false, TimeSpan.Zero);
                 }
 
@@ -329,7 +329,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                                 _speechAudioQueue.CompleteAdding();
                             }
 
-                            _logger.LogDebug("Agent {AgentId}: Returning cached audio for turn {TurnId} with text {Text}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
+                            _logger.LogDebug("Agent {AgentId}: Returning cached audio for turn {TurnId} with text \"{Text}\" with adding complete {IsAddingCompleted}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text), markTurnAsCompleteAfterThis);
 
                             return (true, cachedSegment.Duration);
                         }
@@ -340,19 +340,31 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     generationLatencyStopwatch.Stop();
                     if (ttsToken.IsCancellationRequested)
                     {
-                        _logger.LogWarning("Agent {AgentId}: TTS service was cancelled for turn {TurnId} with text {Text}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
+                        _logger.LogWarning("Agent {AgentId}: TTS service was cancelled for turn {TurnId} with text \"{Text}\" with adding complete {IsAddingCompleted}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text), markTurnAsCompleteAfterThis);
+
+                        if (markTurnAsCompleteAfterThis)
+                        {
+                            _speechAudioQueue.CompleteAdding();
+                        }
+
                         return (false, TimeSpan.Zero);
                     }
 
                     if (audioData == null || audioData.Length == 0 || audioDuration == null || audioDuration.Value <= TimeSpan.Zero)
                     {
-                        _logger.LogError("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\"", _agentState.AgentId, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
+                        _logger.LogError("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\" with adding complete {IsAddingCompleted}.", _agentState.AgentId, (text.Length > 50 ? text.Substring(0, 50) + "..." : text), markTurnAsCompleteAfterThis);
+
+                        if (markTurnAsCompleteAfterThis)
+                        {
+                            _speechAudioQueue.CompleteAdding();
+                        }
+
                         return (false, TimeSpan.Zero);
                     }
 
                     if (isCacheable && audioData.Length != 0)
                     {
-                        _logger.LogDebug("Agent {AgentId}: Caching audio for turn {TurnId} with text {Text}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
+                        _logger.LogDebug("Agent {AgentId}: Caching audio for turn {TurnId} with text \"{Text}\".", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
 
                         _ = _cacheManager.StoreAudioAsync(
                             cacheKey,
@@ -376,7 +388,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _speechAudioQueue.CompleteAdding();
                     }
 
-                    _logger.LogDebug("Agent {AgentId}: Returning audio for turn {TurnId} with text {Text}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text));
+                    _logger.LogDebug("Agent {AgentId}: Returning audio for turn {TurnId} with text \"{Text}\" with adding complete {IsAddingCompleted}.", _agentState.AgentId, turn.Id, (text.Length > 50 ? text.Substring(0, 50) + "..." : text), _speechAudioQueue.IsAddingCompleted);
 
                     return (true, segment.Duration);
                 }
@@ -688,7 +700,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                             if (_currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length)
                             {
-                                var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == s.Id);
+                                _logger.LogDebug("Agent {AgentId}: Finished playing speech segment {SegmentId}.", _agentState.AgentId, _currentSpeechSegmentId);
+
+                                var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == _currentSpeechSegmentId);
                                 if (segmentDataToUpdate != null)
                                 {
                                     segmentDataToUpdate.FinishedPlayingAt = DateTime.UtcNow;
@@ -738,7 +752,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                             if (_currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length)
                             {
-                                var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == s.Id);
+                                _logger.LogDebug("Agent {AgentId}: Finished playing speech segment {SegmentId}.", _agentState.AgentId, _currentSpeechSegmentId);
+
+                                var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == _currentSpeechSegmentId);
                                 if (segmentDataToUpdate != null)
                                 {
                                     segmentDataToUpdate.FinishedPlayingAt = DateTime.UtcNow;

@@ -5,6 +5,7 @@ using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Conversation.Session.Logger;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using IqraInfrastructure.Managers.TurnEnd;
@@ -80,7 +81,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private bool _canInterruptAgentAfterVerificaiton = false;
 
         public ConversationAIAgentTurnAndInterruptionManager(
-            ILoggerFactory loggerFactory,
+            SessionLoggerFactory loggerFactory,
             ConversationAIAgentLLMHandler agentLLMHandler,
             ConversationAIAgentAudioOutput agentAudioOutput,
             ConversationAIAgentState agentState,
@@ -199,7 +200,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return;
             }
 
-            var llmResult = await _llmProviderManager.BuildProviderServiceByIntegration(integrationDataResult.Data, llmConfig, new Dictionary<string, string>());
+            var llmResult = await _llmProviderManager.BuildProviderServiceByIntegration(_loggerFactory, integrationDataResult.Data, llmConfig, new Dictionary<string, string>());
             if (!llmResult.Success || llmResult.Data == null)
             {
                 _logger.LogError("Failed to build LLM service for AI Turn End: {Message}. Falling back to STT.", llmResult.Message);
@@ -232,7 +233,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return;
             }
 
-            var llmResult = await _llmProviderManager.BuildProviderServiceByIntegration(integrationDataResult.Data, llmConfig, new Dictionary<string, string>());
+            var llmResult = await _llmProviderManager.BuildProviderServiceByIntegration(_loggerFactory, integrationDataResult.Data, llmConfig, new Dictionary<string, string>());
             if (!llmResult.Success || llmResult.Data == null)
             {
                 _logger.LogError("Failed to build LLM service for AI Turn End: {Message}. Falling back to disabling verification.", llmResult.Message);
@@ -502,7 +503,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_agentState.IsVoicemailDetected) return;
             if (_agentState.AreTurnsPaused) return;
 
-            _logger.LogDebug("Agent {AgentId}: Attempting to conclude user turn.", _agentState.AgentId);
+            var turnToFinalize = _agentState.CurrentTurn;
+            if (turnToFinalize == null)
+            {
+                _logger.LogError("TryConcludeUserTurn was called, but no active turn exists in the agent state.");
+                ResetForNewTurn();
+                return;
+            }
+
+            _logger.LogDebug("Agent {AgentId}: Attempting to conclude user turn {TurnId}", _agentState.AgentId, turnToFinalize.Id);
 
             bool canConclude = false;
 
@@ -526,15 +535,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 _logger.LogDebug("Agent {AgentId}: Conditions not yet met for concluding user turn.", _agentState.AgentId);
                 return; // Conditions not yet met.
-            }
-
-            var turnToFinalize = _agentState.CurrentTurn;
-            if (turnToFinalize == null)
-            {
-                _logger.LogError("TryConcludeUserTurn was called, but no active turn exists in the agent state.");
-                ResetForNewTurn();
-                return;
-            }
+            }     
 
             var finalText = _userTurnTextFinalBuffer.ToString().Trim();
 
@@ -855,7 +856,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // AI Interuption Verification
         private async Task CheckAIInterruptionVerificationAsync(string currentUtterance)
         {
-            if (_interruptionVerificationLLMService == null || string.IsNullOrWhiteSpace(currentUtterance)) return;
+            if (_interruptionVerificationLLMService == null || string.IsNullOrWhiteSpace(currentUtterance))
+            {
+                _logger.LogWarning("Agent {AgentId}: AI Interruption Verification check skipped, LLM service is null or current utterance is empty.", _agentState.AgentId);
+                return;
+            }
+
+            _logger.LogDebug("Agent {AgentId}: Checking AI Interruption Verification.", _agentState.AgentId);
 
             // Cancel any previous, now-outdated check
             try
@@ -863,6 +870,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _interruptionVerificationLLMCTS.Cancel();
                 if (_interruptionVerificationLLMTask != null)
                 {
+                    _logger.LogDebug("Agent {AgentId}: AI Interruption Verification check already running, canceling.", _agentState.AgentId);
                     await _interruptionVerificationLLMTask;
                 }
             }
@@ -879,6 +887,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 _interruptionVerificationLLMService.AddUserMessage(requestText);
                 _interruptionVerificationLLMTask = _interruptionVerificationLLMService.ProcessInputAsync(_interruptionVerificationLLMCTS.Token);
+                _logger.LogDebug("Agent {AgentId}: AI Interruption Verification check started.", _agentState.AgentId);
                 await _interruptionVerificationLLMTask;
             }
             catch (OperationCanceledException) { /* Expected */ }
@@ -922,7 +931,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _hasVerifiedInterruptionResult = true;
                 if (lastWord == "INTERRUPT")
                 {
+                    _logger.LogDebug("Agent {AgentId}: AI interruption verification result: INTERRUPT.", _agentState.AgentId);
                     _canInterruptAgentAfterVerificaiton = true;
+                }
+                else
+                {
+                    _logger.LogDebug("Agent {AgentId}: AI interruption verification result: NO INTERRUPT.", _agentState.AgentId);
+                    _canInterruptAgentAfterVerificaiton = false;
                 }
                 await TryConcludeUserTurn();
             }

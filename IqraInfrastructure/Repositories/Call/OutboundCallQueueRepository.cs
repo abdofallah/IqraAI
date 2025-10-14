@@ -94,11 +94,11 @@ namespace IqraInfrastructure.Repositories.Call
         }
 
         public async Task<(List<OutboundCallQueueData> Items, bool HasMore, long TotalCount)> GetOutboundCallQueuesForBusinessPaginatedAsync(
-    long businessId,
-    GetBusinessOutboundCallQueuesRequestFilterModel filter, // MODIFIED: Accepts the specific filter model
-    int limit,                                             // MODIFIED: Accepts the limit directly
-    PaginationCursor<GetBusinessOutboundCallQueuesRequestFilterModel>? cursor, // MODIFIED: Accepts the generic cursor
-    bool fetchNext)
+            long businessId,
+            GetBusinessOutboundCallQueuesRequestFilterModel filter, // MODIFIED: Accepts the specific filter model
+            int limit,                                             // MODIFIED: Accepts the limit directly
+            PaginationCursor<GetBusinessOutboundCallQueuesRequestFilterModel>? cursor, // MODIFIED: Accepts the generic cursor
+            bool fetchNext)
         {
             try
             {
@@ -495,6 +495,19 @@ namespace IqraInfrastructure.Repositories.Call
                 _logger.LogError(ex, "Error getting outbound call queues count for business {BusinessId}", businessId);
                 return null;
             }
+        }
+    
+        public async Task<bool> CancelBusinessCallQueuesAsync(long businessId, IClientSessionHandle session)
+        {
+            var filter = Builders<OutboundCallQueueData>.Filter.And(
+                Builders<OutboundCallQueueData>.Filter.Eq(c => c.BusinessId, businessId),
+                Builders<OutboundCallQueueData>.Filter.Eq(c => c.Status, CallQueueStatusEnum.Queued)
+            );
+
+            var update = Builders<OutboundCallQueueData>.Update.Set(c => c.Status, CallQueueStatusEnum.Canceled);
+            var result = await _outboundQueueCollection.UpdateManyAsync(session, filter, update);
+
+            return result.IsAcknowledged;
         }
     }
 }

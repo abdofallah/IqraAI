@@ -274,10 +274,27 @@ namespace ProjectIqraFrontend.Controllers.App.User
                             );
                         }
 
-                        _logger.LogCritical("IMPLEMENT KILLING ALL CALL QUEUES PENDING OR ANYTHING THAT IS RUNNING FOR THE BUSINESS");
-                        // TODO
+                        var cancelOutboundCallQueuesResult = await _businessManager.CancelBusinessOutboundCallQueues(businessId, mongoSession);
+                        if (!cancelOutboundCallQueuesResult.Success)
+                        {
+                            mongoSession.AbortTransaction();
+                            return result.SetFailureResult(
+                                "DeleteUserBusiness:" + cancelOutboundCallQueuesResult.Code,
+                                cancelOutboundCallQueuesResult.Message
+                            );
+                        }
 
                         await mongoSession.CommitTransactionAsync();
+
+                        try
+                        {
+                            // TODO kill all active conversations
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "DeleteUserBusiness:EXCEPTION: Failed to kill ongoing conversations for deleted business.");
+                        }
+
                         return result.SetSuccessResult();
                     }
                     catch (Exception ex)

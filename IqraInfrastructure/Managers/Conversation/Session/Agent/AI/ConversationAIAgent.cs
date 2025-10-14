@@ -181,6 +181,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _llmHandler.SynthesizeTextSegmentRequested += OnSynthesizeTextSegmentRequested;
             _llmHandler.SystemToolExecutionRequested += OnSystemToolExecutionRequested;
             _llmHandler.CustomToolExecutionRequested += OnCustomToolExecutionRequested;
+            _llmHandler.LLMFailureAndEndCallRequested += OnLLMFailureAndEndCallRequested;
 
             // Tool Executor
             _toolExecutor.TurnUpdate += OnTurnUpdated;
@@ -677,6 +678,45 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             await _toolExecutor.HandleCustomToolAsync(turn, _conversationCTS.Token);
         }
+        private async Task OnLLMFailureAndEndCallRequested()
+        {
+            _agentState.IsAcceptingSTTAudio = false;
+            _agentState.AreTurnsPaused = true;
+
+            await FinalizeCurrentTurn(ConversationTurnStatus.Error);
+
+            await _llmHandler.CancelCurrentLLMTaskAsync();
+            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
+
+            // todo make error langauge specific
+            var failureMessage = "An issue occurred with the call system. We are sorry for the inconvenience. Please try calling us back later.";
+            var failureReason = "LLM Failure Ocurred, ending call";
+            var newTurn = new ConversationTurn
+            {
+                Type = ConversationTurnType.System,
+                SystemInput = new ConversationTurnSystemInput()
+                {
+                    Type = "LLMFailure"
+                },
+                Response = new ConversationTurnAgentResponse
+                {
+                    AgentId = _agentState.BusinessAppAgent!.Id,
+                    Type = ConversationTurnAgentResponseType.SystemTool,
+                    ToolExecution = new ConversationTurnToolExecutionData()
+                    {
+                        ToolType = ConversationTurnAgentToolType.System,
+                        ToolName = "end_call",
+                        RawLLMInput = $"execute_system_function: \"end_call\": \"{failureReason}\", \"{failureMessage}\", null",
+                        ReasonForExecution = failureReason
+                    }
+                },
+                Status = ConversationTurnStatus.AgentProcessing
+            };
+            await OnNewTurnCreated(newTurn);
+
+            await OnPlaySpeechRequested(newTurn, failureMessage, _conversationCTS.Token);
+            await OnEndConversationRequested(newTurn);
+        }
 
         // Tool Executor Handler
         private async Task OnToolResultAvailable(ConversationTurn turnWithResult)
@@ -765,7 +805,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var currentTurnText = string.Join(" ", turn.Response.SpokenSegments.Select(x => x.Text).ToArray());
             _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
 
-            _logger.LogDebug("Agent {AgentId}: Agent response playback complete for turn {TurnId} with text {TurnText}.", _agentState.AgentId, turn.Id, (currentTurnText.Length > 100 ? currentTurnText.Substring(0, 100) : currentTurnText));
+            _logger.LogDebug("Agent {AgentId}: Agent response playback complete for turn {TurnId} with text \"{TurnText}...\".", _agentState.AgentId, turn.Id, (currentTurnText.Length > 100 ? currentTurnText.Substring(0, 100) : currentTurnText));
 
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
         }
@@ -897,6 +937,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             var currentTurnText = string.Join(" ", interruptedTurn.Response.SpokenSegments.Select(x => x.Text).ToArray());
             _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
+
+            _logger.LogDebug("Agent {AgentId}: Interrupted turn {TurnId} with text \"{TurnText}...\".", AgentId, interruptedTurn.Id, (currentTurnText.Length > 100 ? currentTurnText.Substring(0, 100) : currentTurnText));
+
             await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted);
         }
 
@@ -993,7 +1036,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             };
             await OnNewTurnCreated(newTurn);
         }
-
         private async Task EndOrLeaveMessageEndOnVoicemailDetectedAsync()
         {
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed);

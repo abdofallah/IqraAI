@@ -29,8 +29,8 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public event EventHandler<ConversationAgentEventLLMStreamed>? MessageStreamed;
         public void ClearMessageStreamed() => MessageStreamed = null;
 
-        public event EventHandler MessageStreamedCancelled;
-    
+        public event EventHandler<ConversationAgentEventLLMStreamCancelled> MessageStreamedCancelled;
+
         public GoogleAIGeminiStreamingLLMService(string apiKey, string modelId)
         {
             _logger = null; // todo
@@ -106,7 +106,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             }
             catch (OperationCanceledException ex)
             {
-                MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
+                MessageStreamedCancelled?.Invoke(this, null);
             }
             catch (Exception ex)
             {

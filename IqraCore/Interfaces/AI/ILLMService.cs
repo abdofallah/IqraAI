@@ -8,7 +8,7 @@ namespace IqraCore.Interfaces.AI
         event EventHandler<ConversationAgentEventLLMStreamed>? MessageStreamed;
         void ClearMessageStreamed();
 
-        event EventHandler MessageStreamedCancelled;
+        event EventHandler<ConversationAgentEventLLMStreamCancelled> MessageStreamedCancelled;
         Task ProcessInputAsync(CancellationToken cancellationToken, string? beforeMessageContext = null, string? afterMessageContext = null);
         void SetModel(string model);
         void SetTemperature(decimal temperature);

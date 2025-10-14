@@ -39,6 +39,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessDomainVestaCPRepository? _businessIqraBusinessDomainsVestaCPRepository;
         private readonly BusinessToolAudioRepository? _businessToolAudioRepository;
         private readonly BusinessAgentAudioRepository? _businessAgentAudioRepository;
+        private readonly OutboundCallQueueRepository? _outboundCallQueueRepository;
 
         private readonly AudioFileProcessor _audioProcessor;
 
@@ -106,6 +107,7 @@ namespace IqraInfrastructure.Managers.Business
             _businessIqraBusinessDomainsVestaCPRepository = businessIqraBusinessDomainsVestaCPRepository;
             _businessToolAudioRepository = businessToolAudioRepository;
             _businessAgentAudioRepository = businessAgentAudioRepository;
+            _outboundCallQueueRepository = outboundCallQueueRepository;
 
             _audioProcessor = new AudioFileProcessor();
 
@@ -517,6 +519,30 @@ namespace IqraInfrastructure.Managers.Business
             if (!deleteDataResult)
             {
                 return result.SetFailureResult("DeleteBusiness:2", "Failed to delete business data.");
+            }
+
+            return result.SetSuccessResult();
+        }
+
+        public async Task<FunctionReturnResult> CancelBusinessOutboundCallQueues(long businessIdLong, IClientSessionHandle mongoSession)
+        {
+            var result = new FunctionReturnResult();
+
+            if (_outboundCallQueueRepository == null)
+            {
+                return result.SetFailureResult(
+                    "CancelBusinessOutboundCallQueues:OUTBOUND_CALL_QUEUE_REPOSITORY_NOT_INITALIZED",
+                    "Outbound call queue repository not initalized."
+                );
+            }
+
+            var cancelCallQueuesResult = await _outboundCallQueueRepository.CancelBusinessCallQueuesAsync(businessIdLong, mongoSession);
+            if (!cancelCallQueuesResult)
+            {
+                return result.SetFailureResult(
+                    "CancelBusinessOutboundCallQueues:FAILED_TO_CANCEL_BUSINESS_CALL_QUEUES",
+                    "Failed to cancel business call queues."
+                );
             }
 
             return result.SetSuccessResult();

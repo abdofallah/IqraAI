@@ -664,7 +664,7 @@ namespace IqraInfrastructure.Managers.LLM
             return result;
         }
 
-        public async Task<FunctionReturnResult<ILLMService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
+        public async Task<FunctionReturnResult<ILLMService?>> BuildProviderServiceByIntegration(ILoggerFactory loggerFactory, BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
         {
             var result = new FunctionReturnResult<ILLMService?>();
 
@@ -698,7 +698,7 @@ namespace IqraInfrastructure.Managers.LLM
                         return result.SetSuccessResult(new GoogleAIGeminiStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
 
                     case InterfaceLLMProviderEnum.GroqCloud:
-                        return result.SetSuccessResult(new GroqCloudStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
+                        return result.SetSuccessResult(new GroqCloudStreamingLLMService(loggerFactory.CreateLogger<GroqCloudStreamingLLMService>(), _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
 
                     default:
                         _logger.LogError("Business app LLM provider {ProviderType} not supported", llmProviderData.Data.Id);

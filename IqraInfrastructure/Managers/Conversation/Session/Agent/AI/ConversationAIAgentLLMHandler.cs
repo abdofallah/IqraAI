@@ -1,14 +1,13 @@
-﻿using Catalyst;
-using IqraCore.Entities.Conversation.Events;
+﻿using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
+using IqraInfrastructure.Managers.Conversation.Session.Logger;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using Microsoft.Extensions.Logging;
-using Mosaik.Core;
 using System.Diagnostics;
 using System.Text;
 
@@ -20,7 +19,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public event Func<ConversationTurn, string, bool, Task>? SynthesizeTextSegmentRequested;
         public event Func<ConversationTurn, Task>? SystemToolExecutionRequested;
         public event Func<ConversationTurn, Task>? CustomToolExecutionRequested;
+        public event Func<Task>? LLMFailureAndEndCallRequested;
 
+        private readonly SessionLoggerFactory _sessionLoggerFactory;
         private readonly ILogger<ConversationAIAgentLLMHandler> _logger;
         private readonly ConversationAIAgentState _agentState;
         private readonly LLMProviderManager _llmProviderManager;
@@ -31,7 +32,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         private readonly SemaphoreSlim _llmResponseLock = new SemaphoreSlim(1, 1);
         private CancellationTokenSource _currentLLMProcessingTaskCTS = new();
+
         private Task? _llmTask;
+        private CancellationToken? _llmTaskCurrentToken;
+        private string? _llmTaskCurrentBeforeContextMessage;
+        private ConversationTurn? _llmTaskCurrentTurn;
 
         private readonly StringBuilder _responseBuffer = new StringBuilder();
         private int _currentResponseBufferReadPosition = 0;
@@ -39,8 +44,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Buffers managed here now
         public string? CurrentlyProcessingMessage = null;
 
+        private int CurrentLLMStreamFailedCount = 0;
+
         public ConversationAIAgentLLMHandler(
-            ILoggerFactory loggerFactory,
+            SessionLoggerFactory loggerFactory,
             ConversationAIAgentState agentState,
             LLMProviderManager llmProviderManager,
             BusinessManager businessManager,
@@ -49,6 +56,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             ConversationAIAgentRAGManager conversationAIAgentRAGManager
         )
         {
+            _sessionLoggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<ConversationAIAgentLLMHandler>();
             _agentState = agentState;
             _llmProviderManager = llmProviderManager;
@@ -77,7 +85,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             _agentState.LLMBusinessIntegrationData = llmBusinessIntegrationDataResult.Data;
 
-            var llmServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_agentState.LLMBusinessIntegrationData, defaultLLMServiceInfo, new Dictionary<string, string> { });
+            var llmServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_sessionLoggerFactory, _agentState.LLMBusinessIntegrationData, defaultLLMServiceInfo, new Dictionary<string, string> { });
             if (!llmServiceResult.Success || llmServiceResult.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Failed to build LLM service with error: {ErrorMessage}", _agentState.AgentId, llmServiceResult.Message);
@@ -85,7 +93,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             DisposeCurrentLLMService(_agentState.LLMService); // Dispose previous if any
-            _agentState.LLMService = llmServiceResult.Data;           
+            _agentState.LLMService = llmServiceResult.Data;
 
             // Generate Base System Prompt
             await GenerateAndSetBaseSystemPromptAsync();
@@ -188,6 +196,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             _agentState.LLMService!.ClearMessageStreamed();
             _agentState.LLMService!.MessageStreamed += OnLLMMessageStreamed;
+            _agentState.LLMService!.MessageStreamedCancelled += OnLLMMessageStreamedCancelled;
 
             // Reset to actual system prompt after warmup
             _agentState.LLMService?.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
@@ -235,6 +244,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 catch { /* Ignore potential task cancelled exceptions */ }
             }
             _llmTask = null;
+            _llmTaskCurrentToken = null;
+            _llmTaskCurrentBeforeContextMessage = null;
+            _llmTaskCurrentTurn = null;
             _responseBuffer.Clear();
             _currentResponseBufferReadPosition = 0;
         }
@@ -314,6 +326,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             await _conversationSession.NotifyTurnUpdated(turn);
 
             _llmTask = _agentState.LLMService!.ProcessInputAsync(cancellationToken, beforeMessageContext, null);
+            _llmTaskCurrentToken = cancellationToken;
+            _llmTaskCurrentBeforeContextMessage = beforeMessageContext;
+            _llmTaskCurrentTurn = turn;
             _logger.LogDebug("Agent {AgentId}: LLM process started for turn {TurnId}", _agentState.AgentId, turn.Id);
             await _llmTask;
         }
@@ -346,8 +361,36 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         
         // Streamed Message (Event) Processing
+        private async void OnLLMMessageStreamedCancelled(object? sender, ConversationAgentEventLLMStreamCancelled? eventData)
+        {
+            if (eventData == null) return;
+            if (_llmTaskCurrentToken == null || _llmTaskCurrentToken.Value.IsCancellationRequested || _llmTaskCurrentTurn == null) return;
+
+            if (eventData.Type == ConversationAgentEventLLMStreamCancelledTypeEnum.HttpRequestNotSuccess)
+            {
+                _logger.LogError("Agent {AgentId}: LLM stream cancelled due to http request not success.", _agentState.AgentId);
+
+                CurrentLLMStreamFailedCount++;
+                if (CurrentLLMStreamFailedCount > 3)
+                {
+                    _logger.LogError("Agent {AgentId}: LLM stream cancelled due to http request not success 3 times.", _agentState.AgentId);
+                    // force end the call for now, as fall back llm system is not yet implemented.
+                    return;
+                }
+
+                _llmTask = _agentState.LLMService!.ProcessInputAsync(_llmTaskCurrentToken!.Value, _llmTaskCurrentBeforeContextMessage, null);
+                _logger.LogDebug("Agent {AgentId}: LLM process started for turn {TurnId}", _agentState.AgentId, _llmTaskCurrentTurn!.Id);
+                await _llmTask;
+            }
+            else
+            {
+                _logger.LogError("Agent {AgentId}: LLM stream cancelled due to unknown reason {Reason}.", _agentState.AgentId, eventData.Type);
+            }
+        }
         private async void OnLLMMessageStreamed(object? sender, ConversationAgentEventLLMStreamed eventData)
         {
+            CurrentLLMStreamFailedCount = 0;
+
             var currentTurn = _agentState.CurrentTurn;
             if (currentTurn == null)
             {
@@ -532,7 +575,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Response.LLMStreamingCompletedAt = DateTime.UtcNow;
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
-                        _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, speech is completed.", currentTurn.Id, _agentState.AgentId);
+                        _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, speech text generation is completed.", currentTurn.Id, _agentState.AgentId);
                         // todo, check remaning buffer?
 
                         return;
