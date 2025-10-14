@@ -5347,7 +5347,11 @@ function initAgentTab() {
 			});
 
 			audioCacheGroupsList.on("click", '[button-type="remove-cache-group"]', (event) => {
-				$(event.currentTarget).closest(".cache-group-item").remove();
+				const parent = $(event.currentTarget).closest(".cache-group-item");
+				const index = parent.data("index");
+				CurrentAgentCacheAudios.splice(index, 1);
+
+				parent.remove();
 
 				validateAgentCacheTab(true);
 				CheckAgentTabHasChanges();

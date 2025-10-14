@@ -50,9 +50,8 @@ using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.OpenApi;
-using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
 using ProjectIqraFrontend.Transformer;
@@ -156,8 +155,8 @@ namespace ProjectIqraFrontend
             // Configure CORS
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowedOrigins", p => p
-                    .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+                options.AddPolicy("AllowAnyOriginForApi", p => p
+                    .AllowAnyOrigin()
                     .AllowAnyMethod()
                     .AllowAnyHeader());
             });
@@ -187,10 +186,13 @@ namespace ProjectIqraFrontend
             var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
             customJSONMiddleware.SetHttpContextAccessor(httpContextAccessor);
 
-            //app.UseForwardedHeaders();
+            app.UseForwardedHeaders();
 
-            app.UseCors("AllowedOrigins");
-           
+            app.UseWhen(
+                context => context.Request.Path.StartsWithSegments("/api"),
+                appBuilder => appBuilder.UseCors("AllowAnyOriginForApi")
+            );
+
             app.UseRouting();
 
             app.UseAuthentication();
