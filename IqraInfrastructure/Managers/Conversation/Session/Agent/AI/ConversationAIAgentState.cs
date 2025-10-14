@@ -46,8 +46,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public bool IsResponding { get; set; } = false;
         public bool IsExecutingCustomTool { get; set; } = false;
         public bool IsExecutingSystemTool { get; set; } = false;
-        public bool IsAcceptingSTTAudio { get; set; } = true;
-        public bool IsSTTProcessingPaused { get; set; } = false;
+        public bool IsAcceptingSTTAudio { get; set; } = false;
+        public bool IsSTTProcessingPaused { get; set; } = true;
         public bool IsVoicemailDetected { get; set; } = false;
         public bool AreTurnsPaused { get; set; } = false;
 

@@ -10,6 +10,7 @@ using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -34,7 +35,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private CancellationTokenSource _currentLLMProcessingTaskCTS = new();
 
         private Task? _llmTask;
-        private CancellationToken? _llmTaskCurrentToken;
+        private CancellationToken? _llmTaskCurrentCancelToken;
         private string? _llmTaskCurrentBeforeContextMessage;
         private ConversationTurn? _llmTaskCurrentTurn;
 
@@ -45,6 +46,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public string? CurrentlyProcessingMessage = null;
 
         private int CurrentLLMStreamFailedCount = 0;
+        private int CurrentLLMInvalidResponseCount = 0;
 
         public ConversationAIAgentLLMHandler(
             SessionLoggerFactory loggerFactory,
@@ -244,7 +246,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 catch { /* Ignore potential task cancelled exceptions */ }
             }
             _llmTask = null;
-            _llmTaskCurrentToken = null;
+            _llmTaskCurrentCancelToken = null;
             _llmTaskCurrentBeforeContextMessage = null;
             _llmTaskCurrentTurn = null;
             _responseBuffer.Clear();
@@ -254,6 +256,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Message Processing
         private async Task ProcessLLMInputForTurn(ConversationTurn turn, bool isToolResult, CancellationToken cancellationToken)
         {
+            CurrentLLMInvalidResponseCount = 0;
             string beforeMessageContext = string.Empty;
 
             if (!isToolResult)
@@ -326,7 +329,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             await _conversationSession.NotifyTurnUpdated(turn);
 
             _llmTask = _agentState.LLMService!.ProcessInputAsync(cancellationToken, beforeMessageContext, null);
-            _llmTaskCurrentToken = cancellationToken;
+            _llmTaskCurrentCancelToken = cancellationToken;
             _llmTaskCurrentBeforeContextMessage = beforeMessageContext;
             _llmTaskCurrentTurn = turn;
             _logger.LogDebug("Agent {AgentId}: LLM process started for turn {TurnId}", _agentState.AgentId, turn.Id);
@@ -364,7 +367,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async void OnLLMMessageStreamedCancelled(object? sender, ConversationAgentEventLLMStreamCancelled? eventData)
         {
             if (eventData == null) return;
-            if (_llmTaskCurrentToken == null || _llmTaskCurrentToken.Value.IsCancellationRequested || _llmTaskCurrentTurn == null) return;
+            if (_llmTaskCurrentCancelToken == null || _llmTaskCurrentCancelToken.Value.IsCancellationRequested || _llmTaskCurrentTurn == null) return;
 
             if (eventData.Type == ConversationAgentEventLLMStreamCancelledTypeEnum.HttpRequestNotSuccess)
             {
@@ -374,11 +377,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (CurrentLLMStreamFailedCount > 3)
                 {
                     _logger.LogError("Agent {AgentId}: LLM stream cancelled due to http request not success 3 times.", _agentState.AgentId);
-                    // force end the call for now, as fall back llm system is not yet implemented.
+                    //TODO force end the call for now, as fall back llm system is not yet implemented.
+                    await LLMFailureAndEndCallRequested.Invoke();
                     return;
                 }
 
-                _llmTask = _agentState.LLMService!.ProcessInputAsync(_llmTaskCurrentToken!.Value, _llmTaskCurrentBeforeContextMessage, null);
+                _llmTask = _agentState.LLMService!.ProcessInputAsync(_llmTaskCurrentCancelToken!.Value, _llmTaskCurrentBeforeContextMessage, null);
                 _logger.LogDebug("Agent {AgentId}: LLM process started for turn {TurnId}", _agentState.AgentId, _llmTaskCurrentTurn!.Id);
                 await _llmTask;
             }
@@ -401,6 +405,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // On the first token of a new agent response, clear the buffer.
             if (currentTurn.Response.LLMStreamingStartedAt == null)
             {
+                _logger.LogDebug("Agent {AgentId}: LLM stream started for turn {TurnId}, resetting response buffer.", _agentState.AgentId, currentTurn.Id);
+
                 _responseBuffer.Clear();
                 _currentResponseBufferReadPosition = 0;
 
@@ -488,6 +494,32 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
                         _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a custom tool response.", currentTurn.Id, _agentState.AgentId);
+                    }
+
+                    if ((fullText.Length >= 30 || isEndOfResponse) && currentTurn.Response.Type == ConversationTurnAgentResponseType.NotSet)
+                    {
+                        CurrentLLMInvalidResponseCount++;
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} has a long first token which is unexpected so cancelling and recalling.", currentTurn.Id, _agentState.AgentId);
+
+                        if (CurrentLLMInvalidResponseCount > 3)
+                        {
+                            _logger.LogError("Agent {AgentId}: LLM response turn {TurnId} has too many invalid responses, cancelling.", currentTurn.Id, _agentState.AgentId);
+
+                            await LLMFailureAndEndCallRequested.Invoke();
+                            return;
+                        }
+
+                        var currentCancelToken = _llmTaskCurrentCancelToken;
+                        var currentBeforeContextMessage = _llmTaskCurrentBeforeContextMessage;
+                        var currentFailTurn = _llmTaskCurrentTurn;
+
+                        await CancelCurrentLLMTaskAsync();
+
+                        _agentState.LLMService!.AddAssistantMessage($"{fullText}...");
+                        _agentState.LLMService.AddUserMessage($"response_from_system: Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.");
+
+                        _llmTask = _agentState.LLMService!.ProcessInputAsync(currentCancelToken!.Value, currentBeforeContextMessage, null);
+                        return;
                     }
                 }
 
@@ -582,16 +614,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
                     else
                     {
-                        currentTurn.Response.LLMStreamingCompletedAt = DateTime.UtcNow;
-                        await _conversationSession.NotifyTurnUpdated(currentTurn);
-
                         _logger.LogError("Agent {AgentId}: LLM response ended but type unknown or invalid: {Response}", _agentState.AgentId, _responseBuffer.ToString());
-
-                        //_agentState.LLMService!.AddAssistantMessage(finalResponse);
-                        //AIAgentResponseCompleted?.Invoke(finalResponse);
-
-                        //await ProcessSystemMessageAsync("Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.", _agentState.CurrentClientId, CancellationToken.None);
-
+                        // TODO we should never reach here tbh, we have a check done above already when setting the response type
                         return;
                     }   
                 }

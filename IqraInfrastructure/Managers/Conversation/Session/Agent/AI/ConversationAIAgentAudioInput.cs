@@ -67,7 +67,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 foreach (var audioData in _audioQueue.GetConsumingEnumerable(cancellationToken))
                 {
-                    if (_agentState.IsSTTProcessingPaused && _agentState.STTService != null)
+                    if (!_agentState.IsSTTProcessingPaused && _agentState.STTService != null)
                     {
                         try
                         {
