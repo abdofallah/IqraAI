@@ -137,6 +137,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _llmResultString = new StringBuilder();
 
             var llmServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(
+                _loggerFactory,
                 _agentState.LLMBusinessIntegrationData,
                 _voicemailSettings.VerifyVoiceMessageLLM,
                 new Dictionary<string, string> { }

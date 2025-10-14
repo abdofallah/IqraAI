@@ -352,6 +352,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (!_agentState.IsInitialized) return;
 
             _agentState.IsAcceptingSTTAudio = false;
+            _agentState.IsSTTProcessingPaused = true;
 
             // TODO end the current turn properly
             await _llmHandler.CancelCurrentLLMTaskAsync();
@@ -387,6 +388,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // Signal shutdown start
             _agentState.IsInitialized = false;
             _agentState.IsAcceptingSTTAudio = false;
+            _agentState.IsSTTProcessingPaused = true;
             if (!_conversationCTS.IsCancellationRequested)
             {
                 _conversationCTS.Cancel();
@@ -556,6 +558,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // Update State
             _agentState.CurrentLanguageCode = newLanguageCode;
             _agentState.IsAcceptingSTTAudio = false;
+            _agentState.IsSTTProcessingPaused = true;
+            _audioInputHandler.ClearAudioQueue();
 
             // Cancel ongoing operations? Optional, but safer.
             _dtmfSessionManager.CancelSession("Language Change");
@@ -623,6 +627,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // Enable listening after potential greeting
             await FinalizeCurrentTurn(ConversationTurnStatus.Completed);
             _agentState.IsAcceptingSTTAudio = true;
+            _agentState.IsSTTProcessingPaused = false;
             // TODO: Enable VAD if needed (_vadService.Start() ?)
         }
 
@@ -681,6 +686,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async Task OnLLMFailureAndEndCallRequested()
         {
             _agentState.IsAcceptingSTTAudio = false;
+            _agentState.IsSTTProcessingPaused = true;
             _agentState.AreTurnsPaused = true;
 
             await FinalizeCurrentTurn(ConversationTurnStatus.Error);
@@ -946,7 +952,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Voicemail Detector Handlers
         private async Task PauseAgentOnVoicemailDetectedAsync()
         {
-            _agentState.IsAcceptingSTTAudio = false;
+            _agentState.IsAcceptingSTTAudio = true;
+            _agentState.IsSTTProcessingPaused = true;
             _agentState.IsVoicemailDetected = true;
 
             if (_agentState.CurrentTurn == null)

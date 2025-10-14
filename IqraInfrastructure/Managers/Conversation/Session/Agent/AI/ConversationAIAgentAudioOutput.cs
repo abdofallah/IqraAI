@@ -311,13 +311,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 try
                 {
+                    var cacheRetrievalLatencyStopwatch = Stopwatch.StartNew();
                     (bool isCacheable, string? cacheGroupId, string? cacheEntryId) = await IsTextCacheable(text);
                     ITTSConfig ttsConfig = _agentState.TTSService.GetCacheableConfig();
                     string cacheKey = TTSCacheKeyGenerator.Generate(text, _agentState.TTSService.GetProviderType(), ttsConfig);
 
                     if (isCacheable)
-                    {
-                        var cacheRetrievalLatencyStopwatch = Stopwatch.StartNew();
+                    {                      
                         var cacheResult = await _cacheManager.TryGetAudioAsync(cacheKey, ttsConfig, _agentState.TTSService.GetProviderType(), _agentState.BusinessApp.Id, cacheGroupId, _agentState.CurrentLanguageCode, cacheEntryId, turn.Response.AgentId, ttsToken);
                         cacheRetrievalLatencyStopwatch.Stop();
                         if (cacheResult.IsHit && !cacheResult.AudioData.IsEmpty)
@@ -657,7 +657,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             var taskResult = task.Result;
                             if (taskResult.Success)
                             {
-                                autoCacheGroup.Audios[languageCode].Add(taskResult.Data);
+                                autoCacheGroup.Audios[languageCode].Add(taskResult.Data!);
                             }
                             else
                             {

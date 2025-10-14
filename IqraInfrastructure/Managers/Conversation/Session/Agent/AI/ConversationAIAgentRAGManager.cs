@@ -216,6 +216,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             var llmResult = await _llmProviderManager.BuildProviderServiceByIntegration(
+                _loggerFactory,
                 integrationDataResult.Data,
                 llmConfig,
                 new Dictionary<string, string>()

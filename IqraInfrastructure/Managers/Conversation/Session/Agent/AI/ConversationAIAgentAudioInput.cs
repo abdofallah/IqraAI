@@ -7,7 +7,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
     {
         private readonly ILogger<ConversationAIAgentAudioInput> _logger;
         private readonly ConversationAIAgentState _agentState;
-        private readonly BlockingCollection<byte[]> _audioQueue = new();
+
+        private BlockingCollection<byte[]> _audioQueue = new();
         private Task? _audioProcessingTask;
         private CancellationTokenSource? _moduleCTS;
 
@@ -33,6 +34,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         public void QueueAudioChunk(byte[] audioData, CancellationToken cancellationToken)
         {
+            if (!_agentState.IsAcceptingSTTAudio) return;
+
             if (!_moduleCTS?.IsCancellationRequested ?? true)
             {
                 try
@@ -52,6 +55,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             _audioQueue.CompleteAdding();
         }
+        public void ClearAudioQueue()
+        {
+            _audioQueue = new BlockingCollection<byte[]>();
+        }
 
         // Background Task
         private async Task ProcessAudioQueueAsync(CancellationToken cancellationToken)
@@ -60,7 +67,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 foreach (var audioData in _audioQueue.GetConsumingEnumerable(cancellationToken))
                 {
-                    if (_agentState.IsAcceptingSTTAudio && _agentState.STTService != null)
+                    if (_agentState.IsSTTProcessingPaused && _agentState.STTService != null)
                     {
                         try
                         {
