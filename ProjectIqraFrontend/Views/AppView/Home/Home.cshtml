@@ -88,9 +88,9 @@
                         <i class='fa-regular fa-credit-card nav_icon'></i>
                         <span class="nav_name">Billing</span>
                     </a>
-                    <a class="nav_link" for="support-tab">
-                        <i class='fa-regular fa-ticket nav_icon'></i>
-                        <span class="nav_name">Support</span>
+                    <a class="nav_link" for="white-label-tab">
+                        <i class='fa-regular fa-tags nav_icon'></i>
+                        <span class="nav_name">White Label</span>
                     </a>
                     <a class="nav_link disabled mb-0" for="settings-tab">
                         <i class='fa-regular fa-gear nav_icon'></i>
@@ -126,13 +126,11 @@
         <!-- API Keys Container -->
         <partial name="_APIKeysTab.cshtml" />
 
+        <!-- White Label Container -->
+        <partial name="_WhiteLabelTab.cshtml" />
+
         <!-- Settings Container -->
-        <div class="main-container fade w-100 d-none" id="settings-tab">
-            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
-            <div class="inner-container">
-                <h6>Ah! This page is currently under development.</h6>
-            </div>
-        </div>
+        <partial name="_SettingsTab.cshtml" />
 
         <!-- ASP -->
         <script>
@@ -318,6 +316,7 @@
         <script src="~/scripts/app/home/billing_tab.js"></script>
         <script src="~/scripts/app/home/usage_tab.js"></script>
         <script src="~/scripts/app/home/api_keys_tab.js"></script>
+        <script src="~/scripts/app/home/white_label_tab.js"></script>
 
         <!-- Init -->
         <script>
@@ -411,6 +410,9 @@
 
                                             // Init API Keys Tab
                                             InitApiKeysTab();
+
+                                            // Init White Label Tab
+                                            InitWhiteLabelTab();
                                         },
                                         (userBusinessesError) => {
                                             AlertManager.createAlert({

@@ -316,15 +316,6 @@ namespace ProjectIqraFrontend
                 );
             });
 
-            builder.Services.AddSingleton<BusinessWhiteLabelDomainRepository>((sp) =>
-            {
-                return new BusinessWhiteLabelDomainRepository(
-                    sp.GetRequiredService<ILogger<BusinessWhiteLabelDomainRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:BusinessWhiteLabelDomainRepositoryDatabaseName"]
-                );
-            });
-
             builder.Services.AddSingleton<LLMProviderRepository>((sp) =>
             {
                 return new LLMProviderRepository(
@@ -726,8 +717,6 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
                     sp.GetRequiredService<BusinessLogoRepository>(),
-                    sp.GetRequiredService<BusinessWhiteLabelDomainRepository>(),
-                    sp.GetRequiredService<BusinessDomainVestaCPRepository>(),
                     sp.GetRequiredService<BusinessToolAudioRepository>(),
                     sp.GetRequiredService<BusinessAgentAudioRepository>(),
                     sp.GetRequiredService<ModemTelManager>(),

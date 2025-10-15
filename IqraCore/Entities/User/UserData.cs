@@ -2,6 +2,7 @@
 using IqraCore.Entities.User.Billing;
 using IqraCore.Entities.User.Notifcation;
 using IqraCore.Entities.User.PaymentMethod;
+using IqraCore.Entities.User.WhiteLabel;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.User
@@ -22,6 +23,8 @@ namespace IqraCore.Entities.User
         public UserBillingData Billing { get; set; } = new UserBillingData();
 
         public List<UserNotificationData> Notifications { get; set; } = new List<UserNotificationData>();
+
+        public UserWhiteLabelData WhiteLabel { get; set; } = new UserWhiteLabelData();
 
         [ExcludeInAllEndpoints]
         public string PasswordSHA { get; set; } = string.Empty;

@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Business.WhiteLabelDomain;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Models.User;
@@ -114,20 +113,10 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                FunctionReturnResult<List<BusinessWhiteLabelDomain>?> businessWhiteLabelDomainResult = await _businessManager.GetSettingsManager().GetUserBusinessWhiteLabelDomainByIds(userData.Email, businessId, businessData.WhiteLabelDomainIds);
-                if (!businessWhiteLabelDomainResult.Success)
-                {
-                    return result.SetFailureResult(
-                        $"GetUserBusiness:{businessWhiteLabelDomainResult.Code}",
-                        businessWhiteLabelDomainResult.Message
-                    );
-                }
-
                 var resultData = new GetUserBusinessFullReturnModel()
                 {
                     BusinessData = businessData,
-                    BusinessApp = businessAppResult.Data!,
-                    BusinessWhiteLabelDomain = businessWhiteLabelDomainResult.Data!
+                    BusinessApp = businessAppResult.Data!
                 };
 
                 return result.SetSuccessResult(resultData);

@@ -35,8 +35,6 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessLogoRepository? _businessLogoRepository;
-        private readonly BusinessWhiteLabelDomainRepository? _businessWhiteLabelDomainRepository;
-        private readonly BusinessDomainVestaCPRepository? _businessIqraBusinessDomainsVestaCPRepository;
         private readonly BusinessToolAudioRepository? _businessToolAudioRepository;
         private readonly BusinessAgentAudioRepository? _businessAgentAudioRepository;
         private readonly OutboundCallQueueRepository? _outboundCallQueueRepository;
@@ -67,8 +65,6 @@ namespace IqraInfrastructure.Managers.Business
             BusinessRepository businessRepository,
             BusinessAppRepository businessAppRepository,
             BusinessLogoRepository? businessLogoRepository,
-            BusinessWhiteLabelDomainRepository? businessWhiteLabelDomainRepository,
-            BusinessDomainVestaCPRepository? businessIqraBusinessDomainsVestaCPRepository,
             BusinessToolAudioRepository? businessToolAudioRepository,
             BusinessAgentAudioRepository? businessAgentAudioRepository,
             ModemTelManager? modemTelManager,
@@ -103,8 +99,6 @@ namespace IqraInfrastructure.Managers.Business
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
             _businessLogoRepository = businessLogoRepository;
-            _businessWhiteLabelDomainRepository = businessWhiteLabelDomainRepository;
-            _businessIqraBusinessDomainsVestaCPRepository = businessIqraBusinessDomainsVestaCPRepository;
             _businessToolAudioRepository = businessToolAudioRepository;
             _businessAgentAudioRepository = businessAgentAudioRepository;
             _outboundCallQueueRepository = outboundCallQueueRepository;
@@ -116,11 +110,11 @@ namespace IqraInfrastructure.Managers.Business
             // Sub Managers
             if (_settings.InitalizeSettingsManager)
             {
-                if (businessWhiteLabelDomainRepository == null || businessLogoRepository == null || businessIqraBusinessDomainsVestaCPRepository == null || langaugesManager == null)
+                if (businessLogoRepository == null || langaugesManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessSettingsManager");
                 }
-                _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository, langaugesManager);
+                _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessLogoRepository, langaugesManager);
             }
             if (_settings.InitalizeToolsManager || _settings.InitalizeToolsCURDManager)
             {

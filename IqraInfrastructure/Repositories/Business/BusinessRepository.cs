@@ -126,31 +126,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessDataBackup.Id);
             var result = await _businessCollection.ReplaceOneAsync(filter, businessDataBackup);
             return result.ModifiedCount > 0;
-        }
-
-        public async Task<bool> AddBusinessSubUserAsync(long businessId, BusinessUser newSubUserData)
-        {
-            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
-            var update = Builders<BusinessData>.Update
-                .Push(b => b.SubUsers, newSubUserData);
-            var result = await _businessCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
-        }
-
-        public async Task<bool> ReplaceBusinessSubUserAsync(long businessId, BusinessUser newSubUserData)
-        {
-            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
-            var matchElementFilter = Builders<BusinessData>.Filter.ElemMatch(b => b.SubUsers, su => su.Email == newSubUserData.Email);
-
-            var combinedFilter = Builders<BusinessData>.Filter.And(filter, matchElementFilter);
-
-            var update = Builders<BusinessData>.Update.Set(b => b.SubUsers.FirstMatchingElement(), newSubUserData);
-
-            var options = new UpdateOptions { IsUpsert = false };
-            var result = await _businessCollection.UpdateOneAsync(combinedFilter, update, options);
-
-            return result.ModifiedCount > 0;
-        }
+        } 
 
         public async Task<List<string>> GetBusinessLanguages(long businessId)
         {

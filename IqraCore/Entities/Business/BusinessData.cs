@@ -17,11 +17,6 @@ namespace IqraCore.Entities.Business
 
         public Dictionary<string, object> Tutorials { get; set; } = new Dictionary<string, object>();
 
-        [ExcludeInEndpoint("/app/user/businesses")]
-        public List<BusinessUser> SubUsers { get; set; } = new List<BusinessUser>();
-
-        public List<long> WhiteLabelDomainIds { get; set; } = new List<long>();
-
         public BusinessPermission Permission { get; set; } = new BusinessPermission();
 
         // Plan/Billing/Allocation
