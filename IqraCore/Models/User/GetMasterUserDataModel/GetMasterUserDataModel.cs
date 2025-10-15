@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.User;
 using IqraCore.Models.User.Billing;
+using IqraCore.Models.User.WhiteLabel;
 
 namespace IqraCore.Models.User.GetMasterUserDataModel
 {
@@ -45,6 +46,8 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
             )
             .Select(x => new UserNotificationDataModel(x))
             .ToList();
+
+            WhiteLabel = new UserWhiteLabelDataModel(userData.WhiteLabel);
         }
 
         public string Email { get; set; } = string.Empty;
@@ -62,5 +65,7 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
         public List<UserApiKeyModel> ApiKeys { get; set; } = new List<UserApiKeyModel>();
 
         public List<UserNotificationDataModel> Notifications { get; set; } = new List<UserNotificationDataModel>();
+    
+        public UserWhiteLabelDataModel WhiteLabel { get; set; } = new UserWhiteLabelDataModel();
     }
 }
