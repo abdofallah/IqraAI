@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.User;
-using IqraCore.Models.User.Billing;
-using IqraCore.Models.User.WhiteLabel;
+using IqraCore.Models.User.GetMasterUserDataModel.Billing;
+using IqraCore.Models.User.GetMasterUserDataModel.WhiteLabel;
 
 namespace IqraCore.Models.User.GetMasterUserDataModel
 {

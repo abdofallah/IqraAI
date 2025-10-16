@@ -18,7 +18,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
             _userWhiteLabelManager = userWhiteLabelManager;
         }
 
-        [HttpGet("/app/user/whitelabel/activate")]
+        [HttpPost("/app/user/whitelabel/activate")]
         public async Task<FunctionReturnResult> ActivateUserWhiteLabel()
         {
             var result = new FunctionReturnResult();

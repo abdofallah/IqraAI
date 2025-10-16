@@ -54,6 +54,8 @@ using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
 using ProjectIqraFrontend.Transformer;
 using Scalar.AspNetCore;
+using System.Collections.Immutable;
+using System.Net;
 using System.Reflection;
 
 namespace ProjectIqraFrontend
@@ -63,15 +65,6 @@ namespace ProjectIqraFrontend
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-
-            builder.Services.Configure<ForwardedHeadersOptions>(options =>
-            {
-                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-                // In a real production environment, you should limit known proxies and networks.
-                // For example:
-                // options.KnownProxies.Add(IPAddress.Parse("10.0.0.1"));
-            });
-
 
             // Configuration
             var appConfig = builder.Configuration;
@@ -157,6 +150,35 @@ namespace ProjectIqraFrontend
                     .AllowAnyOrigin()
                     .AllowAnyMethod()
                     .AllowAnyHeader());
+
+                options.AddDefaultPolicy(p => p
+                    .WithOrigins("devapp.iqra.bot", "app.iqra.bot")
+                    .AllowAnyMethod()
+                    .AllowAnyHeader());
+            });
+
+            // Configure Forwarded Headers
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                
+                // Known Proxies
+                options.KnownProxies.Clear();
+                var knownProxies = appConfig.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>();
+                if (knownProxies != null)
+                {
+                    foreach (var proxy in knownProxies)
+                    {
+                        if (IPAddress.TryParse(proxy, out var ipAddress))
+                        {
+                            options.KnownProxies.Add(ipAddress);
+                        }
+                        else
+                        {
+                            throw new ArgumentException($"Invalid known proxy: {proxy}. Unable to parse ip address.");
+                        }
+                    }
+                }
             });
 
             // OpenAPI
@@ -186,6 +208,7 @@ namespace ProjectIqraFrontend
 
             app.UseForwardedHeaders();
 
+            app.UseCors();
             app.UseWhen(
                 context => context.Request.Path.StartsWithSegments("/api"),
                 appBuilder => appBuilder.UseCors("AllowAnyOriginForApi")
@@ -910,6 +933,14 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<UserPaymentManager>()
+                );
+            });
+
+            builder.Services.AddScoped<UserWhiteLabelManager>((sp) =>
+            {
+                return new UserWhiteLabelManager(
+                    sp.GetRequiredService<ILogger<UserWhiteLabelManager>>(),
+                    sp.GetRequiredService<UserRepository>()
                 );
             });
         }

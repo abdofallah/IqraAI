@@ -22,9 +22,5 @@
     <PackageReference Include="System.IO.Hashing" Version="9.0.7" />
     <PackageReference Include="UTF.Unknown" Version="2.6.0" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Entities\Business\User\" />
-  </ItemGroup>
 	
 </Project>
