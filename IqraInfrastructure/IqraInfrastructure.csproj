@@ -87,6 +87,7 @@
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="MessagePack" Version="3.1.4" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Abstractions" Version="2.3.0" />
     <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.45.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.7" />
@@ -111,6 +112,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Dependencies\ElevenLabs\src\libs\ElevenLabs\ElevenLabs.csproj" />
+    <ProjectReference Include="..\Dependencies\w3c-validator-net\src\W3CValidator.Core\W3CValidator.Core.csproj" />
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
   </ItemGroup>
 

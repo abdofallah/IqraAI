@@ -24,6 +24,10 @@
 	--bs-body-bg: #1a1a1a !important;
 }
 
+.bg-dark-2 {
+	background-color: #2a2a2a;
+}
+
 img {
 	user-select: none;
 }
@@ -60,6 +64,10 @@ input:autofill
 {
 	border-color: var(--tcolor-lighter-green);
 	box-shadow: 0 0 0 .25rem rgba(203, 229, 78, 0.18);
+}
+
+.table {
+	margin-bottom: 0px;
 }
 
 .btn-outline-primary

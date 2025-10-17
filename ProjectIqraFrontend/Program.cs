@@ -940,7 +940,8 @@ namespace ProjectIqraFrontend
             {
                 return new UserWhiteLabelManager(
                     sp.GetRequiredService<ILogger<UserWhiteLabelManager>>(),
-                    sp.GetRequiredService<UserRepository>()
+                    sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<BusinessLogoRepository>()
                 );
             });
         }

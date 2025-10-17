@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using IqraCore.Entities.Helpers;
+using Microsoft.AspNetCore.Http;
 using SixLabors.ImageSharp;
 using System.Data.HashFunction.xxHash;
 
@@ -107,45 +108,89 @@ namespace IqraCore.Utilities
             }
         }
 
-        public static int ValidateBusinessWhiteLabelLogoFile(IFormFile file)
+        public static FunctionReturnResult ValidateBusinessWhiteLabelLogoFile(IFormFile file)
         {
-            if (file.Length > 3 * 1024 * 1024)
+            var result = new FunctionReturnResult();
+
+            try
             {
-                return 0;
+                if (file.Length > 3 * 1024 * 1024)
+                {
+                    return result.SetFailureResult(
+                        "ValidateBusinessWhiteLabelLogoFile:FILE_TOO_LARGE",
+                        "File is too large. Maximum allowed size is 3 MB."
+                    );
+                }
+
+                using (var reader = new BinaryReader(file.OpenReadStream()))
+                {
+                    var maxSignatureLength = BusinessLogoSignatures.Values.SelectMany(x => x).Max(x => x.Length);
+                    var headerBytes = reader.ReadBytes(maxSignatureLength);
+
+                    bool signatureExists = BusinessLogoSignatures.Values.SelectMany(x => x)
+                                     .Any(signature =>
+                                         headerBytes.Take(signature.Length)
+                                                    .SequenceEqual(signature));
+
+                    if (!signatureExists)
+                    {
+                        return result.SetFailureResult(
+                            "ValidateBusinessWhiteLabelLogoFile:INVALID_FILE_FORMAT",
+                            "Unsupported file format. Only PNG, JPEG, GIF and WEBP files are allowed."
+                        );
+                    }
+
+                    return result.SetSuccessResult();
+                }
             }
-
-            using (var reader = new BinaryReader(file.OpenReadStream()))
+            catch (Exception ex)
             {
-                var maxSignatureLength = BusinessLogoSignatures.Values.SelectMany(x => x).Max(x => x.Length);
-                var headerBytes = reader.ReadBytes(maxSignatureLength);
-
-                bool result = BusinessLogoSignatures.Values.SelectMany(x => x)
-                                 .Any(signature =>
-                                     headerBytes.Take(signature.Length)
-                                                .SequenceEqual(signature));
-
-                return (result == true ? 200 : 1);
+                return result.SetFailureResult(
+                    "ValidateBusinessWhiteLabelLogoFile:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
             }
         }
 
-        public static int ValidateBusinessWhiteLabelFaviconFile(IFormFile file)
+        public static FunctionReturnResult ValidateBusinessWhiteLabelFaviconFile(IFormFile file)
         {
-            if (file.Length > 1 * 1024 * 1024)
+            var result = new FunctionReturnResult();
+
+            try
             {
-                return 0;
+                if (file.Length > 1 * 1024 * 1024)
+                {
+                    return result.SetFailureResult(
+                        "ValidateBusinessWhiteLabelFaviconFile:FILE_TOO_LARGE",
+                        "File is too large. Maximum allowed size is 1 MB."
+                    );
+                }
+
+                using (var reader = new BinaryReader(file.OpenReadStream()))
+                {
+                    var maxSignatureLength = BusinessWhiteLabelFaviconSignatures.Values.SelectMany(x => x).Max(x => x.Length);
+                    var headerBytes = reader.ReadBytes(maxSignatureLength);
+
+                    bool signatureExists = BusinessWhiteLabelFaviconSignatures.Values.SelectMany(x => x)
+                                     .Any(signature =>
+                                         headerBytes.Take(signature.Length)
+                                                    .SequenceEqual(signature));
+
+                    if (!signatureExists) {
+                        return result.SetFailureResult(
+                            "ValidateBusinessWhiteLabelFaviconFile:INVALID_FILE_FORMAT",
+                            "Unsupported file format. Only PNG, JPEG, GIF and WEBP files are allowed."
+                        );
+                    }
+
+                    return result.SetSuccessResult();
+                }
             }
-
-            using (var reader = new BinaryReader(file.OpenReadStream()))
-            {
-                var maxSignatureLength = BusinessWhiteLabelFaviconSignatures.Values.SelectMany(x => x).Max(x => x.Length);
-                var headerBytes = reader.ReadBytes(maxSignatureLength);
-
-                bool result = BusinessWhiteLabelFaviconSignatures.Values.SelectMany(x => x)
-                                 .Any(signature =>
-                                     headerBytes.Take(signature.Length)
-                                                .SequenceEqual(signature));
-
-                return (result == true ? 200 : 1);
+            catch (Exception ex) {
+                return result.SetFailureResult(
+                    "ValidateBusinessWhiteLabelFaviconFile:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
             }
         }
 

@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.User;
 using IqraCore.Entities.User.Billing;
 using IqraCore.Entities.User.Notifcation;
+using IqraCore.Entities.User.WhiteLabel;
 using IqraInfrastructure.Helpers.MongoDB;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -280,6 +281,15 @@ namespace IqraInfrastructure.Repositories.User
                 .FirstOrDefaultAsync();
 
             return unreadNotifications.ToList() ?? new List<UserNotificationData>();
+        }
+
+        public async Task<UserWhiteLabelBrandingData?> GetUserWhiteLabelDefaultBrandingDataAsync(string userEmail)
+        {
+            var query = _usersCollection.AsQueryable()
+                .Where(u => (u.Email == userEmail))
+                .Select(u => u.WhiteLabel.DefaultBranding);
+
+            return await query.FirstOrDefaultAsync();
         }
     }
 }
