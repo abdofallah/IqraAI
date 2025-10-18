@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Entities.User.WhiteLabel;
+using IqraCore.Entities.User.WhiteLabel.Plan;
 using IqraCore.Models.User.GetMasterUserDataModel.WhiteLabel.Plan;
 using IqraCore.Requests.User.WhiteLabel;
 using IqraInfrastructure.Managers.User;
@@ -149,13 +150,6 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                // Since domainData is a JSON string in FormData, we need to deserialize it
-                var domainData = JsonSerializer.Deserialize<SaveUserWhiteLabelDomainJsonData>(request.DomainDataJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (domainData == null)
-                {
-                    return result.SetFailureResult("SaveDomain:INVALID_JSON", "Domain data is malformed.");
-                }
-
                 // TODO: Call _userWhiteLabelManager.SaveDomain(..., domainData, request.OverrideLogo, request.OverrideIcon)
                 return result.SetSuccessResult();
             }
@@ -204,15 +198,18 @@ namespace ProjectIqraFrontend.Controllers.App.User
         }
 
         [HttpPost("/app/user/whitelabel/plans/save")]
-        public async Task<FunctionReturnResult> SavePlan([FromBody] UserWhiteLabelPlanDataModel planData)
+        public async Task<FunctionReturnResult<UserWhiteLabelPlanDataModel?>> SavePlan([FromBody] SaveWhiteLabelPlanRequest request)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<UserWhiteLabelPlanDataModel?>();
             try
             {
                 var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request);
                 if (!validationResult.Success)
                 {
-                    return result.SetFailureResult($"SavePlan:{validationResult.Code}", validationResult.Message);
+                    return result.SetFailureResult(
+                        $"SavePlan:{validationResult.Code}",
+                        validationResult.Message
+                    );
                 }
                 var userData = validationResult.Data!;
 
@@ -232,12 +229,54 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                // TODO: Call _userWhiteLabelManager.SavePlan(...)
-                return result.SetSuccessResult();
+                if (string.IsNullOrWhiteSpace(request.PostType) || 
+                    (request.PostType != "edit" && request.PostType != "new")
+                ) {
+                    return result.SetFailureResult(
+                        "SavePlan:INVALID_POST_TYPE",
+                        "Invalid post type."
+                    );
+                }
+
+                UserWhiteLabelPlanData? exisitingPlanData = null;
+                if (request.PostType == "edit")
+                {
+                    if (string.IsNullOrEmpty(request.ExistingPlanId))
+                    {
+                        return result.SetFailureResult(
+                            "SavePlan:INVALID_PLAN_ID",
+                            "Invalid plan ID."
+                        );
+                    }
+
+                    exisitingPlanData = userData.WhiteLabel.Plans.Find(p => p.Id == request.ExistingPlanId);
+                    if (exisitingPlanData == null)
+                    {
+                        return result.SetFailureResult(
+                            "SavePlan:PLAN_NOT_FOUND",
+                            "Plan not found."
+                        );
+                    }
+                }
+
+                var savePlanResult = await _userWhiteLabelManager.SavePlan(userData.Email, request.PostType, request.Config, exisitingPlanData);
+                if (!savePlanResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SavePlan:{savePlanResult.Code}",
+                        savePlanResult.Message
+                    );
+                }
+
+                var newPlanModel = new UserWhiteLabelPlanDataModel(savePlanResult.Data!);
+                return result.SetSuccessResult(newPlanModel);
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult("SavePlan:EXCEPTION", $"Internal server error: {ex.Message}");
+                return result.SetFailureResult(
+                    "SavePlan:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
             }
         }
 
@@ -270,7 +309,23 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                // TODO: Call _userWhiteLabelManager.ArchivePlan(...)
+                if (string.IsNullOrEmpty(request.PlanId))
+                {
+                    return result.SetFailureResult(
+                        "ArchivePlan:INVALID_PLAN_ID",
+                        "Invalid plan ID."
+                    );
+                }
+
+                var archivePlanResult = await _userWhiteLabelManager.ArchivePlan(userData, request.PlanId, request.IsArchived);
+                if (!archivePlanResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ArchivePlan:{archivePlanResult.Code}",
+                        archivePlanResult.Message
+                    );
+                }
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)
