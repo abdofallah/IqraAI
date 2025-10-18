@@ -1,0 +1,5 @@
+var searchData=
+[
+  ['date',['Date',['../class_w3_c_validator_1_1_css_1_1_css_validation_result.html#a27b18617426c2d5b8847a4ecb89182ab',1,'W3CValidator.Css.CssValidationResult.Date()'],['../interface_w3_c_validator_1_1_css_1_1_i_css_validation_result.html#a2762037a12f1d84358682fe51a9f0635',1,'W3CValidator.Css.ICssValidationResult.Date()'],['../interface_w3_c_validator_1_1_markup_1_1_i_markup_validation_result.html#af6ca21ac36eda3bf923a69e93f67c559',1,'W3CValidator.Markup.IMarkupValidationResult.Date()'],['../class_w3_c_validator_1_1_markup_1_1_markup_validation_result.html#a276dbdd95a894695e6037c02cc2058a3',1,'W3CValidator.Markup.MarkupValidationResult.Date()']]],
+  ['doctype',['Doctype',['../interface_w3_c_validator_1_1_markup_1_1_i_markup_validation_result.html#a0d4255d2e6b50982ab41f05f02c8ca1e',1,'W3CValidator.Markup.IMarkupValidationResult.Doctype()'],['../class_w3_c_validator_1_1_markup_1_1_markup_validation_result.html#ae8cbd5651d01c710f64e14f4e2339dfe',1,'W3CValidator.Markup.MarkupValidationResult.Doctype()']]]
+];

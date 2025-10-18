@@ -1,0 +1,87 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <DocumentationFile>API.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Css\.gitignore" />
+    <None Remove="Css\Implementation\.gitignore" />
+    <None Remove="Markup\.gitignore" />
+    <None Remove="Markup\Implementation\.gitignore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\W3CValidator\Css\CssException.cs" Link="Css\CssException.cs" />
+    <Compile Include="..\W3CValidator\Css\CssMedium.cs" Link="Css\CssMedium.cs" />
+    <Compile Include="..\W3CValidator\Css\CssProfile.cs" Link="Css\CssProfile.cs" />
+    <Compile Include="..\W3CValidator\Css\ICssRequestExecutor.cs" Link="Css\ICssRequestExecutor.cs" />
+    <Compile Include="..\W3CValidator\Css\ICssRequestExecutorExtensions.cs" Link="Css\ICssRequestExecutorExtensions.cs" />
+    <Compile Include="..\W3CValidator\Css\ICssValidationRequest.cs" Link="Css\ICssValidationRequest.cs" />
+    <Compile Include="..\W3CValidator\Css\ICssValidationRequestExtensions.cs" Link="Css\ICssValidationRequestExtensions.cs" />
+    <Compile Include="..\W3CValidator\Css\ICssValidationResult.cs" Link="Css\ICssValidationResult.cs" />
+    <Compile Include="..\W3CValidator\Css\ICssValidator.cs" Link="Css\ICssValidator.cs" />
+    <Compile Include="..\W3CValidator\Css\ICssValidatorExtensions.cs" Link="Css\ICssValidatorExtensions.cs" />
+    <Compile Include="..\W3CValidator\Css\IError.cs" Link="Css\IError.cs" />
+    <Compile Include="..\W3CValidator\Css\IErrorsGroup.cs" Link="Css\IErrorsGroup.cs" />
+    <Compile Include="..\W3CValidator\Css\IIssues.cs" Link="Css\IIssues.cs" />
+    <Compile Include="..\W3CValidator\Css\Implementation\CssRequestExecutor.cs" Link="Css\Implementation\CssRequestExecutor.cs" />
+    <Compile Include="..\W3CValidator\Css\Implementation\CssValidationRequest.cs" Link="Css\Implementation\CssValidationRequest.cs" />
+    <Compile Include="..\W3CValidator\Css\Implementation\CssValidationResult.cs" Link="Css\Implementation\CssValidationResult.cs" />
+    <Compile Include="..\W3CValidator\Css\Implementation\CssValidator.cs" Link="Css\Implementation\CssValidator.cs" />
+    <Compile Include="..\W3CValidator\Css\Implementation\Error.cs" Link="Css\Implementation\Error.cs" />
+    <Compile Include="..\W3CValidator\Css\Implementation\ErrorsGroup.cs" Link="Css\Implementation\ErrorsGroup.cs" />
+    <Compile Include="..\W3CValidator\Css\Implementation\Issues.cs" Link="Css\Implementation\Issues.cs" />
+    <Compile Include="..\W3CValidator\Css\Implementation\Warning.cs" Link="Css\Implementation\Warning.cs" />
+    <Compile Include="..\W3CValidator\Css\Implementation\WarningsGroup.cs" Link="Css\Implementation\WarningsGroup.cs" />
+    <Compile Include="..\W3CValidator\Css\IWarning.cs" Link="Css\IWarning.cs" />
+    <Compile Include="..\W3CValidator\Css\IWarningsGroup.cs" Link="Css\IWarningsGroup.cs" />
+    <Compile Include="..\W3CValidator\Css\WarningsLevel.cs" Link="Css\WarningsLevel.cs" />
+    <Compile Include="..\W3CValidator\IResultable.cs" Link="IResultable.cs" />
+    <Compile Include="..\W3CValidator\IsExternalInit.cs" Link="IsExternalInit.cs" />
+    <Compile Include="..\W3CValidator\IValidationProvider.cs" Link="IValidationProvider.cs" />
+    <Compile Include="..\W3CValidator\IValidationRequest.cs" Link="IValidationRequest.cs" />
+    <Compile Include="..\W3CValidator\Markup\IErrorsGroup.cs" Link="Markup\IErrorsGroup.cs" />
+    <Compile Include="..\W3CValidator\Markup\IIssue.cs" Link="Markup\IIssue.cs" />
+    <Compile Include="..\W3CValidator\Markup\IMarkupRequestExecutor.cs" Link="Markup\IMarkupRequestExecutor.cs" />
+    <Compile Include="..\W3CValidator\Markup\IMarkupRequestExecutorExtensions.cs" Link="Markup\IMarkupRequestExecutorExtensions.cs" />
+    <Compile Include="..\W3CValidator\Markup\IMarkupValidationRequest.cs" Link="Markup\IMarkupValidationRequest.cs" />
+    <Compile Include="..\W3CValidator\Markup\IMarkupValidationRequestExtensions.cs" Link="Markup\IMarkupValidationRequestExtensions.cs" />
+    <Compile Include="..\W3CValidator\Markup\IMarkupValidationResult.cs" Link="Markup\IMarkupValidationResult.cs" />
+    <Compile Include="..\W3CValidator\Markup\IMarkupValidator.cs" Link="Markup\IMarkupValidator.cs" />
+    <Compile Include="..\W3CValidator\Markup\IMarkupValidatorExtensions.cs" Link="Markup\IMarkupValidatorExtensions.cs" />
+    <Compile Include="..\W3CValidator\Markup\Implementation\ErrorsCollection.cs" Link="Markup\Implementation\ErrorsCollection.cs" />
+    <Compile Include="..\W3CValidator\Markup\Implementation\ErrorsGroup.cs" Link="Markup\Implementation\ErrorsGroup.cs" />
+    <Compile Include="..\W3CValidator\Markup\Implementation\Issue.cs" Link="Markup\Implementation\Issue.cs" />
+    <Compile Include="..\W3CValidator\Markup\Implementation\MarkupRequestExecutor.cs" Link="Markup\Implementation\MarkupRequestExecutor.cs" />
+    <Compile Include="..\W3CValidator\Markup\Implementation\MarkupValidationRequest.cs" Link="Markup\Implementation\MarkupValidationRequest.cs" />
+    <Compile Include="..\W3CValidator\Markup\Implementation\MarkupValidationResult.cs" Link="Markup\Implementation\MarkupValidationResult.cs" />
+    <Compile Include="..\W3CValidator\Markup\Implementation\MarkupValidator.cs" Link="Markup\Implementation\MarkupValidator.cs" />
+    <Compile Include="..\W3CValidator\Markup\Implementation\WarningsCollection.cs" Link="Markup\Implementation\WarningsCollection.cs" />
+    <Compile Include="..\W3CValidator\Markup\Implementation\WarningsGroup.cs" Link="Markup\Implementation\WarningsGroup.cs" />
+    <Compile Include="..\W3CValidator\Markup\IWarningsGroup.cs" Link="Markup\IWarningsGroup.cs" />
+    <Compile Include="..\W3CValidator\Markup\MarkupException.cs" Link="Markup\MarkupException.cs" />
+    <Compile Include="..\W3CValidator\ValidationException.cs" Link="ValidationException.cs" />
+    <Compile Include="..\W3CValidator\ValidationRequest.cs" Link="ValidationRequest.cs" />
+    <Compile Include="..\W3CValidator\Validator.cs" Link="Validator.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Css\Implementation\" />
+    <Folder Include="Markup\Implementation\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Catharsis.Extensions">
+      <HintPath>..\..\lib\netstandard2.1\Catharsis.Extensions.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,728 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>W3CValidator.Tests</name>
+    </assembly>
+    <members>
+        <member name="T:W3CValidator.Tests.Css.CssValidationExceptionTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.CssException"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationExceptionTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Css.CssException.#ctor(System.String,System.Exception)"/>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.ICssRequestExecutorExtensionsTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.ICssRequestExecutorExtensions"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ICssRequestExecutorExtensionsTest.Document_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.ICssRequestExecutorExtensions.Document(W3CValidator.Css.ICssRequestExecutor,System.String)"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ICssRequestExecutorExtensionsTest.Url_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.ICssRequestExecutorExtensions.Url(W3CValidator.Css.ICssRequestExecutor,System.Uri)"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.ICssValidationRequestExtensionsTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.ICssValidationRequestExtensions"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ICssValidationRequestExtensionsTest.Language_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.ICssValidationRequestExtensions.Language(W3CValidator.Css.ICssValidationRequest,System.Globalization.CultureInfo)"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ICssValidationRequestExtensionsTest.Medium_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.ICssValidationRequestExtensions.Medium(W3CValidator.Css.ICssValidationRequest,System.Nullable{W3CValidator.Css.CssMedium})"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ICssValidationRequestExtensionsTest.Profile_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.ICssValidationRequestExtensions.Profile(W3CValidator.Css.ICssValidationRequest,System.Nullable{W3CValidator.Css.CssProfile})"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ICssValidationRequestExtensionsTest.Warnings_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.ICssValidationRequestExtensions.Warnings(W3CValidator.Css.ICssValidationRequest,System.Nullable{W3CValidator.Css.WarningsLevel})"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.ICssValidatorExtensionsTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.ICssValidatorExtensions"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ICssValidatorExtensionsTest.Request_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.ICssValidatorExtensions.Request(W3CValidator.Css.ICssValidator,System.Action{W3CValidator.Css.ICssValidationRequest})"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.CssRequestExecutorTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.CssRequestExecutor"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssRequestExecutorTest.DocumentAsync_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssRequestExecutor.DocumentAsync(System.String,System.Threading.CancellationToken)"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssRequestExecutorTest.UrlAsync_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssRequestExecutor.UrlAsync(System.Uri,System.Threading.CancellationToken)"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.CssValidationRequestTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.CssValidationRequest"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationRequestTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Css.CssValidationRequest.#ctor"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationRequestTest.Language_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssValidationRequest.Language(System.String)"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationRequestTest.Medium_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssValidationRequest.Medium(System.String)"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationRequestTest.Profile_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssValidationRequest.Profile(System.String)"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationRequestTest.Warnings_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssValidationRequest.Warnings(System.Nullable{System.Int32})"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.CssValidationResultTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.CssValidationResult"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Css.CssValidationResult.#ctor"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.Uri_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.CssValidationResult.Uri"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.Valid_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.CssValidationResult.Valid"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.Date_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.CssValidationResult.Date"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.CheckedBy_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.CssValidationResult.CheckedBy"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.CssLevel_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.CssValidationResult.CssLevel"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.Issues_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.CssValidationResult.Issues"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.CompareTo_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssValidationResult.GetHashCode"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.Equals_Methods">
+            <summary>
+              <para>Performs testing of following methods :</para>
+              <list type="bullet">
+                <item><description><see cref="M:W3CValidator.Css.CssValidationResult.Equals(W3CValidator.Css.ICssValidationResult)"/></description></item>
+                <item><description><see cref="M:W3CValidator.Css.CssValidationResult.Equals(System.Object)"/></description></item>
+              </list>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.GetHashCode_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssValidationResult.GetHashCode"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.ToString_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssValidationResult.ToString"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidationResultTest.Serialization">
+            <summary>
+              <para>Performs testing of XML serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.CssValidatorTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.CssValidator"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.CssValidatorTest.Request_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.CssValidator.Request(W3CValidator.Css.ICssValidationRequest)"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.ErrorsGroupTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.ErrorsGroup"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorsGroupTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Css.ErrorsGroup.#ctor"/>
+            <seealso cref="M:W3CValidator.Css.ErrorsGroup.#ctor(System.String,System.Collections.Generic.IEnumerable{W3CValidator.Css.IError})"/>
+            <seealso cref="M:W3CValidator.Css.ErrorsGroup.#ctor(System.String,W3CValidator.Css.IError[])"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorsGroupTest.Uri_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.ErrorsGroup.Uri"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorsGroupTest.ErrorsList_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.ErrorsGroup.ErrorsList"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorsGroupTest.Errors_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.ErrorsGroup.Errors"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorsGroupTest.ToString_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.ErrorsGroup.ToString"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorsGroupTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.ErrorTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.Error"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Css.Error.#ctor"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.Message_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Error.Message"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.Type_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Error.Type"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.Subtype_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Error.Subtype"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.Property_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Error.Property"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.Line_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Error.Line"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.Context_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Error.Context"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.SkippedString_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Error.SkippedString"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.ToString_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.Error.ToString"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.ErrorTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.IssuesTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.Issues"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.IssuesTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Css.Issues.#ctor"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.IssuesTest.ErrorsGroupsList_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Issues.ErrorsGroupsList"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.IssuesTest.WarningsGroupsList_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Issues.WarningsGroupsList"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.IssuesTest.ErrorsGroups_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Issues.ErrorsGroups"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.IssuesTest.WarningsGroups_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Issues.WarningsGroups"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.IssuesTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.WarningsGroupTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.WarningsGroup"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningsGroupTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Css.WarningsGroup.#ctor"/>
+            <seealso cref="M:W3CValidator.Css.WarningsGroup.#ctor(System.String,System.Collections.Generic.IEnumerable{W3CValidator.Css.IWarning})"/>
+            <seealso cref="M:W3CValidator.Css.WarningsGroup.#ctor(System.String,W3CValidator.Css.IWarning[])"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningsGroupTest.Uri_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.WarningsGroup.Uri"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningsGroupTest.WarningsList_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.WarningsGroup.WarningsList"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningsGroupTest.Warnings_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.WarningsGroup.Warnings"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningsGroupTest.ToString_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.WarningsGroup.ToString"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningsGroupTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Css.WarningTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.Warning"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Css.Warning.#ctor"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningTest.Message_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Warning.Message"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningTest.Level_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Warning.Level"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningTest.Line_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Warning.Line"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningTest.Context_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Css.Warning.Context"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningTest.ToString_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.Warning.ToString"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Css.WarningTest.Serialization">
+            <summary>
+              <para>Performs testing of XML serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.IMarkupRequestExecutorExtensionsTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.IMarkupRequestExecutorExtensions"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IMarkupRequestExecutorExtensionsTest.Url_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.IMarkupRequestExecutorExtensions.Url(W3CValidator.Css.IMarkupRequestExecutor,System.Uri)"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.IMarkupValidationRequestExtensionsTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.IMarkupValidationRequestExtensions"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IMarkupValidationRequestExtensionsTest.Encoding_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Markup.IMarkupValidationRequestExtensions.Encoding(W3CValidator.Markup.IMarkupValidationRequest,System.Text.Encoding)"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.IMarkupValidatorExtensionsTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.IMarkupValidatorExtensions"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IMarkupValidatorExtensionsTest.Request_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Markup.IMarkupValidatorExtensions.Request(W3CValidator.Markup.IMarkupValidator,System.Action{W3CValidator.Markup.IMarkupValidationRequest})"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.ErrorsCollectionTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.ErrorsCollection"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.ErrorsCollectionTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Markup.ErrorsCollection.#ctor"/>
+            <seealso cref="M:W3CValidator.Markup.ErrorsCollection.#ctor(System.Collections.Generic.IEnumerable{W3CValidator.Markup.IIssue})"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.ErrorsCollectionTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.ErrorsGroupTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.ErrorsGroup"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.ErrorsGroupTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Markup.WarningsGroup.#ctor"/>
+            <seealso cref="M:W3CValidator.Markup.WarningsGroup.#ctor(System.Nullable{System.Int32},System.Collections.Generic.IEnumerable{W3CValidator.Markup.IIssue})"/>
+            <seealso cref="M:W3CValidator.Markup.WarningsGroup.#ctor(System.Nullable{System.Int32},W3CValidator.Markup.IIssue[])"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.ErrorsGroupTest.Count_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.ErrorsGroup.Count"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.ErrorsGroupTest.ErrorsCollection_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.ErrorsGroup.ErrorsCollection"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.ErrorsGroupTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.IssueTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.Issue"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IssueTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Markup.Issue.#ctor"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IssueTest.MessageId_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.Issue.MessageId"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IssueTest.Message_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.Issue.Message"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IssueTest.Line_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.Issue.Line"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IssueTest.Column_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.Issue.Column"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IssueTest.Source_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.Issue.Source"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IssueTest.Explanation_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.Issue.Explanation"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IssueTest.ToString_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Markup.Issue.ToString"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.IssueTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.MarkupRequestExecutorTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Css.MarkupRequestExecutor"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupRequestExecutorTest.UrlAsync_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Css.MarkupRequestExecutor.UrlAsync(System.Uri,System.Threading.CancellationToken)"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.MarkupValidationRequestTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.MarkupValidationRequest"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationRequestTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Markup.MarkupValidationRequest.#ctor"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationRequestTest.Doctype_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Markup.MarkupValidationRequest.Doctype(System.String)"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationRequestTest.Encoding_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Markup.MarkupValidationRequest.Encoding(System.String)"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.MarkupValidationResultTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.MarkupValidationResult"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Markup.MarkupValidationResult.#ctor"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.Uri_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.MarkupValidationResult.Uri"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.Valid_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.MarkupValidationResult.Valid"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.Date_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.MarkupValidationResult.Date"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.CheckedBy_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.MarkupValidationResult.CheckedBy"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.Doctype_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.MarkupValidationResult.Doctype"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.Encoding_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.MarkupValidationResult.Encoding"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.ErrorsGroup_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.MarkupValidationResult.ErrorsGroup"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.WarningsGroup_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.MarkupValidationResult.WarningsGroup"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.CompareTo_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Markup.MarkupValidationResult.CompareTo(W3CValidator.Markup.IMarkupValidationResult)"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.Equals_Methods">
+            <summary>
+              <para>Performs testing of following methods :</para>
+              <list type="bullet">
+                <item><description><see cref="M:W3CValidator.Markup.MarkupValidationResult.Equals(W3CValidator.Markup.IMarkupValidationResult)"/></description></item>
+                <item><description><see cref="M:W3CValidator.Markup.MarkupValidationResult.Equals(System.Object)"/></description></item>
+              </list>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.GetHashCode_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Markup.MarkupValidationResult.GetHashCode"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.ToString_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Markup.MarkupValidationResult.ToString"/> method.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidationResultTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.MarkupValidatorTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.MarkupValidator"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupValidatorTest.Request_Method">
+            <summary>
+              <para>Performs testing of <see cref="M:W3CValidator.Markup.MarkupValidator.Request(W3CValidator.Markup.IMarkupValidationRequest)"/> method.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.WarningsCollectionTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.WarningsCollection"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.WarningsCollectionTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Markup.WarningsCollection.#ctor"/>
+            <seealso cref="M:W3CValidator.Markup.WarningsCollection.#ctor(System.Collections.Generic.IEnumerable{W3CValidator.Markup.IIssue})"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.WarningsCollectionTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.WarningsGroupTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.WarningsGroup"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.WarningsGroupTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+            </summary>
+            <seealso cref="M:W3CValidator.Markup.WarningsGroup.#ctor"/>
+            <seealso cref="M:W3CValidator.Markup.WarningsGroup.#ctor(System.Nullable{System.Int32},System.Collections.Generic.IEnumerable{W3CValidator.Markup.IIssue})"/>
+            <seealso cref="M:W3CValidator.Markup.WarningsGroup.#ctor(System.Nullable{System.Int32},W3CValidator.Markup.IIssue[])"/>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.WarningsGroupTest.Count_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.WarningsGroup.Count"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.WarningsGroupTest.WarningsCollection_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Markup.WarningsGroup.WarningsCollection"/> property.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.WarningsGroupTest.Serialization">
+            <summary>
+              <para>Performs testing of serialization/deserialization process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.Markup.MarkupExceptionTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Markup.MarkupException"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.Markup.MarkupExceptionTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+              <seealso cref="M:W3CValidator.Markup.MarkupException.#ctor(System.String,System.Exception)"/>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.ValidationExceptionTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.ValidationException"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.ValidationExceptionTest.Constructors">
+            <summary>
+              <para>Performs testing of class constructor(s).</para>
+              <seealso cref="M:W3CValidator.ValidationException.#ctor(System.String,System.Exception)"/>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Tests.ValidatorTest">
+            <summary>
+              <para>Tests set for class <see cref="T:W3CValidator.Validator"/>.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Tests.ValidatorTest.For_Property">
+            <summary>
+              <para>Performs testing of <see cref="P:W3CValidator.Validator.For"/> property.</para>
+            </summary>
+        </member>
+    </members>
+</doc>

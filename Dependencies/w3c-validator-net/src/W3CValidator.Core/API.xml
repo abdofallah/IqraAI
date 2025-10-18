@@ -1,0 +1,972 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>W3CValidator.Core</name>
+    </assembly>
+    <members>
+        <member name="T:W3CValidator.Css.CssException">
+            <summary>
+              <para>Exception that indicates an error during the process of CSS document validation through W3C CSS validation web service.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Css.CssException.#ctor(System.String,System.Exception)">
+            <summary>
+              <para>Initializes a new instance of the exception with a specified error message and a reference to the inner exception that is the cause of this exception.</para>
+            </summary>
+            <param name="message">The message that describes the error.</param>
+            <param name="inner">The exception that is the cause of the current exception, or a <c>null</c> reference if no inner exception is specified.</param>
+        </member>
+        <member name="T:W3CValidator.Css.CssMedium">
+            <summary>
+              <para>Type of CSS styles medium.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.All">
+            <summary>
+              <para>All.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Aural">
+            <summary>
+              <para>Aural.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Braille">
+            <summary>
+              <para>Braille.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Embossed">
+            <summary>
+              <para>Embossed.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Handheld">
+            <summary>
+              <para>Handheld.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Print">
+            <summary>
+              <para>Print.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Project">
+            <summary>
+              <para>Project.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Screen">
+            <summary>
+              <para>Screen.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Tty">
+            <summary>
+              <para>Tty.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Tv">
+            <summary>
+              <para>Tv.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssMedium.Presentation">
+            <summary>
+              <para>Presentation.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Css.CssProfile">
+            <summary>
+              <para>CSS profile standard.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssProfile.Css1">
+            <summary>
+              <para>CSS 1.0</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssProfile.Css2">
+            <summary>
+              <para>CSS 2.0</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssProfile.Css21">
+            <summary>
+              <para>CSS 2.1</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.CssProfile.Css3">
+            <summary>
+              <para>CSS 3.0</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Css.ICssRequestExecutor">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Css.ICssRequestExecutor.DocumentAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+              <para>Validates given fragment of CSS code, using W3C CSS validation web service.</para>
+            </summary>
+            <param name="document">CSS code fragment to be validated.</param>
+            <param name="cancellation"></param>
+            <returns>CSS validation result instance.</returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="document"/> is <see langword="null"/>.</exception>
+            <exception cref="T:System.ArgumentException">If <paramref name="document"/> is invalid string.</exception>
+            <exception cref="T:W3CValidator.Css.CssException">If any error occurred during the validation process.</exception>
+        </member>
+        <member name="M:W3CValidator.Css.ICssRequestExecutor.UrlAsync(System.Uri,System.Threading.CancellationToken)">
+            <summary>
+              <para>Validates CSS document, specified by its URL address, using W3C CSS validation web service.</para>
+            </summary>
+            <param name="url">URL address of document to be validated.</param>
+            <param name="cancellation"></param>
+            <returns>CSS validation result instance.</returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="url"/> is <see langword="null"/>.</exception>
+            <exception cref="T:W3CValidator.Css.CssException">If any error occurred during the validation process.</exception>
+        </member>
+        <member name="T:W3CValidator.Css.ICssRequestExecutorExtensions">
+            <summary>
+              <para>A set of extension methods for the <see cref="T:W3CValidator.Css.ICssRequestExecutor"/> interface.</para>
+            </summary>
+            <seealso cref="T:W3CValidator.Css.ICssRequestExecutor"/>
+        </member>
+        <member name="M:W3CValidator.Css.ICssRequestExecutorExtensions.Document(W3CValidator.Css.ICssRequestExecutor,System.String)">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="executor"></param>
+            <param name="document"></param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentNullException">If either <paramref name="executor"/> or <paramref name="document"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:W3CValidator.Css.ICssRequestExecutorExtensions.Url(W3CValidator.Css.ICssRequestExecutor,System.Uri)">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="executor"></param>
+            <param name="url"></param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentNullException">If either <paramref name="executor"/> or <paramref name="url"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="T:W3CValidator.Css.ICssValidationRequest">
+            <summary>
+              <para>Represents configurable request to W3C CSS validation web service.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidationRequest.Language(System.String)">
+            <summary>
+              <para>Specifies language to be used for description of validation issues.</para>
+            </summary>
+            <param name="language">Text language.</param>
+            <returns>Back reference to the current validation request.</returns>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidationRequest.Medium(System.String)">
+            <summary>
+              <para>Specifies CSS medium to use in validation process.</para>
+            </summary>
+            <param name="medium">CSS medium name.</param>
+            <returns>Back reference to the current validation request.</returns>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidationRequest.Profile(System.String)">
+            <summary>
+              <para>Specifies CSS standard version (profile) to be used in validation process.</para>
+            </summary>
+            <param name="profile">CSS profile.</param>
+            <returns>Back reference to the current validation request.</returns>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidationRequest.Warnings(System.Nullable{System.Int32})">
+            <summary>
+              <para>Specifies level of warnings to be included. Only the ones whose level is under or equal to the value specified in the request will be displayed.</para>
+            </summary>
+            <param name="level">Level of warnings severity.</param>
+            <returns>Back reference to the current validation request.</returns>
+        </member>
+        <member name="T:W3CValidator.Css.ICssValidationRequestExtensions">
+            <summary>
+              <para>A set of extension methods for the <see cref="T:W3CValidator.Css.ICssValidationRequest"/> interface.</para>
+            </summary>
+            <seealso cref="T:W3CValidator.Css.ICssValidationRequest"/>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidationRequestExtensions.Language(W3CValidator.Css.ICssValidationRequest,System.Globalization.CultureInfo)">
+            <summary>
+              <para>Specifies language locale/culture to be used for description of validation issues.</para>
+            </summary>
+            <param name="request">Validation request instance.</param>
+            <param name="culture">Text culture.</param>
+            <returns>Back reference to the provided validation <paramref name="request"/>.</returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="request"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidationRequestExtensions.Medium(W3CValidator.Css.ICssValidationRequest,System.Nullable{W3CValidator.Css.CssMedium})">
+            <summary>
+              <para>Specifies CSS medium to use in validation process.</para>
+            </summary>
+            <param name="request">Validation request instance.</param>
+            <param name="medium">CSS medium.</param>
+            <returns>Back reference to the provided validation <paramref name="request"/>.</returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="request"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidationRequestExtensions.Profile(W3CValidator.Css.ICssValidationRequest,System.Nullable{W3CValidator.Css.CssProfile})">
+            <summary>
+              <para>Specifies CSS standard version (profile) to be used in validation process.</para>
+            </summary>
+            <param name="request">Validation request instance.</param>
+            <param name="profile">CSS profile.</param>
+            <returns>Back reference to the provided validation <paramref name="request"/>.</returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="request"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidationRequestExtensions.Warnings(W3CValidator.Css.ICssValidationRequest,System.Nullable{W3CValidator.Css.WarningsLevel})">
+            <summary>
+              <para>Specifies level of warnings to be included. Only the ones whose level is under or equal to the value specified in the request will be displayed.</para>
+            </summary>
+            <param name="request">Validation request instance.</param>
+            <param name="level">Level of warnings severity.</param>
+            <returns>Back reference to the provided validation <paramref name="request"/>.</returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="request"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="T:W3CValidator.Css.ICssValidationResult">
+            <summary>
+              <para>Representation of response from W3C CSS validation web service that contains detailed information concerning validation results.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.ICssValidationResult.Uri">
+            <summary>
+              <para>The address of the document validated.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.ICssValidationResult.Valid">
+            <summary>
+              <para>Whether or not the document validated passed or not formal validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.ICssValidationResult.Date">
+            <summary>
+              <para>The actual date of the validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.ICssValidationResult.CheckedBy">
+            <summary>
+              <para>Location of the service which provided the validation result.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.ICssValidationResult.CssLevel">
+            <summary>
+              <para>The CSS level (or profile) in use during the validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.ICssValidationResult.Issues">
+            <summary>
+              <para>Collection of errors and warnings encountered through the validation process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Css.ICssValidator">
+            <summary>
+              <para>Represents a validator for CSS documents or code fragments that makes use of W3C validation web service.</para>
+            </summary>
+            <seealso cref="!:http://jigsaw.w3.org/css-validator/api.html"/>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidator.Request(W3CValidator.Css.ICssValidationRequest)">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="T:W3CValidator.Css.ICssValidatorExtensions">
+            <summary>
+              <para>A set of extension methods for the <see cref="T:W3CValidator.Css.ICssValidator"/> interface.</para>
+            </summary>
+            <seealso cref="T:W3CValidator.Css.ICssValidator"/>
+        </member>
+        <member name="M:W3CValidator.Css.ICssValidatorExtensions.Request(W3CValidator.Css.ICssValidator,System.Action{W3CValidator.Css.ICssValidationRequest})">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="validator"></param>
+            <param name="action"></param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="validator"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="T:W3CValidator.Css.IError">
+            <summary>
+              <para>Represents an error of CSS document's validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IError.Message">
+            <summary>
+              <para>The actual error message.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IError.Type">
+            <summary>
+              <para>Base type of error.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IError.Subtype">
+            <summary>
+              <para>Subtype of error's type.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IError.Property">
+            <summary>
+              <para>Erroneous property name.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IError.Line">
+            <summary>
+              <para>Within the source code of the validated document, refers to the line where the error was detected.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IError.Context">
+            <summary>
+              <para>Context of error (surrounding text).</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IError.SkippedString">
+            <summary>
+              <para>String that was skipped, if any.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Css.IErrorsGroup">
+            <summary>
+              <para>Logical group of validation errors.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IErrorsGroup.Uri">
+            <summary>
+              <para>URI address of validated document or fragment.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IErrorsGroup.Errors">
+            <summary>
+              <para>Collection of validation errors.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Css.IIssues">
+            <summary>
+              <para>List of issues (errors/warnings) encountered during the validation process.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IIssues.ErrorsGroups">
+            <summary>
+              <para>Collection of validation errors groups.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IIssues.WarningsGroups">
+            <summary>
+              <para>Collection of validation warnings groups.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IIssues.Errors">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IIssues.Warnings">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "T:W3CValidator.Css.ErrorsGroup" -->
+        <!-- Badly formed XML comment ignored for member "T:W3CValidator.Css.WarningsGroup" -->
+        <member name="T:W3CValidator.Css.IWarning">
+            <summary>
+              <para>Represents a warning of CSS document's validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IWarning.Message">
+            <summary>
+              <para>The actual warning message.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IWarning.Level">
+            <summary>
+              <para>The level of the warning's severity.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IWarning.Line">
+            <summary>
+              <para>Within the source code of the validated document, refers to the line where the warning was detected.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IWarning.Context">
+            <summary>
+              <para>Context of warning (surrounding text).</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Css.IWarningsGroup">
+            <summary>
+              <para>Logical group of validation warnings.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IWarningsGroup.Uri">
+            <summary>
+              <para>URI address of validated document or fragment.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Css.IWarningsGroup.Warnings">
+            <summary>
+              <para>Collection of validation warnings.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Css.WarningsLevel">
+            <summary>
+              <para>Level of validation warnings severity for filtering.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.WarningsLevel.All">
+            <summary>
+              <para>All warnings.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.WarningsLevel.Normal">
+            <summary>
+              <para>Normal warnings.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.WarningsLevel.Important">
+            <summary>
+              <para>Important warnings.</para>
+            </summary>
+        </member>
+        <member name="F:W3CValidator.Css.WarningsLevel.None">
+            <summary>
+              <para>No warnings.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Css.IMarkupRequestExecutor">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Css.IMarkupRequestExecutor.UrlAsync(System.Uri,System.Threading.CancellationToken)">
+            <summary>
+              <para>Validates markup of a document which is specified by its URL address, using W3C markup validation web service.</para>
+            </summary>
+            <param name="url">URL address of document to be validated.</param>
+            <param name="cancellation"></param>
+            <returns>Markup validation result instance.</returns>
+        </member>
+        <member name="T:W3CValidator.Css.IMarkupRequestExecutorExtensions">
+            <summary>
+              <para>A set of extension methods for the <see cref="T:W3CValidator.Css.IMarkupRequestExecutor"/> interface.</para>
+            </summary>
+            <seealso cref="T:W3CValidator.Css.IMarkupRequestExecutor"/>
+        </member>
+        <member name="M:W3CValidator.Css.IMarkupRequestExecutorExtensions.Url(W3CValidator.Css.IMarkupRequestExecutor,System.Uri)">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="executor"></param>
+            <param name="url"></param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentNullException">If either <paramref name="executor"/> or <paramref name="url"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="T:W3CValidator.IResultable`1">
+            <summary>
+              <para>Representation of access point for different types of W3C content validators.</para>
+            </summary>
+            <summary>
+              <para>Voting search results.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.IResultable`1.ToResult">
+            <summary>
+              <para></para>
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:W3CValidator.IValidationProvider">
+            <summary>
+              <para>Representation of access point for different types of W3C content validators.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.IValidationProvider.Css">
+            <summary>
+              <para>Returns instance of CSS validator to perform validation of CSS documents through W3C web service.</para>
+            </summary>
+            <returns>CSS validator.</returns>
+        </member>
+        <member name="P:W3CValidator.IValidationProvider.Markup">
+            <summary>
+              <para>Returns instance of markup validator to perform validation of hypertext documents through W3C web service.</para>
+            </summary>
+            <returns>Markup validator.</returns>
+        </member>
+        <member name="T:W3CValidator.IValidationRequest">
+            <summary>
+              <para>Represents a custom request for any W3C validation service.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.IValidationRequest.Parameters">
+            <summary>
+              <para>Map of parameters (names/values) for the request.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.IValidationRequest.WithParameter(System.String,System.Object)">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="name"></param>
+            <param name="value"></param>
+            <returns></returns>
+        </member>
+        <member name="T:W3CValidator.Markup.IErrorsGroup">
+            <summary>
+              <para>Logical group of validation errors.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IErrorsGroup.Count">
+            <summary>
+              <para>Total number of validation errors.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IErrorsGroup.Errors">
+            <summary>
+              <para>Collection of validation errors.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Markup.IIssue">
+            <summary>
+              <para>Represents an issue (error/warning) of document's markup validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IIssue.MessageId">
+            <summary>
+              <para>The number/identifier of the issue, as addressed internally by the validator.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IIssue.Message">
+            <summary>
+              <para>The actual issue message.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IIssue.Line">
+            <summary>
+              <para>Within the source code of the validated document, refers to the line where the issue was detected.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IIssue.Column">
+            <summary>
+              <para>Within the source code of the validated document, refers to the column of the line where the issue was detected.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IIssue.Source">
+            <summary>
+              <para>Snippet of the source where the issue was found. Given as HTML fragment within CDATA block.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IIssue.Explanation">
+            <summary>
+              <para>Explanation for the issue. Given as HTML fragment within CDATA block.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Markup.IMarkupValidationRequest">
+            <summary>
+              <para>Represents configurable request to W3C markup validation web service.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.IMarkupValidationRequest.Doctype(System.String)">
+            <summary>
+              <para>Specifies the Document Type (DOCTYPE) to use when parsing the document.</para>
+            </summary>
+            <param name="doctype">Markup document's DOCTYPE value.</param>
+            <returns>Back reference to the current validation request.</returns>
+        </member>
+        <member name="M:W3CValidator.Markup.IMarkupValidationRequest.Encoding(System.String)">
+            <summary>
+              <para>Specifies the character encoding to use when parsing the document.</para>
+            </summary>
+            <param name="encoding">Character encoding.</param>
+            <returns>Back reference to the current validation request.</returns>
+        </member>
+        <member name="T:W3CValidator.Markup.IMarkupValidationRequestExtensions">
+            <summary>
+              <para>A set of extension methods for the <see cref="T:W3CValidator.Markup.IMarkupValidationRequest"/> interface.</para>
+            </summary>
+            <seealso cref="T:W3CValidator.Markup.IMarkupValidationRequest"/>
+        </member>
+        <member name="M:W3CValidator.Markup.IMarkupValidationRequestExtensions.Encoding(W3CValidator.Markup.IMarkupValidationRequest,System.Text.Encoding)">
+            <summary>
+              <para>Specifies the character encoding to use when parsing the document.</para>
+            </summary>
+            <param name="request">Validation request instance.</param>
+            <param name="encoding">Character encoding.</param>
+            <returns>Back reference to the provided validation <paramref name="request"/>.</returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="request"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="T:W3CValidator.Markup.IMarkupValidationResult">
+            <summary>
+              <para>Representation of response from W3C Markup validation web service that contains detailed information concerning validation results.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IMarkupValidationResult.Uri">
+            <summary>
+              <para>The address of the document validated.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IMarkupValidationResult.Valid">
+            <summary>
+              <para>Whether or not the document validated passed or not formal validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IMarkupValidationResult.Date">
+            <summary>
+              <para>The actual date of the validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IMarkupValidationResult.CheckedBy">
+            <summary>
+              <para>Location of the service which provided the validation result.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IMarkupValidationResult.Doctype">
+            <summary>
+              <para>Detected (or forced) Document Type for the validated document.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IMarkupValidationResult.Encoding">
+            <summary>
+              <para>Detected (or forced) Character Encoding for the validated document.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IMarkupValidationResult.ErrorsGroup">
+            <summary>
+              <para>Collection of errors encountered through the validation process.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IMarkupValidationResult.WarningsGroup">
+            <summary>
+              <para>Collection of warnings encountered through the validation process.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Markup.IMarkupValidator">
+            <summary>
+              <para>Represents a markup validator for hypertext documents or code fragments that makes use of W3C validation web service.</para>
+            </summary>
+            <seealso cref="!:http://validator.w3.org/docs/api.html"/>
+        </member>
+        <member name="M:W3CValidator.Markup.IMarkupValidator.Request(W3CValidator.Markup.IMarkupValidationRequest)">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="T:W3CValidator.Markup.IMarkupValidatorExtensions">
+            <summary>
+              <para>A set of extension methods for the <see cref="T:W3CValidator.Markup.IMarkupValidator"/> interface.</para>
+            </summary>
+            <seealso cref="T:W3CValidator.Markup.IMarkupValidator"/>
+        </member>
+        <member name="M:W3CValidator.Markup.IMarkupValidatorExtensions.Request(W3CValidator.Markup.IMarkupValidator,System.Action{W3CValidator.Markup.IMarkupValidationRequest})">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="validator"></param>
+            <param name="action"></param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="validator"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="T:W3CValidator.Markup.ErrorsCollection">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.ErrorsCollection.#ctor">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.ErrorsCollection.#ctor(System.Collections.Generic.IEnumerable{W3CValidator.Markup.IIssue})">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="errors"></param>
+        </member>
+        <member name="T:W3CValidator.Markup.ErrorsGroup">
+            <summary>
+              <para>Logical group of validation errors.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.ErrorsGroup.Count">
+            <summary>
+              <para>URI address of validated document or fragment.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.ErrorsGroup.ErrorsCollection">
+            <summary>
+              <para>Collection of validation errors.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.ErrorsGroup.Errors">
+            <summary>
+              <para>Collection of validation errors.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.ErrorsGroup.#ctor">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.ErrorsGroup.#ctor(System.Nullable{System.Int32},System.Collections.Generic.IEnumerable{W3CValidator.Markup.IIssue})">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="count"></param>
+            <param name="errors"></param>
+        </member>
+        <member name="M:W3CValidator.Markup.ErrorsGroup.#ctor(System.Nullable{System.Int32},W3CValidator.Markup.IIssue[])">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="count"></param>
+            <param name="errors"></param>
+        </member>
+        <member name="T:W3CValidator.Markup.Issue">
+            <summary>
+              <para>Represents an issue (error/warning) of document's markup validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.Issue.MessageId">
+            <summary>
+              <para>The number/identifier of the issue, as addressed internally by the validator.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.Issue.Message">
+            <summary>
+              <para>The actual issue message.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.Issue.Line">
+            <summary>
+              <para>Within the source code of the validated document, refers to the line where the issue was detected.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.Issue.Column">
+            <summary>
+              <para>Within the source code of the validated document, refers to the column of the line where the issue was detected.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.Issue.Source">
+            <summary>
+              <para>Snippet of the source where the issue was found. Given as HTML fragment within CDATA block.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.Issue.Explanation">
+            <summary>
+              <para>Explanation for the issue. Given as HTML fragment within CDATA block.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.Issue.ToString">
+            <summary>
+              <para>Returns a <see cref="T:System.String"/> that represents the current <see cref="T:W3CValidator.Markup.Issue"/> instance.</para>
+            </summary>
+            <returns>A string that represents the current <see cref="T:W3CValidator.Markup.Issue"/>.</returns>
+        </member>
+        <member name="T:W3CValidator.Markup.MarkupValidationResult">
+            <summary>
+              <para>Representation of response from W3C Markup validation web service that contains detailed information concerning validation results.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.MarkupValidationResult.Uri">
+            <summary>
+              <para>The address of the document validated.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.MarkupValidationResult.Valid">
+            <summary>
+              <para>Whether or not the document validated passed or not formal validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.MarkupValidationResult.Date">
+            <summary>
+              <para>The actual date of the validation.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.MarkupValidationResult.CheckedBy">
+            <summary>
+              <para>Location of the service which provided the validation result.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.MarkupValidationResult.Doctype">
+            <summary>
+              <para>Detected (or forced) Document Type for the validated document.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.MarkupValidationResult.Encoding">
+            <summary>
+              <para>Detected (or forced) Character Encoding for the validated document.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.MarkupValidationResult.ErrorsGroup">
+            <summary>
+              <para>Collection of errors encountered through the validation process.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.MarkupValidationResult.WarningsGroup">
+            <summary>
+              <para>Collection of warnings encountered through the validation process.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.MarkupValidationResult.CompareTo(W3CValidator.Markup.IMarkupValidationResult)">
+            <summary>
+              <para>Compares the current <see cref="T:W3CValidator.Markup.IMarkupValidationResult"/> instance with another.</para>
+            </summary>
+            <returns>A value that indicates the relative order of the instances being compared.</returns>
+            <param name="other">The <see cref="T:W3CValidator.Markup.IMarkupValidationResult"/> to compare with this instance.</param>
+        </member>
+        <member name="M:W3CValidator.Markup.MarkupValidationResult.Equals(W3CValidator.Markup.IMarkupValidationResult)">
+            <summary>
+              <para>Determines whether two <see cref="T:W3CValidator.Markup.IMarkupValidationResult"/> instances are equal.</para>
+            </summary>
+            <param name="other">The instance to compare with the current one.</param>
+            <returns><c>true</c> if specified instance is equal to the current, <c>false</c> otherwise.</returns>
+        </member>
+        <member name="M:W3CValidator.Markup.MarkupValidationResult.Equals(System.Object)">
+            <summary>
+              <para>Determines whether the specified <see cref="T:System.Object"/> is equal to the current <see cref="T:System.Object"/>.</para>
+            </summary>
+            <param name="other">The object to compare with the current object.</param>
+            <returns><c>true</c> if the specified object is equal to the current object, <c>false</c>.</returns>
+        </member>
+        <member name="M:W3CValidator.Markup.MarkupValidationResult.GetHashCode">
+            <summary>
+              <para>Returns hash code for the current object.</para>
+            </summary>
+            <returns>Hash code of current instance.</returns>
+        </member>
+        <member name="M:W3CValidator.Markup.MarkupValidationResult.ToString">
+            <summary>
+              <para>Returns a <see cref="T:System.String"/> that represents the current <see cref="T:W3CValidator.Markup.MarkupValidationResult"/> instance.</para>
+            </summary>
+            <returns>A string that represents the current <see cref="T:W3CValidator.Markup.MarkupValidationResult"/>.</returns>
+        </member>
+        <member name="T:W3CValidator.Markup.WarningsCollection">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.WarningsCollection.#ctor">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.WarningsCollection.#ctor(System.Collections.Generic.IEnumerable{W3CValidator.Markup.IIssue})">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="warnings"></param>
+        </member>
+        <member name="T:W3CValidator.Markup.WarningsGroup">
+            <summary>
+              <para>Logical group of validation warnings.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.WarningsGroup.Count">
+            <summary>
+              <para>URI address of validated document or fragment.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.WarningsGroup.WarningsCollection">
+            <summary>
+              <para>Collection of validation errors.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.WarningsGroup.Warnings">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.WarningsGroup.#ctor">
+            <summary>
+              <para></para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.WarningsGroup.#ctor(System.Nullable{System.Int32},System.Collections.Generic.IEnumerable{W3CValidator.Markup.IIssue})">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="count"></param>
+            <param name="warnings"></param>
+        </member>
+        <member name="M:W3CValidator.Markup.WarningsGroup.#ctor(System.Nullable{System.Int32},W3CValidator.Markup.IIssue[])">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="count"></param>
+            <param name="warnings"></param>
+        </member>
+        <member name="T:W3CValidator.Markup.IWarningsGroup">
+            <summary>
+              <para>Logical group of validation warnings.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IWarningsGroup.Count">
+            <summary>
+              <para>Total number of validation warnings.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Markup.IWarningsGroup.Warnings">
+            <summary>
+              <para>Collection of validation warnings.</para>
+            </summary>
+        </member>
+        <member name="T:W3CValidator.Markup.MarkupException">
+            <summary>
+              <para>Exception that indicates an error during the process of document validation through W3C Markup validation web service.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.Markup.MarkupException.#ctor(System.String,System.Exception)">
+            <summary>
+              <para>Initializes a new instance of the exception with a specified error message and a reference to the inner exception that is the cause of this exception.</para>
+            </summary>
+            <param name="message">The message that describes the error.</param>
+            <param name="inner">The exception that is the cause of the current exception, or a <c>null</c> reference if no inner exception is specified.</param>
+        </member>
+        <member name="T:W3CValidator.ValidationException">
+            <summary>
+              <para>Base exception that indicates an error in the process of document's validation.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.ValidationException.#ctor(System.String,System.Exception)">
+            <summary>
+              <para>Initializes a new instance of the exception with a specified error message and a reference to the inner exception that is the cause of this exception.</para>
+            </summary>
+            <param name="message">The message that describes the error.</param>
+            <param name="inner">The exception that is the cause of the current exception, or a <c>null</c> reference if no inner exception is specified.</param>
+        </member>
+        <member name="T:W3CValidator.ValidationRequest">
+            <summary>
+              <para>Abstract base implementation of <see cref="T:W3CValidator.IValidationRequest"/> contract.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.ValidationRequest.Parameters">
+            <summary>
+              <para>Map of parameters (names/values) for the request.</para>
+            </summary>
+        </member>
+        <member name="M:W3CValidator.ValidationRequest.WithParameter(System.String,System.Object)">
+            <summary>
+              <para></para>
+            </summary>
+            <param name="name"></param>
+            <param name="value"></param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentNullException">If <paramref name="name"/> is <see langword="null"/>.</exception>
+            <exception cref="T:System.ArgumentException">If <paramref name="name"/> is invalid string.</exception>
+        </member>
+        <member name="T:W3CValidator.Validator">
+            <summary>
+              <para>Entry point to access W3C validation services.</para>
+            </summary>
+        </member>
+        <member name="P:W3CValidator.Validator.For">
+            <summary>
+              <para>Returns validation provider instance to perform validating operations.</para>
+            </summary>
+        </member>
+    </members>
+</doc>

@@ -1,0 +1,5 @@
+var searchData=
+[
+  ['level',['Level',['../interface_w3_c_validator_1_1_css_1_1_i_warning.html#a12952b3cebacbb099c17a58796e0bfd7',1,'W3CValidator.Css.IWarning.Level()'],['../class_w3_c_validator_1_1_css_1_1_warning.html#ab786e01152c3230044042d4b50ff5c28',1,'W3CValidator.Css.Warning.Level()']]],
+  ['line',['Line',['../class_w3_c_validator_1_1_css_1_1_error.html#ac9f17d931696e58ea76a6a2ad8b5fbad',1,'W3CValidator.Css.Error.Line()'],['../interface_w3_c_validator_1_1_css_1_1_i_error.html#abe863f3bad99e89ae825a6089bee58f6',1,'W3CValidator.Css.IError.Line()'],['../interface_w3_c_validator_1_1_css_1_1_i_warning.html#a162ae08c9ad68eda807448f3283d92bb',1,'W3CValidator.Css.IWarning.Line()'],['../class_w3_c_validator_1_1_css_1_1_warning.html#aedba839f49a1ad50fd01fcac2c6c6a5b',1,'W3CValidator.Css.Warning.Line()'],['../interface_w3_c_validator_1_1_markup_1_1_i_issue.html#a433ea2e6d5ae5d66729963959d8deae4',1,'W3CValidator.Markup.IIssue.Line()'],['../class_w3_c_validator_1_1_markup_1_1_issue.html#a4a85d85f60202a4f9a8c6ec4fc316a3f',1,'W3CValidator.Markup.Issue.Line()']]]
+];
