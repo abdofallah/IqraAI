@@ -288,7 +288,10 @@ namespace ProjectIqraFrontend.Controllers.App.User
                 var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request);
                 if (!validationResult.Success)
                 {
-                    return result.SetFailureResult($"OnboardBusiness:{validationResult.Code}", validationResult.Message);
+                    return result.SetFailureResult(
+                        $"OnboardBusiness:{validationResult.Code}",
+                        validationResult.Message
+                    );
                 }
                 var userData = validationResult.Data!;
 
@@ -308,7 +311,23 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                // TODO: Call _userWhiteLabelManager.OnboardBusiness(...)
+                if (!userData.Businesses.Contains(request.BusinessId))
+                {
+                    return result.SetFailureResult(
+                        "OnboardBusiness:USER_BUSINESS_NOT_FOUND",
+                        "User business not found"
+                    );
+                }
+
+                var oboardResult = await _userWhiteLabelManager.OnboardBusiness(userData, request.BusinessId);
+                if (!oboardResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"OnboardBusiness:{oboardResult.Code}",
+                        oboardResult.Message
+                    );
+                }
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)

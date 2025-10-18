@@ -32,8 +32,18 @@ img {
 	user-select: none;
 }
 
+.accordion-button:not(.collapsed) {
+	color: var(--tcolor-dark);
+	background: var(--tcolor-lighter-green);
+}
+
+.accordion-button:focus {
+	box-shadow: unset;
+}
+
 ::selection,
-::-moz-selection {
+::-moz-selection
+{
 	color: var(--tcolor-dark);
 	background: var(--tcolor-light-green);
 }
