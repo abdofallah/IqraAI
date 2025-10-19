@@ -38,7 +38,7 @@ namespace IqraCore.Utilities
             try
             {
                 // 6. Deserialize the JSON string to the target model type.
-                var options = new JsonSerializerOptions { };
+                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
                 var deserializedObject = JsonSerializer.Deserialize(jsonString, bindingContext.ModelType, options);
 
                 // 7. If successful, set the binding result.

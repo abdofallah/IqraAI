@@ -952,7 +952,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<UserWhiteLabelManager>>(),
                     sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<BusinessLogoRepository>(),
-                    sp.GetRequiredService<WhiteLabelDomainRepository>()
+                    sp.GetRequiredService<WhiteLabelDomainRepository>(),
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
         }

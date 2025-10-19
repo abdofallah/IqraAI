@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Entities.User.WhiteLabel;
+using IqraCore.Entities.User.WhiteLabel.Business.Enum;
 using IqraCore.Entities.User.WhiteLabel.Domain;
 using IqraCore.Entities.User.WhiteLabel.Plan;
 using IqraCore.Models.User.GetMasterUserDataModel.WhiteLabel.Domain;
@@ -442,6 +443,126 @@ namespace ProjectIqraFrontend.Controllers.App.User
             catch (Exception ex)
             {
                 return result.SetFailureResult("OnboardBusiness:EXCEPTION", $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpPost("/app/user/whitelabel/businesses/status")]
+        public async Task<FunctionReturnResult> SetBusinessStatus([FromBody] SetStatusUserWhiteLabelBusinessRequest request)
+        {
+            var result = new FunctionReturnResult();
+            try
+            {
+                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request);
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SetBusinessStatus:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+                var userData = validationResult.Data!;
+
+                if (userData.Permission.WhiteLabel.DisabledAt != null)
+                {
+                    return result.SetFailureResult(
+                        "SetBusinessStatus:USER_WHITELABEL_DISABLED",
+                        $"White label is disabled for the user{(string.IsNullOrWhiteSpace(userData.Permission.WhiteLabel.DisabledReason) ? "" : ": " + userData.Permission.WhiteLabel.DisabledReason)}"
+                    );
+                }
+
+                if (userData.WhiteLabel.ActivatedAt == null)
+                {
+                    return result.SetFailureResult(
+                        "SetBusinessStatus:USER_WHITELABEL_INACTIVE",
+                        "White label is inactive for the user"
+                    );
+                }
+
+                if (!userData.Businesses.Contains(request.BusinessId))
+                {
+                    return result.SetFailureResult(
+                        "SetBusinessStatus:USER_BUSINESS_NOT_FOUND",
+                        "User business not found"
+                    );
+                }
+
+                var activateResult = await _userWhiteLabelManager.SetBusinessStatus(userData, request.BusinessId, request.IsActive);
+                if (!activateResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SetBusinessStatus:{activateResult.Code}",
+                        activateResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "SetBusinessStatus:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpPost("/app/user/whitelabel/businesses/plan")]
+        public async Task<FunctionReturnResult> SetBusinessPlan([FromBody] SetPlanUserWhiteLabelBusinessRequest request)
+        {
+            var result = new FunctionReturnResult();
+            try
+            {
+                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request);
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SetBusinessPlan:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+                var userData = validationResult.Data!;
+
+                if (userData.Permission.WhiteLabel.DisabledAt != null)
+                {
+                    return result.SetFailureResult(
+                        "SetBusinessPlan:USER_WHITELABEL_DISABLED",
+                        $"White label is disabled for the user{(string.IsNullOrWhiteSpace(userData.Permission.WhiteLabel.DisabledReason) ? "" : ": " + userData.Permission.WhiteLabel.DisabledReason)}"
+                    );
+                }
+
+                if (userData.WhiteLabel.ActivatedAt == null)
+                {
+                    return result.SetFailureResult(
+                        "SetBusinessPlan:USER_WHITELABEL_INACTIVE",
+                        "White label is inactive for the user"
+                    );
+                }
+
+                if (!userData.Businesses.Contains(request.BusinessId))
+                {
+                    return result.SetFailureResult(
+                        "SetBusinessPlan:USER_BUSINESS_NOT_FOUND",
+                        "User business not found"
+                    );
+                }
+
+                var updatePlanResult = await _userWhiteLabelManager.SetBusinessPlan(userData, request.BusinessId, request.PlanId);
+                if (!updatePlanResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SetBusinessPlan:{updatePlanResult.Code}",
+                        updatePlanResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "SetBusinessPlan:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
             }
         }
 
