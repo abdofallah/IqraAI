@@ -1,13 +1,14 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Entities.User.WhiteLabel;
+using IqraCore.Entities.User.WhiteLabel.Domain;
 using IqraCore.Entities.User.WhiteLabel.Plan;
+using IqraCore.Models.User.GetMasterUserDataModel.WhiteLabel.Domain;
 using IqraCore.Models.User.GetMasterUserDataModel.WhiteLabel.Plan;
 using IqraCore.Requests.User.WhiteLabel;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using ProjectIqraFrontend.Middlewares;
-using System.Text.Json;
 
 namespace ProjectIqraFrontend.Controllers.App.User
 {
@@ -93,7 +94,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "SavePlatformSettings:USER_WHITELABEL_INACTIVE",
@@ -122,15 +123,18 @@ namespace ProjectIqraFrontend.Controllers.App.User
         }
 
         [HttpPost("/app/user/whitelabel/domains/save")]
-        public async Task<FunctionReturnResult> SaveDomain([FromForm] SaveUserWhiteLabelDomainRequest request)
+        public async Task<FunctionReturnResult<UserWhiteLabelDomainDataModel?>> SaveDomain([FromForm] SaveUserWhiteLabelDomainRequest request)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<UserWhiteLabelDomainDataModel?>();
             try
             {
                 var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request);
                 if (!validationResult.Success)
                 {
-                    return result.SetFailureResult($"SaveDomain:{validationResult.Code}", validationResult.Message);
+                    return result.SetFailureResult(
+                        $"SaveDomain:{validationResult.Code}",
+                        validationResult.Message
+                    );
                 }
                 var userData = validationResult.Data!;
 
@@ -142,7 +146,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "SaveDomain:USER_WHITELABEL_INACTIVE",
@@ -150,8 +154,58 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                // TODO: Call _userWhiteLabelManager.SaveDomain(..., domainData, request.OverrideLogo, request.OverrideIcon)
-                return result.SetSuccessResult();
+                if (string.IsNullOrWhiteSpace(request.PostType) ||
+                    (request.PostType != "edit" && request.PostType != "new")
+                )
+                {
+                    return result.SetFailureResult(
+                        "SaveDomain:INVALID_POST_TYPE",
+                        "Invalid post type."
+                    );
+                }
+
+                UserWhiteLabelDomainData? exisitingDomainData = userData.WhiteLabel.Domains.Find(d => d.CustomDomain == request.Config.CustomDomain);
+                if (request.PostType == "edit")
+                {
+                    if (string.IsNullOrEmpty(request.Config.CustomDomain))
+                    {
+                        return result.SetFailureResult(
+                            "SaveDomain:INVALID_CUSTOM_DOMAIN",
+                            "Invalid custom domain."
+                        );
+                    }
+
+                    if (exisitingDomainData == null)
+                    {
+                        return result.SetFailureResult(
+                            "SaveDomain:CUSTOM_DOMAIN_NOT_FOUND",
+                            "Custom domain not found."
+                        );
+                    }
+                }
+                else if (request.PostType == "new")
+                {
+                    if (exisitingDomainData != null)
+                    {
+                        return result.SetFailureResult(
+                            "SaveDomain:CUSTOM_DOMAIN_EXISTS",
+                            "Custom domain already exists."
+                        );
+                    }
+                }
+
+                var saveDomainResult = await _userWhiteLabelManager.SaveDomain(userData.Email, request.PostType, request.Config, request.OverrideLogo, request.OverrideIcon, exisitingDomainData);
+                if (!saveDomainResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveDomain:{saveDomainResult.Code}",
+                        saveDomainResult.Message
+                    );
+                }
+
+                var domainDataModel = new UserWhiteLabelDomainDataModel(saveDomainResult.Data!);
+
+                return result.SetSuccessResult(domainDataModel);
             }
             catch (Exception ex)
             {
@@ -180,7 +234,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "DeleteDomain:USER_WHITELABEL_INACTIVE",
@@ -221,7 +275,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "SavePlan:USER_WHITELABEL_INACTIVE",
@@ -301,7 +355,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "ArchivePlan:USER_WHITELABEL_INACTIVE",
@@ -358,7 +412,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "OnboardBusiness:USER_WHITELABEL_INACTIVE",
@@ -412,7 +466,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "SaveBusiness:USER_WHITELABEL_INACTIVE",
@@ -450,7 +504,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "SaveBusinessUser:USER_WHITELABEL_INACTIVE",
@@ -488,7 +542,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "DeleteBusinessUser:USER_WHITELABEL_INACTIVE",
@@ -526,7 +580,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "AdjustBusinessBalance:USER_WHITELABEL_INACTIVE",
@@ -564,7 +618,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "UpdateBusinessSubscription:USER_WHITELABEL_INACTIVE",
@@ -602,7 +656,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                if (!userData.WhiteLabel.IsActive)
+                if (userData.WhiteLabel.ActivatedAt == null)
                 {
                     return result.SetFailureResult(
                         "FetchWhiteLabelOverview:USER_WHITELABEL_INACTIVE",

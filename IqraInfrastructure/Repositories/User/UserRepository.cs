@@ -24,11 +24,6 @@ namespace IqraInfrastructure.Repositories.User
             _usersCollection = database.GetCollection<UserData>(CollectionName);
         }
 
-        public UserRepository(IMongoDatabase database)
-        {
-            _usersCollection = database.GetCollection<UserData>(CollectionName);
-        }
-
         public async Task<bool> AddUserAsync(UserData user)
         {
             await _usersCollection.InsertOneAsync(user);

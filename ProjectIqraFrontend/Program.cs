@@ -49,6 +49,7 @@ using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
+using IqraInfrastructure.Repositories.WhiteLabel;
 using Microsoft.AspNetCore.HttpOverrides;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
@@ -595,6 +596,15 @@ namespace ProjectIqraFrontend
                     appConfig["MongoDatabase:PaymentTransactionRepositoryDatabaseName"]
                 );
             });
+
+            builder.Services.AddSingleton<WhiteLabelDomainRepository>((sp) =>
+            {
+                return new WhiteLabelDomainRepository(
+                    sp.GetRequiredService<ILogger<WhiteLabelDomainRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:WhiteLabelDomainRepositoryDatabaseName"]
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -941,7 +951,8 @@ namespace ProjectIqraFrontend
                 return new UserWhiteLabelManager(
                     sp.GetRequiredService<ILogger<UserWhiteLabelManager>>(),
                     sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<BusinessLogoRepository>()
+                    sp.GetRequiredService<BusinessLogoRepository>(),
+                    sp.GetRequiredService<WhiteLabelDomainRepository>()
                 );
             });
         }
