@@ -51,6 +51,7 @@ using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
 using IqraInfrastructure.Repositories.WhiteLabel;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
 using ProjectIqraFrontend.Transformer;
@@ -837,8 +838,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<PlanManager>(),
-                    sp.GetRequiredService<ConversationStateRepository>()
+                    sp.GetRequiredService<PlanManager>()
                 );
             });
             builder.Services.AddSingleton<UserApiKeyManager>((sp) =>
@@ -951,6 +951,7 @@ namespace ProjectIqraFrontend
                 return new UserWhiteLabelManager(
                     sp.GetRequiredService<ILogger<UserWhiteLabelManager>>(),
                     sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessLogoRepository>(),
                     sp.GetRequiredService<WhiteLabelDomainRepository>(),
                     sp.GetRequiredService<IMongoClient>()

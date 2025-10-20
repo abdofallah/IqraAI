@@ -2,9 +2,7 @@
 using IqraCore.Entities.Billing.Plan;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
 using IqraCore.Entities.User.Billing;
-using IqraCore.Entities.User.Billing.Enums;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Business;
@@ -21,22 +19,19 @@ namespace IqraInfrastructure.Managers.User
         private readonly BusinessRepository _businessRepository;
         private readonly UserRepository _userRepository;
         private readonly PlanManager _planManager;
-        private readonly ConversationStateRepository _conversationStateRepository;
 
         public UserUsageValidationManager(
             ILogger<UserUsageValidationManager> logger,
             AppRepository appRepository,
             BusinessRepository businessRepository,
             UserRepository userRepository,
-            PlanManager planManager,
-            ConversationStateRepository conversationStateRepository)
-        {
+            PlanManager planManager
+        ) {
             _logger = logger;
             _appRepository = appRepository;
             _businessRepository = businessRepository;
             _userRepository = userRepository;
             _planManager = planManager;
-            _conversationStateRepository = conversationStateRepository;
         }
 
         public async Task<FunctionReturnResult> ValidateCallPermissionAsync(long businessId)
@@ -55,14 +50,20 @@ namespace IqraInfrastructure.Managers.User
             var minutesFeature = userBillingPlan!.GetFeature(BillingFeatureKey.CallMinutes);
             if (minutesFeature == null)
             {
-                return result.SetFailureResult($"{logPrefix}:FEATURE_NOT_DEFINED", $"The plan '{userBillingPlan.Name}' does not have the '{BillingFeatureKey.CallMinutes}' feature defined.");
+                return result.SetFailureResult(
+                    $"{logPrefix}:FEATURE_NOT_DEFINED",
+                    $"The plan '{userBillingPlan.Name}' does not have the '{BillingFeatureKey.CallMinutes}' feature defined."
+                );
             }
 
             if (userBillingPlan is FixedPackagePlanDefinition)
             {
                 if (userBillingData!.CurrentCycleUsage.CurrentFeatureUsage.ContainsKey(BillingFeatureKey.CallMinutes) == false)
                 {
-                    return result.SetFailureResult($"{logPrefix}:NO_CURRENT_MINUTES_USAGE", $"No current usage data found for call minutes.");
+                    return result.SetFailureResult(
+                        $"{logPrefix}:NO_CURRENT_MINUTES_USAGE",
+                        $"No current usage data found for call minutes."
+                    );
                 }
 
                 decimal minutesUsed = userBillingData!.CurrentCycleUsage.CurrentFeatureUsage.GetValueOrDefault(BillingFeatureKey.CallMinutes);
@@ -70,7 +71,10 @@ namespace IqraInfrastructure.Managers.User
                 // If the user is out of included minutes, they must have a positive credit balance for overages.
                 if (minutesUsed >= minutesFeature.IncludedLimit && userBillingData!.CreditBalance <= 0)
                 {
-                    return result.SetFailureResult($"{logPrefix}:EXCEEDED_PACKAGE_AND_CREDIT", "Exceeded plan minutes and insufficient credit balance for overage.");
+                    return result.SetFailureResult(
+                        $"{logPrefix}:EXCEEDED_PACKAGE_AND_CREDIT",
+                        "Exceeded plan minutes and insufficient credit balance for overage."
+                    );
                 }
             }
             else // StandardPayAsYouGo or VolumeBasedTiered
@@ -78,17 +82,17 @@ namespace IqraInfrastructure.Managers.User
                 // User must have a positive credit balance to start a new call.
                 if (userBillingData!.CreditBalance <= 0)
                 {
-                    return result.SetFailureResult($"{logPrefix}:INSUFFICIENT_BALANCE", "Insufficient credit balance to make a call.");
+                    return result.SetFailureResult(
+                        $"{logPrefix}:INSUFFICIENT_BALANCE",
+                        "Insufficient credit balance to make a call."
+                    );
                 }
             }
 
             // --- Validate Business-Level Minute Cap (unchanged) ---
-            if (businessData!.AllocatedMonthlyMinuteCap.HasValue)
+            if (!string.IsNullOrEmpty(businessData!.WhiteLabelAssignedCustomerEmail))
             {
-                if (businessData.CurrentMonthlyMinuteUsage >= businessData.AllocatedMonthlyMinuteCap.Value)
-                {
-                    return result.SetFailureResult($"{logPrefix}:BUSINESS_MONTHLY_MINUTE_CAP", "Business allocated monthly minutes limit reached.");
-                }
+                _logger.LogCritical($"Business {businessId} has a white label assigned to it. TODO IMPLEMENT");
             }
 
             return result.SetSuccessResult();
@@ -138,6 +142,11 @@ namespace IqraInfrastructure.Managers.User
                     ChildReference = childReference
                 };
 
+                if (!string.IsNullOrEmpty(businessData!.WhiteLabelAssignedCustomerEmail))
+                {
+                    _logger.LogCritical($"Business {businessId} has a white label assigned to it. TODO IMPLEMENT CONCURRENCY CHECK");
+                }
+
                 bool increased = await _userRepository.TryIncrementConcurrencyUsageAsync(businessData!.MasterUserEmail, featureKey, totalUserConcurrency, usageItem);
                 if (!increased)
                 {
@@ -185,7 +194,6 @@ namespace IqraInfrastructure.Managers.User
             }
 
         }
-
         public async Task<FunctionReturnResult> DecreaseUsageConcurrency(string userEmail, long businessId, string featureKey, object parentReference, object? childReference)
         {
             var result = new FunctionReturnResult();

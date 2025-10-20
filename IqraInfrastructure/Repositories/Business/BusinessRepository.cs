@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Archived;
 using IqraCore.Entities.Business;
+using IqraCore.Entities.Helpers;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -87,7 +88,14 @@ namespace IqraInfrastructure.Repositories.Business
         {
             var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
             var result = await _businessCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged && result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateBusinessAsync(long businessId, UpdateDefinition<BusinessData> updateDefinition, IClientSessionHandle mongoSession)
+        {
+            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
+            var result = await _businessCollection.UpdateOneAsync(mongoSession, filter, updateDefinition);
+            return result.IsAcknowledged && result.ModifiedCount > 0;
 
         }
 
@@ -170,6 +178,28 @@ namespace IqraInfrastructure.Repositories.Business
             {
                 _logger.LogError(ex, "Error deleting business {BusinessId}: {Message}", businessId, ex.Message);
                 return false;
+            }
+        }
+
+        public async Task<FunctionReturnResult<string?>> GetBusinessWhiteLabelAssignedCustomerEmail(string userEmail, long business)
+        {
+            var result = new FunctionReturnResult<string?>();
+
+            try
+            {
+                var query = await _businessCollection.AsQueryable()
+                .Where(b => (b.Id == business && b.MasterUserEmail == userEmail))
+                .Select(b => b.WhiteLabelAssignedCustomerEmail)
+                .FirstOrDefaultAsync();
+
+                return result.SetSuccessResult(query);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetBusinessWhiteLabelAssignedCustomerEmail:EXCEPTION",
+                    $"{ex.Message}"
+                );
             }
         }
     }

@@ -19,10 +19,7 @@ namespace IqraCore.Entities.Business
 
         public BusinessPermission Permission { get; set; } = new BusinessPermission();
 
-        // Plan/Billing/Allocation
-        public decimal? AllocatedMonthlyMinuteCap { get; set; } = null;
-        public decimal? CurrentMonthlyMinuteUsage { get; set; } = null;
-
-        public int? AllocatedConcurrencySlots { get; set; } = null;
+        // WhiteLabel Assignment
+        public string? WhiteLabelAssignedCustomerEmail { get; set; } = null;
     }
 }

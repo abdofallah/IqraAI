@@ -382,8 +382,7 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<PlanManager>(),
-                    sp.GetRequiredService<ConversationStateRepository>()
+                    sp.GetRequiredService<PlanManager>()
                 );
             });
             builder.Services.AddSingleton<OutboundCallProcessingOrchestrator>((sp) =>
