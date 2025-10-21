@@ -225,7 +225,7 @@ function CreateBusinessesListTableElement(businessData) {
                     <td>${businessData.id}</td>
                     <td>${businessData.name}</td>
                     <td>${businessData.masterUserEmail}</td>
-                    <td>${businessData.subUsers.length}</td>
+                    <td></td>
                     <td>
                         <button class="btn btn-info btn-sm" business-id="${businessData.id}" button-type="edit-list-business">
                             <i class="fa-regular fa-eye"></i>

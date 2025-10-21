@@ -157,22 +157,34 @@ function makeSureNavToggleIconIsCorrect() {
  */
 function getDashboardContext() {
 	const pathParts = window.location.pathname.split('/').filter(p => p.length > 0);
+	const firstSegment = pathParts.length > 0 ? pathParts[0] : null;
 
 	// Context 1: Business Dashboard (e.g., /business/123/overview)
-	// It's identified by the first segment being "business".
-	if (pathParts.length > 0 && pathParts[0] === 'business') {
+	// Structure: /business/{id}/{tab}
+	if (firstSegment === 'business') {
+		// Base path is the first two segments, e.g., /business/xyz
 		const basePath = pathParts.length >= 2 ? `/${pathParts[0]}/${pathParts[1]}` : `/${pathParts[0]}`;
 		return {
 			basePath: basePath,
-			tabPathIndex: 2, // The tab path is the 3rd segment (index 2)
+			tabPathIndex: 2, // Tab name is the 3rd segment (index 2)
 		};
 	}
 
-	// Context 2: User Dashboard (e.g., / or /settings)
-	// This is the default case.
+	// Context 2: Admin Dashboard (e.g., /admin/users)
+	// Structure: /admin/{tab}
+	if (firstSegment === 'admin') {
+		// Base path is just /admin
+		return {
+			basePath: '/admin',
+			tabPathIndex: 1, // Tab name is the 2nd segment (index 1)
+		};
+	}
+
+	// Context 3: User Dashboard (Default case, e.g., / or /settings)
+	// Structure: /{tab}
 	return {
 		basePath: '/',
-		tabPathIndex: 0, // The tab path is the 1st segment (index 0)
+		tabPathIndex: 0, // Tab name is the 1st segment (index 0)
 	};
 }
 
@@ -297,7 +309,9 @@ async function handleNavLinkClick(event) {
 	}
 
 	const newPath = currentElement.attr("nav-url-path");
-	updateUrlForTab(newPath);
+	if (newPath) {
+		updateUrlForTab(newPath);
+	}
 
 	activeElement.removeClass("active");
 	$("#tabs-list .main-container.show").each((index, element) => {
