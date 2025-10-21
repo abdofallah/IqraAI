@@ -150,27 +150,53 @@ function makeSureNavToggleIconIsCorrect() {
 // --- URL State Management Helper Functions ---
 
 /**
- * Gets the stable base path of the URL (e.g., "/business/123"), ignoring any
- * additional segments like the tab path or invalid paths.
- * @returns {string} The base URL path.
+ * Analyzes the current URL to determine the dashboard context.
+ * This is the central function that makes the entire system dynamic.
+ * @returns {{basePath: string, tabPathIndex: number}} An object containing the
+ *          base path for the current dashboard and the index of the tab segment in the URL.
  */
-function getBasePath() {
-	const pathParts = window.location.pathname.split("/").filter((part) => part.length > 0);
-	if (pathParts.length >= 2) {
-		return `/${pathParts[0]}/${pathParts[1]}`;
+function getDashboardContext() {
+	const pathParts = window.location.pathname.split('/').filter(p => p.length > 0);
+
+	// Context 1: Business Dashboard (e.g., /business/123/overview)
+	// It's identified by the first segment being "business".
+	if (pathParts.length > 0 && pathParts[0] === 'business') {
+		const basePath = pathParts.length >= 2 ? `/${pathParts[0]}/${pathParts[1]}` : `/${pathParts[0]}`;
+		return {
+			basePath: basePath,
+			tabPathIndex: 2, // The tab path is the 3rd segment (index 2)
+		};
 	}
-	return `/${pathParts.join("/")}`;
+
+	// Context 2: User Dashboard (e.g., / or /settings)
+	// This is the default case.
+	return {
+		basePath: '/',
+		tabPathIndex: 0, // The tab path is the 1st segment (index 0)
+	};
 }
 
 /**
- * Extracts the tab-specific path from the URL, but only if it corresponds to a
- * valid, existing navigation link. Returns null for invalid or missing tab paths.
+ * Gets the stable base path of the URL based on the current dashboard context.
+ * (e.g., "/" for user dashboard, "/business/123" for business dashboard).
+ * @returns {string} The base URL path.
+ */
+function getBasePath() {
+	return getDashboardContext().basePath;
+}
+
+
+/**
+ * Extracts the tab-specific path from the URL using the correct index for the
+ * current dashboard context. Returns null for invalid or missing tab paths.
  * @returns {string | null} The valid tab path or null.
  */
 function getTabPathFromUrl() {
-	const pathParts = window.location.pathname.split("/").filter((p) => p);
-	if (pathParts.length > 2) {
-		const potentialTabPath = pathParts[2];
+	const context = getDashboardContext();
+	const pathParts = window.location.pathname.split("/").filter((p) => p.length > 0);
+
+	if (pathParts.length > context.tabPathIndex) {
+		const potentialTabPath = pathParts[context.tabPathIndex];
 		if ($(`.l-navbar .nav_link[nav-url-path="${potentialTabPath}"]`).length > 0) {
 			return potentialTabPath;
 		}
@@ -179,14 +205,18 @@ function getTabPathFromUrl() {
 }
 
 /**
+ * Gets sub-path segments from the URL that appear after the tab name.
  * For a URL like /business/6/campaigns/edit/123, this will return ['edit', '123'].
+ * For a user dashboard URL like /settings/profile, this will return ['profile'].
  * @returns {string[]} An array of the sub-path segments.
  */
 function getUrlSubPath() {
-	const pathParts = window.location.pathname.split("/").filter(p => p);
-	// The sub-path starts after the base path and tab path (3 segments).
-	if (pathParts.length > 3) {
-		return pathParts.slice(3);
+	const context = getDashboardContext();
+	const pathParts = window.location.pathname.split("/").filter(p => p.length > 0);
+	const subPathStartIndex = context.tabPathIndex + 1;
+
+	if (pathParts.length > subPathStartIndex) {
+		return pathParts.slice(subPathStartIndex);
 	}
 	return [];
 }
@@ -198,7 +228,9 @@ function getUrlSubPath() {
  */
 function updateUrlForTab(newPath) {
 	const basePath = getBasePath();
-	const finalUrl = newPath ? `${basePath}/${newPath}`.replace('//', '/') : basePath;
+	// Ensure we don't end up with a double slash for the root path
+	const finalUrl = (basePath === '/' && newPath) ? `/${newPath}` : `${basePath}/${newPath}`;
+
 	if (window.location.pathname !== finalUrl) {
 		history.pushState({ tabPath: newPath }, "", finalUrl);
 	}
@@ -211,7 +243,9 @@ function updateUrlForTab(newPath) {
  */
 function replaceUrlForTab(newPath) {
 	const basePath = getBasePath();
-	const finalUrl = newPath ? `${basePath}/${newPath}`.replace('//', '/') : basePath;
+	// Ensure we don't end up with a double slash for the root path
+	const finalUrl = (basePath === '/' && newPath) ? `/${newPath}` : `${basePath}/${newPath}`;
+
 	if (window.location.pathname !== finalUrl) {
 		history.replaceState({ tabPath: newPath }, "", finalUrl);
 	}

@@ -72,29 +72,25 @@
                     <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
                 </a>
                 <div class="nav_list">
-                    <a class="nav_link active" for="business-tab">
+                    <a class="nav_link active" for="business-tab" nav-url-path="businesses" is-default="true">
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
-                    <a class="nav_link" for="usage-tab">
+                    <a class="nav_link" for="usage-tab" nav-url-path="usage">
                         <i class='fa-regular fa-chart-line nav_icon'></i>
                         <span class="nav_name">Usage</span>
                     </a>
-                    <a class="nav_link" for="api-keys-tab">
+                    <a class="nav_link" for="api-keys-tab" nav-url-path="api-keys">
                         <i class='fa-regular fa-key nav_icon'></i>
                         <span class="nav_name">API Keys</span>
                     </a>
-                    <a class="nav_link" for="billing-tab">
+                    <a class="nav_link" for="billing-tab" nav-url-path="billing">
                         <i class='fa-regular fa-credit-card nav_icon'></i>
                         <span class="nav_name">Billing</span>
                     </a>
-                    <a class="nav_link" for="white-label-tab">
+                    <a class="nav_link" for="white-label-tab" nav-url-path="whitelabel">
                         <i class='fa-regular fa-tags nav_icon'></i>
                         <span class="nav_name">White Label</span>
-                    </a>
-                    <a class="nav_link disabled mb-0" for="settings-tab">
-                        <i class='fa-regular fa-gear nav_icon'></i>
-                        <span class="nav_name">Settings</span>
                     </a>
                 </div>
             </div>
@@ -128,9 +124,6 @@
 
         <!-- White Label Container -->
         <partial name="_WhiteLabelTab.cshtml" />
-
-        <!-- Settings Container -->
-        <partial name="_SettingsTab.cshtml" />
 
         <!-- ASP -->
         <script>

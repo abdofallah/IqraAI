@@ -62,6 +62,11 @@ namespace ProjectIqraFrontend.Controllers.App
         }
 
         [HttpGet("/")]
+        [HttpGet("/businesses")]
+        [HttpGet("/usage")]
+        [HttpGet("/api-keys")]
+        [HttpGet("/billing")]
+        [HttpGet("/whitelabel")]
         public async Task<IActionResult> App()
         {
             if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
