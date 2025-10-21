@@ -398,7 +398,7 @@ namespace IqraInfrastructure.Managers.User
             var planResult = await _planManager.GetPlanByIdAsync(userBillingData.Subscription.PlanId);
             if (!planResult.Success || planResult.Data == null)
             {
-                return (result.SetFailureResult($"{logPrefix}:PLAN_NOT_FOUND", $"Plan with ID '{userBillingData.Subscription.PlanId}' could not be found."), businessData, userBillingData, null);
+                return (result.SetFailureResult($"{logPrefix}:PLAN_NOT_FOUND", $"Plan with ID '{userBillingData.Subscription.PlanId}' could not be found."), businessData, userBillingAndWhiteLabelData, null);
             }
 
             return (result.SetSuccessResult(), businessData, userBillingAndWhiteLabelData, planResult.Data);
