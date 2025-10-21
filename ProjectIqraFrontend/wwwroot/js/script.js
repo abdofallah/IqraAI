@@ -115,6 +115,8 @@ function changeActiveSidebarLink(toggleId, navId, bodyId, headerId) {
 			bodypd.classList.toggle("body-pd");
 			headerpd.classList.toggle("header-body-pd");
 
+			const isExpanded = nav.classList.contains('show');
+			setCookie('sidebarState', isExpanded ? 'expanded' : 'collapsed', 30);
 
 			var interval = setInterval(() => {
 				setDynamicNavHeight();
@@ -335,6 +337,41 @@ async function handleNavLinkClick(event) {
 	}, 150);
 }
 
+// --- Cookie Helper Functions ---
+
+/**
+ * Sets a cookie with a given name, value, and expiration in days.
+ * @param {string} name - The name of the cookie.
+ * @param {string} value - The value to store in the cookie.
+ * @param {number} days - The number of days until the cookie expires.
+ */
+function setCookie(name, value, days) {
+	let expires = "";
+	if (days) {
+		const date = new Date();
+		date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+		expires = "; expires=" + date.toUTCString();
+	}
+	// Set the path to '/' so the cookie is available across the entire site
+	document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
+
+/**
+ * Retrieves the value of a cookie by its name.
+ * @param {string} name - The name of the cookie to retrieve.
+ * @returns {string | null} The cookie's value, or null if not found.
+ */
+function getCookie(name) {
+	const nameEQ = name + "=";
+	const ca = document.cookie.split(';');
+	for (let i = 0; i < ca.length; i++) {
+		let c = ca[i];
+		while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+		if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+	}
+	return null;
+}
+
 // --- Document Ready - Initialization and Event Binding ---
 
 $(document).ready(() => {
@@ -420,6 +457,16 @@ $(document).ready(() => {
 			targetElement.trigger('click');
 		}
 	});
+
+	// APPLY SAVED SIDEBAR STATE FROM COOKIE
+	const savedSidebarState = getCookie('sidebarState');
+	if (savedSidebarState) {
+		const toggle = document.getElementById("header-toggle");
+
+		if (savedSidebarState === 'collapsed') {
+			$(toggle).trigger('click');
+		}
+	}
 
 	/** This event fires after all scripts, images, etc., are loaded. **/
 	$(window).on('load', function () {

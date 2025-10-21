@@ -3,12 +3,14 @@ using IqraCore.Entities.Billing.Plan;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User.Billing;
+using IqraCore.Entities.User.Billing.Enums;
+using IqraCore.Entities.User.WhiteLabel.Customer.Billing.Enum;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Business;
-using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.User;
 using Microsoft.Extensions.Logging;
+using static IqraInfrastructure.Repositories.User.UserRepository;
 
 namespace IqraInfrastructure.Managers.User
 {
@@ -40,10 +42,22 @@ namespace IqraInfrastructure.Managers.User
             string logPrefix = "ValidateCallPermission";
 
             // --- Load all necessary data using the new helper method ---
-            var (loadResult, businessData, userBillingData, userBillingPlan) = await LoadUserBillingAndPlanAsync(businessId, logPrefix);
+            var (loadResult, businessData, userBillingAndWhiteLabelData, userBillingPlan) = await LoadUserBillingAndPlanAsync(businessId, logPrefix);
             if (!loadResult.Success)
             {
                 return loadResult;
+            }
+            var userBillingData = userBillingAndWhiteLabelData!.userBillingData!;
+            var userWhiteLabelData = userBillingAndWhiteLabelData!.userWhiteLabelData!;
+
+            if (userBillingData.Subscription.Status != UserBillingSubscriptionStatusEnum.Active ||
+                userBillingData.Subscription.Status != UserBillingSubscriptionStatusEnum.PastDue
+            )
+            {
+                return result.SetFailureResult(
+                    $"{logPrefix}:SUBSCRIPTION_NOT_ACTIVE",
+                    "User subscription plan is not active."
+                );
             }
 
             //  --- Validate Credit Balance / Package Limits (now dynamic) ---
@@ -89,10 +103,73 @@ namespace IqraInfrastructure.Managers.User
                 }
             }
 
-            // --- Validate Business-Level Minute Cap (unchanged) ---
-            if (!string.IsNullOrEmpty(businessData!.WhiteLabelAssignedCustomerEmail))
+            // --- Validate Business-Level Minute Cap ---
+            if (userWhiteLabelData.ActivatedAt != null && !string.IsNullOrEmpty(businessData!.WhiteLabelAssignedCustomerEmail))
             {
-                _logger.LogCritical($"Business {businessId} has a white label assigned to it. TODO IMPLEMENT");
+                var whiteLabelCustomerData = userWhiteLabelData.Customers.Find(c => c.Email == businessData.WhiteLabelAssignedCustomerEmail);
+                if (whiteLabelCustomerData == null)
+                {
+                    return result.SetFailureResult(
+                        $"{logPrefix}:NO_USER_CUSTOMER",
+                        $"No user customer data found for '{businessData.WhiteLabelAssignedCustomerEmail}'."
+                    );
+                }
+
+                var whiteLabelCustomerBilling = whiteLabelCustomerData.Billing;
+
+                if (
+                    whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.Active ||
+                    whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.PastDue
+                ) {
+                    return result.SetFailureResult(
+                        $"{logPrefix}:USER_CUSTOMER_SUBSCRIPTION_NOT_ACTIVE",
+                        $"User customer '{businessData.WhiteLabelAssignedCustomerEmail}' subscription plan is not active."
+                    );
+                }
+
+                var whiteLabelCustomerPlan = userWhiteLabelData.Plans.Find(p => p.Id == whiteLabelCustomerBilling.Subscription.PlanId);
+                if (whiteLabelCustomerPlan == null)
+                {
+                    return result.SetFailureResult(
+                        $"{logPrefix}:NO_USER_CUSTOMER_PLAN",
+                        $"No user customer plan data found for '{businessData.WhiteLabelAssignedCustomerEmail}'."
+                    );
+                }
+
+                var whiteLabelCustomerMinutesFeature = whiteLabelCustomerPlan.Features.Find(f => f.Key == BillingFeatureKey.CallMinutes);
+                if (whiteLabelCustomerMinutesFeature == null)
+                {
+                    return result.SetFailureResult(
+                        $"{logPrefix}:NO_USER_CUSTOMER_MINUTES_FEATURE",
+                        $"User customer's plan '{whiteLabelCustomerPlan.Name}' does not have the '{BillingFeatureKey.CallMinutes}' feature defined."
+                    );
+                }
+
+                var minutesUsed = whiteLabelCustomerBilling.CurrentCycleUsage.CurrentFeatureUsage.GetValueOrDefault(BillingFeatureKey.CallMinutes);
+
+                if (whiteLabelCustomerMinutesFeature.IncludedLimit != 0)
+                {
+                    if (minutesUsed >= whiteLabelCustomerMinutesFeature.IncludedLimit)
+                    {
+                        if (whiteLabelCustomerBilling.CreditBalance <= 0)
+                        {
+                            return result.SetFailureResult(
+                                $"{logPrefix}:EXCEEDED_USER_CUSTOMER_MINUTES_AND_CREDIT",
+                                "Exceeded user customer's minutes and insufficient credit balance for overage."
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    if (whiteLabelCustomerBilling.CreditBalance <= 0)
+                    {
+                        return result.SetFailureResult(
+                            $"{logPrefix}:EXCEEDED_USER_CUSTOMER_MINUTES_AND_CREDIT",
+                            "Exceeded user customer's minutes and insufficient credit balance for overage."
+                        );
+                    }
+                }
             }
 
             return result.SetSuccessResult();
@@ -105,11 +182,13 @@ namespace IqraInfrastructure.Managers.User
 
             try
             {
-                var (loadResult, businessData, userBillingData, userBillingPlan) = await LoadUserBillingAndPlanAsync(businessId, logPrefix);
+                var (loadResult, businessData, userBillingAndWhiteLabelData, userBillingPlan) = await LoadUserBillingAndPlanAsync(businessId, logPrefix);
                 if (!loadResult.Success)
                 {
                     return loadResult;
                 }
+                var userBillingData = userBillingAndWhiteLabelData!.userBillingData!;
+                var userWhiteLabelData = userBillingAndWhiteLabelData!.userWhiteLabelData!;
 
                 var concurrencyFeature = userBillingPlan!.GetFeature(featureKey);
                 if (concurrencyFeature == null)
@@ -142,19 +221,83 @@ namespace IqraInfrastructure.Managers.User
                     ChildReference = childReference
                 };
 
-                if (!string.IsNullOrEmpty(businessData!.WhiteLabelAssignedCustomerEmail))
+                // Validate Business-Level White Label
+                if (userWhiteLabelData.ActivatedAt != null && !string.IsNullOrEmpty(businessData!.WhiteLabelAssignedCustomerEmail))
                 {
-                    _logger.LogCritical($"Business {businessId} has a white label assigned to it. TODO IMPLEMENT CONCURRENCY CHECK");
+                    var whiteLabelCustomerData = userWhiteLabelData.Customers.Find(c => c.Email == businessData.WhiteLabelAssignedCustomerEmail);
+                    if (whiteLabelCustomerData == null)
+                    {
+                        return result.SetFailureResult(
+                            $"{logPrefix}:NO_USER_CUSTOMER",
+                            $"User customer data found for '{businessData.WhiteLabelAssignedCustomerEmail}'."
+                        );
+                    }
+
+                    var whiteLabelCustomerBilling = whiteLabelCustomerData.Billing;
+
+                    if (
+                        whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.Active ||
+                        whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.PastDue
+                    ) {
+                        return result.SetFailureResult(
+                            $"{logPrefix}:USER_CUSTOMER_SUBSCRIPTION_NOT_ACTIVE",
+                            $"User customer '{businessData.WhiteLabelAssignedCustomerEmail}' subscription plan is not active."
+                        );
+                    }
+
+                    var whiteLabelCustomerPlan = userWhiteLabelData.Plans.Find(p => p.Id == whiteLabelCustomerBilling.Subscription.PlanId);
+                    if (whiteLabelCustomerPlan == null)
+                    {
+                        return result.SetFailureResult(
+                            $"{logPrefix}:NO_USER_CUSTOMER_PLAN",
+                            $"No user customer plan data found for '{businessData.WhiteLabelAssignedCustomerEmail}'."
+                        );
+                    }
+
+                    var whiteLabelCustomerConcurrencyFeature = whiteLabelCustomerPlan.Features.Find(f => f.Key == featureKey);
+                    if (whiteLabelCustomerConcurrencyFeature == null)
+                    {
+                        return result.SetFailureResult(
+                            $"{logPrefix}:NO_USER_CUSTOMER_CONCURRENCY_FEATURE",
+                            $"User customer's plan '{whiteLabelCustomerPlan.Name}' does not have the '{featureKey}' feature defined."
+                        );
+                    }
+
+                    var purchasedAddonConcurrenyForFeature = whiteLabelCustomerBilling.ActiveFeatureAddons
+                        .Where(a => (a.FeatureKey == featureKey && a.CancelledAt == null && a.PurchaseValidUntil >= DateTime.UtcNow))
+                        .Sum(a => a.Quantity);
+
+                    long maxAllowedWhiteLabelCustomerConcurrency = (long)((long)purchasedAddonConcurrenyForFeature + (long)whiteLabelCustomerConcurrencyFeature.IncludedLimit);
+                    if (maxAllowedWhiteLabelCustomerConcurrency <= 0)
+                    {
+                        return result.SetFailureResult(
+                            $"{logPrefix}:USER_CUSTOMER_CONCURRENCY_LIMIT_ZERO",
+                            $"User customer has no concurrency allowance for '{featureKey}' feature."
+                        );
+                    }
+
+                    usageItem.WhiteLabelCustomerEmail = businessData.WhiteLabelAssignedCustomerEmail;
+                    bool increased = await _userRepository.TryIncrementConcurrencyUsageWithWhiteLabelCustomerEmailAsync(businessData!.MasterUserEmail, featureKey, totalUserConcurrency, maxAllowedWhiteLabelCustomerConcurrency, usageItem);
+                    if (!increased)
+                    {
+                        return result.SetFailureResult(
+                            $"{logPrefix}:USER_CUSTOMER_CONCURRENCY_LIMIT_REACHED",
+                            $"Could not increase concurrency for '{featureKey}' for customer '{businessData.WhiteLabelAssignedCustomerEmail}'. The limit of {maxAllowedWhiteLabelCustomerConcurrency} has been reached."
+                        );
+                    }
+                }
+                else
+                {
+                    bool increased = await _userRepository.TryIncrementConcurrencyUsageAsync(businessData!.MasterUserEmail, featureKey, totalUserConcurrency, usageItem);
+                    if (!increased)
+                    {
+                        return result.SetFailureResult(
+                            $"{logPrefix}:CONCURRENCY_LIMIT_REACHED",
+                            $"Could not increase concurrency for '{featureKey}'. The limit of {totalUserConcurrency} has been reached."
+                        );
+                    }
                 }
 
-                bool increased = await _userRepository.TryIncrementConcurrencyUsageAsync(businessData!.MasterUserEmail, featureKey, totalUserConcurrency, usageItem);
-                if (!increased)
-                {
-                    return result.SetFailureResult(
-                        $"{logPrefix}:CONCURRENCY_LIMIT_REACHED",
-                        $"Could not increase concurrency for '{featureKey}'. The limit of {totalUserConcurrency} has been reached."
-                    );
-                }
                 return result.SetSuccessResult();
             }
             catch (Exception ex) {
@@ -224,7 +367,7 @@ namespace IqraInfrastructure.Managers.User
             }
         }
 
-        private async Task<(FunctionReturnResult result, BusinessData? business, UserBillingData? userBilling, BillingPlanDefinitionBase? plan)> LoadUserBillingAndPlanAsync(long businessId, string logPrefix)
+        private async Task<(FunctionReturnResult result, BusinessData? business, UserBillingAndWhiteLabelResultRecord? userBillingAndWhiteLabel, BillingPlanDefinitionBase? plan)> LoadUserBillingAndPlanAsync(long businessId, string logPrefix)
         {
             var result = new FunctionReturnResult();
 
@@ -234,10 +377,22 @@ namespace IqraInfrastructure.Managers.User
                 return (result.SetFailureResult($"{logPrefix}:BUSINESS_NOT_FOUND", "Business not found."), null, null, null);
             }
 
-            UserBillingData? userBillingData = await _userRepository.GetUserBillingData(businessData.MasterUserEmail);
+            UserBillingAndWhiteLabelResultRecord? userBillingAndWhiteLabelData = await _userRepository.GetUserBillingAndWhiteLabelData(businessData.MasterUserEmail);
+            if (userBillingAndWhiteLabelData == null)
+            {
+                return (result.SetFailureResult($"{logPrefix}:USER_NOT_FOUND", "Master user billing/whitelabel data not found."), businessData, null, null);
+            }
+
+            var userBillingData = userBillingAndWhiteLabelData.userBillingData;
             if (userBillingData == null)
             {
-                return (result.SetFailureResult($"{logPrefix}:USER_NOT_FOUND", "Master user billing data not found."), businessData, null, null);
+                return (result.SetFailureResult($"{logPrefix}:USER_BILLING_NOT_FOUND", "User billing data not found."), businessData, userBillingAndWhiteLabelData, null);
+            }
+
+            var userWhiteLabelData = userBillingAndWhiteLabelData.userWhiteLabelData;
+            if (userWhiteLabelData == null)
+            {
+                return (result.SetFailureResult($"{logPrefix}:USER_WHITE_LABEL_NOT_FOUND", "User white label data not found."), businessData, userBillingAndWhiteLabelData, null);
             }
 
             var planResult = await _planManager.GetPlanByIdAsync(userBillingData.Subscription.PlanId);
@@ -246,7 +401,7 @@ namespace IqraInfrastructure.Managers.User
                 return (result.SetFailureResult($"{logPrefix}:PLAN_NOT_FOUND", $"Plan with ID '{userBillingData.Subscription.PlanId}' could not be found."), businessData, userBillingData, null);
             }
 
-            return (result.SetSuccessResult(), businessData, userBillingData, planResult.Data);
+            return (result.SetSuccessResult(), businessData, userBillingAndWhiteLabelData, planResult.Data);
         }
     }
 }

@@ -4,6 +4,7 @@ using IqraCore.Entities.User.Notifcation;
 using IqraCore.Entities.User.WhiteLabel;
 using IqraInfrastructure.Helpers.MongoDB;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
@@ -146,6 +147,17 @@ namespace IqraInfrastructure.Repositories.User
             return await query;
         }
 
+        public record UserBillingAndWhiteLabelResultRecord(UserBillingData? userBillingData, UserWhiteLabelData? userWhiteLabelData);
+        public async Task<UserBillingAndWhiteLabelResultRecord?> GetUserBillingAndWhiteLabelData(string email)
+        {
+            var query = _usersCollection.AsQueryable()
+                .Where(u => u.Email == email)
+                .Select(u => new UserBillingAndWhiteLabelResultRecord(u.Billing, u.WhiteLabel))
+                .FirstOrDefaultAsync();
+
+            return await query;
+        }
+
         public async Task<bool> TryIncrementConcurrencyUsageAsync(string userEmail, string featureKey, long maxConcurrency, UserBillingCycleConcurrencyFeatureUsage usageItem)
         {
             string arrayFieldPath = $"Billing.CurrentCycleUsage.CurrentConcurrencyFeatureUsage.{featureKey}";
@@ -160,6 +172,48 @@ namespace IqraInfrastructure.Repositories.User
             var update = Builders<UserData>.Update.Push(arrayFieldPath, usageItem);
             var result = await _usersCollection.UpdateOneAsync(finalFilter, update);
 
+            return result.IsAcknowledged && result.ModifiedCount != 0;
+        }
+
+        public async Task<bool> TryIncrementConcurrencyUsageWithWhiteLabelCustomerEmailAsync(string userEmail, string featureKey, long maxUserConcurrency, long maxUserWhiteLabelCustomerConcurrency, UserBillingCycleConcurrencyFeatureUsage usageItem)
+        {
+            string arrayFieldPath = $"Billing.CurrentCycleUsage.CurrentConcurrencyFeatureUsage.{featureKey}";
+
+            var filterBuilder = Builders<UserData>.Filter;
+
+            var userFilter = filterBuilder.Eq(u => u.Email, userEmail);
+
+            var parentConcurrencyLimitFilter = filterBuilder.Not(
+                filterBuilder.Exists($"{arrayFieldPath}.{maxUserConcurrency - 1}")
+            );
+
+            var whiteLabelCustomerConcurrencyFilter = new BsonDocument("$expr",
+                new BsonDocument("$lt", new BsonArray
+                {
+                    new BsonDocument("$size",
+                        new BsonDocument("$ifNull", new BsonArray
+                        {
+                            new BsonDocument("$filter", new BsonDocument
+                            {
+                                { "input", $"${arrayFieldPath}" },
+                                { "as", "item" },
+                                { "cond", new BsonDocument("$eq", new BsonArray { "$$item.WhiteLabelCustomerEmail", usageItem.WhiteLabelCustomerEmail }) }
+                            }),
+                            new BsonArray()
+                        })
+                    ),
+                    maxUserWhiteLabelCustomerConcurrency
+                })
+            );
+
+            var finalFilter = filterBuilder.And(
+                userFilter,
+                parentConcurrencyLimitFilter,
+                whiteLabelCustomerConcurrencyFilter
+            );
+
+            var update = Builders<UserData>.Update.Push(arrayFieldPath, usageItem);
+            var result = await _usersCollection.UpdateOneAsync(finalFilter, update);
             return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 

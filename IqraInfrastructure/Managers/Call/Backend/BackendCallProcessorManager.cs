@@ -340,7 +340,13 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 var tryIncreaseCallConcurrency = await _userUsageValidationManager.TryIncreaseUsageConcurrency(outboundQueueData.BusinessId, BillingFeatureKey.CallConcurrency, sessionId, outboundQueueData.Id);
                 if (!tryIncreaseCallConcurrency.Success)
                 {
-                    resultData.ShouldRequeue = true;
+                    if (
+                        tryIncreaseCallConcurrency!.Code!.Contains("CONCURRENCY_LIMIT_REACHED") ||
+                        tryIncreaseCallConcurrency!.Code!.Contains("USER_CUSTOMER_CONCURRENCY_LIMIT_REACHED")
+                    )
+                    {
+                        resultData.ShouldRequeue = true;
+                    }
 
                     return result.SetFailureResult(
                         "InitiateOutboundCallAsync:" + tryIncreaseCallConcurrency.Code,
