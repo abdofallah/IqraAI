@@ -80,9 +80,9 @@ namespace IqraInfrastructure.Repositories.User
             return await UpdateUser(filter, updateDefinition);
         }
 
-        public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition)
+        public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition, UpdateOptions? options = null)
         {
-            var result = await _usersCollection.UpdateOneAsync(filter, updateDefinition);
+            var result = await _usersCollection.UpdateOneAsync(filter, updateDefinition, options);
             return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 
