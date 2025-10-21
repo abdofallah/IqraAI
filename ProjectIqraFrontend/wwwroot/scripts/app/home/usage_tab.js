@@ -103,7 +103,7 @@ function createUsageChart(canvas, isStacked, yAxisCallback) {
         type: 'bar',
         data: { labels: [], datasets: [] },
         options: {
-            responsive: true,
+            responsive: true, 
             maintainAspectRatio: false,
             interaction: { mode: 'index' },
             scales: {
