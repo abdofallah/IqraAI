@@ -32,9 +32,17 @@ namespace IqraInfrastructure.Repositories.User
             return _userUsageCollection.InsertOneAsync(record);
         }
 
-        public Task AddUserUsageRecordAsync(UserUsageRecordData record, IClientSessionHandle session)
+        public async Task<bool> AddUserUsageRecordAsync(UserUsageRecordData record, IClientSessionHandle session)
         {
-            return _userUsageCollection.InsertOneAsync(session, record);
+            try
+            {
+                await _userUsageCollection.InsertOneAsync(session, record);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
         }
 
         // Read Operations

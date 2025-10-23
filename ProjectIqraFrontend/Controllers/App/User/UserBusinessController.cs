@@ -16,6 +16,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
+        private readonly UserWhiteLabelManager _userWhiteLabelManager;
         private readonly IMongoClient _mongoClient;
 
         public UserBusinessController(
@@ -23,6 +24,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
             UserSessionValidationHelper userSessionValidationHelper,
             UserManager userManager,
             BusinessManager businessManager,
+            UserWhiteLabelManager userWhiteLabelManager,
             IMongoClient mongoClient
         )
         {
@@ -30,6 +32,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
             _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;
             _businessManager = businessManager;
+            _userWhiteLabelManager = userWhiteLabelManager;
             _mongoClient = mongoClient;
         }
 
@@ -261,6 +264,19 @@ namespace ProjectIqraFrontend.Controllers.App.User
                                 "DeleteUserBusiness:" + removeUserBusinessResult.Code,
                                 removeUserBusinessResult.Message
                             );
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(businessData.WhiteLabelAssignedCustomerEmail))
+                        {
+                            var removeWhiteLabelCustomerResult = await _userWhiteLabelManager.RemoveWhiteLabelCustomerBusiness(userData.Email, businessData.WhiteLabelAssignedCustomerEmail, businessId, mongoSession);
+                            if (!removeWhiteLabelCustomerResult)
+                            {
+                                mongoSession.AbortTransaction();
+                                return result.SetFailureResult(
+                                    "DeleteUserBusiness:USER_WHITELABEL_CUSTOMER_BUSINESS_REMOVAL_FAILED",
+                                    "Failed to remove white label customer business."
+                                );
+                            }
                         }
 
                         var cancelOutboundCallQueuesResult = await _businessManager.CancelBusinessOutboundCallQueues(businessId, mongoSession);
