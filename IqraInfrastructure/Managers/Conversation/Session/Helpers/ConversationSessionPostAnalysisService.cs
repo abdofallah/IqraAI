@@ -24,19 +24,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
         private readonly SessionLoggerFactory _loggerFactory;
         private readonly ILogger<ConversationSessionPostAnalysisService> _logger;
         private readonly ConversationStateRepository _conversationStateRepository;
-        private readonly BusinessManager _businessManager;
         private readonly LLMProviderManager _llmProviderManager;
 
         public ConversationSessionPostAnalysisService(
             SessionLoggerFactory loggerFactory,
             ConversationStateRepository conversationStateRepository,
-            BusinessManager businessManager,
             LLMProviderManager llmProviderManager
         ) {
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<ConversationSessionPostAnalysisService>();
             _conversationStateRepository = conversationStateRepository;
-            _businessManager = businessManager;
             _llmProviderManager = llmProviderManager;
         }
 

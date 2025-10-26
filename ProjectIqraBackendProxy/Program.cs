@@ -305,8 +305,6 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     null,
-                    null,
-                    null,
                     sp.GetRequiredService<ModemTelManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     null,
@@ -363,6 +361,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     sp.GetRequiredService<UserRepository>(),
+                    null,
                     null,
                     null,
                     null

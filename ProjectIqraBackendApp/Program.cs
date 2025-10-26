@@ -634,8 +634,6 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
                     null,
-                    null,
-                    null,
                     sp.GetRequiredService<BusinessToolAudioRepository>(),
                     sp.GetRequiredService<BusinessAgentAudioRepository>(),
                     sp.GetRequiredService<ModemTelManager>(),
@@ -849,6 +847,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<UserBillingUsageManager>>(),
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<UserUsageRepository>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<IMongoClient>()

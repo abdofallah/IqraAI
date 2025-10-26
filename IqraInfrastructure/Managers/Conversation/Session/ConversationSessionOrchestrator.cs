@@ -145,7 +145,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             _logger = _sessionLoggerFactory.CreateLogger<ConversationSessionOrchestrator>();
             _campaignActionExecutorService = campaignActionExecutorService;
-            _conversationSessionPostAnalysisService = new ConversationSessionPostAnalysisService(_sessionLoggerFactory, conversationStateRepository, businessManager, llmProviderManager);
+            _conversationSessionPostAnalysisService = new ConversationSessionPostAnalysisService(_sessionLoggerFactory, conversationStateRepository, llmProviderManager);
 
             if (IsCallInitiated)
             {
