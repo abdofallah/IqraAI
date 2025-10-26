@@ -819,57 +819,97 @@ Here is the schema of fields you must extract. Adhere to it STRICTLY:
 {fieldDefinitionsJson}
 </extraction_schema>
 
-Follow these critical instructions for extraction:
-1.  **Analyze the Conversation**: Read the entire conversation context to find the values for each field in the schema.
-2.  **Data Types**: You MUST respect the `dataType` for each field:
+---
+**CRITICAL INSTRUCTIONS FOR EXTRACTION**
+---
+
+1.  **Analyze the Conversation**: Read the entire conversation context to find the values for each field defined in the schema.
+2.  **Adhere to Data Types**: You MUST respect the `dataType` for each field:
     - `String`: Extract the text as a string.
     - `Boolean`: The value must be either `true` or `false`.
-    - `Number`: The value must be a valid integer or decimal number (e.g., 123, 45.6).
+    - `Number`: The value must be a valid integer or decimal number.
     - `DateTime`: The value must be a string in ISO 8601 format: `YYYY-MM-DDTHH:MM:SSZ`.
     - `Enum`: The value MUST be one of the exact strings provided in the `options` array.
-3.  **Rules**:
-    - `isRequired: true`: You MUST provide a value for this field. If the information is not explicitly present, make a logical inference based on the context.
-    - `isEmptyOrNullAllowed: false`: You must provide a value. If `true`, you may use `null` as the `fieldValue` if the information is not found.
-4.  **Conditional Extraction**: This is the most important rule. Some fields have `conditionalRules`.
-    - After you extract a value for a parent field, check if that value matches the `condition` of any of its `conditionalRules`.
-    - If a condition is met (e.g., for a boolean field, the value is `true` and the condition `operator` is `Equals` and `value` is `""true""`), you MUST then proceed to extract all the `fieldsToExtract` listed under that specific rule. This process applies recursively.
-5.  **IDs**: ONLY use the `fieldId` provided in the schema. Do not invent your own.
+3.  **Follow Field Rules**:
+    - `isRequired: true`: You MUST provide a value. If not explicitly stated, make the most logical inference from the context.
+    - `isEmptyOrNullAllowed: true`: If the information for an optional field is not found, you MUST use `null` as the `FieldValue`.
+4.  **Execute Conditional Logic (Most Important Rule)**:
+    - **IF** you extract a value for a parent field, **THEN** you must immediately check its `conditionalRules`.
+    - **IF** the extracted value meets a rule's `condition` (e.g., `FieldValue` is `true` and the condition `operator` is `Equals` and `value` is `""true""`), you **MUST** then proceed to extract all the `fieldsToExtract` defined within that specific rule. This process is recursive.
+5.  **Use Correct IDs**: ONLY use the `FieldId` provided in the schema. Do not invent your own.
 
-You MUST respond with a JSON object enclosed in a ```json code block.
-The root object must have one key: `""ExtractedFields""`, an array of the top-level fields you extracted.
+---
+**EXAMPLE SCENARIO**
+---
 
-Each object in the array must follow this structure:
-- `""Thinking""`: A brief justification for the extracted value.
-- `""FieldId""`: The exact ID of the field from the schema.
-- `""FieldValue""`: The extracted value, formatted according to its `dataType`. Use `null` if allowed and not found.
-- `""ConditionalExtractedFields""`: An array of conditionally extracted fields, following this same structure. If no conditional rules were met, provide an empty array `[]`.
+**Example Extraction Schema (`<extraction_schema>`):**
+```json
+[
+  {{
+    ""Id"": ""is-interested-id"", ""KeyName"": ""isInterested"", ""Description"": ""Did the customer express interest in proceeding?"",
+    ""IsRequired"": true, ""DataType"": 1,
+    ""ConditionalRules"": [
+      {{
+        ""Condition"": {{ ""Operator"": 0, ""Value"": ""true"" }},
+        ""FieldsToExtract"": [
+          {{ ""Id"": ""contact-method-id"", ""KeyName"": ""contactMethod"", ""IsRequired"": true, ""DataType"": 4, ""Options"": [""Email"", ""Phone Call"", ""WhatsApp""] }},
+          {{ ""Id"": ""email-address-id"", ""KeyName"": ""emailAddress"", ""IsRequired"": false, ""IsEmptyOrNullAllowed"": true, ""DataType"": 0 }}
+        ]
+      }}
+    ]
+  }},
+  {{
+    ""Id"": ""source-campaign-id"", ""KeyName"": ""sourceCampaign"", ""Description"": ""Was a source campaign mentioned?"",
+    ""IsRequired"": false, ""IsEmptyOrNullAllowed"": true, ""DataType"": 0
+  }}
+]
+```
 
-Example Response Format:
+**Example Conversation Context:** ""Yes, that sounds very interesting. Could you please send me more information? My email is info@example.com.""
+
+**Correct JSON Response:**
 ```json
 {{
   ""extractedFields"": [
     {{
-      ""Thinking"": ""The customer confirmed they were the account holder."",
-      ""FieldId"": ""is-account-holder-id"",
+      ""Thinking"": ""The user said 'sounds very interesting' and asked for more info, which clearly indicates interest."",
+      ""FieldId"": ""is-interested-id"",
       ""FieldValue"": true,
       ""ConditionalExtractedFields"": [
         {{
-          ""Thinking"": ""Since they are the account holder, I need to extract their name which was mentioned at the start."",
-          ""FieldId"": ""account-holder-name-id"",
-          ""FieldValue"": ""John Doe"",
+          ""Thinking"": ""The user requested information be sent and then provided an email address, so the contact method is 'Email'."",
+          ""FieldId"": ""contact-method-id"",
+          ""FieldValue"": ""Email"",
+          ""ConditionalExtractedFields"": []
+        }},
+        {{
+          ""Thinking"": ""The user explicitly stated their email is 'info@example.com'."",
+          ""FieldId"": ""email-address-id"",
+          ""FieldValue"": ""info@example.com"",
           ""ConditionalExtractedFields"": []
         }}
       ]
     }},
     {{
-       ""Thinking"": ""The customer mentioned the reason for their call was about billing."",
-       ""FieldId"": ""call-reason-id"",
-       ""FieldValue"": ""Billing Inquiry"",
-       ""ConditionalExtractedFields"": []
+      ""Thinking"": ""No marketing campaign or source was mentioned in the conversation."",
+      ""FieldId"": ""source-campaign-id"",
+      ""FieldValue"": null,
+      ""ConditionalExtractedFields"": []
     }}
   ]
 }}
-```";
+```
+**Explanation of the Correct Response:**
+- The top-level field `is-interested-id` was extracted as `true`.
+- **Because** its value was `true`, the conditional rule was triggered, and the AI proceeded to extract the nested fields `contact-method-id` and `email-address-id`.
+- The second top-level field, `source-campaign-id`, was optional and its information was not present in the conversation. Therefore, it was correctly included with a `FieldValue` of `null` as per the rule `isEmptyOrNullAllowed: true`.
+
+---
+**END OF EXAMPLE**
+---
+
+You MUST now analyze the real conversation context and provide the extraction in the specified JSON format, following all rules and the logic demonstrated in the example.
+";
 
                 llmService.SetSystemPrompt(systemPrompt);
                 llmService.SetMaxTokens(10000);
