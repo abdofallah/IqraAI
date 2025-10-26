@@ -20,6 +20,7 @@ using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Logger;
+using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
@@ -123,7 +124,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             UserBillingUsageManager billingProcessingManager,
             ILoggerFactory loggerFactory,
             CampaignActionExecutorService campaignActionExecutorService,
-            ConversationSessionPostAnalysisService conversationSessionPostAnalysisService,
+            LLMProviderManager llmProviderManager,
 
             CallQueueData? queueData = null,
             WebSessionData? webSessionData = null
@@ -144,7 +145,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             _logger = _sessionLoggerFactory.CreateLogger<ConversationSessionOrchestrator>();
             _campaignActionExecutorService = campaignActionExecutorService;
-            _conversationSessionPostAnalysisService = conversationSessionPostAnalysisService;
+            _conversationSessionPostAnalysisService = new ConversationSessionPostAnalysisService(_sessionLoggerFactory, conversationStateRepository, businessManager, llmProviderManager);
 
             if (IsCallInitiated)
             {

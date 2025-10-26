@@ -65,7 +65,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
         private readonly RegionManager _regionManager;
         private readonly UserBillingUsageManager _billingProcessingManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
-        private readonly ConversationSessionPostAnalysisService _conversationSessionPostAnalysisService;
         private readonly UserUsageValidationManager _userUsageValidationManager;
 
         // combine the two
@@ -91,7 +90,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
             RegionManager regionManager,
             UserBillingUsageManager billingProcessingManager,
             CampaignActionExecutorService campaignActionExecutorService,
-            ConversationSessionPostAnalysisService conversationSessionPostAnalysisService,
             UserUsageValidationManager userUsageValidationManager
         )
         {
@@ -109,7 +107,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
             _regionManager = regionManager;
             _billingProcessingManager = billingProcessingManager;
             _campaignActionExecutorService = campaignActionExecutorService;
-            _conversationSessionPostAnalysisService = conversationSessionPostAnalysisService;
             _userUsageValidationManager = userUsageValidationManager;
         }
 
@@ -673,7 +670,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     _billingProcessingManager,
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
                     _campaignActionExecutorService,
-                    _conversationSessionPostAnalysisService,
+                    _serviceProvider.GetRequiredService<LLMProviderManager>(),
 
                     queueData: queueData
                 );
