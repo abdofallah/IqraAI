@@ -14,8 +14,10 @@ using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 {
@@ -296,7 +298,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
         private async Task ProcessPostAnalysisTasks(string sessionId, BusinessApp businessAppData, BusinessAppPostAnalysis postAnalysisData, string promptContext)
         {
             // Run Processing Tasks
-            Task<FunctionReturnResult<string?>>? summaryGenerationTask = null;
+            Task<FunctionReturnResult<ConversationSummaryGenerationResultData?>>? summaryGenerationTask = null;
             Task<FunctionReturnResult<List<ConversationPostAnalsysisTaggingResultData>?>>? taggingTask = null;
             Task<FunctionReturnResult<List<ConversationPostAnalsysisExtractionFieldResultData>?>>? extractionTask = null;
             if (postAnalysisData.Summary.IsActive)
@@ -317,7 +319,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
             await Task.WhenAll(summaryGenerationTask ?? Task.CompletedTask, taggingTask ?? Task.CompletedTask, extractionTask ?? Task.CompletedTask);
 
             // Get Tasks Results
-            FunctionReturnResult<string?>? summaryGenerationResult = null;
+            FunctionReturnResult<ConversationSummaryGenerationResultData?>? summaryGenerationResult = null;
             FunctionReturnResult<List<ConversationPostAnalsysisTaggingResultData>?>? taggingResult = null;
             FunctionReturnResult<List<ConversationPostAnalsysisExtractionFieldResultData>?>? extractionResult = null;
             if (summaryGenerationTask != null)
@@ -382,9 +384,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
         }
 
         // Processing
-        private async Task<FunctionReturnResult<string?>> PerformConversationSummaryGeneration(string sessionId, BusinessApp businessAppData, BusinessAppPostAnalysis postAnalysisData, string context)
+        private async Task<FunctionReturnResult<ConversationSummaryGenerationResultData?>> PerformConversationSummaryGeneration(string sessionId, BusinessApp businessAppData, BusinessAppPostAnalysis postAnalysisData, string context)
         {
-            var result = new FunctionReturnResult<string?>();
+            var result = new FunctionReturnResult<ConversationSummaryGenerationResultData?>();
 
             try
             {
@@ -392,36 +394,86 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 if (!llmServiceResult.Success)
                 {
                     return result.SetFailureResult(
-                        $"PerformConversationSummaryGeneration:{llmServiceResult.Code}" ,
+                        $"PerformConversationSummaryGeneration:{llmServiceResult.Code}",
                         llmServiceResult.Message
                     );
                 }
                 var llmService = llmServiceResult.Data!;
 
-                llmService.SetSystemPrompt($"You job is to generate a summary of the conversation.\n\nFollow the guidelines for constructing the summary as follow:\n{postAnalysisData.Summary.Prompt}");
-                llmService.AddUserMessage($"{context}\n\nGenerate the summary.");
+                // --- Refined System Prompt ---
+                var systemPrompt = $@"You are an expert AI assistant. Your task is to analyze the provided conversation context and generate a concise, accurate summary.
 
-                StringBuilder summaryResponseBuilder = new StringBuilder();
-                llmService.MessageStreamed += (sender, args) => {
+Follow these user-provided guidelines for constructing the summary:
+<guidelines>
+{postAnalysisData.Summary.Prompt}
+</guidelines>
+
+You MUST respond with a JSON object enclosed in a ```json code block.
+The JSON object must have two keys: ""Thinking"" and ""Summary"".
+- ""Thinking"": Briefly explain your reasoning and the thought process behind the summary you are about to write.
+- ""Summary"": The final generated summary based on the conversation and the guidelines.
+
+Example Response Format:
+```json
+{{
+    ""Thinking"": ""The user expressed frustration about a billing error. The agent successfully identified the issue, apologized, and provided a clear resolution path. The summary should capture these key points."",
+    ""Summary"": ""The customer called regarding an incorrect charge on their recent invoice. The agent investigated the issue, confirmed a billing system error, and processed a credit for the overcharged amount. The customer was satisfied with the resolution.""
+}}
+```";
+
+                llmService.SetSystemPrompt(systemPrompt);
+                llmService.SetMaxTokens(10000);
+                llmService.AddUserMessage($"{context}\n\nGenerate the summary in the specified JSON format.");
+
+                StringBuilder responseBuilder = new StringBuilder();
+                bool isStreamingEnded = false;
+                bool hasStreamingFailed = false;
+                string? streamingFailedMessage = null;
+
+                llmService.MessageStreamed += (sender, args) =>
+                {
                     FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(args.ResponseObject, llmService.GetProviderType());
                     if (!chunkExtractResult.Success || !chunkExtractResult.Data.HasValue)
                     {
-                        // todo log error
+                        _logger.LogWarning("Could not extract chunk data during summary generation for session {SessionId}.", sessionId);
                         return;
                     }
                     (string? deltaText, bool isEndOfResponse) = chunkExtractResult.Data.Value;
 
                     if (!string.IsNullOrEmpty(deltaText))
                     {
-                        summaryResponseBuilder.Append(deltaText);
+                        responseBuilder.Append(deltaText);
                     }
 
                     if (isEndOfResponse)
                     {
-                        // needed?
+                        isStreamingEnded = true;
                     }
                 };
-                await llmService.ProcessInputAsync(CancellationToken.None);
+
+                llmService.MessageStreamedCancelled += (sender, args) =>
+                {
+                    if (hasStreamingFailed) return;
+                    hasStreamingFailed = true;
+                    streamingFailedMessage = $"Summary Generation LLM Failed: [{Enum.GetName(args.Type)} {args.ResponseCode}] {args.ResponseMessage}";
+                };
+
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                await llmService.ProcessInputAsync(cancellationTokenSource.Token);
+
+                var stopWatch = Stopwatch.StartNew();
+                while (!isStreamingEnded && !hasStreamingFailed)
+                {
+                    if (stopWatch.ElapsedMilliseconds > 60000) // 60 seconds timeout
+                    {
+                        hasStreamingFailed = true;
+                        streamingFailedMessage = "Summary Generation LLM Timed Out after 60 seconds.";
+                        cancellationTokenSource.Cancel();
+                        break;
+                    }
+                    await Task.Delay(100);
+                }
+                stopWatch.Stop();
 
                 try
                 {
@@ -434,10 +486,49 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                     _logger.LogWarning(ex, "Error disposing Post Analysis Summary Generation LLM service for session {SessionId}", sessionId);
                 }
 
-                string summaryResponse = summaryResponseBuilder.ToString(); // TODO transform the response to the expected format/extract sumamry only
-                return result.SetSuccessResult(summaryResponse);
+                if (hasStreamingFailed)
+                {
+                    return result.SetFailureResult(
+                        "PerformConversationSummaryGeneration:LLM_STREAM_FAILED",
+                        streamingFailedMessage!
+                    );
+                }
+
+                string rawLlmResponse = responseBuilder.ToString();
+                string? jsonBlock = ExtractJsonBlock(rawLlmResponse);
+
+                if (string.IsNullOrWhiteSpace(jsonBlock))
+                {
+                    return result.SetFailureResult(
+                        "PerformConversationSummaryGeneration:JSON_EXTRACTION_FAILED",
+                        $"Could not extract a valid JSON block from the LLM response. Raw Response: {rawLlmResponse}"
+                    );
+                }
+
+                try
+                {
+                    var summaryData = JsonSerializer.Deserialize<ConversationSummaryGenerationResultData>(jsonBlock);
+                    if (summaryData == null)
+                    {
+                        return result.SetFailureResult(
+                            "PerformConversationSummaryGeneration:JSON_DESERIALIZATION_FAILED",
+                            "Deserialized JSON object is null."
+                        );
+                    }
+
+                    return result.SetSuccessResult(summaryData);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse JSON for summary generation on session {SessionId}. JSON Block: {JsonBlock}", sessionId, jsonBlock);
+                    return result.SetFailureResult(
+                        "PerformConversationSummaryGeneration:JSON_PARSE_EXCEPTION",
+                        $"Failed to parse JSON from LLM: {ex.Message}"
+                    );
+                }
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 return result.SetFailureResult(
                     "PerformConversationSummaryGeneration:EXCEPTION",
                     $"Error generating conversation summary for session {sessionId}: {ex.Message}"
@@ -450,15 +541,194 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 
             try
             {
+                if (postAnalysisData.Tagging.Tags == null || !postAnalysisData.Tagging.Tags.Any())
+                {
+                    _logger.LogInformation("No tags configured for post analysis on session {SessionId}. Skipping tagging.", sessionId);
+                    return result.SetSuccessResult(new List<ConversationPostAnalsysisTaggingResultData>());
+                }
+
+                var llmServiceResult = await BuildLLMIntegrationService(sessionId, businessAppData, postAnalysisData.Configuration.LLMIntegration);
+                if (!llmServiceResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"PerformConversationTagging:{llmServiceResult.Code}",
+                        llmServiceResult.Message
+                    );
+                }
+                var llmService = llmServiceResult.Data!;
+
+                // --- 1. Generate the tag definitions for the prompt ---
+                string tagDefinitionsJson = GenerateTagDefinitionsForPrompt(postAnalysisData.Tagging.Tags);
+
+                // --- 2. Construct the detailed system prompt ---
+                var systemPrompt = $@"You are an expert conversation classification AI. Your task is to analyze a conversation and apply tags from a predefined hierarchical structure.
+
+Here are the available tags, their descriptions, IDs, and rules, in JSON format:
+<available_tags>
+{tagDefinitionsJson}
+</available_tags>
+
+Follow these rules STRICTLY:
+1.  Analyze the user-provided conversation context.
+2.  Select tags that are relevant to the conversation. You can select one or more top-level tags.
+3.  For each tag you select, you MUST examine its `subTags`.
+4.  If a `subTags` level has a rule `""isRequired"": true`, you MUST select at least one of its sub-tags.
+5.  If a `subTags` level has a rule `""allowMultiple"": true`, you may select multiple sub-tags. If `""allowMultiple"": false`, you MUST select only one.
+6.  This logic applies recursively down the entire tag tree.
+7.  ONLY use the `tagId` provided in the `<available_tags>`. Do not invent or hallucinate IDs.
+
+You MUST respond with a JSON object enclosed in a ```json code block.
+The root object must have a single key: `""appliedTags""`, which is an array of the top-level tags you have selected.
+
+Each object in the array must have the following structure:
+- `""thinking""`: A brief justification for why you chose this tag based on the conversation.
+- `""tagId""`: The exact ID of the tag you selected.
+- `""subTags""`: An array of selected sub-tags, following this same structure. If no sub-tags are applicable or selected for a given tag, provide an empty array `[]`.
+
+Example Response Format:
+```json
+{{
+  ""appliedTags"": [
+    {{
+      ""thinking"": ""The customer mentioned a problem with their recent payment, which falls under the Billing category."",
+      ""tagId"": ""billing-issue-id"",
+      ""subTags"": [
+        {{
+          ""thinking"": ""The specific issue was an overcharge on their account."",
+          ""tagId"": ""overcharge-id"",
+          ""subTags"": []
+        }}
+      ]
+    }},
+    {{
+       ""thinking"": ""The customer expressed positive sentiment about the agent's helpfulness."",
+       ""tagId"": ""customer-sentiment-id"",
+       ""subTags"": [
+        {{
+            ""thinking"": ""The customer's tone was clearly positive."",
+            ""tagId"": ""positive-sentiment-id"",
+            ""subTags"": []
+        }}
+       ]
+    }}
+  ]
+}}
+```";
+
+                llmService.SetSystemPrompt(systemPrompt);
+                llmService.SetMaxTokens(10000);
+                llmService.AddUserMessage($"{context}\n\nAnalyze the conversation and provide the classification in the specified JSON format.");
+
+                // --- 3. Full streaming & processing logic ---
+                StringBuilder responseBuilder = new StringBuilder();
+                bool isStreamingEnded = false;
+                bool hasStreamingFailed = false;
+                string? streamingFailedMessage = null;
+
+                llmService.MessageStreamed += (sender, args) =>
+                {
+                    FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(args.ResponseObject, llmService.GetProviderType());
+                    if (!chunkExtractResult.Success || !chunkExtractResult.Data.HasValue)
+                    {
+                        _logger.LogWarning("Could not extract chunk data during tagging for session {SessionId}.", sessionId);
+                        return;
+                    }
+                    (string? deltaText, bool isEndOfResponse) = chunkExtractResult.Data.Value;
+
+                    if (!string.IsNullOrEmpty(deltaText))
+                    {
+                        responseBuilder.Append(deltaText);
+                    }
+
+                    if (isEndOfResponse)
+                    {
+                        isStreamingEnded = true;
+                    }
+                };
+
+                llmService.MessageStreamedCancelled += (sender, args) =>
+                {
+                    if (hasStreamingFailed) return;
+                    hasStreamingFailed = true;
+                    streamingFailedMessage = $"Tagging LLM Failed: [{Enum.GetName(args.Type)} {args.ResponseCode}] {args.ResponseMessage}";
+                    _logger.LogError("Post Analysis Tagging LLM service for session {SessionId} has failed: {FailureMessage}", sessionId, streamingFailedMessage);
+                };
+
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                await llmService.ProcessInputAsync(cancellationTokenSource.Token);
+
+                var stopWatch = Stopwatch.StartNew();
+                while (!isStreamingEnded && !hasStreamingFailed)
+                {
+                    if (stopWatch.ElapsedMilliseconds > 60000) // 60 seconds timeout
+                    {
+                        hasStreamingFailed = true;
+                        streamingFailedMessage = "Tagging LLM Timed Out after 60 seconds.";
+                        cancellationTokenSource.Cancel();
+                        break;
+                    }
+                    await Task.Delay(100);
+                }
+                stopWatch.Stop();
+
+                try
+                {
+                    llmService.ClearMessages();
+                    llmService.ClearMessageStreamed();
+                    llmService.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error disposing Post Analysis Tagging LLM service for session {SessionId}", sessionId);
+                }
+
+                if (hasStreamingFailed)
+                {
+                    return result.SetFailureResult(
+                        "PerformConversationTagging:LLM_STREAM_FAILED",
+                        streamingFailedMessage!
+                    );
+                }
+
+                string rawLlmResponse = responseBuilder.ToString();
 
 
-                return result.SetSuccessResult(null);
+                // --- 4. Extract, Parse, and Return ---
+                string? jsonBlock = ExtractJsonBlock(rawLlmResponse);
+                if (string.IsNullOrWhiteSpace(jsonBlock))
+                {
+                    return result.SetFailureResult(
+                        "PerformConversationTagging:JSON_EXTRACTION_FAILED",
+                        $"Could not extract a valid JSON block from the LLM response for tagging. Raw: {rawLlmResponse}"
+                    );
+                }
+
+                try
+                {
+                    var taggingResponse = JsonSerializer.Deserialize<ConversationTaggingLLMResponse>(jsonBlock);
+                    if (taggingResponse == null)
+                    {
+                        return result.SetFailureResult(
+                            "PerformConversationTagging:JSON_DESERIALIZATION_FAILED",
+                            "Deserialized tagging response object is null."
+                        );
+                    }
+                    return result.SetSuccessResult(taggingResponse.AppliedTags);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse JSON for tagging on session {SessionId}. JSON Block: {JsonBlock}", sessionId, jsonBlock);
+                    return result.SetFailureResult(
+                        "PerformConversationTagging:JSON_PARSE_EXCEPTION",
+                        $"Failed to parse JSON from LLM for tagging: {ex.Message}"
+                    );
+                }
             }
             catch (Exception ex)
             {
                 return result.SetFailureResult(
                     "PerformConversationTagging:EXCEPTION",
-                    $"Error tagging conversation for session {sessionId}: {ex.Message}"
+                    $"Error performing conversation tagging for session {sessionId}: {ex.Message}"
                 );
             }
         }
@@ -468,15 +738,198 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 
             try
             {
+                if (postAnalysisData.Extraction.Fields == null || !postAnalysisData.Extraction.Fields.Any())
+                {
+                    _logger.LogInformation("No extraction fields configured for post analysis on session {SessionId}. Skipping extraction.", sessionId);
+                    return result.SetSuccessResult(new List<ConversationPostAnalsysisExtractionFieldResultData>());
+                }
 
+                var llmServiceResult = await BuildLLMIntegrationService(sessionId, businessAppData, postAnalysisData.Configuration.LLMIntegration);
+                if (!llmServiceResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"PerformConversationExtraction:{llmServiceResult.Code}",
+                        llmServiceResult.Message
+                    );
+                }
+                var llmService = llmServiceResult.Data!;
 
-                return result.SetSuccessResult(null);
+                // --- 1. Generate the field definitions for the prompt ---
+                string fieldDefinitionsJson = GenerateFieldDefinitionsForPrompt(postAnalysisData.Extraction.Fields);
+
+                // --- 2. Construct the highly detailed system prompt ---
+                var systemPrompt = $@"You are a highly precise AI data extraction engine. Your task is to analyze a conversation and extract specific pieces of information into a structured JSON format based on a provided schema.
+
+Here is the schema of fields you must extract. Adhere to it STRICTLY:
+<extraction_schema>
+{fieldDefinitionsJson}
+</extraction_schema>
+
+Follow these critical instructions for extraction:
+1.  **Analyze the Conversation**: Read the entire conversation context to find the values for each field in the schema.
+2.  **Data Types**: You MUST respect the `dataType` for each field:
+    - `String`: Extract the text as a string.
+    - `Boolean`: The value must be either `true` or `false`.
+    - `Number`: The value must be a valid integer or decimal number (e.g., 123, 45.6).
+    - `DateTime`: The value must be a string in ISO 8601 format: `YYYY-MM-DDTHH:MM:SSZ`.
+    - `Enum`: The value MUST be one of the exact strings provided in the `options` array.
+3.  **Rules**:
+    - `isRequired: true`: You MUST provide a value for this field. If the information is not explicitly present, make a logical inference based on the context.
+    - `isEmptyOrNullAllowed: false`: You must provide a value. If `true`, you may use `null` as the `fieldValue` if the information is not found.
+4.  **Conditional Extraction**: This is the most important rule. Some fields have `conditionalRules`.
+    - After you extract a value for a parent field, check if that value matches the `condition` of any of its `conditionalRules`.
+    - If a condition is met (e.g., for a boolean field, the value is `true` and the condition `operator` is `Equals` and `value` is `""true""`), you MUST then proceed to extract all the `fieldsToExtract` listed under that specific rule. This process applies recursively.
+5.  **IDs**: ONLY use the `fieldId` provided in the schema. Do not invent your own.
+
+You MUST respond with a JSON object enclosed in a ```json code block.
+The root object must have one key: `""extractedFields""`, an array of the top-level fields you extracted.
+
+Each object in the array must follow this structure:
+- `""thinking""`: A brief justification for the extracted value.
+- `""fieldId""`: The exact ID of the field from the schema.
+- `""fieldValue""`: The extracted value, formatted according to its `dataType`. Use `null` if allowed and not found.
+- `""conditionalExtractedFields""`: An array of conditionally extracted fields, following this same structure. If no conditional rules were met, provide an empty array `[]`.
+
+Example Response Format:
+```json
+{{
+  ""extractedFields"": [
+    {{
+      ""thinking"": ""The customer confirmed they were the account holder."",
+      ""fieldId"": ""is-account-holder-id"",
+      ""fieldValue"": true,
+      ""conditionalExtractedFields"": [
+        {{
+          ""thinking"": ""Since they are the account holder, I need to extract their name which was mentioned at the start."",
+          ""fieldId"": ""account-holder-name-id"",
+          ""fieldValue"": ""John Doe"",
+          ""conditionalExtractedFields"": []
+        }}
+      ]
+    }},
+    {{
+       ""thinking"": ""The customer mentioned the reason for their call was about billing."",
+       ""fieldId"": ""call-reason-id"",
+       ""fieldValue"": ""Billing Inquiry"",
+       ""conditionalExtractedFields"": []
+    }}
+  ]
+}}
+```";
+
+                llmService.SetSystemPrompt(systemPrompt);
+                llmService.SetMaxTokens(10000);
+                llmService.AddUserMessage($"{context}\n\nPerform the extraction based on the schema and rules, providing the output in the specified JSON format.");
+
+                // --- 3. Full streaming & processing logic ---
+                StringBuilder responseBuilder = new StringBuilder();
+                bool isStreamingEnded = false;
+                bool hasStreamingFailed = false;
+                string? streamingFailedMessage = null;
+
+                llmService.MessageStreamed += (sender, args) =>
+                {
+                    var chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(args.ResponseObject, llmService.GetProviderType());
+                    if (!chunkExtractResult.Success || !chunkExtractResult.Data.HasValue)
+                    {
+                        _logger.LogWarning("Could not extract chunk data during extraction for session {SessionId}.", sessionId);
+                        return;
+                    }
+                    (string? deltaText, bool isEndOfResponse) = chunkExtractResult.Data.Value;
+
+                    if (!string.IsNullOrEmpty(deltaText))
+                    {
+                        responseBuilder.Append(deltaText);
+                    }
+
+                    if (isEndOfResponse)
+                    {
+                        isStreamingEnded = true;
+                    }
+                };
+
+                llmService.MessageStreamedCancelled += (sender, args) =>
+                {
+                    if (hasStreamingFailed) return;
+                    hasStreamingFailed = true;
+                    streamingFailedMessage = $"Extraction LLM Failed: [{Enum.GetName(args.Type)} {args.ResponseCode}] {args.ResponseMessage}";
+                    _logger.LogError("Post Analysis Extraction LLM service for session {SessionId} has failed: {FailureMessage}", sessionId, streamingFailedMessage);
+                };
+
+                var cancellationTokenSource = new CancellationTokenSource();
+                await llmService.ProcessInputAsync(cancellationTokenSource.Token);
+
+                var stopWatch = Stopwatch.StartNew();
+                while (!isStreamingEnded && !hasStreamingFailed)
+                {
+                    if (stopWatch.ElapsedMilliseconds > 60000) // 60 seconds timeout
+                    {
+                        hasStreamingFailed = true;
+                        streamingFailedMessage = "Extraction LLM Timed Out after 60 seconds.";
+                        cancellationTokenSource.Cancel();
+                        break;
+                    }
+                    await Task.Delay(100);
+                }
+                stopWatch.Stop();
+
+                try
+                {
+                    llmService.ClearMessages();
+                    llmService.ClearMessageStreamed();
+                    llmService.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error disposing Post Analysis Extraction LLM service for session {SessionId}", sessionId);
+                }
+
+                if (hasStreamingFailed)
+                {
+                    return result.SetFailureResult(
+                        "PerformConversationExtraction:LLM_STREAM_FAILED",
+                        streamingFailedMessage!
+                    );
+                }
+
+                string rawLlmResponse = responseBuilder.ToString();
+
+                // --- 4. Extract, Parse, and Return ---
+                string? jsonBlock = ExtractJsonBlock(rawLlmResponse);
+                if (string.IsNullOrWhiteSpace(jsonBlock))
+                {
+                    return result.SetFailureResult(
+                        "PerformConversationExtraction:JSON_EXTRACTION_FAILED",
+                        $"Could not extract a valid JSON block from the LLM response for extraction. Raw: {rawLlmResponse}"
+                    );
+                }
+
+                try
+                {
+                    var extractionResponse = JsonSerializer.Deserialize<ConversationExtractionLLMResponse>(jsonBlock, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (extractionResponse == null)
+                    {
+                        return result.SetFailureResult(
+                            "PerformConversationExtraction:JSON_DESERIALIZATION_FAILED",
+                            "Deserialized extraction response object is null."
+                        );
+                    }
+                    return result.SetSuccessResult(extractionResponse.ExtractedFields);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse JSON for extraction on session {SessionId}. JSON Block: {JsonBlock}", sessionId, jsonBlock);
+                    return result.SetFailureResult(
+                        "PerformConversationExtraction:JSON_PARSE_EXCEPTION",
+                        $"Failed to parse JSON from LLM for extraction: {ex.Message}"
+                    );
+                }
             }
             catch (Exception ex)
             {
                 return result.SetFailureResult(
                     "PerformConversationExtraction:EXCEPTION",
-                    $"Error extracting conversation for session {sessionId}: {ex.Message}"
+                    $"Error performing conversation extraction for session {sessionId}: {ex.Message}"
                 );
             }
         }
@@ -626,6 +1079,91 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 return "Unable to process value for the given context variable.";
             }
         }
+        private string? ExtractJsonBlock(string rawResponse)
+        {
+            try
+            {
+                const string codeBlockDelimiter = "```";
+                string searchScope = rawResponse;
+
+                int startDelimiterIndex = rawResponse.IndexOf(codeBlockDelimiter);
+                if (startDelimiterIndex != -1)
+                {
+                    int endDelimiterIndex = rawResponse.IndexOf(codeBlockDelimiter, startDelimiterIndex + codeBlockDelimiter.Length);
+                    if (endDelimiterIndex != -1)
+                    {
+                        int contentStartIndex = startDelimiterIndex + codeBlockDelimiter.Length;
+
+                        int actualContentStart = contentStartIndex;
+                        while (actualContentStart < endDelimiterIndex && (char.IsLetter(rawResponse[actualContentStart]) || char.IsWhiteSpace(rawResponse[actualContentStart])))
+                        {
+                            actualContentStart++;
+                        }
+
+                        searchScope = rawResponse.Substring(actualContentStart, endDelimiterIndex - actualContentStart);
+                    }
+                }
+
+                int startIndex = searchScope.IndexOf('{');
+                if (startIndex == -1)
+                {
+                    return null;
+                }
+
+                int endIndex = searchScope.LastIndexOf('}');
+                if (endIndex == -1 || endIndex < startIndex)
+                {
+                    return null;
+                }
+
+                return searchScope.Substring(startIndex, endIndex - startIndex + 1).Trim();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while extracting JSON block from raw LLM response.");
+                return null;
+            }
+        }
+        private string GenerateTagDefinitionsForPrompt(List<BusinessAppPostAnalysisTagDefinition> tags)
+        {
+            var simplifiedTags = tags.Select(tag => ToSimplifiedTag(tag)).ToList();
+            return JsonSerializer.Serialize(simplifiedTags, new JsonSerializerOptions { WriteIndented = true });
+        }
+        private object ToSimplifiedTag(BusinessAppPostAnalysisTagDefinition tag)
+        {
+            return new
+            {
+                id = tag.Id,
+                name = tag.Name,
+                description = tag.Description,
+                rules = tag.Rules,
+                subTags = tag.SubTags.Select(subTag => ToSimplifiedTag(subTag)).ToList()
+            };
+        }
+        private string GenerateFieldDefinitionsForPrompt(List<BusinessAppPostAnalysisExtractionField> fields)
+        {
+            var simplifiedFields = fields.Select(field => ToSimplifiedField(field)).ToList();
+            return JsonSerializer.Serialize(simplifiedFields, new JsonSerializerOptions { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
+        }
+        private object ToSimplifiedField(BusinessAppPostAnalysisExtractionField field)
+        {
+            return new
+            {
+                fieldId = field.Id,
+                keyName = field.KeyName,
+                description = field.Description,
+                dataType = field.DataType.ToString(),
+                isRequired = field.IsRequired,
+                isEmptyOrNullAllowed = field.IsEmptyOrNullAllowed,
+                options = field.DataType == BusinessAppPostAnalysisExtractionFieldDataType.Enum ? field.Options : null,
+                validation = field.Validation,
+                conditionalRules = field.ConditionalRules.Any() ? field.ConditionalRules.Select(rule => new
+                {
+                    condition = rule.Condition,
+                    fieldsToExtract = rule.FieldsToExtract.Select(subField => ToSimplifiedField(subField)).ToList()
+                }).ToList() : null
+            };
+        }
 
         // Argument Builder
         private FunctionReturnResult<Dictionary<string, object?>?> GetTelephonyOutboundArguements(OutboundCallQueueData callQueueData, ConversationState conversationStateData)
@@ -747,5 +1285,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 );
             }
         }
+    }
+
+    // LLM Response Models
+    internal class ConversationTaggingLLMResponse
+    {
+        [JsonPropertyName("appliedTags")]
+        public List<ConversationPostAnalsysisTaggingResultData> AppliedTags { get; set; } = new List<ConversationPostAnalsysisTaggingResultData>();
+    }
+    internal class ConversationExtractionLLMResponse
+    {
+        [JsonPropertyName("extractedFields")]
+        public List<ConversationPostAnalsysisExtractionFieldResultData> ExtractedFields { get; set; } = new List<ConversationPostAnalsysisExtractionFieldResultData>();
     }
 }

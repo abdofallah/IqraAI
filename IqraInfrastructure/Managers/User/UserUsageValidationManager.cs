@@ -50,7 +50,7 @@ namespace IqraInfrastructure.Managers.User
             var userBillingData = userBillingAndWhiteLabelData!.userBillingData!;
             var userWhiteLabelData = userBillingAndWhiteLabelData!.userWhiteLabelData!;
 
-            if (userBillingData.Subscription.Status != UserBillingSubscriptionStatusEnum.Active ||
+            if (userBillingData.Subscription.Status != UserBillingSubscriptionStatusEnum.Active &&
                 userBillingData.Subscription.Status != UserBillingSubscriptionStatusEnum.PastDue
             )
             {
@@ -118,7 +118,7 @@ namespace IqraInfrastructure.Managers.User
                 var whiteLabelCustomerBilling = whiteLabelCustomerData.Billing;
 
                 if (
-                    whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.Active ||
+                    whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.Active &&
                     whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.PastDue
                 ) {
                     return result.SetFailureResult(
@@ -236,7 +236,7 @@ namespace IqraInfrastructure.Managers.User
                     var whiteLabelCustomerBilling = whiteLabelCustomerData.Billing;
 
                     if (
-                        whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.Active ||
+                        whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.Active &&
                         whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.PastDue
                     ) {
                         return result.SetFailureResult(

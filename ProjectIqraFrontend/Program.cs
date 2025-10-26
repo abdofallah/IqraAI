@@ -148,13 +148,8 @@ namespace ProjectIqraFrontend
             // Configure CORS
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAnyOriginForApi", p => p
-                    .AllowAnyOrigin()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader());
-
                 options.AddDefaultPolicy(p => p
-                    .WithOrigins("devapp.iqra.bot", "app.iqra.bot")
+                    .AllowAnyOrigin()
                     .AllowAnyMethod()
                     .AllowAnyHeader());
             });
@@ -209,14 +204,9 @@ namespace ProjectIqraFrontend
             customJSONMiddleware.SetHttpContextAccessor(httpContextAccessor);
 
             app.UseForwardedHeaders();
+            app.UseRouting();
 
             app.UseCors();
-            app.UseWhen(
-                context => context.Request.Path.StartsWithSegments("/api"),
-                appBuilder => appBuilder.UseCors("AllowAnyOriginForApi")
-            );
-
-            app.UseRouting();
 
             app.UseAuthentication();
             app.UseAuthorization();
