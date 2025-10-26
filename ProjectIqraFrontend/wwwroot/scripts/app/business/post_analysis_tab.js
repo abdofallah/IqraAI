@@ -483,9 +483,7 @@ function getPCAFieldsFromDOM(container) {
             description: $el.find('[data-type="description"]').first().val().trim(),
             isRequired: $el.find('[data-type="isRequired"]').first().is(':checked'),
             isEmptyOrNullAllowed: $el.find('[data-type="isEmptyOrNullAllowed"]').first().is(':checked'),
-            dataType: {
-                value: dataType
-            },
+            dataType: dataType,
             validation: {},
             conditionalRules: getPCARulesFromDOM(rulesContainer)
         };
@@ -520,9 +518,7 @@ function getPCARulesFromDOM(fieldBox) {
         rules.push({
             id: $el.data('id'),
             condition: {
-                operator: {
-                   value: parseInt($el.find('[data-type="conditionOperator"]').first().val())
-                },
+                operator: parseInt($el.find('[data-type="conditionOperator"]').first().val()),
                 value: $el.find('[data-type="conditionValue"]').first().val()
             },
             fieldsToExtract: getPCAFieldsFromDOM(dependentFieldsContainer)
@@ -825,7 +821,7 @@ function compareRules(currentRules, originalRules) {
         const originalRule = originalRules.find(or => or.id === currentRule.id);
         if (!originalRule) return true; // A rule was replaced
 
-        if (currentRule.condition.operator.value !== originalRule.condition.operator.value ||
+        if (currentRule.condition.operator !== originalRule.condition.operator.value ||
             currentRule.condition.value !== originalRule.condition.value) {
             return true;
         }
@@ -849,23 +845,23 @@ function comparePCAFields(currentFields, originalFields) {
             currentField.description !== originalField.description ||
             currentField.isRequired !== originalField.isRequired ||
             currentField.isEmptyOrNullAllowed !== originalField.isEmptyOrNullAllowed ||
-            currentField.dataType.value !== originalField.dataType.value) {
+            currentField.dataType !== originalField.dataType.value) {
             return true;
         }
 
         // Compare validation properties old vs new
-        if (currentField.dataType.value === originalField.dataType.value) {
-            if (currentField.dataType.value === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
+        if (currentField.dataType === originalField.dataType.value) {
+            if (currentField.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
                 if (JSON.stringify(currentField.options) !== JSON.stringify(originalField.options)) {
                     return true;
                 }
             }
-            else if (currentField.dataType.value === PCA_EXTRACTION_FIELD_DATA_TYPE.String) {
+            else if (currentField.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String) {
                 if (currentField.validation.pattern !== originalField.validation.pattern) {
                     return true;
                 }
             }
-            else if (currentField.dataType.value === PCA_EXTRACTION_FIELD_DATA_TYPE.Number) {
+            else if (currentField.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Number) {
                 if (currentField.validation.min !== originalField.validation.min ||
                     currentField.validation.max !== originalField.validation.max) {
                     return true;
@@ -1253,9 +1249,7 @@ function initPCAManagerEventHandlers() {
         let dataTypeEnum = parseInt(dataType);
 
         const parentFieldData = {
-            dataType: {
-                value: dataTypeEnum
-            },
+            dataType: dataTypeEnum,
             options: (dataTypeEnum == PCA_EXTRACTION_FIELD_DATA_TYPE.Enum)
                 ? $fieldBox.find('.field-options-container input').first().val().split(',').map(s => s.trim()).filter(Boolean)
                 : []

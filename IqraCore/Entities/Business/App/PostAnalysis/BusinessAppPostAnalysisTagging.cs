@@ -20,6 +20,6 @@
     public class BusinessAppPostAnalysisTagRules
     {
         public bool AllowMultiple { get; set; } = false;
-        public bool IsRequired { get; set; } = true;
+        public bool IsRequired { get; set; } = false;
     }
 }

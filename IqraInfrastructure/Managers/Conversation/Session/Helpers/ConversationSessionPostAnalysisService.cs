@@ -8,7 +8,7 @@ using IqraCore.Entities.WebSession;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Helpers;
 using IqraInfrastructure.Helpers.Conversation;
-using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Helpers.Json;
 using IqraInfrastructure.Managers.Conversation.Session.Logger;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
@@ -507,7 +507,7 @@ Example Response Format:
 
                 try
                 {
-                    var summaryData = JsonSerializer.Deserialize<ConversationSummaryGenerationResultData>(jsonBlock);
+                    var summaryData = JsonSerializer.Deserialize<ConversationSummaryGenerationResultData>(jsonBlock, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (summaryData == null)
                     {
                         return result.SetFailureResult(
@@ -561,59 +561,113 @@ Example Response Format:
                 string tagDefinitionsJson = GenerateTagDefinitionsForPrompt(postAnalysisData.Tagging.Tags);
 
                 // --- 2. Construct the detailed system prompt ---
-                var systemPrompt = $@"You are an expert conversation classification AI. Your task is to analyze a conversation and apply tags from a predefined hierarchical structure.
+                var systemPrompt = $@"You are an expert conversation classification AI. Your task is to analyze a conversation and classify it by selecting the most appropriate tags from a predefined hierarchical structure.
 
-Here are the available tags, their descriptions, IDs, and rules, in JSON format:
+Here are the available tag categories and their sub-tags, including their descriptions, IDs, and rules, in JSON format:
 <available_tags>
 {tagDefinitionsJson}
 </available_tags>
 
-Follow these rules STRICTLY:
-1.  Analyze the user-provided conversation context.
-2.  Select tags that are relevant to the conversation. You can select one or more top-level tags.
-3.  For each tag you select, you MUST examine its `subTags`.
-4.  If a `subTags` level has a rule `""isRequired"": true`, you MUST select at least one of its sub-tags.
-5.  If a `subTags` level has a rule `""allowMultiple"": true`, you may select multiple sub-tags. If `""allowMultiple"": false`, you MUST select only one.
-6.  This logic applies recursively down the entire tag tree.
-7.  ONLY use the `tagId` provided in the `<available_tags>`. Do not invent or hallucinate IDs.
+---
+**CRITICAL RULES & LOGIC**
+---
 
-You MUST respond with a JSON object enclosed in a ```json code block.
-The root object must have a single key: `""appliedTags""`, which is an array of the top-level tags you have selected.
+**MAIN DIRECTIVE: A parent category should ONLY be included in the final JSON output IF you select one or more of its sub-tags.**
 
-Each object in the array must have the following structure:
-- `""thinking""`: A brief justification for why you chose this tag based on the conversation.
-- `""tagId""`: The exact ID of the tag you selected.
-- `""subTags""`: An array of selected sub-tags, following this same structure. If no sub-tags are applicable or selected for a given tag, provide an empty array `[]`.
+Follow these rules with absolute precision:
+1.  **Analyze the Conversation**: First, understand the context of the conversation.
+2.  **Select Sub-Tags**: Based on the context, decide which specific sub-tags are relevant from the `<available_tags>`.
+3.  **Construct the Output**:
+    - For each parent category where you selected at least one sub-tag, create a parent object in your response.
+    - Nest the selected sub-tag(s) within that parent's `SubTags` array.
+4.  **Handle Required Categories (`IsRequired: true`)**: For these categories, you MUST find and select at least one relevant sub-tag. Therefore, these parent categories will almost always appear in your output.
+5.  **Handle Optional Categories (`IsRequired: false`)**: For these categories, you should ONLY include the parent category in your output IF you find a relevant sub-tag to select. If no sub-tags are relevant, **OMIT the entire parent category from your response.** Do not include it with an empty `SubTags` array.
+6.  **Single vs. Multiple Choices (`AllowMultiple`)**: If `AllowMultiple: false`, you must select exactly one sub-tag for that level. If `AllowMultiple: true`, you may select one or more. This rule applies at each level of the hierarchy.
+7.  **IDs and Thinking**:
+    - The `TagId` for the parent object must be the ID of the category. The `Thinking` should justify why this entire category is relevant.
+    - The `TagId` for the nested object must be the ID of the specific sub-tag you chose. The `Thinking` should justify why you chose that specific sub-tag.
 
-Example Response Format:
+---
+**EXAMPLE SCENARIO**
+---
+
+**Example Available Tags:**
+```json
+[
+  {{
+    ""Id"": ""call-outcome-id"", ""Name"": ""Call Outcome"", ""Rules"": {{ ""IsRequired"": true, ""AllowMultiple"": false }},
+    ""SubTags"": [
+      {{ ""Id"": ""resolved-id"", ""Name"": ""Resolved"" }},
+      {{ ""Id"": ""escalated-id"", ""Name"": ""Escalated"" }}
+    ]
+  }},
+  {{
+    ""Id"": ""features-mentioned-id"", ""Name"": ""Features Mentioned"", ""Rules"": {{ ""IsRequired"": false, ""AllowMultiple"": true }},
+    ""SubTags"": [
+      {{ ""Id"": ""dashboard-feature-id"", ""Name"": ""Dashboard"" }},
+      {{ ""Id"": ""reporting-feature-id"", ""Name"": ""Reporting"" }}
+    ]
+  }}
+]
+```
+
+**Example Conversation Context:** ""Hi, I was having trouble with the main dashboard page, but your previous agent fixed it for me. Thanks for the great support!""
+
+**Correct JSON Response:**
 ```json
 {{
   ""appliedTags"": [
     {{
-      ""thinking"": ""The customer mentioned a problem with their recent payment, which falls under the Billing category."",
-      ""tagId"": ""billing-issue-id"",
-      ""subTags"": [
+      ""Thinking"": ""The call had a clear resolution, so the 'Call Outcome' category is relevant."",
+      ""TagId"": ""call-outcome-id"",
+      ""SubTags"": [
         {{
-          ""thinking"": ""The specific issue was an overcharge on their account."",
-          ""tagId"": ""overcharge-id"",
-          ""subTags"": []
+          ""Thinking"": ""The user stated their problem was 'fixed', which directly maps to the 'Resolved' sub-tag."",
+          ""TagId"": ""resolved-id"",
+          ""SubTags"": []
         }}
       ]
     }},
     {{
-       ""thinking"": ""The customer expressed positive sentiment about the agent's helpfulness."",
-       ""tagId"": ""customer-sentiment-id"",
-       ""subTags"": [
+      ""Thinking"": ""The user explicitly mentioned a product feature, making the 'Features Mentioned' category relevant."",
+      ""TagId"": ""features-mentioned-id"",
+      ""SubTags"": [
         {{
-            ""thinking"": ""The customer's tone was clearly positive."",
-            ""tagId"": ""positive-sentiment-id"",
-            ""subTags"": []
+          ""Thinking"": ""The user specifically mentioned the 'dashboard page', corresponding to the 'Dashboard' sub-tag."",
+          ""TagId"": ""dashboard-feature-id"",
+          ""SubTags"": []
         }}
-       ]
+      ]
     }}
   ]
 }}
-```";
+```
+
+**INCORRECT Response (What NOT to do):**
+```json
+// THIS IS WRONG.
+{{
+  ""appliedTags"": [
+    {{
+      ""Thinking"": ""The call was resolved."",
+      ""TagId"": ""resolved-id"", // WRONG: This is a sub-tag ID at the top level.
+      ""SubTags"": []
+    }},
+    {{
+      ""Thinking"": ""A feature was mentioned."",
+      ""TagId"": ""features-mentioned-id"", // Partially correct, but...
+      ""SubTags"": [] // WRONG: A relevant sub-tag was available but not selected and nested.
+    }}
+  ]
+}}
+```
+
+---
+**END OF EXAMPLE**
+---
+
+You MUST now analyze the real conversation context and provide the classification in the specified JSON format, following all the rules and the logic demonstrated in the example.
+";
 
                 llmService.SetSystemPrompt(systemPrompt);
                 llmService.SetMaxTokens(10000);
@@ -705,7 +759,7 @@ Example Response Format:
 
                 try
                 {
-                    var taggingResponse = JsonSerializer.Deserialize<ConversationTaggingLLMResponse>(jsonBlock);
+                    var taggingResponse = JsonSerializer.Deserialize<ConversationTaggingLLMResponse>(jsonBlock, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (taggingResponse == null)
                     {
                         return result.SetFailureResult(
@@ -782,36 +836,36 @@ Follow these critical instructions for extraction:
 5.  **IDs**: ONLY use the `fieldId` provided in the schema. Do not invent your own.
 
 You MUST respond with a JSON object enclosed in a ```json code block.
-The root object must have one key: `""extractedFields""`, an array of the top-level fields you extracted.
+The root object must have one key: `""ExtractedFields""`, an array of the top-level fields you extracted.
 
 Each object in the array must follow this structure:
-- `""thinking""`: A brief justification for the extracted value.
-- `""fieldId""`: The exact ID of the field from the schema.
-- `""fieldValue""`: The extracted value, formatted according to its `dataType`. Use `null` if allowed and not found.
-- `""conditionalExtractedFields""`: An array of conditionally extracted fields, following this same structure. If no conditional rules were met, provide an empty array `[]`.
+- `""Thinking""`: A brief justification for the extracted value.
+- `""FieldId""`: The exact ID of the field from the schema.
+- `""FieldValue""`: The extracted value, formatted according to its `dataType`. Use `null` if allowed and not found.
+- `""ConditionalExtractedFields""`: An array of conditionally extracted fields, following this same structure. If no conditional rules were met, provide an empty array `[]`.
 
 Example Response Format:
 ```json
 {{
   ""extractedFields"": [
     {{
-      ""thinking"": ""The customer confirmed they were the account holder."",
-      ""fieldId"": ""is-account-holder-id"",
-      ""fieldValue"": true,
-      ""conditionalExtractedFields"": [
+      ""Thinking"": ""The customer confirmed they were the account holder."",
+      ""FieldId"": ""is-account-holder-id"",
+      ""FieldValue"": true,
+      ""ConditionalExtractedFields"": [
         {{
-          ""thinking"": ""Since they are the account holder, I need to extract their name which was mentioned at the start."",
-          ""fieldId"": ""account-holder-name-id"",
-          ""fieldValue"": ""John Doe"",
-          ""conditionalExtractedFields"": []
+          ""Thinking"": ""Since they are the account holder, I need to extract their name which was mentioned at the start."",
+          ""FieldId"": ""account-holder-name-id"",
+          ""FieldValue"": ""John Doe"",
+          ""ConditionalExtractedFields"": []
         }}
       ]
     }},
     {{
-       ""thinking"": ""The customer mentioned the reason for their call was about billing."",
-       ""fieldId"": ""call-reason-id"",
-       ""fieldValue"": ""Billing Inquiry"",
-       ""conditionalExtractedFields"": []
+       ""Thinking"": ""The customer mentioned the reason for their call was about billing."",
+       ""FieldId"": ""call-reason-id"",
+       ""FieldValue"": ""Billing Inquiry"",
+       ""ConditionalExtractedFields"": []
     }}
   ]
 }}
@@ -906,7 +960,13 @@ Example Response Format:
 
                 try
                 {
-                    var extractionResponse = JsonSerializer.Deserialize<ConversationExtractionLLMResponse>(jsonBlock, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        Converters = { new ObjectToPrimitiveConverter() }
+                    };
+
+                    var extractionResponse = JsonSerializer.Deserialize<ConversationExtractionLLMResponse>(jsonBlock, options);
                     if (extractionResponse == null)
                     {
                         return result.SetFailureResult(
