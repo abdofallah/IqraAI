@@ -21,6 +21,7 @@ using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
+using IqraInfrastructure.Managers.Conversation.Session.Helpers;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -64,6 +65,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
         private readonly RegionManager _regionManager;
         private readonly UserBillingUsageManager _billingProcessingManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
+        private readonly ConversationSessionPostAnalysisService _conversationSessionPostAnalysisService;
         private readonly UserUsageValidationManager _userUsageValidationManager;
 
         // combine the two
@@ -89,6 +91,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             RegionManager regionManager,
             UserBillingUsageManager billingProcessingManager,
             CampaignActionExecutorService campaignActionExecutorService,
+            ConversationSessionPostAnalysisService conversationSessionPostAnalysisService,
             UserUsageValidationManager userUsageValidationManager
         )
         {
@@ -106,6 +109,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             _regionManager = regionManager;
             _billingProcessingManager = billingProcessingManager;
             _campaignActionExecutorService = campaignActionExecutorService;
+            _conversationSessionPostAnalysisService = conversationSessionPostAnalysisService;
             _userUsageValidationManager = userUsageValidationManager;
         }
 
@@ -669,6 +673,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     _billingProcessingManager,
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
                     _campaignActionExecutorService,
+                    _conversationSessionPostAnalysisService,
 
                     queueData: queueData
                 );

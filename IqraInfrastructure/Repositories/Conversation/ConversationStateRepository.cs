@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.PostAnalysis;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.Conversations;
@@ -494,6 +495,38 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
+        public async Task<bool> UpdatePostAnalaysisStatusAsync(string conversationid, ConversationPostAnalysisStatusEnum status)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationid);
+                var update = Builders<ConversationState>.Update.Set(c => c.PostAnalysis.Status, status);
+                var result = await _conversationStateCollection.UpdateOneAsync(filter, update);
+                return result.IsAcknowledged && result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating post analysis status of conversation {Id} to {Status}", conversationid, status);
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdatePostAnalysisAsync(string sessionId, ConversationPostAnalysis postAnalysis)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, sessionId);
+                var update = Builders<ConversationState>.Update.Set(c => c.PostAnalysis, postAnalysis);
+                var result = await _conversationStateCollection.UpdateOneAsync(filter, update);
+
+                return result.IsAcknowledged && result.ModifiedCount > 0;
+            }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error updating post analysis of conversation {Id}", sessionId);
+                return false;
+            }
+        }
+
         public async Task<(List<ConversationState> Items, bool HasMore, long TotalCount)> GetConversationStatesPaginatedAsync(
             long businessId,
             GetBusinessConversationsRequestFilterModel filter,
@@ -589,5 +622,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                 return (new List<ConversationState>(), false, 0);
             }
         }
+
+        
     }
 }

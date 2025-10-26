@@ -9,5 +9,6 @@
         public List<string> Numbers { get; set; } = new List<string>();
         public BusinessAppRouteAgent Agent { get; set; } = new BusinessAppRouteAgent();
         public BusinessAppRouteActions Actions { get; set; } = new BusinessAppRouteActions();
+        public BusinessAppCampaignPostAnalysis PostAnalysis { get; set; } = new BusinessAppCampaignPostAnalysis();
     }
 }

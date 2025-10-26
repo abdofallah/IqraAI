@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.PostAnalysis;
 using IqraCore.Entities.Conversation.Turn;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -34,5 +35,7 @@ namespace IqraCore.Entities.Conversation
         public List<ConversationTurn> Turns { get; set; } = new List<ConversationTurn>();
 
         public ConversationMetrics Metrics { get; set; } = new ConversationMetrics();
+
+        public ConversationPostAnalysis PostAnalysis { get; set; } = new ConversationPostAnalysis();
     }
 }

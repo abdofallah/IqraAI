@@ -7,8 +7,6 @@ using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Context.Action;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
-using IqraCore.Entities.Conversation.Logs;
-using IqraCore.Entities.Conversation.Logs.Enums;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
@@ -39,6 +37,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly ConversationAudioRepository _audioStorageManager;
         private readonly UserBillingUsageManager _userBillingUsageManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
+        private readonly ConversationSessionPostAnalysisService _conversationSessionPostAnalysisService;
 
         private readonly string _sessionId;
         private readonly DateTime _createdAt;
@@ -124,6 +123,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             UserBillingUsageManager billingProcessingManager,
             ILoggerFactory loggerFactory,
             CampaignActionExecutorService campaignActionExecutorService,
+            ConversationSessionPostAnalysisService conversationSessionPostAnalysisService,
 
             CallQueueData? queueData = null,
             WebSessionData? webSessionData = null
@@ -144,6 +144,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             _logger = _sessionLoggerFactory.CreateLogger<ConversationSessionOrchestrator>();
             _campaignActionExecutorService = campaignActionExecutorService;
+            _conversationSessionPostAnalysisService = conversationSessionPostAnalysisService;
 
             if (IsCallInitiated)
             {
@@ -188,10 +189,30 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 if (IsCallInitiated)
                 {
                     conversationState.QueueId = _sessionCallQueueData!.Id;
+
+                    if (IsOutboundCall)
+                    {
+                        if (!string.IsNullOrWhiteSpace(_sessionCallQueueTelephonyCampaignData!.PostAnalysis.PostAnalysisId))
+                        {
+                            conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.Waiting;
+                        }
+                    }
+                    else if (IsInboundCall)
+                    {
+                        if (!string.IsNullOrWhiteSpace(_sessionCallQueueRouteData!.PostAnalysis.PostAnalysisId))
+                        {
+                            conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.Waiting;
+                        }
+                    }
                 }
                 else if (IsWebInitiated)
                 {
                     conversationState.WebSessionId = _sessionWebSessionData!.Id;
+
+                    if (!string.IsNullOrWhiteSpace(_sessionWebSessionCampaignData!.PostAnalysis.PostAnalysisId))
+                    {
+                        conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.Waiting;
+                    }
                 }
 
                 await _conversationStateRepository.CreateAsync(conversationState);
@@ -815,6 +836,30 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error invoking session actions for session {SessionId}", SessionId);
+            }
+
+            
+            try
+            {
+                if (IsCallInitiated)
+                {
+                    if (IsOutboundCall)
+                    {
+                        _ = _conversationSessionPostAnalysisService.PerformTelephonyOutboundSessionPostCallAnalysis(SessionId, _sessionBusinessAppData, (_sessionCallQueueData as OutboundCallQueueData)!, _sessionCallQueueTelephonyCampaignData!);
+                    }
+                    else if (IsInboundCall)
+                    {
+                        _ = _conversationSessionPostAnalysisService.PerformTelephonyInboundSessionPostCallAnalysis(SessionId, _sessionBusinessAppData, (_sessionCallQueueData as InboundCallQueueData)!, _sessionCallQueueRouteData!);
+                    }
+                }
+                else if (IsWebInitiated)
+                {
+                    _ = _conversationSessionPostAnalysisService.PerformWebSessionPostCallAnalysis(SessionId, _sessionBusinessAppData, _sessionWebSessionData!, _sessionWebSessionCampaignData!);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invoking session post call analysis for session {SessionId}", SessionId);
             }
 
             // On SessionEnded Cleanup for Parent Manager
