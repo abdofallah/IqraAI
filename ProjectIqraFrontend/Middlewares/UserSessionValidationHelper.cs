@@ -77,6 +77,14 @@ namespace ProjectIqraFrontend.Middlewares
 
             try
             {
+                if (!whiteLabelContext.IsWhiteLabelRequest)
+                {
+                    return result.SetFailureResult(
+                        "ValidateWhiteLabelCustomerSessionAsync:NOT_WHITE_LABEL_REQUEST",
+                        "Not a white-label request"
+                    );
+                }
+
                 var sessionCookie = Request.Cookies["wl_session"];
                 if (string.IsNullOrEmpty(sessionCookie))
                 {

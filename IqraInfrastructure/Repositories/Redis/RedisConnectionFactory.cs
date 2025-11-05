@@ -49,6 +49,9 @@ namespace IqraInfrastructure.Repositories.Redis
                 try
                 {
                     var options = ConfigurationOptions.Parse(_connectionString);
+                    options.AsyncTimeout = 500;
+                    options.ConnectTimeout = 500;
+                    options.SyncTimeout = 500;
                     options.AbortOnConnectFail = false;
 
                     if (options.DefaultDatabase != null)
