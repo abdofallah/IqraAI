@@ -1,5 +1,8 @@
 ﻿using IqraCore.Entities.Frontend;
+using IqraCore.Entities.WhiteLabel;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Repositories.User;
+using IqraInfrastructure.Repositories.WhiteLabel;
 using Microsoft.AspNetCore.Mvc;
 using ProjectIqraFrontend.Middlewares;
 
@@ -10,18 +13,38 @@ namespace ProjectIqraFrontend.Controllers.App
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserManager _userManager;
         private readonly ViewLinkConfiguration _viewLinkConfiguration;
+        private readonly WhiteLabelContext _whiteLabelContext;
+        private readonly WhiteLabelCustomerSessionRepository _wlSessionRepo;
+        private readonly UserRepository _userRepository;
 
-        public AppViewController(UserSessionValidationHelper userSessionValidationHelper, UserManager userManager, ViewLinkConfiguration viewLinkConfiguration)
-        {
+        public AppViewController(
+            UserSessionValidationHelper userSessionValidationHelper,
+            UserManager userManager,
+            ViewLinkConfiguration viewLinkConfiguration,
+            WhiteLabelContext whiteLabelContext,
+            WhiteLabelCustomerSessionRepository wlSessionRepo,
+            UserRepository userRepository
+        ) {
             _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;
             _viewLinkConfiguration = viewLinkConfiguration;
+            _whiteLabelContext = whiteLabelContext;
+            _wlSessionRepo = wlSessionRepo;
+            _userRepository = userRepository;
         }
+
 
         [HttpGet("/login")]
         public async Task<IActionResult> Login()
         {
-            if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
+            if (_whiteLabelContext.IsWhiteLabelRequest)
+            {
+                if (!(await _userSessionValidationHelper.ValidateWhiteLabelCustomerSessionAsync(Request, _whiteLabelContext)).Success)
+                {
+                    return View("WhiteLabel/Authentication");
+                }
+            }
+            else if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
             {
                 return View("Authentication");
             }
@@ -54,6 +77,7 @@ namespace ProjectIqraFrontend.Controllers.App
         [HttpGet("/logout")]
         public IActionResult Logout()
         {
+            Response.Cookies.Delete("wl_session");
             Response.Cookies.Delete("sessionId");
             Response.Cookies.Delete("authKey");
             Response.Cookies.Delete("userEmail");
@@ -69,14 +93,52 @@ namespace ProjectIqraFrontend.Controllers.App
         [HttpGet("/whitelabel")]
         public async Task<IActionResult> App()
         {
-            if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
+            string originalPath = Request.Path + Request.QueryString;
+
+            if (_whiteLabelContext.IsWhiteLabelRequest)
             {
-                string originalPath = Request.Path + Request.QueryString;
-                return RedirectToAction("Login", new { redirectTo = originalPath });
+                try
+                {
+                    var whiteLabelCustomerValidationResult = await _userSessionValidationHelper.ValidateWhiteLabelCustomerSessionAsync(Request, _whiteLabelContext);
+                    if (!whiteLabelCustomerValidationResult.Success)
+                    {
+                        RedirectToAction("Login", new { redirectTo = originalPath });
+                    }
+                    var sessionData = whiteLabelCustomerValidationResult.Data!;
+
+                    var masterUser = await _userRepository.GetUserWhiteLabelData(sessionData.MasterUserEmail);
+                    var customer = masterUser?.WhiteLabel.Customers.FirstOrDefault(c => c.Email == sessionData.CustomerEmail);
+
+                    if (customer == null)
+                    {
+                        return RedirectToAction("Logout");
+                    }
+
+                    if (customer.AssignedBusinesses.Count == 0)
+                    {
+                        return RedirectToAction("Logout");
+                    }
+
+                    var firstBusinessId = customer.AssignedBusinesses.FirstOrDefault();
+                    if (firstBusinessId > 0)
+                    {
+                        return RedirectToAction("Business", new { businessId = firstBusinessId });
+                    }
+                }
+                catch (Exception ex)
+                {
+                     return RedirectToAction("Logout");
+                }
+            }
+            else
+            {
+                if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
+                {
+                    return RedirectToAction("Login", new { redirectTo = originalPath });
+                }
             }
 
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
-
             return View("Home/Home");
         }
 
@@ -86,15 +148,25 @@ namespace ProjectIqraFrontend.Controllers.App
             return RedirectToAction("App");
         }
 
-
         [HttpGet("/business/{businessId}")]
         [HttpGet("/business/{businessId}/{*tabPath}")]
         public async Task<IActionResult> Business(long? businessId)
         {
-            if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
+            string originalPath = Request.Path + Request.QueryString;
+
+            if (_whiteLabelContext.IsWhiteLabelRequest)
             {
-                string originalPath = Request.Path + Request.QueryString;
-                return RedirectToAction("Login", new { redirectTo = originalPath });
+                if (!(await _userSessionValidationHelper.ValidateWhiteLabelCustomerSessionAsync(Request, _whiteLabelContext)).Success)
+                {
+                    RedirectToAction("Login", new { redirectTo = originalPath });
+                }
+            }
+            else
+            {
+                if (!(await _userSessionValidationHelper.ValidateUserSessionAsync(Request)).Success)
+                {
+                    return RedirectToAction("Login", new { redirectTo = originalPath });
+                }
             }
 
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);

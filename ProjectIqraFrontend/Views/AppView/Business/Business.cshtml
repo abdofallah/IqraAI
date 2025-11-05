@@ -1,10 +1,24 @@
-﻿<!DOCTYPE html>
+﻿@using IqraCore.Entities.Frontend
+@using IqraCore.Entities.WhiteLabel
+@inject WhiteLabelContext Ctx
+@inject ViewLinkConfiguration ViewLinks
+@{
+    // Resolve branding information from the context, with fallbacks.
+    var platformName = Ctx.RequestContext?.Branding?.PlatformName ?? "Iqra AI";
+    var platformLogo = Ctx.RequestContext?.Branding?.PlatformLogo;
+    var platformIcon = Ctx.RequestContext?.Branding?.PlatformIcon;
+    var customCSS = Ctx.RequestContext?.Branding?.PlatformCustomCSS;
+
+    var logoUrl = !string.IsNullOrEmpty(platformLogo) ? $"{ViewLinks.BusinessLogoURL}/{platformLogo}.webp" : "/img/logo/logo-colored-light.png";
+    var iconUrl = !string.IsNullOrEmpty(platformIcon) ? $"{ViewLinks.BusinessLogoURL}/{platformIcon}.webp" : "/img/favicon/favicon.ico";
+}
+<!DOCTYPE html>
 <html data-bs-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | Iqra AI</title>
+    <title>Dashboard | @platformName</title>
 
     <link href="~/libs/jquery-ui-1.13.3-dist/jquery-ui.min.css" rel="stylesheet">
     <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
@@ -15,11 +29,18 @@
     <link href="~/css/style.css" rel="stylesheet">
 
     <link rel="icon" type="image/png" href="/img/favicon/favicon-96x96.png" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/img/favicon/favicon.svg" /> 
-    <link rel="shortcut icon" href="/img/favicon/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/img/favicon/favicon.svg" />
+    <link rel="shortcut icon" type="@(iconUrl.EndsWith(".webp") ? "image/webp" : "image/x-icon")" href="@iconUrl" />
     <link rel="apple-touch-icon" sizes="180x180" href="/img/favicon/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-title" content="Iqra" />
+    <meta name="apple-mobile-web-app-title" content="@platformName" />
     <link rel="manifest" href="/img/favicon/site.webmanifest" />
+
+    @if (!string.IsNullOrWhiteSpace(customCSS))
+    {
+        <style>
+            @Html.Raw(customCSS)
+        </style>
+    }
 
     <style id="dynamicAgentCardCSS"></style>
     <style id="dynamicRoutingCardCSS"></style>
@@ -46,7 +67,7 @@
         <nav class="nav">
             <div class="upper-navigation">
                 <a href="/" class="nav_logo">
-                    <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
+                    <img class="nav_logo-icon" src="@logoUrl">
                 </a>
                 <div class="nav_list">
                     <a class="nav_link active" for="overview-tab" nav-url-path="overview" is-default="true" is-new-tutorial-disabled="true">

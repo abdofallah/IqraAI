@@ -2,6 +2,7 @@ using HarmonyLib;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Frontend;
 using IqraCore.Entities.Payment.Providers.AmwalPay;
+using IqraCore.Entities.WhiteLabel;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Helpers.User;
@@ -26,6 +27,7 @@ using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Managers.WhiteLabel;
 using IqraInfrastructure.Patches;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Billing;
@@ -96,6 +98,7 @@ namespace ProjectIqraFrontend
                     ClientScriptURL = appConfig["AmwalPay:ClientScriptURL"]
                 };
             });
+            builder.Services.AddScoped<WhiteLabelContext>();
 
             // Repositories
             SetupRepositories(builder, appConfig);
@@ -205,6 +208,8 @@ namespace ProjectIqraFrontend
 
             app.UseForwardedHeaders();
             app.UseRouting();
+
+            app.UseWhiteLabelResolver();
 
             app.UseCors();
 
@@ -485,16 +490,15 @@ namespace ProjectIqraFrontend
             });
 
 
-            builder.Services.AddSingleton<BusinessDomainVestaCPRepository>((sp) =>
+            builder.Services.AddSingleton<WhiteLabelDomainVestaCPRepository>((sp) =>
             {
-                return new BusinessDomainVestaCPRepository(
-                    sp.GetRequiredService<ILogger<BusinessDomainVestaCPRepository>>(),
+                return new WhiteLabelDomainVestaCPRepository(
+                    sp.GetRequiredService<ILogger<WhiteLabelDomainVestaCPRepository>>(),
                     appConfig["BusinessDomainHostingRepository:Hostname"],
                     appConfig["BusinessDomainHostingRepository:AdminUsername"],
                     appConfig["BusinessDomainHostingRepository:BusinessesUsername"],
                     appConfig["BusinessDomainHostingRepository:AdminPassword"],
                     appConfig["BusinessDomainHostingRepository:DomainIP"],
-                    appConfig["BusinessDomainHostingRepository:IqraBusinessDomain"],
                     appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Endpoint"],
                     appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Username"],
                     appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Password"],
@@ -596,6 +600,17 @@ namespace ProjectIqraFrontend
                     appConfig["MongoDatabase:WhiteLabelDomainRepositoryDatabaseName"]
                 );
             });
+
+            builder.Services.AddSingleton<WhiteLabelCustomerSessionRepository>((sp) =>
+            {
+                return new WhiteLabelCustomerSessionRepository(
+                    sp.GetRequiredService<ILogger<WhiteLabelCustomerSessionRepository>>(),
+                    new RedisConnectionFactory(
+                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:WhiteLabelCustomerSessionDatabaseIndex"]}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    )
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -604,7 +619,9 @@ namespace ProjectIqraFrontend
             {
                 return new UserSessionValidationHelper(
                     sp.GetRequiredService<UserManager>(),
-                    sp.GetRequiredService<BusinessManager>()
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<WhiteLabelCustomerSessionRepository>(),
+                    sp.GetRequiredService<UserRepository>()
                 );
             });
             builder.Services.AddSingleton<UserAPIValidationHelper>((sp) =>
@@ -936,7 +953,7 @@ namespace ProjectIqraFrontend
                 );
             });
 
-            builder.Services.AddScoped<UserWhiteLabelManager>((sp) =>
+            builder.Services.AddSingleton<UserWhiteLabelManager>((sp) =>
             {
                 return new UserWhiteLabelManager(
                     sp.GetRequiredService<ILogger<UserWhiteLabelManager>>(),
@@ -944,7 +961,21 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessLogoRepository>(),
                     sp.GetRequiredService<WhiteLabelDomainRepository>(),
-                    sp.GetRequiredService<IMongoClient>()
+                    sp.GetRequiredService<IMongoClient>(),
+                    sp.GetRequiredService<WhiteLabelDomainVestaCPRepository>(),
+                    sp.GetRequiredService<WhiteLabelDomainService>()
+                );
+            });
+            builder.Services.AddSingleton<WhiteLabelDomainService>((sp) =>
+            {
+                return new WhiteLabelDomainService(
+                    new RedisConnectionFactory(
+                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:WhiteLabelDomainContextCache"]}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    ),
+                    sp.GetRequiredService<WhiteLabelDomainRepository>(),
+                    sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<ILogger<WhiteLabelDomainService>>()
                 );
             });
         }
@@ -987,10 +1018,7 @@ namespace ProjectIqraFrontend
             return serviceDescriptors.ToList();
         }
 
-
-
-
-
+        // --- Patch for the IronPdf.License.LicenseKey Property ---
         [HarmonyPatch("IronPdf.License", "IsLicensed", MethodType.Getter)]
         public class IsLicensed_Patch
         {
@@ -1006,8 +1034,6 @@ namespace ProjectIqraFrontend
                 return false;
             }
         }
-
-        // --- Patch for the IronPdf.License.LicenseKey Property ---
         // This is a separate patch for the second property you wanted to modify.
         [HarmonyPatch("IronPdf.License", "LicenseKey", MethodType.Getter)]
         public class LicenseKey_Patch

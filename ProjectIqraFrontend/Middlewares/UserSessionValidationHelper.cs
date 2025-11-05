@@ -1,8 +1,12 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
+using IqraCore.Entities.User.WhiteLabel.Customer;
+using IqraCore.Entities.WhiteLabel;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Repositories.User;
+using IqraInfrastructure.Repositories.WhiteLabel;
 
 namespace ProjectIqraFrontend.Middlewares
 {
@@ -10,17 +14,39 @@ namespace ProjectIqraFrontend.Middlewares
     {
         public UserData? userData { get; set; }
         public BusinessData? businessData { get; set; }
+        public UserWhiteLabelCustomerData? userWhiteLabelCustomerData { get; set; }
+    }
+
+    public class ValidateWhiteLabelCustomerSessionResult
+    {
+        public string MasterUserEmail { get; set; }
+        public string CustomerEmail { get; set; }
+    }
+
+    public class ValidateUserSessionAndGetUserAsync
+    {
+        public UserData? userData { get; set; }
+        public UserWhiteLabelCustomerData? userWhiteLabelCustomerData { get; set; }
     }
 
     public class UserSessionValidationHelper
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
+        private readonly WhiteLabelCustomerSessionRepository _whiteLabelCustomerSessionRepository;
+        private readonly UserRepository _userRepository;
 
-        public UserSessionValidationHelper(UserManager userManager, BusinessManager businessManager)
+        public UserSessionValidationHelper(
+            UserManager userManager,
+            BusinessManager businessManager,
+            WhiteLabelCustomerSessionRepository wlSessionRepo,
+            UserRepository userRepository
+        )
         {
             _userManager = userManager;
             _businessManager = businessManager;
+            _whiteLabelCustomerSessionRepository = wlSessionRepo;
+            _userRepository = userRepository;
         }
 
         public async Task<FunctionReturnResult<string?>> ValidateUserSessionAsync(HttpRequest Request)
@@ -45,23 +71,85 @@ namespace ProjectIqraFrontend.Middlewares
             return result.SetSuccessResult(userEmail);
         }
 
-        public async Task<FunctionReturnResult<UserData>> ValidateUserSessionAndGetUserAsync(HttpRequest Request, bool checkUserDisabled = true)
+        public async Task<FunctionReturnResult<ValidateWhiteLabelCustomerSessionResult?>> ValidateWhiteLabelCustomerSessionAsync(HttpRequest Request, WhiteLabelContext whiteLabelContext)
         {
-            var result = new FunctionReturnResult<UserData>();
+            var result = new FunctionReturnResult<ValidateWhiteLabelCustomerSessionResult?>();
 
-            // Validate session
-            var validateUserSessionResult = await ValidateUserSessionAsync(Request);
-            if (!validateUserSessionResult.Success)
+            try
             {
+                var sessionCookie = Request.Cookies["wl_session"];
+                if (string.IsNullOrEmpty(sessionCookie))
+                {
+                    return result.SetFailureResult(
+                        "ValidateWhiteLabelCustomerSessionAsync:INVALID_SESSION_DATA",
+                        "Invalid session data"
+                    );
+                }
+
+                var sessionData = await _whiteLabelCustomerSessionRepository.RetrieveSessionAsync(sessionCookie);
+                if (sessionData == null)
+                {
+                    return result.SetFailureResult(
+                        "ValidateWhiteLabelCustomerSessionAsync:INVALID_SESSION_DATA",
+                        "Session does not exist"
+                    );
+                }
+
+                return result.SetSuccessResult(new ValidateWhiteLabelCustomerSessionResult()
+                {
+                    MasterUserEmail = sessionData.MasterUserEmail,
+                    CustomerEmail = sessionData.CustomerEmail
+                });
+            }
+            catch (Exception ex) {
                 return result.SetFailureResult(
-                    $"ValidateUserSessionAndGetUserAsync:{validateUserSessionResult.Code}",
-                    validateUserSessionResult.Message
+                    "ValidateWhiteLabelCustomerSessionAsync:EXCEPTION",
+                    ex.Message
                 );
             }
-            var userEmail = validateUserSessionResult.Data!;
+        }
+
+        public async Task<FunctionReturnResult<ValidateUserSessionAndGetUserAsync>> ValidateUserSessionAndGetUserAsync(
+            HttpRequest Request,
+            bool checkUserDisabled = true,
+            WhiteLabelContext? whiteLabelContext = null
+        )
+        {
+            var result = new FunctionReturnResult<ValidateUserSessionAndGetUserAsync>();
+
+            string? userEmail = null;
+            string? whiteLabelCustomerEmail = null;
+
+            if (whiteLabelContext != null && whiteLabelContext.IsWhiteLabelRequest)
+            {
+                var validateWhiteLabelCustomerSessionResult = await ValidateWhiteLabelCustomerSessionAsync(Request, whiteLabelContext);
+                if (!validateWhiteLabelCustomerSessionResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ValidateUserSessionAndGetUserAsync:{validateWhiteLabelCustomerSessionResult.Code}",
+                        validateWhiteLabelCustomerSessionResult.Message
+                    );
+                }
+
+                userEmail = validateWhiteLabelCustomerSessionResult.Data!.MasterUserEmail;
+                whiteLabelCustomerEmail = validateWhiteLabelCustomerSessionResult.Data!.CustomerEmail;
+            }
+            else
+            {
+                // Validate session
+                var validateUserSessionResult = await ValidateUserSessionAsync(Request);
+                if (!validateUserSessionResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ValidateUserSessionAndGetUserAsync:{validateUserSessionResult.Code}",
+                        validateUserSessionResult.Message
+                    );
+                }
+                userEmail = validateUserSessionResult.Data!;
+            }
 
             // Get and validate user
-            var userData = await _userManager.GetFullUserByEmail(userEmail);
+            UserData? userData = await _userManager.GetFullUserByEmail(userEmail);
             if (userData == null)
             {
                 return result.SetFailureResult("ValidateUserSessionAndGetUserAsync:USER_DATA_NOT_FOUND", "User not found");
@@ -71,11 +159,37 @@ namespace ProjectIqraFrontend.Middlewares
             {
                 return result.SetFailureResult(
                     "ValidateUserSessionAndGetUserAsync:USER_DISABLED",
-                    $"User is disabled: {userData.Permission.UserDisabledReason}"
+                    $"User is disabled{(string.IsNullOrEmpty(userData.Permission.UserDisabledReason) ? "" : ": " + userData.Permission.UserDisabledReason)}"
                 );
             }
 
-            return result.SetSuccessResult(userData);
+            // Get and validate white label customer
+            UserWhiteLabelCustomerData? userWhiteLabelCustomerData = null;
+            if (whiteLabelContext != null && whiteLabelContext.IsWhiteLabelRequest)
+            {
+                userWhiteLabelCustomerData = userData.WhiteLabel.Customers.FirstOrDefault(c => c.Email == whiteLabelCustomerEmail);
+                if (userWhiteLabelCustomerData == null)
+                {
+                    return result.SetFailureResult(
+                        "ValidateUserSessionAndGetUserAsync:WHITE_LABEL_CUSTOMER_NOT_FOUND",
+                        "White label customer not found"
+                    );
+                }
+
+                if (checkUserDisabled && userWhiteLabelCustomerData.Permission.DisabledAt != null)
+                {
+                    return result.SetFailureResult(
+                        "ValidateUserSessionAndGetUserAsync:WHITE_LABEL_CUSTOMER_DISABLED",
+                        $"White label customer is disabled{(string.IsNullOrEmpty(userWhiteLabelCustomerData.Permission.DisabledReason) ? "" : ": " + userWhiteLabelCustomerData.Permission.DisabledReason)}"
+                    );
+                }
+            }
+
+            return result.SetSuccessResult(new ValidateUserSessionAndGetUserAsync()
+            {
+                userData = userData,
+                userWhiteLabelCustomerData = userWhiteLabelCustomerData
+            });
         }
 
         public async Task<FunctionReturnResult<ValidateUserAndBusinessResult?>> ValidateUserSessionAndGetUserAndBusinessAsync(
@@ -91,12 +205,14 @@ namespace ProjectIqraFrontend.Middlewares
 
             bool checkBusinessIsDisabled = true,
             bool checkBusinessCanBeEdited = false,
-            bool checkBusinessCanBeDeleted = false
+            bool checkBusinessCanBeDeleted = false,
+
+            WhiteLabelContext? whiteLabelContext = null
         )
         {
             var result = new FunctionReturnResult<ValidateUserAndBusinessResult?>();
 
-            var userSessionValidationResult = await ValidateUserSessionAndGetUserAsync(Request, checkUserDisabled);
+            var userSessionValidationResult = await ValidateUserSessionAndGetUserAsync(Request, checkUserDisabled, whiteLabelContext);
             if (!userSessionValidationResult.Success)
             {
                 return result.SetFailureResult(
@@ -104,7 +220,8 @@ namespace ProjectIqraFrontend.Middlewares
                     userSessionValidationResult.Message
                 );
             }
-            var userData = userSessionValidationResult.Data!;
+            var userData = userSessionValidationResult.Data!.userData!;
+            var whiteLabelCustomerData = userSessionValidationResult.Data!.userWhiteLabelCustomerData;
 
             // Check User Businesses Full Enabled
             if (checkUserBusinessesDisabled && userData.Permission.Business.DisableBusinessesAt != null)
@@ -180,7 +297,29 @@ namespace ProjectIqraFrontend.Middlewares
                 );
             }
 
-            return result.SetSuccessResult(new ValidateUserAndBusinessResult() { userData = userData, businessData = businessData });
+            // VALIDATE WHITE LABEL CUSTOMER BUSINESS RELATED ETC
+            if (whiteLabelContext != null && whiteLabelContext.IsWhiteLabelRequest)
+            {
+                if (!whiteLabelCustomerData!.AssignedBusinesses.Contains(businessId))
+                {
+                    return result.SetFailureResult(
+                        "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESS_NOT_ASSIGNED_TO_WHITE_LABEL_CUSTOMER",
+                        $"Business is not assigned to the white label customer"
+                    );
+                }
+
+                if (businessData.WhiteLabelAssignedCustomerEmail != whiteLabelCustomerData.Email)
+                {
+                    return result.SetFailureResult(
+                        "ValidateUserSessionAndGetUserAndBusinessAsync:BUSINESS_NOT_ASSIGNED_TO_WHITE_LABEL_CUSTOMER",
+                        $"Business is not assigned to the white label customer"
+                    );
+                }
+
+                // TODO in future check for other permissions
+            }
+
+            return result.SetSuccessResult(new ValidateUserAndBusinessResult() { userData = userData, userWhiteLabelCustomerData = whiteLabelCustomerData, businessData = businessData });
         }
     }
 }

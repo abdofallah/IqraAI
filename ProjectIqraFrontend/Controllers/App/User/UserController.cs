@@ -31,7 +31,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                         validationResult.Message
                     );
                 }
-                var userData = validationResult.Data!;
+                var userData = validationResult.Data!.userData!;
 
                 GetMasterUserDataModel userDataModel = new GetMasterUserDataModel(userData);
 

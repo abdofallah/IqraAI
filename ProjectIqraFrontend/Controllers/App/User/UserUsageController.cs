@@ -37,7 +37,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                         validationResult.Message
                     );
                 }
-                var userData = validationResult.Data!;
+                var userData = validationResult.Data!.userData!;
 
                 if (request == null)
                 {
@@ -82,7 +82,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                         validationResult.Message
                     );
                 }
-                var userData = validationResult.Data!;
+                var userData = validationResult.Data!.userData!;
 
                 var limit = Math.Clamp(request.Limit, 10, 50);
                 var usageHistoryResult = await _userUsageManager.GetUsageHistoryAsync(userData.Email, limit, request.NextCursor, request.PreviousCursor, request.BusinessIds);

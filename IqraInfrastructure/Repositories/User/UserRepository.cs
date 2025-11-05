@@ -158,6 +158,16 @@ namespace IqraInfrastructure.Repositories.User
             return await query;
         }
 
+        public async Task<UserData?> GetUserWhiteLabelData(string email)
+        {
+            var filter = Builders<UserData>.Filter.Eq(u => u.Email, email);
+            var projection = Builders<UserData>.Projection
+                .Include(u => u.Email)
+                .Include(u => u.WhiteLabel);
+
+            return await _usersCollection.Find(filter).Project<UserData>(projection).FirstOrDefaultAsync();
+        }
+
         public async Task<bool> TryIncrementConcurrencyUsageAsync(string userEmail, string featureKey, long maxConcurrency, UserBillingCycleConcurrencyFeatureUsage usageItem)
         {
             string arrayFieldPath = $"Billing.CurrentCycleUsage.CurrentConcurrencyFeatureUsage.{featureKey}";

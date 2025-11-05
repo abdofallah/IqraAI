@@ -32,7 +32,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                         validationResult.Message
                     );
                 }
-                var userData = validationResult.Data!;
+                var userData = validationResult.Data!.userData!;
 
                 string? friendlyName = formData["FriendlyName"];
                 if (string.IsNullOrWhiteSpace(friendlyName))
@@ -100,7 +100,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                         validationResult.Message
                     );
                 }
-                var userData = validationResult.Data!;
+                var userData = validationResult.Data!.userData!;
 
                 string? userApiKeyId = formData["apiKeyId"];
                 if (string.IsNullOrWhiteSpace(userApiKeyId))

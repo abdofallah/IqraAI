@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
+using IqraCore.Entities.WhiteLabel;
 using IqraCore.Models.User;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
@@ -18,6 +19,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
         private readonly BusinessManager _businessManager;
         private readonly UserWhiteLabelManager _userWhiteLabelManager;
         private readonly IMongoClient _mongoClient;
+        private readonly WhiteLabelContext _whiteLabelContext;
 
         public UserBusinessController(
             ILogger<UserBusinessController> logger,
@@ -25,7 +27,8 @@ namespace ProjectIqraFrontend.Controllers.App.User
             UserManager userManager,
             BusinessManager businessManager,
             UserWhiteLabelManager userWhiteLabelManager,
-            IMongoClient mongoClient
+            IMongoClient mongoClient,
+            WhiteLabelContext whiteLabelContext
         )
         {
             _logger = logger;
@@ -34,6 +37,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
             _businessManager = businessManager;
             _userWhiteLabelManager = userWhiteLabelManager;
             _mongoClient = mongoClient;
+            _whiteLabelContext = whiteLabelContext;
         }
 
 
@@ -52,7 +56,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                         validationResult.Message
                     );
                 }
-                var userData = validationResult.Data!;
+                var userData = validationResult.Data!.userData!;
 
                 UserPermission userPermission = userData.Permission;
                 if (userPermission.Business.DisableBusinessesAt != null)
@@ -95,7 +99,8 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     businessId,
                     checkUserDisabled: true,
                     checkUserBusinessesDisabled: true,
-                    checkBusinessIsDisabled: true
+                    checkBusinessIsDisabled: true,
+                    whiteLabelContext: _whiteLabelContext
                 );
                 if (!validationResult.Success)
                 {
@@ -151,7 +156,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                         validationResult.Message
                     );
                 }
-                var userData = validationResult.Data!;
+                var userData = validationResult.Data!.userData!;
 
                 // Check User Business Permissions
                 if (userData.Permission.Business.DisableBusinessesAt != null)
