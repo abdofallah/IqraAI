@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
+using IqraCore.Entities.WhiteLabel;
 using IqraCore.Models.Business.Conversations;
 using IqraCore.Models.Business.Queues;
 using IqraCore.Models.Business.Queues.Inbound;
@@ -9,21 +9,28 @@ using IqraCore.Models.Business.Queues.Outbound;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
+using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessConversationsController : Controller
     {
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
+        private readonly WhiteLabelContext _whiteLabelContext;
 
         public UserBusinessConversationsController(
+            UserSessionValidationHelper userSessionValidationHelper,
             UserManager userManager,
-            BusinessManager businessManager
+            BusinessManager businessManager,
+            WhiteLabelContext whiteLabelContext
         )
         {
+            _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;
             _businessManager = businessManager;
+            _whiteLabelContext = whiteLabelContext;
         }
 
         [HttpGet("/app/user/business/{businessId}/conversations/inbound/metadata")]
@@ -36,94 +43,45 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<PaginatedResult<InboundConversationMetadataModel>?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkUserBusinessesDisabled: true,
+                checkBusinessIsDisabled: true,
+                whiteLabelContext: _whiteLabelContext
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = "GetBusinessInboundConversationsMetaData:1";
-                result.Message = "Invalid session data";
+                result.Code = $"GetBusinessInboundConversationsMetaData:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
                 return result;
             }
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "GetBusinessInboundConversationsMetaData:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetBusinessInboundConversationsMetaData:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null)
-            {
-                result.Code = "GetBusinessInboundConversationsMetaData:4";
-                result.Message = "User does not have permission to access businesses";
-
-                if (!string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
-                {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "GetBusinessInboundConversationsMetaData:5";
-                result.Message = "User does not own this business.";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "GetBusinessInboundConversationsMetaData:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null)
-            {
-                result.Code = "GetBusinessInboundConversationsMetaData:6";
-                result.Message = "Business is currently disabled";
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Conversations.DisabledFullAt != null)
+            if (businessData.Permission.Conversations.DisabledFullAt != null)
             {
                 result.Code = "GetBusinessInboundConversationsMetaData:7";
                 result.Message = "Business conversations are currently disabled";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Conversations.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.DisabledFullReason;
                 }
 
                 return result;
             }
 
-            if (businessResult.Data.Permission.Conversations.Inbound.DisabledFullAt != null)
+            if (businessData.Permission.Conversations.Inbound.DisabledFullAt != null)
             {
                 result.Code = "GetBusinessInboundConversationsMetaData:8";
                 result.Message = "Business inbound conversations are currently disabled";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Conversations.Inbound.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.Inbound.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Conversations.Inbound.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Conversations.Inbound.DisabledFullReason;
                 }
 
                 return result;
@@ -158,94 +116,45 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<PaginatedResult<OutboundConversationMetadataModel>?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkUserBusinessesDisabled: true,
+                checkBusinessIsDisabled: true,
+                whiteLabelContext: _whiteLabelContext
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = "GetBusinessOutboundConversationsMetaData:1";
-                result.Message = "Invalid session data";
+                result.Code = $"GetBusinessOutboundConversationsMetaData:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
                 return result;
             }
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "GetBusinessOutboundConversationsMetaData:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetBusinessOutboundConversationsMetaData:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null)
-            {
-                result.Code = "GetBusinessOutboundConversationsMetaData:4";
-                result.Message = "User does not have permission to access businesses";
-
-                if (!string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
-                {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "GetBusinessOutboundConversationsMetaData:5";
-                result.Message = "User does not own this business.";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "GetBusinessOutboundConversationsMetaData:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null)
-            {
-                result.Code = "GetBusinessOutboundConversationsMetaData:6";
-                result.Message = "Business is currently disabled";
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Conversations.DisabledFullAt != null)
+            if (businessData.Permission.Conversations.DisabledFullAt != null)
             {
                 result.Code = "GetBusinessOutboundConversationsMetaData:7";
                 result.Message = "Business conversations are currently disabled";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Conversations.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.DisabledFullReason;
                 }
 
                 return result;
             }
 
-            if (businessResult.Data.Permission.Conversations.Outbound.DisabledFullAt != null)
+            if (businessData.Permission.Conversations.Outbound.DisabledFullAt != null)
             {
                 result.Code = "GetBusinessOutboundConversationsMetaData:8";
                 result.Message = "Business outbound conversations are currently disabled";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Conversations.Outbound.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.Outbound.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Conversations.Outbound.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Conversations.Outbound.DisabledFullReason;
                 }
 
                 return result;
@@ -275,81 +184,32 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<ConversationStateViewModel?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkUserBusinessesDisabled: true,
+                checkBusinessIsDisabled: true,
+                whiteLabelContext: _whiteLabelContext
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = "GetConversationState:1";
-                result.Message = "Invalid session data";
+                result.Code = $"GetConversationState:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
                 return result;
             }
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "GetConversationState:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetConversationState:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null)
-            {
-                result.Code = "GetConversationState:4";
-                result.Message = "User does not have permission to access businesses";
-
-                if (!string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
-                {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "GetConversationState:5";
-                result.Message = "User does not own this business.";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "GetConversationState:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null)
-            {
-                result.Code = "GetConversationState:6";
-                result.Message = "Business is currently disabled";
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Conversations.DisabledFullAt != null)
+            if (businessData.Permission.Conversations.DisabledFullAt != null)
             {
                 result.Code = "GetConversationState:7";
                 result.Message = "Business conversations are currently disabled";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Conversations.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.DisabledFullReason;
                 }
 
                 return result;

@@ -1,11 +1,9 @@
 ﻿using IqraCore.Entities.Helpers;
-using IqraCore.Models.Business.MakeCalls;
+using IqraCore.Entities.WhiteLabel;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Primitives;
 using ProjectIqraFrontend.Middlewares;
-using System.Text.Json;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
@@ -15,13 +13,21 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly UserUsageValidationManager _billingValidationManager;
+        private readonly WhiteLabelContext _whiteLabelContext;
 
-        public UserBusinessMakeCallController(UserSessionValidationHelper userSessionValidationHelper, UserManager userManager, BusinessManager businessManager, UserUsageValidationManager billingValidationManager)
+        public UserBusinessMakeCallController(
+            UserSessionValidationHelper userSessionValidationHelper,
+            UserManager userManager,
+            BusinessManager businessManager,
+            UserUsageValidationManager billingValidationManager,
+            WhiteLabelContext whiteLabelContext
+        )
         {
             _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;
             _businessManager = businessManager;
             _billingValidationManager = billingValidationManager;
+            _whiteLabelContext = whiteLabelContext;
         }
 
         [HttpPost("/app/user/business/{businessId}/calls/initiate")]
@@ -39,7 +45,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     businessId,
                     checkUserDisabled: true,
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    whiteLabelContext: _whiteLabelContext
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
