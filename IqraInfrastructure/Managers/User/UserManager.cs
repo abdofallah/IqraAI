@@ -338,7 +338,7 @@ namespace IqraInfrastructure.Managers.User
             }
 
             string subject = verifyEmailTemplate.Subject;
-            string body = verifyEmailTemplate.Body.Replace("{{verifyUrl}}", verifyUrl);
+            string body = verifyEmailTemplate.Body.Replace("{{VERIFY_URL}}", verifyUrl);
 
             if (!(await _emailManager.SendEmailAsync(userEmail, subject, body)))
             {
@@ -380,7 +380,7 @@ namespace IqraInfrastructure.Managers.User
             }
 
             string subject = resetPasswordEmailTemplate.Subject;
-            string body = resetPasswordEmailTemplate.Body.Replace("{{resetUrl}}", resetUrl);
+            string body = resetPasswordEmailTemplate.Body.Replace("{{RESET_URL}}", resetUrl);
 
             if (!(await _emailManager.SendEmailAsync(userEmail, subject, body)))
             {
@@ -419,7 +419,7 @@ namespace IqraInfrastructure.Managers.User
             }
 
             string subject = welcomeEmailTemplate.Subject;
-            string body = welcomeEmailTemplate.Body.Replace("{{firstName}}", firstName).Replace("{{lastName}}", lastName);
+            string body = welcomeEmailTemplate.Body.Replace("{{USER_NAME}}", $"{firstName} {lastName}");
 
             if (!(await _emailManager.SendEmailAsync(userEmail, subject, body)))
             {

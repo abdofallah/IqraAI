@@ -104,21 +104,21 @@ namespace ProjectIqraFrontend.Controllers.App
         }
 
         [HttpPost("/auth/verify")]
-        public async Task<FunctionReturnResult> Verify([FromQuery] string email, [FromQuery] string token)
+        public async Task<FunctionReturnResult> Verify([FromBody] VerifyUserRequestModel model)
         {
             var result = new FunctionReturnResult();
 
             try
             {
-                if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
+                if (!TryValidateModel(model))
                 {
                     return result.SetFailureResult(
-                        "Verify:INVALID_EMAIL_OR_TOKEN",
-                        "Invalid email or token"
+                        "Verify:MODEL_VALIDATION_FAILED",
+                        "Verify data validation failed:\n" + string.Join("\n", ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage))
                     );
                 }
 
-                UserData? user = await _userManager.GetFullUserByEmail(email);
+                UserData? user = await _userManager.GetFullUserByEmail(model.Email);
                 if (user == null)
                 {
                     return result.SetFailureResult(
@@ -135,7 +135,7 @@ namespace ProjectIqraFrontend.Controllers.App
                     );
                 }
 
-                if (user.VerifyEmailToken != token)
+                if (user.VerifyEmailToken != model.Token)
                 {
                     return result.SetFailureResult(
                         "Verify:INVALID_TOKEN",

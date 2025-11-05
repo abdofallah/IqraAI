@@ -91,7 +91,9 @@
 
         .login-container,
         .register-container,
-        .forget-container {
+        .forget-container,
+        .reset-container,
+        .verify-container {
             width: 80%;
             max-width: 800px;
             padding: 40px 40px;
@@ -104,7 +106,9 @@
 
         .login-container p,
         .register-container p,
-        .forget-container p {
+        .forget-container p,
+        .reset-container p,
+        .verify-container p{
             margin: 0;
         }
 
@@ -390,6 +394,60 @@
                 <p class="text-center"><a href="#" id="switchToLogin" class="text-decoration-none">Cancel</a></p>
             </div>
 
+            <!-- Reset Container -->
+            <div class="reset-container d-none fade">
+                <div class="mb-4 text-center">
+                    <h3 class="mb-1" style="letter-spacing: 2px;">Reset | <span style="opacity: 0.3;">Enter new password</span></h3>
+                </div>
+                <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
+                </div>
+                <div class="alert alert-success d-none fade mb-4" id="successMessage">
+                </div>
+                <form id="resetForm">
+                    <div class="mb-2">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="position-relative">
+                            <input type="password" class="form-control" id="password" required>
+                            <img src="/libs/fontawesome-pro-6.5.1-web-dist/svgs/solid/eye-slash.svg" class="toggle-password-icon" alt="Show password">
+                        </div>
+                        <div class="invalid-feedback">Password must be at least 8 characters.</div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="confirm-password" class="form-label">Confirm Password</label>
+                        <div class="position-relative">
+                            <input type="password" class="form-control" id="confirm-password" required>
+                            <img src="/libs/fontawesome-pro-6.5.1-web-dist/svgs/solid/eye-slash.svg" class="toggle-password-icon" alt="Show password">
+                        </div>
+                        <div class="invalid-feedback">Passwords do not match.</div>
+                    </div>
+                    <button type="submit" data-umami-event="Authentication | Confirm Reset Password Button" class="btn btn-primary btn-ic-span-align w-100 mb-4">
+                        <span>Reset Password</span>
+                        <div class="spinner-border save-button-spinner d-none" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Verify Container -->
+            <div class="verify-container d-none fade">
+                <div class="mb-4 text-center">
+                    <h3 class="mb-1" style="letter-spacing: 2px;">Confirm Verification</h3>
+                </div>
+                <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
+                </div>
+                <div class="alert alert-success d-none fade mb-4" id="successMessage">
+                </div>
+                <form id="verifyForm">
+                    <button type="submit" data-umami-event="Authentication | Verify Button" class="btn btn-primary btn-ic-span-align w-100 mb-4">
+                        <span>Verify Account</span>
+                        <div class="spinner-border save-button-spinner d-none" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </button>
+                </form>
+            </div>
+
             <!-- Footer --> 
             <div class="text-center footer-container position-absolute bottom-0 left-0 right-0 px-3" style="margin-bottom: 40px;">
                 <p class="m-0">Copyright &copy; 2025 Iqra AI | <a href="https://badal.om" target="_blank">Badal</a>, Bringing Change</p>
@@ -409,6 +467,8 @@
     <script defer src="~/scripts/app/authentication/login_container.js"></script>
     <script defer src="~/scripts/app/authentication/register_container.js"></script>
     <script defer src="~/scripts/app/authentication/forget_container.js"></script>
+    <script defer src="~/scripts/app/authentication/reset_container.js"></script>
+    <script defer src="~/scripts/app/authentication/verify_container.js"></script>
     <script defer src="~/scripts/app/authentication/main_intro_container.js"></script>
 </body>
 

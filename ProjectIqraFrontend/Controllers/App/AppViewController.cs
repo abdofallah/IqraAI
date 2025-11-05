@@ -74,6 +74,18 @@ namespace ProjectIqraFrontend.Controllers.App
             return RedirectToAction("App");
         }
 
+        [HttpGet("/reset")]
+        public IActionResult Reset()
+        {
+            return View("Authentication");
+        }
+
+        [HttpGet("/verify")]
+        public IActionResult Verify()
+        {
+            return View("Authentication");
+        }
+
         [HttpGet("/logout")]
         public IActionResult Logout()
         {

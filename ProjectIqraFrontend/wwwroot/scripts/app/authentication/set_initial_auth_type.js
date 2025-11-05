@@ -3,7 +3,7 @@ var currentAuthType = 'login';
 
 var redirectUrl = '/';
 
-$(document).ready(() => {   
+$(document).ready(() => {
     const urlParams = new URLSearchParams(window.location.search);
 
     if (urlParams.has('redirectTo')) {
@@ -22,6 +22,12 @@ $(document).ready(() => {
     }
     else if (URLPath === '/login') {
         setAuthType('login');
+    }
+    else if (URLPath === '/reset') {
+        setAuthType('reset');
+    }
+    else if (URLPath === '/verify') {
+        setAuthType('verify');
     }
     else {
         setAuthType(currentAuthType);
@@ -90,6 +96,7 @@ function setAuthType(authType) {
 
     $(containerId + " form").removeClass('d-none');
     $(containerId + " input").removeClass('is-valid').removeClass('is-invalid').val("");
+    $(containerId + " form").find('button').prop('disabled', false);
 
     setTimeout(() => {
         $(containerId).removeClass('d-none');
@@ -98,7 +105,11 @@ function setAuthType(authType) {
         }, 10)
 
         let currentTitle = titleTemplate.replace('{{authType}}', capitalizeFirstLetter(authType));
-        window.history.pushState(authType, currentTitle, ('/' + authType));
+
+        const currentQueryString = window.location.search;
+        const newUrl = '/' + authType + currentQueryString;
+
+        window.history.pushState({ authType: authType }, currentTitle, newUrl);
         document.title = currentTitle;
     }, 100);
 
