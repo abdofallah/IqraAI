@@ -72,7 +72,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 await _outboundCallQueueRepo.AddCallLogAsync(
                     outboundCallQueueData.Id,
-                    new CallQueueLog
+                    new CallQueueLogEntry
                     {
                         Message = $"Unable to find business {outboundCallQueueData.BusinessId} for outbound call queue {outboundCallQueueId} to send campaign action: [{businessDataResult.Code}] {businessDataResult.Message}",
                         Type = CallQueueLogTypeEnum.Error
@@ -90,7 +90,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 await _outboundCallQueueRepo.AddCallLogAsync(
                     outboundCallQueueData.Id,
-                    new CallQueueLog
+                    new CallQueueLogEntry
                     {
                         Message = $"Unable to find business app for outbound call queue {outboundCallQueueId} to send campaign action: [{businessAppResult.Code}] {businessAppResult.Message} ",
                         Type = CallQueueLogTypeEnum.Error
@@ -106,7 +106,7 @@ namespace IqraInfrastructure.Managers.Call
             {
                 await _outboundCallQueueRepo.AddCallLogAsync(
                     outboundCallQueueData.Id,
-                    new CallQueueLog
+                    new CallQueueLogEntry
                     {
                         Message = $"Unable to find call queue campaign to find and send campaign action if any. [{callQueueTelephonyCampaignResult.Code}] {callQueueTelephonyCampaignResult.Message}",
                         Type = CallQueueLogTypeEnum.Error
@@ -126,7 +126,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     await _outboundCallQueueRepo.AddCallLogAsync(
                         outboundCallQueueData.Id,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Unable to find call queue campaign call initiation failure tool to find and send campaign action.",
                             Type = CallQueueLogTypeEnum.Error
@@ -144,7 +144,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     await _outboundCallQueueRepo.AddCallLogAsync(
                         outboundCallQueueData.Id,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Unable to get call queue campaign call initiation failure tool arguements. [{callFailureArgumentsResult.Code}] {callFailureArgumentsResult.Message} ",
                             Type = CallQueueLogTypeEnum.Error
@@ -182,7 +182,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     await _outboundCallQueueRepo.AddCallLogAsync(
                         outboundCallQueueData.Id,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Unable to execute call queue campaign call initiation failure tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
                             Type = CallQueueLogTypeEnum.Error
@@ -195,7 +195,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     await _outboundCallQueueRepo.AddCallLogAsync(
                         outboundCallQueueData.Id,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Call queue campaign call initiation failure tool response:\n```{executeActionToolResult.Data}```",
                             Type = CallQueueLogTypeEnum.Information
@@ -214,7 +214,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     await _outboundCallQueueRepo.AddCallLogAsync(
                         outboundCallQueueData.Id,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Unable to find call queue campaign conversation session to send call initiated campaign action.",
                             Type = CallQueueLogTypeEnum.Error
@@ -227,7 +227,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     await _outboundCallQueueRepo.AddCallLogAsync(
                         outboundCallQueueData.Id,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Unable to find call queue campaign call initiated tool to find and send call initiated campaign action.",
                             Type = CallQueueLogTypeEnum.Error
@@ -245,7 +245,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     await _outboundCallQueueRepo.AddCallLogAsync(
                         outboundCallQueueData.Id,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Unable to get call queue campaign call initiated tool arguements. [{callInitiatedArgumentsResult.Code}] {callInitiatedArgumentsResult.Message} ",
                             Type = CallQueueLogTypeEnum.Error
@@ -283,7 +283,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     await _outboundCallQueueRepo.AddCallLogAsync(
                         outboundCallQueueData.Id,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Unable to execute call queue campaign call initiated tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
                             Type = CallQueueLogTypeEnum.Error
@@ -296,7 +296,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     await _outboundCallQueueRepo.AddCallLogAsync(
                         outboundCallQueueData.Id,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Call queue campaign call initiated tool response:\n```{executeActionToolResult.Message}```",
                             Type = CallQueueLogTypeEnum.Information

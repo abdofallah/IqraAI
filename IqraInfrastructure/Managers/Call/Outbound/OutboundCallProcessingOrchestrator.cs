@@ -70,7 +70,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 await OnUpdateCallQueueStatusAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Expired,
-                    new CallQueueLog {
+                    new CallQueueLogEntry {
                         Type = CallQueueLogTypeEnum.Information,
                         Message = "Call expired by reaching max schedule date time."
                     },
@@ -85,7 +85,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 await OnUpdateCallQueueStatusAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Canceled,
-                    new CallQueueLog {
+                    new CallQueueLogEntry {
                         Message = $"Billing validation failed: [{validationResult.Code}] {validationResult.Message}",
                         Type = CallQueueLogTypeEnum.Error
                     },
@@ -100,7 +100,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 await OnUpdateCallQueueStatusAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Canceled,
-                    new CallQueueLog {
+                    new CallQueueLogEntry {
                         Message = $"System error: Business number {callQueueData.CallingNumberId} not found.",
                         Type = CallQueueLogTypeEnum.Error
                     },
@@ -114,7 +114,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 await OnUpdateCallQueueStatusAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Canceled,
-                    new CallQueueLog {
+                    new CallQueueLogEntry {
                         Message = $"System error: Business number {callQueueData.CallingNumberId} integration {businessPhoneNumber.IntegrationId} not found.",
                         Type = CallQueueLogTypeEnum.Error
                     },
@@ -135,7 +135,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                             await OnUpdateCallQueueStatusAndSendCampaignAction(
                                 callQueueData,
                                 CallQueueStatusEnum.Canceled,
-                                new CallQueueLog {
+                                new CallQueueLogEntry {
                                     Message = $"[{currentNumberCalls.Code}] {currentNumberCalls.Message}",
                                     Type = CallQueueLogTypeEnum.Error
                                 },
@@ -163,7 +163,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                         await OnUpdateCallQueueStatusAndSendCampaignAction(
                             callQueueData,
                             CallQueueStatusEnum.Canceled,
-                            new CallQueueLog {
+                            new CallQueueLogEntry {
                                 Message = $"Unknown calling number provider: {businessPhoneNumber.Provider}.",
                                 Type = CallQueueLogTypeEnum.Error
                             },
@@ -176,7 +176,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             await OnUpdateCallQueueStatusAndSendCampaignAction(
                 callQueueData,
                 CallQueueStatusEnum.ProcessingProxy,
-                new CallQueueLog {
+                new CallQueueLogEntry {
                     Message = $"Processing Queue within proxy",
                     Type = CallQueueLogTypeEnum.Information
                 },
@@ -190,7 +190,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 await OnUpdateCallQueueStatusAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Failed,
-                    new CallQueueLog {
+                    new CallQueueLogEntry {
                         Message = $"No backend server available for region {callQueueData.RegionId}. {serverSelectionResult.Message}",
                         Type = CallQueueLogTypeEnum.Error
                     },
@@ -206,7 +206,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 await OnUpdateCallQueueStatusAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Failed,
-                    new CallQueueLog {
+                    new CallQueueLogEntry {
                         Message = $"System error: Region details for {callQueueData.RegionId} not found.",
                         Type = CallQueueLogTypeEnum.Error
                     },
@@ -223,7 +223,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                     await OnUpdateCallQueueStatusAndSendCampaignAction(
                         callQueueData,
                         CallQueueStatusEnum.Failed,
-                        new CallQueueLog {
+                        new CallQueueLogEntry {
                             Message = $"System error: Region details for {callQueueData.RegionId} not found.",
                             Type = CallQueueLogTypeEnum.Error
                         },
@@ -243,7 +243,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                     await OnUpdateCallQueueStatusAndSendCampaignAction(
                         callQueueData,
                         CallQueueStatusEnum.Failed,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Message = $"Failed to forward to backend. [{forwardResponse.Code}] {forwardResponse.Message}",
                             Type = CallQueueLogTypeEnum.Error
@@ -264,7 +264,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                             await OnUpdateCallQueueStatusAndSendCampaignAction(
                                 callQueueData,
                                 CallQueueStatusEnum.Queued,
-                                new CallQueueLog
+                                new CallQueueLogEntry
                                 {
                                     Message = $"Requeuing call{(string.IsNullOrWhiteSpace(requeueReason) ? "" : $": {requeueReason}")}",
                                     Type = CallQueueLogTypeEnum.Information
@@ -276,7 +276,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                             await OnUpdateCallQueueStatusAndSendCampaignAction(
                                 callQueueData,
                                 CallQueueStatusEnum.Failed,
-                                new CallQueueLog
+                                new CallQueueLogEntry
                                 {
                                     Message = $"Backend call processing failure: [{backendResult.Code}] {backendResult.Message}",
                                     Type = CallQueueLogTypeEnum.Error
@@ -366,7 +366,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
     
         public async Task OnUpdateCallQueueStatusAndSendCampaignAction(
             OutboundCallQueueData callQueueData, CallQueueStatusEnum newStatus,
-            CallQueueLog? log = null,
+            CallQueueLogEntry? log = null,
             string? newProcessingServerId = null,
             DateTime? processingStartedAt = null,
             DateTime? completedAt = null,

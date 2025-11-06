@@ -11,10 +11,11 @@ namespace IqraInfrastructure.Repositories.Call
     {
         private readonly IMongoCollection<OutboundCallQueueData> _outboundQueueCollection;
         private readonly ILogger<OutboundCallQueueRepository> _logger;
+        private readonly CallQueueLogsRepository _callQueueLogsRepository;
 
         private const string CollectionName = "OutboundCallQueue";
 
-        public OutboundCallQueueRepository(IMongoClient client, string databaseName, ILogger<OutboundCallQueueRepository> logger)
+        public OutboundCallQueueRepository(IMongoClient client, string databaseName, ILogger<OutboundCallQueueRepository> logger, CallQueueLogsRepository callQueueLogsRepository)
         {
             _logger = logger;
             try
@@ -28,6 +29,8 @@ namespace IqraInfrastructure.Repositories.Call
                 _logger.LogCritical(ex, "Error initializing OutboundCallQueueRepository: {ErrorMessage}", ex.Message);
                 throw;
             }
+
+            _callQueueLogsRepository = callQueueLogsRepository;
         }
 
         private void CreateIndexes()
@@ -295,7 +298,7 @@ namespace IqraInfrastructure.Repositories.Call
 
         public async Task<bool> UpdateCallStatusAsync(
             string queueId, CallQueueStatusEnum newStatus,
-            CallQueueLog? log = null,
+            CallQueueLogEntry? log = null,
             string? newProcessingServerId = null,
             DateTime? processingStartedAt = null,
             DateTime? completedAt = null,
@@ -309,8 +312,7 @@ namespace IqraInfrastructure.Repositories.Call
 
                 if (log != null)
                 {
-                    log.CreatedAt = DateTime.UtcNow;
-                    updateBuilder = updateBuilder.Push(c => c.Logs, log);
+                    _ = _callQueueLogsRepository.AddCallLogAsync(queueId, log);
                 }
 
                 if (newProcessingServerId != null)
@@ -360,20 +362,9 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task<bool> AddCallLogAsync(string queueId, CallQueueLog log)
+        public async Task<bool> AddCallLogAsync(string queueId, CallQueueLogEntry log)
         {
-            try
-            {
-                var filter = Builders<OutboundCallQueueData>.Filter.Eq(c => c.Id, queueId);
-                var update = Builders<OutboundCallQueueData>.Update.Push(c => c.Logs, log);
-                var result = await _outboundQueueCollection.UpdateOneAsync(filter, update);
-                return result.IsAcknowledged;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding log for outbound call {QueueId}", queueId);
-                return false;
-            }
+            return await _callQueueLogsRepository.AddCallLogAsync(queueId, log);
         }
 
         public async Task<OutboundCallQueueData?> GetOutboundCallQueueByIdAsync(string queueId)

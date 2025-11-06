@@ -269,7 +269,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 await _outboundCallQueueRepository.UpdateCallStatusAsync(
                     queueId,
                     CallQueueStatusEnum.ProcessingBackend,
-                    new CallQueueLog()
+                    new CallQueueLogEntry()
                     {
                         Type = CallQueueLogTypeEnum.Information,
                         Message = "Being processed by backend app..."
@@ -451,7 +451,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 );
                 await _outboundCallQueueRepository.AddCallLogAsync(
                     queueId,
-                    new CallQueueLog()
+                    new CallQueueLogEntry()
                     {
                         Type = CallQueueLogTypeEnum.Information,
                         Message = "Call initiated successfully by the backend.",

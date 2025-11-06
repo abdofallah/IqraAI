@@ -379,12 +379,22 @@ namespace ProjectIqraFrontend
                 );
             });
 
+            builder.Services.AddSingleton<CallQueueLogsRepository>((sp) =>
+            {
+                return new CallQueueLogsRepository(
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
+                    sp.GetRequiredService<ILogger<CallQueueLogsRepository>>()
+                );
+            });
+
             builder.Services.AddSingleton<InboundCallQueueRepository>((sp) =>
             {
                 return new InboundCallQueueRepository(
                     sp.GetRequiredService<ILogger<InboundCallQueueRepository>>(),
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"]
+                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
+                    sp.GetRequiredService<CallQueueLogsRepository>()
                 );
             });
 
@@ -411,7 +421,8 @@ namespace ProjectIqraFrontend
                 return new OutboundCallQueueRepository(
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
-                    sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>()
+                    sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>(),
+                    sp.GetRequiredService<CallQueueLogsRepository>()
                 );
             });
 

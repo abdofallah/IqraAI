@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.Business
             var result = new FunctionReturnResult<PaginatedResult<InboundConversationMetadataModel>?>();
             var paginatedResult = new PaginatedResult<InboundConversationMetadataModel>();
 
-            modelData.Limit = Math.Clamp(modelData.Limit, 1, 100);
+            modelData.Limit = Math.Clamp(modelData.Limit, 1, 50);
             paginatedResult.PageSize = modelData.Limit;
 
             // --- NEW: Validation Logic ---
@@ -115,7 +115,6 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     QueueId = cq.Id,
                     Status = cq.Status,
-                    Logs = cq.Logs,
                     EnqueuedAt = cq.CreatedAt,
                     ProcessingStartedAt = cq.ProcessingStartedAt,
                     CompletedAt = cq.CompletedAt,
@@ -220,7 +219,6 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     QueueId = callQueueItem.Id,
                     Status = callQueueItem.Status,
-                    Logs = callQueueItem.Logs,
                     EnqueuedAt = callQueueItem.CreatedAt,
                     ProcessingStartedAt = callQueueItem.ProcessingStartedAt,
                     CompletedAt = callQueueItem.CompletedAt,
@@ -253,7 +251,7 @@ namespace IqraInfrastructure.Managers.Business
             var result = new FunctionReturnResult<PaginatedResult<OutboundConversationMetadataModel>?>();
             var paginatedResult = new PaginatedResult<OutboundConversationMetadataModel>();
 
-            modelData.Limit = Math.Clamp(modelData.Limit, 1, 100);
+            modelData.Limit = Math.Clamp(modelData.Limit, 1, 50);
             paginatedResult.PageSize = modelData.Limit;
 
             if (!string.IsNullOrEmpty(modelData.PreviousCursor) && !string.IsNullOrEmpty(modelData.NextCursor))
@@ -319,7 +317,6 @@ namespace IqraInfrastructure.Managers.Business
                 var metadata = new OutboundConversationMetadataModel {
                     QueueId = cq.Id,
                     Status = cq.Status,
-                    Logs = cq.Logs,
                     EnqueuedAt = cq.CreatedAt,
                     ProcessingStartedAt = cq.ProcessingStartedAt,
                     CompletedAt = cq.CompletedAt,
@@ -420,7 +417,6 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     QueueId = callQueueItem.Id,
                     Status = callQueueItem.Status,
-                    Logs = callQueueItem.Logs,
                     EnqueuedAt = callQueueItem.CreatedAt,
                     ProcessingStartedAt = callQueueItem.ProcessingStartedAt,
                     CompletedAt = callQueueItem.CompletedAt,

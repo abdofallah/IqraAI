@@ -23,8 +23,6 @@ namespace IqraCore.Entities.Call.Queue
 
         public string? SessionId { get; set; } = null;
 
-        public List<CallQueueLog> Logs { get; set; } = new List<CallQueueLog>();
-
         [ExcludeInAllEndpoints]
         public string? ProcessingProxyServerId { get; set; } = null;
         public string? ProcessingBackendServerId { get; set; } = null;

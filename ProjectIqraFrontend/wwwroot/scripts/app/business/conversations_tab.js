@@ -849,7 +849,7 @@ function LoadConversationAudio(stateData) {
         //handleAudioUrlError(error, agentAudioLoader, agentAudioError)
     } else if (agentInfo && agentInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Failed) {
         agentAudioContainer.removeClass('d-none');
-        agentAudioError.text(`Agent audio compilation failed: ${agentInfo.audioInfo.failedReason || 'Unknown reason'}`).removeClass('d-none');
+        agentAudioError.text(`Agent audio compilation failed: ${agentInfo.failedReason || 'Unknown reason'}`).removeClass('d-none');
     }
     else {
         agentAudioContainer.removeClass('d-none');
@@ -870,7 +870,7 @@ function LoadConversationAudio(stateData) {
         //handleAudioUrlError(error, clientAudioLoader, clientAudioError)
     } else if (clientInfo && clientInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Failed) {
         clientAudioContainer.removeClass('d-none');
-        clientAudioError.text(`Client audio compilation failed: ${clientInfo.audioInfo.failedReason || 'Unknown reason'}`).removeClass('d-none');
+        clientAudioError.text(`Client audio compilation failed: ${clientInfo.failedReason || 'Unknown reason'}`).removeClass('d-none');
     }
     else {
         clientAudioContainer.removeClass('d-none');

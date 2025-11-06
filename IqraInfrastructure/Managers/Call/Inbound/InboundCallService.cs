@@ -115,7 +115,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 var planValidation = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
                 if (!planValidation.Success)
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"[{planValidation.Code}]: {planValidation.Message}", Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"[{planValidation.Code}]: {planValidation.Message}", Type = CallQueueLogTypeEnum.Error });
 
                     return result.SetFailureResult($"DistributeIncomingCall:{planValidation.Code}", planValidation.Message);
                 }
@@ -123,7 +123,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId);
                 if (!serverSelection.Success)
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"[{serverSelection.Code}]: {serverSelection.Message}", Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"[{serverSelection.Code}]: {serverSelection.Message}", Type = CallQueueLogTypeEnum.Error });
 
                     return result.SetFailureResult($"DistributeIncomingCall:{serverSelection.Code}", serverSelection.Message);
                 }
@@ -133,7 +133,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 {
                     _logger.LogError("Error distributing call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}: region not found {RegionId}", webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId, regionId);
 
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"Region not found: {regionId}", Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"Region not found: {regionId}", Type = CallQueueLogTypeEnum.Error });
                     
                     return result.SetFailureResult("DistributeIncomingCall:REGION_NOT_FOUND", $"Region not found: {regionId}");
                 }
@@ -191,7 +191,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 if (!forwardResult.Success)
                 {
                     var message = string.Join("\n", errorsList);
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = message, Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = message, Type = CallQueueLogTypeEnum.Error });
                     return result.SetFailureResult("DistributeIncomingCall:BACKEND_ERROR", message);
                 }
                 
@@ -203,7 +203,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
 
                 if (callQueueId != null && !string.IsNullOrEmpty(callQueueId))
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueueId, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = ex.Message, Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueueId, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = ex.Message, Type = CallQueueLogTypeEnum.Error });
                 }
 
                 return result.SetFailureResult("DistributeIncomingCall:EXCEPTION", result.Message);

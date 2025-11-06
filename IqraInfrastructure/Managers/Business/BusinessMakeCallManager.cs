@@ -532,7 +532,7 @@ namespace IqraInfrastructure.Managers.Business
                     await _outboundCallQueueRepository.UpdateCallStatusAsync(
                         outboundCallQueueData.Id,
                         CallQueueStatusEnum.Failed,
-                        new CallQueueLog() {
+                        new CallQueueLogEntry() {
                             Type = CallQueueLogTypeEnum.Error,
                             Message = "Failed to add outbound call queue to campaign at row " + (i + 1) + "."
                         },
@@ -574,7 +574,6 @@ namespace IqraInfrastructure.Managers.Business
                 BusinessId = businessData.Id,
                 RegionId = businessNumberData.RegionId,
                 SessionId = null,
-                Logs = new List<CallQueueLog>(),
                 ProviderMetadata = new Dictionary<string, string>(),
                 // outbound related
                 CampaignId = telephonyCampaignData.Id,

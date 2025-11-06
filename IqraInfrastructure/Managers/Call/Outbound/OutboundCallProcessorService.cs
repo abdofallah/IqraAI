@@ -138,7 +138,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                     await _outboundCallProcessingOrchestrator.OnUpdateCallQueueStatusAndSendCampaignAction(
                         call,
                         CallQueueStatusEnum.Failed,
-                        new CallQueueLog
+                        new CallQueueLogEntry
                         {
                             Type = CallQueueLogTypeEnum.Error,
                             Message = $"Unhandled error during processing: {ex.Message}"

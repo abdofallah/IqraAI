@@ -20,34 +20,6 @@ namespace IqraInfrastructure.Repositories.Conversation
             _conversationStateLogsCollection.Indexes.CreateOne(new CreateIndexModel<ConversationStateLogsData>(indexKeysDefinition));
         }
 
-        public async Task<bool> CreateAsync(ConversationStateLogsData conversationStateLogsData)
-        {
-            try
-            {
-                await _conversationStateLogsCollection.InsertOneAsync(conversationStateLogsData);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating conversation state logs data");
-                throw;
-            }
-        }
-
-        public async Task<ConversationStateLogsData> GetByIdAsync(string conversationId)
-        {
-            try
-            {
-                var filter = Builders<ConversationStateLogsData>.Filter.Eq(c => c.Id, conversationId);
-                return await _conversationStateLogsCollection.Find(filter).FirstOrDefaultAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting conversation state logs data by ID {ConversationId}", conversationId);
-                throw;
-            }
-        }
-
         public async Task<bool> AddLogEntryAsync(string conversationId, ConversationStateLogEntry logEntry)
         {
             try

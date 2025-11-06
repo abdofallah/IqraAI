@@ -13,10 +13,11 @@ namespace IqraInfrastructure.Repositories.Call
     {
         private readonly IMongoCollection<InboundCallQueueData> _inboundCallQueueCollection;
         private readonly ILogger<InboundCallQueueRepository> _logger;
+        private readonly CallQueueLogsRepository _callQueueLogsRepository;
 
         private const string InboundCollectionName = "InboundCallQueue";
 
-        public InboundCallQueueRepository(ILogger<InboundCallQueueRepository> logger, IMongoClient client, string databaseName)
+        public InboundCallQueueRepository(ILogger<InboundCallQueueRepository> logger, IMongoClient client, string databaseName, CallQueueLogsRepository callQueueLogsRepository)
         {
             _logger = logger;
 
@@ -24,6 +25,8 @@ namespace IqraInfrastructure.Repositories.Call
             _inboundCallQueueCollection = database.GetCollection<InboundCallQueueData>(InboundCollectionName);
 
             CreateIndexes();
+
+            _callQueueLogsRepository = callQueueLogsRepository;
         }
 
         private void CreateIndexes()
@@ -253,14 +256,18 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task SetInboundCallQueueFailedStatusAsync(string queueId, CallQueueLog? log = null)
+        public async Task SetInboundCallQueueFailedStatusAsync(string queueId, CallQueueLogEntry? log = null)
         {
             try
             {
                 var filter = Builders<InboundCallQueueData>.Filter.Eq(c => c.Id, queueId);
                 var update = Builders<InboundCallQueueData>.Update
                     .Set(c => c.Status, CallQueueStatusEnum.Failed);
-                if (log != null) update = update.AddToSet(c => c.Logs, log);
+
+                if (log != null)
+                {
+                    _ = _callQueueLogsRepository.AddCallLogAsync(queueId, log);
+                }
 
                 await _inboundCallQueueCollection.UpdateOneAsync(filter, update);
             }

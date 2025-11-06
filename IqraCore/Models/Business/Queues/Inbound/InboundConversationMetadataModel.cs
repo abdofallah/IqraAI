@@ -1,5 +1,4 @@
-﻿using IqraCore.Entities.Call.Queue;
-using IqraCore.Entities.Conversation.Enum;
+﻿using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Helper.Call.Queue;
 
 namespace IqraCore.Models.Business.Queues.Inbound
@@ -8,7 +7,6 @@ namespace IqraCore.Models.Business.Queues.Inbound
     {
         public string QueueId { get; set; }
         public CallQueueStatusEnum Status { get; set; }
-        public List<CallQueueLog> Logs { get; set; }
 
         // Queue Related
         public DateTime EnqueuedAt { get; set; }
