@@ -1,6 +1,4 @@
-﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
+﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Models.Business.Conversations;
 using IqraCore.Models.Business.Queues;
@@ -33,12 +31,10 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             _whiteLabelContext = whiteLabelContext;
         }
 
-        [HttpGet("/app/user/business/{businessId}/conversations/inbound/metadata")]
+        [HttpPost("/app/user/business/{businessId}/conversations/inbound/metadata")]
         public async Task<FunctionReturnResult<PaginatedResult<InboundConversationMetadataModel>?>> GetBusinessInboundConversationsMetaData(
             long businessId,
-            [FromQuery] int limit = 5,
-            [FromQuery] string? next = null, 
-            [FromQuery] string? prev = null
+            [FromBody] GetBusinessInboundCallQueuesRequestModel requestModel
         )
         {
             var result = new FunctionReturnResult<PaginatedResult<InboundConversationMetadataModel>?>();
@@ -89,12 +85,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 
             var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetInboundConversationsMetaDataListAsync(
                 businessId,
-                new GetBusinessInboundCallQueuesRequestModel()
-                {
-                    Limit = limit,
-                    NextCursor = next,
-                    PreviousCursor = prev
-                }
+                requestModel
             );
             if (!conversationMetaDataListResult.Success)
             {
@@ -106,12 +97,10 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             return conversationMetaDataListResult;
         }
 
-        [HttpGet("/app/user/business/{businessId}/conversations/outbound/metadata")]
+        [HttpPost("/app/user/business/{businessId}/conversations/outbound/metadata")]
         public async Task<FunctionReturnResult<PaginatedResult<OutboundConversationMetadataModel>?>> GetBusinessOutboundConversationsMetaData(
             long businessId,
-            [FromQuery] int limit = 5,
-            [FromQuery] string? next = null,
-            [FromQuery] string? prev = null
+            [FromBody] GetBusinessOutboundCallQueuesRequestModel requestModel
         )
         {
             var result = new FunctionReturnResult<PaginatedResult<OutboundConversationMetadataModel>?>();
@@ -162,12 +151,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 
             var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetOutboundConversationsMetaDataListAsync(
                 businessId,
-                new GetBusinessOutboundCallQueuesRequestModel()
-                {
-                    Limit = limit,
-                    NextCursor = next,
-                    PreviousCursor = prev
-                }
+                requestModel
             );
             if (!conversationMetaDataListResult.Success)
             {

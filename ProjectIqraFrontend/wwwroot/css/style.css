@@ -659,11 +659,6 @@ a:focus {
 	color: black;
 }
 
-table.table {
-	table-layout: fixed;
-	overflow-wrap: break-word;
-}
-
 table.table > :not(caption) > * > * {
 	padding: 14px 20px;
 	vertical-align: middle;
@@ -672,14 +667,6 @@ table.table > :not(caption) > * > * {
 table.table > thead > * > * {
 	background-color: var(--tcolor-lighter-green);
 	color: black;
-}
-
-@media (max-width: 768px) {
-	table.table {
-		overflow-x: scroll;
-		display: inline-block;
-		table-layout: auto;
-	}
 }
 
 /* Chrome, Edge and Safari */
@@ -1252,6 +1239,14 @@ table.table > thead > * > * {
 .make-call-type-box-choose.active .info-icon {
 	background-color: var(--tcolor-light-green);
 	transform: rotate(360deg);
+}
+
+#conversationInboundTable,
+#conversationOutboundTable,
+#conversationWebsocketTable,
+#conversationOutboundBulkTable
+{
+	min-width: 1400px;
 }
 
 #conversationInboundTable .in-progress,
@@ -2682,4 +2677,40 @@ table.table > thead > * > * {
 .campaign-action-tool-argument .variable-input-container .editor-area.form-control
 {
 	border-radius: 0px;
+}
+
+.tag-input-container
+{
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 5px;
+	cursor: text;
+}
+
+.tag-input-container input
+{
+	border: none;
+	outline: none;
+	flex-grow: 1;
+	padding: 0;
+	background-color: transparent;
+}
+
+.tag-input-container .tag
+{
+	display: inline-flex;
+	align-items: center;
+	background-color: #0d6efd;
+	color: white;
+	padding: 2px 8px;
+	border-radius: 12px;
+	font-size: 0.85em;
+}
+
+.tag-input-container .tag .tag-close
+{
+	margin-left: 5px;
+	cursor: pointer;
+	font-weight: bold;
 }

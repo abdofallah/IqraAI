@@ -19,22 +19,122 @@
             <div class="tab-content w-100" id="conversations-tabContent">
                 <!-- Inbound Tab -->
                 <div class="tab-pane fade show active w-100" id="conversations-inbound" role="tabpanel" aria-labelledby="conversations-inbound-nav-tab" tabindex="0">
-                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                        <div style="min-width: 200px" class="me-4">
-                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterInboundCallButton">
-                                <i class="fa-regular fa-bars-filter me-1"></i>
-                                <span>Filter</span>
-                            </button>
+                    <!-- START: Updated Inbound Controls -->
+                    <div class="mb-4">
+                        <div class="d-flex flex-row align-items-center justify-content-between">
+                            <div class="btn-group me-4" style="min-width: 200px">
+                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" type="button" data-bs-toggle="collapse" data-bs-target="#inboundFilterCollapse" aria-expanded="false" aria-controls="inboundFilterCollapse" id="filterInboundCallButton">
+                                    <i class="fa-regular fa-bars-filter me-1"></i>
+                                    <span>Filter</span>
+                                </button>
+                                <button class="btn btn-danger d-none" id="clearInboundFiltersButton" title="Clear All Filters">
+                                    <i class="fa-regular fa-xmark"></i>
+                                </button>
+                            </div>
+                            <div class="input-group w-100">
+                                <input type="text" id="inboundSearchInput" class="form-control" placeholder="Routing Name or Session" aria-label="Routing Name or Session" aria-describedby="searchConversationInboundButton">
+                                <button class="input-group-button btn btn-primary" id="searchConversationInboundButton">
+                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="input-group w-100">
-                            <input type="text" class="form-control" placeholder="Routing Name or Session" aria-label="Routing Name or Session" aria-describedby="searchConversationInboundButton">
-                            <button class="input-group-button btn btn-primary" id="searchConversationInboundButton">
-                                <i class='fa-regular fa-magnifying-glass'></i>
-                            </button>
+                        <!-- Inbound Filter Collapse Panel -->
+                        <div class="collapse" id="inboundFilterCollapse">
+                            <div class="card card-body mt-3">
+                                <form id="inboundFilterForm">
+                                    <div class="row g-3">
+                                        <!-- Date Ranges -->
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Queued At Date Range</label>
+                                            <div class="input-group">
+                                                <input type="datetime-local" class="form-control" id="inboundFilterStartCreatedDate" title="Start Date">
+                                                <span class="input-group-text">to</span>
+                                                <input type="datetime-local" class="form-control" id="inboundFilterEndCreatedDate" title="End Date">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Completed At Date Range</label>
+                                            <div class="input-group">
+                                                <input type="datetime-local" class="form-control" id="inboundFilterStartCompletedAtDate" title="Start Date">
+                                                <span class="input-group-text">to</span>
+                                                <input type="datetime-local" class="form-control" id="inboundFilterEndCompletedAtDate" title="End Date">
+                                            </div>
+                                        </div>
+
+                                        <!-- Multi-Select Dropdowns -->
+                                        <div class="col-md-6 col-lg-4">
+                                            <label for="inboundFilterQueueStatus" class="form-label fw-bold">Queue Status</label>
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="inboundFilterQueueStatus" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                                                    Select Statuses...
+                                                </button>
+                                                <ul class="dropdown-menu w-100" aria-labelledby="inboundFilterQueueStatus">
+                                                    <!-- CallQueueStatusEnum Values -->
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="0"> Queued</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="1"> Processing Proxy</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="2"> Processed Proxy</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="3"> Processing Backend</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="4"> Processed Backend</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="5"> Failed</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="6"> Canceled</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="7"> Expired</label></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 col-lg-4">
+                                            <label for="inboundFilterProvider" class="form-label fw-bold">Number Providers</label>
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="inboundFilterProvider" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                                                    Select Providers...
+                                                </button>
+                                                <ul class="dropdown-menu w-100" aria-labelledby="inboundFilterProvider">
+                                                    <!-- TelephonyProviderEnum Values -->
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="1"> ModemTel</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="2"> Twilio</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="3"> Vonage</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="4"> Telnyx</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="10"> SIP Trunking</label></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tag Inputs for String Lists -->
+                                        <div class="col-lg-4">
+                                            <label for="inboundFilterRouteIdsInput" class="form-label fw-bold">Route IDs</label>
+                                            <div class="tag-input-container form-control">
+                                                <div id="inboundFilterRouteIdsTags" class="d-inline"></div>
+                                                <input type="text" id="inboundFilterRouteIdsInput" placeholder="Type and press Enter...">
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-6">
+                                            <label for="inboundFilterCallingNumbersInput" class="form-label fw-bold">Calling Numbers</label>
+                                            <div class="tag-input-container form-control">
+                                                <div id="inboundFilterCallingNumbersTags" class="d-inline"></div>
+                                                <input type="text" id="inboundFilterCallingNumbersInput" placeholder="Type and press Enter...">
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-6">
+                                            <label for="inboundFilterRouteNumberIdsInput" class="form-label fw-bold">Route Number IDs</label>
+                                            <div class="tag-input-container form-control">
+                                                <div id="inboundFilterRouteNumberIdsTags" class="d-inline"></div>
+                                                <input type="text" id="inboundFilterRouteNumberIdsInput" placeholder="Type and press Enter...">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <hr class="my-3">
+                                    <div class="d-flex justify-content-end">
+                                        <button type="button" class="btn btn-secondary me-2" id="inboundFilterResetButton">Reset</button>
+                                        <button type="button" class="btn btn-primary" id="inboundFilterApplyButton">Apply Filters</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
+                    <!-- END: Updated Inbound Controls -->
                     <div class="table-responsive">
-                        <table id="conversationInboundTable" class="table w-100">
+                        <table id="conversationInboundTable" class="table">
                             <thead>
                                 <tr>
                                     <th scope="col">Queue ID</th>
@@ -72,22 +172,130 @@
 
                 <!-- Outbound Tab -->
                 <div class="tab-pane fade w-100" id="conversations-outbound" role="tabpanel" aria-labelledby="conversations-outbound-tab" tabindex="0">
-                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                        <div style="min-width: 200px" class="me-4">
-                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundCallButton">
-                                <i class="fa-regular fa-bars-filter me-1"></i>
-                                <span>Filter</span>
-                            </button>
+                    <!-- START: Updated Outbound Controls -->
+                    <div class="mb-4">
+                        <div class="d-flex flex-row align-items-center justify-content-between">
+                            <div class="btn-group me-4" style="min-width: 200px">
+                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" type="button" data-bs-toggle="collapse" data-bs-target="#outboundFilterCollapse" aria-expanded="false" aria-controls="outboundFilterCollapse" id="filterOutboundCallButton">
+                                    <i class="fa-regular fa-bars-filter me-1"></i>
+                                    <span>Filter</span>
+                                </button>
+                                <button class="btn btn-danger d-none" id="clearOutboundFiltersButton" title="Clear All Filters">
+                                    <i class="fa-regular fa-xmark"></i>
+                                </button>
+                            </div>
+                            <div class="input-group w-100">
+                                <input type="text" id="outboundSearchInput" class="form-control" placeholder="Recipient Number or Session" aria-label="Recipient Number or Session" aria-describedby="searchConversationOutboundButton">
+                                <button class="input-group-button btn btn-primary" id="searchConversationOutboundButton">
+                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="input-group w-100">
-                            <input type="text" class="form-control" placeholder="Recipient Number or Session" aria-label="Recipient Number or Session" aria-describedby="searchConversationOutboundButton">
-                            <button class="input-group-button btn btn-primary" id="searchConversationOutboundButton">
-                                <i class='fa-regular fa-magnifying-glass'></i>
-                            </button>
+                        <!-- Outbound Filter Collapse Panel -->
+                        <div class="collapse" id="outboundFilterCollapse">
+                            <div class="card card-body mt-3">
+                                <form id="outboundFilterForm">
+                                    <div class="row g-3">
+                                        <!-- Date Ranges -->
+                                        <div class="col-md-6 col-lg-4">
+                                            <label class="form-label fw-bold">Queued At Date Range</label>
+                                            <div class="input-group">
+                                                <input type="datetime-local" class="form-control" id="outboundFilterStartCreatedDate" title="Start Date">
+                                                <span class="input-group-text">to</span>
+                                                <input type="datetime-local" class="form-control" id="outboundFilterEndCreatedDate" title="End Date">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 col-lg-4">
+                                            <label class="form-label fw-bold">Completed At Date Range</label>
+                                            <div class="input-group">
+                                                <input type="datetime-local" class="form-control" id="outboundFilterStartCompletedAtDate" title="Start Date">
+                                                <span class="input-group-text">to</span>
+                                                <input type="datetime-local" class="form-control" id="outboundFilterEndCompletedAtDate" title="End Date">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 col-lg-4">
+                                            <label class="form-label fw-bold">Scheduled At Date Range</label>
+                                            <div class="input-group">
+                                                <input type="datetime-local" class="form-control" id="outboundFilterStartScheduledDate" title="Start Date">
+                                                <span class="input-group-text">to</span>
+                                                <input type="datetime-local" class="form-control" id="outboundFilterEndScheduledDate" title="End Date">
+                                            </div>
+                                        </div>
+
+                                        <!-- Multi-Select Dropdowns -->
+                                        <div class="col-md-6 col-lg-4">
+                                            <label for="outboundFilterQueueStatus" class="form-label fw-bold">Queue Status</label>
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="outboundFilterQueueStatus" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                                                    Select Statuses...
+                                                </button>
+                                                <ul class="dropdown-menu w-100" aria-labelledby="outboundFilterQueueStatus">
+                                                    <!-- CallQueueStatusEnum Values -->
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="0"> Queued</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="1"> Processing Proxy</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="2"> Processed Proxy</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="3"> Processing Backend</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="4"> Processed Backend</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="5"> Failed</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="6"> Canceled</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="7"> Expired</label></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 col-lg-4">
+                                            <label for="outboundFilterProvider" class="form-label fw-bold">Calling Number Providers</label>
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="outboundFilterProvider" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                                                    Select Providers...
+                                                </button>
+                                                <ul class="dropdown-menu w-100" aria-labelledby="outboundFilterProvider">
+                                                    <!-- TelephonyProviderEnum Values -->
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="1"> ModemTel</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="2"> Twilio</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="3"> Vonage</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="4"> Telnyx</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="10"> SIP Trunking</label></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tag Inputs for String Lists -->
+                                        <div class="col-lg-4">
+                                            <label for="outboundFilterCampaignIdsInput" class="form-label fw-bold">Campaign IDs</label>
+                                            <div class="tag-input-container form-control">
+                                                <div id="outboundFilterCampaignIdsTags" class="d-inline"></div>
+                                                <input type="text" id="outboundFilterCampaignIdsInput" placeholder="Type and press Enter...">
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-6">
+                                            <label for="outboundFilterCallingNumberIdsInput" class="form-label fw-bold">Calling Number IDs</label>
+                                            <div class="tag-input-container form-control">
+                                                <div id="outboundFilterCallingNumberIdsTags" class="d-inline"></div>
+                                                <input type="text" id="outboundFilterCallingNumberIdsInput" placeholder="Type and press Enter...">
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-6">
+                                            <label for="outboundFilterRecipientNumbersInput" class="form-label fw-bold">Recipient Numbers</label>
+                                            <div class="tag-input-container form-control">
+                                                <div id="outboundFilterRecipientNumbersTags" class="d-inline"></div>
+                                                <input type="text" id="outboundFilterRecipientNumbersInput" placeholder="Type and press Enter...">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <hr class="my-3">
+                                    <div class="d-flex justify-content-end">
+                                        <button type="button" class="btn btn-secondary me-2" id="outboundFilterResetButton">Reset</button>
+                                        <button type="button" class="btn btn-primary" id="outboundFilterApplyButton">Apply Filters</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
+                    <!-- END: Updated Outbound Controls -->
                     <div class="table-responsive">
-                        <table id="conversationOutboundTable" class="table w-100">
+                        <table id="conversationOutboundTable" class="table">
                             <thead>
                                 <tr>
                                     <th scope="col">Queue ID</th>

@@ -1,6 +1,7 @@
 /** Dynamic Variables **/
 
 // Inbound
+let CurrentInboundFilters = null;
 let CurrentInboundConversationsData = [];
 let CurrentInboundNextCursor = null;
 let CurrentInboundPrevCursor = null;
@@ -9,6 +10,7 @@ const InboundConversationsPageSize = 12;
 let currentInboundPageNumber = 1;
 
 // Outbound
+let CurrentOutboundFilters = null;
 let CurrentOutboundConversationsData = [];
 let CurrentOutboundNextCursor = null;
 let CurrentOutboundPrevCursor = null;
@@ -69,6 +71,11 @@ const inboundPaginationControls = conversationsTab.find("#inboundPaginationContr
 const inboundPrevButton = conversationsTab.find("#inboundPrevButton");
 const inboundNextButton = conversationsTab.find("#inboundNextButton");
 const inboundPageInfo = conversationsTab.find("#inboundPageInfo"); // Optional page info element
+const inboundFilterForm = $("#inboundFilterForm");
+const inboundFilterApplyButton = $("#inboundFilterApplyButton");
+const inboundFilterResetButton = $("#inboundFilterResetButton");
+const clearInboundFiltersButton = $("#clearInboundFiltersButton");
+const filterInboundCallButton = $("#filterInboundCallButton");
 
 // Outbound
 const conversationOutboundTable = conversationsTab.find("#conversationOutboundTable");
@@ -77,6 +84,11 @@ const outboundPaginationControls = conversationsTab.find("#outboundPaginationCon
 const outboundPrevButton = conversationsTab.find("#outboundPrevButton");
 const outboundNextButton = conversationsTab.find("#outboundNextButton");
 const outboundPageInfo = conversationsTab.find("#outboundPageInfo");
+const outboundFilterForm = $("#outboundFilterForm");
+const outboundFilterApplyButton = $("#outboundFilterApplyButton");
+const outboundFilterResetButton = $("#outboundFilterResetButton");
+const clearOutboundFiltersButton = $("#clearOutboundFiltersButton");
+const filterOutboundCallButton = $("#filterOutboundCallButton");
 
 // Manage View Elements
 const conversationManageTab = conversationsTab.find("#conversationManageTab");
@@ -144,64 +156,48 @@ const queueLogsContainer = $("#queueLogsContainer");
 const sessionLogsContainer = $("#sessionLogsContainer");
 
 /** API Functions **/
-function FetchInboundConversationsMetaDataFromAPI(limit, nextCursor, prevCursor, successCallback, errorCallback) {
-    let url = `/app/user/business/${CurrentBusinessId}/conversations/inbound/metadata?limit=${limit}`;
-    if (nextCursor) {
-        url += `&next=${encodeURIComponent(nextCursor)}`;
-    } else if (prevCursor) {
-        url += `&prev=${encodeURIComponent(prevCursor)}`;
-    }
-
+function FetchInboundConversationsMetaDataFromAPI(requestPayload, successCallback, errorCallback) {
     $.ajax({
-        url: url,
-        type: "GET", // Changed to GET as per backend modification
+        url: `/app/user/business/${CurrentBusinessId}/conversations/inbound/metadata`,
+        type: "POST",
+        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify(requestPayload),
         dataType: "json",
         success: (response) => {
             if (!response || !response.success) {
                 errorCallback(response || { message: "Unknown error occurred." });
                 return;
             }
-            successCallback(response.data); // Pass the PaginatedConversationMetadataResult
+            successCallback(response.data);
         },
         error: (jqXHR, textStatus, errorThrown) => {
-            // Try to parse JSON error response from backend if available
             let errorMsg = "An error occurred while fetching inbound conversations.";
             if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
                 errorMsg = jqXHR.responseJSON.message;
-            } else if (typeof errorThrown === 'string' && errorThrown.length > 0) {
-                errorMsg = errorThrown;
             }
             console.error("Fetch Inbound Conversations Error:", jqXHR.responseJSON || textStatus || errorThrown);
             errorCallback({ message: errorMsg, code: jqXHR.status });
         },
     });
 }
-function FetchOutboundConversationsMetaDataFromAPI(limit, nextCursor, prevCursor, successCallback, errorCallback) {
-    let url = `/app/user/business/${CurrentBusinessId}/conversations/outbound/metadata?limit=${limit}`;
-    if (nextCursor) {
-        url += `&next=${encodeURIComponent(nextCursor)}`;
-    } else if (prevCursor) {
-        url += `&prev=${encodeURIComponent(prevCursor)}`;
-    }
-
+function FetchOutboundConversationsMetaDataFromAPI(requestPayload, successCallback, errorCallback) {
     $.ajax({
-        url: url,
-        type: "GET", // Changed to GET as per backend modification
+        url: `/app/user/business/${CurrentBusinessId}/conversations/outbound/metadata`,
+        type: "POST",
+        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify(requestPayload),
         dataType: "json",
         success: (response) => {
             if (!response || !response.success) {
                 errorCallback(response || { message: "Unknown error occurred." });
                 return;
             }
-            successCallback(response.data); // Pass the PaginatedConversationMetadataResult
+            successCallback(response.data);
         },
         error: (jqXHR, textStatus, errorThrown) => {
-            // Try to parse JSON error response from backend if available
             let errorMsg = "An error occurred while fetching outbound conversations.";
             if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
                 errorMsg = jqXHR.responseJSON.message;
-            } else if (typeof errorThrown === 'string' && errorThrown.length > 0) {
-                errorMsg = errorThrown;
             }
             console.error("Fetch Outbound Conversations Error:", jqXHR.responseJSON || textStatus || errorThrown);
             errorCallback({ message: errorMsg, code: jqXHR.status });
@@ -280,7 +276,7 @@ function formatDuration(totalSeconds) {
 
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
-function getStatusBadgeElement(statusType, statusValue, includeText = true) {
+function getStatusBadgeElement(statusType, statusValue, sessionEndType = null, includeText = true) {
     let iconClass = "fa-regular fa-question-circle";
     let badgeClass = "bg-secondary";
     let statusText = "Unknown"; // For tooltip AND display text
@@ -366,7 +362,7 @@ function getStatusBadgeElement(statusType, statusValue, includeText = true) {
             case ConversationSessionState.Ended:
                 iconClass = "fa-regular fa-circle-check";
                 badgeClass = "bg-success";
-                statusText = "Ended";
+                statusText = `Ended (${sessionEndType.name})`;
                 break;
             case ConversationSessionState.Failed:
                 iconClass = "fa-regular fa-circle-xmark";
@@ -414,11 +410,130 @@ function getOrCreateWaveSurfer(containerId, options) {
     }
     return wavesurfer;
 }
+/** Filters Functions **/
+function setupTagInput(inputSelector, tagsContainerSelector) {
+    const input = $(inputSelector);
+    const tagsContainer = $(tagsContainerSelector);
 
+    input.on('keydown', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const value = input.val().trim();
+            if (value) {
+                const tag = $(`
+                    <span class="tag">
+                        ${$('<div>').text(value).html()}
+                        <span class="tag-close" title="Remove">&times;</span>
+                    </span>
+                `);
+                tagsContainer.append(tag); // Append to the dedicated tags container
+                input.val('');
+            }
+        }
+    });
+
+    // Use event delegation on the parent container
+    input.closest('.tag-input-container').on('click', '.tag-close', function () {
+        $(this).parent('.tag').remove();
+    });
+}
+function getInboundFilterObject() {
+    const filter = {};
+    const hasFilter = (value) => value !== null && value !== undefined && value !== '';
+
+    const startCreated = $('#inboundFilterStartCreatedDate').val();
+    if (hasFilter(startCreated)) filter.StartCreatedDate = new Date(startCreated).toISOString();
+
+    const endCreated = $('#inboundFilterEndCreatedDate').val();
+    if (hasFilter(endCreated)) filter.EndCreatedDate = new Date(endCreated).toISOString();
+
+    const startCompleted = $('#inboundFilterStartCompletedAtDate').val();
+    if (hasFilter(startCompleted)) filter.StartCompletedAtDate = new Date(startCompleted).toISOString();
+
+    const endCompleted = $('#inboundFilterEndCompletedAtDate').val();
+    if (hasFilter(endCompleted)) filter.EndCompletedAtDate = new Date(endCompleted).toISOString();
+
+    const statuses = $('#inboundFilterQueueStatus').next('.dropdown-menu').find('input:checked').map((_, el) => parseInt($(el).val())).get();
+    if (statuses.length > 0) filter.QueueStatusTypes = statuses;
+
+    const providers = $('#inboundFilterProvider').next('.dropdown-menu').find('input:checked').map((_, el) => parseInt($(el).val())).get();
+    if (providers.length > 0) filter.RouteNumberProviders = providers;
+
+    const getTags = (id) => $(id).find('.tag').map((_, el) => $(el).clone().children().remove().end().text().trim()).get();
+
+    const routeIds = getTags('#inboundFilterRouteIdsTags');
+    if (routeIds.length > 0) filter.RouteIds = routeIds;
+
+    const callingNumbers = getTags('#inboundFilterCallingNumbersTags');
+    if (callingNumbers.length > 0) filter.CallingNumbers = callingNumbers;
+
+    const routeNumberIds = getTags('#inboundFilterRouteNumberIdsTags');
+    if (routeNumberIds.length > 0) filter.RouteNumberIds = routeNumberIds;
+
+    return Object.keys(filter).length > 0 ? filter : null;
+}
+function getOutboundFilterObject() {
+    const filter = {};
+    const hasFilter = (value) => value !== null && value !== undefined && value !== '';
+
+    const startCreated = $('#outboundFilterStartCreatedDate').val();
+    if (hasFilter(startCreated)) filter.StartCreatedDate = new Date(startCreated).toISOString();
+
+    const endCreated = $('#outboundFilterEndCreatedDate').val();
+    if (hasFilter(endCreated)) filter.EndCreatedDate = new Date(endCreated).toISOString();
+
+    const startCompleted = $('#outboundFilterStartCompletedAtDate').val();
+    if (hasFilter(startCompleted)) filter.StartCompletedAtDate = new Date(startCompleted).toISOString();
+
+    const endCompleted = $('#outboundFilterEndCompletedAtDate').val();
+    if (hasFilter(endCompleted)) filter.EndCompletedAtDate = new Date(endCompleted).toISOString();
+
+    const startScheduled = $('#outboundFilterStartScheduledDate').val();
+    if (hasFilter(startScheduled)) filter.StartScheduledDate = new Date(startScheduled).toISOString();
+
+    const endScheduled = $('#outboundFilterEndScheduledDate').val();
+    if (hasFilter(endScheduled)) filter.EndScheduledDate = new Date(endScheduled).toISOString();
+
+    const statuses = $('#outboundFilterQueueStatus').next('.dropdown-menu').find('input:checked').map((_, el) => parseInt($(el).val())).get();
+    if (statuses.length > 0) filter.QueueStatusTypes = statuses;
+
+    const providers = $('#outboundFilterProvider').next('.dropdown-menu').find('input:checked').map((_, el) => parseInt($(el).val())).get();
+    if (providers.length > 0) filter.CallingNumberProviders = providers;
+
+    const getTags = (id) => $(id).find('.tag').map((_, el) => $(el).clone().children().remove().end().text().trim()).get();
+
+    const campaignIds = getTags('#outboundFilterCampaignIdsTags');
+    if (campaignIds.length > 0) filter.CampaignIds = campaignIds;
+
+    const callingNumberIds = getTags('#outboundFilterCallingNumberIdsTags');
+    if (callingNumberIds.length > 0) filter.CallingNumberIds = callingNumberIds;
+
+    const recipientNumbers = getTags('#outboundFilterRecipientNumbersTags');
+    if (recipientNumbers.length > 0) filter.RecipientNumbers = recipientNumbers;
+
+    return Object.keys(filter).length > 0 ? filter : null;
+}
+function updateFilterButtonUI(type, isActive) {
+    const filterButton = type === 'inbound' ? filterInboundCallButton : filterOutboundCallButton;
+    const clearButton = type === 'inbound' ? clearInboundFiltersButton : clearOutboundFiltersButton;
+
+    if (isActive) {
+        filterButton.removeClass('btn-primary').addClass('btn-success');
+        clearButton.removeClass('d-none');
+    } else {
+        filterButton.removeClass('btn-success').addClass('btn-primary');
+        clearButton.addClass('d-none');
+    }
+}
+function resetFilterForm(formElement) {
+    formElement[0].reset(); // Standard form reset
+    formElement.find('.tag').remove(); // Clear all tags
+    formElement.find('input[type="checkbox"]').prop('checked', false); // Uncheck all boxes
+}
 /** DOM Manipulation Functions **/
 function CreateInboundConversationRow(item) {
     const queueStatusBadge = getStatusBadgeElement('queue', item.status);
-    const sessionStatusBadge = getStatusBadgeElement('session', item.sessionStatus);
+    const sessionStatusBadge = getStatusBadgeElement('session', item.sessionStatus, item.sessionEndType);
     const queuedAtFormatted = formatDateTime(item.enqueuedAt);
 
     let routeDisplay = item.routeId || "N/A";
@@ -482,7 +597,7 @@ function CreateInboundConversationRow(item) {
 }
 function CreateOutboundConversationRow(item) {
     const queueStatusBadge = getStatusBadgeElement('queue', item.status);
-    const sessionStatusBadge = getStatusBadgeElement('session', item.sessionStatus);
+    const sessionStatusBadge = getStatusBadgeElement('session', item.sessionStatus, item.sessionEndType);
     const queuedAtFormatted = formatDateTime(item.enqueuedAt);
 
     let fromNumberDisplay = item.numberId || "N/A";
@@ -680,7 +795,7 @@ function PopulateManageView(queueData, stateData) {
 
     // Populate General Tab (Part 1: From Queue Data)
     manageViewQueueId.val(queueData.queueId);
-    manageViewQueueStatus.html(getStatusBadgeElement('queue', { value: parseInt(queueData.queueStatusVal) }, true));
+    manageViewQueueStatus.html(getStatusBadgeElement('queue', { value: parseInt(queueData.queueStatusVal) }, null, true));
     manageViewEnqueuedAt.val(formatDateTime(queueData.enqueuedAt));
     manageViewSessionId.val(queueData.sessionId || 'N/A');
 
@@ -705,7 +820,7 @@ function PopulateManageView(queueData, stateData) {
 
     // Populate from State Data (if it exists)
     if (stateData) {
-        manageViewSessionStatus.html(getStatusBadgeElement('session', stateData.status, true));
+        manageViewSessionStatus.html(getStatusBadgeElement('session', stateData.status, null, true));
         manageViewStartTime.val(formatDateTime(stateData.startTime));
         manageViewEndTime.val(stateData.endTime ? formatDateTime(stateData.endTime) : 'N/A');
 
@@ -1035,62 +1150,78 @@ function handleOutboundFetchError(error) {
 
 function LoadInboundConversations(cursor = null, direction = 'next') {
     if (IsLoadingInboundConversations) return;
-
     IsLoadingInboundConversations = true;
-    ShowTableLoading(true); // Hides pagination controls
+    ShowTableLoading(true);
 
     let nextC = null;
     let prevC = null;
-    let targetPageNumber = currentInboundPageNumber; // Keep track of the intended page
+    let targetPageNumber = currentInboundPageNumber;
 
     if (direction === 'next') {
         nextC = cursor;
-        // Only increment if we are *actually* moving forward
-        if (CurrentInboundNextCursor || nextC) { // If a next cursor exists or is provided
-            targetPageNumber++;
-        } else if (currentInboundPageNumber === 1 && !nextC && !prevC) {
-            // Initial load, target is 1
-            targetPageNumber = 1;
-        }
-    } else { // direction === 'prev'
+        if (cursor) { targetPageNumber++; }
+    } else {
         prevC = cursor;
-        // Only decrement if we are *actually* moving backward
-        if (targetPageNumber > 1) {
-            targetPageNumber--;
-        }
+        if (cursor && targetPageNumber > 1) { targetPageNumber--; }
     }
 
-    // Update the display optimistically *before* the call
+    // On a fresh load (no cursor) or a filter change, ensure page is 1.
+    if (!nextC && !prevC) {
+        targetPageNumber = 1;
+    }
+
     inboundPageInfo.text(`Page ${targetPageNumber}`);
 
+    // Construct the request payload
+    const requestPayload = {
+        limit: InboundConversationsPageSize,
+        nextCursor: nextC,
+        previousCursor: prevC,
+        filter: (nextC || prevC) ? null : CurrentInboundFilters
+    };
+
     FetchInboundConversationsMetaDataFromAPI(
-        InboundConversationsPageSize,
-        nextC,
-        prevC,
-        (data) => handleFetchSuccess(data, targetPageNumber), // Pass TARGET page number
-        (error) => handleFetchError(error, currentInboundPageNumber) // Pass CURRENT page number in case of error
+        requestPayload,
+        (data) => handleFetchSuccess(data, targetPageNumber),
+        (error) => handleFetchError(error, currentInboundPageNumber)
     );
 }
 function LoadOutboundConversations(cursor = null, direction = 'next') {
     if (IsLoadingOutboundConversations) return;
-
     IsLoadingOutboundConversations = true;
     ShowOutboundTableLoading(true);
 
+    let nextC = null;
+    let prevC = null;
+
     if (direction === 'next') {
-        if (CurrentOutboundNextCursor || cursor) {
+        nextC = cursor;
+        if (cursor) {
             currentOutboundPageNumber++;
         }
     } else { // 'prev'
-        if (currentOutboundPageNumber > 1) {
+        prevC = cursor;
+        if (cursor && currentOutboundPageNumber > 1) {
             currentOutboundPageNumber--;
         }
     }
 
+    // On a fresh load or filter change, reset page number.
+    if (!nextC && !prevC) {
+        currentOutboundPageNumber = 1;
+    }
+
+    outboundPageInfo.text(`Page ${currentOutboundPageNumber}`);
+
+    const requestPayload = {
+        limit: OutboundConversationsPageSize,
+        nextCursor: nextC,
+        previousCursor: prevC,
+        filter: (nextC || prevC) ? null : CurrentOutboundFilters
+    };
+
     FetchOutboundConversationsMetaDataFromAPI(
-        OutboundConversationsPageSize,
-        direction === 'next' ? cursor : null,
-        direction === 'prev' ? cursor : null,
+        requestPayload,
         handleOutboundFetchSuccess,
         handleOutboundFetchError
     );
@@ -1161,7 +1292,71 @@ function initConversationsTab() {
     LoadInboundConversations(); // Load first page
     LoadOutboundConversations(); // Load first page
 
+    // Setup all tag inputs
+    setupTagInput('#inboundFilterRouteIdsInput', '#inboundFilterRouteIdsTags');
+    setupTagInput('#inboundFilterCallingNumbersInput', '#inboundFilterCallingNumbersTags');
+    setupTagInput('#inboundFilterRouteNumberIdsInput', '#inboundFilterRouteNumberIdsTags');
+    setupTagInput('#outboundFilterCampaignIdsInput', '#outboundFilterCampaignIdsTags');
+    setupTagInput('#outboundFilterCallingNumberIdsInput', '#outboundFilterCallingNumberIdsTags');
+    setupTagInput('#outboundFilterRecipientNumbersInput', '#outboundFilterRecipientNumbersTags');
+
     // --- Event Listeners ---
+
+    // Inbound Filter Actions
+    inboundFilterApplyButton.on('click', function () {
+        CurrentInboundFilters = getInboundFilterObject();
+        updateFilterButtonUI('inbound', CurrentInboundFilters !== null);
+
+        // Reset pagination and reload data from page 1
+        CurrentInboundNextCursor = null;
+        CurrentInboundPrevCursor = null;
+        LoadInboundConversations();
+
+        $('#inboundFilterCollapse').collapse('hide');
+    });
+
+    inboundFilterResetButton.on('click', function () {
+        resetFilterForm(inboundFilterForm);
+    });
+
+    clearInboundFiltersButton.on('click', function () {
+        CurrentInboundFilters = null;
+        resetFilterForm(inboundFilterForm);
+        updateFilterButtonUI('inbound', false);
+
+        // Reset pagination and reload data from page 1
+        CurrentInboundNextCursor = null;
+        CurrentInboundPrevCursor = null;
+        LoadInboundConversations();
+    });
+
+    // Outbound Filter Actions
+    outboundFilterApplyButton.on('click', function () {
+        CurrentOutboundFilters = getOutboundFilterObject();
+        updateFilterButtonUI('outbound', CurrentOutboundFilters !== null);
+
+        // Reset pagination and reload data from page 1
+        CurrentOutboundNextCursor = null;
+        CurrentOutboundPrevCursor = null;
+        LoadOutboundConversations();
+
+        $('#outboundFilterCollapse').collapse('hide');
+    });
+
+    outboundFilterResetButton.on('click', function () {
+        resetFilterForm(outboundFilterForm);
+    });
+
+    clearOutboundFiltersButton.on('click', function () {
+        CurrentOutboundFilters = null;
+        resetFilterForm(outboundFilterForm);
+        updateFilterButtonUI('outbound', false);
+
+        // Reset pagination and reload data from page 1
+        CurrentOutboundNextCursor = null;
+        CurrentOutboundPrevCursor = null;
+        LoadOutboundConversations();
+    });
 
     // Pagination Buttons
     inboundNextButton.on("click", () => {
