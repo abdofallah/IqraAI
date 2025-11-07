@@ -1,4 +1,11 @@
-﻿using IqraCore.Entities.Helper.Audio;
+﻿using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.CognitiveServices;
+using Azure.ResourceManager.Resources;
+using Azure.ResourceManager.Resources.Models;
+using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.AzureSpeech;
@@ -9,12 +16,18 @@ using IqraInfrastructure.Managers.TTS.Helpers;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using System.Collections.ObjectModel;
+using System.Drawing;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class AzureSpeechTTSService : ITTSService
     {
-        private readonly string _subscriptionKey;
+        private readonly string _tenantId;
+        private readonly string _clientId;
+        private readonly string _clientSecret;
+        private readonly string _subscriptionId;
+        private readonly string _resourceGroupName;
+        private readonly string _speechResourceName;
         private readonly string _region;
         private readonly AzureSpeechConfig _serviceConfig;
 
@@ -22,65 +35,112 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private TTSProviderAvailableAudioFormat _optimalAzureFormat;
         private bool _audioConversationNeeded = false;
 
+        private ArmClient _azureClient;
         private SpeechSynthesizer _synthesizer;
         private PullAudioOutputStream _pullStream;
 
         private bool _loggingEnabled = false;
 
-        public AzureSpeechTTSService(string subscriptionKey, string region, AzureSpeechConfig config)
+        public AzureSpeechTTSService(string tenantId, string clientId, string clientSecret, string subscriptionId, string resourceGroupName, string speechResourceName, string region, AzureSpeechConfig config)
         {
-            _subscriptionKey = subscriptionKey;
+            _tenantId = tenantId;
+            _clientId = clientId;
+            _clientSecret = clientSecret;
+            _subscriptionId = subscriptionId;
+            _resourceGroupName = resourceGroupName;
+            _speechResourceName = speechResourceName;
             _region = region;
             _serviceConfig = config;
         }
 
-        public void Initialize()
+        public async Task<FunctionReturnResult> Initialize()
         {
-            _finalUserRequest = new AudioRequestDetails
-            {
-                RequestedEncoding = _serviceConfig.TargetEncodingType,
-                RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
-                RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
-            };
+            var result = new FunctionReturnResult();
 
-            // Use the selector to find the best format Azure can provide.
-            var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, AzureSupportedFormats);
-            _optimalAzureFormat = bestFallbackOrder.FirstOrDefault();
-            if (_optimalAzureFormat == null)
+            try
             {
-                throw new NotSupportedException(
-                    $"Azure TTS does not support any format that can be reasonably converted to the requested format: " +
-                    $"{_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz");
+                var azureCredientals = new ClientSecretCredential(_tenantId, _clientId, _clientSecret);
+                _azureClient = new ArmClient(azureCredientals);
+
+                var subscriptionData = await _azureClient.GetSubscriptions().GetAsync(_subscriptionId);
+                var subscriptionState = subscriptionData.Value.Data.State;
+                if (subscriptionState != SubscriptionState.Enabled)
+                {
+                    return result.SetFailureResult(
+                        "Initialize:SUBSCRIPTION_NOT_ENABLED",
+                        $"Azure subscription is not enabled. Current State: {subscriptionState.ToString()}"
+                    );
+                }            
+
+                var resourceId = CognitiveServicesAccountResource.CreateResourceIdentifier(_subscriptionId, _resourceGroupName, _speechResourceName);
+                CognitiveServicesAccountResource speechAccount = _azureClient.GetCognitiveServicesAccountResource(resourceId);
+
+                var keys = await speechAccount.GetKeysAsync();
+                string retrievedKey = keys.Value.Key1;
+
+                if (string.IsNullOrEmpty(retrievedKey))
+                {
+                    return result.SetFailureResult(
+                        "Initialize:KEY_NOT_FOUND",
+                        "Could not retrieve a valid key for the Speech Service."
+                    );
+                }
+
+                _finalUserRequest = new AudioRequestDetails
+                {
+                    RequestedEncoding = _serviceConfig.TargetEncodingType,
+                    RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
+                    RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
+                };
+
+                // Use the selector to find the best format Azure can provide.
+                var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, AzureSupportedFormats);
+                _optimalAzureFormat = bestFallbackOrder.FirstOrDefault();
+                if (_optimalAzureFormat == null)
+                {
+                    throw new NotSupportedException(
+                        $"Azure TTS does not support any format that can be reasonably converted to the requested format: " +
+                        $"{_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz");
+                }
+
+                // Find the corresponding Azure SDK enum value for the chosen optimal format.
+                var formatKey = (_optimalAzureFormat.Encoding, _optimalAzureFormat.SampleRateHz, _optimalAzureFormat.BitsPerSample);
+                if (!FormatMap.TryGetValue(formatKey, out var azureOutputFormat))
+                {
+                    throw new InvalidOperationException($"Internal error: No mapping found for the selected optimal format: {formatKey}");
+                }
+
+                _audioConversationNeeded = _optimalAzureFormat.Encoding != _finalUserRequest.RequestedEncoding ||
+                                _optimalAzureFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
+                                _optimalAzureFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
+
+                var speechConfig = SpeechConfig.FromSubscription(retrievedKey, _region);
+                speechConfig.SpeechSynthesisLanguage = _serviceConfig.Language;
+                speechConfig.SpeechSynthesisVoiceName = _serviceConfig.VoiceName;
+                speechConfig.SetSpeechSynthesisOutputFormat(azureOutputFormat);
+
+                _pullStream = AudioOutputStream.CreatePullStream();
+                var audioConfig = AudioConfig.FromStreamOutput(_pullStream);
+
+                _synthesizer = new SpeechSynthesizer(speechConfig, audioConfig);
+                var connection = Connection.FromSpeechSynthesizer(_synthesizer);
+                connection.Open(true);
+
+                _synthesizer.SynthesisStarted += OnSynthesisStarted;
+                _synthesizer.SynthesisCompleted += OnSynthesisCompleted;
+                _synthesizer.SynthesisCanceled += OnSynthesisCanceled;
+                _synthesizer.Synthesizing += OnSynthesizing;
+                _synthesizer.BookmarkReached += OnBookmarkReached;
+
+                return result.SetSuccessResult();
             }
-
-            // Find the corresponding Azure SDK enum value for the chosen optimal format.
-            var formatKey = (_optimalAzureFormat.Encoding, _optimalAzureFormat.SampleRateHz, _optimalAzureFormat.BitsPerSample);
-            if (!FormatMap.TryGetValue(formatKey, out var azureOutputFormat))
+            catch (Exception ex)
             {
-                throw new InvalidOperationException($"Internal error: No mapping found for the selected optimal format: {formatKey}");
+                return result.SetFailureResult(
+                    $"CheckAccount:EXCEPTION",
+                    $"Internal server error occured: {ex.Message}"
+                );
             }
-
-            _audioConversationNeeded = _optimalAzureFormat.Encoding != _finalUserRequest.RequestedEncoding ||
-                            _optimalAzureFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
-                            _optimalAzureFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
-
-            var speechConfig = SpeechConfig.FromSubscription(_subscriptionKey, _region);
-            speechConfig.SpeechSynthesisLanguage = _serviceConfig.Language;
-            speechConfig.SpeechSynthesisVoiceName = _serviceConfig.VoiceName;
-            speechConfig.SetSpeechSynthesisOutputFormat(azureOutputFormat);
-
-            _pullStream = AudioOutputStream.CreatePullStream();
-            var audioConfig = AudioConfig.FromStreamOutput(_pullStream);
-
-            _synthesizer = new SpeechSynthesizer(speechConfig, audioConfig);
-            var connection = Connection.FromSpeechSynthesizer(_synthesizer);
-            connection.Open(true);
-
-            _synthesizer.SynthesisStarted += OnSynthesisStarted;
-            _synthesizer.SynthesisCompleted += OnSynthesisCompleted;
-            _synthesizer.SynthesisCanceled += OnSynthesisCanceled;
-            _synthesizer.Synthesizing += OnSynthesizing;
-            _synthesizer.BookmarkReached += OnBookmarkReached;
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)

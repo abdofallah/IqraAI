@@ -1,5 +1,6 @@
 ﻿using ElevenLabs;
 using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.ElevenLabs;
@@ -73,37 +74,67 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             }
         }
 
-        public void Initialize()
+        public async Task<FunctionReturnResult> Initialize()
         {
-            _finalUserRequest = new AudioRequestDetails
-            {
-                RequestedEncoding = _serviceConfig.TargetEncodingType,
-                RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
-                RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
-            };
+            var result = new FunctionReturnResult();
 
-            var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, ElevenLabsSupportedFormats);
-            _optimalElevenLabsFormat = bestFallbackOrder.FirstOrDefault() ?? throw new NotSupportedException(
-                $"ElevenLabs TTS does not support any format that can be reasonably converted to the requested format: " +
-                $"{_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz");
-
-            var formatKey = (_optimalElevenLabsFormat.Encoding, _optimalElevenLabsFormat.SampleRateHz, _optimalElevenLabsFormat.BitsPerSample);
-            if (!FormatMap.TryGetValue(formatKey, out _outputFormat)) // Set the class-level field
+            try
             {
-                throw new InvalidOperationException($"Internal error: No mapping found for the selected optimal ElevenLabs format: {formatKey}");
+                var userSubscriptionResult = await _client.User.GetUserSubscriptionAsync();
+                if (userSubscriptionResult.Status != SubscriptionStatusType.Active)
+                {
+                    return result.SetFailureResult(
+                        "CheckAccount:SUBSCRIPTION_NOT_ACTIVE",
+                        $"Elevenlabs user scubrption is not active. Current status: {userSubscriptionResult.Status.ToString()}"
+                    );
+                }
+                if (userSubscriptionResult.CharacterCount >= userSubscriptionResult.CharacterLimit)
+                {
+                    return result.SetFailureResult(
+                        "CheckAccount:CHARACTER_LIMIT_REACHED",
+                        $"Elevenlabs total character has been reached. Current count: {userSubscriptionResult.CharacterCount}/{userSubscriptionResult.CharacterLimit}"
+                    );
+                }
+
+                _finalUserRequest = new AudioRequestDetails
+                {
+                    RequestedEncoding = _serviceConfig.TargetEncodingType,
+                    RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
+                    RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
+                };
+
+                var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, ElevenLabsSupportedFormats);
+                _optimalElevenLabsFormat = bestFallbackOrder.FirstOrDefault() ?? throw new NotSupportedException(
+                    $"ElevenLabs TTS does not support any format that can be reasonably converted to the requested format: " +
+                    $"{_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz");
+
+                var formatKey = (_optimalElevenLabsFormat.Encoding, _optimalElevenLabsFormat.SampleRateHz, _optimalElevenLabsFormat.BitsPerSample);
+                if (!FormatMap.TryGetValue(formatKey, out _outputFormat)) // Set the class-level field
+                {
+                    throw new InvalidOperationException($"Internal error: No mapping found for the selected optimal ElevenLabs format: {formatKey}");
+                }
+
+                _audioConversationNeeded = _optimalElevenLabsFormat.Encoding != _finalUserRequest.RequestedEncoding ||
+                                        _optimalElevenLabsFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
+                                        _optimalElevenLabsFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
+
+                _client = new ElevenLabsClient(_apiKey);
+
+                _voiceData = _client.Voices.GetVoicesByVoiceIdAsync(_serviceConfig.VoiceId).GetAwaiter().GetResult();
+
+                var allModels = _client.Models.GetModelsAsync().GetAwaiter().GetResult().ToList();
+                _modelData = allModels.Find(d => d.ModelId == _serviceConfig.ModelId);
+                if (_modelData == null) throw new Exception("Model not found");
+
+                return result.SetSuccessResult();
             }
-
-            _audioConversationNeeded = _optimalElevenLabsFormat.Encoding != _finalUserRequest.RequestedEncoding ||
-                                    _optimalElevenLabsFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
-                                    _optimalElevenLabsFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
-
-            _client = new ElevenLabsClient(_apiKey);
-
-            _voiceData = _client.Voices.GetVoicesByVoiceIdAsync(_serviceConfig.VoiceId).GetAwaiter().GetResult();
-
-            var allModels = _client.Models.GetModelsAsync().GetAwaiter().GetResult().ToList();
-            _modelData = allModels.Find(d => d.ModelId == _serviceConfig.ModelId);
-            if (_modelData == null) throw new Exception("Model not found");
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    $"CheckAccount:EXCEPTION",
+                    $"Internal server error occured: {ex.Message}"
+                );
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
@@ -113,7 +144,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             try
             {
                 var result = await _client.TextToSpeech.CreateTextToSpeechByVoiceIdWithTimestampsAsync(_voiceData.VoiceId, request, null, null, _outputFormat, null, cancellationToken);
-                  
+                
                 if (!string.IsNullOrEmpty(result.Item2))
                 {
                     //_previousRequestIds.Add(result.Item2);
@@ -137,6 +168,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 }
 
                 return finalAudioData;
+            }
+            catch (HttpRequestException ex)
+            {
+
             }
             catch (Exception ex) {
                 _logger.LogError(ex, ex.Message);

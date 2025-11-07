@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.Speechify;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
@@ -25,9 +26,29 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _serviceConfig = config;
         }
 
-        public void Initialize()
+        public async Task<FunctionReturnResult> Initialize()
         {
+            var result = new FunctionReturnResult();
+
+            return result.SetSuccessResult();
             // Static HttpClient initialization is handled implicitly
+        }
+
+        public async Task<FunctionReturnResult> CheckAccount()
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    $"CheckAccount:EXCEPTION",
+                    $"Internal server error occured: {ex.Message}"
+                );
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)

@@ -11,6 +11,9 @@
     <PackageReference Include="Anthropic.SDK" Version="5.5.0" />
     <PackageReference Include="Azure.AI.Inference" Version="1.0.0-beta.5" />
     <PackageReference Include="Azure.AI.OpenAI" Version="2.2.0-beta.4" />
+    <PackageReference Include="Azure.Identity" Version="1.17.0" />
+    <PackageReference Include="Azure.ResourceManager" Version="1.14.0-beta.1" />
+    <PackageReference Include="Azure.ResourceManager.CognitiveServices" Version="1.5.1" />
     <PackageReference Include="Catalyst" Version="1.0.54164" />
     <PackageReference Include="Catalyst.Models.Afrikaans" Version="1.0.30952" />
     <PackageReference Include="Catalyst.Models.Arabic" Version="1.0.30952" />

@@ -1,5 +1,6 @@
 ﻿using Deepgram.Clients.Interfaces.v1;
 using Deepgram.Models.Speak.v1.REST;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.Deepgram;
 using IqraCore.Interfaces.AI;
@@ -25,9 +26,30 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _serviceConfig = config;
         }
 
-        public void Initialize()
+        public async Task<FunctionReturnResult> Initialize()
         {
+            var result = new FunctionReturnResult();
+
             _speakClient = new Deepgram.Clients.Speak.v1.REST.Client(_apiKey);
+
+            return result.SetSuccessResult();
+        }
+
+        public async Task<FunctionReturnResult> CheckAccount()
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    $"CheckAccount:EXCEPTION",
+                    $"Internal server error occured: {ex.Message}"
+                );
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)

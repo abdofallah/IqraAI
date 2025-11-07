@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.FishAudio;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
@@ -27,13 +28,34 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _serviceConfig = config;
         }
 
-        public void Initialize()
+        public async Task<FunctionReturnResult> Initialize()
         {
+            var result = new FunctionReturnResult();
+
             // Static HttpClient, initialization done in constructor or is implicit
 
             if (!(new List<int>([8000, 16000, 24000, 32000, 44100])).Contains(_serviceConfig.TargetSampleRate))
             {
                 throw new Exception("Sample rate must be 8000, 16000, 24000, 32000 or 44100");
+            }
+
+            return result.SetSuccessResult();
+        }
+
+        public async Task<FunctionReturnResult> CheckAccount()
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    $"CheckAccount:EXCEPTION",
+                    $"Internal server error occured: {ex.Message}"
+                );
             }
         }
 

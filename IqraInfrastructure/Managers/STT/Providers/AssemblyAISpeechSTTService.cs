@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using System.Net.WebSockets;
@@ -65,33 +66,47 @@ namespace IqraInfrastructure.Managers.STT.Providers
             _maxTurnSilence = maxTurnSilence;
         }
 
-        public void Initialize()
+        public async Task<FunctionReturnResult> Initialize()
         {
-            switch (_inputAudioEncodingType)
+            var result = new FunctionReturnResult();
+
+            try
             {
-                case AudioEncodingTypeEnum.PCM:
-                    if (_inputBitsPerSample == 16)
-                    {
-                        _audioEncoding = AssemblyAIEncoding.pcm_s16le;
-                    }
-                    else
-                    {
-                        throw new ArgumentException($"Invalid bits per sample: {_inputBitsPerSample}");
-                    }
+                switch (_inputAudioEncodingType)
+                {
+                    case AudioEncodingTypeEnum.PCM:
+                        if (_inputBitsPerSample == 16)
+                        {
+                            _audioEncoding = AssemblyAIEncoding.pcm_s16le;
+                        }
+                        else
+                        {
+                            throw new ArgumentException($"Invalid bits per sample: {_inputBitsPerSample}");
+                        }
 
-                    break;
+                        break;
 
-                case AudioEncodingTypeEnum.MULAW:
-                    _audioEncoding = AssemblyAIEncoding.pcm_mulaw;
-                    break;
+                    case AudioEncodingTypeEnum.MULAW:
+                        _audioEncoding = AssemblyAIEncoding.pcm_mulaw;
+                        break;
 
-                default:
-                    throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+                    default:
+                        throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+                }
+
+                _webSocketClient = new ClientWebSocket();
+                _webSocketClient.Options.SetRequestHeader("Authorization", _apiKey);
+                _cancellationTokenSource = new CancellationTokenSource();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "Initialize:EXCEPTION",
+                    $"Internal error: {ex.Message}"
+                );
             }
 
-            _webSocketClient = new ClientWebSocket();
-            _webSocketClient.Options.SetRequestHeader("Authorization", _apiKey);
-            _cancellationTokenSource = new CancellationTokenSource();
+            return result.SetSuccessResult();
         }
 
         public void StartTranscription()

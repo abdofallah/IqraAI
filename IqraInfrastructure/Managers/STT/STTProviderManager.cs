@@ -481,7 +481,12 @@ namespace IqraInfrastructure.Managers.STT
                 {
                     case InterfaceSTTProviderEnum.AzureSpeechServices:
                         {
-                            string resourceKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]);
+                            string tenantId = integrationData.Fields["tenant_id"];
+                            string clientId = integrationData.EncryptedFields["client_id"];
+                            string clientSecret = _integrationsManager.DecryptField(integrationData.EncryptedFields["client_secret"]);
+                            string subscriptionId = integrationData.Fields["subscription_id"];
+                            string resourceGroupName = integrationData.Fields["resource_group_name"];
+                            string speechResourceName = integrationData.Fields["speech_resource_name"];
                             string resourceRegion = integrationData.Fields["resource_region"];
                             string languageId = (string)agentIntegrationData.FieldValues["langauge_id"];
                             string? continousLanguageIdentificationIdsString = (string?)agentIntegrationData.FieldValues["continous_language_identification_ids"];
@@ -503,7 +508,7 @@ namespace IqraInfrastructure.Managers.STT
                                 phrasesList.AddRange(phrasesListString.Split(','));
                             }
 
-                            var azureSTTService = new AzureSpeechSTTService(resourceKey, resourceRegion, languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList, silenceTimeout, inputSampleRate, inputBitsPerSample, inputAudioEncoding);
+                            var azureSTTService = new AzureSpeechSTTService(tenantId, clientId, clientSecret, subscriptionId, resourceGroupName, speechResourceName, resourceRegion, languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList, silenceTimeout, inputSampleRate, inputBitsPerSample, inputAudioEncoding);
                             return result.SetSuccessResult(
                                 azureSTTService
                             );

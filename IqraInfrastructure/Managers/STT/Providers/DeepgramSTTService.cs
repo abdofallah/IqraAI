@@ -3,6 +3,7 @@ using Deepgram.Clients.Interfaces.v2;
 using Deepgram.Models.Authenticate.v1;
 using Deepgram.Models.Listen.v2.WebSocket;
 using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 
@@ -69,53 +70,67 @@ namespace IqraInfrastructure.Managers.STT.Providers
             _inputAudioEncodingType = inputAudioEncodingType;
         }
 
-        public void Initialize()
+        public async Task<FunctionReturnResult> Initialize()
         {
-            switch (_inputAudioEncodingType)
+            var result = new FunctionReturnResult();
+
+            try
             {
-                case AudioEncodingTypeEnum.PCM:
-                    if (_inputBitsPerSample == 16)
-                    {
-                        _deepgramAudioFormat = "linear16";
-                    }
-                    else if (_inputBitsPerSample == 32)
-                    {
-                        _deepgramAudioFormat = "linear32";
-                    }
-                    else
-                    {
-                        throw new ArgumentException($"Invalid bits per sample: {_inputBitsPerSample}");
-                    }
+                switch (_inputAudioEncodingType)
+                {
+                    case AudioEncodingTypeEnum.PCM:
+                        if (_inputBitsPerSample == 16)
+                        {
+                            _deepgramAudioFormat = "linear16";
+                        }
+                        else if (_inputBitsPerSample == 32)
+                        {
+                            _deepgramAudioFormat = "linear32";
+                        }
+                        else
+                        {
+                            throw new ArgumentException($"Invalid bits per sample: {_inputBitsPerSample}");
+                        }
 
-                    break;
+                        break;
 
-                case AudioEncodingTypeEnum.MULAW:
-                    _deepgramAudioFormat = "mulaw";
-                    break;
+                    case AudioEncodingTypeEnum.MULAW:
+                        _deepgramAudioFormat = "mulaw";
+                        break;
 
-                case AudioEncodingTypeEnum.ALAW:
-                    _deepgramAudioFormat = "alaw";
-                    break;
+                    case AudioEncodingTypeEnum.ALAW:
+                        _deepgramAudioFormat = "alaw";
+                        break;
 
-                case AudioEncodingTypeEnum.G729:
-                    _deepgramAudioFormat = "g729";
-                    break;
+                    case AudioEncodingTypeEnum.G729:
+                        _deepgramAudioFormat = "g729";
+                        break;
 
-                case AudioEncodingTypeEnum.OPUS:
-                    _deepgramAudioFormat = "opus";
-                    break;
+                    case AudioEncodingTypeEnum.OPUS:
+                        _deepgramAudioFormat = "opus";
+                        break;
 
-                default:
-                    throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+                    default:
+                        throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+                }
+
+                DeepgramWsClientOptions options = new DeepgramWsClientOptions(apiKey: _apiKey, keepAlive: true);
+                _liveClient = ClientFactory.CreateListenWebSocketClient(_apiKey, options);
+
+                _liveClient.Subscribe(new EventHandler<OpenResponse>(OnConnectionOpened));
+                _liveClient.Subscribe(new EventHandler<ResultResponse>(OnResultReceived));
+                _liveClient.Subscribe(new EventHandler<ErrorResponse>(OnErrorReceived));
+                _liveClient.Subscribe(new EventHandler<CloseResponse>(OnConnectionClosed));
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "Initialize:EXCEPTION",
+                    $"Internal error: {ex.Message}"
+                );
             }
 
-            DeepgramWsClientOptions options = new DeepgramWsClientOptions(apiKey: _apiKey, keepAlive: true);
-            _liveClient = ClientFactory.CreateListenWebSocketClient(_apiKey, options);
-
-            _liveClient.Subscribe(new EventHandler<OpenResponse>(OnConnectionOpened));
-            _liveClient.Subscribe(new EventHandler<ResultResponse>(OnResultReceived));
-            _liveClient.Subscribe(new EventHandler<ErrorResponse>(OnErrorReceived));
-            _liveClient.Subscribe(new EventHandler<CloseResponse>(OnConnectionClosed));
+            return result.SetSuccessResult();
         }
 
         public void StartTranscription()

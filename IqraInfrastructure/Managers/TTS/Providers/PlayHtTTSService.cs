@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.PlayHt;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
@@ -27,8 +28,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _serviceConfig = config;
         }
 
-        public void Initialize()
+        public async Task<FunctionReturnResult> Initialize()
         {
+            var result = new FunctionReturnResult();
+
             // make this dynamic within dashboard
             if (_serviceConfig.VoiceEngine == "PlayHT1.0")
             {
@@ -42,6 +45,25 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             if (_serviceConfig.TargetSampleRate < 8000 || _serviceConfig.TargetSampleRate > 48000)
             {
                 throw new Exception("Unsupported sample rate, supported are: 8000~48000");
+            }
+
+            return result.SetSuccessResult();
+        }
+
+        public async Task<FunctionReturnResult> CheckAccount()
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    $"CheckAccount:EXCEPTION",
+                    $"Internal server error occured: {ex.Message}"
+                );
             }
         }
 

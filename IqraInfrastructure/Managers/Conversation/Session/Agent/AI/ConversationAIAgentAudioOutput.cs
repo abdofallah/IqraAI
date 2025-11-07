@@ -163,7 +163,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             DisposeCurrentTTSService(); // Dispose previous if any
             _agentState.TTSService = ttsServiceResult.Data;
-            _agentState.TTSService.Initialize(); // Initialize the new service
+            var ttsServiceInitResult = await _agentState.TTSService.Initialize();
+            if (!ttsServiceInitResult.Success)
+            {
+                _logger.LogError("Agent {AgentId}: Failed to initialize TTS service with error: {ErrorMessage}", _agentState.AgentId, ttsServiceInitResult.Message);
+                throw new InvalidOperationException($"Failed to initialize TTS service: [{ttsServiceInitResult.Code}] {ttsServiceInitResult.Message}");
+            }
+
             _logger.LogInformation("Agent {AgentId}: TTS service initialized/re-initialized.", _agentState.AgentId);
         }
         private async Task LoadBackgroundMusicAsync()

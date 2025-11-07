@@ -1,4 +1,10 @@
-﻿using IqraCore.Entities.Helper.Audio;
+﻿using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.CognitiveServices;
+using Azure.ResourceManager.Resources.Models;
+using Deepgram.Models.Manage.v1;
+using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using Microsoft.CognitiveServices.Speech;
@@ -8,10 +14,16 @@ namespace IqraInfrastructure.Managers.STT.Providers
 {
     public class AzureSpeechSTTService : ISTTService
     {
-        private readonly string _subscriptionKey;
+        private readonly string _tenantId;
+        private readonly string _clientId;
+        private readonly string _clientSecret;
+        private readonly string _subscriptionId;
+        private readonly string _resourceGroupName;
+        private readonly string _speechResourceName;
         private readonly string _region;
         private readonly string _language;
 
+        private ArmClient _azureClient;
         private SpeechRecognizer _recognizer;
         private PushAudioInputStream _pushStream;
 
@@ -34,9 +46,14 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public event EventHandler<string> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
-        public AzureSpeechSTTService(string subscriptionKey, string region, string language, List<string> continousLanguageIdentificationIds, bool speakerDiarization, List<string> phrasesList, int silenceTimeout, int inputSampleRate, int inputBitsPerSample, AudioEncodingTypeEnum inputAudioEncodingType)
+        public AzureSpeechSTTService(string tenantId, string clientId, string clientSecret, string subscriptionId, string resourceGroupName, string speechResourceName, string region, string language, List<string> continousLanguageIdentificationIds, bool speakerDiarization, List<string> phrasesList, int silenceTimeout, int inputSampleRate, int inputBitsPerSample, AudioEncodingTypeEnum inputAudioEncodingType)
         {
-            _subscriptionKey = subscriptionKey;
+            _tenantId = tenantId;
+            _clientId = clientId;
+            _clientSecret = clientSecret;
+            _subscriptionId = subscriptionId;
+            _resourceGroupName = resourceGroupName;
+            _speechResourceName = speechResourceName;
             _region = region;
             _language = language;
 
@@ -50,64 +67,105 @@ namespace IqraInfrastructure.Managers.STT.Providers
             _silenceTimeout = silenceTimeout;
         }
 
-        public void Initialize()
+        public async Task<FunctionReturnResult> Initialize()
         {
-            var speechConfig = SpeechConfig.FromSubscription(_subscriptionKey, _region);
+            var result = new FunctionReturnResult();
 
-            speechConfig.SpeechRecognitionLanguage = _language;
-            speechConfig.SetProperty(PropertyId.SpeechServiceResponse_DiarizeIntermediateResults, _speakerDiarization ? "true" : "false");
-            speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, _silenceTimeout.ToString());
-
-            AudioStreamWaveFormat audioEncodingFormat;
-            switch (_inputAudioEncodingType)
+            try
             {
-                case AudioEncodingTypeEnum.PCM:
-                    audioEncodingFormat = AudioStreamWaveFormat.PCM;
-                    break;
+                var azureCredientals = new ClientSecretCredential(_tenantId, _clientId, _clientSecret);
+                _azureClient = new ArmClient(azureCredientals);
 
-                case AudioEncodingTypeEnum.MULAW:
-                    audioEncodingFormat = AudioStreamWaveFormat.MULAW;
-                    break;
+                var subscriptionData = await _azureClient.GetSubscriptions().GetAsync(_subscriptionId);
+                var subscriptionState = subscriptionData.Value.Data.State;
+                if (subscriptionState != SubscriptionState.Enabled)
+                {
+                    return result.SetFailureResult(
+                        "Initialize:SUBSCRIPTION_NOT_ENABLED",
+                        $"Azure subscription is not enabled. Current State: {subscriptionState.ToString()}"
+                    );
+                }
 
-                case AudioEncodingTypeEnum.ALAW:
-                    audioEncodingFormat = AudioStreamWaveFormat.ALAW;
-                    break;
+                var resourceId = CognitiveServicesAccountResource.CreateResourceIdentifier(_subscriptionId, _resourceGroupName, _speechResourceName);
+                CognitiveServicesAccountResource speechAccount = _azureClient.GetCognitiveServicesAccountResource(resourceId);
 
-                case AudioEncodingTypeEnum.G722:
-                    audioEncodingFormat = AudioStreamWaveFormat.G722;
-                    break;
+                var keys = await speechAccount.GetKeysAsync();
+                string retrievedKey = keys.Value.Key1;
 
-                default:
-                    throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+                if (string.IsNullOrEmpty(retrievedKey))
+                {
+                    return result.SetFailureResult(
+                        "Initialize:KEY_NOT_FOUND",
+                        "Could not retrieve a valid key for the Speech Service."
+                    );
+                }
+
+                var speechConfig = SpeechConfig.FromSubscription(retrievedKey, _region);
+
+                speechConfig.SpeechRecognitionLanguage = _language;
+                speechConfig.SetProperty(PropertyId.SpeechServiceResponse_DiarizeIntermediateResults, _speakerDiarization ? "true" : "false");
+                speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, _silenceTimeout.ToString());
+
+                AudioStreamWaveFormat audioEncodingFormat;
+                switch (_inputAudioEncodingType)
+                {
+                    case AudioEncodingTypeEnum.PCM:
+                        audioEncodingFormat = AudioStreamWaveFormat.PCM;
+                        break;
+
+                    case AudioEncodingTypeEnum.MULAW:
+                        audioEncodingFormat = AudioStreamWaveFormat.MULAW;
+                        break;
+
+                    case AudioEncodingTypeEnum.ALAW:
+                        audioEncodingFormat = AudioStreamWaveFormat.ALAW;
+                        break;
+
+                    case AudioEncodingTypeEnum.G722:
+                        audioEncodingFormat = AudioStreamWaveFormat.G722;
+                        break;
+
+                    default:
+                        throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+                }
+
+                _pushStream = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormat(Convert.ToUInt32(_inputSampleRate), (byte)_inputBitsPerSample, 1, audioEncodingFormat));
+                var audioConfig = AudioConfig.FromStreamInput(_pushStream);
+
+                if (_continousLanguageIdentificationIds.Count > 0)
+                {
+                    speechConfig.SetProperty(PropertyId.SpeechServiceConnection_LanguageIdMode, "Continuous");
+                    var autoDetectSourceLanguageConfig = AutoDetectSourceLanguageConfig.FromLanguages(_continousLanguageIdentificationIds.ToArray());
+                    _recognizer = new SpeechRecognizer(speechConfig, autoDetectSourceLanguageConfig, audioConfig);
+                }
+                else
+                {
+                    _recognizer = new SpeechRecognizer(speechConfig, audioConfig);
+                }
+
+
+                var phraseList = PhraseListGrammar.FromRecognizer(_recognizer);
+                foreach (var phrase in _phrasesList)
+                {
+                    phraseList.AddPhrase(phrase);
+                }
+
+                _recognizer.Recognizing += OnRecognizing;
+                _recognizer.Recognized += OnRecognized;
+                _recognizer.Canceled += OnCanceled;
+                _recognizer.SessionStarted += OnSessionStarted;
+                _recognizer.SessionStopped += OnSessionStopped;
+                _recognizer.SpeechEndDetected += OnSpeechEndDetected;
+
+                return result.SetSuccessResult();
             }
-
-            _pushStream = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormat(Convert.ToUInt32(_inputSampleRate), (byte)_inputBitsPerSample, 1, audioEncodingFormat));
-            var audioConfig = AudioConfig.FromStreamInput(_pushStream);
-
-            if (_continousLanguageIdentificationIds.Count > 0)
+            catch (Exception ex)
             {
-                speechConfig.SetProperty(PropertyId.SpeechServiceConnection_LanguageIdMode, "Continuous");
-                var autoDetectSourceLanguageConfig = AutoDetectSourceLanguageConfig.FromLanguages(_continousLanguageIdentificationIds.ToArray());
-                _recognizer = new SpeechRecognizer(speechConfig, autoDetectSourceLanguageConfig, audioConfig);
+                return result.SetFailureResult(
+                    "Initialize:EXCEPTION",
+                    $"Internal error: {ex.Message}"
+                );
             }
-            else
-            {
-                _recognizer = new SpeechRecognizer(speechConfig, audioConfig);
-            }
-
-
-            var phraseList = PhraseListGrammar.FromRecognizer(_recognizer);
-            foreach (var phrase in _phrasesList)
-            {
-                phraseList.AddPhrase(phrase);
-            }
-
-            _recognizer.Recognizing += OnRecognizing;
-            _recognizer.Recognized += OnRecognized;
-            _recognizer.Canceled += OnCanceled;
-            _recognizer.SessionStarted += OnSessionStarted;
-            _recognizer.SessionStopped += OnSessionStopped;
-            _recognizer.SpeechEndDetected += OnSpeechEndDetected;
         }
 
         public void StartTranscription()

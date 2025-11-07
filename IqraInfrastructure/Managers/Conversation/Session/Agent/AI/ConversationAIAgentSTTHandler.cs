@@ -69,7 +69,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _agentState.STTService.TranscriptionResultReceived += OnTranscriptionResultReceived;
             _agentState.STTService.OnRecoginizingRecieved += OnRecognizingReceived;
 
-            _agentState.STTService.Initialize();
+            var initSttServiceResult = await _agentState.STTService.Initialize();
+            if (!initSttServiceResult.Success)
+            {
+                _logger.LogError("Agent {AgentId}: Failed to initialize STT service with error: {ErrorMessage}", _agentState.AgentId, initSttServiceResult.Message);
+                // TODO: Raise error?
+                throw new InvalidOperationException($"Failed to initialize STT service: [{initSttServiceResult.Code}] {initSttServiceResult.Message}");
+            }
 
             _logger.LogInformation("STT Handler initialized for Agent {AgentId} with language {Language}.", _agentState.AgentId, _agentState.CurrentLanguageCode);
         }

@@ -1,10 +1,11 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Interfaces;
 
 namespace IqraCore.Interfaces.AI
 {
     public interface ISTTService
     {
-        void Initialize();
+        Task<FunctionReturnResult> Initialize();
         void StartTranscription();
         void StopTranscription();
         void WriteTranscriptionAudioData(byte[] data);

@@ -282,7 +282,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogError(ex, "Error initializing AI Agent {AgentId}", AgentId);
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error initializing agent: " + ex.Message, ex));
 
-                await ShutdownAsync("Initialization failed"); // Attempt cleanup
+                //await ShutdownAsync("Initialization failed"); // Attempt cleanup dont do it here, its handled by adding service
                 throw; // Re-throw to signal failure
             }
         }

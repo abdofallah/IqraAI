@@ -508,7 +508,12 @@ namespace IqraInfrastructure.Managers.TTS
                 {
                     case InterfaceTTSProviderEnum.AzureSpeechServices:
                         {
-                            string resourceKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]);
+                            string tenantId = integrationData.Fields["tenant_id"];
+                            string clientId = integrationData.EncryptedFields["client_id"];
+                            string clientSecret = _integrationsManager.DecryptField(integrationData.EncryptedFields["client_secret"]);
+                            string subscriptionId = integrationData.Fields["subscription_id"];
+                            string resourceGroupName = integrationData.Fields["resource_group_name"];
+                            string speechResourceName = integrationData.Fields["speech_resource_name"];
                             string resourceRegion = integrationData.Fields["resource_region"];
 
                             var config = new AzureSpeechConfig
@@ -520,7 +525,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new AzureSpeechTTSService(resourceKey, resourceRegion, config);
+                            var service = new AzureSpeechTTSService(tenantId, clientId, clientSecret, subscriptionId, resourceGroupName, speechResourceName, resourceRegion, config);
                             return result.SetSuccessResult(service);
                         }
 
