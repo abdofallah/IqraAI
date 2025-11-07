@@ -175,10 +175,18 @@ namespace IqraInfrastructure.Managers.User
             return result.SetSuccessResult();
         }
 
+        public async Task<FunctionReturnResult> CheckUsageConcurrency(long businessId, string featureKey)
+        {
+            return await _handleConcurrencyCheckAndIncrementAsync(businessId, featureKey, tryIncrease: false, null, null);
+        }
         public async Task<FunctionReturnResult> TryIncreaseUsageConcurrency(long businessId, string featureKey, object parentReference, object? childReference)
         {
+            return await _handleConcurrencyCheckAndIncrementAsync(businessId, featureKey, tryIncrease: true, parentReference, childReference);
+        }
+        private async Task<FunctionReturnResult> _handleConcurrencyCheckAndIncrementAsync(long businessId, string featureKey, bool tryIncrease, object? parentReference, object? childReference)
+        {
             var result = new FunctionReturnResult();
-            string logPrefix = "TryIncreaseUsageCocurrency";
+            string logPrefix = tryIncrease ? "TryIncreaseUsageConcurrency" : "CheckUsageConcurrency";
 
             try
             {
@@ -214,12 +222,7 @@ namespace IqraInfrastructure.Managers.User
                    );
                 }
 
-                var usageItem = new UserBillingCycleConcurrencyFeatureUsage
-                {
-                    BusinessId = businessId,
-                    ParentReference = parentReference,
-                    ChildReference = childReference
-                };
+                bool success;
 
                 // Validate Business-Level White Label
                 if (userWhiteLabelData.ActivatedAt != null && !string.IsNullOrEmpty(businessData!.WhiteLabelAssignedCustomerEmail))
@@ -229,7 +232,7 @@ namespace IqraInfrastructure.Managers.User
                     {
                         return result.SetFailureResult(
                             $"{logPrefix}:NO_USER_CUSTOMER",
-                            $"User customer data found for '{businessData.WhiteLabelAssignedCustomerEmail}'."
+                            $"No user customer data found for '{businessData.WhiteLabelAssignedCustomerEmail}'."
                         );
                     }
 
@@ -238,7 +241,8 @@ namespace IqraInfrastructure.Managers.User
                     if (
                         whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.Active &&
                         whiteLabelCustomerBilling.Subscription.Status != UserWhiteLabelCustomerBillingSubscriptionStatusEnum.PastDue
-                    ) {
+                    )
+                    {
                         return result.SetFailureResult(
                             $"{logPrefix}:USER_CUSTOMER_SUBSCRIPTION_NOT_ACTIVE",
                             $"User customer '{businessData.WhiteLabelAssignedCustomerEmail}' subscription plan is not active."
@@ -267,7 +271,7 @@ namespace IqraInfrastructure.Managers.User
                         .Where(a => (a.FeatureKey == featureKey && a.CancelledAt == null && a.PurchaseValidUntil >= DateTime.UtcNow))
                         .Sum(a => a.Quantity);
 
-                    long maxAllowedWhiteLabelCustomerConcurrency = (long)((long)purchasedAddonConcurrenyForFeature + (long)whiteLabelCustomerConcurrencyFeature.IncludedLimit);
+                    long maxAllowedWhiteLabelCustomerConcurrency = (long)(purchasedAddonConcurrenyForFeature + whiteLabelCustomerConcurrencyFeature.IncludedLimit);
                     if (maxAllowedWhiteLabelCustomerConcurrency <= 0)
                     {
                         return result.SetFailureResult(
@@ -276,34 +280,62 @@ namespace IqraInfrastructure.Managers.User
                         );
                     }
 
-                    usageItem.WhiteLabelCustomerEmail = businessData.WhiteLabelAssignedCustomerEmail;
-                    bool increased = await _userRepository.TryIncrementConcurrencyUsageWithWhiteLabelCustomerEmailAsync(businessData!.MasterUserEmail, featureKey, totalUserConcurrency, maxAllowedWhiteLabelCustomerConcurrency, usageItem);
-                    if (!increased)
+                    if (tryIncrease)
+                    {
+                        var usageItem = new UserBillingCycleConcurrencyFeatureUsage
+                        {
+                            BusinessId = businessId,
+                            ParentReference = parentReference!,
+                            ChildReference = childReference,
+                            WhiteLabelCustomerEmail = businessData.WhiteLabelAssignedCustomerEmail
+                        };
+                        success = await _userRepository.TryIncrementConcurrencyUsageWithWhiteLabelCustomerEmailAsync(businessData.MasterUserEmail, featureKey, totalUserConcurrency, maxAllowedWhiteLabelCustomerConcurrency, usageItem);
+                    }
+                    else
+                    {
+                        success = await _userRepository.CheckConcurrencyAvailabilityWithWhiteLabelCustomerAsync(businessData.MasterUserEmail, featureKey, totalUserConcurrency, maxAllowedWhiteLabelCustomerConcurrency, businessData.WhiteLabelAssignedCustomerEmail);
+                    }
+
+                    if (!success)
                     {
                         return result.SetFailureResult(
-                            $"{logPrefix}:USER_CUSTOMER_CONCURRENCY_LIMIT_REACHED",
-                            $"Could not increase concurrency for '{featureKey}' for customer '{businessData.WhiteLabelAssignedCustomerEmail}'. The limit of {maxAllowedWhiteLabelCustomerConcurrency} has been reached."
-                        );
+                           $"{logPrefix}:USER_CUSTOMER_CONCURRENCY_LIMIT_REACHED",
+                           $"Concurrency limit reached for '{featureKey}' for customer '{businessData.WhiteLabelAssignedCustomerEmail}'. The limit is {maxAllowedWhiteLabelCustomerConcurrency}."
+                       );
                     }
                 }
                 else
                 {
-                    bool increased = await _userRepository.TryIncrementConcurrencyUsageAsync(businessData!.MasterUserEmail, featureKey, totalUserConcurrency, usageItem);
-                    if (!increased)
+                    if (tryIncrease)
+                    {
+                        var usageItem = new UserBillingCycleConcurrencyFeatureUsage
+                        {
+                            BusinessId = businessId,
+                            ParentReference = parentReference!,
+                            ChildReference = childReference
+                        };
+                        success = await _userRepository.TryIncrementConcurrencyUsageAsync(businessData!.MasterUserEmail, featureKey, totalUserConcurrency, usageItem);
+                    }
+                    else
+                    {
+                        success = await _userRepository.CheckConcurrencyAvailabilityAsync(businessData!.MasterUserEmail, featureKey, totalUserConcurrency);
+                    }
+
+                    if (!success)
                     {
                         return result.SetFailureResult(
                             $"{logPrefix}:CONCURRENCY_LIMIT_REACHED",
-                            $"Could not increase concurrency for '{featureKey}'. The limit of {totalUserConcurrency} has been reached."
+                            $"Concurrency limit reached for '{featureKey}'. The limit is {totalUserConcurrency}."
                         );
                     }
                 }
 
                 return result.SetSuccessResult();
             }
-            catch (Exception ex) {
-                _logger.LogError(ex, "Exception occurred while increasing {FeatureKey} concurrency for {BusinessId}", featureKey, businessId);
+            catch (Exception ex)
+            {
                 return result.SetFailureResult(
-                    "INCREASE_CONCURRENCY:EXCEPTION",
+                    $"{logPrefix}:EXCEPTION",
                     $"An unexpected error occurred: {ex.Message}"
                 );
             }

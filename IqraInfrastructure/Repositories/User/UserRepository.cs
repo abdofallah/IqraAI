@@ -185,6 +185,18 @@ namespace IqraInfrastructure.Repositories.User
             return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 
+        public async Task<bool> CheckConcurrencyAvailabilityAsync(string userEmail, string featureKey, long maxConcurrency)
+        {
+            string arrayFieldPath = $"Billing.CurrentCycleUsage.CurrentConcurrencyFeatureUsage.{featureKey}";
+            var filterBuilder = Builders<UserData>.Filter;
+
+            var userFilter = filterBuilder.Eq(u => u.Email, userEmail);
+            var concurrencyLimitFilter = filterBuilder.Not(filterBuilder.Exists($"{arrayFieldPath}.{maxConcurrency - 1}"));
+            var finalFilter = filterBuilder.And(userFilter, concurrencyLimitFilter);
+
+            return await _usersCollection.Find(finalFilter).AnyAsync();
+        }
+
         public async Task<bool> TryIncrementConcurrencyUsageWithWhiteLabelCustomerEmailAsync(string userEmail, string featureKey, long maxUserConcurrency, long maxUserWhiteLabelCustomerConcurrency, UserBillingCycleConcurrencyFeatureUsage usageItem)
         {
             string arrayFieldPath = $"Billing.CurrentCycleUsage.CurrentConcurrencyFeatureUsage.{featureKey}";
@@ -225,6 +237,44 @@ namespace IqraInfrastructure.Repositories.User
             var update = Builders<UserData>.Update.Push(arrayFieldPath, usageItem);
             var result = await _usersCollection.UpdateOneAsync(finalFilter, update);
             return result.IsAcknowledged && result.ModifiedCount != 0;
+        }
+
+        public async Task<bool> CheckConcurrencyAvailabilityWithWhiteLabelCustomerAsync(string userEmail, string featureKey, long maxUserConcurrency, long maxUserWhiteLabelCustomerConcurrency, string whiteLabelCustomerEmail)
+        {
+            string arrayFieldPath = $"Billing.CurrentCycleUsage.CurrentConcurrencyFeatureUsage.{featureKey}";
+            var filterBuilder = Builders<UserData>.Filter;
+
+            var userFilter = filterBuilder.Eq(u => u.Email, userEmail);
+            var parentConcurrencyLimitFilter = filterBuilder.Not(
+                filterBuilder.Exists($"{arrayFieldPath}.{maxUserConcurrency - 1}")
+            );
+
+            var whiteLabelCustomerConcurrencyFilter = new BsonDocument("$expr",
+                new BsonDocument("$lt", new BsonArray
+                {
+                    new BsonDocument("$size",
+                        new BsonDocument("$ifNull", new BsonArray
+                        {
+                            new BsonDocument("$filter", new BsonDocument
+                            {
+                                { "input", $"${arrayFieldPath}" },
+                                { "as", "item" },
+                                { "cond", new BsonDocument("$eq", new BsonArray { "$$item.WhiteLabelCustomerEmail", whiteLabelCustomerEmail }) }
+                            }),
+                            new BsonArray()
+                        })
+                    ),
+                    maxUserWhiteLabelCustomerConcurrency
+                })
+            );
+
+            var finalFilter = filterBuilder.And(
+                userFilter,
+                parentConcurrencyLimitFilter,
+                whiteLabelCustomerConcurrencyFilter
+            );
+
+            return await _usersCollection.Find(finalFilter).AnyAsync();
         }
 
         public async Task<bool> DecrementConcurrencyUsageAsync(string userEmail, string featureKey, long businessId, object parentReference, object? childReference)

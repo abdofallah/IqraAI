@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.Billing;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Server;
@@ -90,6 +91,17 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                         Type = CallQueueLogTypeEnum.Error
                     },
                     completedAt: DateTime.UtcNow
+                );
+                return;
+            }
+
+            var preCheckConcurrency = await _billingValidationManager.CheckUsageConcurrency(callQueueData.BusinessId, BillingFeatureKey.CallConcurrency);
+            if (!preCheckConcurrency.Success)
+            {
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
+                    CallQueueStatusEnum.Queued
+                    // DO NOT LOG, we do not want crazy recheck amounts
                 );
                 return;
             }

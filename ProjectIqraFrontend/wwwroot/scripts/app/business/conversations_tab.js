@@ -518,10 +518,10 @@ function updateFilterButtonUI(type, isActive) {
     const clearButton = type === 'inbound' ? clearInboundFiltersButton : clearOutboundFiltersButton;
 
     if (isActive) {
-        filterButton.removeClass('btn-primary').addClass('btn-success');
+        filterButton.removeClass('btn-primary').addClass('btn-success').removeClass('rounded-2')
         clearButton.removeClass('d-none');
     } else {
-        filterButton.removeClass('btn-success').addClass('btn-primary');
+        filterButton.removeClass('btn-success').addClass('btn-primary').addClass('rounded-2');
         clearButton.addClass('d-none');
     }
 }
