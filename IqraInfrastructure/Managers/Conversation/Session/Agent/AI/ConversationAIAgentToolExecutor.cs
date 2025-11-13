@@ -437,7 +437,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         return;
                     }
 
-                    var builtProductMessage = $"Product: {productData.Name}\n\nShort Description: {productData.ShortDescription}\n\nLong Description: {productData.LongDescription}";
+                    var builtProductMessage = $"Product: {productData.Name}\n\nShort Description: {productData.ShortDescription[_agentState.CurrentLanguageCode]}\n\nLong Description: {productData.LongDescription[_agentState.CurrentLanguageCode]}";
                     if (productData.AvailableAtBranches.Count > 0)
                     {
                         builtProductMessage += $"\n\nAvailable at branches with ids: {string.Join(", ", productData.AvailableAtBranches)}";
