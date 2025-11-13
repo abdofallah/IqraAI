@@ -1,10 +1,8 @@
 ﻿using IqraCore.Entities.Billing;
-using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Logs;
 using IqraCore.Entities.Conversation.Logs.Enums;
-using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.Server;
@@ -19,7 +17,6 @@ using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
-using IqraInfrastructure.Managers.Conversation.Session.Helpers;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -360,27 +357,19 @@ namespace IqraInfrastructure.Managers.WebSession
         {
             var result = new FunctionReturnResult<SessionComponents>();
 
-            // TODO in future configurable
-            int sessionBitPerSample = 16;
-            AudioEncodingTypeEnum sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
-            int sessionChannels = 1;
-            int sessionSampleRate = 8000;
-
             var agentConfig = new ConversationAgentConfiguration()
             {
-                BitsPerSample = sessionBitPerSample,
-                Channels = sessionChannels,
-                SampleRate = sessionSampleRate,
-                AudioEncodingType = sessionAudioEncodingType
+                BitsPerSample = webSessionData.AudioConfiguration.BitsPerSample,
+                SampleRate = webSessionData.AudioConfiguration.SampleRate,
+                AudioEncodingType = webSessionData.AudioConfiguration.AudioEncodingType
             };
 
             var clientConfig = new ConversationWebClientConfiguration()
             {
                 WebSessionData = webSessionData,
-                BitsPerSample = sessionBitPerSample,
-                Channels = sessionChannels,
-                SampleRate = sessionSampleRate,
-                AudioEncodingType = sessionAudioEncodingType
+                BitsPerSample = webSessionData.AudioConfiguration.BitsPerSample,
+                SampleRate = webSessionData.AudioConfiguration.SampleRate,
+                AudioEncodingType = webSessionData.AudioConfiguration.AudioEncodingType
             };
 
             // 2. Create and Add Agent and Client within a Task to isolate logic

@@ -23,7 +23,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
         }
 
         [HttpPost("initiate")]
-        public async Task<FunctionReturnResult<InitiateWebSessionResultModel?>> InitiateWebSession(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<InitiateWebSessionResultModel?>> InitiateWebSession(long businessId, [FromBody] InitiateWebSessionRequestModel modelData)
         {
             var result = new FunctionReturnResult<InitiateWebSessionResultModel?>();
 
@@ -59,8 +59,17 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                     );
                 }
 
+                // Model Validation
+                if (!TryValidateModel(modelData))
+                {
+                    return result.SetFailureResult(
+                        "GetConversations:INVALID_MODEL_DATA",
+                        $"Invalid model data:\n{string.Join(", ", ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage))}"
+                    );
+                }
+
                 // Forward
-                var forwardResult = await _businessManager.GetWebSessionmanager().InitiateWebSession(businessData, formData);
+                var forwardResult = await _businessManager.GetWebSessionmanager().InitiateWebSession(businessData, modelData);
                 if (!forwardResult.Success)
                 {
                     return result.SetFailureResult(

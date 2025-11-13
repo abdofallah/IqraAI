@@ -482,7 +482,7 @@ namespace IqraInfrastructure.Managers.STT
                     case InterfaceSTTProviderEnum.AzureSpeechServices:
                         {
                             string tenantId = integrationData.Fields["tenant_id"];
-                            string clientId = integrationData.EncryptedFields["client_id"];
+                            string clientId = integrationData.Fields["client_id"];
                             string clientSecret = _integrationsManager.DecryptField(integrationData.EncryptedFields["client_secret"]);
                             string subscriptionId = integrationData.Fields["subscription_id"];
                             string resourceGroupName = integrationData.Fields["resource_group_name"];

@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
@@ -9,7 +10,6 @@ using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.WebSession;
-using Microsoft.AspNetCore.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -44,7 +44,7 @@ namespace IqraInfrastructure.Managers.Business
             _httpClientFactory = httpClientFactory;
         }
 
-        public async Task<FunctionReturnResult<InitiateWebSessionResultModel?>> InitiateWebSession(BusinessData businessData, IFormCollection formData)
+        public async Task<FunctionReturnResult<InitiateWebSessionResultModel?>> InitiateWebSession(BusinessData businessData, InitiateWebSessionRequestModel modelData)
         {
             var result = new FunctionReturnResult<InitiateWebSessionResultModel?>();
 
@@ -59,252 +59,185 @@ namespace IqraInfrastructure.Managers.Business
                     Logs = new List<WebSessionLog>(),
                 };
                 BusinessAppWebCampaign webCampaignData;
-                if (!formData.TryGetValue("config", out var configStringValue))
+
+                // Web Campaign Id
+                if (string.IsNullOrWhiteSpace(modelData.WebCampaignId))
                 {
                     return result.SetFailureResult(
-                        "InitiateWebSession:FORM_DATA_CONFIG_NOT_FOUND",
-                        "Config not found in form data."
+                        "InitiateWebSession:CONFIG_WEB_CAMPAIGN_ID_NOT_FOUND",
+                        "Web Campaign ID not found in config data."
                     );
                 }
                 else
                 {
-                    var configString = configStringValue.FirstOrDefault();
-                    if (string.IsNullOrEmpty(configString))
+                    var campaignDataResult = await _parentBusinessManager.GetCampaignManager().GetWebCampaignById(businessData.Id, modelData.WebCampaignId);
+                    if (!campaignDataResult.Success && campaignDataResult.Data != null)
                     {
                         return result.SetFailureResult(
-                            "InitiateWebSession:FORM_DATA_CONFIG_EMPTY",
-                            "Config not found in form data."
+                            "InitiateWebSession:CAMPAIGN_NOT_FOUND",
+                            "Campaign not found in business."
                         );
                     }
 
-                    JsonDocument? initiateWebSessionConfigElement = null;
-                    try
-                    {
-                        initiateWebSessionConfigElement = JsonSerializer.Deserialize<JsonDocument>(configString);
-                    }
-                    catch (Exception ex)
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_DESERIALIZATION_ERROR",
-                            $"Invalid config data format: {ex.Message}"
-                        );
-                    }
-                    if (initiateWebSessionConfigElement == null)
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_DESERIALIZATION_ERROR",
-                            "Invalid config data format."
-                        );
-                    }
-                    var callRequestElement = initiateWebSessionConfigElement.RootElement;
+                    webCampaignData = campaignDataResult.Data!;
+                    newWebSessionData.WebCampaignId = modelData.WebCampaignId;
+                }
 
-                    // Web Campaign Id
-                    if (!callRequestElement.TryGetProperty("webCampaignId", out var webCampaignIdElement)
-                        || webCampaignIdElement.ValueKind != JsonValueKind.String
-                        || string.IsNullOrWhiteSpace(webCampaignIdElement.GetString()))
+                // Region Id
+                if (string.IsNullOrWhiteSpace(modelData.RegionId))
+                {
+                    return result.SetFailureResult(
+                        "InitiateWebSession:CONFIG_REGION_ID_NOT_FOUND",
+                        "Region ID not found in config data."
+                    );
+                }
+                else
+                {
+                    var regionDataResult = await _regionManager.GetRegionById(modelData.RegionId);
+                    if (regionDataResult == null)
                     {
                         return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_WEB_CAMPAIGN_ID_NOT_FOUND",
-                            "Web Campaign ID not found in config data."
+                            "InitiateWebSession:REGION_NOT_FOUND",
+                            "Region not found in business."
                         );
                     }
-                    else
-                    {
-                        var webCampaignIdValue = webCampaignIdElement.GetString()!;
 
-                        // TODO change to a simple check if exists than getting full data
-                        var campaignDataResult = await _parentBusinessManager.GetCampaignManager().GetWebCampaignById(businessData.Id, webCampaignIdValue);
-                        if (!campaignDataResult.Success && campaignDataResult.Data != null)
+                    if (regionDataResult.DisabledAt != null)
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:REGION_DISABLED",
+                            "Region is disabled."
+                        );
+                    }
+
+                    if (regionDataResult.Servers.Count == 0)
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:REGION_NO_SERVERS",
+                            "Region has no servers."
+                        );
+                    }
+
+                    if (!regionDataResult.Servers.Any(s => s.DisabledAt != null & s.Type == ServerTypeEnum.Backend))
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:REGION_NO_AVAILABLE_SERVERS",
+                            "Region has no available servers."
+                        );
+                    }
+
+                    newWebSessionData.RegionId = modelData.RegionId;
+                }
+
+                // ClientIdentifier String
+                if (string.IsNullOrWhiteSpace(modelData.ClientIdentifier))
+                {
+                    return result.SetFailureResult(
+                        "InitiateWebSession:CONFIG_CLIENT_IDENTIFIER_NOT_FOUND",
+                        "Client Identifier not found in config data."
+                    );
+                }
+                newWebSessionData.ClientIdentifier = modelData.ClientIdentifier;
+
+                // Audio Configuration
+                if (modelData.AudioConfiguration == null)
+                {
+                    return result.SetFailureResult(
+                        "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_NOT_FOUND",
+                        "Audio Configuration not found in config data."
+                    );
+                }
+                else
+                {
+                    if (modelData.AudioConfiguration.SampleRate == 0 || modelData.AudioConfiguration.SampleRate > 96000) {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_SAMPLE_RATE_INVALID",
+                            "Audio Configuration sample rate is invalid."
+                        );
+                    }
+                    newWebSessionData.AudioConfiguration.SampleRate = modelData.AudioConfiguration.SampleRate;
+
+                    if (modelData.AudioConfiguration.BitsPerSample != 8 || modelData.AudioConfiguration.BitsPerSample != 16 || modelData.AudioConfiguration.BitsPerSample != 24 || modelData.AudioConfiguration.BitsPerSample != 32) {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_BITS_PER_SAMPLE_INVALID",
+                            "Audio Configuration bits per sample is invalid."
+                        );
+                    }
+                    newWebSessionData.AudioConfiguration.BitsPerSample = modelData.AudioConfiguration.BitsPerSample;
+
+                    if (!Enum.IsDefined(typeof(AudioEncodingTypeEnum), modelData.AudioConfiguration.AudioEncodingType))
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_AUDIO_ENCODING_TYPE_INVALID",
+                            "Audio Configuration audio encoding type is invalid."
+                        );
+                    }
+                    newWebSessionData.AudioConfiguration.AudioEncodingType = modelData.AudioConfiguration.AudioEncodingType;
+                }
+
+                // Dynamic Variables
+                if (modelData.DynamicVariables != null && modelData.DynamicVariables.Count > 0)
+                {
+                    newWebSessionData.DynamicVariables = modelData.DynamicVariables;
+                }
+                if (webCampaignData.Variables.DynamicVariables.Count > 0)
+                {
+                    foreach (var variableData in webCampaignData.Variables.DynamicVariables)
+                    {
+                        var dynamicVariableItem = newWebSessionData.DynamicVariables.FirstOrDefault(x => x.Key == variableData.Key);
+
+                        if (dynamicVariableItem.Key == null)
                         {
-                            return result.SetFailureResult(
-                                "InitiateWebSession:CAMPAIGN_NOT_FOUND",
-                                "Campaign not found in business."
-                            );
-                        }
-
-                        webCampaignData = campaignDataResult.Data!;
-                        newWebSessionData.WebCampaignId = webCampaignIdValue;
-                    }
-
-                    // Region Id
-                    if (!callRequestElement.TryGetProperty("regionId", out var regionIdElement)
-                        || regionIdElement.ValueKind != JsonValueKind.String
-                        || string.IsNullOrWhiteSpace(regionIdElement.GetString()))
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_REGION_ID_NOT_FOUND",
-                            "Region ID not found in config data."
-                        );
-                    }
-                    else
-                    {
-                        var regionIdValue = regionIdElement.GetString()!;
-
-                        var regionDataResult = await _regionManager.GetRegionById(regionIdValue);
-                        if (regionDataResult == null)
-                        {
-                            return result.SetFailureResult(
-                                "InitiateWebSession:REGION_NOT_FOUND",
-                                "Region not found in business."
-                            );
-                        }
-
-                        newWebSessionData.RegionId = regionIdValue;
-                    }
-
-                    // ClientIdentifier String
-                    if (!callRequestElement.TryGetProperty("clientIdentifier", out var clientIdentifierElement)
-                        || clientIdentifierElement.ValueKind != JsonValueKind.String
-                        || string.IsNullOrWhiteSpace(clientIdentifierElement.GetString()))
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_CLIENT_IDENTIFIER_NOT_FOUND",
-                            "Client Identifier not found in config data."
-                        );
-                    }
-                    else
-                    {
-                        var clientIdentifierValue = clientIdentifierElement.GetString()!;
-                        newWebSessionData.ClientIdentifier = clientIdentifierValue;
-                    }
-
-                    // Dynamic Variables
-                    if (!callRequestElement.TryGetProperty("dynamicVariables", out var dynamicVariablesElement)
-                        || dynamicVariablesElement.ValueKind != JsonValueKind.Object)
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_NOT_FOUND",
-                            "Dynamic variables not found in config data."
-                        );
-                    }
-                    else
-                    {
-                        var dynamicVariablesEnumerator = dynamicVariablesElement.EnumerateObject();
-
-                        foreach (var dynamicVariableItem in dynamicVariablesEnumerator)
-                        {
-                            if (string.IsNullOrWhiteSpace(dynamicVariableItem.Name))
+                            if (variableData.IsRequired)
                             {
                                 return result.SetFailureResult(
-                                    "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_KEY_INVALID",
-                                    "One of the Dynamic variables key is empty."
+                                    "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
+                                    $"Dynamic variable required not found in config data for {variableData.Key}. Web campaign variable rule."
                                 );
                             }
-
-                            if (newWebSessionData.DynamicVariables.ContainsKey(dynamicVariableItem.Name))
-                            {
-                                return result.SetFailureResult(
-                                    "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_KEY_DUPLICATE",
-                                    $"Duplicate Dynamic variable key found '{dynamicVariableItem.Name}'."
-                                );
-                            }
-
-                            if (dynamicVariableItem.Value.ValueKind != JsonValueKind.String) {
-                                return result.SetFailureResult(
-                                    "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_INVALID",
-                                    $"Dynamic variable key '{dynamicVariableItem.Name}' with value is not a string but {dynamicVariableItem.Value.ValueKind}."
-                                );
-                            }
-
-                            newWebSessionData.DynamicVariables.Add(dynamicVariableItem.Name, dynamicVariableItem.Value.GetString()!);
                         }
-
-                        if (webCampaignData.Variables.DynamicVariables.Count > 0)
+                        else
                         {
-                            foreach (var variableData in webCampaignData.Variables.DynamicVariables)
+                            if (string.IsNullOrEmpty(dynamicVariableItem.Value) && !variableData.IsEmptyOrNullAllowed)
                             {
-                                var dynamicVariableItem = newWebSessionData.DynamicVariables.FirstOrDefault(x => x.Key == variableData.Key);
-
-                                if (dynamicVariableItem.Key == null)
-                                {
-                                    if (variableData.IsRequired)
-                                    {
-                                        return result.SetFailureResult(
-                                            "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
-                                            $"Dynamic variable required not found in config data for {variableData.Key}. Web campaign variable rule."
-                                        );
-                                    }
-                                }
-                                else
-                                {
-                                    if (string.IsNullOrEmpty(dynamicVariableItem.Value) && !variableData.IsEmptyOrNullAllowed)
-                                    {
-                                        return result.SetFailureResult(
-                                            "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
-                                            $"Dynamic variable cannot be empty in config data for {variableData.Key}. Web campaign variable rule."
-                                        );
-                                    }
-                                }
+                                return result.SetFailureResult(
+                                    "InitiateWebSession:CONFIG_DYNAMIC_VARIABLES_REQUIRED_NOT_FOUND",
+                                    $"Dynamic variable cannot be empty in config data for {variableData.Key}. Web campaign variable rule."
+                                );
                             }
                         }
                     }
+                }
 
-                    // Metadata
-                    if (!callRequestElement.TryGetProperty("metadata", out var metadataElement)
-                        || metadataElement.ValueKind != JsonValueKind.Object)
+                // Metadata
+                if (modelData.Metadata != null && modelData.Metadata.Count > 0)
+                {
+                    newWebSessionData.Metadata = modelData.Metadata;
+                }
+                if (webCampaignData.Variables.Metadata.Count > 0)
+                {
+                    foreach (var variableData in webCampaignData.Variables.Metadata)
                     {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_METADATA_NOT_FOUND",
-                            "Metadata not found in config data."
-                        );
-                    }
-                    else
-                    {
-                        var metadataEnumerator = metadataElement.EnumerateObject();
+                        var metadataItem = newWebSessionData.Metadata.FirstOrDefault(x => x.Key == variableData.Key);
 
-                        foreach (var metadataItem in metadataEnumerator) {
-                            if (string.IsNullOrWhiteSpace(metadataItem.Name))
-                            {
-                                return result.SetFailureResult(
-                                    "InitiateWebSession:CONFIG_METADATA_KEY_INVALID",
-                                    "One of the Metadata key is empty."
-                                );
-                            }
-
-                            if (newWebSessionData.Metadata.ContainsKey(metadataItem.Name))
-                            {
-                                return result.SetFailureResult(
-                                    "InitiateWebSession:CONFIG_METADATA_KEY_DUPLICATE",
-                                    $"Duplicate Metadata key found '{metadataItem.Name}'."
-                                );
-                            }
-
-                            if (metadataItem.Value.ValueKind != JsonValueKind.String) {
-                                return result.SetFailureResult(
-                                    "InitiateWebSession:CONFIG_METADATA_INVALID",
-                                    $"Metadata key '{metadataItem.Name}' with value is not a string but {metadataItem.Value.ValueKind}."
-                                );
-                            }
-
-                            newWebSessionData.Metadata.Add(metadataItem.Name, metadataItem.Value.GetString()!);
-                        }
-
-                        if (webCampaignData.Variables.Metadata.Count > 0)
+                        if (metadataItem.Key == null)
                         {
-                            foreach (var variableData in webCampaignData.Variables.Metadata)
+                            if (variableData.IsRequired)
                             {
-                                var metadataItem = newWebSessionData.Metadata.FirstOrDefault(x => x.Key == variableData.Key);
-
-                                if (metadataItem.Key == null)
-                                {
-                                    if (variableData.IsRequired)
-                                    {
-                                        return result.SetFailureResult(
-                                            "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
-                                            $"Metadata required not found in config data for {variableData.Key}. Web campaign variable rule."
-                                        );
-                                    }
-                                }
-                                else
-                                {
-                                    if (string.IsNullOrEmpty(metadataItem.Value) && !variableData.IsEmptyOrNullAllowed)
-                                    {
-                                        return result.SetFailureResult(
-                                            "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
-                                            $"Metadata cannot be empty in config data for {variableData.Key}. Web campaign variable rule."
-                                        );
-                                    }
-                                }
+                                return result.SetFailureResult(
+                                    "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
+                                    $"Metadata required not found in config data for {variableData.Key}. Web campaign variable rule."
+                                );
+                            }
+                        }
+                        else
+                        {
+                            if (string.IsNullOrEmpty(metadataItem.Value) && !variableData.IsEmptyOrNullAllowed)
+                            {
+                                return result.SetFailureResult(
+                                    "QueueCallInitiationRequestAsync:CONFIG_METADATA_REQUIRED_NOT_FOUND",
+                                    $"Metadata cannot be empty in config data for {variableData.Key}. Web campaign variable rule."
+                                );
                             }
                         }
                     }

@@ -9,7 +9,7 @@ namespace IqraCore.Entities.Conversation.Configuration
         // Audio Config
         public int SampleRate { get; set; }
         public int BitsPerSample { get; set; }
-        public int Channels { get; set; }
+        public int Channels { get; set; } = 1;
         public AudioEncodingTypeEnum AudioEncodingType { get; set; }
     }
 

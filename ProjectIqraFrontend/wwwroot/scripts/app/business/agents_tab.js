@@ -1,11 +1,11 @@
 // Graph Constants
 const AGENT_SCRIPT_GRAPH_PLUGINS = {
-	Minimap: X6PluginMinimap.MiniMap,
-	Keyboard: X6PluginKeyboard.Keyboard,
-	Clipboard: X6PluginClipboard.Clipboard,
-	History: X6PluginHistory.History,
-	Snapline: X6PluginSnapline.Snapline,
-	Selection: X6PluginSelection.Selection,
+	Minimap: X6.MiniMap,
+	Keyboard: X6.Keyboard,
+	Clipboard: X6.Clipboard,
+	History: X6.History,
+	Snapline: X6.Snapline,
+	Selection: X6.Selection,
 };
 
 // Constants for node system
@@ -111,6 +111,8 @@ let ManageCurrentScriptData = null;
 let ManageCurrentAgentScriptType = null; // new or edit
 
 let CurrentAgentScriptGraph = null;
+let CurrentAgentScriptGraphHistory = null;
+let CurrentAgentScriptGraphSelection = null;
 
 let agentScriptDMTFNextOutcomeId = null;
 
@@ -2366,6 +2368,10 @@ function ResetAndEmptyAgentsScriptManageTab() {
 	if (CurrentAgentScriptGraph) {
 		CurrentAgentScriptGraph.dispose();
 		CurrentAgentScriptGraph = null;
+		CurrentAgentScriptGraphHistory.dispose();
+		CurrentAgentScriptGraphHistory = null;
+		CurrentAgentScriptGraphSelection.dispose();
+        CurrentAgentScriptGraphSelection = null;
 	}
 
 	CurrentAgentScriptNameMultiLangData = {};
@@ -3823,8 +3829,9 @@ function initializeAgentScriptGraph(isNew = true) {
 		// Create the graph instance
 		const graph = new X6.Graph({
 			container: container,
-			width: "100%",
-			height: "100%",
+			width: graphSize.width,
+            height: graphSize.height,
+			
 			// Grid settings
 			grid: {
 				visible: true,
@@ -3961,7 +3968,7 @@ function initializeAgentScriptGraph(isNew = true) {
 				}
 
 				// if event.target is textarea, then reutrn flase
-				if ($(event.target).is("textarea")) {
+				if ($(event.target).is("textarea") || $(event.target).is("input")) {
 					return false;
 				}
 
@@ -3972,16 +3979,37 @@ function initializeAgentScriptGraph(isNew = true) {
 
 		// Add minimap plugin
 		const minimapContainer = document.getElementById("agent-script-graph-minimap");
-		const enableMinimap = false;
+		const enableMinimap = true;
 		if (minimapContainer && enableMinimap) {
-			graph.use(
-				new AGENT_SCRIPT_GRAPH_PLUGINS.Minimap({
-					container: minimapContainer,
-					width: 200,
-					height: 150,
-					padding: 10,
-				}),
-			);
+			setTimeout(() => {
+				graph.use(
+					new AGENT_SCRIPT_GRAPH_PLUGINS.Minimap({
+						container: minimapContainer,
+						width: 180,
+						height: 150,
+						scalable: false,
+						padding: 0,
+						graphOptions: {
+							width: 180,
+							height: 150,
+							autoResize: true,
+							grid: {
+								visible: true,
+								type: "fixedDot",
+								size: 30,
+								args: {
+									color: "#2a2a2a",
+									thickness: 3,
+								},
+							},
+							// Background settings
+							background: {
+								color: "#0f0f0f",
+							}
+						}
+					}),
+				);
+            }, 2000);
 		}
 
 		// Add keyboard shortcuts plugin
@@ -4005,30 +4033,28 @@ function initializeAgentScriptGraph(isNew = true) {
 
 		// Add history plugin (undo/redo)
 		if (AGENT_SCRIPT_GRAPH_PLUGINS.History) {
-			graph.use(
-				new AGENT_SCRIPT_GRAPH_PLUGINS.History({
-					enabled: true,
-					beforeAddCommand: (event, args) => {
-						// Validate before adding to history
-						return true;
-					},
-				}),
-			);
+			CurrentAgentScriptGraphHistory = new AGENT_SCRIPT_GRAPH_PLUGINS.History({
+				enabled: true,
+				beforeAddCommand: (event, args) => {
+					// Validate before adding to history
+					return true;
+				},
+			});
+			graph.use(CurrentAgentScriptGraphHistory);
 		}
 
 		// Add selection plugin
 		if (AGENT_SCRIPT_GRAPH_PLUGINS.Selection) {
-			graph.use(
-				new AGENT_SCRIPT_GRAPH_PLUGINS.Selection({
-					enabled: true,
-					modifiers: ["ctrl"],
-					rubberband: true,
-					multiple: true,
-					movable: true,
-					showNodeSelectionBox: true,
-					eventTypes: "leftMouseDown",
-				}),
-			);
+			CurrentAgentScriptGraphSelection = new AGENT_SCRIPT_GRAPH_PLUGINS.Selection({
+				enabled: true,
+				modifiers: ["ctrl"],
+				rubberband: true,
+				multiple: true,
+				movable: true,
+				showNodeSelectionBox: true,
+				eventTypes: ["leftMouseDown"],
+			});
+			graph.use(CurrentAgentScriptGraphSelection);
 		}
 
 		// Add start node if new graph
@@ -4057,9 +4083,9 @@ function initializeAgentScriptGraph(isNew = true) {
 			$("#agent-script-graph-zoom-out").prop("disabled", scale <= 0.01);
 		});
 
-		graph.on("history:change", () => {
-			$("#agent-script-graph-undo").prop("disabled", !graph.canUndo());
-			$("#agent-script-graph-redo").prop("disabled", !graph.canRedo());
+		graph.on("history:change", (event) => {
+			$("#agent-script-graph-undo").prop("disabled", !CurrentAgentScriptGraphHistory.canUndo());
+			$("#agent-script-graph-redo").prop("disabled", !CurrentAgentScriptGraphHistory.canRedo());
 		});
 
 		graph.on("cell:click", ({ cell, e }) => {
@@ -4098,9 +4124,18 @@ function initializeAgentScriptGraph(isNew = true) {
 		});
 
 		graph.on("cell:click", ({ cell, e }) => {
-			// temporary fix for the overlay of node selection taht is used to move it from everywhere on node
-			// the overlay causes the inputs to not be selected
-			CurrentAgentScriptGraph.cleanSelection();
+			if ($(e.target).is("textarea") || $(e.target).is("input") || $(e.target).is("select") || $(e.target).is("button")) {
+				CurrentAgentScriptGraphSelection.clean();
+                return;
+            }
+
+			if (CurrentAgentScriptGraphSelection.getSelectedCellCount() === 1) {
+				if (CurrentAgentScriptGraphSelection.getSelectedCells()[0].id === cell.id) {
+					return;
+				}
+			}
+
+			CurrentAgentScriptGraphSelection.clean();
 		});
 
 		graph.on("blank:click", () => {
@@ -4150,9 +4185,9 @@ function adjustAgentScriptGraphMultilanguageDropdownForFullscreen(isFullscreen) 
 	const languageDropdown = $("#agentsScriptManagerMultiLanguageContainer");
 
 	if (isFullscreen) {
-		languageDropdown.appendTo("#agentsScriptManagerMultiLanguageParentContainer");
+		languageDropdown.prependTo("#agentsScriptManagerMultiLanguageParentSideControlContainer");
 	} else {
-		languageDropdown.prependTo(".agent-script-graph-controls");
+		languageDropdown.appendTo("#agentsScriptManagerMultiLanguageParentContainer");
 	}
 }
 
@@ -5653,6 +5688,11 @@ function initAgentTab() {
 
 			// Nodes
 			// click handlers for configuration buttons
+			$(document).on("click mousedown mousemove", ".html-shape-immovable, .html-shape-immovable > *", (e) => {
+				e.stopImmediatePropagation();
+				e.stopPropagation();
+			})
+
 			$("#agent-script-graph").on("click", "[data-action^='configure-']", (e) => {
 				const closestNode = $(e.target).closest(".x6-node");
 				const cellId = closestNode.attr("data-cell-id");
@@ -6445,14 +6485,14 @@ function initAgentTab() {
 			});
 
 			$("#agent-script-graph-undo").on("click", () => {
-				if (CurrentAgentScriptGraph.canUndo()) {
-					CurrentAgentScriptGraph.undo();
+				if (CurrentAgentScriptGraphHistory.canUndo()) {
+					CurrentAgentScriptGraphHistory.undo();
 				}
 			});
 
 			$("#agent-script-graph-redo").on("click", () => {
-				if (CurrentAgentScriptGraph.canRedo()) {
-					CurrentAgentScriptGraph.redo();
+				if (CurrentAgentScriptGraphHistory.canRedo()) {
+					CurrentAgentScriptGraphHistory.redo();
 				}
 			});
 
@@ -6472,6 +6512,8 @@ function initAgentTab() {
 			});
 
 			$(document).on("keydown", (e) => {
+				if (ManageCurrentAgentScriptType === null) return;
+
 				if (e.key === "Escape" && $(".agent-script-graph-container").hasClass("fullscreen")) {
 					$("#agent-script-graph-fullscreen").click();
 

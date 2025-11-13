@@ -1746,12 +1746,15 @@ table.table > thead > * > * {
 	border-radius: 0.375rem;
 	overflow: hidden;
 	border: 1px solid rgb(78, 78, 78);
+	min-height: 500px;
 }
 
 #agent-script-graph {
 	flex: 1;
 	height: 100%;
 }
+
+
 
 .agent-script-graph-container.fullscreen {
 	position: fixed;
@@ -1855,34 +1858,31 @@ table.table > thead > * > * {
 	margin: 0px;
 }
 
-.agent-script-graph-container.fullscreen .agent-script-graph-side-controls {
-	left: 0;
-	right: 0;
-	margin: auto;
-	width: fit-content;
-}
-
-.agent-script-graph-container.fullscreen
-	.agent-script-graph-side-controls
-	.agent-script-graph-controls {
-	flex-direction: row;
-}
-
-.agent-script-graph-container.fullscreen
-	.agent-script-graph-side-controls
-	.btn-group {
-	margin-bottom: 0 !important;
-}
-
-.agent-script-graph-minimap {
-	display: none;
-	width: 200px;
+.agent-script-graph-minimap
+{
+	display: block;
+	width: 180px;
 	height: 150px;
-	border: 1px solid #dee2e6;
+	border: 1px solid #0f0f0f;
 	border-radius: 0.375rem;
+	margin-bottom: 10px;
 }
 
-.agent-script-graph-controls {
+.x6-widget-minimap {
+	width: 180px;
+	height: 150px;
+	display: block;
+}
+
+.agent-script-graph-side-controls .multilanguage-dropdown .dropdown-menu,
+.agent-script-graph-side-controls .multilanguage-dropdown .dropdown-toggle
+{
+	min-width: 100%;
+	max-width: 100%;
+}
+
+.agent-script-graph-controls
+{
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -1902,7 +1902,14 @@ table.table > thead > * > * {
 
 /* Node */
 /* Common Node Styles */
-.agent-script-node {
+.x6-widget-minimap .agent-script-node,
+.x6-widget-minimap .agent-script-node-header
+{
+	background: var(--tcolor-darker-green) !important;
+}
+
+.agent-script-node
+{
 	background: #1a1a1a;
 	border: 1px solid var(--tcolor-darker-green) !important;
 	border-radius: 8px;
@@ -1984,7 +1991,7 @@ table.table > thead > * > * {
 }
 
 .agent-script-node-input-group textarea {
-	resize: none;
+	resize: none; /** keep for now, requires complex js for updating port position */
 	min-height: 60px;
 }
 

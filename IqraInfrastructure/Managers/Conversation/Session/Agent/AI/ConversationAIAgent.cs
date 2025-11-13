@@ -599,7 +599,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 string? openingMessage = null;
                 if (_agentState.BusinessAppAgent.Utterances.GreetingMessage?.TryGetValue(_agentState.CurrentLanguageCode, out openingMessage) == true && !string.IsNullOrEmpty(openingMessage))
                 {
-                    foreach (var dynamicVariable in _agentState.CurrentSessionContext.DynamicVariables ?? new Dictionary<string, string>())
+                    foreach (var dynamicVariable in _agentState.CurrentSessionContext?.DynamicVariables ?? new Dictionary<string, string>())
                     {
                         openingMessage = openingMessage.Replace(("{{" + dynamicVariable.Key + "}}"), dynamicVariable.Value);
                     }
