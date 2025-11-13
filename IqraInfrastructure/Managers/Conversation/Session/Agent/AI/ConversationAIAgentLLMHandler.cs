@@ -518,6 +518,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _agentState.LLMService!.AddAssistantMessage($"{fullText}...");
                         _agentState.LLMService.AddUserMessage($"response_from_system: Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.");
 
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is an invalid type so retrying.", currentTurn.Id, _agentState.AgentId);
                         _llmTask = _agentState.LLMService!.ProcessInputAsync(currentCancelToken!.Value, currentBeforeContextMessage, null);
                         return;
                     }
