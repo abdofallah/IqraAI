@@ -148,6 +148,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 _agentState.LLMBaseSystemPrompt = systemPromptResult.Data + Environment.NewLine + Environment.NewLine + sessionInformationResult.Data;
                 _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
+                _logger.LogDebug("Agent {AgentId}: Generated base system prompt: {Prompt}", _agentState.AgentId, _agentState.LLMBaseSystemPrompt);
             }        
         }
         private async Task WarmupLLMAsync()
