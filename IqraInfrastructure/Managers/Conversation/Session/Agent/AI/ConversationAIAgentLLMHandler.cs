@@ -476,7 +476,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Status = ConversationTurnStatus.AgentRespondingSpeech;
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
-                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a speech response.", currentTurn.Id, _agentState.AgentId);
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a speech response.", _agentState.AgentId, currentTurn.Id);
                     }
                     else if (fullText.StartsWith("execute_system_function:"))
                     {
@@ -485,7 +485,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Response.ToolExecution = new ConversationTurnToolExecutionData { ToolType = ConversationTurnAgentToolType.System };
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
-                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a system tool response.", currentTurn.Id, _agentState.AgentId);
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a system tool response.", _agentState.AgentId, currentTurn.Id);
                     }
                     else if (fullText.StartsWith("execute_custom_function:"))
                     {
@@ -494,17 +494,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Response.ToolExecution = new ConversationTurnToolExecutionData { ToolType = ConversationTurnAgentToolType.Custom };
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
-                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a custom tool response.", currentTurn.Id, _agentState.AgentId);
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is a custom tool response.", _agentState.AgentId, currentTurn.Id);
                     }
 
                     if ((fullText.Length >= 30 || isEndOfResponse) && currentTurn.Response.Type == ConversationTurnAgentResponseType.NotSet)
                     {
                         CurrentLLMInvalidResponseCount++;
-                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} has a long first token which is unexpected so cancelling and recalling.", currentTurn.Id, _agentState.AgentId);
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} has a long first token which is unexpected so cancelling and recalling.", _agentState.AgentId, currentTurn.Id);
 
                         if (CurrentLLMInvalidResponseCount > 3)
                         {
-                            _logger.LogError("Agent {AgentId}: LLM response turn {TurnId} has too many invalid responses, cancelling.", currentTurn.Id, _agentState.AgentId);
+                            _logger.LogError("Agent {AgentId}: LLM response turn {TurnId} has too many invalid responses, cancelling.", _agentState.AgentId, currentTurn.Id);
 
                             await LLMFailureAndEndCallRequested.Invoke();
                             return;
@@ -519,7 +519,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _agentState.LLMService!.AddAssistantMessage($"{fullText}...");
                         _agentState.LLMService.AddUserMessage($"response_from_system: Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.");
 
-                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is an invalid type so retrying.", currentTurn.Id, _agentState.AgentId);
+                        _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is an invalid type so retrying.", _agentState.AgentId, currentTurn.Id);
                         _llmTask = _agentState.LLMService!.ProcessInputAsync(currentCancelToken!.Value, currentBeforeContextMessage, null);
                         return;
                     }
@@ -591,13 +591,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                         if (currentTurn.Response.Type == ConversationTurnAgentResponseType.SystemTool)
                         {
-                            _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, executing system tool.", currentTurn.Id, _agentState.AgentId);
+                            _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, executing system tool.", _agentState.AgentId, currentTurn.Id);
 
                             await SystemToolExecutionRequested?.Invoke(currentTurn);
                         }
                         else
                         {
-                            _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, executing custom tool.", currentTurn.Id, _agentState.AgentId);
+                            _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, executing custom tool.", _agentState.AgentId, currentTurn.Id);
 
                             await CustomToolExecutionRequested?.Invoke(currentTurn);
                         }
@@ -609,7 +609,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         currentTurn.Response.LLMStreamingCompletedAt = DateTime.UtcNow;
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
-                        _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, speech text generation is completed.", currentTurn.Id, _agentState.AgentId);
+                        _logger.LogDebug("Agent {AgentId}: LLM streaming completed for response turn {TurnId}, speech text generation is completed.", _agentState.AgentId, currentTurn.Id);
                         // todo, check remaning buffer?
 
                         return;
