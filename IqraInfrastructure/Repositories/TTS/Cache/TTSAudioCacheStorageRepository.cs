@@ -1,120 +1,117 @@
-﻿using CommunityToolkit.HighPerformance;
-using IqraInfrastructure.Repositories.MinIO;
+﻿using Amazon.S3;
+using Amazon.S3.Model;
+using CommunityToolkit.HighPerformance;
+using IqraCore.Entities.App.Configuration;
+using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.Extensions.Logging;
-using Minio.DataModel.Args;
+using System.Net;
 
 namespace IqraInfrastructure.Repositories.TTS.Cache
 {
     public class TTSAudioCacheStorageRepository
     {
         private readonly ILogger<TTSAudioCacheStorageRepository> _logger;
-        private readonly IqraMinioClientFactory _minioClientFactory;
-        private readonly string _currentRegion;
-        public readonly string _bucketName;
+        private readonly S3StorageClientFactory _s3StorageClientFactory;
+        private readonly string _bucketName;
 
-        public TTSAudioCacheStorageRepository(ILogger<TTSAudioCacheStorageRepository> logger, IqraMinioClientFactory minioClientFactory, string currentRegion, string bucketName)
+        public TTSAudioCacheStorageRepository(ILogger<TTSAudioCacheStorageRepository> logger, S3StorageClientFactory clientFactory)
         {
             _logger = logger;
-            _minioClientFactory = minioClientFactory;
-            _currentRegion = currentRegion;
-            _bucketName = bucketName;
+            _s3StorageClientFactory = clientFactory;
+            _bucketName = S3StorageConfig.BusinessTTSAudioCacheStorageRepositoryBucketName;
+
+            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, null);
+            S3StorageHelpers.EnsureBucketExistsAsync(client, _bucketName, _logger).GetAwaiter().GetResult();
         }
 
-        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArrayAsync(string objectPath, CancellationToken token = default, string region = null)
+        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArrayAsync(string objectPath, CancellationToken token = default, string? region = null)
         {
             try
             {
-                var stream = new MemoryStream();
-                var args = new GetObjectArgs()
-                    .WithBucket(_bucketName)
-                    .WithObject(objectPath)
-                    .WithCallbackStream(async (s, ct) => await s.CopyToAsync(stream, ct));
+                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
 
-                var minioClient = _minioClientFactory.GetLocalClientForRegion(region ?? _currentRegion);
-                if (minioClient == null)
+                var request = new GetObjectRequest
                 {
-                    _logger.LogError("Failed to get Minio client for region {Region}", region ?? _currentRegion);
-                    return ReadOnlyMemory<byte>.Empty;
-                }
+                    BucketName = _bucketName,
+                    Key = objectPath
+                };
 
-                await minioClient.GetObjectAsync(args, token);
-                stream.Position = 0; // Reset position for reading
-                return new ReadOnlyMemory<byte>(stream.ToArray());
+                using var response = await client.GetObjectAsync(request, token);
+                using var memoryStream = new MemoryStream();
+
+                await response.ResponseStream.CopyToAsync(memoryStream, token);
+                return new ReadOnlyMemory<byte>(memoryStream.ToArray());
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound || ex.ErrorCode == "NoSuchKey")
+            {
+                // File not found is a valid state for a cache; return empty.
+                return ReadOnlyMemory<byte>.Empty;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get file {ObjectPath} from Minio bucket {BucketName}", objectPath, _bucketName);
+                _logger.LogError(ex, "Failed to get file {ObjectPath} from S3 bucket {BucketName}", objectPath, _bucketName);
                 return ReadOnlyMemory<byte>.Empty;
             }
         }
 
-        public async Task PutFileAsByteDataAsync(string objectPath, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData, CancellationToken token = default, string region = null)
+        public async Task PutFileAsByteDataAsync(string objectPath, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData, CancellationToken token = default, string? region = null)
         {
             try
             {
-                using var fileStream = fileBytes.AsStream();
-                var args = new PutObjectArgs()
-                    .WithBucket(_bucketName)
-                    .WithObject(objectPath)
-                    .WithStreamData(fileStream)
-                    .WithObjectSize(fileStream.Length)
-                    .WithContentType("audio/pcm") // A more specific content type
-                    .WithHeaders(metaData);
+                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
 
-                var minioClient = _minioClientFactory.GetLocalClientForRegion(region ?? _currentRegion);
-                if (minioClient == null)
+                using var fileStream = fileBytes.AsStream();
+
+                var request = new PutObjectRequest
                 {
-                    _logger.LogError("Failed to get Minio client for region {Region}", region ?? _currentRegion);
-                    return;
+                    BucketName = _bucketName,
+                    Key = objectPath,
+                    InputStream = fileStream,
+                    ContentType = "audio/pcm" // Specific content type per requirements
+                };
+
+                if (metaData != null)
+                {
+                    foreach (var kvp in metaData)
+                    {
+                        request.Metadata.Add(kvp.Key, kvp.Value);
+                    }
                 }
 
-                await minioClient.PutObjectAsync(args, token);
+                await client.PutObjectAsync(request, token);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to put file {ObjectPath} to Minio bucket {BucketName}", objectPath, _bucketName);
-                // Optionally re-throw if this is a critical failure
+                _logger.LogError(ex, "Failed to put file {ObjectPath} to S3 bucket {BucketName}", objectPath, _bucketName);
+                // Optionally re-throw if this is a critical failure, but cache failures are often suppressed
             }
         }
 
-        public async Task<bool> FileExistsAsync(string minioPath, CancellationToken none = default, string region = null)
+        public async Task<bool> FileExistsAsync(string objectPath, CancellationToken token = default, string? region = null)
         {
             try
             {
-                var minioClient = _minioClientFactory.GetLocalClientForRegion(region ?? _currentRegion);
-                if (minioClient == null)
-                {
-                    _logger.LogError("Failed to get Minio client for region {Region}", region ?? _currentRegion);
-                    return false;
-                }
+                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
 
-                var result = await minioClient.StatObjectAsync(new StatObjectArgs()
-                    .WithBucket(_bucketName)
-                    .WithObject(minioPath));
-
-                return result != null;
+                // Check metadata to verify existence
+                await client.GetObjectMetadataAsync(_bucketName, objectPath, token);
+                return true;
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound || ex.ErrorCode == "NoSuchKey")
+            {
+                return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get file {ObjectPath} from Minio bucket {BucketName}", minioPath, _bucketName);
+                _logger.LogError(ex, "Failed to check existence for file {ObjectPath} in S3 bucket {BucketName}", objectPath, _bucketName);
                 return false;
             }
         }
 
-        public async Task<string?> GetPresignedUrlForGetAsync(string objectPath, string? region = null, int expirySeconds = 3600)
+        public string? GetPresignedUrlForGetAsync(string objectPath, string? region = null, int expirySeconds = 3600)
         {
-            var minioClient = _minioClientFactory.GetPublicUrlClientForRegion(region ?? _currentRegion);
-            if (minioClient == null)
-            {
-                _logger.LogError("Failed to get Minio client for region {Region}", region ?? _currentRegion);
-                return null;
-            }
-
-            var args = new PresignedGetObjectArgs()
-                .WithBucket(_bucketName)
-                .WithObject(objectPath)
-                .WithExpiry(expirySeconds);
-            return await minioClient.PresignedGetObjectAsync(args);
+            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+            return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, objectPath, expirySeconds, _logger);
         }
     }
 }

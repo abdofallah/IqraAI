@@ -33,11 +33,11 @@ using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
-using IqraInfrastructure.Repositories.MinIO;
 using IqraInfrastructure.Repositories.RAG;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Rerank;
+using IqraInfrastructure.Repositories.S3Storage;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
@@ -45,8 +45,6 @@ using IqraInfrastructure.Repositories.TTS.Cache;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.DependencyInjection;
-using Minio;
 using MongoDB.Driver;
 using Mosaik.Core;
 using System.Net.WebSockets;
@@ -241,20 +239,6 @@ namespace ProjectIqraBackendApp
                 return new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
             });
 
-            builder.Services.AddSingleton<MinioPrivatePublicClient>((sp) =>
-            {
-                return new MinioPrivatePublicClient(
-                    appConfig["MinioStorage:PrivateEndpoint"],
-                    int.Parse(appConfig["MinioStorage:PrivateEndpointPort"]),
-                    bool.Parse(appConfig["MinioStorage:IsPrivateEndpointSecure"]),
-                    appConfig["MinioStorage:PublicEndpoint"],
-                    int.Parse(appConfig["MinioStorage:PublicEndpointPort"]),
-                    bool.Parse(appConfig["MinioStorage:IsPublicEndpointSecure"]),
-                    appConfig["MinioStorage:AccessKey"],
-                    appConfig["MinioStorage:SecretKey"]
-                );
-            });
-
             builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
             {
                 return new MilvusKnowledgeBaseClient(
@@ -376,12 +360,11 @@ namespace ProjectIqraBackendApp
                 );
             });
 
-            builder.Services.AddSingleton<ConversationAudioRepository>(sp =>
+            builder.Services.AddSingleton<BusinessConversationAudioRepository>(sp =>
             {
-                return new ConversationAudioRepository(
-                    sp.GetRequiredService<ILogger<ConversationAudioRepository>>(),
-                    sp.GetRequiredService<MinioPrivatePublicClient>(),
-                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"]
+                return new BusinessConversationAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessConversationAudioRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
 
@@ -416,8 +399,7 @@ namespace ProjectIqraBackendApp
             {
                 return new BusinessToolAudioRepository(
                     sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
-                    sp.GetRequiredService<MinioPrivatePublicClient>(),
-                    appConfig["MinioStorage:BusinessToolAudioRepositoryBucketName"]
+                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
 
@@ -425,8 +407,7 @@ namespace ProjectIqraBackendApp
             {
                 return new BusinessAgentAudioRepository(
                     sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
-                    sp.GetRequiredService<MinioPrivatePublicClient>(),
-                    appConfig["MinioStorage:BusinessAgentAudioRepositoryBucketName"]
+                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
 
@@ -513,22 +494,11 @@ namespace ProjectIqraBackendApp
                 );
             });
 
-            builder.Services.AddSingleton<IqraMinioClientFactory>((sp) =>
-            {
-                return new IqraMinioClientFactory(
-                    new Dictionary<string, MinioPrivatePublicClient>() {
-                        { appConfig["Server:RegionId"], sp.GetRequiredService<MinioPrivatePublicClient>() }
-                    }
-                );
-            });
-
             builder.Services.AddSingleton<TTSAudioCacheStorageRepository>((sp) =>
             {
                 return new TTSAudioCacheStorageRepository(
                     sp.GetRequiredService<ILogger<TTSAudioCacheStorageRepository>>(),
-                    sp.GetRequiredService<IqraMinioClientFactory>(),
-                    appConfig["Server:Identity"],
-                    appConfig["MinioStorage:TTSAudioCacheStorageRepositoryBucketName"]
+                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
 

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="5.5.0" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.13.1" />
     <PackageReference Include="Azure.AI.Inference" Version="1.0.0-beta.5" />
     <PackageReference Include="Azure.AI.OpenAI" Version="2.2.0-beta.4" />
     <PackageReference Include="Azure.Identity" Version="1.17.0" />
@@ -76,6 +77,7 @@
     <PackageReference Include="Catalyst.Models.Vietnamese" Version="1.0.30952" />
     <PackageReference Include="Catalyst.Models.Wolof" Version="1.0.30952" />
     <PackageReference Include="Catalyst.Spacy" Version="1.0.54164" />
+    <PackageReference Include="CommunityToolkit.HighPerformance" Version="8.4.0" />
     <PackageReference Include="Concentus" Version="2.2.2" />
     <PackageReference Include="Deepgram" Version="6.5.1" />
     <PackageReference Include="FluentFTP" Version="53.0.1" />
@@ -96,7 +98,6 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.7" />
     <PackageReference Include="Microsoft.ML" Version="4.0.2" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.1" />
-    <PackageReference Include="Minio" Version="6.0.5" />
     <PackageReference Include="MongoDB.Driver" Version="3.4.2" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NLayer.NAudioSupport" Version="1.4.0" />

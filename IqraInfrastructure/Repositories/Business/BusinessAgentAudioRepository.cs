@@ -1,141 +1,182 @@
-﻿using CommunityToolkit.HighPerformance;
-using IqraInfrastructure.Repositories.MinIO;
+﻿using Amazon.S3;
+using Amazon.S3.Model;
+using CommunityToolkit.HighPerformance;
+using IqraCore.Entities.App.Configuration;
+using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.Extensions.Logging;
-using Minio.DataModel;
-using Minio.DataModel.Args;
+using System.Net;
 
 namespace IqraInfrastructure.Repositories.Business
 {
     public class BusinessAgentAudioRepository
     {
         private readonly ILogger<BusinessAgentAudioRepository> _logger;
+        private readonly S3StorageClientFactory _s3StorageClientFactory;
+        public string _bucketName;
 
-        private MinioPrivatePublicClient _minioClient;
-        public string BucketName;
-
-        public BusinessAgentAudioRepository(ILogger<BusinessAgentAudioRepository> logger, MinioPrivatePublicClient client, string bucketName)
+        public BusinessAgentAudioRepository(ILogger<BusinessAgentAudioRepository> logger, S3StorageClientFactory clientFactory)
         {
             _logger = logger;
-            _minioClient = client;
-            BucketName = bucketName;
+            _s3StorageClientFactory = clientFactory;
+            _bucketName = S3StorageConfig.BusinessAgentAudioRepositoryBucketName;
 
-            bool bucketExists = _minioClient.PrivateClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName)).GetAwaiter().GetResult();
-            if (!bucketExists)
-            {
-                throw new ArgumentException("Bucket " + bucketName + " does not exist");
-            }
+            // Ensure the bucket exists using the Helper
+            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, null);
+            S3StorageHelpers.EnsureBucketExistsAsync(client, _bucketName, _logger).GetAwaiter().GetResult();
         }
 
-        public async Task PutFileAsByteData(string fileId, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData)
+        public async Task PutFileAsByteData(string fileId, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData, string? region = null)
         {
             using var filestream = fileBytes.AsStream();
-
-            await PutFileAsStreamData(fileId, filestream, metaData);
+            await PutFileAsStreamData(fileId, filestream, metaData, region);
         }
 
-        public async Task PutFileAsStreamData(string fileId, Stream fileStream, Dictionary<string, string> metaData)
-        {
-            var args = new PutObjectArgs()
-                .WithBucket(BucketName)
-                .WithObject(fileId)
-                .WithStreamData(fileStream)
-                .WithObjectSize(fileStream.Length)
-                .WithContentType("application/octet-stream")
-                .WithHeaders(metaData);
-
-            await _minioClient.PrivateClient.PutObjectAsync(args);
-        }
-
-        public async Task<MemoryStream> GetFileAtPath(string fileId, string filePath)
-        {
-            MemoryStream stream = new MemoryStream();
-
-            var args = new GetObjectArgs()
-                .WithBucket(BucketName)
-                .WithObject(fileId)
-                .WithFile(filePath);
-
-            await _minioClient.PrivateClient.GetObjectAsync(args);
-
-            return stream;
-        }
-
-        public async Task<bool> FileExists(string fileId)
+        public async Task PutFileAsStreamData(string fileId, Stream fileStream, Dictionary<string, string> metaData, string? region = null)
         {
             try
             {
-                var args = new StatObjectArgs()
-                    .WithBucket(BucketName)
-                    .WithObject(fileId);
+                var request = new PutObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = fileId,
+                    InputStream = fileStream,
+                    ContentType = "application/octet-stream"
+                    // AutoCloseStream is true by default in AWS SDK, careful if you re-use the stream
+                };
 
-                await _minioClient.PrivateClient.StatObjectAsync(args);
+                foreach (var kvp in metaData)
+                {
+                    request.Metadata.Add(kvp.Key, kvp.Value);
+                }
+
+                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                await client.PutObjectAsync(request);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error putting file stream {FileId}", fileId);
+                throw;
+            }
+        }
+
+        public async Task<MemoryStream> GetFileAtPath(string fileId, string filePath, string? region = null)
+        {
+            try
+            {
+                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+
+                // Get the object from S3
+                using var response = await client.GetObjectAsync(new GetObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = fileId
+                });
+
+                var memoryStream = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(memoryStream);
+
+                // Reset position for the caller
+                memoryStream.Position = 0;
+
+                // Save to the specific file path as requested by the method name
+                // Ensure directory exists
+                var directory = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+                {
+                    await memoryStream.CopyToAsync(fileStream);
+                }
+
+                // Rewind again to return the stream to the caller
+                memoryStream.Position = 0;
+                return memoryStream;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting file {FileId} at path {FilePath}", fileId, filePath);
+                throw;
+            }
+        }
+
+        public async Task<bool> FileExists(string fileId, string? region = null)
+        {
+            try
+            {
+                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+
+                // In AWS SDK, we use GetObjectMetadata to check existence (HEAD request)
+                await client.GetObjectMetadataAsync(_bucketName, fileId);
                 return true;
             }
-            catch (Minio.Exceptions.ObjectNotFoundException)
+            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound || ex.ErrorCode == "NoSuchKey")
             {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking existence for file {FileId}", fileId);
                 return false;
             }
         }
 
-        public async Task<MemoryStream> GetFileAsMemoryStream(string fileId)
-        {
-            MemoryStream stream = new MemoryStream();
-
-            var args = new GetObjectArgs()
-                .WithBucket(BucketName)
-                .WithObject(fileId)
-                .WithCallbackStream(async s =>
-                {
-                    await s.CopyToAsync(stream);
-                });
-
-            await _minioClient.PrivateClient.GetObjectAsync(args);
-
-            return stream;
-        }
-
-        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArray(string fileId)
-        {
-            return new ReadOnlyMemory<byte>((await GetFileAsMemoryStream(fileId)).ToArray());
-        }
-
-        public async Task<AudioFileResult?> GetFileWithMetadataAsync(string fileId)
+        public async Task<MemoryStream> GetFileAsMemoryStream(string fileId, string? region = null)
         {
             try
             {
-                // 1. Get Metadata first using StatObject
-                ObjectStat? objectStat = null;
-                try
+                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+
+                using var response = await client.GetObjectAsync(new GetObjectRequest
                 {
-                    var statArgs = new StatObjectArgs()
-                       .WithBucket(BucketName)
-                       .WithObject(fileId);
-                    objectStat = await _minioClient.PrivateClient.StatObjectAsync(statArgs).ConfigureAwait(false);
-                }
-                catch (Minio.Exceptions.ObjectNotFoundException)
+                    BucketName = _bucketName,
+                    Key = fileId
+                });
+
+                var ms = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(ms);
+                ms.Position = 0;
+                return ms;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting file stream {FileId}", fileId);
+                throw;
+            }
+        }
+
+        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArray(string fileId, string? region = null)
+        {
+            using var stream = await GetFileAsMemoryStream(fileId, region);
+            return new ReadOnlyMemory<byte>(stream.ToArray());
+        }
+
+        public async Task<AudioFileResult?> GetFileWithMetadataAsync(string fileId, string? region = null)
+        {
+            try
+            {
+                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+
+                // AWS S3 GetObject returns both data and metadata in one call. 
+                // No need to call StatObject (HeadObject) separately.
+                using var response = await client.GetObjectAsync(new GetObjectRequest
                 {
-                    _logger.LogWarning("File {FileId} not found in bucket {BucketName} when attempting to get metadata.", fileId, BucketName);
-                    return null; // File doesn't exist
+                    BucketName = _bucketName,
+                    Key = fileId
+                });
+
+                var memoryStream = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+
+                // Extract metadata
+                var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var key in response.Metadata.Keys)
+                {
+                    metadata[key] = response.Metadata[key];
                 }
-
-
-                // 2. Get the actual file data
-                using var memoryStream = new MemoryStream();
-                var getArgs = new GetObjectArgs()
-                    .WithBucket(BucketName)
-                    .WithObject(fileId)
-                    .WithCallbackStream(async (stream, cancellationToken) =>
-                    {
-                        await stream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
-                    });
-
-                await _minioClient.PrivateClient.GetObjectAsync(getArgs).ConfigureAwait(false);
-
-                memoryStream.Position = 0; // Rewind stream
-
-                // Prepare the result
-                var metadata = objectStat?.MetaData?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value, StringComparer.OrdinalIgnoreCase) // Ensure case-insensitive keys
-                               ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
                 return new AudioFileResult
                 {
@@ -143,17 +184,23 @@ namespace IqraInfrastructure.Repositories.Business
                     Metadata = metadata
                 };
             }
-            catch (Minio.Exceptions.ObjectNotFoundException)
+            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound || ex.ErrorCode == "NoSuchKey")
             {
-                // Should have been caught by StatObject, but belt-and-suspenders
-                _logger.LogWarning("File {FileId} not found in bucket {BucketName} when attempting to get data.", fileId, BucketName);
+                _logger.LogWarning("File {FileId} not found in bucket {BucketName}.", fileId, _bucketName);
                 return null;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting file {FileId} with metadata from bucket {BucketName}", fileId, BucketName);
-                return null; // Or re-throw, depending on desired error handling
+                _logger.LogError(ex, "Error getting file {FileId} with metadata", fileId);
+                return null;
             }
+        }
+
+        // Added as requested
+        public string? GeneratePresignedUrl(string fileId, int expiresInSeconds, string? region = null)
+        {
+            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+            return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, fileId, expiresInSeconds, _logger);
         }
     }
 

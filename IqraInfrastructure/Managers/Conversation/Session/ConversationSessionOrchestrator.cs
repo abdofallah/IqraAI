@@ -35,7 +35,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly BusinessManager _businessManager;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationStateLogsRepository _conversationStateLogsRepository;
-        private readonly ConversationAudioRepository _audioStorageManager;
+        private readonly BusinessConversationAudioRepository _audioStorageManager;
         private readonly UserBillingUsageManager _userBillingUsageManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
         private readonly ConversationSessionPostAnalysisService _conversationSessionPostAnalysisService;
@@ -120,7 +120,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             BusinessManager businessManager,
             ConversationStateRepository conversationStateRepository,
             ConversationStateLogsRepository conversationStateLogsRepository,
-            ConversationAudioRepository audioStorageManager,
+            BusinessConversationAudioRepository audioStorageManager,
             UserBillingUsageManager billingProcessingManager,
             ILoggerFactory loggerFactory,
             CampaignActionExecutorService campaignActionExecutorService,

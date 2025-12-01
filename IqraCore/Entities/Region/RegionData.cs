@@ -15,5 +15,9 @@ namespace IqraCore.Entities.Region
         [ExcludeInAllEndpoints]
         [IncludeInEndpoint("/app/admin/regions")]
         public List<RegionServerData> Servers { get; set; } = new List<RegionServerData>();
+
+        [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/regions")]
+        public RegionS3StorageServerData S3Server { get; set; } = new RegionS3StorageServerData();
     }
 }

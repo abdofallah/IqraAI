@@ -24,7 +24,7 @@ namespace IqraCore.Entities.TTS
 
         // --- Fields populated upon successful generation ---
         [BsonIgnoreIfNull]
-        public string MinioObjectPath { get; set; }
+        public string S3StorageObjectPath { get; set; }
 
         [BsonIgnoreIfNull]
         public TimeSpan? Duration { get; set; }

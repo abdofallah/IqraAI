@@ -39,8 +39,8 @@ namespace IqraInfrastructure.HostedServices.TTS
 
                     foreach (var orphan in orphans)
                     {
-                        // 1. Delete file from MinIO (from its origin region)
-                        // await storageRepo.DeleteFileAsync(orphan.MinioObjectPath, orphan.OriginRegion);
+                        // 1. Delete file from S3Storage (from its origin region)
+                        // await storageRepo.DeleteFileAsync(orphan.S3StorageObjectPath, orphan.OriginRegion);
 
                         // 2. Delete entry from MongoDB
                         // await metadataRepo.DeleteAsync(orphan.Id);

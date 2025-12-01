@@ -53,6 +53,7 @@
 
 	<ItemGroup>
 	  <Folder Include="Models\BlandAIVM\" />
+	  <Folder Include="Models\Silero\" />
 	  <Folder Include="Models\SmartTurn\" />
 	</ItemGroup>
 </Project>

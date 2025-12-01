@@ -14,11 +14,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
         private readonly ILogger _logger;
 
         private readonly ConversationStateRepository _stateRepository;
-        private readonly ConversationAudioRepository _audioRepository;
+        private readonly BusinessConversationAudioRepository _audioRepository;
 
         private record AudioChunkInfo(string Reference, DateTime Timestamp, int Size);
         private record ParticipantInfo(string id, string type, bool isAgent, ConversationMemberAudioInfo AudioInfo);
-        public SessionAudioCompilationService(ILogger logger, ConversationStateRepository stateRepository, ConversationAudioRepository audioRepository)
+        public SessionAudioCompilationService(ILogger logger, ConversationStateRepository stateRepository, BusinessConversationAudioRepository audioRepository)
         {
             _logger = logger;
 

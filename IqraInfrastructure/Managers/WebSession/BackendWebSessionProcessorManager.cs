@@ -312,7 +312,7 @@ namespace IqraInfrastructure.Managers.WebSession
                     _businessManager,
                     _conversationStateRepository,
                     _conversationStateLogsRepository,
-                    _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
+                    _serviceProvider.GetRequiredService<BusinessConversationAudioRepository>(),
                     _billingProcessingManager,
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
                     _campaignActionExecutorService,

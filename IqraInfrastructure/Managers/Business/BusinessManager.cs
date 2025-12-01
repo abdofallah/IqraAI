@@ -72,7 +72,7 @@ namespace IqraInfrastructure.Managers.Business
             LanguagesManager? langaugesManager,
             InboundCallQueueRepository? inboundCallQueueRepo,
             ConversationStateRepository? conversationStateRepository,
-            ConversationAudioRepository? conversationAudioRepository,
+            BusinessConversationAudioRepository? conversationAudioRepository,
             RegionManager? regionManager,
             OutboundCallQueueGroupRepository? outboundCallCampaignRepository,
             OutboundCallQueueRepository? outboundCallQueueRepository,

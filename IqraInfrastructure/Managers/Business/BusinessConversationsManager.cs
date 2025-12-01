@@ -18,14 +18,14 @@ namespace IqraInfrastructure.Managers.Business
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
-        private readonly ConversationAudioRepository _conversationAudioRepository;
+        private readonly BusinessConversationAudioRepository _conversationAudioRepository;
 
         public BusinessConversationsManager(
             BusinessManager businessManager,
             InboundCallQueueRepository callQueueRepository,
             OutboundCallQueueRepository outboundCallQueueRepository,
             ConversationStateRepository conversationStateRepository,
-            ConversationAudioRepository conversationAudioRepository
+            BusinessConversationAudioRepository conversationAudioRepository
         )
         {
             _parentBusinessManager = businessManager;

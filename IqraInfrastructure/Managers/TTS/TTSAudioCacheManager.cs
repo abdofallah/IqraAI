@@ -31,7 +31,7 @@ namespace IqraInfrastructure.Managers.TTS
 
             TTSAudioCacheIndexRepository redisRepo,
             TTSAudioCacheMetadataRepository mongoRepo,
-            TTSAudioCacheStorageRepository minioRepo,
+            TTSAudioCacheStorageRepository ttsCacheStorageRepo,
             BusinessAppRepository businessAppRepository,
 
             string currentRegion
@@ -41,7 +41,7 @@ namespace IqraInfrastructure.Managers.TTS
 
             _cacheIndexLocalRepository = redisRepo;
             _cacheMetadataRepository = mongoRepo;
-            _cacheAudioStorage = minioRepo;
+            _cacheAudioStorage = ttsCacheStorageRepo;
             _businessAppRepository = businessAppRepository;
 
             _currentRegion = currentRegion;
@@ -125,7 +125,7 @@ namespace IqraInfrastructure.Managers.TTS
 
         private async Task<CacheGetResult> SmartFetchAndReturnResultAsync(TTSAudioCacheEntry entry, CancellationToken token)
         {
-            var audioBytes = await SmartFetchFromStorageAsync(entry.MinioObjectPath, entry.OriginRegion, token);
+            var audioBytes = await SmartFetchFromStorageAsync(entry.S3StorageObjectPath, entry.OriginRegion, token);
             if (!audioBytes.IsEmpty)
             {
                 // Refresh the Redis cache as we go. Fire-and-forget.
@@ -134,7 +134,7 @@ namespace IqraInfrastructure.Managers.TTS
             }
 
             _logger.LogError("CRITICAL: Failed to fetch cache object {Path} for {CacheKey} from any region.",
-                entry.MinioObjectPath, entry.Id);
+                entry.S3StorageObjectPath, entry.Id);
             return CacheGetResult.Miss();
         }
 
@@ -175,10 +175,10 @@ namespace IqraInfrastructure.Managers.TTS
             {
                 try
                 {
-                    var minioPath = $"cache/tts-{(int)ttsProvider}/{cacheKey}.pcm";
+                    var s3StoragePath = $"cache/tts-{(int)ttsProvider}/{cacheKey}.pcm";
 
-                    await _cacheAudioStorage.PutFileAsByteDataAsync(minioPath, audioData, new Dictionary<string, string>(), region: _currentRegion);
-                    await _cacheMetadataRepository.UpdateToCompleteAsync(cacheKey, minioPath, duration);
+                    await _cacheAudioStorage.PutFileAsByteDataAsync(s3StoragePath, audioData, new Dictionary<string, string>(), region: _currentRegion);
+                    await _cacheMetadataRepository.UpdateToCompleteAsync(cacheKey, s3StoragePath, duration);
                     var finalEntry = await _cacheMetadataRepository.GetAsync(cacheKey);
                     await UpdateRedisCacheAsync(finalEntry);
                     await CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, referencedByAgentId, token);
@@ -244,7 +244,7 @@ namespace IqraInfrastructure.Managers.TTS
         {
             if (entry == null || entry.Status != TTSAudioCacheStatus.COMPLETE) return;
 
-            var pointer = new RedisCachePointer(entry.MinioObjectPath, entry.Duration.Value, entry.OriginRegion);
+            var pointer = new RedisCachePointer(entry.S3StorageObjectPath, entry.Duration.Value, entry.OriginRegion);
             var redisValue = JsonSerializer.Serialize(pointer);
             await _cacheIndexLocalRepository.SetAsync(entry.Id, redisValue, _redisTTL);
         }
