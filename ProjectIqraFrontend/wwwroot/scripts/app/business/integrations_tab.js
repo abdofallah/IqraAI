@@ -48,7 +48,7 @@ function createIntegrationCardElement(integration) {
         <div class="col-lg-4 col-md-6 col-12">
             <div class="business-card d-flex flex-column align-items-start justify-content-center" data-integration-id="${integration.id}">
                 <div class="d-flex flex-row align-items-center justify-content-start">
-                    <img src="${`${IntegrationLogoURL}/${integration.logo}.webp`}">
+                    <img src="${integration.logoUrl}">
                     <h4 class="mb-1">${integration.friendlyName}</h4>
                 </div>
             </div>
@@ -65,7 +65,7 @@ function createAvailableIntegrationCardElement(integration) {
                 <div class="card-body">
 					<h5 class="card-title">${integration.name}${(integration.disabledAt == null ? "" : " | <span class='text-danger'>Disabled</span>") }</h5>
 
-					<img class="px-2 my-3" src="${`${IntegrationLogoURL}/${integration.logo}.webp`}">
+					<img class="px-2 my-3" src="${integration.logoUrl}">
                     
                     <div class="mt-2">
                         ${typesBadges}

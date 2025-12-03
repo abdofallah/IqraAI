@@ -1,6 +1,7 @@
 using HarmonyLib;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Payment.Providers.AmwalPay;
+using IqraCore.Entities.Server.Configuration;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
@@ -82,9 +83,14 @@ namespace ProjectIqraFrontend
                 };
             });
             builder.Services.AddScoped<WhiteLabelContext>();
+            var frontendAppConfig = new FrontendAppConfig()
+            {
+                DefaultS3StorageRegionId = appConfig["S3Storage:DefaultStorageRegionId"],
+            };
+            builder.Services.AddSingleton<FrontendAppConfig>(frontendAppConfig);
 
             // Repositories
-            await SetupRepositories(builder, appConfig);
+            await SetupRepositories(builder, appConfig, frontendAppConfig);
 
             // Managers
             SetupManagers(builder, appConfig);
@@ -216,13 +222,13 @@ namespace ProjectIqraFrontend
             app.Run();
         }
 
-        private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig)
+        private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig, FrontendAppConfig frontendAppConfig)
         {
             // Build Base Services
             IMongoClient mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
             RegionRepository regionRepository = new RegionRepository(mongoClient, appConfig["MongoDatabase:AppRepositoryDatabaseName"]);
             var allRegionServers = await regionRepository.GetRegions();
-            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory(appConfig["Server:RegionId"]);
+            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory(frontendAppConfig.DefaultS3StorageRegionId);
             var s3StorageInitResult = await s3StorageClientFactory.Initalize(allRegionServers);
             if (!s3StorageInitResult.Success)
             {
@@ -670,7 +676,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<IntegrationsManager>>(),
                     sp.GetRequiredService<IntegrationsRepository>(),
                     sp.GetRequiredService<IntegrationsLogoRepository>(),
-                    integrationFieldsEncryptionService
+                    integrationFieldsEncryptionService,
+                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
             builder.Services.AddSingleton<ModemTelManager>((sp) =>
@@ -758,7 +765,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<WebSessionRepository>(),
                     sp.GetRequiredService<UserUsageValidationManager>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
-                    sp.GetRequiredService<IHttpClientFactory>()
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>
@@ -941,7 +949,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<WhiteLabelDomainRepository>(),
                     sp.GetRequiredService<IMongoClient>(),
                     sp.GetRequiredService<WhiteLabelDomainVestaCPRepository>(),
-                    sp.GetRequiredService<WhiteLabelDomainService>()
+                    sp.GetRequiredService<WhiteLabelDomainService>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
             builder.Services.AddSingleton<WhiteLabelDomainService>((sp) =>

@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.S3Storage;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
@@ -19,6 +20,7 @@ using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
+using IqraInfrastructure.Repositories.S3Storage;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -38,6 +40,8 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessToolAudioRepository? _businessToolAudioRepository;
         private readonly BusinessAgentAudioRepository? _businessAgentAudioRepository;
         private readonly OutboundCallQueueRepository? _outboundCallQueueRepository;
+
+        private readonly S3StorageClientFactory? _s3StorageClientFactory;
 
         private readonly AudioFileProcessor _audioProcessor;
 
@@ -89,7 +93,8 @@ namespace IqraInfrastructure.Managers.Business
             WebSessionRepository? webSessionRepoistory,
             UserUsageValidationManager? billingValidationManager,
             ServerSelectionManager? serverSelectionManager,
-            IHttpClientFactory? httpClientFactory
+            IHttpClientFactory? httpClientFactory,
+            S3StorageClientFactory? s3StorageClientFactory
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -103,6 +108,8 @@ namespace IqraInfrastructure.Managers.Business
             _businessAgentAudioRepository = businessAgentAudioRepository;
             _outboundCallQueueRepository = outboundCallQueueRepository;
 
+            _s3StorageClientFactory = s3StorageClientFactory;
+
             _audioProcessor = new AudioFileProcessor();
 
             _languagesManager = langaugesManager;
@@ -110,15 +117,15 @@ namespace IqraInfrastructure.Managers.Business
             // Sub Managers
             if (_settings.InitalizeSettingsManager)
             {
-                if (businessLogoRepository == null || langaugesManager == null)
+                if (businessLogoRepository == null || langaugesManager == null || _s3StorageClientFactory == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessSettingsManager");
                 }
-                _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessLogoRepository, langaugesManager);
+                _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessLogoRepository, langaugesManager, _s3StorageClientFactory);
             }
             if (_settings.InitalizeToolsManager || _settings.InitalizeToolsCURDManager)
             {
-                if (_settings.InitalizeToolsManager && (businessAppRepository == null || businessRepository == null || businessToolAudioRepository == null))
+                if (_settings.InitalizeToolsManager && (businessAppRepository == null || businessRepository == null || businessToolAudioRepository == null || _s3StorageClientFactory == null))
                 {
                     throw new Exception("Null constructor input variable for BusinessToolsManager");
                 }
@@ -127,7 +134,7 @@ namespace IqraInfrastructure.Managers.Business
                     throw new Exception("Null constructor input variable for BusinessToolsManager with CURD");
                 }
 
-                _businessToolsManager = new BusinessToolsManager(this, businessAppRepository, businessRepository, businessToolAudioRepository, _audioProcessor);
+                _businessToolsManager = new BusinessToolsManager(this, businessAppRepository, businessRepository, businessToolAudioRepository, _audioProcessor, _s3StorageClientFactory);
             }
             if (_settings.InitalizeContextManager)
             {
@@ -143,11 +150,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeAgentsManager)
             {
-                if (businessAgentAudioRepository == null || integrationConfigurationManager == null)
+                if (businessAgentAudioRepository == null || integrationConfigurationManager == null || _s3StorageClientFactory == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessAgentsManager");
                 }
-                _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor, integrationConfigurationManager);
+                _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, _s3StorageClientFactory, businessAgentAudioRepository, _audioProcessor, integrationConfigurationManager);
             }
             if (_settings.InitalizeNumberManager)
             {
@@ -302,13 +309,17 @@ namespace IqraInfrastructure.Managers.Business
             if (businessLogoFile != null)
             {
                 var (webpImage, hash) = await ImageHelper.ConvertScaleAndHashToWebp(businessLogoFile);
-                bool fileExists = await _businessLogoRepository.FileExists(hash);
+                bool fileExists = await _businessLogoRepository!.FileExists(hash);
                 if (!fileExists)
                 {
                     await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
                 }
 
-                businessData.LogoURL = hash;
+                businessData.LogoS3StorageLink = new S3StorageFileLink
+                {
+                    ObjectName = hash,
+                    OriginRegion = _s3StorageClientFactory!.GetCurrentRegion()
+                };
             }
 
             var businessApp = new BusinessApp()
@@ -316,45 +327,10 @@ namespace IqraInfrastructure.Managers.Business
                 Id = businessId,
             };
 
-            /** TODO this takes too long so we disable it for now, enable it to run in background, requires overhauling the subdomain system
-            string subDomainHash = SubdomainHashGenerator.GenerateSubdomainHash(businessId);
-            var addDefaultDomainResult = await _businessSettingsManager.AddOrUpdateUserBusinessDomain(
-                businessId,
-                new FormCollection(
-                    new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>()
-                    {
-                        {
-                            "changes",
-                            JsonSerializer.Serialize(new
-                                {
-                                    type = ((int)BusinessUserWhiteLabelDomainTypeEnum.IqraSubdomain).ToString(),
-                                    subDomain =  subDomainHash
-                                }
-                            )
-                        }
-                    }
-                ),
-                "new",
-                null
-            );
-            if (!addDefaultDomainResult.Success)
-            {
-                result.Code = "AddBusiness:" + addDefaultDomainResult.Code;
-                result.Message = addDefaultDomainResult.Message;
-                return result;
-            }
-
-            long businessWhiteLabelId = addDefaultDomainResult.Data.Id;
-            businessData.WhiteLabelDomainIds.Add(businessWhiteLabelId);
-            **/
-
             await _businessAppRepository.AddBusinessAppAsync(businessApp, mongoSession);
             await _businessRepository.AddBusinessAsync(businessData, mongoSession);
 
-            result.Success = true;
-            result.Data = businessData;
-
-            return result;
+            return result.SetSuccessResult(businessData);
         }
 
         public async Task<FunctionReturnResult<List<BusinessData>>> GetUserBusinessesByEmail(string userEmail)

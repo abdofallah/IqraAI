@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.S3Storage;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -24,7 +25,7 @@ namespace IqraCore.Entities.TTS
 
         // --- Fields populated upon successful generation ---
         [BsonIgnoreIfNull]
-        public string S3StorageObjectPath { get; set; }
+        public S3StorageFileLink? AudioCacheS3StorageLink { get; set; } = null;
 
         [BsonIgnoreIfNull]
         public TimeSpan? Duration { get; set; }
@@ -33,7 +34,6 @@ namespace IqraCore.Entities.TTS
         [BsonRepresentation(BsonType.String)] // Store enum as string for readability
         public TTSAudioCacheStatus Status { get; set; }
 
-        public string OriginRegion { get; set; } // e.g., "US-WEST-1", "OM-MUSCAT-1"
 
         public DateTime CreatedAtUtc { get; set; }
         public DateTime LastUpdatedAtUtc { get; set; }

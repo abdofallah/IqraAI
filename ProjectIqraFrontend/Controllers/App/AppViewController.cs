@@ -1,5 +1,4 @@
-﻿using IqraCore.Entities.Frontend;
-using IqraCore.Entities.WhiteLabel;
+﻿using IqraCore.Entities.WhiteLabel;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WhiteLabel;
@@ -12,7 +11,6 @@ namespace ProjectIqraFrontend.Controllers.App
     {
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserManager _userManager;
-        private readonly ViewLinkConfiguration _viewLinkConfiguration;
         private readonly WhiteLabelContext _whiteLabelContext;
         private readonly WhiteLabelCustomerSessionRepository _wlSessionRepo;
         private readonly UserRepository _userRepository;
@@ -20,14 +18,12 @@ namespace ProjectIqraFrontend.Controllers.App
         public AppViewController(
             UserSessionValidationHelper userSessionValidationHelper,
             UserManager userManager,
-            ViewLinkConfiguration viewLinkConfiguration,
             WhiteLabelContext whiteLabelContext,
             WhiteLabelCustomerSessionRepository wlSessionRepo,
             UserRepository userRepository
         ) {
             _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;
-            _viewLinkConfiguration = viewLinkConfiguration;
             _whiteLabelContext = whiteLabelContext;
             _wlSessionRepo = wlSessionRepo;
             _userRepository = userRepository;
@@ -150,7 +146,6 @@ namespace ProjectIqraFrontend.Controllers.App
                 }
             }
 
-            TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
             return View("Home/Home");
         }
 
@@ -201,8 +196,6 @@ namespace ProjectIqraFrontend.Controllers.App
                 return RedirectToAction("App");
             }
 
-            TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
-            TempData.TryAdd("IntegrationLogoURL", _viewLinkConfiguration.IntegrationLogoURL);
             return View("Admin/Admin");
         }
     }

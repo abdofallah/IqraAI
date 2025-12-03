@@ -1,8 +1,9 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Integrations;
+using IqraCore.Entities.S3Storage;
 using IqraCore.Utilities;
-using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Integrations;
+using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -17,12 +18,14 @@ namespace IqraInfrastructure.Managers.Integrations
         private readonly IntegrationsLogoRepository? _integrationsLogoRepository;
         private readonly string _logoFolder = "integration.logo";
         private readonly AES256EncryptionService _integrationFieldEncryptionService;
+        private readonly S3StorageClientFactory _s3StorageClientFactory;
 
         public IntegrationsManager(
             ILogger<IntegrationsManager> logger,
             IntegrationsRepository integrationsRepository,
             IntegrationsLogoRepository? logoManager,
-            AES256EncryptionService integrationFieldEncryptionService
+            AES256EncryptionService integrationFieldEncryptionService,
+            S3StorageClientFactory s3StorageClientFactory
         )
         {
             _logger = logger;
@@ -30,6 +33,7 @@ namespace IqraInfrastructure.Managers.Integrations
             _integrationsRepository = integrationsRepository;
             _integrationsLogoRepository = logoManager;
             _integrationFieldEncryptionService = integrationFieldEncryptionService;
+            _s3StorageClientFactory = s3StorageClientFactory;
         }
 
         public async Task<FunctionReturnResult<List<IntegrationData>?>> GetIntegrationsList(int page, int pageSize)
@@ -156,11 +160,14 @@ namespace IqraInfrastructure.Managers.Integrations
                     {
                         await _integrationsLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
                     }
-                    integrationData.Logo = hash;
+                    integrationData.LogoS3StorageLink = new S3StorageFileLink {
+                        ObjectName = hash,
+                        OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                    };
                 }
-                else if (postType == "edit" && existingIntegration?.Logo != null)
+                else if (postType == "edit" && existingIntegration?.LogoS3StorageLink != null)
                 {
-                    integrationData.Logo = existingIntegration?.Logo;
+                    integrationData.LogoS3StorageLink = existingIntegration?.LogoS3StorageLink;
                 }
                 else
                 {

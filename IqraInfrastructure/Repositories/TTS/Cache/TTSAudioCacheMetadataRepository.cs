@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.TTS;
+﻿using IqraCore.Entities.S3Storage;
+using IqraCore.Entities.TTS;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -105,14 +106,14 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
         /// <summary>
         /// Updates a placeholder to the 'COMPLETE' state after successful generation and upload.
         /// </summary>
-        public async Task UpdateToCompleteAsync(string cacheKey, string s3StoragePath, TimeSpan duration, CancellationToken token = default)
+        public async Task UpdateToCompleteAsync(string cacheKey, S3StorageFileLink s3StorageFileLink, TimeSpan duration, CancellationToken token = default)
         {
             try
             {
                 var filter = Builders<TTSAudioCacheEntry>.Filter.Eq(e => e.Id, cacheKey);
                 var update = Builders<TTSAudioCacheEntry>.Update
                     .Set(e => e.Status, TTSAudioCacheStatus.COMPLETE)
-                    .Set(e => e.S3StorageObjectPath, s3StoragePath)
+                    .Set(e => e.AudioCacheS3StorageLink, s3StorageFileLink)
                     .Set(e => e.Duration, duration)
                     .Set(e => e.LastUpdatedAtUtc, DateTime.UtcNow)
                     .Unset(e => e.ExpiresAtUtc); // IMPORTANT: Remove the TTL expiration to make the entry permanent.

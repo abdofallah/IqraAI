@@ -1,10 +1,10 @@
 ﻿using IqraCore.Entities.Business;
 
-namespace IqraCore.Models.User
+namespace IqraCore.Models.User.Business
 {
     public class GetUserBusinessFullReturnModel
     {
-        public BusinessData BusinessData { get; set; }
+        public GetUseBusinessFullResultMetaDataModel BusinessData { get; set; }
         public BusinessApp BusinessApp { get; set; }
     }
 }

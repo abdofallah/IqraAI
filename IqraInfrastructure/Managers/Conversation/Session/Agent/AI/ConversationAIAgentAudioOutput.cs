@@ -174,26 +174,30 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         private async Task LoadBackgroundMusicAsync()
         {
-            if (string.IsNullOrWhiteSpace(_agentState.BusinessAppAgent?.Settings?.BackgroundAudioUrl))
+            if (_agentState.BusinessAppAgent?.Settings?.BackgroundAudioS3StorageLink == null)
             {
                 _agentState.IsBackgroundMusicEnabled = false;
                 _agentState.IsBackgroundMusicLoaded = false;
                 return;
             }
 
-            string audioUrl = _agentState.BusinessAppAgent.Settings.BackgroundAudioUrl;
+            string audioUrl = _agentState.BusinessAppAgent.Settings.BackgroundAudioS3StorageLink.ObjectName;
+            string audioUrlOriginRegion = _agentState.BusinessAppAgent.Settings.BackgroundAudioS3StorageLink.OriginRegion;
             _logger.LogInformation("Agent {AgentId}: Attempting to load background audio (ID: {FileId})", _agentState.AgentId, audioUrl);
 
             try
             {
                 AudioFileResult? fileResult = await _audioRepository.GetFileWithMetadataAsync(audioUrl);
-
                 if (fileResult == null || fileResult.Data.IsEmpty)
                 {
-                    _logger.LogWarning("Agent {AgentId}: Background audio file not found or is empty (ID: {FileId})", _agentState.AgentId, audioUrl);
-                    _agentState.IsBackgroundMusicEnabled = false;
-                    _agentState.IsBackgroundMusicLoaded = false;
-                    return;
+                    fileResult = await _audioRepository.GetFileWithMetadataAsync(audioUrl, audioUrlOriginRegion);
+                    if (fileResult == null || fileResult.Data.IsEmpty)
+                    {
+                        _logger.LogWarning("Agent {AgentId}: Background audio file not found or is empty (ID: {FileId})", _agentState.AgentId, audioUrl);
+                        _agentState.IsBackgroundMusicEnabled = false;
+                        _agentState.IsBackgroundMusicLoaded = false;
+                        return;
+                    }
                 }
 
                 // Determine Format and Convert

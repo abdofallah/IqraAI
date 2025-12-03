@@ -1,8 +1,10 @@
-﻿namespace IqraCore.Entities.Business
+﻿using IqraCore.Entities.S3Storage;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppAgentSettings
     {
-        public string? BackgroundAudioUrl { get; set; } = null;
+        public S3StorageFileLink? BackgroundAudioS3StorageLink { get; set; } = null;
         public int? BackgroundAudioVolume { get; set; } = null;
     }
 }

@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Archived;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.KnowledgeBase;
+using IqraCore.Entities.S3Storage;
 using IqraInfrastructure.Helpers.MongoDB;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
@@ -612,13 +613,13 @@ namespace IqraInfrastructure.Repositories.Business
             return await agentQuery.FirstOrDefaultAsync();
         }
 
-        public async Task<string?> GetAgentSettingsBackgroundAudioUrl(long businessId, string agentId)
+        public async Task<S3StorageFileLink?> GetAgentSettingsBackgroundAudioS3StorageLink(long businessId, string agentId)
         {
             var urlQuery = _businessAppCollection.AsQueryable()
                 .Where(b => b.Id == businessId)
                 .SelectMany(b => b.Agents)
                 .Where(agent => agent.Id == agentId)
-                .Select(agent => agent.Settings.BackgroundAudioUrl);
+                .Select(agent => agent.Settings.BackgroundAudioS3StorageLink);
 
             return await urlQuery.FirstOrDefaultAsync();
         }

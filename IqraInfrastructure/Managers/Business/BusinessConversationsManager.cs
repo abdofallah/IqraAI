@@ -577,7 +577,7 @@ namespace IqraInfrastructure.Managers.Business
                 string? audioUrl = null;
                 if (client.AudioInfo.AudioCompilationStatus == ConversationMemberAudioCompilationStatus.Compiled)
                 {
-                    audioUrl = await _conversationAudioRepository.GeneratePresignedUrlAsync($"{state.Id}/compiled/{client.ClientId}.wav", audioUrlExpirySeconds);
+                    audioUrl = _conversationAudioRepository.GeneratePresignedUrlAsync($"{state.Id}/compiled/user_{client.ClientId}.wav", audioUrlExpirySeconds);
                 }
 
                 var clientModel = new ConversationStateClientViewModel()
@@ -600,7 +600,7 @@ namespace IqraInfrastructure.Managers.Business
                 string? audioUrl = null;
                 if (agent.AudioInfo.AudioCompilationStatus == ConversationMemberAudioCompilationStatus.Compiled)
                 {
-                    audioUrl = await _conversationAudioRepository.GeneratePresignedUrlAsync($"{state.Id}/compiled/{agent.AgentId}.wav", audioUrlExpirySeconds);
+                    audioUrl = _conversationAudioRepository.GeneratePresignedUrlAsync($"{state.Id}/compiled/agent_{agent.AgentId}.wav", audioUrlExpirySeconds);
                 }
 
                 var clientModel = new ConversationStateAgentViewModel()

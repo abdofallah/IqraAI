@@ -1,12 +1,13 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.S3Storage;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Text.RegularExpressions;
 
 namespace IqraInfrastructure.Managers.Business
@@ -18,10 +19,18 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessToolAudioRepository _businessToolAudioRepository;
+        private readonly S3StorageClientFactory _s3StorageClientFactory;
 
         private readonly AudioFileProcessor _audioProcessor;
 
-        public BusinessToolsManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, BusinessToolAudioRepository businessToolAudioRepository, AudioFileProcessor audioProcessor)
+        public BusinessToolsManager(
+            BusinessManager businessManager,
+            BusinessAppRepository businessAppRepository,
+            BusinessRepository businessRepository,
+            BusinessToolAudioRepository businessToolAudioRepository,
+            AudioFileProcessor audioProcessor,
+            S3StorageClientFactory s3StorageClientFactory
+        )
         {
             _parentBusinessManager = businessManager;
 
@@ -30,6 +39,7 @@ namespace IqraInfrastructure.Managers.Business
             _businessToolAudioRepository = businessToolAudioRepository;
 
             _audioProcessor = audioProcessor;
+            _s3StorageClientFactory = s3StorageClientFactory;
         }
 
         /**
@@ -531,17 +541,21 @@ namespace IqraInfrastructure.Managers.Business
                                     metadata
                                 );
                             }
-                            NewBusinessAppToolData.Audio.DuringExecutionAudioUrl = validationResult.Hash;
+                            NewBusinessAppToolData.Audio.DuringExecutionAudioS3StorageLink = new S3StorageFileLink
+                            {
+                                ObjectName = validationResult.Hash,
+                                OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                            };
                         }
                         else if (audioDuringExecutionUrlType == "previous")
                         {
-                            if (exisitingToolData == null || exisitingToolData.Audio == null || string.IsNullOrWhiteSpace(exisitingToolData.Audio.DuringExecutionAudioUrl))
+                            if (exisitingToolData == null || exisitingToolData.Audio == null || exisitingToolData.Audio.DuringExecutionAudioS3StorageLink == null)
                             {
                                 result.Code = "AddOrUpdateUserBusinessTools:33";
                                 result.Message = "Previous during execution audio URL not found.";
                                 return result;
                             }
-                            NewBusinessAppToolData.Audio.DuringExecutionAudioUrl = exisitingToolData.Audio.DuringExecutionAudioUrl;
+                            NewBusinessAppToolData.Audio.DuringExecutionAudioS3StorageLink = exisitingToolData.Audio.DuringExecutionAudioS3StorageLink;
                         }
                         else
                         {
@@ -611,17 +625,21 @@ namespace IqraInfrastructure.Managers.Business
                                     metadata
                                 );
                             }
-                            NewBusinessAppToolData.Audio.AfterExecutionAudioUrl = validationResult.Hash;
+                            NewBusinessAppToolData.Audio.AfterExecutionAudioS3StorageLink = new S3StorageFileLink
+                            {
+                                ObjectName = validationResult.Hash,
+                                OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                            };
                         }
                         else if (audioAfterExecutionUrlType == "previous")
                         {
-                            if (exisitingToolData == null || exisitingToolData.Audio == null || string.IsNullOrWhiteSpace(exisitingToolData.Audio.AfterExecutionAudioUrl))
+                            if (exisitingToolData == null || exisitingToolData.Audio == null || exisitingToolData.Audio.AfterExecutionAudioS3StorageLink == null)
                             {
                                 result.Code = "AddOrUpdateUserBusinessTools:40";
                                 result.Message = "Previous after execution audio URL not found.";
                                 return result;
                             }
-                            NewBusinessAppToolData.Audio.AfterExecutionAudioUrl = exisitingToolData.Audio.AfterExecutionAudioUrl;
+                            NewBusinessAppToolData.Audio.AfterExecutionAudioS3StorageLink = exisitingToolData.Audio.AfterExecutionAudioS3StorageLink;
                         }
                         else
                         {

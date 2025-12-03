@@ -207,8 +207,8 @@ function FillSettingsTab() {
 		if (settingsGeneralBusinessLogo[0].files.length > 0) {
 			settingsGeneralBusinessLogo[0].files = new DataTransfer().files;
 		}
-		if (BusinessFullData.businessData.logoURL && BusinessFullData.businessData.logoURL != null) {
-			settingsGeneralBusinessLogoPreview.attr("src", `${BusinessLogoURL}/${BusinessFullData.businessData.logoURL}.webp`);
+		if (BusinessFullData.businessData.logoUrl && BusinessFullData.businessData.logoUrl != null) {
+			settingsGeneralBusinessLogoPreview.attr("src", BusinessFullData.businessData.logoUrl);
 		} else {
 			settingsGeneralBusinessLogoPreview.attr("src", DefaultBusinessImgSRC);
 		}
@@ -256,7 +256,7 @@ function initSettingsTab() {
 
 			const file = settingsGeneralBusinessLogo[0].files[0];
 			if (!file) {
-				settingsGeneralBusinessLogoPreview.attr("src", `${BusinessLogoURL}/${BusinessFullData.businessData.logoURL}.webp`);
+				settingsGeneralBusinessLogoPreview.attr("src", BusinessFullData.businessData.logoUrl);
 				CheckIfSettingsHasChanges();
 				return;
 			}

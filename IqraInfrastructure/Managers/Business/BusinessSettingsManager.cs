@@ -7,6 +7,8 @@ using MongoDB.Driver;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using IqraInfrastructure.Managers.Languages;
+using IqraCore.Entities.S3Storage;
+using IqraInfrastructure.Repositories.S3Storage;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -20,6 +22,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessLogoRepository _businessLogoRepository;
         private readonly LanguagesManager _languagesManager;
+        private readonly S3StorageClientFactory _s3StorageClientFactory;
 
         public BusinessSettingsManager(
             ILogger<BusinessSettingsManager> logger,
@@ -27,7 +30,8 @@ namespace IqraInfrastructure.Managers.Business
             BusinessRepository businessRepository,
             BusinessAppRepository businessAppRepository,
             BusinessLogoRepository businessLogoRepository,
-            LanguagesManager languagesManager
+            LanguagesManager languagesManager,
+            S3StorageClientFactory s3StorageClientFactory
         )
         {
             _logger = logger;
@@ -38,6 +42,7 @@ namespace IqraInfrastructure.Managers.Business
             _businessAppRepository = businessAppRepository;
             _businessLogoRepository = businessLogoRepository;
             _languagesManager = languagesManager;
+            _s3StorageClientFactory = s3StorageClientFactory;
         }
 
         /**
@@ -233,7 +238,16 @@ namespace IqraInfrastructure.Managers.Business
                     await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
                 }
 
-                updateDefinitions.Add(Builders<BusinessData>.Update.Set(x => x.LogoURL, hash));
+                updateDefinitions.Add(
+                    Builders<BusinessData>.Update.Set(
+                        x => x.LogoS3StorageLink,
+                        new S3StorageFileLink
+                        {
+                            ObjectName = hash,
+                            OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                        }
+                    )
+                );
             }
 
             if (updateDefinitions.Count == 0)

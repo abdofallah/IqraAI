@@ -84,7 +84,7 @@ function createIntegrationCardElement(integration) {
                         data-integration-id="${integration.id}">
                         <div class="d-flex flex-row align-items-center justify-content-between w-100 mb-3">
                             <div class="d-flex flex-row align-items-center">
-                                <img src="${IntegrationLogoURL + "/" + integration.logo + ".webp"}">
+                                <img src="${integration.logoUrl}">
                                 <div>
                                     <h4>${integration.name}</h4>
                                 </div>
@@ -540,7 +540,7 @@ function fillIntegrationManager(integrationData) {
 	integrationNameInput.val(integrationData.name);
 	integrationDescriptionInput.val(integrationData.description);
 	if (integrationData.logo) {
-		integrationLogoPreview.attr("src", IntegrationLogoURL + "/" + integrationData.logo + ".webp");
+		integrationLogoPreview.attr("src", integrationData.logoUrl);
 	}
 
 	// Set disabled state

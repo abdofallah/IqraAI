@@ -13,6 +13,8 @@ using Microsoft.Extensions.Primitives;
 using MongoDB.Driver;
 using System.Text.Json;
 using IqraInfrastructure.Helpers.Business;
+using IqraCore.Entities.S3Storage;
+using IqraInfrastructure.Repositories.S3Storage;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -22,19 +24,29 @@ namespace IqraInfrastructure.Managers.Business
 
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
+        private readonly S3StorageClientFactory _s3StorageClientFactory;
         private readonly BusinessAgentAudioRepository _businessAgentAudioRepository;
 
         private readonly AudioFileProcessor _audioProcessor;
         private readonly IntegrationConfigurationManager _integrationConfigurationManager;
 
-        public BusinessAgentsManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, BusinessAgentAudioRepository businessAgentAudioRepository, AudioFileProcessor audioProcessor, IntegrationConfigurationManager integrationConfigurationManager)
+        public BusinessAgentsManager(
+            BusinessManager businessManager,
+            BusinessAppRepository businessAppRepository,
+            BusinessRepository businessRepository,
+            S3StorageClientFactory s3StorageClientFactory,
+            BusinessAgentAudioRepository businessAgentAudioRepository,
+            AudioFileProcessor audioProcessor,
+            IntegrationConfigurationManager integrationConfigurationManager
+        )
         {
             _parentBusinessManager = businessManager;
 
             _businessAppRepository = businessAppRepository;
             _businessRepository = businessRepository;
-            _businessAgentAudioRepository = businessAgentAudioRepository;
 
+            _businessAgentAudioRepository = businessAgentAudioRepository;
+            _s3StorageClientFactory = s3StorageClientFactory;
             _audioProcessor = audioProcessor;
             _integrationConfigurationManager = integrationConfigurationManager;
         }
@@ -1236,7 +1248,11 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
-                        newAgentData.Settings.BackgroundAudioUrl = validationResult.Hash;
+                        newAgentData.Settings.BackgroundAudioS3StorageLink = new S3StorageFileLink
+                        {
+                            ObjectName = validationResult.Hash,
+                            OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                        };
                     }
                     else if (backgroundAudioUrl == "previous")
                     {
@@ -1248,15 +1264,15 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
-                        var exisitingAgentSettingsBackgroundAudioUrl = await _businessAppRepository.GetAgentSettingsBackgroundAudioUrl(businessId, exisitingAgentId!);
-                        if (string.IsNullOrWhiteSpace(exisitingAgentSettingsBackgroundAudioUrl))
+                        var exisitingAgentSettingsBackgroundAudioS3StorageLink = await _businessAppRepository.GetAgentSettingsBackgroundAudioS3StorageLink(businessId, exisitingAgentId!);
+                        if (exisitingAgentSettingsBackgroundAudioS3StorageLink == null)
                         {
                             return result.SetFailureResult(
                                 "AddOrUpdateAgent:PREVIOUS_BACKGROUND_AUDIO_URL_NOTFOUND",
                                 "Previous background audio url not found."
                             );
                         }
-                        newAgentData.Settings.BackgroundAudioUrl = exisitingAgentSettingsBackgroundAudioUrl;
+                        newAgentData.Settings.BackgroundAudioS3StorageLink = exisitingAgentSettingsBackgroundAudioS3StorageLink;
                     }
                     else
                     {

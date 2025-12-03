@@ -3,7 +3,6 @@ using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
-using System.Reactive.Joins;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 

@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.S3Storage;
 using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.TTS;
 using IqraCore.Models.TTS.Cache;
@@ -125,7 +126,7 @@ namespace IqraInfrastructure.Managers.TTS
 
         private async Task<CacheGetResult> SmartFetchAndReturnResultAsync(TTSAudioCacheEntry entry, CancellationToken token)
         {
-            var audioBytes = await SmartFetchFromStorageAsync(entry.S3StorageObjectPath, entry.OriginRegion, token);
+            var audioBytes = await SmartFetchFromStorageAsync(entry.AudioCacheS3StorageLink!.ObjectName, entry.AudioCacheS3StorageLink!.OriginRegion, token);
             if (!audioBytes.IsEmpty)
             {
                 // Refresh the Redis cache as we go. Fire-and-forget.
@@ -134,7 +135,7 @@ namespace IqraInfrastructure.Managers.TTS
             }
 
             _logger.LogError("CRITICAL: Failed to fetch cache object {Path} for {CacheKey} from any region.",
-                entry.S3StorageObjectPath, entry.Id);
+                entry.AudioCacheS3StorageLink!.ObjectName, entry.Id);
             return CacheGetResult.Miss();
         }
 
@@ -164,7 +165,6 @@ namespace IqraInfrastructure.Managers.TTS
                 TtsConfigJson = JsonSerializer.Serialize(config, config.GetType()),
                 TtsConfigVersion = config.ConfigVersion,
                 Status = TTSAudioCacheStatus.GENERATING,
-                OriginRegion = _currentRegion,
                 CreatedAtUtc = DateTime.UtcNow,
                 LastUpdatedAtUtc = DateTime.UtcNow,
                 ExpiresAtUtc = DateTime.UtcNow.Add(GenerationClaimTTL)
@@ -178,7 +178,7 @@ namespace IqraInfrastructure.Managers.TTS
                     var s3StoragePath = $"cache/tts-{(int)ttsProvider}/{cacheKey}.pcm";
 
                     await _cacheAudioStorage.PutFileAsByteDataAsync(s3StoragePath, audioData, new Dictionary<string, string>(), region: _currentRegion);
-                    await _cacheMetadataRepository.UpdateToCompleteAsync(cacheKey, s3StoragePath, duration);
+                    await _cacheMetadataRepository.UpdateToCompleteAsync(cacheKey, new S3StorageFileLink { ObjectName = s3StoragePath, OriginRegion = _currentRegion }, duration);
                     var finalEntry = await _cacheMetadataRepository.GetAsync(cacheKey);
                     await UpdateRedisCacheAsync(finalEntry);
                     await CheckAndUpdateBusinessAudioCacheLink(cacheKey, config.ConfigVersion, ttsProvider, businessId, audioCacheGroupId, audioCacheGroupEntryLanguage, audioCacheGroupEntryId, referencedByAgentId, token);
@@ -244,7 +244,7 @@ namespace IqraInfrastructure.Managers.TTS
         {
             if (entry == null || entry.Status != TTSAudioCacheStatus.COMPLETE) return;
 
-            var pointer = new RedisCachePointer(entry.S3StorageObjectPath, entry.Duration.Value, entry.OriginRegion);
+            var pointer = new RedisCachePointer(entry.AudioCacheS3StorageLink!.ObjectName, entry.Duration!.Value, entry.AudioCacheS3StorageLink!.OriginRegion);
             var redisValue = JsonSerializer.Serialize(pointer);
             await _cacheIndexLocalRepository.SetAsync(entry.Id, redisValue, _redisTTL);
         }

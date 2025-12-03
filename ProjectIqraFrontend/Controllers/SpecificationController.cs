@@ -7,6 +7,7 @@ using IqraCore.Entities.Region;
 using IqraCore.Entities.Rerank;
 using IqraCore.Entities.STT;
 using IqraCore.Entities.TTS;
+using IqraCore.Models.Specification;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
@@ -15,6 +16,7 @@ using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Repositories.Integrations;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers
@@ -29,6 +31,7 @@ namespace ProjectIqraFrontend.Controllers
         private readonly TTSProviderManager _ttsProviderManager;
         private readonly EmbeddingProviderManager _embeddingProviderManager;
         private readonly RerankProviderManager _rerankProviderManager;
+        private readonly IntegrationsLogoRepository _integrationsLogoRepository;
 
         public SpecificationController(
             LanguagesManager languagesManager,
@@ -69,9 +72,9 @@ namespace ProjectIqraFrontend.Controllers
         }
 
         [HttpGet("/app/specification/integrations")]
-        public async Task<FunctionReturnResult<List<IntegrationData>?>> GetAvailableIntegrations()
+        public async Task<FunctionReturnResult<List<IntegrationViewModel>?>> GetAvailableIntegrations()
         {
-            var result = new FunctionReturnResult<List<IntegrationData>?>();
+            var result = new FunctionReturnResult<List<IntegrationViewModel>?>();
 
             var getIntegrationsListResult = await _integrationsManager.GetIntegrationsList();
             if (!getIntegrationsListResult.Success)
@@ -82,7 +85,19 @@ namespace ProjectIqraFrontend.Controllers
                 );
             }
 
-            return result.SetSuccessResult(getIntegrationsListResult.Data);
+            var resultDto = new List<IntegrationViewModel>();
+            foreach (var item in getIntegrationsListResult.Data!)
+            {
+                var dtoItem = new IntegrationViewModel(item);
+                if (item.LogoS3StorageLink != null)
+                {
+                    dtoItem.LogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400, item.LogoS3StorageLink.OriginRegion);
+                }
+
+                resultDto.Add(dtoItem);
+            }
+
+            return result.SetSuccessResult(resultDto);
         }
 
         [HttpGet("/app/specification/regions")]

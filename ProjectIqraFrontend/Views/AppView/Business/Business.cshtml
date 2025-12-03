@@ -1,16 +1,24 @@
-﻿@using IqraCore.Entities.Frontend
-@using IqraCore.Entities.WhiteLabel
+﻿@using IqraCore.Entities.WhiteLabel
+@using IqraInfrastructure.Repositories.Business
 @inject WhiteLabelContext Ctx
-@inject ViewLinkConfiguration ViewLinks
+@inject BusinessLogoRepository LogoRepo
 @{
     // Resolve branding information from the context, with fallbacks.
     var platformName = Ctx.RequestContext?.Branding?.PlatformName ?? "Iqra AI";
-    var platformLogo = Ctx.RequestContext?.Branding?.PlatformLogo;
-    var platformIcon = Ctx.RequestContext?.Branding?.PlatformIcon;
+    var platformLogoS3StorageLink = Ctx.RequestContext?.Branding?.PlatformLogoS3StorageLink;
+    var platformIconS3StorageLink = Ctx.RequestContext?.Branding?.PlatformIconS3StorageLink;
     var customCSS = Ctx.RequestContext?.Branding?.PlatformCustomCSS;
 
-    var logoUrl = !string.IsNullOrEmpty(platformLogo) ? $"{ViewLinks.BusinessLogoURL}/{platformLogo}.webp" : "/img/logo/logo-colored-light.png";
-    var iconUrl = !string.IsNullOrEmpty(platformIcon) ? $"{ViewLinks.BusinessLogoURL}/{platformIcon}.webp" : "/img/favicon/favicon.ico";
+    var logoUrl = "/img/logo/logo-colored-light.png";
+    if (platformLogoS3StorageLink != null)
+    {
+        logoUrl = LogoRepo.GeneratePresignedUrl(platformLogoS3StorageLink.ObjectName, 3600, platformLogoS3StorageLink.OriginRegion);
+    }
+    var iconUrl = "/img/favicon/favicon.ico";
+    if (platformIconS3StorageLink != null)
+    {
+        iconUrl = LogoRepo.GeneratePresignedUrl(platformIconS3StorageLink.ObjectName, 3600, platformIconS3StorageLink.OriginRegion);
+    }
 }
 <!DOCTYPE html>
 <html data-bs-theme="dark">
@@ -18,7 +26,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | @platformName</title>
+    <title>Dashboard | @Html.Raw(platformName)</title>
 
     <link href="~/libs/jquery-ui-1.13.3-dist/jquery-ui.min.css" rel="stylesheet">
     <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
@@ -423,10 +431,8 @@
     <!-- ASP -->
     <script>
         const IsWhiteLabelCustomer = @(Ctx.IsWhiteLabelRequest ? "true" : "false");
-        const BusinessLogoURL = "@ViewLinks.BusinessLogoURL";
-        const BusinessToolAudioURL = "@ViewLinks.BusinessToolAudioURL";
-        const BusinessAgentBackgroundAudioURL = "@ViewLinks.BusinessAgentBackgroundAudioURL";
-        const IntegrationLogoURL = "@ViewLinks.IntegrationLogoURL";
+        const BusinessToolAudioURL = "google.com";
+        const BusinessAgentBackgroundAudioURL = "google.com";
     </script>
 
     <!-- Libraries -->

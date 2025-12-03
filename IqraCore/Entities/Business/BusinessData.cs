@@ -1,4 +1,4 @@
-﻿using IqraCore.Attributes;
+﻿using IqraCore.Entities.S3Storage;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
@@ -10,7 +10,7 @@ namespace IqraCore.Entities.Business
         public string MasterUserEmail { get; set; } = string.Empty;
 
         public string Name { get; set; } = string.Empty;
-        public string LogoURL { get; set; } = string.Empty;
+        public S3StorageFileLink? LogoS3StorageLink { get; set; } = null;
 
         public string DefaultLanguage { get; set; } = string.Empty;
         public List<string> Languages { get; set; } = new List<string>();

@@ -1,7 +1,8 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Models.User;
+using IqraCore.Models.User.Business;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Mvc;
 using ProjectIqraFrontend.Middlewares;
 
@@ -13,11 +14,17 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
     {
         private readonly UserAPIValidationHelper _userAPIValidationHelper;
         private readonly BusinessManager _businessManager;
+        private readonly BusinessLogoRepository _businessLogoRepository;
 
-        public APIv1BusinessController(UserAPIValidationHelper userAPIValidationHelper, BusinessManager businessManager)
+        public APIv1BusinessController(
+            UserAPIValidationHelper userAPIValidationHelper,
+            BusinessManager businessManager,
+            BusinessLogoRepository businessLogoRepository
+        )
         {
             _userAPIValidationHelper = userAPIValidationHelper;
             _businessManager = businessManager;
+            _businessLogoRepository = businessLogoRepository;
         }
 
         [HttpGet]
@@ -48,9 +55,15 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                     );
                 }
 
+                var businessMetaDataModel = new GetUseBusinessFullResultMetaDataModel(businessData);
+                if (businessData.LogoS3StorageLink != null)
+                {
+                    businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400, businessData.LogoS3StorageLink.OriginRegion);
+                }
+
                 var fullBusinessReturnModel = new GetUserBusinessFullReturnModel()
                 {
-                    BusinessData = businessData,
+                    BusinessData = businessMetaDataModel,
                     BusinessApp = businessAppResult.Data!
                 };
 

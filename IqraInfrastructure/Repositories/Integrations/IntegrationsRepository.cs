@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Integrations;
+using IqraCore.Entities.S3Storage;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -52,7 +53,7 @@ namespace IqraInfrastructure.Repositories.Integrations
                 .Set(x => x.Name, integrationData.Name)
                 .Set(x => x.Description, integrationData.Description)
                 .Set(x => x.DisabledAt, integrationData.DisabledAt)
-                .Set(x => x.Logo, integrationData.Logo)
+                .Set(x => x.LogoS3StorageLink, integrationData.LogoS3StorageLink)
                 .Set(x => x.Type, integrationData.Type)
                 .Set(x => x.Fields, integrationData.Fields)
                 .Set(x => x.Help, integrationData.Help);
@@ -93,10 +94,10 @@ namespace IqraInfrastructure.Repositories.Integrations
             return await _integrationsCollection.UpdateOneAsync(filter, update);
         }
 
-        public async Task<UpdateResult> UpdateIntegrationLogoAsync(string integrationId, string logoPath)
+        public async Task<UpdateResult> UpdateIntegrationLogoAsync(string integrationId, S3StorageFileLink logoS3StorageLink)
         {
             var filter = Builders<IntegrationData>.Filter.Eq(x => x.Id, integrationId);
-            var update = Builders<IntegrationData>.Update.Set(x => x.Logo, logoPath);
+            var update = Builders<IntegrationData>.Update.Set(x => x.LogoS3StorageLink, logoS3StorageLink);
             return await _integrationsCollection.UpdateOneAsync(filter, update);
         }
 

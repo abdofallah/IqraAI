@@ -2,9 +2,10 @@
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Entities.WhiteLabel;
-using IqraCore.Models.User;
+using IqraCore.Models.User.Business;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
@@ -20,6 +21,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
         private readonly UserWhiteLabelManager _userWhiteLabelManager;
         private readonly IMongoClient _mongoClient;
         private readonly WhiteLabelContext _whiteLabelContext;
+        private readonly BusinessLogoRepository _businessLogoRepository;
 
         public UserBusinessController(
             ILogger<UserBusinessController> logger,
@@ -28,7 +30,8 @@ namespace ProjectIqraFrontend.Controllers.App.User
             BusinessManager businessManager,
             UserWhiteLabelManager userWhiteLabelManager,
             IMongoClient mongoClient,
-            WhiteLabelContext whiteLabelContext
+            WhiteLabelContext whiteLabelContext,
+            BusinessLogoRepository businessLogoRepository
         )
         {
             _logger = logger;
@@ -38,13 +41,14 @@ namespace ProjectIqraFrontend.Controllers.App.User
             _userWhiteLabelManager = userWhiteLabelManager;
             _mongoClient = mongoClient;
             _whiteLabelContext = whiteLabelContext;
+            _businessLogoRepository = businessLogoRepository;
         }
 
 
         [HttpGet("/app/user/businesses")]
-        public async Task<FunctionReturnResult<List<BusinessData>?>> GetUserBusinesses()
+        public async Task<FunctionReturnResult<List<GetUseBusinessFullResultMetaDataModel>?>> GetUserBusinesses()
         {
-            var result = new FunctionReturnResult<List<BusinessData>?>();
+            var result = new FunctionReturnResult<List<GetUseBusinessFullResultMetaDataModel>?>();
 
             try
             {
@@ -76,7 +80,19 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
-                return result.SetSuccessResult(businessesResult.Data);
+                var resultModel = new List<GetUseBusinessFullResultMetaDataModel>();
+                foreach (var businessData in businessesResult.Data!)
+                {
+                    var businessMetaDataModel = new GetUseBusinessFullResultMetaDataModel(businessData);
+                    if (businessData.LogoS3StorageLink != null)
+                    {
+                        businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400, businessData.LogoS3StorageLink.OriginRegion);
+                    }
+
+                    resultModel.Add(businessMetaDataModel);
+                }
+
+                return result.SetSuccessResult(resultModel);
             }
             catch (Exception ex)
             {
@@ -121,9 +137,15 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
 
+                var businessMetaDataModel = new GetUseBusinessFullResultMetaDataModel(businessData);
+                if (businessData.LogoS3StorageLink != null)
+                {
+                    businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400, businessData.LogoS3StorageLink.OriginRegion);
+                }
+
                 var resultData = new GetUserBusinessFullReturnModel()
                 {
-                    BusinessData = businessData,
+                    BusinessData = businessMetaDataModel,
                     BusinessApp = businessAppResult.Data!
                 };
 
@@ -139,9 +161,9 @@ namespace ProjectIqraFrontend.Controllers.App.User
         }
 
         [HttpPost("/app/user/business/add")]
-        public async Task<FunctionReturnResult<BusinessData?>> AddUserBusiness([FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<GetUseBusinessFullResultMetaDataModel?>> AddUserBusiness([FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessData?>();
+            var result = new FunctionReturnResult<GetUseBusinessFullResultMetaDataModel?>();
 
             try
             {
@@ -198,7 +220,14 @@ namespace ProjectIqraFrontend.Controllers.App.User
                         await _userManager.AddBusinessIdToUser(userData.Email, newBusinessData.Id, mongoSession);
 
                         await mongoSession.CommitTransactionAsync();
-                        return result.SetSuccessResult(newBusinessData);
+
+                        var businessMetaDataModel = new GetUseBusinessFullResultMetaDataModel(newBusinessData);
+                        if (newBusinessData.LogoS3StorageLink != null)
+                        {
+                            businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(newBusinessData.LogoS3StorageLink.ObjectName, 86400, newBusinessData.LogoS3StorageLink.OriginRegion);
+                        }
+
+                        return result.SetSuccessResult(businessMetaDataModel);
                     }
                     catch (Exception ex)
                     {

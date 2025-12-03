@@ -16,6 +16,8 @@ namespace IqraInfrastructure.Repositories.S3Storage
             _regionClients = new Dictionary<string, IAmazonS3>();
         }
 
+        public string GetCurrentRegion() => _currentRegion;
+
         public async Task<FunctionReturnResult> Initalize(List<RegionData> regionsData)
         {
             var result = new FunctionReturnResult();
@@ -24,7 +26,16 @@ namespace IqraInfrastructure.Repositories.S3Storage
             {
                 foreach (var region in regionsData)
                 {
+                    if (region.DisabledAt != null)
+                    {
+                        continue;
+                    }
+
                     var s3StorageServer = region.S3Server;
+                    if (s3StorageServer.DisabledAt != null)
+                    {
+                        continue;
+                    }
 
                     var protocol = s3StorageServer.UseSSL ? "https" : "http";
                     var serviceUrl = $"{protocol}://{s3StorageServer.Endpoint}";
