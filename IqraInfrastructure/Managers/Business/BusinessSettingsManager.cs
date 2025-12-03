@@ -232,10 +232,12 @@ namespace IqraInfrastructure.Managers.Business
             if (businessLogo != null)
             {
                 var (webpImage, hash) = await ImageHelper.ConvertScaleAndHashToWebp(businessLogo);
-                bool fileExists = await _businessLogoRepository.FileExists(hash);
+                var fileName = hash + ".webp";
+
+                bool fileExists = await _businessLogoRepository.FileExists(fileName);
                 if (!fileExists)
                 {
-                    await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
+                    await _businessLogoRepository.PutFileAsByteData(fileName, webpImage, new Dictionary<string, string>());
                 }
 
                 updateDefinitions.Add(
@@ -243,7 +245,7 @@ namespace IqraInfrastructure.Managers.Business
                         x => x.LogoS3StorageLink,
                         new S3StorageFileLink
                         {
-                            ObjectName = hash,
+                            ObjectName = fileName,
                             OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
                         }
                     )
