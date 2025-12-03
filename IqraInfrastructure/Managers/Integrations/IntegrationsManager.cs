@@ -155,13 +155,14 @@ namespace IqraInfrastructure.Managers.Integrations
                 if (logoFile != null)
                 {
                     var (webpImage, hash) = await ImageHelper.ConvertScaleAndHashToWebp(logoFile);
-                    bool fileExists = await _integrationsLogoRepository.FileExists(hash);
+                    var fileName = hash + ".webp";
+                    bool fileExists = await _integrationsLogoRepository.FileExists(fileName);
                     if (!fileExists)
                     {
-                        await _integrationsLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
+                        await _integrationsLogoRepository.PutFileAsByteData(fileName, webpImage, new Dictionary<string, string>());
                     }
                     integrationData.LogoS3StorageLink = new S3StorageFileLink {
-                        ObjectName = hash,
+                        ObjectName = fileName,
                         OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
                     };
                 }
