@@ -41,7 +41,8 @@ namespace ProjectIqraFrontend.Controllers
             STTProviderManager sttProviderManager,
             TTSProviderManager ttsProviderManager,
             EmbeddingProviderManager embeddingProviderManager,
-            RerankProviderManager rerankProviderManager
+            RerankProviderManager rerankProviderManager,
+            IntegrationsLogoRepository integrationsLogoRepository
         )
         {
             _languagesManager = languagesManager;
@@ -52,6 +53,7 @@ namespace ProjectIqraFrontend.Controllers
             _ttsProviderManager = ttsProviderManager;
             _embeddingProviderManager = embeddingProviderManager;
             _rerankProviderManager = rerankProviderManager;
+            _integrationsLogoRepository = integrationsLogoRepository;
         }
 
         [HttpGet("/app/specification/languages")]

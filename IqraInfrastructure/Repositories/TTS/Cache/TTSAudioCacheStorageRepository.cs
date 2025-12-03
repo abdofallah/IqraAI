@@ -108,10 +108,10 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
             }
         }
 
-        public string? GetPresignedUrlForGetAsync(string objectPath, string? region = null, int expirySeconds = 3600)
+        public string? GeneratePresignedUrl(string fileId, int expiresInSeconds, string? region = null)
         {
             var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
-            return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, objectPath, expirySeconds, _logger);
+            return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, fileId, expiresInSeconds, _logger);
         }
     }
 }

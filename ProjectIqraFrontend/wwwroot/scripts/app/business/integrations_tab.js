@@ -44,6 +44,7 @@ function SaveBusinessIntegration(formData, onSuccess, onError) {
 
 /** Core Functions **/
 function createIntegrationCardElement(integration) {
+	console.log(integration);
 	return `
         <div class="col-lg-4 col-md-6 col-12">
             <div class="business-card d-flex flex-column align-items-start justify-content-center" data-integration-id="${integration.id}">
@@ -182,7 +183,7 @@ function FillIntegrationsList() {
 		const integrationDetails = SpecificationIntegrationsListData.find((i) => i.id === integration.type);
 		if (integrationDetails) {
 			integration.name = integrationDetails.name;
-			integration.logo = integrationDetails.logo;
+			integration.logoUrl = integrationDetails.logoUrl;
 			integrationsListContainer.append($(createIntegrationCardElement(integration)));
 		}
 	});

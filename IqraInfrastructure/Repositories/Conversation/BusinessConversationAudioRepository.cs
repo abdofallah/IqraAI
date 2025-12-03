@@ -218,11 +218,10 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public string? GeneratePresignedUrlAsync(string reference, int expiresInSeconds, string? region = null)
+        public string? GeneratePresignedUrl(string fileId, int expiresInSeconds, string? region = null)
         {
-            // Use Helper
             var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
-            return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, reference, expiresInSeconds, _logger);
+            return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, fileId, expiresInSeconds, _logger);
         }
     }
 }

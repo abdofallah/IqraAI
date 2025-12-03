@@ -1,7 +1,13 @@
-﻿using Amazon.S3;
+﻿using Amazon.Auth.AccessControlPolicy;
+using Amazon.Runtime;
+using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.SecurityToken;
+using Amazon.SecurityToken.Model;
+using IqraCore.Entities.Region;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Repositories.S3Storage
 {
@@ -19,6 +25,19 @@ namespace IqraInfrastructure.Repositories.S3Storage
             if (client == null)
             {
                 throw new InvalidOperationException($"S3 Client not found for region: {region ?? "Current"}");
+            }
+
+            return client;
+        }
+        public static RegionS3StorageServerData GetS3ClientServerData(S3StorageClientFactory factory, string? region)
+        {
+            var client = string.IsNullOrEmpty(region)
+                ? factory.GetServerForCurrentRegion()
+                : factory.GetServerForRegion(region);
+
+            if (client == null)
+            {
+                throw new InvalidOperationException($"S3 Server not found for region: {region ?? "Current"}");
             }
 
             return client;
@@ -50,9 +69,6 @@ namespace IqraInfrastructure.Repositories.S3Storage
             }
         }
 
-        /// <summary>
-        /// Generates a presigned URL for an object.
-        /// </summary>
         public static string? GeneratePresignedUrl(IAmazonS3 client, string bucketName, string key, int expiresInSeconds, ILogger logger)
         {
             if (string.IsNullOrEmpty(key) || expiresInSeconds <= 0) return null;

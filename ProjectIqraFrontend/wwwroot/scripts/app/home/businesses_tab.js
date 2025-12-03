@@ -87,7 +87,7 @@ function CreateUserBusinessCard(businessData) {
 						</div>
 						
 						<div class="d-flex flex-row align-items-center justify-content-start">
-                            <img src="${businessData.logoUrl}.webp">
+                            <img src="${businessData.logoUrl}">
                             <h4>${businessData.name}</h4>
                         </div>
                     </a>

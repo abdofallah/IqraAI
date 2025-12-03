@@ -8,12 +8,12 @@ namespace IqraInfrastructure.Repositories.S3Storage
     public class S3StorageClientFactory
     {
         private readonly string _currentRegion;
-        private readonly Dictionary<string, IAmazonS3> _regionClients;
+        private readonly Dictionary<string, (IAmazonS3 client, RegionS3StorageServerData server)> _regionClients;
 
         public S3StorageClientFactory(string currentRegionCode)
         {
             _currentRegion = currentRegionCode;
-            _regionClients = new Dictionary<string, IAmazonS3>();
+            _regionClients = new Dictionary<string, (IAmazonS3 client, RegionS3StorageServerData server)>();
         }
 
         public string GetCurrentRegion() => _currentRegion;
@@ -61,7 +61,7 @@ namespace IqraInfrastructure.Repositories.S3Storage
                         );
                     }
 
-                    _regionClients.Add(region.CountryRegion, s3Client);
+                    _regionClients.Add(region.CountryRegion, (s3Client, s3StorageServer));
                 }
 
                 return result.SetSuccessResult();
@@ -78,7 +78,13 @@ namespace IqraInfrastructure.Repositories.S3Storage
         public IAmazonS3? GetClientForCurrentRegion() => GetClientForRegion(_currentRegion);
         public IAmazonS3? GetClientForRegion(string region)
         {
-            return _regionClients.TryGetValue(region, out var client) ? client : null;
+            return _regionClients.TryGetValue(region, out var data) ? data.client : null;
+        }
+
+        public RegionS3StorageServerData? GetServerForCurrentRegion() => GetServerForRegion(_currentRegion);
+        public RegionS3StorageServerData? GetServerForRegion(string region)
+        {
+            return _regionClients.TryGetValue(region, out var data) ? data.server : null;
         }
     }
 }

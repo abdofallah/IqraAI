@@ -1,4 +1,6 @@
-﻿using IqraCore.Entities.WebSession;
+﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WebSession;
+using IqraCore.Models.Business.WebSession;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -9,14 +11,184 @@ namespace IqraInfrastructure.Repositories.WebSession
         private readonly IMongoCollection<WebSessionData> _webSessionCollection;
         private readonly ILogger<WebSessionRepository> _logger;
 
-        private const string InboundCollectionName = "WebSession";
+        private const string WebSessionCollectionName = "WebSession";
 
         public WebSessionRepository(ILogger<WebSessionRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
             var database = client.GetDatabase(databaseName);
-            _webSessionCollection = database.GetCollection<WebSessionData>(InboundCollectionName);
+            _webSessionCollection = database.GetCollection<WebSessionData>(WebSessionCollectionName);
+
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            var indexes = new[]
+            {
+                new CreateIndexModel<WebSessionData>(
+                    Builders<WebSessionData>.IndexKeys
+                        .Ascending(c => c.BusinessId)
+                        .Descending(c => c.CreatedAt)
+                        .Descending(c => c.Id),
+                    new CreateIndexOptions { Name = "Idx_WebSession_Business_CreatedAt_Id" })
+            };
+
+            try
+            {
+                _webSessionCollection.Indexes.CreateManyAsync(indexes).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for WebSession collection");
+            }
+        }
+
+        public async Task<(List<WebSessionData> Items, bool HasMore, long TotalCount)> GetWebSessionsForBusinessPaginatedAsync(
+            long businessId,
+            GetBusinessWebSessionsRequestFilterModel filter,
+            int limit,
+            PaginationCursor<GetBusinessWebSessionsRequestFilterModel>? cursor,
+            bool fetchNext)
+        {
+            try
+            {
+                var filterBuilder = Builders<WebSessionData>.Filter;
+                var filterDefinitions = new List<FilterDefinition<WebSessionData>>
+                {
+                    filterBuilder.Eq(c => c.BusinessId, businessId)
+                };
+
+                // --- Dynamic Filtering ---
+                if (filter.StartCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Gte(c => c.CreatedAt, filter.StartCreatedDate.Value.ToUniversalTime()));
+                if (filter.EndCreatedDate.HasValue)
+                    filterDefinitions.Add(filterBuilder.Lte(c => c.CreatedAt, filter.EndCreatedDate.Value.ToUniversalTime()));
+
+                // Note: WebSessionData currently does not have CompletedAt, so we skip StartCompletedAtDate/EndCompletedAtDate
+
+                if (filter.QueueStatusTypes?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.Status, filter.QueueStatusTypes));
+
+                if (filter.WebCampaignIds?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.WebCampaignId, filter.WebCampaignIds));
+
+                if (filter.ClientIdentifiers?.Any() == true)
+                    filterDefinitions.Add(filterBuilder.In(c => c.ClientIdentifier, filter.ClientIdentifiers));
+
+                var baseFilter = filterBuilder.And(filterDefinitions);
+
+                // --- Total Count (Pre-Pagination) ---
+                long totalCount = await _webSessionCollection.CountDocumentsAsync(baseFilter);
+
+                // --- Cursor & Sorting Logic ---
+                FilterDefinition<WebSessionData> finalFilter = baseFilter;
+                SortDefinition<WebSessionData> sortDefinition;
+
+                if (fetchNext)
+                {
+                    // Default View: Newest First
+                    sortDefinition = Builders<WebSessionData>.Sort
+                        .Descending(c => c.CreatedAt)
+                        .Descending(c => c.Id);
+
+                    if (cursor != null)
+                    {
+                        // Get items older than the cursor
+                        var cursorFilter = filterBuilder.Or(
+                            filterBuilder.Lt(c => c.CreatedAt, cursor.Timestamp),
+                            filterBuilder.And(filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp), filterBuilder.Lt(c => c.Id, cursor.Id))
+                        );
+                        finalFilter = filterBuilder.And(baseFilter, cursorFilter);
+                    }
+                }
+                else // Fetching Previous Page
+                {
+                    // Temporary Sort: Oldest First (to get the "previous" 12 items)
+                    sortDefinition = Builders<WebSessionData>.Sort
+                        .Ascending(c => c.CreatedAt)
+                        .Ascending(c => c.Id);
+
+                    if (cursor != null)
+                    {
+                        // Get items newer than the cursor
+                        var cursorFilter = filterBuilder.Or(
+                            filterBuilder.Gt(c => c.CreatedAt, cursor.Timestamp),
+                            filterBuilder.And(filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp), filterBuilder.Gt(c => c.Id, cursor.Id))
+                        );
+                        finalFilter = filterBuilder.And(baseFilter, cursorFilter);
+                    }
+                    else
+                    {
+                        // Edge case: Requesting previous but no cursor? Return empty.
+                        return (new List<WebSessionData>(), false, 0);
+                    }
+                }
+
+                // --- Execution ---
+                var items = await _webSessionCollection.Find(finalFilter)
+                    .Sort(sortDefinition)
+                    .Limit(limit + 1) // Fetch one extra to check HasMore
+                    .ToListAsync();
+
+                bool hasMore = items.Count > limit;
+
+                if (hasMore)
+                {
+                    items.RemoveAt(limit); // Remove the extra item
+                }
+
+                // If we fetched "Previous" (Ascending), flip back to Descending for UI
+                if (!fetchNext)
+                {
+                    items.Reverse();
+                }
+
+                return (items, hasMore, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated web sessions for business {BusinessId}", businessId);
+                return (new List<WebSessionData>(), false, 0);
+            }
+        }
+
+        public async Task<long?> GetWebSessionsCountAsync(long businessId, GetBusinessWebSessionsRequestModel modelData)
+        {
+            try
+            {
+                var filterBuilder = Builders<WebSessionData>.Filter;
+                var filterDefinitions = new List<FilterDefinition<WebSessionData>>
+                {
+                    filterBuilder.Eq(c => c.BusinessId, businessId)
+                };
+
+                // Replicate filtering logic exactly as above
+                if (modelData.Filter != null)
+                {
+                    var filter = modelData.Filter;
+                    if (filter.StartCreatedDate.HasValue)
+                        filterDefinitions.Add(filterBuilder.Gte(c => c.CreatedAt, filter.StartCreatedDate.Value.ToUniversalTime()));
+                    if (filter.EndCreatedDate.HasValue)
+                        filterDefinitions.Add(filterBuilder.Lte(c => c.CreatedAt, filter.EndCreatedDate.Value.ToUniversalTime()));
+                    if (filter.QueueStatusTypes?.Any() == true)
+                        filterDefinitions.Add(filterBuilder.In(c => c.Status, filter.QueueStatusTypes));
+                    if (filter.WebCampaignIds?.Any() == true)
+                        filterDefinitions.Add(filterBuilder.In(c => c.WebCampaignId, filter.WebCampaignIds));
+                    if (filter.ClientIdentifiers?.Any() == true)
+                        filterDefinitions.Add(filterBuilder.In(c => c.ClientIdentifier, filter.ClientIdentifiers));
+                }
+
+                var finalFilter = filterBuilder.And(filterDefinitions);
+
+                return await _webSessionCollection.CountDocumentsAsync(finalFilter);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting web session count for business {BusinessId}", businessId);
+                return null;
+            }
         }
 
         public async Task<bool> AddWebSessionAsync(WebSessionData newWebSessionData)

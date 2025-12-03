@@ -4,6 +4,7 @@ using IqraCore.Models.Business.Conversations;
 using IqraCore.Models.Business.Queues;
 using IqraCore.Models.Business.Queues.Inbound;
 using IqraCore.Models.Business.Queues.Outbound;
+using IqraCore.Models.Business.WebSession;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
@@ -156,6 +157,63 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             if (!conversationMetaDataListResult.Success)
             {
                 result.Code = "GetBusinessOutboundConversationsMetaData:" + conversationMetaDataListResult.Code;
+                result.Message = conversationMetaDataListResult.Message;
+                return result;
+            }
+
+            return conversationMetaDataListResult;
+        }
+
+        [HttpPost("/app/user/business/{businessId}/conversations/websession/metadata")]
+        public async Task<FunctionReturnResult<PaginatedResult<WebSessionConversationMetadataModel>?>> GetBusinessWebSessionConversationsMetaData(
+            long businessId,
+            [FromBody] GetBusinessWebSessionsRequestModel requestModel
+        )
+        {
+            var result = new FunctionReturnResult<PaginatedResult<WebSessionConversationMetadataModel>?>();
+
+            // 1. Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkUserBusinessesDisabled: true,
+                checkBusinessIsDisabled: true,
+                whiteLabelContext: _whiteLabelContext
+            );
+
+            if (!userSessionAndBusinessValidationResult.Success)
+            {
+                result.Code = $"GetBusinessWebSessionConversationsMetaData:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
+                return result;
+            }
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+            // 2. Permission Checks
+            if (businessData.Permission.Conversations.DisabledFullAt != null)
+            {
+                result.Code = "GetBusinessWebSessionConversationsMetaData:CONVERSATIONS_DISABLED";
+                result.Message = "Business conversations are currently disabled: " + businessData.Permission.Conversations.DisabledFullReason;
+                return result;
+            }
+
+            if (businessData.Permission.Conversations.Websocket.DisabledFullAt != null)
+            {
+                result.Code = "GetBusinessWebSessionConversationsMetaData:BUSINESS_WEBSESSION_CONVERSATIONS_DISABLED";
+                result.Message = "Business Web Sessions conversations are currently disabled: " + businessData.Permission.Conversations.Websocket.DisabledFullReason;
+                return result;
+            }
+
+            // 3. Manager Call
+            var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetWebSessionsMetaDataListAsync(
+                businessId,
+                requestModel
+            );
+
+            if (!conversationMetaDataListResult.Success)
+            {
+                result.Code = "GetBusinessWebSessionConversationsMetaData:" + conversationMetaDataListResult.Code;
                 result.Message = conversationMetaDataListResult.Message;
                 return result;
             }

@@ -6,8 +6,10 @@ using IqraCore.Models.Business.Conversations;
 using IqraCore.Models.Business.Queues;
 using IqraCore.Models.Business.Queues.Inbound;
 using IqraCore.Models.Business.Queues.Outbound;
+using IqraCore.Models.Business.WebSession;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.WebSession;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -19,13 +21,15 @@ namespace IqraInfrastructure.Managers.Business
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BusinessConversationAudioRepository _conversationAudioRepository;
+        private readonly WebSessionRepository _webSessionRepository;
 
         public BusinessConversationsManager(
             BusinessManager businessManager,
             InboundCallQueueRepository callQueueRepository,
             OutboundCallQueueRepository outboundCallQueueRepository,
             ConversationStateRepository conversationStateRepository,
-            BusinessConversationAudioRepository conversationAudioRepository
+            BusinessConversationAudioRepository conversationAudioRepository,
+            WebSessionRepository webSessionRepository
         )
         {
             _parentBusinessManager = businessManager;
@@ -34,6 +38,7 @@ namespace IqraInfrastructure.Managers.Business
             _outboundCallQueueRepository = outboundCallQueueRepository;
             _conversationStateRepository = conversationStateRepository;
             _conversationAudioRepository = conversationAudioRepository;
+            _webSessionRepository = webSessionRepository;
         }
 
         /**
@@ -443,6 +448,207 @@ namespace IqraInfrastructure.Managers.Business
 
         /**
          * 
+         * Web Session
+         * 
+        **/
+        public async Task<FunctionReturnResult<PaginatedResult<WebSessionConversationMetadataModel>?>> GetWebSessionsMetaDataListAsync(long businessId, GetBusinessWebSessionsRequestModel modelData)
+        {
+            var result = new FunctionReturnResult<PaginatedResult<WebSessionConversationMetadataModel>?>();
+            var paginatedResult = new PaginatedResult<WebSessionConversationMetadataModel>();
+
+            modelData.Limit = Math.Clamp(modelData.Limit, 1, 50);
+            paginatedResult.PageSize = modelData.Limit;
+
+            // --- Validation (Mirroring Inbound/Outbound) ---
+            if (!string.IsNullOrEmpty(modelData.PreviousCursor) && !string.IsNullOrEmpty(modelData.NextCursor))
+            {
+                return result.SetFailureResult("GetWebSessionsMetaDataListAsync:INVALID_CURSOR", "Cannot provide both nextCursor and previousCursor.");
+            }
+
+            if ((!string.IsNullOrEmpty(modelData.PreviousCursor) || !string.IsNullOrEmpty(modelData.NextCursor)) && modelData.Filter != null)
+            {
+                return result.SetFailureResult("GetWebSessionsMetaDataListAsync:INVALID_REQUEST", "Cannot provide both a cursor and a new filter.");
+            }
+
+            // --- Cursor Setup ---
+            bool fetchNext = string.IsNullOrWhiteSpace(modelData.PreviousCursor);
+            string? currentCursorString = fetchNext ? modelData.NextCursor : modelData.PreviousCursor;
+
+            var decodedCursor = PaginationCursor<GetBusinessWebSessionsRequestFilterModel>.Decode(currentCursorString);
+
+            // Active Filter: From Cursor OR Request
+            GetBusinessWebSessionsRequestFilterModel activeFilter =
+                decodedCursor?.Filter ?? modelData.Filter ?? new GetBusinessWebSessionsRequestFilterModel();
+
+            // --- 1. Fetch Raw Web Session Data ---
+            var (webSessionItems, hasMore, totalCount) = await _webSessionRepository.GetWebSessionsForBusinessPaginatedAsync(
+                businessId,
+                activeFilter,
+                modelData.Limit,
+                decodedCursor,
+                fetchNext
+            );
+
+            paginatedResult.TotalCount = (int)totalCount;
+
+            if (webSessionItems == null || !webSessionItems.Any())
+            {
+                paginatedResult.HasNextPage = false;
+                paginatedResult.HasPreviousPage = decodedCursor != null && !fetchNext;
+                result.SetSuccessResult(paginatedResult);
+                return result;
+            }
+
+            // --- 2. Enrichment (Join with Conversation State) ---
+            var queueIdsWithSession = webSessionItems
+                .Where(ws => !string.IsNullOrEmpty(ws.SessionId))
+                .Select(ws => ws.Id) // Note: ConversationState uses QueueId/WebSessionId as its ID reference usually, or specifically the SessionId string
+                .Distinct()
+                .ToList();
+
+            Dictionary<string, ConversationState> conversationStates = new Dictionary<string, ConversationState>();
+            if (queueIdsWithSession.Any())
+            {
+                conversationStates = await _conversationStateRepository.GetByWebSessionIdsAsync(queueIdsWithSession);
+            }
+
+            // --- 3. Mapping ---
+            paginatedResult.Items = webSessionItems.Select(ws =>
+            {
+                var metadata = new WebSessionConversationMetadataModel
+                {
+                    QueueId = ws.Id,
+                    Status = ws.Status,
+                    CreatedAt = ws.CreatedAt,
+                    // WebSessionData might not track these, so we default to null or derive
+                    ProcessingStartedAt = null,
+                    CompletedAt = null, // Could derive from SessionState.EndTime if needed
+
+                    ClientIdentifier = ws.ClientIdentifier,
+                    WebCampaignId = ws.WebCampaignId,
+                    DynamicVariables = ws.DynamicVariables,
+                    Metadata = ws.Metadata,
+
+                    SessionId = ws.SessionId,
+                    SessionStatus = null,
+                    SessionEndType = null
+                };
+
+                // Attach Session Details if found
+                if (!string.IsNullOrEmpty(ws.SessionId) && conversationStates.TryGetValue(ws.SessionId, out var state))
+                {
+                    metadata.SessionStatus = state.Status;
+                    metadata.SessionEndType = state.EndType;
+
+                    // Optional: Backfill timestamps from the session if the queue data is missing them
+                    if (state.EndTime != null) metadata.CompletedAt = state.EndTime;
+                }
+
+                return metadata;
+            }).ToList();
+
+            // --- 4. Cursor Encoding ---
+            if (fetchNext)
+            {
+                paginatedResult.HasNextPage = hasMore;
+                paginatedResult.NextCursor = hasMore
+                    ? new PaginationCursor<GetBusinessWebSessionsRequestFilterModel> { Timestamp = webSessionItems.Last().CreatedAt, Id = webSessionItems.Last().Id, Filter = activeFilter }.Encode()
+                    : null;
+
+                paginatedResult.PreviousCursor = (decodedCursor != null || webSessionItems.Count == modelData.Limit)
+                    ? new PaginationCursor<GetBusinessWebSessionsRequestFilterModel> { Timestamp = webSessionItems.First().CreatedAt, Id = webSessionItems.First().Id, Filter = activeFilter }.Encode()
+                    : null;
+
+                paginatedResult.HasPreviousPage = decodedCursor != null;
+            }
+            else // Fetched Previous
+            {
+                paginatedResult.HasPreviousPage = hasMore;
+                paginatedResult.PreviousCursor = hasMore
+                    ? new PaginationCursor<GetBusinessWebSessionsRequestFilterModel> { Timestamp = webSessionItems.First().CreatedAt, Id = webSessionItems.First().Id, Filter = activeFilter }.Encode()
+                    : null;
+
+                paginatedResult.NextCursor = new PaginationCursor<GetBusinessWebSessionsRequestFilterModel> { Timestamp = webSessionItems.Last().CreatedAt, Id = webSessionItems.Last().Id, Filter = activeFilter }.Encode();
+                paginatedResult.HasNextPage = true;
+            }
+
+            result.SetSuccessResult(paginatedResult);
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<long?>> GetWebSessionsCountAsync(long businessId, GetBusinessWebSessionsRequestModel modelData)
+        {
+            var result = new FunctionReturnResult<long?>();
+
+            try
+            {
+                var count = await _webSessionRepository.GetWebSessionsCountAsync(businessId, modelData);
+
+                if (count == null)
+                {
+                    return result.SetFailureResult(
+                        "GetWebSessionsCountAsync:DATABASE_COUNT_ERROR",
+                        "Unable to fetch count from the database."
+                    );
+                }
+
+                return result.SetSuccessResult(count);
+            }
+            catch (Exception ex)
+            {
+                result.SetFailureResult(
+                    "GetWebSessionsCountAsync:EXCEPTION",
+                    "An internal server error occurred while fetching the web session count."
+                );
+                return result;
+            }
+        }
+
+        public async Task<FunctionReturnResult<WebSessionConversationMetadataModel?>> GetWebSessionMetaDataAsync(long businessId, string webSessionId)
+        {
+            var result = new FunctionReturnResult<WebSessionConversationMetadataModel?>();
+
+            try
+            {
+                var webSessionItem = await _webSessionRepository.GetWebSessionByIdAsync(webSessionId);
+                if (webSessionItem == null || webSessionItem.BusinessId != businessId)
+                {
+                    return result.SetFailureResult("GetWebSessionMetaDataAsync:NOT_FOUND", "Web session not found.");
+                }
+
+                ConversationState? conversationState = null;
+                if (!string.IsNullOrEmpty(webSessionItem.SessionId))
+                {
+                    conversationState = await _conversationStateRepository.GetByIdAsync(webSessionItem.SessionId);
+                }
+
+                var metadata = new WebSessionConversationMetadataModel
+                {
+                    QueueId = webSessionItem.Id,
+                    Status = webSessionItem.Status,
+                    CreatedAt = webSessionItem.CreatedAt,
+                    ClientIdentifier = webSessionItem.ClientIdentifier,
+                    WebCampaignId = webSessionItem.WebCampaignId,
+                    DynamicVariables = webSessionItem.DynamicVariables,
+                    Metadata = webSessionItem.Metadata,
+
+                    SessionId = webSessionItem.SessionId,
+                    SessionStatus = conversationState?.Status,
+                    SessionEndType = conversationState?.EndType,
+                    // Logic to fill CompletedAt from session if not in queue
+                    CompletedAt = conversationState?.EndTime
+                };
+
+                return result.SetSuccessResult(metadata);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult("GetWebSessionMetaDataAsync:EXCEPTION", $"Error: {ex.Message}");
+            }
+        }
+
+        /**
+         * 
          * Conversation 
          * 
         **/
@@ -577,7 +783,7 @@ namespace IqraInfrastructure.Managers.Business
                 string? audioUrl = null;
                 if (client.AudioInfo.AudioCompilationStatus == ConversationMemberAudioCompilationStatus.Compiled)
                 {
-                    audioUrl = _conversationAudioRepository.GeneratePresignedUrlAsync($"{state.Id}/compiled/user_{client.ClientId}.wav", audioUrlExpirySeconds);
+                    audioUrl = _conversationAudioRepository.GeneratePresignedUrl($"{state.Id}/compiled/user_{client.ClientId}.wav", audioUrlExpirySeconds);
                 }
 
                 var clientModel = new ConversationStateClientViewModel()
@@ -600,7 +806,7 @@ namespace IqraInfrastructure.Managers.Business
                 string? audioUrl = null;
                 if (agent.AudioInfo.AudioCompilationStatus == ConversationMemberAudioCompilationStatus.Compiled)
                 {
-                    audioUrl = _conversationAudioRepository.GeneratePresignedUrlAsync($"{state.Id}/compiled/agent_{agent.AgentId}.wav", audioUrlExpirySeconds);
+                    audioUrl = _conversationAudioRepository.GeneratePresignedUrl($"{state.Id}/compiled/agent_{agent.AgentId}.wav", audioUrlExpirySeconds);
                 }
 
                 var clientModel = new ConversationStateAgentViewModel()

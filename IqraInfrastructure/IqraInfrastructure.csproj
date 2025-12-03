@@ -9,7 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="5.5.0" />
-    <PackageReference Include="AWSSDK.S3" Version="4.0.13.1" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.14" />
+    <PackageReference Include="AWSSDK.SecurityToken" Version="4.0.5.1" />
     <PackageReference Include="Azure.AI.Inference" Version="1.0.0-beta.5" />
     <PackageReference Include="Azure.AI.OpenAI" Version="2.2.0-beta.4" />
     <PackageReference Include="Azure.Identity" Version="1.17.0" />

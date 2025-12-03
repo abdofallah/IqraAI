@@ -1702,6 +1702,7 @@ table.table > thead > * > * {
 	height: 64px;
 	max-width: -webkit-fill-available;
 	object-fit: contain;
+	max-width: -moz-available;
 }
 
 .available-integration-card.disabled {
@@ -1722,6 +1723,9 @@ table.table > thead > * > * {
 
 #addNewIntegrationModal .modal-body {
 	padding-bottom: 0px !important;
+	max-height: 60vh;
+	overflow-y: scroll;
+	min-height: 400px;
 }
 
 #integrationLogoPreview {

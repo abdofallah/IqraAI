@@ -138,6 +138,30 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
+        public async Task<Dictionary<string, ConversationState>> GetByWebSessionIdsAsync(IEnumerable<string> webSessionIds, CancellationToken cancellationToken = default)
+        {
+            if (webSessionIds == null || !webSessionIds.Any())
+            {
+                return new Dictionary<string, ConversationState>();
+            }
+
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.In(c => c.WebSessionId, webSessionIds);
+                var states = await _conversationStateCollection.Find(filter).ToListAsync(cancellationToken);
+
+                return states
+                    .GroupBy(s => s.WebSessionId)
+                    .ToDictionary(g => g.Key, g => g.First());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting conversation states by web session IDs");
+                // Depending on requirements, you might return an empty dictionary or throw
+                return new Dictionary<string, ConversationState>();
+            }
+        }
+
         public async Task<bool> UpdateAsync(ConversationState conversationState, CancellationToken cancellationToken = default)
         {
             try
