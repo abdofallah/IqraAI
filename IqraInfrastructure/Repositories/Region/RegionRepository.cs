@@ -6,19 +6,19 @@ namespace IqraInfrastructure.Repositories.Region
 {
     public class RegionRepository
     {
-        private readonly ILogger<RegionRepository> _logger;
+        private ILogger<RegionRepository>? _logger;
 
         private readonly string CollectionName = "Regions";
 
         private readonly IMongoCollection<RegionData> _regionCollection;
 
-        public RegionRepository(ILogger<RegionRepository> logger, IMongoClient client, string databaseName)
+        public RegionRepository(IMongoClient client, string databaseName)
         {
-            _logger = logger;
-
             IMongoDatabase database = client.GetDatabase(databaseName);
             _regionCollection = database.GetCollection<RegionData>(CollectionName);
         }
+
+        public void SetLogger(ILogger<RegionRepository> logger) => _logger = logger;
 
         public async Task<bool> AddRegion(RegionData regionData)
         {

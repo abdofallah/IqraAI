@@ -17,7 +17,6 @@ namespace IqraInfrastructure.Repositories.App
         public AppRepository(ILogger<AppRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
-
             IMongoDatabase database = client.GetDatabase(databaseName);
             _applicationConfigurationCollection = database.GetCollection<BsonDocument>(CollectionName);
         }

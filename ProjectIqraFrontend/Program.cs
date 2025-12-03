@@ -84,7 +84,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddScoped<WhiteLabelContext>();
 
             // Repositories
-            SetupRepositories(builder, appConfig);
+            await SetupRepositories(builder, appConfig);
 
             // Managers
             SetupManagers(builder, appConfig);
@@ -216,14 +216,21 @@ namespace ProjectIqraFrontend
             app.Run();
         }
 
-        private static void SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig)
+        private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig)
         {
             // Build Base Services
-            builder.Services.AddSingleton<IMongoClient>((sp) =>
+            IMongoClient mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
+            RegionRepository regionRepository = new RegionRepository(mongoClient, appConfig["MongoDatabase:AppRepositoryDatabaseName"]);
+            var allRegionServers = await regionRepository.GetRegions();
+            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory(appConfig["Server:RegionId"]);
+            var s3StorageInitResult = await s3StorageClientFactory.Initalize(allRegionServers);
+            if (!s3StorageInitResult.Success)
             {
-                return new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
-            });
+                throw new Exception($"[{s3StorageInitResult.Code}] {s3StorageInitResult.Message}");
+            }
 
+            builder.Services.AddSingleton<IMongoClient>(mongoClient);
+            builder.Services.AddSingleton<S3StorageClientFactory>(s3StorageClientFactory);
             builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
             {
                 return new MilvusKnowledgeBaseClient(
@@ -240,14 +247,18 @@ namespace ProjectIqraFrontend
             });
 
             // Repositories
-
             builder.Services.AddSingleton<AppRepository>((sp) =>
             {
                 return new AppRepository(
                     sp.GetRequiredService<ILogger<AppRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
+                    mongoClient,
                     appConfig["MongoDatabase:AppRepositoryDatabaseName"]
                 );
+            });
+
+            builder.Services.AddSingleton<RegionRepository>((sp) => {
+                regionRepository.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
+                return regionRepository;
             });
 
             builder.Services.AddSingleton<LanguagesRepository>((sp) =>
@@ -274,14 +285,6 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<BusinessAppRepository>>(),
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:BusinessAppRepositoryDatabaseName"]
-                );
-            });
-
-            builder.Services.AddSingleton<RegionRepository>((sp) => {
-                return new RegionRepository(
-                    sp.GetRequiredService<ILogger<RegionRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:AppRepositoryDatabaseName"]
                 );
             });
 
