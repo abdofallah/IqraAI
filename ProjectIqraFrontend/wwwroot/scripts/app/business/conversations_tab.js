@@ -18,6 +18,15 @@ let IsLoadingOutboundConversations = false;
 const OutboundConversationsPageSize = 12;
 let currentOutboundPageNumber = 1;
 
+// Web Session
+let CurrentWebSessionFilters = null;
+let CurrentWebSessionData = [];
+let CurrentWebSessionNextCursor = null;
+let CurrentWebSessionPrevCursor = null;
+let IsLoadingWebSessionConversations = false;
+const WebSessionConversationsPageSize = 12;
+let currentWebSessionPageNumber = 1;
+
 // Conversation Manager
 let CurrentViewStateData = null;
 let IsLoadingManageView = false;
@@ -56,7 +65,15 @@ const ConversationSenderRole = {
     Client: 1,
     Agent: 2
 };
-
+const WebSessionStatusEnum = {
+    Queued: 0,
+    ProcessingQueue: 1,
+    ProcessingBackend: 2,
+    ProcessedBackend: 3,
+    Failed: 4,
+    Canceled: 5,
+    Expired: 6
+};
 
 /** Element Variables **/
 const conversationsTab = $("#conversations-tab");
@@ -89,6 +106,22 @@ const outboundFilterApplyButton = $("#outboundFilterApplyButton");
 const outboundFilterResetButton = $("#outboundFilterResetButton");
 const clearOutboundFiltersButton = $("#clearOutboundFiltersButton");
 const filterOutboundCallButton = $("#filterOutboundCallButton");
+
+// Websocket (Web Session) Elements
+const conversationWebsocketTable = conversationsTab.find("#conversationWebsocketTable");
+const conversationWebsocketTableBody = conversationWebsocketTable.find("tbody");
+const websocketPaginationControls = conversationsTab.find("#websocketPaginationControls");
+const websocketPrevButton = conversationsTab.find("#websocketPrevButton");
+const websocketNextButton = conversationsTab.find("#websocketNextButton");
+const websocketPageInfo = conversationsTab.find("#websocketPageInfo");
+
+const websocketFilterForm = $("#websocketFilterForm");
+const websocketFilterApplyButton = $("#websocketFilterApplyButton");
+const websocketFilterResetButton = $("#websocketFilterResetButton");
+const clearWebsocketFiltersButton = $("#clearWebsocketFiltersButton");
+const filterWebsocketButton = $("#filterWebsocketButton");
+const websocketSearchInput = $("#websocketSearchInput");
+const searchConversationWebsocketButton = $("#searchConversationWebsocketButton");
 
 // Manage View Elements
 const conversationManageTab = conversationsTab.find("#conversationManageTab");
@@ -226,6 +259,30 @@ function FetchConversationStateBySessionId(sessionId, successCallback, errorCall
         },
     });
 }
+function FetchWebSessionConversationsMetaDataFromAPI(requestPayload, successCallback, errorCallback) {
+    $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/conversations/websession/metadata`,
+        type: "POST",
+        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify(requestPayload),
+        dataType: "json",
+        success: (response) => {
+            if (!response || !response.success) {
+                errorCallback(response || { message: "Unknown error occurred." });
+                return;
+            }
+            successCallback(response.data);
+        },
+        error: (jqXHR, textStatus, errorThrown) => {
+            let errorMsg = "An error occurred while fetching web sessions.";
+            if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                errorMsg = jqXHR.responseJSON.message;
+            }
+            console.error("Fetch Web Session Error:", jqXHR.responseJSON || textStatus || errorThrown);
+            errorCallback({ message: errorMsg, code: jqXHR.status });
+        },
+    });
+}
 function FetchTemporaryAudioUrl(sessionId, memberType, memberId, successCallback, errorCallback) {
     $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/conversations/state/${sessionId}/audio_url`,
@@ -279,15 +336,14 @@ function formatDuration(totalSeconds) {
 function getStatusBadgeElement(statusType, statusValue, sessionEndType = null, includeText = true) {
     let iconClass = "fa-regular fa-question-circle";
     let badgeClass = "bg-secondary";
-    let statusText = "Unknown"; // For tooltip AND display text
+    let statusText = "Unknown";
 
     // Handle N/A case first
-    if (statusValue === null || statusValue === undefined || statusValue.value === null || statusValue.value === undefined) {
-        // Keep N/A simple, no icon needed unless desired
+    if (statusValue === null || statusValue === undefined || (typeof statusValue === 'object' && statusValue.value === null)) {
         return `<span class="badge bg-light text-muted" title="Not Applicable">N/A</span>`;
     }
 
-    const numericValue = statusValue.value; // Get the numeric value
+    const numericValue = (typeof statusValue === 'object') ? statusValue.value : statusValue;
 
     if (statusType === 'queue') {
         switch (numericValue) { // Use numericValue here
@@ -327,7 +383,26 @@ function getStatusBadgeElement(statusType, statusValue, sessionEndType = null, i
                 statusText = `Unknown (${numericValue})`;
                 break;
         }
-    } else if (statusType === 'session') {
+    }
+    else if (statusType === 'websession-queue') {
+        switch (numericValue) {
+            case WebSessionStatusEnum.Queued:
+                iconClass = "fa-regular fa-clock"; badgeClass = "bg-warning text-dark"; statusText = "Queued"; break;
+            case WebSessionStatusEnum.ProcessingQueue:
+            case WebSessionStatusEnum.ProcessingBackend:
+                iconClass = "fa-solid fa-spinner fa-spin"; badgeClass = "bg-info"; statusText = "Processing"; break;
+            case WebSessionStatusEnum.ProcessedBackend:
+                iconClass = "fa-regular fa-check-circle"; badgeClass = "bg-success"; statusText = "Connected"; break;
+            case WebSessionStatusEnum.Failed:
+                iconClass = "fa-regular fa-times-circle"; badgeClass = "bg-danger"; statusText = "Failed"; break;
+            case WebSessionStatusEnum.Canceled:
+                iconClass = "fa-regular fa-ban"; badgeClass = "bg-secondary"; statusText = "Canceled"; break;
+            case WebSessionStatusEnum.Expired:
+                iconClass = "fa-regular fa-hourglass-end"; badgeClass = "bg-light text-muted"; statusText = "Expired"; break;
+            default: statusText = `Unknown (${numericValue})`; break;
+        }
+    }
+    else if (statusType === 'session') {
         switch (numericValue) { // Use numericValue here
             case ConversationSessionState.Created:
                 iconClass = "fa-regular fa-file-lines";
@@ -375,13 +450,7 @@ function getStatusBadgeElement(statusType, statusValue, sessionEndType = null, i
         }
     }
 
-    // Construct the inner HTML based on includeText flag
-    const badgeContent = includeText
-        ? `<i class="${iconClass} me-1"></i>${statusText}` // Icon + Text
-        : `<i class="${iconClass}"></i>`; // Icon Only
-
-    // Return the full badge HTML
-    // Added min-width and text-start for better alignment when text is included
+    const badgeContent = includeText ? `<i class="${iconClass} me-1"></i>${statusText}` : `<i class="${iconClass}"></i>`;
     const styleAttribute = includeText ? 'style="text-align: start;"' : '';
     return `<span class="badge ${badgeClass}" title="${statusText}" ${styleAttribute}>${badgeContent}</span>`;
 }
@@ -513,9 +582,39 @@ function getOutboundFilterObject() {
 
     return Object.keys(filter).length > 0 ? filter : null;
 }
+function getWebSessionFilterObject() {
+    const filter = {};
+    const hasFilter = (value) => value !== null && value !== undefined && value !== '';
+
+    const startCreated = $('#websocketFilterStartCreatedDate').val();
+    if (hasFilter(startCreated)) filter.StartCreatedDate = new Date(startCreated).toISOString();
+
+    const endCreated = $('#websocketFilterEndCreatedDate').val();
+    if (hasFilter(endCreated)) filter.EndCreatedDate = new Date(endCreated).toISOString();
+
+    const statuses = $('#websocketFilterQueueStatus').next('.dropdown-menu').find('input:checked').map((_, el) => parseInt($(el).val())).get();
+    if (statuses.length > 0) filter.QueueStatusTypes = statuses;
+
+    const getTags = (id) => $(id).find('.tag').map((_, el) => $(el).clone().children().remove().end().text().trim()).get();
+
+    const clientIdentifiers = getTags('#websocketFilterClientIdentifiersTags');
+    if (clientIdentifiers.length > 0) filter.ClientIdentifiers = clientIdentifiers;
+
+    const campaignIds = getTags('#websocketFilterCampaignIdsTags');
+    if (campaignIds.length > 0) filter.WebCampaignIds = campaignIds;
+
+    return Object.keys(filter).length > 0 ? filter : null;
+}
 function updateFilterButtonUI(type, isActive) {
-    const filterButton = type === 'inbound' ? filterInboundCallButton : filterOutboundCallButton;
-    const clearButton = type === 'inbound' ? clearInboundFiltersButton : clearOutboundFiltersButton;
+    let filterButton, clearButton;
+
+    if (type === 'inbound') {
+        filterButton = filterInboundCallButton; clearButton = clearInboundFiltersButton;
+    } else if (type === 'outbound') {
+        filterButton = filterOutboundCallButton; clearButton = clearOutboundFiltersButton;
+    } else if (type === 'websocket') {
+        filterButton = filterWebsocketButton; clearButton = clearWebsocketFiltersButton;
+    }
 
     if (isActive) {
         filterButton.removeClass('btn-primary').addClass('btn-success').removeClass('rounded-2')
@@ -650,6 +749,50 @@ function CreateOutboundConversationRow(item) {
 
     return element;
 }
+function CreateWebSessionConversationRow(item) {
+    const queueStatusBadge = getStatusBadgeElement('websession-queue', item.status);
+    const sessionStatusBadge = getStatusBadgeElement('session', item.sessionStatus, item.sessionEndType);
+    const createdAtFormatted = formatDateTime(item.createdAt);
+
+    const hasSession = item.sessionId !== null && item.sessionId !== "";
+
+    // Data attributes for the "View" button (Manage Tab)
+    const viewButtonData = `
+        data-call-type="websession"
+        data-queue-id="${item.queueId}"
+        data-queue-status-val="${item.status}" 
+        data-enqueued-at="${item.createdAt || ''}"
+        data-client-identifier="${item.clientIdentifier || ''}"
+        data-campaign-id="${item.webCampaignId || ''}"
+        data-session-id="${item.sessionId || ''}"
+    `;
+
+    const element = $(`
+        <tr>
+            <td><input type="text" class="form-control form-control-sm copy-on-click" value="${item.queueId}" readonly title="Click to copy"></td>
+            <td>${createdAtFormatted}</td>
+            <td class="text-center">${queueStatusBadge}</td>
+            <td><b>${$('<div>').text(item.clientIdentifier).html()}</b></td>
+            <td>${$('<div>').text(item.webCampaignId).html()}</td>
+            <td>${hasSession ? `<input type="text" class="form-control form-control-sm copy-on-click" value="${item.sessionId}" readonly title="Click to copy">` : '-'}</td>
+            <td class="text-center">${hasSession ? sessionStatusBadge : '-'}</td>
+            <td>
+                <button class="btn btn-info btn-sm view-conversation-button" title="View Details" ${viewButtonData}>
+                    <i class="fa-regular fa-eye"></i>
+                </button>
+            </td>
+        </tr>
+    `);
+
+    // Attach copy-to-clipboard logic
+    element.find('.copy-on-click').on('click', function () {
+        navigator.clipboard.writeText($(this).val()).then(() => {
+            AlertManager.createAlert({ type: 'success', message: 'Copied to clipboard!', timeout: 1500 });
+        }).catch(err => { console.error('Failed to copy:', err); });
+    });
+
+    return element;
+}
 
 function RenderInboundConversationsTable(items) {
     conversationInboundTableBody.empty();
@@ -681,6 +824,18 @@ function RenderOutboundConversationsTable(items) {
     items.forEach(item => {
         const rowElement = CreateOutboundConversationRow(item);
         conversationOutboundTableBody.append(rowElement);
+    });
+}
+function RenderWebSessionConversationsTable(items) {
+    conversationWebsocketTableBody.empty();
+    if (!items || items.length === 0) {
+        conversationWebsocketTableBody.append(`
+            <tr><td colspan="8" class="text-center p-4 text-muted">No web sessions found.</td></tr>
+        `);
+        return;
+    }
+    items.forEach(item => {
+        conversationWebsocketTableBody.append(CreateWebSessionConversationRow(item));
     });
 }
 
@@ -718,6 +873,19 @@ function ShowOutboundTableLoading(isLoading) {
         outboundPaginationControls.removeClass('d-none');
     }
 }
+function ShowWebSessionTableLoading(isLoading) {
+    if (isLoading) {
+        conversationWebsocketTableBody.empty().append(`
+            <tr class="loading-row"><td colspan="8" class="text-center p-4">
+                <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+            </td></tr>
+        `);
+        websocketPaginationControls.addClass('d-none');
+    } else {
+        conversationWebsocketTableBody.find('.loading-row').remove();
+        websocketPaginationControls.removeClass('d-none');
+    }
+}
 
 function UpdatePaginationButtons(hasNext, hasPrev) {
     inboundNextButton.prop('disabled', !hasNext);
@@ -731,6 +899,11 @@ function UpdateOutboundPaginationButtons(hasNext, hasPrev) {
     outboundNextButton.prop('disabled', !hasNext);
     outboundPrevButton.prop('disabled', !hasPrev);
     outboundPageInfo.text(`Page ${currentOutboundPageNumber}`);
+}
+function UpdateWebSessionPaginationButtons(hasNext, hasPrev) {
+    websocketNextButton.prop('disabled', !hasNext);
+    websocketPrevButton.prop('disabled', !hasPrev);
+    websocketPageInfo.text(`Page ${currentWebSessionPageNumber}`);
 }
 
 function ClearManageView() {
@@ -791,24 +964,49 @@ function ClearManageView() {
 }
 
 function PopulateManageView(queueData, stateData) {
-    const callType = queueData.callType; // 'inbound' or 'outbound'
+    const callType = queueData.callType; // 'inbound', 'outbound', or 'websession'
 
     // Populate General Tab (Part 1: From Queue Data)
     manageViewQueueId.val(queueData.queueId);
-    manageViewQueueStatus.html(getStatusBadgeElement('queue', { value: parseInt(queueData.queueStatusVal) }, null, true));
-    manageViewEnqueuedAt.val(formatDateTime(queueData.enqueuedAt));
     manageViewSessionId.val(queueData.sessionId || 'N/A');
+
+    if (callType === 'websession') {
+        manageViewQueueStatus.html(getStatusBadgeElement('websession-queue', parseInt(queueData.queueStatusVal), null, true));
+        // Map "Created At" to Enqueued At field for simplicity, or create a new Label in HTML
+        manageViewEnqueuedAt.val(formatDateTime(queueData.enqueuedAt)).prev('label').text('Created At');
+    } else {
+        manageViewQueueStatus.html(getStatusBadgeElement('queue', { value: parseInt(queueData.queueStatusVal) }, null, true));
+        manageViewEnqueuedAt.val(formatDateTime(queueData.enqueuedAt)).prev('label').text('Queued At');
+    }
 
     if (callType === 'inbound') {
         manageViewRoutingContainer.removeClass('d-none');
-        manageViewFromNumber.val(queueData.callerNumber);
-        manageViewToNumber.val(queueData.toNumberDisplay);
+        manageViewFromNumber.closest('.mb-3').removeClass('d-none');
+        manageViewToNumber.closest('.mb-3').removeClass('d-none');
+
+        manageViewFromNumber.val(queueData.callerNumber).prev('label').text('From Number');
+        manageViewToNumber.val(queueData.toNumberDisplay).prev('label').text('To Number');
         manageViewRouting.val(queueData.routeDisplay);
-    } else { // outbound
+    }
+    else if (callType === 'outbound') {
         manageViewRoutingContainer.addClass('d-none');
-        manageViewFromNumber.val(queueData.fromNumberDisplay);
-        manageViewToNumber.val(queueData.toNumber);
-        manageViewRouting.val('N/A');
+        manageViewFromNumber.closest('.mb-3').removeClass('d-none');
+        manageViewToNumber.closest('.mb-3').removeClass('d-none');
+
+        manageViewFromNumber.val(queueData.fromNumberDisplay).prev('label').text('From Number');
+        manageViewToNumber.val(queueData.toNumber).prev('label').text('To Number');
+    }
+    else if (callType === 'websession') {
+        manageViewRoutingContainer.addClass('d-none');
+        // Repurpose From/To fields or Hide them and use specific ones. 
+        // For simplicity, let's repurpose "From Number" to "Client Identifier" and "To Number" to "Campaign ID"
+        // Alternatively, you can add new HTML fields in Manage Tab for these and toggle d-none.
+
+        manageViewFromNumber.closest('.mb-3').removeClass('d-none');
+        manageViewToNumber.closest('.mb-3').removeClass('d-none');
+
+        manageViewFromNumber.val(queueData.clientIdentifier).prev('label').text('Client Identifier');
+        manageViewToNumber.val(queueData.campaignId).prev('label').text('Campaign ID');
     }
 
     const queueLogs = queueData.logs;
@@ -1226,6 +1424,57 @@ function LoadOutboundConversations(cursor = null, direction = 'next') {
         handleOutboundFetchError
     );
 }
+function LoadWebSessionConversations(cursor = null, direction = 'next') {
+    if (IsLoadingWebSessionConversations) return;
+    IsLoadingWebSessionConversations = true;
+    ShowWebSessionTableLoading(true);
+
+    let nextC = null;
+    let prevC = null;
+
+    if (direction === 'next') {
+        nextC = cursor;
+        if (cursor) currentWebSessionPageNumber++;
+    } else {
+        prevC = cursor;
+        if (cursor && currentWebSessionPageNumber > 1) currentWebSessionPageNumber--;
+    }
+
+    if (!nextC && !prevC) currentWebSessionPageNumber = 1; // Reset on fresh load
+
+    websocketPageInfo.text(`Page ${currentWebSessionPageNumber}`);
+
+    const requestPayload = {
+        limit: WebSessionConversationsPageSize,
+        nextCursor: nextC,
+        previousCursor: prevC,
+        filter: (nextC || prevC) ? null : CurrentWebSessionFilters
+    };
+
+    FetchWebSessionConversationsMetaDataFromAPI(
+        requestPayload,
+        (data) => {
+            CurrentWebSessionData = data.items;
+            CurrentWebSessionNextCursor = data.nextCursor;
+            CurrentWebSessionPrevCursor = data.previousCursor;
+
+            if (!data.hasPreviousPage) currentWebSessionPageNumber = 1;
+
+            RenderWebSessionConversationsTable(CurrentWebSessionData);
+            ShowWebSessionTableLoading(false);
+            UpdateWebSessionPaginationButtons(data.hasNextPage, data.hasPreviousPage);
+            IsLoadingWebSessionConversations = false;
+        },
+        (error) => {
+            console.error("Error fetching web sessions:", error);
+            IsLoadingWebSessionConversations = false;
+            ShowWebSessionTableLoading(false);
+            conversationWebsocketTableBody.empty().append(`
+                <tr><td colspan="8" class="text-center p-4 text-danger">Failed to load conversations.</td></tr>
+            `);
+        }
+    );
+}
 
 function SwitchToManageView(buttonElement) {
     const queueData = buttonElement.data();
@@ -1291,6 +1540,7 @@ function initConversationsTab() {
     // Initial Load
     LoadInboundConversations(); // Load first page
     LoadOutboundConversations(); // Load first page
+    LoadWebSessionConversations(); // Load first page
 
     // Setup all tag inputs
     setupTagInput('#inboundFilterRouteIdsInput', '#inboundFilterRouteIdsTags');
@@ -1358,6 +1608,47 @@ function initConversationsTab() {
         LoadOutboundConversations();
     });
 
+    // Websocket (Web Session) Filter Actions
+    websocketFilterApplyButton.on('click', function () {
+        CurrentWebSessionFilters = getWebSessionFilterObject();
+        updateFilterButtonUI('websocket', CurrentWebSessionFilters !== null); // Need to update this helper too
+        CurrentWebSessionNextCursor = null;
+        CurrentWebSessionPrevCursor = null;
+        LoadWebSessionConversations();
+        $('#websocketFilterCollapse').collapse('hide');
+    });
+
+    websocketFilterResetButton.on('click', function () {
+        resetFilterForm(websocketFilterForm);
+    });
+
+    clearWebsocketFiltersButton.on('click', function () {
+        CurrentWebSessionFilters = null;
+        resetFilterForm(websocketFilterForm);
+        updateFilterButtonUI('websocket', false); // Need to update this helper too
+        CurrentWebSessionNextCursor = null;
+        CurrentWebSessionPrevCursor = null;
+        LoadWebSessionConversations();
+    });
+
+    searchConversationWebsocketButton.on('click', function () {
+        const val = websocketSearchInput.val().trim();
+        // Simple search implementation: treat as client identifier filter
+        if (val) {
+            // Reset form first
+            resetFilterForm(websocketFilterForm);
+            // Add tag
+            const tagContainer = $('#websocketFilterClientIdentifiersTags');
+            tagContainer.empty().append(`<span class="tag">${val}<span class="tag-close">&times;</span></span>`);
+
+            // Trigger Apply
+            websocketFilterApplyButton.click();
+        } else {
+            // If empty, clear filters
+            clearWebsocketFiltersButton.click();
+        }
+    });
+
     // Pagination Buttons
     inboundNextButton.on("click", () => {
         if (!inboundNextButton.prop('disabled')) {
@@ -1379,6 +1670,13 @@ function initConversationsTab() {
         if (!outboundPrevButton.prop('disabled')) {
             LoadOutboundConversations(CurrentOutboundPrevCursor, 'prev');
         }
+    });
+
+    websocketNextButton.on("click", () => {
+        if (!websocketNextButton.prop('disabled')) LoadWebSessionConversations(CurrentWebSessionNextCursor, 'next');
+    });
+    websocketPrevButton.on("click", () => {
+        if (!websocketPrevButton.prop('disabled')) LoadWebSessionConversations(CurrentWebSessionPrevCursor, 'prev');
     });
 
     // View Button Click (using event delegation)

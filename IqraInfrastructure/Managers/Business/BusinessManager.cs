@@ -170,11 +170,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeConversationsManager)
             {
-                if (conversationStateRepository == null || conversationAudioRepository == null || inboundCallQueueRepo == null || outboundCallQueueRepository == null)
+                if (conversationStateRepository == null || conversationAudioRepository == null || inboundCallQueueRepo == null || outboundCallQueueRepository == null || webSessionRepoistory == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessConversationsManager");
                 }
-                _businessConversationsManager = new BusinessConversationsManager(this, inboundCallQueueRepo, outboundCallQueueRepository, conversationStateRepository, conversationAudioRepository);
+                _businessConversationsManager = new BusinessConversationsManager(this, inboundCallQueueRepo, outboundCallQueueRepository, conversationStateRepository, conversationAudioRepository, webSessionRepoistory);
             }
             if (_settings.InitalizeMakeCallManager)
             {

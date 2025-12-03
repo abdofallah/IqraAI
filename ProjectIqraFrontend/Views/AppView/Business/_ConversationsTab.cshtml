@@ -330,60 +330,128 @@
                     </div>
                 </div>
 
-                <!-- Websocket Tab -->
+                <!-- Websocket (Web Session) Tab -->
                 <div class="tab-pane fade w-100" id="conversations-websocket" role="tabpanel" aria-labelledby="conversations-websocket-tab" tabindex="0">
-                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                        <div style="min-width: 200px" class="me-4">
-                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterWebsocketButton">
-                                <i class="fa-regular fa-bars-filter me-1"></i>
-                                <span>Filter</span>
-                            </button>
+                    <!-- START: Web Session Controls -->
+                    <div class="mb-4">
+                        <div class="d-flex flex-row align-items-center justify-content-between">
+                            <div class="btn-group me-4" style="min-width: 200px">
+                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align rounded-2" type="button" data-bs-toggle="collapse" data-bs-target="#websocketFilterCollapse" aria-expanded="false" aria-controls="websocketFilterCollapse" id="filterWebsocketButton">
+                                    <i class="fa-regular fa-bars-filter me-1"></i>
+                                    <span>Filter</span>
+                                </button>
+                                <button class="btn btn-danger d-none" id="clearWebsocketFiltersButton" title="Clear All Filters">
+                                    <i class="fa-regular fa-xmark"></i>
+                                </button>
+                            </div>
+                            <!-- Optional: Search bar for quick Client Identifier lookup -->
+                            <div class="input-group w-100">
+                                <input type="text" id="websocketSearchInput" class="form-control" placeholder="Client Identifier, Campaign ID or Session ID" aria-label="Search" aria-describedby="searchConversationWebsocketButton">
+                                <button class="input-group-button btn btn-primary" id="searchConversationWebsocketButton">
+                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="input-group w-100">
-                            <input type="text" class="form-control" placeholder="Websocket Name, Identifier or Session" aria-label="Websocket Name, Identifier or Session" aria-describedby="searchConversationWebsocketButton">
-                            <button class="input-group-button btn btn-primary" id="searchConversationWebsocketButton">
-                                <i class='fa-regular fa-magnifying-glass'></i>
-                            </button>
+
+                        <!-- Websocket Filter Collapse Panel -->
+                        <div class="collapse" id="websocketFilterCollapse">
+                            <div class="card card-body mt-3">
+                                <form id="websocketFilterForm">
+                                    <div class="row g-3">
+                                        <!-- Date Ranges -->
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Created At Date Range</label>
+                                            <div class="input-group">
+                                                <input type="datetime-local" class="form-control" id="websocketFilterStartCreatedDate" title="Start Date">
+                                                <span class="input-group-text">to</span>
+                                                <input type="datetime-local" class="form-control" id="websocketFilterEndCreatedDate" title="End Date">
+                                            </div>
+                                        </div>
+
+                                        <!-- Multi-Select Dropdowns -->
+                                        <div class="col-md-6">
+                                            <label for="websocketFilterQueueStatus" class="form-label fw-bold">Queue Status</label>
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="websocketFilterQueueStatus" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                                                    Select Statuses...
+                                                </button>
+                                                <ul class="dropdown-menu w-100" aria-labelledby="websocketFilterQueueStatus">
+                                                    <!-- WebSessionStatusEnum Values -->
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="0"> Queued</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="1"> Processing Queue</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="2"> Processing Backend</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="3"> Processed Backend</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="4"> Failed</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="5"> Canceled</label></li>
+                                                    <li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="6"> Expired</label></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tag Inputs for String Lists -->
+                                        <div class="col-lg-6">
+                                            <label for="websocketFilterClientIdentifiersInput" class="form-label fw-bold">Client Identifiers</label>
+                                            <div class="tag-input-container form-control">
+                                                <div id="websocketFilterClientIdentifiersTags" class="d-inline"></div>
+                                                <input type="text" id="websocketFilterClientIdentifiersInput" placeholder="Type and press Enter...">
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-6">
+                                            <label for="websocketFilterCampaignIdsInput" class="form-label fw-bold">Web Campaign IDs</label>
+                                            <div class="tag-input-container form-control">
+                                                <div id="websocketFilterCampaignIdsTags" class="d-inline"></div>
+                                                <input type="text" id="websocketFilterCampaignIdsInput" placeholder="Type and press Enter...">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <hr class="my-3">
+                                    <div class="d-flex justify-content-end">
+                                        <button type="button" class="btn btn-secondary me-2" id="websocketFilterResetButton">Reset</button>
+                                        <button type="button" class="btn btn-primary" id="websocketFilterApplyButton">Apply Filters</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                    <div>
+                    <!-- END: Web Session Controls -->
+                    <!-- Data Table -->
+                    <div class="table-responsive">
                         <table id="conversationWebsocketTable" class="table w-100">
                             <thead>
                                 <tr>
-                                    <th scope="col" style="width: 50px;"></th>
-                                    <th scope="col">Name</th>
-                                    <th scope="col">Identifier</th>
-                                    <th scope="col">Datetime</th>
-                                    <th scope="col">Session</th>
+                                    <th scope="col">Queue ID</th>
+                                    <th scope="col">Created At</th>
+                                    <th scope="col" class="text-center">Queue Status</th>
+                                    <th scope="col">Client Identifier</th>
+                                    <th scope="col">Campaign ID</th>
+                                    <th scope="col">Session ID</th>
+                                    <th scope="col" class="text-center">Session Status</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <th scope="row" style="text-align: center;">
-                                        <span class="in-progress">
-                                            <i class="fa-regular fa-loader fa-spin"></i>
-                                        </span>
-                                    </th>
-                                    <th scope="row">
-                                        Badal.om
-                                    </th>
-                                    <td>
-                                        user-abdua5coc
-                                    </td>
-                                    <td>6/16/2024 11:51 PM</td>
-                                    <td>12-31511212</td>
-                                    <td>
-                                        <button class="btn btn-info btn-sm">
-                                            <i class="fa-regular fa-eye"></i>
-                                        </button>
-                                        <button class="btn btn-danger btn-sm">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
+                                <tr class="loading-row">
+                                    <td colspan="8" class="text-center p-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    <div class="d-flex justify-content-center align-items-center mt-3" id="websocketPaginationControls">
+                        <button class="btn btn-primary me-2" id="websocketPrevButton" disabled>
+                            <i class="fa-regular fa-arrow-left me-1"></i>
+                        </button>
+                        <span class="text-muted mx-2" id="websocketPageInfo">Page 1</span>
+                        <button class="btn btn-primary ms-2" id="websocketNextButton" disabled>
+                            <i class="fa-regular fa-arrow-right ms-1"></i>
+                        </button>
                     </div>
                 </div>
             </div>
