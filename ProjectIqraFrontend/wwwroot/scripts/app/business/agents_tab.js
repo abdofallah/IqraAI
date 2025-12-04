@@ -564,7 +564,7 @@ function createDefaultAgentObject() {
 			}
 		},
 		settings: {
-			backgroundAudioS3StorageLink: null,
+			backgroundAudioUrl: null,
 			backgroundAudioVolume: 100,
 		},
 	};
@@ -2214,7 +2214,7 @@ function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 	if (backgroundAudioType === "none") {
 		changes.backgroundAudioUrl = null;
 
-		if (CurrentManageAgentData.settings.backgroundAudioS3StorageLink !== null) {
+		if (CurrentManageAgentData.settings.backgroundAudioUrl !== null) {
 			hasChanges = true;
 		}
 	}
@@ -2230,7 +2230,7 @@ function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 			hasChanges = true;
 		}
 
-		if (CurrentManageAgentData.settings.backgroundAudioS3StorageLink !== null && agentBackgroundAudioUploadInput[0].files.length === 0 && AgentBackgroundAudioWaveSurfer != null) {
+		if (CurrentManageAgentData.settings.backgroundAudioUrl !== null && agentBackgroundAudioUploadInput[0].files.length === 0 && AgentBackgroundAudioWaveSurfer != null) {
 			changes.backgroundAudioUrl = "previous";
 		}
 	}
@@ -2310,11 +2310,11 @@ function onAgentsBackgroundAudioUploadValidation(event) {
 }
 
 function fillAgentSettingsTab() {
-	if (CurrentManageAgentData.settings.backgroundAudioS3StorageLink) {
+	if (CurrentManageAgentData.settings.backgroundAudioUrl) {
 		agentBackgroundAudioSelect.val("custom").change();
 
 		AgentBackgroundAudioWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
-		AgentBackgroundAudioWaveSurfer.load(`${CurrentManageAgentData.settings.backgroundAudioS3StorageLink.objectName}`);
+		AgentBackgroundAudioWaveSurfer.load(CurrentManageAgentData.settings.backgroundAudioUrl);
 		agentBackgroundAudioVolumeInput.val(CurrentManageAgentData.settings.backgroundAudioVolume);
 
 		agentBackgroundAudioInputBox.find(".no-audio-notice").addClass("d-none");
@@ -6709,7 +6709,7 @@ function initAgentTab() {
 			}
 			formData.append("changes", JSON.stringify(changes.changes));
 
-			if (changes.changes.settings.backgroundAudioS3StorageLink === "custom") {
+			if (changes.changes.settings.backgroundAudioUrl === "custom") {
 				formData.append("backgroundAudio", agentBackgroundAudioUploadInput[0].files[0]);
 			}
 
