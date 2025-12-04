@@ -118,7 +118,7 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
 
-                    if (!regionDataResult.Servers.Any(s => s.DisabledAt != null & s.Type == ServerTypeEnum.Backend))
+                    if (!regionDataResult.Servers.Any(s => (s.DisabledAt == null && s.Type == ServerTypeEnum.Backend)))
                     {
                         return result.SetFailureResult(
                             "InitiateWebSession:REGION_NO_AVAILABLE_SERVERS",
@@ -149,18 +149,18 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    if (modelData.AudioConfiguration.SampleRate == 0 || modelData.AudioConfiguration.SampleRate > 96000) {
+                    if (modelData.AudioConfiguration.SampleRate < 8000 || modelData.AudioConfiguration.SampleRate > 96000) {
                         return result.SetFailureResult(
                             "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_SAMPLE_RATE_INVALID",
-                            "Audio Configuration sample rate is invalid."
+                            "Audio Configuration sample rate is invalid. Allowed values: 8000~96000."
                         );
                     }
                     newWebSessionData.AudioConfiguration.SampleRate = modelData.AudioConfiguration.SampleRate;
 
-                    if (modelData.AudioConfiguration.BitsPerSample != 8 || modelData.AudioConfiguration.BitsPerSample != 16 || modelData.AudioConfiguration.BitsPerSample != 24 || modelData.AudioConfiguration.BitsPerSample != 32) {
+                    if (modelData.AudioConfiguration.BitsPerSample != 8 && modelData.AudioConfiguration.BitsPerSample != 16 && modelData.AudioConfiguration.BitsPerSample != 24 && modelData.AudioConfiguration.BitsPerSample != 32) {
                         return result.SetFailureResult(
                             "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_BITS_PER_SAMPLE_INVALID",
-                            "Audio Configuration bits per sample is invalid."
+                            "Audio Configuration bits per sample is invalid. Allowed values: 8, 16, 24, 32."
                         );
                     }
                     newWebSessionData.AudioConfiguration.BitsPerSample = modelData.AudioConfiguration.BitsPerSample;

@@ -564,7 +564,7 @@ function createDefaultAgentObject() {
 			}
 		},
 		settings: {
-			backgroundAudioUrl: null,
+			backgroundAudioS3StorageLink: null,
 			backgroundAudioVolume: 100,
 		},
 	};
@@ -2214,7 +2214,7 @@ function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 	if (backgroundAudioType === "none") {
 		changes.backgroundAudioUrl = null;
 
-		if (CurrentManageAgentData.settings.backgroundAudioUrl !== null) {
+		if (CurrentManageAgentData.settings.backgroundAudioS3StorageLink !== null) {
 			hasChanges = true;
 		}
 	}
@@ -2230,8 +2230,8 @@ function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 			hasChanges = true;
 		}
 
-		if (CurrentManageAgentData.settings.backgroundAudioUrl !== null && agentBackgroundAudioUploadInput[0].files.length === 0 && AgentBackgroundAudioWaveSurfer != null) {
-            changes.backgroundAudioUrl = "previous";
+		if (CurrentManageAgentData.settings.backgroundAudioS3StorageLink !== null && agentBackgroundAudioUploadInput[0].files.length === 0 && AgentBackgroundAudioWaveSurfer != null) {
+			changes.backgroundAudioUrl = "previous";
 		}
 	}
 
@@ -2310,11 +2310,11 @@ function onAgentsBackgroundAudioUploadValidation(event) {
 }
 
 function fillAgentSettingsTab() {
-	if (CurrentManageAgentData.settings.backgroundAudioUrl) {
+	if (CurrentManageAgentData.settings.backgroundAudioS3StorageLink) {
 		agentBackgroundAudioSelect.val("custom").change();
 
 		AgentBackgroundAudioWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
-		AgentBackgroundAudioWaveSurfer.load(`${BusinessAgentBackgroundAudioURL}/${CurrentManageAgentData.settings.backgroundAudioUrl}`);
+		AgentBackgroundAudioWaveSurfer.load(`${CurrentManageAgentData.settings.backgroundAudioS3StorageLink.objectName}`);
 		agentBackgroundAudioVolumeInput.val(CurrentManageAgentData.settings.backgroundAudioVolume);
 
 		agentBackgroundAudioInputBox.find(".no-audio-notice").addClass("d-none");
@@ -6709,7 +6709,7 @@ function initAgentTab() {
 			}
 			formData.append("changes", JSON.stringify(changes.changes));
 
-			if (changes.changes.settings.backgroundAudioUrl === "custom") {
+			if (changes.changes.settings.backgroundAudioS3StorageLink === "custom") {
 				formData.append("backgroundAudio", agentBackgroundAudioUploadInput[0].files[0]);
 			}
 

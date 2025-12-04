@@ -1,6 +1,5 @@
 ﻿using IqraCore.Entities.Embedding;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Integrations;
 using IqraCore.Entities.Languages;
 using IqraCore.Entities.LLM;
 using IqraCore.Entities.Region;

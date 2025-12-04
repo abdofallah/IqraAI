@@ -22,6 +22,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
         private readonly IMongoClient _mongoClient;
         private readonly WhiteLabelContext _whiteLabelContext;
         private readonly BusinessLogoRepository _businessLogoRepository;
+        private readonly BusinessAgentAudioRepository _businessAgentAudioRepository;
 
         public UserBusinessController(
             ILogger<UserBusinessController> logger,
@@ -31,7 +32,8 @@ namespace ProjectIqraFrontend.Controllers.App.User
             UserWhiteLabelManager userWhiteLabelManager,
             IMongoClient mongoClient,
             WhiteLabelContext whiteLabelContext,
-            BusinessLogoRepository businessLogoRepository
+            BusinessLogoRepository businessLogoRepository,
+            BusinessAgentAudioRepository businessAgentAudioRepository
         )
         {
             _logger = logger;
@@ -42,6 +44,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
             _mongoClient = mongoClient;
             _whiteLabelContext = whiteLabelContext;
             _businessLogoRepository = businessLogoRepository;
+            _businessAgentAudioRepository = businessAgentAudioRepository;
         }
 
 
@@ -143,10 +146,22 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400, businessData.LogoS3StorageLink.OriginRegion);
                 }
 
+                var businessAppModel = new GetUseBusinessFullResultAppModel(businessAppResult.Data!);
+                foreach (var agent in businessAppResult.Data!.Agents)
+                {
+                    var modelAgent = businessAppModel.Agents.FirstOrDefault(a => a.Id == agent.Id);
+                    if (modelAgent == null) continue;
+
+                    if (agent.Settings.BackgroundAudioS3StorageLink != null)
+                    {
+                        modelAgent.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GeneratePresignedUrl(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000, agent.Settings.BackgroundAudioS3StorageLink.OriginRegion);
+                    }
+                }
+
                 var resultData = new GetUserBusinessFullReturnModel()
                 {
                     BusinessData = businessMetaDataModel,
-                    BusinessApp = businessAppResult.Data!
+                    BusinessApp = businessAppModel
                 };
 
                 return result.SetSuccessResult(resultData);

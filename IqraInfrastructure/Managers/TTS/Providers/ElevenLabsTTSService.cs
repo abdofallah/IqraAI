@@ -80,8 +80,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             try
             {
+                _client = new ElevenLabsClient(_apiKey);
+
                 var userSubscriptionResult = await _client.User.GetUserSubscriptionAsync();
-                if (userSubscriptionResult.Status != SubscriptionStatusType.Active)
+                if (userSubscriptionResult.Status != SubscriptionStatusType.Active && userSubscriptionResult.Status != SubscriptionStatusType.Free)
                 {
                     return result.SetFailureResult(
                         "CheckAccount:SUBSCRIPTION_NOT_ACTIVE",
@@ -116,9 +118,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
                 _audioConversationNeeded = _optimalElevenLabsFormat.Encoding != _finalUserRequest.RequestedEncoding ||
                                         _optimalElevenLabsFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
-                                        _optimalElevenLabsFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
-
-                _client = new ElevenLabsClient(_apiKey);
+                                        _optimalElevenLabsFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample; 
 
                 _voiceData = _client.Voices.GetVoicesByVoiceIdAsync(_serviceConfig.VoiceId).GetAwaiter().GetResult();
 
@@ -131,7 +131,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    $"CheckAccount:EXCEPTION",
+                    $"Initialize:EXCEPTION",
                     $"Internal server error occured: {ex.Message}"
                 );
             }

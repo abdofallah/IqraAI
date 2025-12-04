@@ -20,6 +20,7 @@ using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
+using IqraInfrastructure.Repositories.S3Storage;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
@@ -174,11 +175,14 @@ namespace ProjectIqraBackendProxy
             });
 
             builder.Services.AddSingleton<RegionRepository>((sp) => {
-                return new RegionRepository(
-                    sp.GetRequiredService<ILogger<RegionRepository>>(),
+                var regionRepository = new RegionRepository(
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:AppRepositoryDatabaseName"]
                 );
+
+                regionRepository.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
+
+                return regionRepository;
             });
 
             builder.Services.AddSingleton<IntegrationsRepository>((sp) =>
@@ -283,7 +287,8 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<ILogger<IntegrationsManager>>(),
                     sp.GetRequiredService<IntegrationsRepository>(),
                     null,
-                    integrationFieldsEncryptionService
+                    integrationFieldsEncryptionService,
+                    null
                 );
             });
             builder.Services.AddSingleton<ModemTelManager>((sp) =>
@@ -327,6 +332,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     sp.GetRequiredService<TwilioManager>(),
+                    null,
                     null,
                     null,
                     null,

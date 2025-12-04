@@ -643,7 +643,8 @@ namespace ProjectIqraBackendApp
                     null,
                     null,
                     null,
-                    null
+                    null,
+                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>
@@ -656,7 +657,8 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<IntegrationsManager>>(),
                     sp.GetRequiredService<IntegrationsRepository>(),
                     null,
-                    integrationFieldsEncryptionService
+                    integrationFieldsEncryptionService,
+                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>
