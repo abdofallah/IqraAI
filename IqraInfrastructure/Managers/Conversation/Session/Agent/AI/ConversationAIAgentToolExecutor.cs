@@ -791,17 +791,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 {
                     await FinalizeAndReportToolResult(
                         turn,
-                        true,
-                        $"Successfull Execution of Custom Tool{(string.IsNullOrEmpty(executeResult.Message) ? "" : $": {executeResult.Message}")}"
+                        false,
+                        $"Failed Execution of Custom Tool{(string.IsNullOrEmpty(executeResult.Message) ? "" : $": {executeResult.Message}")}"
                     );
                     return;
+                    
                 }
                 else
                 {
                     await FinalizeAndReportToolResult(
                         turn,
-                        false,
-                        $"Failed Execution of Custom Tool{(string.IsNullOrEmpty(executeResult.Message) ? "" : $": {executeResult.Message}")}"
+                        true,
+                        $"Successfull Execution of Custom Tool{(string.IsNullOrEmpty(executeResult.Data) ? "" : $": {executeResult.Data}")}"
                     );
                     return;
                 }

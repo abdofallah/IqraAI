@@ -26,6 +26,7 @@ using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using static Google.Cloud.TextToSpeech.V1.MultiSpeakerMarkup.Types;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -186,7 +187,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // Tool Executor
             _toolExecutor.TurnUpdate += OnTurnUpdated;
             _toolExecutor.ToolResultAvailable += OnToolResultAvailable;
-            _toolExecutor.PlaySpeechRequested += OnPlaySpeechRequested;
+            _toolExecutor.PlaySpeechRequested += OnToolPlaySpeechRequested;
             _toolExecutor.EndConversationRequested += OnEndConversationRequested;
             //_toolExecutor.TransferToAIAgentRequested += OnTransferToAIAgentRequested;
             //_toolExecutor.TransferToHumanAgentRequested += OnTransferToHumanAgentRequested;
@@ -549,6 +550,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 cachedMultiLanguagePlayMessage = cachedMultiLanguagePlayMessage.Trim();
             }
 
+            turn.Status = ConversationTurnStatus.AgentRespondingSpeech;
+            turn.Response.SpeechCompletedAt = null;
+            OnTurnUpdated(this, turn);
             await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(turn, cachedMultiLanguagePlayMessage, _conversationCTS.Token);
         }
         private async Task HandleLanguageChangeRequestAsync(string newLanguageCode)
@@ -607,6 +611,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     // Format for LLM history, synthesize raw text
                     string llmHistoryMessage = "response_to_customer: " + openingMessage;
                     _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
+
+                    turn.Status = ConversationTurnStatus.AgentRespondingSpeech;
+                    OnTurnUpdated(this, turn);
+
                     await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(turn, openingMessage, _conversationCTS.Token);
                 }
                 else
@@ -716,11 +724,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         ReasonForExecution = failureReason
                     }
                 },
-                Status = ConversationTurnStatus.AgentProcessing
+                Status = ConversationTurnStatus.AgentRespondingSpeech
             };
             await OnNewTurnCreated(newTurn);
 
-            await OnPlaySpeechRequested(newTurn, failureMessage, _conversationCTS.Token);
+            await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(newTurn, failureMessage, _conversationCTS.Token);
             await OnEndConversationRequested(newTurn);
         }
 
@@ -777,9 +785,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             await _llmHandler.ProcessToolResultAsync(newToolResultTurn, turnWithResult, _conversationCTS.Token);
         }
-        private async Task OnPlaySpeechRequested(ConversationTurn turn, string message, CancellationToken token)
+        private async Task OnToolPlaySpeechRequested(ConversationTurn turn, string message, CancellationToken token)
         {
+            turn.Status = ConversationTurnStatus.AgentRespondingSpeech;
+            OnTurnUpdated(this, turn);
+
             await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(turn, message, token);
+
+            turn.Status = ConversationTurnStatus.AgentExecutingTool;
+            OnTurnUpdated(this, turn);
         }
         private async Task OnEndConversationRequested(ConversationTurn turn)
         {
@@ -846,6 +860,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
                     else
                     {
+                        args.Turn.Status = ConversationTurnStatus.AgentRespondingSpeech;
+                        args.Turn.Response.SpeechCompletedAt = null;
+                        OnTurnUpdated(this, args.Turn);
+
                         await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(args.Turn, "Invalid Language Selection.", CancellationToken.None);
                         await HandleLanguageSelectionMessagePlaying(args.Turn);
                         _dtmfSessionManager.ResumeSession();
@@ -854,6 +872,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
                 else if (args.Reason == DTMFSessionEndReason.TimeoutInterDigit)
                 {
+                    args.Turn.Status = ConversationTurnStatus.AgentRespondingSpeech;
+                    args.Turn.Response.SpeechCompletedAt = null;
+                    OnTurnUpdated(this, args.Turn);
+
                     await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(args.Turn, "Please choose a language.", CancellationToken.None);
                     await HandleLanguageSelectionMessagePlaying(args.Turn);
                     _dtmfSessionManager.ResumeSession();

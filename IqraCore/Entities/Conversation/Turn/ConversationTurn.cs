@@ -40,7 +40,7 @@ namespace IqraCore.Entities.Conversation.Turn
         AgentExecutingTool,
         Completed,
         Interrupted,
-        Error
+        Error,
     }
 
     public enum ConversationTurnAgentResponseType

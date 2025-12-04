@@ -336,20 +336,30 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // is not turn by turn
                 if (!_config.UseTurnByTurnMode)
                 {
-                    if (_agentState.CurrentTurn.Type == ConversationTurnType.System || _agentState.CurrentTurn.Type == ConversationTurnType.ToolResult)
-                    {
+                    if (
+                        _agentState.CurrentTurn.Type == ConversationTurnType.System ||
+                        _agentState.CurrentTurn.Type == ConversationTurnType.ToolResult
+                    ) {
                         // do nothing when its system or tool result type
                         return;
                     }
 
-                    if (_agentState.CurrentTurn.Type == ConversationTurnType.User && _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentExecutingTool)
-                    {
-                        // do nothing when tool is being executed
+                    if (
+                        _agentState.CurrentTurn.Response != null &&
+                        (
+                            _agentState.CurrentTurn.Response.Type == ConversationTurnAgentResponseType.SystemTool ||
+                            _agentState.CurrentTurn.Response.Type == ConversationTurnAgentResponseType.CustomTool
+                        )
+                    ) {
+                        // do nothing when its system tool or custom tool
                         return;
                     }
 
                     if (
-                        (_agentState.CurrentTurn.Status == ConversationTurnStatus.AgentProcessing || _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech)
+                        (
+                            _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentProcessing ||
+                            _agentState.CurrentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech
+                        )
                         && !_isAgentPaused
                     )
                     {

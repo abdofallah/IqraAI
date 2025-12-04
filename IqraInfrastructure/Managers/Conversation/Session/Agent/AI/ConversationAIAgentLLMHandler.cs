@@ -481,7 +481,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     else if (fullText.StartsWith("execute_system_function:"))
                     {
                         currentTurn.Response.Type = ConversationTurnAgentResponseType.SystemTool;
-                        currentTurn.Status = ConversationTurnStatus.AgentExecutingTool;
+                        currentTurn.Status = ConversationTurnStatus.AgentProcessing;
                         currentTurn.Response.ToolExecution = new ConversationTurnToolExecutionData { ToolType = ConversationTurnAgentToolType.System };
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
@@ -490,7 +490,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     else if (fullText.StartsWith("execute_custom_function:"))
                     {
                         currentTurn.Response.Type = ConversationTurnAgentResponseType.CustomTool;
-                        currentTurn.Status = ConversationTurnStatus.AgentExecutingTool;
+                        currentTurn.Status = ConversationTurnStatus.AgentProcessing;
                         currentTurn.Response.ToolExecution = new ConversationTurnToolExecutionData { ToolType = ConversationTurnAgentToolType.Custom };
                         await _conversationSession.NotifyTurnUpdated(currentTurn);
 
