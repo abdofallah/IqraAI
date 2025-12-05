@@ -63,6 +63,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private int BytesPerSample;
         private int FrameDurationMs;
         private int MaxBufferAheadMs;
+        private int InitialSegmentDurationMs;
         private int FirstBytesPerChunk;
         private int BytesPerChunk;
 
@@ -127,10 +128,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             AudioEncodingType = _agentState.AgentConfiguration.AudioEncodingType;
 
             BytesPerSample = BitsPerSample / 8;
-            FrameDurationMs = 30;
+            FrameDurationMs = 60;
             MaxBufferAheadMs = 150;
+            InitialSegmentDurationMs = 300;
             BytesPerChunk = SampleRate * BytesPerSample * Channels * FrameDurationMs / 1000;
-            FirstBytesPerChunk = SampleRate * BytesPerSample * Channels * MaxBufferAheadMs / 1000;
+            FirstBytesPerChunk = SampleRate * BytesPerSample * Channels * InitialSegmentDurationMs / 1000;
 
             await InitializeTTSAsync();
             await LoadBackgroundMusicAsync();
