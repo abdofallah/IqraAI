@@ -1,30 +1,27 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Call.Backend
 {
     public static class CallWebsocketTokenGenerator
     {
+        private sealed record TokenPayload(string SessionId, string ClientId, long ExpirationUnix);
+
         private static string Base64UrlEncode(byte[] input)
         {
             return Convert.ToBase64String(input)
-                .TrimEnd('=') // Remove padding
-                .Replace('+', '-') // 62nd char of encoding
-                .Replace('/', '_'); // 63rd char of encoding
+                .Replace("=", "imtheequal") // Remove padding
+                .Replace("+", "imtheplus") // 62nd char of encoding
+                .Replace("/", "imtheslash"); // 63rd char of encoding
         }
 
         private static byte[] Base64UrlDecode(string input)
         {
             string output = input;
-            output = output.Replace('-', '+'); // 62nd char of encoding
-            output = output.Replace('_', '/'); // 63rd char of encoding
-            switch (output.Length % 4) // Pad with trailing '='s
-            {
-                case 0: break; // No pad chars in this case
-                case 2: output += "=="; break; // Two pad chars
-                case 3: output += "="; break; // One pad char
-                default: throw new ArgumentException("Illegal base64url string!", nameof(input));
-            }
+            output = output.Replace("imtheequal", "="); // Remove padding
+            output = output.Replace("imtheplus", "+"); // 62nd char of encoding
+            output = output.Replace("imtheslash", "/"); // 63rd char of encoding
             return Convert.FromBase64String(output);
         }
 
@@ -41,15 +38,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
 
             var expirationTimeUnix = DateTimeOffset.UtcNow.Add(validityPeriod).ToUnixTimeSeconds();
 
-            // Payload can be simple or more complex JSON
-            // For simplicity here, we'll combine fixed fields.
-            // A JSON payload is more extensible: var payloadObject = new { sid = sessionId, cid = clientId, exp = expirationTimeUnix };
-            // string payloadJson = JsonSerializer.Serialize(payloadObject);
-            // string payloadToSign = payloadJson;
-
-            // Simpler string payload for this example:
-            string payloadToSign = $"{sessionId}:{clientId}:{expirationTimeUnix}";
-            string base64UrlEncodedPayload = Base64UrlEncode(Encoding.UTF8.GetBytes(payloadToSign));
+            var payloadObject = new TokenPayload(sessionId, clientId, expirationTimeUnix);
+            string payloadJson = JsonSerializer.Serialize(payloadObject);
+            string base64UrlEncodedPayload = Base64UrlEncode(Encoding.UTF8.GetBytes(payloadJson));
 
             using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(privateKey)))
             {
@@ -104,48 +95,38 @@ namespace IqraInfrastructure.Managers.Call.Backend
             }
 
             // Decode and validate payload
-            string payloadToSign;
+            TokenPayload? payload;
             try
             {
-                payloadToSign = Encoding.UTF8.GetString(Base64UrlDecode(base64UrlEncodedPayload));
+                string payloadJson = Encoding.UTF8.GetString(Base64UrlDecode(base64UrlEncodedPayload));
+                payload = JsonSerializer.Deserialize<TokenPayload>(payloadJson);
+                if (payload == null)
+                {
+                    validationError = "Failed to deserialize token payload.";
+                    return false;
+                }
             }
             catch (Exception ex)
             {
-                validationError = $"Failed to decode token payload: {ex.Message}";
-                return false;
-            }
-
-            var payloadParts = payloadToSign.Split(':');
-            if (payloadParts.Length != 3)
-            {
-                validationError = "Decoded payload format is invalid.";
-                return false;
-            }
-
-            string actualSessionId = payloadParts[0];
-            string actualClientId = payloadParts[1];
-
-            if (!long.TryParse(payloadParts[2], out long expirationTimeUnix))
-            {
-                validationError = "Invalid expiration time in token payload.";
+                validationError = $"Error decoding/deserializing token payload: {ex.Message}";
                 return false;
             }
 
             // Validate expiration
-            if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() > expirationTimeUnix)
+            if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() > payload.ExpirationUnix)
             {
                 validationError = "Token has expired.";
                 return false;
             }
 
             // Validate content (sessionId, clientId)
-            if (actualSessionId != expectedSessionId)
+            if (payload.SessionId != expectedSessionId)
             {
                 validationError = "Session ID mismatch.";
                 return false;
             }
 
-            if (actualClientId != expectedClientId)
+            if (payload.ClientId != expectedClientId)
             {
                 validationError = "Client ID mismatch.";
                 return false;
