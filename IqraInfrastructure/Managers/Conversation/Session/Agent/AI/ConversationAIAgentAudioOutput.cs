@@ -459,6 +459,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // 3. Wait for the estimated duration if synthesis was successful
                 if (success && duration > TimeSpan.Zero)
                 {
+                    await Task.Delay(duration, cancellationToken);
+
+                    if (_currentTtsTaskCTS.IsCancellationRequested) return;
+
                     while (turn.Response.SpeechCompletedAt == null)
                     {
                         // Check for cancellations
