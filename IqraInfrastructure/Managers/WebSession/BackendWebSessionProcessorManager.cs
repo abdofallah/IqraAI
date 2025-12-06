@@ -90,7 +90,7 @@ namespace IqraInfrastructure.Managers.WebSession
             _regionManager = regionManager;
             _billingProcessingManager = billingProcessingManager;
             _campaignActionExecutorService = campaignActionExecutorService;
-            _userUsageValidationManager = userUsageValidationManager;
+            _userUsageValidationManager = userUsageValidationManager; 
         }
 
         public async Task<FunctionReturnResult<BackendInitiateWebSessionResultModel?>> InitiateWebSessionConversationAsync(string webSessionId)
@@ -359,17 +359,24 @@ namespace IqraInfrastructure.Managers.WebSession
 
             var agentConfig = new ConversationAgentConfiguration()
             {
-                BitsPerSample = webSessionData.AudioConfiguration.BitsPerSample,
-                SampleRate = webSessionData.AudioConfiguration.SampleRate,
-                AudioEncodingType = webSessionData.AudioConfiguration.AudioEncodingType
+                BitsPerSample = webSessionData.AudioInputConfiguration.BitsPerSample,
+                SampleRate = webSessionData.AudioInputConfiguration.SampleRate,
+                AudioEncodingType = webSessionData.AudioInputConfiguration.AudioEncodingType,
+                AudioEncodingFallbackMode = webSessionData.AudioInputConfiguration.AudioEncodingFallbackMode,
+                Channels = 1 // static for now
             };
 
             var clientConfig = new ConversationWebClientConfiguration()
             {
                 WebSessionData = webSessionData,
-                BitsPerSample = webSessionData.AudioConfiguration.BitsPerSample,
-                SampleRate = webSessionData.AudioConfiguration.SampleRate,
-                AudioEncodingType = webSessionData.AudioConfiguration.AudioEncodingType
+                BitsPerSample = webSessionData.AudioOutputConfiguration.BitsPerSample,
+                SampleRate = webSessionData.AudioOutputConfiguration.SampleRate,
+                AudioEncodingType = webSessionData.AudioOutputConfiguration.AudioEncodingType,
+                AudioEncodingFallbackMode = webSessionData.AudioOutputConfiguration.AudioEncodingFallbackMode,
+                Channels = 1, // static for now
+                FrameDurationMs = webSessionData.AudioOutputConfiguration.FrameDurationMs,
+                MaxBufferAheadMs = webSessionData.AudioOutputConfiguration.MaxBufferAheadMs,
+                InitialSegmentDurationMs = webSessionData.AudioOutputConfiguration.InitialSegmentDurationMs
             };
 
             // 2. Create and Add Agent and Client within a Task to isolate logic
@@ -395,7 +402,7 @@ namespace IqraInfrastructure.Managers.WebSession
                 agent = agentResult.Data;
 
                 // Create Telephony Client
-                var clientResult = await CreateWebSocketClient(webSessionData, session);
+                var clientResult = await CreateWebSocketClient(webSessionData, session, clientConfig);
                 if (!clientResult.Success)
                 {
                     await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
@@ -471,7 +478,7 @@ namespace IqraInfrastructure.Managers.WebSession
                 }
             }
         }
-        private async Task<FunctionReturnResult<IConversationClient?>> CreateWebSocketClient(WebSessionData webSessionData, ConversationSessionOrchestrator sessionManager)
+        private async Task<FunctionReturnResult<IConversationClient?>> CreateWebSocketClient(WebSessionData webSessionData, ConversationSessionOrchestrator sessionManager, ConversationWebClientConfiguration clientConfig)
         {
             var result = new FunctionReturnResult<IConversationClient?>();
 
@@ -479,6 +486,7 @@ namespace IqraInfrastructure.Managers.WebSession
             return result.SetSuccessResult(
                 new WebAppConversationClient(
                     webSessionData.ClientIdentifier,
+                    clientConfig,
                     deferredTransport,
                     _serviceProvider.GetRequiredService<ILogger<WebAppConversationClient>>()
                 )

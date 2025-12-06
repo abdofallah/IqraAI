@@ -3,12 +3,17 @@
     public class ConversationAudioGeneratedEventArgs : EventArgs
     {
         public byte[] AudioData { get; }
+        public int MasterSampleRate { get; }
+        public int MasterBitsPerSample { get; }
+
         public string TargetClientId { get; }
         public DateTime Timestamp { get; }
 
-        public ConversationAudioGeneratedEventArgs(byte[] audioData, string targetClientId = null)
+        public ConversationAudioGeneratedEventArgs(byte[] audioData, int masterSampleRate, int masterBitsPerSample, string targetClientId = null)
         {
             AudioData = audioData;
+            MasterSampleRate = masterSampleRate;
+            MasterBitsPerSample = masterBitsPerSample;
             TargetClientId = targetClientId;
             Timestamp = DateTime.UtcNow;
         }

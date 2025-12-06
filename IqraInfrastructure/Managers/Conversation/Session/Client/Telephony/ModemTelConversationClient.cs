@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
@@ -14,6 +15,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         public ModemTelConversationClient(
             string clientId,
+            ConversationWebClientConfiguration clientConfig,
             string telephonyPhoneNumber,
             string telephonyProviderPhoneNumberId,
             string customerPhoneNumber,
@@ -23,7 +25,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             ModemTelManager modemTelManager,
             IConversationClientTransport transport,
             ILogger<ModemTelConversationClient> logger
-        ) : base(clientId, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
+        ) : base(clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
         {
             _providerCallId = providerCallId;
             _apiBaseUrl = apiBaseUrl;

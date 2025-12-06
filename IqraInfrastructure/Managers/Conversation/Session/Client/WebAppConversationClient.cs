@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Conversation.Enum;
+﻿using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Interfaces.Conversation;
 using Microsoft.Extensions.Logging;
 
@@ -10,9 +11,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
 
         public WebAppConversationClient(
             string clientId,
+            ConversationWebClientConfiguration clientConfig,
             IConversationClientTransport transport, // This will be an instance of WebRtcClientTransport
             ILogger<WebAppConversationClient> logger
-        ) : base(clientId, transport, logger) { }
+        ) : base(clientId, clientConfig, transport, logger) { }
 
         /// <summary>
         /// For a WebRTC client, a binary message from the transport is audio from the user.

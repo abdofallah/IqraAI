@@ -1,8 +1,6 @@
-﻿using Azure.Core;
-using Azure.Identity;
+﻿using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.ResourceManager.CognitiveServices;
-using Azure.ResourceManager.Resources;
 using Azure.ResourceManager.Resources.Models;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
@@ -16,7 +14,6 @@ using IqraInfrastructure.Managers.TTS.Helpers;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using System.Collections.ObjectModel;
-using System.Drawing;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
@@ -227,6 +224,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return _serviceConfig;
         }
 
+        public TTSProviderAvailableAudioFormat GetCurrentOutputFormat()
+        {
+            return _optimalAzureFormat;
+        }
+
         public static InterfaceTTSProviderEnum GetProviderTypeStatic()
         {
             return InterfaceTTSProviderEnum.AzureSpeechServices;
@@ -240,32 +242,15 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             var supportedFormats = new List<TTSProviderAvailableAudioFormat>
             {
-                // Note: We only include formats relevant to our AudioEncodingTypeEnum for clarity.
-                // Raw PCM Formats
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 8000, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 22050, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 24000, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 44100, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 48000, BitsPerSample = 16 },
-
-                // MULAW
-                new() { Encoding = AudioEncodingTypeEnum.MULAW, SampleRateHz = 8000, BitsPerSample = 8 },
-
-                // ALAW
-                new() { Encoding = AudioEncodingTypeEnum.ALAW, SampleRateHz = 8000, BitsPerSample = 8 },
-
-                // OPUS (Ogg container)
-                new() { Encoding = AudioEncodingTypeEnum.OPUS, SampleRateHz = 16000, BitsPerSample = 16 },
-                new() { Encoding = AudioEncodingTypeEnum.OPUS, SampleRateHz = 24000, BitsPerSample = 16 },
-                new() { Encoding = AudioEncodingTypeEnum.OPUS, SampleRateHz = 48000, BitsPerSample = 16 },
-            
-                // G722
-                new() { Encoding = AudioEncodingTypeEnum.G722, SampleRateHz = 16000, BitsPerSample = 16 },
             };
             AzureSupportedFormats = supportedFormats.AsReadOnly();
 
-            // Create the mapping from our format definition to the Azure SDK enum
             var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), SpeechSynthesisOutputFormat>
             {
                 { (AudioEncodingTypeEnum.PCM, 8000, 16), SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm },
@@ -274,12 +259,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 { (AudioEncodingTypeEnum.PCM, 24000, 16), SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm },
                 { (AudioEncodingTypeEnum.PCM, 44100, 16), SpeechSynthesisOutputFormat.Raw44100Hz16BitMonoPcm },
                 { (AudioEncodingTypeEnum.PCM, 48000, 16), SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm },
-                { (AudioEncodingTypeEnum.MULAW, 8000, 8), SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw },
-                { (AudioEncodingTypeEnum.ALAW, 8000, 8), SpeechSynthesisOutputFormat.Raw8Khz8BitMonoALaw },
-                { (AudioEncodingTypeEnum.OPUS, 16000, 16), SpeechSynthesisOutputFormat.Ogg16Khz16BitMonoOpus },
-                { (AudioEncodingTypeEnum.OPUS, 24000, 16), SpeechSynthesisOutputFormat.Ogg24Khz16BitMonoOpus },
-                { (AudioEncodingTypeEnum.OPUS, 48000, 16), SpeechSynthesisOutputFormat.Ogg48Khz16BitMonoOpus },
-                { (AudioEncodingTypeEnum.G722, 16000, 16), SpeechSynthesisOutputFormat.G72216Khz64Kbps },
             };
             FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), SpeechSynthesisOutputFormat>(formatMap);
         }

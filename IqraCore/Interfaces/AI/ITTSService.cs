@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Interfaces.AI
@@ -17,5 +18,6 @@ namespace IqraCore.Interfaces.AI
             return InterfaceTTSProviderEnum.Unknown;
         }
         ITTSConfig GetCacheableConfig();
+        TTSProviderAvailableAudioFormat GetCurrentOutputFormat();
     }
 }

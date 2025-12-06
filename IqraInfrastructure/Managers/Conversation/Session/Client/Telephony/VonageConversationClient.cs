@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         public VonageConversationClient(
             string clientId,
+            ConversationWebClientConfiguration clientConfig,
             string telephonyPhoneNumber,
             string telephonyProviderPhoneNumberId,
             string customerPhoneNumber,
@@ -23,7 +25,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             VonageManager vonageManager,
             IConversationClientTransport transport,
             ILogger<VonageConversationClient> logger
-        ) : base(clientId, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
+        ) : base(clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
         {
             _callUuid = callUuid;
             _jwt = jwt;

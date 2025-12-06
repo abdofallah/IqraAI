@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         public TelnyxConversationClient(
             string clientId, // This would typically be the call_control_id
+            ConversationWebClientConfiguration clientConfig,
             string telephonyPhoneNumber,
             string telephonyProviderPhoneNumberId,
             string customerPhoneNumber,
@@ -25,7 +27,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             TelnyxManager telnyxManager,
             IConversationClientTransport transport,
             ILogger<TelnyxConversationClient> logger
-        ) : base(clientId, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
+        ) : base(clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
         {
             _callControlId = clientId; // The client ID is the call control ID for Telnyx.
             _apiKey = apiKey;

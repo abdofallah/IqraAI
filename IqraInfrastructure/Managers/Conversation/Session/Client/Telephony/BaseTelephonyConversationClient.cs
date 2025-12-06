@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Conversation.Enum;
+﻿using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Interfaces.Conversation;
@@ -18,12 +19,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         protected BaseTelephonyConversationClient(
             string clientId,
+            ConversationWebClientConfiguration clientConfig,
             string telephonyPhoneNumber,
             string telephonyProviderPhoneNumberId,
             string customerPhoneNumber,
             IConversationClientTransport transport,
             ILogger logger
-        ) : base(clientId, transport, logger)
+        ) : base(clientId, clientConfig, transport, logger)
         {
             ClientTelephonyPhoneNumber = telephonyPhoneNumber;
             ClientTelephonyProviderPhoneNumberId = telephonyProviderPhoneNumberId;

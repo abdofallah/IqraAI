@@ -56,18 +56,19 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly BusinessManager _businessManager;
         private readonly TTSAudioCacheManager _cacheManager;
 
-        private int SampleRate;
-        private int BitsPerSample;
-        private AudioEncodingTypeEnum AudioEncodingType;
-        private int Channels;
-        private int BytesPerSample;
+        private int _masterSampleRate;
+        private int _masterBitsPerSample;
+        private int _masterChannels = 1;
+
+        private int _bytesPerSample;
         private int FrameDurationMs;
         private int MaxBufferAheadMs;
         private int InitialSegmentDurationMs;
-        private int FirstBytesPerChunk;
-        private int BytesPerChunk;
+        private int _firstBytesPerChunk;
+        private int _bytesPerChunk;
 
         // Virtual Clock State
+        private string? _currentStreamingTurnId = null;
         private DateTime? _turnStreamingStartedAt = null;
         private TimeSpan _totalAudioDurationSent = TimeSpan.Zero;
 
@@ -122,32 +123,41 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             _audioSendingCTS = CancellationTokenSource.CreateLinkedTokenSource(agentCTS); // Link to agent shutdown
 
-            SampleRate = _agentState.AgentConfiguration.SampleRate;
-            BitsPerSample = _agentState.AgentConfiguration.BitsPerSample;
-            Channels = _agentState.AgentConfiguration.Channels;
-            AudioEncodingType = _agentState.AgentConfiguration.AudioEncodingType;
-
-            BytesPerSample = BitsPerSample / 8;
-
             // todo introduce this config into audio configuration for web session to manually define them,
             // for twilio and etc we can calculate manually based on our server vs telephony server
-            FrameDurationMs = 60;
+            FrameDurationMs = 20;
             MaxBufferAheadMs = 150;
             InitialSegmentDurationMs = 300;
 
-            BytesPerChunk = SampleRate * BytesPerSample * Channels * FrameDurationMs / 1000;
-            FirstBytesPerChunk = SampleRate * BytesPerSample * Channels * InitialSegmentDurationMs / 1000;
+            _masterSampleRate = _agentState.AgentConfiguration!.SampleRate;
+            _masterBitsPerSample = _agentState.AgentConfiguration!.BitsPerSample;
+            _masterChannels = _agentState.AgentConfiguration!.Channels;
 
             await InitializeTTSAsync();
             await LoadBackgroundMusicAsync();
 
             _logger.LogInformation("AudioOutput module initialized for Agent {AgentId}.", _agentState.AgentId);
         }
-        public async Task ReInitializeForLanguageAsync()
+        public async Task UpgradeMasterFormatAndReinitalizeAsync(int newSampleRate, int newBitsPerSample)
         {
-            _logger.LogInformation("Agent {AgentId}: Re-initializing Audio Output Handler for new language.", _agentState.AgentId);
+            _logger.LogInformation("Upgrading Master Audio Format to {Rate}Hz with {Bits} bits...", newSampleRate, newBitsPerSample);
+
+            await PausePlaybackAsync();
+            await CancelCurrentSpeechPlaybackAsync();
+
+            _masterSampleRate = newSampleRate;
+            _masterBitsPerSample = newBitsPerSample;
+
+            await ReInitializeTTSAndBackgroundAudio();
+
+            await ResumePlaybackAsync();
+        }
+        public async Task ReInitializeTTSAndBackgroundAudio()
+        {
+            _logger.LogInformation("Agent {AgentId}: Re-initializing Audio Output Handler.", _agentState.AgentId);
             await CancelCurrentSpeechPlaybackAsync();
             await InitializeTTSAsync();
+            await LoadBackgroundMusicAsync();
         }
         private async Task InitializeTTSAsync()
         {
@@ -167,7 +177,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             _agentState.TTSBusinessIntegrationData = ttsBusinessIntegrationDataResult.Data;
 
-            var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_sessionLoggerFactory, _agentState.TTSBusinessIntegrationData, defaultTTSServiceInfo, _agentState.AgentConfiguration.SampleRate, _agentState.AgentConfiguration.BitsPerSample, _agentState.AgentConfiguration.AudioEncodingType);
+            var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(
+                _sessionLoggerFactory,
+                _agentState.TTSBusinessIntegrationData,
+                defaultTTSServiceInfo,
+                _masterSampleRate,
+                _masterBitsPerSample,
+                AudioEncodingTypeEnum.PCM
+            );
             if (!ttsServiceResult.Success || ttsServiceResult.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Failed to build TTS service with error: {ErrorMessage}", _agentState.AgentId, ttsServiceResult.Message);
@@ -182,6 +199,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogError("Agent {AgentId}: Failed to initialize TTS service with error: {ErrorMessage}", _agentState.AgentId, ttsServiceInitResult.Message);
                 throw new InvalidOperationException($"Failed to initialize TTS service: [{ttsServiceInitResult.Code}] {ttsServiceInitResult.Message}");
             }
+
+            var actualFormat = _agentState.TTSService.GetCurrentOutputFormat();
+
+            _masterSampleRate = actualFormat.SampleRateHz;
+            _masterBitsPerSample = actualFormat.BitsPerSample;
+            _masterChannels = 1; // remain staic one for now
+
+            _bytesPerSample = _masterBitsPerSample / 8;
+            _bytesPerChunk = _masterSampleRate * _bytesPerSample * _masterChannels * FrameDurationMs / 1000;
+            _firstBytesPerChunk = _masterSampleRate * _bytesPerSample * _masterChannels * InitialSegmentDurationMs / 1000;
 
             _logger.LogInformation("Agent {AgentId}: TTS service initialized/re-initialized.", _agentState.AgentId);
         }
@@ -244,9 +271,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             },
                             new AudioRequestDetails()
                             {
-                                RequestedEncoding = _agentState.AgentConfiguration.AudioEncodingType,
-                                RequestedBitsPerSample = _agentState.AgentConfiguration.BitsPerSample,
-                                RequestedSampleRateHz = _agentState.AgentConfiguration.SampleRate
+                                RequestedEncoding = AudioEncodingTypeEnum.PCM,
+                                RequestedBitsPerSample = _masterBitsPerSample,
+                                RequestedSampleRateHz = _masterSampleRate
                             },
                             false
                         );
@@ -275,7 +302,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
 
                 // Check alignment for the *converted* PCM data
-                if (rawPcmData.Length % BytesPerSample != 0)
+                if (rawPcmData.Length % _bytesPerSample != 0)
                 {
                     _logger.LogError("Agent {AgentId}: Converted background audio (ID: {FileId}) has invalid length ({Length} bytes). This should not happen after successful PCM conversion.",
                         _agentState.AgentId, audioUrl, rawPcmData.Length);
@@ -523,6 +550,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _playbackPausedAt = null;
 
             // Reset checks
+            _currentStreamingTurnId = null;
             _turnStreamingStartedAt = null;
             _totalAudioDurationSent = TimeSpan.Zero;
 
@@ -710,6 +738,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         continue;
                     }
 
+                    if (_currentStreamingTurnId != currentTurn.Id)
+                    {
+                        // New turn detected! Force a clock reset.
+                        _currentStreamingTurnId = currentTurn.Id;
+                        _turnStreamingStartedAt = null;
+                        _totalAudioDurationSent = TimeSpan.Zero;
+                        _logger.LogDebug("Agent {AgentId}: New turn detected {TurnId}. Resetting Virtual Clock.", _agentState.AgentId, currentTurn.Id);
+                    }
+
                     byte[]? chunkToSend = null;
 
                     // --- Process Current Speech Segment ---
@@ -719,7 +756,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         !_isPlaybackPaused
                     ) {
                         int remainingSpeechBytes = _currentSpeechSegmentAudio.Length - _currentSpeechSegmentAudioPosition;
-                        int speechChunkSize = Math.Min(BytesPerChunk, remainingSpeechBytes);
+                        int speechChunkSize = Math.Min(_bytesPerChunk, remainingSpeechBytes);
 
                         if (speechChunkSize > 0)
                         {
@@ -772,7 +809,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         _currentSpeechSegmentAudioPosition = 0;
 
                         // Immediately process the first chunk of the new segment
-                        int firstSpeechChunkSize = Math.Min(FirstBytesPerChunk, _currentSpeechSegmentAudio.Length);
+                        int firstSpeechChunkSize = Math.Min(_firstBytesPerChunk, _currentSpeechSegmentAudio.Length);
                         if (firstSpeechChunkSize > 0)
                         {
                             var speechChunk = _currentSpeechSegmentAudio.Slice(_currentSpeechSegmentAudioPosition, firstSpeechChunkSize);
@@ -799,7 +836,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     if (chunkToSend == null || chunkToSend.Length == 0) // Queue is empty and no current segment / or is paused
                     {
                         // Play background only (if enabled)
-                        var backgroundChunk = GetNextBackgroundChunk(_isFirstBackgroundAudioChunkWithoutSpeech ? FirstBytesPerChunk : BytesPerChunk);
+                        var backgroundChunk = GetNextBackgroundChunk(_isFirstBackgroundAudioChunkWithoutSpeech ? _firstBytesPerChunk : _bytesPerChunk);
                         if (!backgroundChunk.IsEmpty)
                         {
                             chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(ReadOnlyMemory<byte>.Empty, backgroundChunk);
@@ -826,11 +863,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         }
 
                         // B. Send the Audio (Fire & Forget to Socket)
-                        AudioChunkGenerated?.Invoke(this, new ConversationAudioGeneratedEventArgs(chunkToSend, _agentState.CurrentClientId));
+                        AudioChunkGenerated?.Invoke(this, new ConversationAudioGeneratedEventArgs(
+                            chunkToSend,
+                            _masterSampleRate,
+                            _masterBitsPerSample,
+                            _agentState.CurrentClientId
+                        ));
 
                         // C. Update Virtual Clock (How much audio duration have we sent?)
                         // Calculation: (Bytes / BytesPerSecond) = Seconds
-                        double chunkDurationSec = (double)chunkToSend.Length / (SampleRate * BytesPerSample * Channels);
+                        double chunkDurationSec = (double)chunkToSend.Length / (_masterSampleRate * _bytesPerSample * _masterChannels);
                         _totalAudioDurationSent = _totalAudioDurationSent.Add(TimeSpan.FromSeconds(chunkDurationSec));
 
                         // D. CALCULATE BUDGET
@@ -990,7 +1032,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             try
             {
-                return AudioConversationHelper.MixAudioChunks(AudioEncodingType, SampleRate, BitsPerSample, speechChunk, _agentState.CurrentAgentVolumeFactor, backgroundChunk, _agentState.BackgroundMusicVolume);
+                return AudioConversationHelper.MixAudioChunks(AudioEncodingTypeEnum.PCM, _masterSampleRate, _masterBitsPerSample, speechChunk, _agentState.CurrentAgentVolumeFactor, backgroundChunk, _agentState.BackgroundMusicVolume);
 
             }
             catch (Exception ex)

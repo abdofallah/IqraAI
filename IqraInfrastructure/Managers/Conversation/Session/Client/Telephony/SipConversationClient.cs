@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Helper.Telephony;
 using Microsoft.Extensions.Logging;
 using SIPSorcery.Media;
 using SIPSorcery.Net;
@@ -19,11 +20,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         public SipConversationClient(
             string clientId,
+            ConversationWebClientConfiguration clientConfig,
             string ourSipUri,
             string customerSipUri,
             SIPUserAgent userAgent,
             ILogger<SipConversationClient> logger
-            ) : base(clientId, ourSipUri, ourSipUri, customerSipUri, null, logger) // Transport is null initially.
+            ) : base(clientId, clientConfig, ourSipUri, ourSipUri, customerSipUri, null, logger) // Transport is null initially.
         {
             _userAgent = userAgent;
             ClientTelephonyProviderType = TelephonyProviderEnum.SIPTrunking;

@@ -15,7 +15,8 @@ namespace IqraCore.Entities.WebSession
         public string WebCampaignId { get; set; } = string.Empty;
         public string RegionId { get; set; } = string.Empty;
         public string ClientIdentifier { get; set; } = string.Empty;
-        public WebSessionAudioConfigurationData AudioConfiguration { get; set; } = new WebSessionAudioConfigurationData();
+        public WebSessionAudioInputConfigurationData AudioInputConfiguration { get; set; } = new WebSessionAudioInputConfigurationData();
+        public WebSessionAudioOutputConfigurationData AudioOutputConfiguration { get; set; } = new WebSessionAudioOutputConfigurationData();
         public Dictionary<string, string> DynamicVariables { get; set; } = new Dictionary<string, string>();
         public Dictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
 
@@ -52,10 +53,22 @@ namespace IqraCore.Entities.WebSession
         Error = 2
     }
 
-    public class WebSessionAudioConfigurationData
+    public class WebSessionAudioInputConfigurationData
     {
         public int SampleRate { get; set; } = 16000;
         public int BitsPerSample { get; set; } = 8;
         public AudioEncodingTypeEnum AudioEncodingType { get; set; } = AudioEncodingTypeEnum.PCM;
+        public AudioEncoderFallbackOptimizationMode AudioEncodingFallbackMode { get; set; } = AudioEncoderFallbackOptimizationMode.Performance;
+    }
+
+    public class WebSessionAudioOutputConfigurationData
+    {
+        public int SampleRate { get; set; } = 16000;
+        public int BitsPerSample { get; set; } = 8;
+        public AudioEncodingTypeEnum AudioEncodingType { get; set; } = AudioEncodingTypeEnum.PCM;
+        public AudioEncoderFallbackOptimizationMode AudioEncodingFallbackMode { get; set; } = AudioEncoderFallbackOptimizationMode.Performance;
+        public int FrameDurationMs { get; set; } = 60;
+        public int MaxBufferAheadMs { get; set; } = 150;
+        public int InitialSegmentDurationMs { get; set; } = 300;
     }
 }

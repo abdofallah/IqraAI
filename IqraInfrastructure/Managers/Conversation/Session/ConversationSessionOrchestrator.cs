@@ -1216,7 +1216,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 var targetClient = GetClients().FirstOrDefault(c => c.ClientId == e.TargetClientId);
                 if (targetClient != null)
                 {
-                    _ = targetClient.SendAudioAsync(e.AudioData, CancellationToken.None);
+                    _ = targetClient.ProcessDownstreamAudioAsync(e.AudioData, e.MasterSampleRate, e.MasterBitsPerSample);
                 }
                 else
                 {
@@ -1230,7 +1230,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             {
                 try
                 {
-                    _ = client.SendAudioAsync(e.AudioData, CancellationToken.None);
+                    _ = client.ProcessDownstreamAudioAsync(e.AudioData, e.MasterSampleRate, e.MasterBitsPerSample);
                 }
                 catch (Exception ex)
                 {

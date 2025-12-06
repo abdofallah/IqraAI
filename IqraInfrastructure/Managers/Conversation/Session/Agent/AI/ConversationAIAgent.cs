@@ -575,7 +575,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 await _llmHandler.ReInitializeForLanguageAsync();
                 await _sttHandler.ReInitializeForLanguageAsync();
-                await _audioOutputHandler.ReInitializeForLanguageAsync();
+                await _audioOutputHandler.ReInitializeTTSAndBackgroundAudio();
                 await _toolExecutor.ReInitializeForLanguageAsync();
             }
             catch (Exception ex)
