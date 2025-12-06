@@ -3,9 +3,12 @@ using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Interfaces.Audio;
+using IqraCore.Interfaces.Audio.Decoders;
 using IqraCore.Interfaces.Conversation;
+using IqraInfrastructure.Managers.Audio.Decoders;
 using IqraInfrastructure.Managers.Audio.Encoders;
 using Microsoft.Extensions.Logging;
+using Org.BouncyCastle.Asn1.Pkcs;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Client
 {
@@ -20,6 +23,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         public abstract ConversationClientType ClientType { get; }
 
         protected IAudioStreamEncoder? _audioEncoder;
+        protected IAudioStreamDecoder? _audioDecoder;
 
         public event EventHandler<ConversationAudioReceivedEventArgs> AudioReceived;
         public event EventHandler<ConversationTextReceivedEventArgs> TextReceived;
@@ -37,6 +41,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             Transport.Disconnected += OnTransportDisconnected;
 
             InitializeEncoder();
+            InitializeDecoder();
         }
 
         private void InitializeEncoder()
@@ -53,6 +58,23 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Client {ClientId}: Failed to initialize audio encoder for format {Format}", ClientId, ClientConfig.AudioEncodingType);
+                // We don't throw here to allow the client to exist, but audio sending might fail later.
+            }
+        }
+
+        private void InitializeDecoder()
+        {
+            try
+            {
+                _audioDecoder = AudioDecoderFactory.CreateDecoder(
+                    ClientConfig.AudioEncodingType,
+                    ClientConfig.SampleRate,
+                    ClientConfig.BitsPerSample
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Client {ClientId}: Failed to initialize audio decoder for format {Format}", ClientId, ClientConfig.AudioEncodingType);
                 // We don't throw here to allow the client to exist, but audio sending might fail later.
             }
         }
@@ -117,7 +139,36 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         }
 
         // Protected event invokers for subclasses to raise the public-facing events
-        protected void RaiseAudioReceived(byte[] audioData) => AudioReceived?.Invoke(this, new(audioData));
+        protected void RaiseAudioReceived(byte[] audioData)
+        {
+            if (audioData.Length == 0) return;
+
+            byte[] decodedData;
+            if (ClientConfig.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
+                ClientConfig.SampleRate == 16000 &&
+                ClientConfig.BitsPerSample == 32)
+            {
+                decodedData = audioData;
+            }
+            else
+            {
+                if (_audioDecoder != null)
+                {
+                    decodedData = _audioDecoder.Decode(audioData);
+                }
+                else
+                {
+                    // Fallback if decoder failed to init (send raw or drop? dropping safest to avoid ear blasting)
+                    _logger.LogWarning("Client {ClientId}: Decoder not initialized, dropping audio frame.", ClientId);
+                    return;
+                }
+            }
+
+            if (decodedData.Length > 0)
+            {
+                AudioReceived?.Invoke(this, new(decodedData));
+            }
+        }
         protected void RaiseTextReceived(string text) => TextReceived?.Invoke(this, new(text));
 
         public virtual void Dispose()

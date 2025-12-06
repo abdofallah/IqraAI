@@ -2,6 +2,7 @@
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Agent;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.Business;
@@ -155,9 +156,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogDebug("Configuring SmartTurnService for ML Turn End detection.");
                 _mlTurnService = new SmartTurnService(
                     _loggerFactory.CreateLogger<SmartTurnService>(),
-                    _agentState.AgentConfiguration.AudioEncodingType,
-                    _agentState.AgentConfiguration.SampleRate,
-                    _agentState.AgentConfiguration.BitsPerSample
+                    // hardcoded values for now
+                    AudioEncodingTypeEnum.PCM,
+                    16000,
+                    32
                 );
                 _mlTurnService.TurnEnded += async () => { await OnMlTurnEnded(); };
 

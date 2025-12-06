@@ -11,6 +11,7 @@ namespace IqraCore.Interfaces.Conversation
         ConversationClientType ClientType { get; }
 
         Task ProcessDownstreamAudioAsync(ReadOnlyMemory<byte> masterAudioData, int masterSampleRate, int masterBitsPerSample);
+
         Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken);
         Task SendTextAsync(string text, CancellationToken cancellationToken);
         Task DisconnectAsync(string reason);

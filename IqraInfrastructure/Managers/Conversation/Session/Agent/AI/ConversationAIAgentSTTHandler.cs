@@ -1,5 +1,6 @@
-﻿using IqraInfrastructure.Managers.STT;
+﻿using IqraCore.Entities.Helper.Audio;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.STT;
 using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
@@ -49,9 +50,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var sttServiceResult = await _sttProviderManager.BuildProviderServiceByIntegration(
                 _agentState.STTBusinessIntegrationData,
                 defaultSTTService,
-                _agentState.AgentConfiguration.SampleRate,
-                _agentState.AgentConfiguration.BitsPerSample,
-                _agentState.AgentConfiguration.AudioEncodingType
+                // hardcoded values for now
+                16000,
+                32,
+                AudioEncodingTypeEnum.PCM
             );
 
             if (!sttServiceResult.Success || sttServiceResult.Data == null)

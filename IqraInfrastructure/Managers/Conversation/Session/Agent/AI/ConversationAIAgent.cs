@@ -5,6 +5,7 @@ using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Conversation.Turn;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Managers.Business;
@@ -250,11 +251,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // Silero Vad
                 var vadOptions = new VadOptions
                 {
-                    AudioEncodingType = _agentState.AgentConfiguration.AudioEncodingType,
-                    SampleRate = _agentState.AgentConfiguration.SampleRate,
-                    BitsPerSample = _agentState.AgentConfiguration.BitsPerSample
+                    // hardcoded values for now
+                    AudioEncodingType = AudioEncodingTypeEnum.PCM,
+                    SampleRate = 16000,
+                    BitsPerSample = 32
                 };
-                _agentState.SileroVadCore = new SileroVadCore(_sessionLoggerFactory.CreateLogger<SileroVadCore>(), vadOptions, _conversationCTS.Token);
+                _agentState.SileroVadCore = new SileroVadCore(
+                    _sessionLoggerFactory.CreateLogger<SileroVadCore>(),
+                    vadOptions,
+                    _conversationCTS.Token
+                );
 
                 // Initialize Modules
                 await _llmHandler.InitializeAsync();

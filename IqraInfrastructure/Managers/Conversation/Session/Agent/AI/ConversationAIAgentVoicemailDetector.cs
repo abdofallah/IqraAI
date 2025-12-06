@@ -117,9 +117,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var sttServiceResult = await _sttProviderManager.BuildProviderServiceByIntegration(
                 _agentState.STTBusinessIntegrationData,
                 _voicemailSettings.TranscribeVoiceMessageSTT,
-                _agentState.AgentConfiguration.SampleRate,
-                _agentState.AgentConfiguration.BitsPerSample,
-                _agentState.AgentConfiguration.AudioEncodingType
+                // hardcoded values for now
+                32,
+                16000,
+                AudioEncodingTypeEnum.PCM
             );
 
             if (!sttServiceResult.Success || sttServiceResult.Data == null)
@@ -184,9 +185,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 audioData,
                 new TTSProviderAvailableAudioFormat()
                 {
-                    Encoding = _agentState.AgentConfiguration.AudioEncodingType,
-                    SampleRateHz = _agentState.AgentConfiguration.SampleRate,
-                    BitsPerSample = _agentState.AgentConfiguration.BitsPerSample
+                    Encoding = AudioEncodingTypeEnum.PCM,
+                    SampleRateHz = 16000,
+                    BitsPerSample = 32
                 }
             );
 
