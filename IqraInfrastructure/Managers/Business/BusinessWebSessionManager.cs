@@ -137,7 +137,26 @@ namespace IqraInfrastructure.Managers.Business
                         "Client Identifier not found in config data."
                     );
                 }
-                newWebSessionData.ClientIdentifier = modelData.ClientIdentifier;
+                else
+                {
+                    if (modelData.ClientIdentifier.Length > 256)
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_CLIENT_IDENTIFIER_TOO_LONG",
+                            "Client Identifier is too long. Max length: 256."
+                        );
+                    }
+
+                    if (modelData.ClientIdentifier.Contains("/") || modelData.ClientIdentifier.Contains("\\"))
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_CLIENT_IDENTIFIER_INVALID",
+                            "Client Identifier contains invalid characters. '/' and '\\' are not allowed."
+                        );
+                    }
+
+                    newWebSessionData.ClientIdentifier = modelData.ClientIdentifier;
+                }
 
                 // Audio Configuration
                 if (modelData.AudioConfiguration == null)

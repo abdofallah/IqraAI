@@ -128,9 +128,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             AudioEncodingType = _agentState.AgentConfiguration.AudioEncodingType;
 
             BytesPerSample = BitsPerSample / 8;
+
+            // todo introduce this config into audio configuration for web session to manually define them,
+            // for twilio and etc we can calculate manually based on our server vs telephony server
             FrameDurationMs = 60;
             MaxBufferAheadMs = 150;
             InitialSegmentDurationMs = 300;
+
             BytesPerChunk = SampleRate * BytesPerSample * Channels * FrameDurationMs / 1000;
             FirstBytesPerChunk = SampleRate * BytesPerSample * Channels * InitialSegmentDurationMs / 1000;
 
