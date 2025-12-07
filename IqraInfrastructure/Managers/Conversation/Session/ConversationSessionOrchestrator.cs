@@ -79,6 +79,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private CancellationTokenSource _sessionCts;
         private bool disposedValue;
 
+        // -- Client Audio State --
+        private int _masterSampleRate;
+        private int _masterBitsPerSample;
+        private AudioEncodingTypeEnum _masterAudioEncodingType;
+
+        // -- Events --
         public event EventHandler<ConversationSessionStateChangedEventArgs>? StateChanged;
         public event EventHandler<ConversationDTMFReceivedEventArgs>? DTMFRecieved;
         public event EventHandler<ConversationClientAddedEventArgs>? ClientAdded;

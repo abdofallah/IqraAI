@@ -203,6 +203,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return _serviceConfig;
         }
 
+        public TTSProviderAvailableAudioFormat GetCurrentOutputFormat()
+        {
+            return _optimalElevenLabsFormat;
+        }
+
         public static InterfaceTTSProviderEnum GetProviderTypeStatic()
         {
             return InterfaceTTSProviderEnum.ElevenLabsTextToSpeech;
@@ -214,30 +219,17 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         static ElevenLabsTTSService()
         {
-            // Define all formats ElevenLabs can produce that we care about.
             var supportedFormats = new List<TTSProviderAvailableAudioFormat>
             {
-                // PCM (Assuming 16-bit depth as is standard)
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 8000, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 22050, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 24000, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 44100, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 48000, BitsPerSample = 16 },
-
-                // MULAW / ULAW (Inherently 8-bit)
-                new() { Encoding = AudioEncodingTypeEnum.MULAW, SampleRateHz = 8000, BitsPerSample = 8 },
-
-                // ALAW (Inherently 8-bit)
-                new() { Encoding = AudioEncodingTypeEnum.ALAW, SampleRateHz = 8000, BitsPerSample = 8 },
-
-                // OPUS (48kHz, 16-bit)
-                new() { Encoding = AudioEncodingTypeEnum.OPUS, SampleRateHz = 48000, BitsPerSample = 16 },
             };
             ElevenLabsSupportedFormats = supportedFormats.AsReadOnly();
 
-            // Create the mapping from our format definition to the ElevenLabs SDK enum.
-            // We only map one Opus format for simplicity, as they all represent the same encoding type for conversion purposes.
             var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat>
             {
                 { (AudioEncodingTypeEnum.PCM, 8000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm8000 },
@@ -246,9 +238,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 { (AudioEncodingTypeEnum.PCM, 24000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm24000 },
                 { (AudioEncodingTypeEnum.PCM, 44100, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm44100 },
                 { (AudioEncodingTypeEnum.PCM, 48000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm48000 },
-                { (AudioEncodingTypeEnum.MULAW, 8000, 8), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Ulaw8000 },
-                { (AudioEncodingTypeEnum.ALAW, 8000, 8), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Alaw8000 },
-                { (AudioEncodingTypeEnum.OPUS, 48000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Opus48000128 },
             };
             FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat>(formatMap);
         }

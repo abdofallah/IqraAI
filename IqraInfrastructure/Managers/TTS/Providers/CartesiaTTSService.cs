@@ -1,31 +1,42 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using ElevenLabs;
+using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.Cartesia;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
+using IqraInfrastructure.Helpers.Audio;
+using IqraInfrastructure.Managers.TTS.Helpers;
+using Microsoft.Extensions.Logging;
+using System.Collections.ObjectModel;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
-    public class CartesiaTTSService : ITTSService, IDisposable
+    public class CartesiaTTSService : ITTSService
     {
         private static readonly HttpClient _httpClient = new();
-
+        private readonly ILogger<CartesiaTTSService> _logger;
         private readonly string _apiKey;
-
-        private readonly string _cartesiaVersion = "2025-04-16";
-        private const string BaseUrl = "https://api.cartesia.ai";
-
-        // Hard coded by the api, these values are not configurable
-        private const int BytesPerSample = 2;
-        private const int Channels = 1;
-
         private readonly CartesiaConfig _serviceConfig;
 
-        public CartesiaTTSService(string apiKey, CartesiaConfig config)
+        // Constants
+        private const string BaseUrl = "https://api.cartesia.ai";
+        private const string CartesiaVersion = "2025-04-16";
+
+        // State
+        private AudioRequestDetails _finalUserRequest;
+        private TTSProviderAvailableAudioFormat _optimalCartesiaFormat;
+        private CartesiaOutputFormatDefinition _selectedApiFormat;
+        private bool _audioConversationNeeded = false;
+
+        public CartesiaTTSService(ILogger<CartesiaTTSService> logger, string apiKey, CartesiaConfig config)
         {
+            _logger = logger;
             _apiKey = apiKey;
             _serviceConfig = config;
         }
@@ -34,133 +45,187 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             var result = new FunctionReturnResult();
 
-            return result.SetSuccessResult();
-
-            // HttpClient is static, but we can configure default headers once if needed,
-            // though it's safer to add them per request if API key can change.
-            // For this Saas model where key is per instance, adding per request is better.
-        }
-
-        public async Task<FunctionReturnResult> CheckAccount()
-        {
-            var result = new FunctionReturnResult();
-
             try
             {
+                // Prepare Request Details
+                _finalUserRequest = new AudioRequestDetails
+                {
+                    RequestedEncoding = _serviceConfig.TargetEncodingType,
+                    RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
+                    RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
+                };
+
+                // Select Optimal Format using the Fallback Selector
+                var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, CartesiaSupportedFormats);
+                _optimalCartesiaFormat = bestFallbackOrder.FirstOrDefault();
+
+                if (_optimalCartesiaFormat == null)
+                {
+                    return result.SetFailureResult(
+                        "Initialize:FORMAT_NOT_SUPPORTED",
+                        $"Cartesia TTS does not support a format compatible with: {_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz"
+                    );
+                }
+
+                // Map to Cartesia API Structure
+                var formatKey = (_optimalCartesiaFormat.Encoding, _optimalCartesiaFormat.SampleRateHz, _optimalCartesiaFormat.BitsPerSample);
+                if (!FormatMap.TryGetValue(formatKey, out _selectedApiFormat))
+                {
+                    throw new InvalidOperationException($"Internal error: No API mapping found for selected format: {formatKey}");
+                }
+
+                // Determine if Post-Processing is needed
+                _audioConversationNeeded = _optimalCartesiaFormat.Encoding != _finalUserRequest.RequestedEncoding ||
+                                           _optimalCartesiaFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
+                                           _optimalCartesiaFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
+
+                // Account Check (Dry Run or lightweight check could go here, strictly strictly optional as per docs)
+                // Since Cartesia doesn't have a specific "Check" endpoint, we assume initialization is successful if logic passes.
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult(
-                    $"CheckAccount:EXCEPTION",
-                    $"Internal server error occured: {ex.Message}"
-                );
+                _logger.LogError(ex, "Failed to initialize Cartesia TTS Service.");
+                return result.SetFailureResult("Initialize:EXCEPTION", ex.Message);
             }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            if (string.IsNullOrEmpty(text))
+            if (string.IsNullOrWhiteSpace(text))
             {
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
-
-            var requestPayload = new CartesiaTtsBytesRequest
-            {
-                ModelId = _serviceConfig.ModelId,
-                Transcript = text,
-                Voice = new CartesiaVoiceRequest { Id = _serviceConfig.VoiceId },
-                OutputFormat = new CartesiaOutputFormatRequest
-                {
-                    SampleRate = _serviceConfig.TargetSampleRate,
-                    Encoding = "pcm_s16le",
-                    BitRate = (_serviceConfig.TargetSampleRate * (BytesPerSample * 8))
-                },
-                Language = _serviceConfig.LanguageCode,
-                PronunciationDictIds = _serviceConfig.PronunciationDictIds.ToArray()
-            };
-
-            string jsonPayload = JsonSerializer.Serialize(requestPayload);
-            var requestUri = $"{BaseUrl}/tts/bytes";
-
-            using var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/*"));
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            request.Headers.Add("Cartesia-Version", _cartesiaVersion);
-            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             try
             {
+                // 1. Build Payload
+                var requestPayload = new
+                {
+                    model_id = _serviceConfig.ModelId,
+                    transcript = text,
+                    voice = new { mode = "id", id = _serviceConfig.VoiceId },
+                    output_format = new
+                    {
+                        container = _selectedApiFormat.Container,
+                        encoding = _selectedApiFormat.Encoding,
+                        sample_rate = _selectedApiFormat.SampleRate
+                    },
+                    language = _serviceConfig.LanguageCode,
+                    pronunciation_dict_ids = _serviceConfig.PronunciationDictIds?.Count > 0 ? _serviceConfig.PronunciationDictIds : null,
+
+                    // Sonic-3 specific generation config
+                    generation_config = new
+                    {
+                        volume = _serviceConfig.Volume ?? 1.0,
+                        speed = _serviceConfig.Speed ?? 1.0,
+                        emotion = !string.IsNullOrEmpty(_serviceConfig.Emotion) ? _serviceConfig.Emotion : null
+                    }
+                };
+
+                // 2. Prepare Request
+                var jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/tts/bytes");
+
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+                request.Headers.Add("Cartesia-Version", CartesiaVersion);
+                request.Headers.Add("X-API-Key", _apiKey); // Docs mention both, using header is safer
+                request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                // 3. Execute
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
 
-                if (response.IsSuccessStatusCode)
+                if (!response.IsSuccessStatusCode)
                 {
-                    byte[] audioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-
-                    double durationSeconds = (double)audioData.Length / (_serviceConfig.TargetSampleRate * BytesPerSample * Channels);
-                    TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
-                    return (audioData, duration);
-                }
-                else
-                {
-                    // Log error response
-                    string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                    // todo logging
-                    //Console.WriteLine($"Cartesia API Error ({response.StatusCode}): {errorContent}");
+                    var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogError("Cartesia API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
+
+                // 4. Process Audio
+                byte[] sourceAudioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+
+                // 5. Calculate Duration
+                // Since we know exactly what we asked for (_optimalCartesiaFormat), we can calculate/parse it.
+                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalCartesiaFormat);
+
+                // 6. Convert if needed
+                if (_audioConversationNeeded)
+                {
+                    var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalCartesiaFormat, _finalUserRequest, false);
+                    return (convertedData, duration);
+                }
+
+                return (sourceAudioData, duration);
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex)
             {
-                // todo logging
-                //Console.WriteLine($"Cartesia HTTP Request Error: {ex.Message}");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (TaskCanceledException ex) when (ex.CancellationToken == cancellationToken)
-            {
-                // todo logging
-                //Console.WriteLine("Cartesia TTS synthesis was cancelled.");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (Exception ex) // Catch broader exceptions
-            {
-                // todo logging
-                //Console.WriteLine($"Cartesia TTS Error: {ex.Message}");
+                _logger.LogError(ex, "Error synthesizing text with Cartesia.");
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
         }
 
         public Task StopTextSynthesisAsync()
         {
-            // Cancellation is handled via the CancellationToken passed to SynthesizeTextAsync
+            // Stateless HTTP requests are cancelled via CancellationToken in SynthesizeTextAsync
             return Task.CompletedTask;
         }
 
-        public string GetProviderFullName()
-        {
-            return "CartesiaTextToSpeech";
-        }
+        public string GetProviderFullName() => "CartesiaTextToSpeech";
+        public InterfaceTTSProviderEnum GetProviderType() => GetProviderTypeStatic();
+        public static InterfaceTTSProviderEnum GetProviderTypeStatic() => InterfaceTTSProviderEnum.CartesiaTextToSpeech;
 
-        public InterfaceTTSProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
+        public ITTSConfig GetCacheableConfig() => _serviceConfig;
 
-        public static InterfaceTTSProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceTTSProviderEnum.CartesiaTextToSpeech;
-        }
+        public TTSProviderAvailableAudioFormat GetCurrentOutputFormat() => _optimalCartesiaFormat;
 
-        public ITTSConfig GetCacheableConfig()
-        {
-            return _serviceConfig;
-        }
+        // =================================================================================================
+        // STATIC DATA & MAPPINGS
+        // =================================================================================================
 
-        public void Dispose()
+        private record CartesiaOutputFormatDefinition(string Container, string Encoding, int SampleRate);
+
+        private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> CartesiaSupportedFormats;
+        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), CartesiaOutputFormatDefinition> FormatMap;
+
+        static CartesiaTTSService()
         {
-            // If we were managing HttpClient instance per service, dispose it here.
-            // Since we're using a static one, there's nothing instance-specific to dispose.
-            GC.SuppressFinalize(this);
+            var supportedFormats = new List<TTSProviderAvailableAudioFormat>
+            {
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 8000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 22050, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 24000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 44100, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 48000, BitsPerSample = 16 },
+
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 8000, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 22050, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 24000, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 44100, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 48000, BitsPerSample = 32 },
+            };
+            CartesiaSupportedFormats = supportedFormats.AsReadOnly();
+
+            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), CartesiaOutputFormatDefinition>
+            {
+                { (AudioEncodingTypeEnum.PCM, 8000, 16), new("raw", "pcm_s16le", 8000) },
+                { (AudioEncodingTypeEnum.PCM, 16000, 16), new("raw", "pcm_s16le", 16000) },
+                { (AudioEncodingTypeEnum.PCM, 22050, 16), new("raw", "pcm_s16le", 22050) },
+                { (AudioEncodingTypeEnum.PCM, 24000, 16), new("raw", "pcm_s16le", 24000) },
+                { (AudioEncodingTypeEnum.PCM, 44100, 16), new("raw", "pcm_s16le", 44100) },
+                { (AudioEncodingTypeEnum.PCM, 48000, 16), new("raw", "pcm_s16le", 48000) },
+
+                { (AudioEncodingTypeEnum.PCM, 8000, 32), new("raw", "pcm_f32le", 8000) },
+                { (AudioEncodingTypeEnum.PCM, 16000, 32), new("raw", "pcm_f32le", 16000) },
+                { (AudioEncodingTypeEnum.PCM, 22050, 32), new("raw", "pcm_f32le", 22050) },
+                { (AudioEncodingTypeEnum.PCM, 24000, 32), new("raw", "pcm_f32le", 24000) },
+                { (AudioEncodingTypeEnum.PCM, 44100, 32), new("raw", "pcm_f32le", 44100) },
+                { (AudioEncodingTypeEnum.PCM, 48000, 32), new("raw", "pcm_f32le", 48000) },
+            };
+            FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), CartesiaOutputFormatDefinition>(formatMap);
         }
     }
 }

@@ -7,6 +7,7 @@ using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.TTS.Helpers;
+using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.Net.Http.Headers;
 using System.Text;
@@ -20,18 +21,20 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private static readonly HttpClient _httpClient = new();
         private static readonly JsonSerializerOptions _jsonSerializerOptions = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
+        private readonly ILogger<HamsaAITTSService> _logger;
         private readonly string _apiKey;
         private const string ApiUrl = "https://api.tryhamsa.com/v1/realtime/tts";
         private readonly HamsaAiConfig _serviceConfig;
 
+        // State
         private AudioRequestDetails _finalUserRequest;
+        private HamsaAIOutputFormatDefinition _selectedApiFormat;
         private TTSProviderAvailableAudioFormat _optimalHamsaFormat;
         private bool _audioConversationNeeded = false;
 
-        private bool _requestMuLaw = false;
-
-        public HamsaAITTSService(string apiKey, HamsaAiConfig config)
+        public HamsaAITTSService(ILogger<HamsaAITTSService> logger, string apiKey, HamsaAiConfig config)
         {
+            _logger = logger;
             _apiKey = apiKey;
             _serviceConfig = config;
         }
@@ -40,59 +43,67 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             var result = new FunctionReturnResult();
 
-            // 1. Define what the user ultimately wants.
-            _finalUserRequest = new AudioRequestDetails
-            {
-                RequestedEncoding = _serviceConfig.TargetEncodingType,
-                RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
-                RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
-            };
-
-            // 2. Use the selector to find the best format Hamsa can provide.
-            var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, HamsaSupportedFormats);
-            _optimalHamsaFormat = bestFallbackOrder.FirstOrDefault() ?? throw new NotSupportedException(
-                "Hamsa AI TTS does not support any format that can be reasonably converted to the requested format.");
-
-            // 3. Find the corresponding API parameter for the chosen optimal format.
-            var formatKey = (_optimalHamsaFormat.Encoding, _optimalHamsaFormat.SampleRateHz, _optimalHamsaFormat.BitsPerSample);
-            if (!FormatToRequestParamMap.TryGetValue(formatKey, out _requestMuLaw)) // Set the class-level field
-            {
-                throw new InvalidOperationException($"Internal error: No mapping found for the selected optimal Hamsa format: {formatKey}");
-            }
-
-            // 4. Determine if a final conversion step will be needed after synthesis.
-            _audioConversationNeeded = _optimalHamsaFormat.Encoding != _finalUserRequest.RequestedEncoding ||
-                                    _optimalHamsaFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
-                                    _optimalHamsaFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
-
-            return result.SetSuccessResult();
-        }
-
-        public async Task<FunctionReturnResult> CheckAccount()
-        {
-            var result = new FunctionReturnResult();
-
             try
             {
+                _finalUserRequest = new AudioRequestDetails
+                {
+                    RequestedEncoding = _serviceConfig.TargetEncodingType,
+                    RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
+                    RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
+                };
+
+                var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, HamsaSupportedFormats);
+                _optimalHamsaFormat = bestFallbackOrder.FirstOrDefault();
+
+                if (_optimalHamsaFormat == null)
+                {
+                    return result.SetFailureResult(
+                        "Initialize:FORMAT_NOT_SUPPORTED",
+                        $"Hamsa AI TTS does not support a format compatible with: {_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz"
+                    );
+                }
+
+                var formatKey = (_optimalHamsaFormat.Encoding, _optimalHamsaFormat.SampleRateHz, _optimalHamsaFormat.BitsPerSample);
+                if (!FormatToRequestParamMap.TryGetValue(formatKey, out _selectedApiFormat))
+                {
+                    throw new InvalidOperationException($"Internal error: No mapping found for selected format: {formatKey}");
+                }
+
+                _audioConversationNeeded = _optimalHamsaFormat.Encoding != _finalUserRequest.RequestedEncoding ||
+                                           _optimalHamsaFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
+                                           _optimalHamsaFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
+
+                var accountCheck = await CheckAccount();
+                if (!accountCheck.Success)
+                {
+                    return result.SetFailureResult(accountCheck.Code, accountCheck.Message);
+                }
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult(
-                    $"CheckAccount:EXCEPTION",
-                    $"Internal server error occured: {ex.Message}"
-                );
+                return result.SetFailureResult("Initialize:EXCEPTION", $"Hamsa init error: {ex.Message}");
             }
+        }
+
+        public async Task<FunctionReturnResult> CheckAccount()
+        {
+            // Hamsa does not currently expose an endpoint to check balance/auth.
+            // We assume valid configuration until the first synthesis fails (401/403).
+            return await Task.FromResult(new FunctionReturnResult().SetSuccessResult());
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
+            if (string.IsNullOrWhiteSpace(text)) return (Array.Empty<byte>(), TimeSpan.Zero);
+
             var requestPayload = new HamsaTtsApiRequest
             {
                 Text = text,
                 Speaker = _serviceConfig.Speaker,
                 Dialect = _serviceConfig.Dialect,
-                MuLaw = _requestMuLaw
+                MuLaw = false
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, _jsonSerializerOptions);
@@ -108,91 +119,62 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 if (!response.IsSuccessStatusCode)
                 {
                     var responseError = await response.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogError("Hamsa API Error {Code}: {Error}", response.StatusCode, responseError);
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
                 byte[] sourceAudioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-                (byte[], TimeSpan) finalAudioData = (sourceAudioData, AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalHamsaFormat));
 
+                
                 if (_audioConversationNeeded)
                 {
-                    finalAudioData = AudioConversationHelper.Convert(sourceAudioData, _optimalHamsaFormat, _finalUserRequest);
+                    var (convertedData, convertedDuration) = AudioConversationHelper.Convert(sourceAudioData, _optimalHamsaFormat, _finalUserRequest, false);
+                    return (convertedData, convertedDuration);
                 }
 
-                return finalAudioData;
+                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalHamsaFormat);
+                return (sourceAudioData, duration);
             }
-            catch (HttpRequestException)
+            catch (Exception ex)
             {
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (JsonException)
-            {
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (TaskCanceledException ex) when (ex.CancellationToken == cancellationToken)
-            {
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (Exception)
-            {
+                _logger.LogError(ex, "Hamsa Synthesis Error");
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
         }
 
-        public Task StopTextSynthesisAsync()
-        {
-            return Task.CompletedTask;
-        }
+        public Task StopTextSynthesisAsync() => Task.CompletedTask;
 
-        public string GetProviderFullName()
-        {
-            return "HamsaAITextToSpeech";
-        }
+        public string GetProviderFullName() => "HamsaAITextToSpeech";
+        public InterfaceTTSProviderEnum GetProviderType() => GetProviderTypeStatic();
+        public static InterfaceTTSProviderEnum GetProviderTypeStatic() => InterfaceTTSProviderEnum.HamsaAITextToSpeech;
+        public ITTSConfig GetCacheableConfig() => _serviceConfig;
 
-        public InterfaceTTSProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
+        public TTSProviderAvailableAudioFormat GetCurrentOutputFormat() => _optimalHamsaFormat;
 
-        public static InterfaceTTSProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceTTSProviderEnum.HamsaAITextToSpeech;
-        }
+        public void Dispose() => GC.SuppressFinalize(this);
 
-        public ITTSConfig GetCacheableConfig()
-        {
-            return _serviceConfig;
-        }
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
-        }
+        // =================================================================================================
+        // STATIC DATA & MAPPINGS
+        // =================================================================================================
 
-        // STATIC
+        private record HamsaAIOutputFormatDefinition(AudioEncodingTypeEnum encoding, int SampleRateHz, int BitsPerSample);
+
         private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> HamsaSupportedFormats;
-        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), bool> FormatToRequestParamMap;
+        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), HamsaAIOutputFormatDefinition> FormatToRequestParamMap;
 
         static HamsaAITTSService()
         {
-            // Hamsa has a very simple capability set: one PCM format and one MULAW format.
             var supportedFormats = new List<TTSProviderAvailableAudioFormat>
             {
-                // This is what Hamsa provides when `MuLaw = false`
-                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 16000, BitsPerSample = 16 },
-
-                // This is what Hamsa provides when `MuLaw = true`
-                new() { Encoding = AudioEncodingTypeEnum.MULAW, SampleRateHz = 8000, BitsPerSample = 8 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 16000, BitsPerSample = 16 }
             };
             HamsaSupportedFormats = supportedFormats.AsReadOnly();
 
-            // Create a simple mapping from our format definition to the boolean API parameter.
-            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), bool>
+            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), HamsaAIOutputFormatDefinition>
             {
-                // Key: Our format definition, Value: The value for the `MuLaw` parameter
-                { (AudioEncodingTypeEnum.WAV, 16000, 16), false },
-                { (AudioEncodingTypeEnum.MULAW, 8000, 8), true },
+                { (AudioEncodingTypeEnum.WAV, 16000, 16), new(AudioEncodingTypeEnum.WAV, 16000, 16) },
             };
-            FormatToRequestParamMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), bool>(formatMap);
+            FormatToRequestParamMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), HamsaAIOutputFormatDefinition>(formatMap);
         }
     }
 }

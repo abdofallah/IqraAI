@@ -13,5 +13,9 @@ namespace IqraCore.Entities.TTS.Providers.Cartesia
         public int TargetSampleRate { get; set; }
         public int TargetBitsPerSample { get; set; }
         public AudioEncodingTypeEnum TargetEncodingType { get; set; }
+
+        public double? Volume { get; set; }
+        public double? Speed { get; set; }
+        public string? Emotion { get; set; }
     }
 }
