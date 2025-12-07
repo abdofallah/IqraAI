@@ -763,10 +763,25 @@ namespace IqraInfrastructure.Managers.Call.Backend
             var clientConfig = new ConversationTelephonyClientConfiguration()
             {
                 QueueData = queueData,
-                BitsPerSample = sessionBitPerSample,
-                Channels = sessionChannels,
-                SampleRate = sessionSampleRate,
-                AudioEncodingType = sessionAudioEncodingType
+                AudioInputConfiguration = new ConversationClientAudioInputConfiguration()
+                {
+                    AudioEncodingType = sessionAudioEncodingType,
+                    BitsPerSample = sessionBitPerSample,
+                    Channels = sessionChannels,
+                    SampleRate = sessionSampleRate,
+                    AudioEncodingFallbackMode = AudioEncoderFallbackOptimizationMode.Performance
+                },
+                AudioOutputConfiguration = new ConversationClientAudioOutputConfiguration()
+                {
+                    AudioEncodingType = sessionAudioEncodingType,
+                    BitsPerSample = sessionBitPerSample,
+                    Channels = sessionChannels,
+                    SampleRate = sessionSampleRate,
+                    AudioEncodingFallbackMode = AudioEncoderFallbackOptimizationMode.Performance,
+                    FrameDurationMs = 60,
+                    MaxBufferAheadMs = 150,
+                    InitialSegmentDurationMs = 300
+                }
             };
 
             // 2. Create and Add Agent and Client within a Task to isolate logic

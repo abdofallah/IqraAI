@@ -3,6 +3,7 @@ using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Logs;
 using IqraCore.Entities.Conversation.Logs.Enums;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.Server;
@@ -369,14 +370,25 @@ namespace IqraInfrastructure.Managers.WebSession
             var clientConfig = new ConversationWebClientConfiguration()
             {
                 WebSessionData = webSessionData,
-                BitsPerSample = webSessionData.AudioOutputConfiguration.BitsPerSample,
-                SampleRate = webSessionData.AudioOutputConfiguration.SampleRate,
-                AudioEncodingType = webSessionData.AudioOutputConfiguration.AudioEncodingType,
-                AudioEncodingFallbackMode = webSessionData.AudioOutputConfiguration.AudioEncodingFallbackMode,
-                Channels = 1, // static for now
-                FrameDurationMs = webSessionData.AudioOutputConfiguration.FrameDurationMs,
-                MaxBufferAheadMs = webSessionData.AudioOutputConfiguration.MaxBufferAheadMs,
-                InitialSegmentDurationMs = webSessionData.AudioOutputConfiguration.InitialSegmentDurationMs
+                AudioInputConfiguration = new ConversationClientAudioInputConfiguration()
+                {
+                    AudioEncodingType = webSessionData.AudioInputConfiguration.AudioEncodingType,
+                    BitsPerSample = webSessionData.AudioInputConfiguration.BitsPerSample,
+                    Channels = 1, // static for now
+                    SampleRate = webSessionData.AudioInputConfiguration.SampleRate,
+                    AudioEncodingFallbackMode = webSessionData.AudioInputConfiguration.AudioEncodingFallbackMode
+                },
+                AudioOutputConfiguration = new ConversationClientAudioOutputConfiguration()
+                {
+                    AudioEncodingType = webSessionData.AudioOutputConfiguration.AudioEncodingType,
+                    BitsPerSample = webSessionData.AudioOutputConfiguration.BitsPerSample,
+                    Channels = 1, // static for now
+                    SampleRate = webSessionData.AudioOutputConfiguration.SampleRate,
+                    AudioEncodingFallbackMode = webSessionData.AudioOutputConfiguration.AudioEncodingFallbackMode,
+                    FrameDurationMs = webSessionData.AudioOutputConfiguration.FrameDurationMs,
+                    MaxBufferAheadMs = webSessionData.AudioOutputConfiguration.MaxBufferAheadMs,
+                    InitialSegmentDurationMs = webSessionData.AudioOutputConfiguration.InitialSegmentDurationMs
+                }
             };
 
             // 2. Create and Add Agent and Client within a Task to isolate logic

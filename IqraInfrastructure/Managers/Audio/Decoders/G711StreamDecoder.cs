@@ -18,11 +18,17 @@ namespace IqraInfrastructure.Managers.Audio.Decoders
             if (inputData.IsEmpty) return Array.Empty<byte>();
 
             // 1. Decode MuLaw bytes -> PCM Shorts (16-bit 8kHz)
-            // Note: SIPSorcery DecodeAudio returns short[] as byte[]
-            short[] pcm16Bit8Khz = _audioEncoder.DecodeAudio(inputData.ToArray(), new AudioFormat(AudioCodecsEnum.PCMU, 0, 8000, 1));
+            // SIPSorcery returns short[]
+            short[] pcmShorts = _audioEncoder.DecodeAudio(inputData.ToArray(), new AudioFormat(AudioCodecsEnum.PCMU, 0, 8000, 1));
 
-            // 2. Convert to System Standard (16kHz 32-bit)
-            return ConvertToSystemStandard(pcm16Bit8Khz, 8000, 16);
+            // 2. Convert short[] to byte[]
+            // Since it's 16-bit PCM, we need 2 bytes per sample.
+            byte[] pcmBytes = new byte[pcmShorts.Length * 2];
+            Buffer.BlockCopy(pcmShorts, 0, pcmBytes, 0, pcmBytes.Length);
+
+            // 3. Convert to System Standard (16kHz 32-bit)
+            // We pass 8000Hz and 16-bit because that is what SIPSorcery decoded it to.
+            return ConvertToSystemStandard(pcmBytes, 8000, 16);
         }
 
         public override void Dispose() { }
@@ -42,10 +48,14 @@ namespace IqraInfrastructure.Managers.Audio.Decoders
             if (inputData.IsEmpty) return Array.Empty<byte>();
 
             // 1. Decode ALaw bytes -> PCM Shorts (16-bit 8kHz)
-            short[] pcm16Bit8Khz = _audioEncoder.DecodeAudio(inputData.ToArray(), new AudioFormat(AudioCodecsEnum.PCMA, 8, 8000, 1));
+            short[] pcmShorts = _audioEncoder.DecodeAudio(inputData.ToArray(), new AudioFormat(AudioCodecsEnum.PCMA, 8, 8000, 1));
 
-            // 2. Convert to System Standard (16kHz 32-bit)
-            return ConvertToSystemStandard(pcm16Bit8Khz, 8000, 16);
+            // 2. Convert short[] to byte[]
+            byte[] pcmBytes = new byte[pcmShorts.Length * 2];
+            Buffer.BlockCopy(pcmShorts, 0, pcmBytes, 0, pcmBytes.Length);
+
+            // 3. Convert to System Standard (16kHz 32-bit)
+            return ConvertToSystemStandard(pcmBytes, 8000, 16);
         }
 
         public override void Dispose() { }

@@ -8,6 +8,7 @@ using IqraCore.Entities.Conversation.Context.Action;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Conversation.Turn;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
@@ -461,10 +462,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 JoinedAt = DateTime.UtcNow,
                 AudioInfo = new ConversationMemberAudioInfo()
                 { 
-                    AudioEncodingType = clientConfig.AudioEncodingType,
-                    SampleRate = clientConfig.SampleRate,
-                    Channels = clientConfig.Channels,
-                    BitsPerSample = clientConfig.BitsPerSample,
+                    // hard coded for now
+                    AudioEncodingType = AudioEncodingTypeEnum.PCM,
+                    SampleRate = 16000,
+                    Channels = 1,
+                    BitsPerSample = 32,
                 },
                 Metadata = new Dictionary<string, string>
                 {

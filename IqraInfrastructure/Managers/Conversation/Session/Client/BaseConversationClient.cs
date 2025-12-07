@@ -8,7 +8,6 @@ using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Audio.Decoders;
 using IqraInfrastructure.Managers.Audio.Encoders;
 using Microsoft.Extensions.Logging;
-using Org.BouncyCastle.Asn1.Pkcs;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Client
 {
@@ -49,15 +48,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             try
             {
                 _audioEncoder = AudioEncoderFactory.CreateEncoder(
-                    ClientConfig.AudioEncodingType,
-                    ClientConfig.SampleRate,
-                    ClientConfig.BitsPerSample,
-                    ClientConfig.FrameDurationMs
+                    ClientConfig.AudioOutputConfiguration.AudioEncodingType,
+                    ClientConfig.AudioOutputConfiguration.SampleRate,
+                    ClientConfig.AudioOutputConfiguration.BitsPerSample,
+                    ClientConfig.AudioOutputConfiguration.FrameDurationMs
                 );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Client {ClientId}: Failed to initialize audio encoder for format {Format}", ClientId, ClientConfig.AudioEncodingType);
+                _logger.LogError(ex, "Client {ClientId}: Failed to initialize audio encoder for format {Format}", ClientId, ClientConfig.AudioOutputConfiguration.AudioEncodingType);
                 // We don't throw here to allow the client to exist, but audio sending might fail later.
             }
         }
@@ -67,14 +66,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             try
             {
                 _audioDecoder = AudioDecoderFactory.CreateDecoder(
-                    ClientConfig.AudioEncodingType,
-                    ClientConfig.SampleRate,
-                    ClientConfig.BitsPerSample
+                    ClientConfig.AudioInputConfiguration.AudioEncodingType,
+                    ClientConfig.AudioInputConfiguration.SampleRate,
+                    ClientConfig.AudioInputConfiguration.BitsPerSample
                 );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Client {ClientId}: Failed to initialize audio decoder for format {Format}", ClientId, ClientConfig.AudioEncodingType);
+                _logger.LogError(ex, "Client {ClientId}: Failed to initialize audio decoder for format {Format}", ClientId, ClientConfig.AudioInputConfiguration.AudioEncodingType);
                 // We don't throw here to allow the client to exist, but audio sending might fail later.
             }
         }
@@ -88,9 +87,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             if (masterAudioData.IsEmpty) return;
 
             byte[] dataToSend;
-            if (ClientConfig.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
-                ClientConfig.SampleRate == masterSampleRate &&
-                ClientConfig.BitsPerSample == masterBitsPerSample)
+            if (ClientConfig.AudioOutputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
+                ClientConfig.AudioOutputConfiguration.SampleRate == masterSampleRate &&
+                ClientConfig.AudioOutputConfiguration.BitsPerSample == masterBitsPerSample)
             {
                 dataToSend = masterAudioData.ToArray();
             }
@@ -144,9 +143,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             if (audioData.Length == 0) return;
 
             byte[] decodedData;
-            if (ClientConfig.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
-                ClientConfig.SampleRate == 16000 &&
-                ClientConfig.BitsPerSample == 32)
+            if (ClientConfig.AudioInputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
+                ClientConfig.AudioInputConfiguration.SampleRate == 16000 &&
+                ClientConfig.AudioInputConfiguration.BitsPerSample == 32)
             {
                 decodedData = audioData;
             }
