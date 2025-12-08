@@ -17,10 +17,10 @@ using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
-    public class MiniMaxTTSService : ITTSService, IDisposable
+    public class MinimaxTTSService : ITTSService, IDisposable
     {
         private static readonly HttpClient _httpClient = new();
-        private readonly ILogger<MiniMaxTTSService> _logger;
+        private readonly ILogger<MinimaxTTSService> _logger;
         private readonly string _apiKey;
         private readonly MinimaxConfig _serviceConfig;
 
@@ -32,7 +32,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private MiniMaxOutputFormatDefinition _selectedApiFormat;
         private bool _audioConversationNeeded = false;
 
-        public MiniMaxTTSService(ILogger<MiniMaxTTSService> logger, string apiKey, MinimaxConfig config)
+        public MinimaxTTSService(ILogger<MinimaxTTSService> logger, string apiKey, MinimaxConfig config)
         {
             _logger = logger;
             _apiKey = apiKey;
@@ -201,7 +201,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> MiniMaxSupportedFormats;
         private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), MiniMaxOutputFormatDefinition> FormatMap;
 
-        static MiniMaxTTSService()
+        static MinimaxTTSService()
         {
             var supportedFormats = new List<TTSProviderAvailableAudioFormat>
             {

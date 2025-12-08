@@ -19,7 +19,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         protected BaseTelephonyConversationClient(
             string clientId,
-            ConversationWebClientConfiguration clientConfig,
+            ConversationClientConfiguration clientConfig,
             string telephonyPhoneNumber,
             string telephonyProviderPhoneNumberId,
             string customerPhoneNumber,

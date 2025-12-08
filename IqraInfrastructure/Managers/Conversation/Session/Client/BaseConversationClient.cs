@@ -18,7 +18,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         private bool _hasDisconnected = false;
 
         public string ClientId { get; }
-        public ConversationWebClientConfiguration ClientConfig { get; }
+        public ConversationClientConfiguration ClientConfig { get; }
         public abstract ConversationClientType ClientType { get; }
 
         protected IAudioStreamEncoder? _audioEncoder;
@@ -28,7 +28,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         public event EventHandler<ConversationTextReceivedEventArgs> TextReceived;
         public event EventHandler<ConversationClientDisconnectedEventArgs> Disconnected;
 
-        protected BaseConversationClient(string clientId, ConversationWebClientConfiguration clientConfig, IConversationClientTransport transport, ILogger logger)
+        protected BaseConversationClient(string clientId, ConversationClientConfiguration clientConfig, IConversationClientTransport transport, ILogger logger)
         {
             ClientId = clientId;
             ClientConfig = clientConfig;

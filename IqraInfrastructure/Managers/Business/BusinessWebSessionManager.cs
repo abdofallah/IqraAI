@@ -158,40 +158,124 @@ namespace IqraInfrastructure.Managers.Business
                     newWebSessionData.ClientIdentifier = modelData.ClientIdentifier;
                 }
 
-                // Audio Configuration
-                if (modelData.AudioConfiguration == null)
+                // Audio Input Configuration
+                if (modelData.AudioInputConfiguration == null)
                 {
                     return result.SetFailureResult(
-                        "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_NOT_FOUND",
-                        "Audio Configuration not found in config data."
+                        "InitiateWebSession:CONFIG_AUDIO_INPUT_CONFIGURATION_NOT_FOUND",
+                        "Audio Input Configuration not found in config data."
                     );
                 }
                 else
                 {
-                    if (modelData.AudioConfiguration.SampleRate < 8000 || modelData.AudioConfiguration.SampleRate > 96000) {
+                    if (modelData.AudioInputConfiguration.SampleRate < 8000 || modelData.AudioInputConfiguration.SampleRate > 96000) {
                         return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_SAMPLE_RATE_INVALID",
+                            "InitiateWebSession:CONFIG_AUDIO_INPUT_CONFIGURATION_SAMPLE_RATE_INVALID",
                             "Audio Configuration sample rate is invalid. Allowed values: 8000~96000."
                         );
                     }
-                    newWebSessionData.AudioConfiguration.SampleRate = modelData.AudioConfiguration.SampleRate;
+                    newWebSessionData.AudioInputConfiguration.SampleRate = modelData.AudioInputConfiguration.SampleRate;
 
-                    if (modelData.AudioConfiguration.BitsPerSample != 8 && modelData.AudioConfiguration.BitsPerSample != 16 && modelData.AudioConfiguration.BitsPerSample != 24 && modelData.AudioConfiguration.BitsPerSample != 32) {
+                    if (modelData.AudioInputConfiguration.BitsPerSample != 8 && modelData.AudioInputConfiguration.BitsPerSample != 16 && modelData.AudioInputConfiguration.BitsPerSample != 24 && modelData.AudioInputConfiguration.BitsPerSample != 32) {
                         return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_BITS_PER_SAMPLE_INVALID",
-                            "Audio Configuration bits per sample is invalid. Allowed values: 8, 16, 24, 32."
+                            "InitiateWebSession:CONFIG_AUDIO_INPUT_CONFIGURATION_BITS_PER_SAMPLE_INVALID",
+                            "Audio Input Configuration bits per sample is invalid. Allowed values: 8, 16, 24, 32."
                         );
                     }
-                    newWebSessionData.AudioConfiguration.BitsPerSample = modelData.AudioConfiguration.BitsPerSample;
+                    newWebSessionData.AudioInputConfiguration.BitsPerSample = modelData.AudioInputConfiguration.BitsPerSample;
 
-                    if (!Enum.IsDefined(typeof(AudioEncodingTypeEnum), modelData.AudioConfiguration.AudioEncodingType))
+                    if (!Enum.IsDefined(typeof(AudioEncodingTypeEnum), modelData.AudioInputConfiguration.AudioEncodingType))
                     {
                         return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_CONFIGURATION_AUDIO_ENCODING_TYPE_INVALID",
-                            "Audio Configuration audio encoding type is invalid."
+                            "InitiateWebSession:CONFIG_AUDIO_INPUT_CONFIGURATION_AUDIO_ENCODING_TYPE_INVALID",
+                            "Audio Input Configuration audio encoding type is invalid."
                         );
                     }
-                    newWebSessionData.AudioConfiguration.AudioEncodingType = modelData.AudioConfiguration.AudioEncodingType;
+                    newWebSessionData.AudioInputConfiguration.AudioEncodingType = modelData.AudioInputConfiguration.AudioEncodingType;
+
+                    if (!Enum.IsDefined(typeof(AudioEncoderFallbackOptimizationMode), modelData.AudioInputConfiguration.AudioEncodingFallbackMode))
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_INPUT_CONFIGURATION_AUDIO_ENCODING_FALLBACK_MODE_INVALID",
+                            "Audio Input Configuration audio encoding fallback mode is invalid."
+                        );
+                    }
+                    newWebSessionData.AudioInputConfiguration.AudioEncodingFallbackMode = modelData.AudioInputConfiguration.AudioEncodingFallbackMode;
+                }
+
+                // Audio Output Configuration
+                if (modelData.AudioOutputConfiguration == null)
+                {
+                    return result.SetFailureResult(
+                        "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_NOT_FOUND",
+                        "Audio Output Configuration not found in config data."
+                    );
+                }
+                else
+                {
+                    if (modelData.AudioOutputConfiguration.SampleRate < 8000 || modelData.AudioOutputConfiguration.SampleRate > 96000)
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_SAMPLE_RATE_INVALID",
+                            "Audio Configuration sample rate is invalid. Allowed values: 8000~96000."
+                        );
+                    }
+                    newWebSessionData.AudioOutputConfiguration.SampleRate = modelData.AudioOutputConfiguration.SampleRate;
+
+                    if (modelData.AudioOutputConfiguration.BitsPerSample != 8 && modelData.AudioOutputConfiguration.BitsPerSample != 16 && modelData.AudioOutputConfiguration.BitsPerSample != 24 && modelData.AudioOutputConfiguration.BitsPerSample != 32)
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_BITS_PER_SAMPLE_INVALID",
+                            "Audio Output Configuration bits per sample is invalid. Allowed values: 8, 16, 24, 32."
+                        );
+                    }
+                    newWebSessionData.AudioOutputConfiguration.BitsPerSample = modelData.AudioOutputConfiguration.BitsPerSample;
+
+                    if (!Enum.IsDefined(typeof(AudioEncodingTypeEnum), modelData.AudioOutputConfiguration.AudioEncodingType))
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_AUDIO_ENCODING_TYPE_INVALID",
+                            "Audio Output Configuration audio encoding type is invalid."
+                        );
+                    }
+                    newWebSessionData.AudioOutputConfiguration.AudioEncodingType = modelData.AudioOutputConfiguration.AudioEncodingType;
+
+                    if (!Enum.IsDefined(typeof(AudioEncoderFallbackOptimizationMode), modelData.AudioOutputConfiguration.AudioEncodingFallbackMode))
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_AUDIO_ENCODING_FALLBACK_MODE_INVALID",
+                            "Audio Output Configuration audio encoding fallback mode is invalid."
+                        );
+                    }
+                    newWebSessionData.AudioOutputConfiguration.AudioEncodingFallbackMode = modelData.AudioOutputConfiguration.AudioEncodingFallbackMode;
+
+                    // int FrameDurationMs, MaxBufferAheadMs, InitialSegmentDurationMs
+                    if (modelData.AudioOutputConfiguration.FrameDurationMs < 20 || modelData.AudioOutputConfiguration.FrameDurationMs > 150)
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_FRAME_DURATION_MS_INVALID",
+                            "Audio Output Configuration frame duration is invalid. Allowed values: 20~150."
+                        );
+                    }
+                    newWebSessionData.AudioOutputConfiguration.FrameDurationMs = modelData.AudioOutputConfiguration.FrameDurationMs;
+
+                    if (modelData.AudioOutputConfiguration.MaxBufferAheadMs < modelData.AudioOutputConfiguration.FrameDurationMs || modelData.AudioOutputConfiguration.MaxBufferAheadMs > 5000)
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_MAX_BUFFER_AHEAD_MS_INVALID",
+                            "Audio Output Configuration max buffer ahead is invalid. Allowed values: more than frame duration and less than 5000."
+                        );
+                    }
+                    newWebSessionData.AudioOutputConfiguration.MaxBufferAheadMs = modelData.AudioOutputConfiguration.MaxBufferAheadMs;
+
+                    if (modelData.AudioOutputConfiguration.InitialSegmentDurationMs < modelData.AudioOutputConfiguration.FrameDurationMs || modelData.AudioOutputConfiguration.InitialSegmentDurationMs > 5000)
+                    {
+                        return result.SetFailureResult(
+                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_INITIAL_SEGMENT_DURATION_MS_INVALID",
+                            "Audio Output Configuration initial segment duration is invalid. Allowed values: more than frame duration and less than 5000."
+                        );
+                    }
+                    newWebSessionData.AudioOutputConfiguration.InitialSegmentDurationMs = modelData.AudioOutputConfiguration.InitialSegmentDurationMs;
                 }
 
                 // Dynamic Variables

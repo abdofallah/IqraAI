@@ -806,7 +806,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 agent = agentResult.Data;
 
                 // Create Telephony Client
-                var clientResult = await CreateTelephonyClient(queueData, session);
+                var clientResult = await CreateTelephonyClient(queueData, session, clientConfig);
                 if (!clientResult.Success)
                 {
                     await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
@@ -878,7 +878,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 }
             }
         }
-        private async Task<FunctionReturnResult<IConversationClient?>> CreateTelephonyClient(CallQueueData queueData, ConversationSessionOrchestrator sessionManager)
+        private async Task<FunctionReturnResult<IConversationClient?>> CreateTelephonyClient(CallQueueData queueData, ConversationSessionOrchestrator sessionManager, ConversationClientConfiguration clientConfig)
         {
             var result = new FunctionReturnResult<IConversationClient?>();
 
@@ -934,6 +934,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         return result.SetSuccessResult(
                             new ModemTelConversationClient(
                                 clientId,
+                                clientConfig,
                                 phoneNumberData,
                                 ((BusinessNumberModemTelData)businessNumberData).ModemTelPhoneNumberId,
                                 customerNumber,
@@ -953,6 +954,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         return result.SetSuccessResult(
                             new TwilioConversationClient(
                                 clientId,
+                                clientConfig,
                                 phoneNumberData,
                                 ((BusinessNumberTwilioData)businessNumberData).TwilioPhoneNumberId,
                                 customerNumber,
@@ -1071,7 +1073,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 return result;
             }
         }
-        private async Task<OutboundCallResultModel> InitiateSipTrunkOutboundCallAsync(BusinessNumberData sipNumber, string toNumber)
+        private async Task<OutboundCallResultModel> InitiateSipTrunkOutboundCallAsync(BusinessNumberData sipNumber, string toNumber, ConversationClientConfiguration clientConfig)
         {
             var result = new OutboundCallResultModel();
 
@@ -1083,6 +1085,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             // 2. Create our client wrapper
             var sipClient = new SipConversationClient(
                 uac.CallDescriptor.CallId,
+                null, // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO IMPORTANT
                 sipNumber.Number, // SIP URI
                 $"sip:{toNumber}@{sipNumber.Number}", // PROVIDER DOMAIN
                 uac,

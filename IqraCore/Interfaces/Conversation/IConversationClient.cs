@@ -7,7 +7,7 @@ namespace IqraCore.Interfaces.Conversation
     public interface IConversationClient : IDisposable
     {
         string ClientId { get; }
-        ConversationWebClientConfiguration ClientConfig { get; }
+        ConversationClientConfiguration ClientConfig { get; }
         ConversationClientType ClientType { get; }
 
         Task ProcessDownstreamAudioAsync(ReadOnlyMemory<byte> masterAudioData, int masterSampleRate, int masterBitsPerSample);

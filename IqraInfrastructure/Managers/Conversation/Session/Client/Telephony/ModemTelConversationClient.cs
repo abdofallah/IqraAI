@@ -15,7 +15,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         public ModemTelConversationClient(
             string clientId,
-            ConversationWebClientConfiguration clientConfig,
+            ConversationClientConfiguration clientConfig,
             string telephonyPhoneNumber,
             string telephonyProviderPhoneNumberId,
             string customerPhoneNumber,

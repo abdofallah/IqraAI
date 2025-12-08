@@ -20,7 +20,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         public SipConversationClient(
             string clientId,
-            ConversationWebClientConfiguration clientConfig,
+            ConversationClientConfiguration clientConfig,
             string ourSipUri,
             string customerSipUri,
             SIPUserAgent userAgent,

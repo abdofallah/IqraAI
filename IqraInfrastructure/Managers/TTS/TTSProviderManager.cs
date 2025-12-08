@@ -556,6 +556,7 @@ namespace IqraInfrastructure.Managers.TTS
                     case InterfaceTTSProviderEnum.GoogleCloudTextToSpeech:
                         {
                             string serviceAccountKeyJson = _integrationsManager.DecryptField(integrationData.EncryptedFields["service_account_key_json"]);
+                            string projectId = integrationData.Fields["project_id"];
 
                             var config = new GoogleConfig
                             {
@@ -567,7 +568,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new GoogleTTSService(serviceAccountKeyJson, config);
+                            var service = new GoogleTTSService(loggerFactory.CreateLogger<GoogleTTSService>(), projectId, serviceAccountKeyJson, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -586,7 +587,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new CartesiaTTSService(apiKey, config);
+                            var service = new CartesiaTTSService(loggerFactory.CreateLogger<CartesiaTTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -619,28 +620,27 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new DeepgramTTSService(apiKey, config);
+                            var service = new DeepgramTTSService(loggerFactory.CreateLogger<DeepgramTTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.MinimaxTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string groupId = (string)agentIntegrationData.FieldValues["group_id"]; // Auth related, not config
 
                             var config = new MinimaxConfig
                             {
                                 ModelId = (string)agentIntegrationData.FieldValues["model_id"],
                                 VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
                                 VoiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"],
-                                LanguageBoostId = (string)agentIntegrationData.FieldValues["language_boost_id"],
-                                PronunciationDict = (string)agentIntegrationData.FieldValues["pronunciation_dict"],
+                                LanguageBoost = (string)agentIntegrationData.FieldValues["language_boost"],
+                                //PronunciationDict = (string)agentIntegrationData.FieldValues["pronunciation_dict"],
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new MinimaxTTSService(apiKey, groupId, config);
+                            var service = new MinimaxTTSService(loggerFactory.CreateLogger<MinimaxTTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -659,33 +659,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new HumeAITTSService(apiKey, config);
-                            return result.SetSuccessResult(service);
-                        }
-
-                    case InterfaceTTSProviderEnum.PlayHtTextToSpeech:
-                        {
-                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string userId = _integrationsManager.DecryptField(integrationData.EncryptedFields["user_id"]); // Auth related
-
-                            var config = new PlayHtConfig
-                            {
-                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
-                                VoiceEngine = (string)agentIntegrationData.FieldValues["voice_engine"],
-                                VoiceQuality = (string)agentIntegrationData.FieldValues["voice_quality"],
-                                VoiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"],
-                                Temperature = (float)(double)agentIntegrationData.FieldValues["temperature"],
-                                Emotion = (string)agentIntegrationData.FieldValues["emotion"],
-                                VoiceGuidance = (float)(double)agentIntegrationData.FieldValues["voice_guidance"],
-                                StyleGuidance = (float)(double)agentIntegrationData.FieldValues["style_guidance"],
-                                TextGuidance = (float)(double)agentIntegrationData.FieldValues["text_guidance"],
-                                Language = (string)agentIntegrationData.FieldValues["language"],
-                                TargetSampleRate = targetSampleRate,
-                                TargetBitsPerSample = targetBitsPerSample,
-                                TargetEncodingType = targetAudioEncoding
-                            };
-
-                            var service = new PlayHtTTSService(apiKey, userId, config);
+                            var service = new HumeAITTSService(loggerFactory.CreateLogger<HumeAITTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -705,7 +679,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new SpeechifyTTSService(apiKey, config);
+                            var service = new SpeechifyTTSService(loggerFactory.CreateLogger<SpeechifyTTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -727,7 +701,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new MurfAITTSService(apiKey, config);
+                            var service = new MurfAITTSService(loggerFactory.CreateLogger<MurfAITTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -755,7 +729,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new ZyphraZonosTTSService(apiKey, config);
+                            var service = new ZyphraZonosTTSService(loggerFactory.CreateLogger<ZyphraZonosTTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -773,7 +747,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new ResembleAITTSService(apiKey, config);
+                            var service = new ResembleAITTSService(loggerFactory.CreateLogger<ResembleAITTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -790,7 +764,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new HamsaAITTSService(apiKey, config);
+                            var service = new HamsaAITTSService(loggerFactory.CreateLogger<HamsaAITTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -809,7 +783,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new NeuphonicTTSService(apiKey, config);
+                            var service = new NeuphonicTTSService(loggerFactory.CreateLogger<NeuphonicTTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
