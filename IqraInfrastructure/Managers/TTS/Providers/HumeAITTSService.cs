@@ -1,32 +1,41 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using Hume;
+using Hume.Tts;
+using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.HumeAI;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using IqraInfrastructure.Helpers.Audio;
+using IqraInfrastructure.Managers.TTS.Helpers;
+using Microsoft.Extensions.Logging;
+using System.Collections.ObjectModel;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class HumeAITTSService : ITTSService, IDisposable
     {
+        private readonly ILogger<HumeAITTSService> _logger;
         private readonly string _apiKey;
         private readonly HumeAiConfig _serviceConfig;
 
-        private static readonly HttpClient _httpClient = new();
+        // SDK Client
+        private HumeClient? _client;
+        private OctaveVersion _modelOctaveVersion;
 
-        private const string ApiUrl = "https://api.hume.ai/v0/tts";
+        // State
+        private AudioRequestDetails _finalUserRequest;
+        private HumeAIOutputFormatDefinition _selectedApiFormat;
+        private TTSProviderAvailableAudioFormat _optimalHumeFormat;
+        private bool _audioConversationNeeded = false;
 
-        // Hardcoded values based on Hume AI's requirements
-        private readonly int _sampleSize = 16;
-        private readonly int _channels = 1; 
+        // Context for Continuity
+        private string? _lastGenerationId = null;
 
-        private string lastGenerationId = null;
-
-        public HumeAITTSService(string apiKey, HumeAiConfig config)
+        public HumeAITTSService(ILogger<HumeAITTSService> logger, string apiKey, HumeAiConfig config)
         {
+            _logger = logger;
             _apiKey = apiKey;
             _serviceConfig = config;
         }
@@ -35,291 +44,206 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             var result = new FunctionReturnResult();
 
-            return result.SetSuccessResult();
-            // Static HttpClient initialization is handled implicitly
+            try
+            {
+                if (_serviceConfig.ModelVersion != 1 && _serviceConfig.ModelVersion != 2)
+                {
+                    return result.SetFailureResult(
+                        "Initialize:INVALID_MODEL_VERSION",
+                        "Hume AI TTS does not support a model version other than 1 or 2"
+                    );
+                }
+
+                _modelOctaveVersion = _serviceConfig.ModelVersion == 1 ? OctaveVersion.One : OctaveVersion.Two;
+
+                if (_modelOctaveVersion == OctaveVersion.Two && string.IsNullOrEmpty(_serviceConfig.VoiceId))
+                {
+                    return result.SetFailureResult(
+                        "Initialize:VOICE_ID_REQUIRED",
+                        "Hume AI TTS requires a Voice ID when using Model Version 2 (Octave)"
+                    );
+                }
+
+                _client = new HumeClient(_apiKey);
+
+                _finalUserRequest = new AudioRequestDetails
+                {
+                    RequestedEncoding = _serviceConfig.TargetEncodingType,
+                    RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
+                    RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
+                };
+
+                var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, HumeSupportedFormats);
+                _optimalHumeFormat = bestFallbackOrder.FirstOrDefault();
+
+                if (_optimalHumeFormat == null)
+                {
+                    return result.SetFailureResult(
+                        "Initialize:FORMAT_NOT_SUPPORTED",
+                        $"Hume AI TTS does not support a format compatible with: {_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz"
+                    );
+                }
+
+                var formatKey = (_optimalHumeFormat.Encoding, _optimalHumeFormat.SampleRateHz, _optimalHumeFormat.BitsPerSample);
+                if (!FormatMap.TryGetValue(formatKey, out _selectedApiFormat))
+                {
+                    throw new InvalidOperationException($"Internal error: No mapping found for selected format: {formatKey}");
+                }
+
+                _audioConversationNeeded = _optimalHumeFormat.Encoding != _finalUserRequest.RequestedEncoding ||
+                                           _optimalHumeFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
+                                           _optimalHumeFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
+
+                var accountCheck = await CheckAccount();
+                if (!accountCheck.Success)
+                {
+                    return result.SetFailureResult(accountCheck.Code, accountCheck.Message);
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult("Initialize:EXCEPTION", $"Hume init error: {ex.Message}");
+            }
         }
 
         public async Task<FunctionReturnResult> CheckAccount()
         {
             var result = new FunctionReturnResult();
-
             try
             {
-                return result.SetSuccessResult();
+                if (_client == null) return result.SetFailureResult("CheckAccount:CLIENT_NULL", "Client not initialized");
+
+                // Lightweight validation: We assume success if initialized. 
+                // Actual key validation happens on first request due to Hume API design.
+                return await Task.FromResult(result.SetSuccessResult());
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult(
-                    $"CheckAccount:EXCEPTION",
-                    $"Internal server error occured: {ex.Message}"
-                );
+                return result.SetFailureResult("CheckAccount:EXCEPTION", ex.Message);
             }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var voiceSpec = new HumeVoiceSpecifier
-            {
-                Id = _serviceConfig.VoiceId,
-                Provider = _serviceConfig.VoiceProvider
-            };
-
-            var utterance = new HumeUtteranceRequest
-            {
-                Text = text,
-                Voice = voiceSpec,
-                Description = _serviceConfig.VoiceDescription,
-                Speed = _serviceConfig.VoiceSpeed
-            };
-
-            var requestPayload = new HumeTtsRequest
-            {
-                Utterances = new List<HumeUtteranceRequest> {
-                    utterance
-                },
-                AudioFormat = new HumeTtsRequestAudioFormat() {
-                    Type = "pcm"
-                }
-            };
-
-            if (!string.IsNullOrWhiteSpace(lastGenerationId))
-            {
-                requestPayload.Context = new HumeTtsRequestContext()
-                {
-                    GenerationId = lastGenerationId
-                };
-            }
-
-            string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
-            var requestUri = ApiUrl;
-
-            using var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
-            request.Headers.Add("X-Hume-Api-Key", _apiKey);
-            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            if (_client == null) throw new InvalidOperationException("Service not initialized.");
+            if (string.IsNullOrEmpty(text)) return (Array.Empty<byte>(), TimeSpan.Zero);
 
             try
             {
-                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
-
-                string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-
-                if (!response.IsSuccessStatusCode)
+                var utterance = new PostedUtterance
                 {
-                    // todo logging
-                    Console.WriteLine($"Hume AI HTTP Error ({response.StatusCode}): {responseBody}");
-                    // Attempt to parse standard Hume error format
-                    try
+                    Text = text,
+                    Description = !string.IsNullOrEmpty(_serviceConfig.VoiceDescription) ? _serviceConfig.VoiceDescription : null,
+                    Speed = _serviceConfig.VoiceSpeed,
+                };
+
+                if (!string.IsNullOrEmpty(_serviceConfig.VoiceId))
+                {
+                    utterance.Voice = new PostedUtteranceVoiceWithId
                     {
-                        var errorResp = JsonSerializer.Deserialize<HumeTtsResponse>(responseBody);
-                        if (!string.IsNullOrEmpty(errorResp?.ErrorCode) || !string.IsNullOrEmpty(errorResp?.ErrorMessage))
-                        {
-                            // todo logging
-                            Console.WriteLine($"Hume AI API Error: Code={errorResp.ErrorCode}, Msg='{errorResp.ErrorMessage}'");
-                        }
-                    }
-                    catch { /* Ignore deserialize error on error path */ }
+                        Id = _serviceConfig.VoiceId,
+                        Provider = _serviceConfig.VoiceProvider?.ToLower() == "custom" ? VoiceProvider.CustomVoice : VoiceProvider.HumeAi
+                    };
+                }
+
+                var request = new PostedTts
+                {
+                    Utterances = new List<PostedUtterance> { utterance },
+                    Format = new FormatPcm
+                    {
+                        Type = _selectedApiFormat.FormatString // "pcm" from our map
+                    },
+                    NumGenerations = 1,
+                    StripHeaders = true,
+                    SplitUtterances = false,
+                    Version = _modelOctaveVersion
+                };
+
+                if (!string.IsNullOrEmpty(_lastGenerationId))
+                {
+                    request.Context = new PostedContextWithGenerationId { GenerationId = _lastGenerationId };
+                }
+
+                var response = await _client.Tts.SynthesizeJsonAsync(request, cancellationToken: cancellationToken);
+
+                if (response.Generations == null || !response.Generations.Any())
+                {
+                    _logger.LogError("Hume AI returned no generations.");
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                var ttsResponse = JsonSerializer.Deserialize<HumeTtsResponse>(responseBody);
+                var generation = response.Generations.First();
 
-                // Check for API level error even on 200 OK
-                if (!string.IsNullOrEmpty(ttsResponse?.ErrorCode) || !string.IsNullOrEmpty(ttsResponse?.ErrorMessage))
+                if (!string.IsNullOrEmpty(generation.GenerationId))
                 {
-                    // todo logging
-                    Console.WriteLine($"Hume AI API Error: Code={ttsResponse.ErrorCode}, Msg='{ttsResponse.ErrorMessage}'");
-                    return (Array.Empty<byte>(), TimeSpan.Zero);
+                    _lastGenerationId = generation.GenerationId;
                 }
 
-                if (ttsResponse?.Generations == null || !ttsResponse.Generations.Any())
+                byte[] sourceAudioData = Convert.FromBase64String(generation.Audio);
+
+                TimeSpan duration = TimeSpan.FromSeconds(generation.Duration);
+
+                if (_audioConversationNeeded)
                 {
-                    // todo logging
-                    Console.WriteLine("Hume AI TTS Error: No generations returned in the response.");
-                    return (Array.Empty<byte>(), TimeSpan.Zero);
+                    var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalHumeFormat, _finalUserRequest, false);
+                    return (convertedData, duration);
                 }
 
-                var firstGeneration = ttsResponse.Generations[0];
-
-                if (string.IsNullOrWhiteSpace(firstGeneration.Audio))
-                {
-                    // todo logging
-                    Console.WriteLine("Hume AI TTS Error: First generation contains no audio data.");
-                    return (Array.Empty<byte>(), TimeSpan.Zero);
-                }
-
-                // Decode Base64 audio
-                byte[] audioData = Convert.FromBase64String(firstGeneration.Audio);
-                TimeSpan? duration = null;
-
-                if (firstGeneration.Duration.HasValue)
-                {
-                    duration = TimeSpan.FromSeconds(firstGeneration.Duration.Value);
-                }
-                
-                if (!string.IsNullOrWhiteSpace(firstGeneration.GenerationId))
-                {
-                    lastGenerationId = firstGeneration.GenerationId;
-                }
-
-                int actualSampleRate = 48000;         
-                if (firstGeneration.Encoding != null) // Optionally, check firstGeneration.Encoding if available and trust it more:
-                {
-                    if (firstGeneration.Encoding.SampleRate.HasValue)
-                        actualSampleRate = firstGeneration.Encoding.SampleRate.Value;
-                }
-
-                byte[] resampledAudioData = ResamplePcm(audioData, actualSampleRate, _serviceConfig.TargetSampleRate, _channels, _sampleSize);
-
-                return (resampledAudioData, duration);
+                return (sourceAudioData, duration);
             }
-            catch (JsonException jsonEx)
+            catch (HumeClientApiException ex)
             {
-                // todo logging
-                Console.WriteLine($"Hume AI JSON Deserialization Error: {jsonEx.Message}");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (FormatException formatEx) // From Base64 decoding
-            {
-                // todo logging
-                Console.WriteLine($"Hume AI Base64 Decoding Error: {formatEx.Message}");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (HttpRequestException httpEx)
-            {
-                // todo logging
-                Console.WriteLine($"Hume AI HTTP Request Error: {httpEx.Message}");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (TaskCanceledException ex) when (ex.CancellationToken == cancellationToken)
-            {
-                // todo logging
-                Console.WriteLine("Hume AI TTS synthesis was cancelled.");
+                _logger.LogError("Hume API Error {Code}: {Message}", ex.StatusCode, ex.Message);
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
             catch (Exception ex)
             {
-                // todo logging
-                Console.WriteLine($"Hume AI TTS Error: {ex.GetType().Name} - {ex.Message}");
+                _logger.LogError(ex, "Hume Synthesis Error");
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
         }
 
-        private static short[] PcmBytesToShorts(byte[] pcmData)
-        {
-            if (pcmData.Length % 2 != 0) return Array.Empty<short>();
-            short[] samples = new short[pcmData.Length / 2];
-            Buffer.BlockCopy(pcmData, 0, samples, 0, pcmData.Length);
-            return samples;
-        }
-
-        private static byte[] PcmShortsToBytes(short[] samples)
-        {
-            byte[] pcmData = new byte[samples.Length * 2];
-            Buffer.BlockCopy(samples, 0, pcmData, 0, pcmData.Length);
-            return pcmData;
-        }
-
-        private byte[] ResamplePcm(byte[] pcmData, int originalSampleRate, int targetSampleRate, int numChannels, int bitsPerSample)
-        {
-            if (originalSampleRate == targetSampleRate || pcmData.Length == 0)
-            {
-                return pcmData;
-            }
-
-            if (bitsPerSample != 16 || numChannels <= 0 || originalSampleRate <= 0)
-            {
-                // todo logging
-                Console.WriteLine($"Hume AI Resample: Unsupported PCM format for resampling (Bits: {bitsPerSample}, Channels: {numChannels}, OriginalRate: {originalSampleRate}). Returning original data.");
-                return pcmData;
-            }
-
-            short[] inputShorts = PcmBytesToShorts(pcmData);
-            if (inputShorts.Length == 0 && pcmData.Length > 0)
-            {
-                // todo logging
-                Console.WriteLine("Hume AI Resample: Failed to convert PCM bytes to shorts. Returning original data.");
-                return pcmData;
-            }
-
-
-            int inputFrames = inputShorts.Length / numChannels;
-            if (inputFrames == 0 && inputShorts.Length > 0)
-            {
-                // todo logging
-                Console.WriteLine("Hume AI Resample: Not enough samples for even one frame. Returning original data.");
-                return pcmData;
-            }
-
-
-            int outputFrames = (int)Math.Max(1, Math.Round(inputFrames * (double)targetSampleRate / originalSampleRate));
-            short[] outputShorts = new short[outputFrames * numChannels];
-
-            double step = (double)originalSampleRate / targetSampleRate;
-
-            for (int i = 0; i < outputFrames; i++)
-            {
-                double originalFrameIndexDouble = i * step;
-
-                for (int c = 0; c < numChannels; c++)
-                {
-                    int baseInputFrameFloor = (int)Math.Floor(originalFrameIndexDouble);
-                    int inputIndex1 = (baseInputFrameFloor * numChannels) + c;
-
-                    if (inputIndex1 < 0) inputIndex1 = c;
-                    if (inputIndex1 >= inputShorts.Length) inputIndex1 = Math.Max(0, inputShorts.Length - numChannels + c);
-                    if (inputIndex1 < 0 && inputShorts.Length > 0) inputIndex1 = 0;
-
-
-                    short sample1 = (inputShorts.Length > 0 && inputIndex1 < inputShorts.Length) ? inputShorts[inputIndex1] : (short)0;
-
-                    if (originalSampleRate < targetSampleRate) // Upsampling
-                    {
-                        int inputIndex2 = ((baseInputFrameFloor + 1) * numChannels) + c;
-                        if (inputIndex2 >= inputShorts.Length) inputIndex2 = inputIndex1;
-
-                        short sample2 = (inputShorts.Length > 0 && inputIndex2 < inputShorts.Length) ? inputShorts[inputIndex2] : sample1;
-                        double fraction = originalFrameIndexDouble - baseInputFrameFloor;
-                        outputShorts[i * numChannels + c] = (short)(sample1 * (1.0 - fraction) + sample2 * fraction);
-                    }
-                    else // Downsampling (or no change, handled by outer if) - nearest neighbor
-                    {
-                        outputShorts[i * numChannels + c] = sample1;
-                    }
-                }
-            }
-            return PcmShortsToBytes(outputShorts);
-        }
-
         public Task StopTextSynthesisAsync()
         {
-            // Cancellation is handled via the CancellationToken passed to SynthesizeTextAsync
             return Task.CompletedTask;
         }
 
-        public string GetProviderFullName()
-        {
-            return "HumeAITextToSpeech";
-        }
+        public string GetProviderFullName() => "HumeAITextToSpeech";
+        public InterfaceTTSProviderEnum GetProviderType() => GetProviderTypeStatic();
+        public static InterfaceTTSProviderEnum GetProviderTypeStatic() => InterfaceTTSProviderEnum.HumeAITextToSpeech;
+        public ITTSConfig GetCacheableConfig() => _serviceConfig;
 
-        public InterfaceTTSProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
+        public TTSProviderAvailableAudioFormat GetCurrentOutputFormat() => _optimalHumeFormat;
 
-        public static InterfaceTTSProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceTTSProviderEnum.HumeAITextToSpeech;
-        }
-
-        public ITTSConfig GetCacheableConfig()
-        {
-            return _serviceConfig;
-        }
         public void Dispose()
         {
-            // Static HttpClient doesn't need instance disposal
             GC.SuppressFinalize(this);
+        }
+
+        // =================================================================================================
+        // STATIC DATA & MAPPINGS
+        // =================================================================================================
+
+        private record HumeAIOutputFormatDefinition(string FormatString, int SampleRateHz, int BitsPerSample);
+
+        private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> HumeSupportedFormats;
+        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), HumeAIOutputFormatDefinition> FormatMap;
+
+        static HumeAITTSService()
+        {
+            var supportedFormats = new List<TTSProviderAvailableAudioFormat>
+            {
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 48000, BitsPerSample = 16 },
+            };
+            HumeSupportedFormats = supportedFormats.AsReadOnly();
+
+            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), HumeAIOutputFormatDefinition>
+            {
+                { (AudioEncodingTypeEnum.PCM, 48000, 16), new("pcm", 48000, 16) },
+            };
+            FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), HumeAIOutputFormatDefinition>(formatMap);
         }
     }
 }

@@ -1,34 +1,40 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.ResembleAI;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
-using System.Linq;
+using IqraInfrastructure.Helpers.Audio;
+using IqraInfrastructure.Managers.TTS.Helpers;
+using Microsoft.Extensions.Logging;
+using System.Collections.ObjectModel;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class ResembleAITTSService : ITTSService, IDisposable
     {
+        private static readonly HttpClient _httpClient = new();
+        private readonly ILogger<ResembleAITTSService> _logger;
         private readonly string _apiKey;
         private readonly ResembleAiConfig _serviceConfig;
 
-        // Hardcoded values for Resemble AI
-        private readonly string _precision = "PCM_16";
-        private const string _streamingEndpointUrl = "https://f.cluster.resemble.ai/synthesize";
+        // Endpoints
+        private const string SynthesisUrl = "https://f.cluster.resemble.ai/synthesize";
+        private const string AccountApiUrl = "https://app.resemble.ai/api/v2";
 
-        private static readonly HttpClient _httpClient = new();
-        private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
-        {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            PropertyNameCaseInsensitive = true
-        };
+        // State
+        private AudioRequestDetails _finalUserRequest;
+        private TTSProviderAvailableAudioFormat _optimalResembleFormat;
+        private ResembleOutputFormatDefinition _selectedApiFormat;
+        private bool _audioConversationNeeded = false;
 
-        public ResembleAITTSService(string apiKey, ResembleAiConfig config)
+        public ResembleAITTSService(ILogger<ResembleAITTSService> logger, string apiKey, ResembleAiConfig config)
         {
+            _logger = logger;
             _apiKey = apiKey;
             _serviceConfig = config;
         }
@@ -37,289 +43,230 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             var result = new FunctionReturnResult();
 
-            if (!(new List<int>([8000, 22050, 32000, 44100])).Contains(_serviceConfig.TargetSampleRate))
+            try
             {
-                throw new Exception("Sample rate support are 8000, 22050, 32000 or 44100");
-            }
+                // 1. Prepare Request Details
+                _finalUserRequest = new AudioRequestDetails
+                {
+                    RequestedEncoding = _serviceConfig.TargetEncodingType,
+                    RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
+                    RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
+                };
 
-            return result.SetSuccessResult();
+                // 2. Select Optimal Format
+                var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, ResembleSupportedFormats);
+                _optimalResembleFormat = bestFallbackOrder.FirstOrDefault();
+
+                if (_optimalResembleFormat == null)
+                {
+                    return result.SetFailureResult(
+                        "Initialize:FORMAT_NOT_SUPPORTED",
+                        $"Resemble AI does not support a format compatible with: {_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz"
+                    );
+                }
+
+                // 3. Map to API Definition
+                var formatKey = (_optimalResembleFormat.Encoding, _optimalResembleFormat.SampleRateHz, _optimalResembleFormat.BitsPerSample);
+                if (!FormatMap.TryGetValue(formatKey, out _selectedApiFormat))
+                {
+                    throw new InvalidOperationException($"Internal error: No mapping found for selected format: {formatKey}");
+                }
+
+                // 4. Determine Conversion Needs
+                // Note: Resemble returns WAV (header). We need raw PCM. Conversion is needed to strip header.
+                _audioConversationNeeded = true;
+
+                // 5. Account Check
+                var accountCheck = await CheckAccount();
+                if (!accountCheck.Success)
+                {
+                    return result.SetFailureResult(accountCheck.Code, accountCheck.Message);
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult("Initialize:EXCEPTION", $"Resemble init error: {ex.Message}");
+            }
         }
 
         public async Task<FunctionReturnResult> CheckAccount()
         {
             var result = new FunctionReturnResult();
-
             try
             {
+                // Check Billing Usage (as proxy for valid auth + functionality)
+                var startDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
+                var endDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{AccountApiUrl}/account/billing_usage?start_date={startDate}&end_date={endDate}");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+
+                using var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        return result.SetFailureResult("CheckAccount:INVALID_KEY", "Resemble API Key is invalid.");
+                    }
+                    return result.SetFailureResult("CheckAccount:API_ERROR", $"Resemble Account Check Failed: {response.StatusCode}");
+                }
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult(
-                    $"CheckAccount:EXCEPTION",
-                    $"Internal server error occured: {ex.Message}"
-                );
+                return result.SetFailureResult("CheckAccount:EXCEPTION", ex.Message);
             }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var apiRequestPayload = new ResembleTtsApiRequest
-            {
-                ProjectUuid = _serviceConfig.ProjectUuid,
-                VoiceUuid = _serviceConfig.VoiceUuid,
-                Data = text,
-                Precision = _precision,
-                SampleRate = _serviceConfig.TargetSampleRate,
-                OutputFormat = "wav"
-            };
-
-            string jsonPayload = JsonSerializer.Serialize(apiRequestPayload, _jsonSerializerOptions);
-
-            using var request = new HttpRequestMessage(HttpMethod.Post, _streamingEndpointUrl);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+            if (string.IsNullOrEmpty(text)) return (Array.Empty<byte>(), TimeSpan.Zero);
 
             try
             {
-                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait(false);
-                string responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var requestPayload = new ResembleTtsApiRequest
+                {
+                    VoiceUuid = _serviceConfig.VoiceUuid,
+                    ProjectUuid = _serviceConfig.ProjectUuid,
+                    Data = text,
+                    SampleRate = _selectedApiFormat.SampleRate,
+                    Precision = _selectedApiFormat.Precision,
+                    OutputFormat = "wav"
+                };
+
+                string jsonPayload = JsonSerializer.Serialize(requestPayload);
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, SynthesisUrl);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+                request.Headers.Add("Accept-Encoding", "gzip");
+                request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // string errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                    // Console.WriteLine($"Resemble AI HTTP Error ({response.StatusCode}): {errorBody}");
+                    var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogError("Resemble API Error {Code}: {Body}", response.StatusCode, errorBody);
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                var ttsResponse = JsonSerializer.Deserialize<ResembleTTSApiResponse>(responseBody, _jsonSerializerOptions);
+                var responseBodyString = await response.Content.ReadAsStringAsync(cancellationToken);
+                var ttsResponse = JsonSerializer.Deserialize<ResembleTTSApiResponse>(responseBodyString);
 
-                if (ttsResponse == null || !ttsResponse.Success || string.IsNullOrWhiteSpace(ttsResponse.AudioContent))
+                if (ttsResponse == null || !ttsResponse.Success || string.IsNullOrEmpty(ttsResponse.AudioContent))
                 {
-                    // Console.WriteLine($"Resemble AI Sync API Error or no audio content. Success: {ttsResponse?.Success}, Issues: {string.Join(", ", ttsResponse?.Issues ?? new List<string>())}");
+                    _logger.LogError("Resemble returned success=false or no audio: {Msg}", ttsResponse?.Message);
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                byte[] audioDataFromApi = Convert.FromBase64String(ttsResponse.AudioContent);
-                TimeSpan? durationFromApi = ttsResponse.Duration.HasValue ? TimeSpan.FromSeconds(ttsResponse.Duration.Value) : null;
-                string? actualOutputFormat = ttsResponse.OutputFormat?.ToLowerInvariant();
-                int actualSampleRateFromResponse = ttsResponse.SampleRate.HasValue ? (int)ttsResponse.SampleRate.Value : 0;
+                byte[] sourceAudioData = Convert.FromBase64String(ttsResponse.AudioContent);
 
-                byte[]? pcmData = null;
-                int originalChannels = 1; // Assume mono for PCM or WAV
-                int originalBitsPerSample = 16; // Assume 16-bit for PCM or WAV as requested due to _precision being pcm_16
-
-                var wavParseResult = ParseWavAndExtractPcm(audioDataFromApi);
-                pcmData = wavParseResult.pcmData;
-                actualSampleRateFromResponse = wavParseResult.originalSampleRate; // Trust WAV header more
-                if (!durationFromApi.HasValue) durationFromApi = wavParseResult.duration;
-
-                byte[] finalPcmData = ResamplePcm(pcmData, actualSampleRateFromResponse, _serviceConfig.TargetSampleRate, originalChannels, originalBitsPerSample);
-
-                return (finalPcmData, durationFromApi ?? TimeSpan.Zero);
-            }
-            catch (HttpRequestException) { return (Array.Empty<byte>(), TimeSpan.Zero); }
-            catch (JsonException) { return (Array.Empty<byte>(), TimeSpan.Zero); }
-            catch (TaskCanceledException) { return (Array.Empty<byte>(), TimeSpan.Zero); }
-            catch (Exception) { return (Array.Empty<byte>(), TimeSpan.Zero); }
-        }
-
-        private static short[] PcmBytesToShorts(byte[] pcmData)
-        {
-            if (pcmData.Length % 2 != 0) return Array.Empty<short>();
-            short[] samples = new short[pcmData.Length / 2];
-            Buffer.BlockCopy(pcmData, 0, samples, 0, pcmData.Length);
-            return samples;
-        }
-
-        private static byte[] PcmShortsToBytes(short[] samples)
-        {
-            byte[] pcmData = new byte[samples.Length * 2];
-            Buffer.BlockCopy(samples, 0, pcmData, 0, pcmData.Length);
-            return pcmData;
-        }
-
-        private byte[] ResamplePcm(byte[] pcmData, int originalSampleRate, int targetSampleRate, int numChannels, int bitsPerSample)
-        {
-            if (originalSampleRate == targetSampleRate || pcmData.Length == 0)
-            {
-                return pcmData;
-            }
-
-            if (bitsPerSample != 16 || numChannels <= 0 || originalSampleRate <= 0)
-            {
-                // This shouldn't happen if Resemble always returns 16-bit mono when requested and WAV parser is correct
-                return pcmData;
-            }
-
-            short[] inputShorts = PcmBytesToShorts(pcmData);
-            if (inputShorts.Length == 0 && pcmData.Length > 0) return pcmData;
-
-            int inputFrames = inputShorts.Length / numChannels;
-            if (inputFrames == 0 && inputShorts.Length > 0) return pcmData;
-
-
-            int outputFrames = (int)Math.Max(1, Math.Round(inputFrames * (double)targetSampleRate / originalSampleRate));
-            short[] outputShorts = new short[outputFrames * numChannels];
-
-            double step = (double)originalSampleRate / targetSampleRate;
-
-            for (int i = 0; i < outputFrames; i++)
-            {
-                double originalFrameIndexDouble = i * step;
-                for (int c = 0; c < numChannels; c++)
+                TimeSpan duration;
+                if (ttsResponse.Duration.HasValue)
                 {
-                    int baseInputFrameFloor = (int)Math.Floor(originalFrameIndexDouble);
-                    int inputIndex1 = (baseInputFrameFloor * numChannels) + c;
-
-                    if (inputIndex1 < 0) inputIndex1 = c;
-                    if (inputIndex1 >= inputShorts.Length) inputIndex1 = Math.Max(0, inputShorts.Length - numChannels + c);
-                    if (inputIndex1 < 0 && inputShorts.Length > 0) inputIndex1 = 0;
-
-                    short sample1 = (inputShorts.Length > 0 && inputIndex1 < inputShorts.Length) ? inputShorts[inputIndex1] : (short)0;
-
-                    if (originalSampleRate < targetSampleRate) // Upsampling
-                    {
-                        int inputIndex2 = ((baseInputFrameFloor + 1) * numChannels) + c;
-                        if (inputIndex2 >= inputShorts.Length) inputIndex2 = inputIndex1;
-                        short sample2 = (inputShorts.Length > 0 && inputIndex2 < inputShorts.Length) ? inputShorts[inputIndex2] : sample1;
-                        double fraction = originalFrameIndexDouble - baseInputFrameFloor;
-                        outputShorts[i * numChannels + c] = (short)(sample1 * (1.0 - fraction) + sample2 * fraction);
-                    }
-                    else // Downsampling
-                    {
-                        outputShorts[i * numChannels + c] = sample1;
-                    }
+                    duration = TimeSpan.FromSeconds(ttsResponse.Duration.Value);
                 }
-            }
-            return PcmShortsToBytes(outputShorts);
-        }
-
-        private (byte[]? pcmData, TimeSpan? duration, int originalSampleRate) ParseWavAndExtractPcm(byte[] wavData)
-        {
-            if (wavData == null || wavData.Length < 44)
-            {
-                return (Array.Empty<byte>(), TimeSpan.Zero, 0);
-            }
-
-            using var memoryStream = new MemoryStream(wavData);
-            using var reader = new BinaryReader(memoryStream);
-
-            try
-            {
-                // RIFF chunk
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "RIFF") return (Array.Empty<byte>(), TimeSpan.Zero, 0);
-                reader.ReadInt32(); // Remaining file size
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "WAVE") return (Array.Empty<byte>(), TimeSpan.Zero, 0);
-
-                // Find 'fmt ' and 'data' chunks
-                string chunkId;
-                int chunkSize;
-                short numChannels = 0;
-                int sampleRateFromWav = 0;
-                int byteRate = 0;
-                short bitsPerSample = 0;
-                bool fmtFound = false;
-                byte[]? pcmData = null;
-
-                while (memoryStream.Position + 8 <= memoryStream.Length) // Min 8 bytes for ID and size
+                else
                 {
-                    chunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
-                    chunkSize = reader.ReadInt32();
-
-                    if (memoryStream.Position + chunkSize > memoryStream.Length || chunkSize < 0)
-                        return (Array.Empty<byte>(), TimeSpan.Zero, 0); // Invalid chunk size
-
-                    long nextChunkPos = memoryStream.Position + chunkSize;
-                    // Align to 2-byte boundary if chunk size is odd (as per Resemble's ltxt note, applies generally to RIFF chunks)
-                    if (chunkSize % 2 != 0) nextChunkPos++;
-
-
-                    if (chunkId.ToLowerInvariant() == "fmt ")
-                    {
-                        if (chunkSize < 16) return (Array.Empty<byte>(), TimeSpan.Zero, 0);
-                        reader.ReadInt16(); // Compression code (PCM = 1)
-                        numChannels = reader.ReadInt16();
-                        sampleRateFromWav = reader.ReadInt32();
-                        byteRate = reader.ReadInt32();
-                        reader.ReadInt16(); // Block align
-                        bitsPerSample = reader.ReadInt16();
-                        fmtFound = true;
-                        if (numChannels <= 0 || sampleRateFromWav <= 0 || bitsPerSample <= 0) return (Array.Empty<byte>(), TimeSpan.Zero, 0);
-
-                        // Skip any extra fmt bytes
-                        if (memoryStream.Position < nextChunkPos && nextChunkPos <= memoryStream.Length)
-                            reader.BaseStream.Seek(nextChunkPos - memoryStream.Position, SeekOrigin.Current);
-                        else if (nextChunkPos > memoryStream.Length) return (Array.Empty<byte>(), TimeSpan.Zero, 0); // overran
-                    }
-                    else if (chunkId.ToLowerInvariant() == "data")
-                    {
-                        if (!fmtFound) return (Array.Empty<byte>(), TimeSpan.Zero, 0); // Data before fmt
-                        pcmData = reader.ReadBytes(chunkSize);
-                        // Once data is found, we can break if we don't need other chunks
-                        break;
-                    }
-                    else // Skip other chunks like "cue ", "list", "ltxt"
-                    {
-                        if (memoryStream.Position < nextChunkPos && nextChunkPos <= memoryStream.Length)
-                            reader.BaseStream.Seek(nextChunkPos - memoryStream.Position, SeekOrigin.Current);
-                        else if (nextChunkPos > memoryStream.Length) return (Array.Empty<byte>(), TimeSpan.Zero, 0); // overran
-                    }
+                    duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalResembleFormat);
                 }
 
-                if (pcmData == null || pcmData.Length == 0 || !fmtFound)
+                if (_audioConversationNeeded)
                 {
-                    return (Array.Empty<byte>(), TimeSpan.Zero, 0);
+                    var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalResembleFormat, _finalUserRequest, false);
+                    return (convertedData, duration);
                 }
 
-                TimeSpan duration = TimeSpan.Zero;
-                if (byteRate > 0 && pcmData.Length > 0)
-                {
-                    duration = TimeSpan.FromSeconds((double)pcmData.Length / byteRate);
-                }
-                else if (sampleRateFromWav > 0 && numChannels > 0 && bitsPerSample > 0 && pcmData.Length > 0) // Fallback duration calculation
-                {
-                    double bytesPerSampleCalc = bitsPerSample / 8.0;
-                    if (bytesPerSampleCalc == 0) return (pcmData, TimeSpan.Zero, sampleRateFromWav);
-                    double totalFrames = pcmData.Length / (bytesPerSampleCalc * numChannels);
-                    duration = TimeSpan.FromSeconds(totalFrames / sampleRateFromWav);
-                }
-
-
-                return (pcmData, duration, sampleRateFromWav);
+                return (sourceAudioData, duration);
             }
-            catch (EndOfStreamException) { return (Array.Empty<byte>(), TimeSpan.Zero, 0); }
-            catch (IOException) { return (Array.Empty<byte>(), TimeSpan.Zero, 0); }
-            catch (Exception) { return (Array.Empty<byte>(), TimeSpan.Zero, 0); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Resemble Synthesis Error");
+                return (Array.Empty<byte>(), TimeSpan.Zero);
+            }
         }
 
-        public Task StopTextSynthesisAsync()
-        {
-            return Task.CompletedTask;
-        }
+        public Task StopTextSynthesisAsync() => Task.CompletedTask;
 
-        public string GetProviderFullName()
-        {
-            return "ResembleAITextToSpeech";
-        }
+        public string GetProviderFullName() => "ResembleAITextToSpeech";
+        public InterfaceTTSProviderEnum GetProviderType() => GetProviderTypeStatic();
+        public static InterfaceTTSProviderEnum GetProviderTypeStatic() => InterfaceTTSProviderEnum.ResembleAITextToSpeech;
+        public ITTSConfig GetCacheableConfig() => _serviceConfig;
 
-        public InterfaceTTSProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
+        public TTSProviderAvailableAudioFormat GetCurrentOutputFormat() => _optimalResembleFormat;
 
-        public static InterfaceTTSProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceTTSProviderEnum.ResembleAITextToSpeech;
-        }
+        public void Dispose() => GC.SuppressFinalize(this);
 
-        public ITTSConfig GetCacheableConfig()
+        // =================================================================================================
+        // STATIC DATA & MAPPINGS
+        // =================================================================================================
+
+        private record ResembleOutputFormatDefinition(string Precision, int SampleRate);
+
+        private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> ResembleSupportedFormats;
+        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), ResembleOutputFormatDefinition> FormatMap;
+
+        static ResembleAITTSService()
         {
-            return _serviceConfig;
-        }
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
+            var supportedFormats = new List<TTSProviderAvailableAudioFormat>
+            {
+                // 16-bit
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 8000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 16000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 22050, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 32000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 44100, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 48000, BitsPerSample = 16 },
+
+                // 24-bit
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 8000, BitsPerSample = 24 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 16000, BitsPerSample = 24 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 22050, BitsPerSample = 24 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 32000, BitsPerSample = 24 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 44100, BitsPerSample = 24 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 48000, BitsPerSample = 24 },
+
+                // 32-bit
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 8000, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 16000, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 22050, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 32000, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 44100, BitsPerSample = 32 },
+                new() { Encoding = AudioEncodingTypeEnum.WAV, SampleRateHz = 48000, BitsPerSample = 32 }
+            };
+            ResembleSupportedFormats = supportedFormats.AsReadOnly();
+
+            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), ResembleOutputFormatDefinition>
+            {
+                // 16-bit Mappings
+                { (AudioEncodingTypeEnum.WAV, 8000, 16), new("PCM_16", 8000) },
+                { (AudioEncodingTypeEnum.WAV, 16000, 16), new("PCM_16", 16000) },
+                { (AudioEncodingTypeEnum.WAV, 22050, 16), new("PCM_16", 22050) },
+                { (AudioEncodingTypeEnum.WAV, 32000, 16), new("PCM_16", 32000) },
+                { (AudioEncodingTypeEnum.WAV, 44100, 16), new("PCM_16", 44100) },
+                { (AudioEncodingTypeEnum.WAV, 48000, 16), new("PCM_16", 48000) },
+
+                // 24-bit Mappings
+                { (AudioEncodingTypeEnum.WAV, 8000, 24), new("PCM_24", 8000) },
+                { (AudioEncodingTypeEnum.WAV, 16000, 24), new("PCM_24", 16000) },
+                { (AudioEncodingTypeEnum.WAV, 22050, 24), new("PCM_24", 22050) },
+                { (AudioEncodingTypeEnum.WAV, 32000, 24), new("PCM_24", 32000) },
+                { (AudioEncodingTypeEnum.WAV, 44100, 24), new("PCM_24", 44100) },
+                { (AudioEncodingTypeEnum.WAV, 48000, 24), new("PCM_24", 48000) },
+
+                // 32-bit Mappings
+                { (AudioEncodingTypeEnum.WAV, 8000, 32), new("PCM_32", 8000) },
+                { (AudioEncodingTypeEnum.WAV, 16000, 32), new("PCM_32", 16000) },
+                { (AudioEncodingTypeEnum.WAV, 22050, 32), new("PCM_32", 22050) },
+                { (AudioEncodingTypeEnum.WAV, 32000, 32), new("PCM_32", 32000) },
+                { (AudioEncodingTypeEnum.WAV, 44100, 32), new("PCM_32", 44100) },
+                { (AudioEncodingTypeEnum.WAV, 48000, 32), new("PCM_32", 48000) },
+            };
+            FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), ResembleOutputFormatDefinition>(formatMap);
         }
     }
 }

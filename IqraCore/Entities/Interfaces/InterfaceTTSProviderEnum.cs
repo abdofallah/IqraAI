@@ -11,12 +11,16 @@
         DeepgramTextToSpeech = 6,
         MinimaxTextToSpeech = 7,
         HumeAITextToSpeech = 8,
-        PlayHtTextToSpeech = 9,
+        // PlayHtTextToSpeech = 9, shutdown
         SpeechifyTextToSpeech = 10,
         MurfAITextToSpeech = 11,
         ZyphraZonosTextToSpeech = 12,
         HamsaAITextToSpeech = 13,
         NeuphonicTextToSpeech = 14,
-        ResembleAITextToSpeech = 15
+        ResembleAITextToSpeech = 15,
+        UpliftAITextToSpeech = 16,
+        SarvamTextToSpeech = 17,
+        RimeTextToSpeech = 18,
+        InworldTextToSpeech = 19
     }
 }

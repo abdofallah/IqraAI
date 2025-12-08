@@ -160,14 +160,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     ? TimeSpan.FromSeconds(result.Item1.Alignment.CharacterEndTimesSeconds.Last())
                     : AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalElevenLabsFormat);
 
-                (byte[], TimeSpan) finalAudioData = (sourceAudioData, duration);
-
                 if (_audioConversationNeeded)
                 {
-                    finalAudioData = AudioConversationHelper.Convert(sourceAudioData, _optimalElevenLabsFormat, _finalUserRequest);
+                    var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalElevenLabsFormat, _finalUserRequest, false);
+                    return (convertedData, duration);
                 }
 
-                return finalAudioData;
+                return (sourceAudioData, duration);
             }
             catch (HttpRequestException ex)
             {

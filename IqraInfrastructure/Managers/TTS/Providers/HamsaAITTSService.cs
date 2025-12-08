@@ -125,14 +125,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
                 byte[] sourceAudioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
-                
+                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalHamsaFormat);
+
                 if (_audioConversationNeeded)
                 {
-                    var (convertedData, convertedDuration) = AudioConversationHelper.Convert(sourceAudioData, _optimalHamsaFormat, _finalUserRequest, false);
-                    return (convertedData, convertedDuration);
+                    var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalHamsaFormat, _finalUserRequest, false);
+                    return (convertedData, duration);
                 }
-
-                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalHamsaFormat);
+                
                 return (sourceAudioData, duration);
             }
             catch (Exception ex)

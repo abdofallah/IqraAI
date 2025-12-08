@@ -1,33 +1,41 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.Minimax;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
-using System.Linq;
+using IqraInfrastructure.Helpers.Audio;
+using IqraInfrastructure.Managers.TTS.Helpers;
+using Microsoft.Extensions.Logging;
+using System.Collections.ObjectModel;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
-    public class MinimaxTTSService : ITTSService, IDisposable
+    public class MiniMaxTTSService : ITTSService, IDisposable
     {
-        private readonly string _apiKey;
-        private readonly string _groupId;
-        private readonly MinimaxConfig _serviceConfig;
-        
-        // Hardcoded values based on MiniMax's requirements
-        private readonly int _bytesPerSample = 2;
-        private readonly int _channels = 1;
-        private const string BaseUrl = "https://api.minimaxi.chat/v1";
-
         private static readonly HttpClient _httpClient = new();
+        private readonly ILogger<MiniMaxTTSService> _logger;
+        private readonly string _apiKey;
+        private readonly MinimaxConfig _serviceConfig;
 
-        public MinimaxTTSService(string apiKey, string groupId, MinimaxConfig config)
+        private const string BaseUrl = "https://api.minimax.io/v1/t2a_v2";
+
+        // State
+        private AudioRequestDetails _finalUserRequest;
+        private TTSProviderAvailableAudioFormat _optimalMiniMaxFormat;
+        private MiniMaxOutputFormatDefinition _selectedApiFormat;
+        private bool _audioConversationNeeded = false;
+
+        public MiniMaxTTSService(ILogger<MiniMaxTTSService> logger, string apiKey, MinimaxConfig config)
         {
+            _logger = logger;
             _apiKey = apiKey;
-            _groupId = groupId;
             _serviceConfig = config;
         }
 
@@ -35,209 +43,187 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             var result = new FunctionReturnResult();
 
-            // Static HttpClient initialization is handled implicitly
-
-            if (!(new List<int>([8000, 16000, 22050, 24000, 32000, 44100])).Contains(_serviceConfig.TargetSampleRate))
-            {
-                throw new Exception("Sample rate support are 8000, 16000, 22050, 24000, 32000 or 44100");
-            }
-
-            return result.SetSuccessResult();
-        }
-
-        public async Task<FunctionReturnResult> CheckAccount()
-        {
-            var result = new FunctionReturnResult();
-
             try
             {
+                _finalUserRequest = new AudioRequestDetails
+                {
+                    RequestedEncoding = _serviceConfig.TargetEncodingType,
+                    RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
+                    RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
+                };
+
+                var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, MiniMaxSupportedFormats);
+                _optimalMiniMaxFormat = bestFallbackOrder.FirstOrDefault();
+
+                if (_optimalMiniMaxFormat == null)
+                {
+                    return result.SetFailureResult(
+                        "Initialize:FORMAT_NOT_SUPPORTED",
+                        $"MiniMax TTS does not support a format compatible with: {_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz"
+                    );
+                }
+
+                var formatKey = (_optimalMiniMaxFormat.Encoding, _optimalMiniMaxFormat.SampleRateHz, _optimalMiniMaxFormat.BitsPerSample);
+                if (!FormatMap.TryGetValue(formatKey, out _selectedApiFormat))
+                {
+                    throw new InvalidOperationException($"Internal error: No mapping found for selected format: {formatKey}");
+                }
+
+                _audioConversationNeeded = _optimalMiniMaxFormat.Encoding != _finalUserRequest.RequestedEncoding ||
+                                           _optimalMiniMaxFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
+                                           _optimalMiniMaxFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
+
+                // 5. Account Check
+                var accountCheck = await CheckAccount();
+                if (!accountCheck.Success)
+                {
+                    return result.SetFailureResult(accountCheck.Code, accountCheck.Message);
+                }
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult(
-                    $"CheckAccount:EXCEPTION",
-                    $"Internal server error occured: {ex.Message}"
-                );
+                return result.SetFailureResult("Initialize:EXCEPTION", $"MiniMax init error: {ex.Message}");
             }
+        }
+
+        public async Task<FunctionReturnResult> CheckAccount()
+        {
+            // MiniMax doesn't have a dedicated lightweight auth check endpoint.
+            // We assume valid config until first request failure.
+            return await Task.FromResult(new FunctionReturnResult().SetSuccessResult());
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var requestPayload = new MinimaxTtsRequest
-            {
-                Model = _serviceConfig.ModelId,
-                Text = text,
-                Stream = false,
-                OutputFormat = "hex",
-                VoiceSetting = new MinimaxVoiceSetting {
-                    VoiceId = _serviceConfig.VoiceId,
-                    Speed = _serviceConfig.VoiceSpeed
-                },
-                AudioSetting = new MinimaxAudioSetting
-                {
-                    Format = "pcm",
-                    SampleRate = _serviceConfig.TargetSampleRate,
-                    Channel = _channels,
-                    Bitrate = (_serviceConfig.TargetSampleRate * (_bytesPerSample * 8))
-                },
-                SubtitleEnable = false,
-                PronunciationDict = _serviceConfig.PronunciationDict,
-                LanguageBoost = _serviceConfig.LanguageBoostId
-            };
-
-            string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
-            var requestUri = $"{BaseUrl}/t2a_v2?GroupId={_groupId}";
-
-            using var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+            if (string.IsNullOrEmpty(text)) return (Array.Empty<byte>(), TimeSpan.Zero);
 
             try
             {
-                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
+                var requestPayload = new MinimaxTtsRequest
+                {
+                    Model = _serviceConfig.ModelId,
+                    Text = text,
+                    Stream = false,
+                    LanguageBoost = _serviceConfig.LanguageBoost,
+                    OutputFormat = "hex",
+                    VoiceSetting = new MinimaxVoiceSetting
+                    {
+                        VoiceId = _serviceConfig.VoiceId,
+                        Speed = _serviceConfig.VoiceSpeed,
+                        Vol = _serviceConfig.VoiceVolume,
+                        Pitch = _serviceConfig.VoicePitch,
+                        Emotion = _serviceConfig.VoiceEmotions,
+                        TextNormalization = _serviceConfig.VoiceTextNormalization,
+                        LatexRead = _serviceConfig.VoiceLatexRead
+                    },
+                    PronunciationDict = _serviceConfig.PronunciationDict,
+                    AudioSetting = new MinimaxAudioSetting
+                    {
+                        SampleRate = _selectedApiFormat.SampleRate,
+                        Format = _selectedApiFormat.FormatString,
+                        Channel = 1
+                    }
+                };
 
-                string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                var jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+                request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // todo logging
-                    Console.WriteLine($"MiniMax HTTP Error ({response.StatusCode}): {responseBody}");
-                    // Attempt to parse base_resp even on HTTP error if possible
-                    try
-                    {
-                        var errorResp = JsonSerializer.Deserialize<MinimaxTtsResponse>(responseBody);
-                        if (errorResp?.BaseResp != null)
-                        {
-                            // todo logging
-                            Console.WriteLine($"MiniMax API Error: Code={errorResp.BaseResp.StatusCode}, Msg='{errorResp.BaseResp.StatusMsg}'");
-                        }
-                    }
-                    catch { /* Ignore deserialize error on error path */ }
+                    var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogError("MiniMax API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                // Deserialize successful response
-                var ttsResponse = JsonSerializer.Deserialize<MinimaxTtsResponse>(responseBody);
+                var contentType = response.Content.Headers.ContentType?.MediaType;
 
-                // Check API-level success code
-                if (ttsResponse?.BaseResp?.StatusCode != 0)
+                var responseData = await response.Content.ReadFromJsonAsync<MinimaxResponseData>(cancellationToken);
+                if (responseData == null)
                 {
-                    // todo logging
-                    Console.WriteLine($"MiniMax API Error: Code={ttsResponse.BaseResp.StatusCode}, Msg='{ttsResponse.BaseResp.StatusMsg}'");
+                    _logger.LogError("Unable to deserialize MiniMax response");
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                // Check if audio data exists
-                if (string.IsNullOrWhiteSpace(ttsResponse.Data?.Audio))
+                if (responseData.BaseResp.StatusMsg != "success" && responseData.BaseResp.StatusCode != 0)
                 {
-                    // todo logging
-                    Console.WriteLine("MiniMax TTS Error: API success but no audio data received.");
+                    _logger.LogError("MiniMax API returned error: {code} {message}", responseData.BaseResp.StatusCode, responseData.BaseResp.StatusMsg);
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                // Decode the hex audio string
-                byte[] audioData = ConvertHexStringToByteArray(ttsResponse.Data.Audio);
-                TimeSpan? duration = null;
-
-                // Get duration from extra_info if available
-                if (ttsResponse.ExtraInfo != null && ttsResponse.ExtraInfo.AudioLength > 0)
+                if (responseData.Data.Status != 2)
                 {
-                    duration = TimeSpan.FromMilliseconds(ttsResponse.ExtraInfo.AudioLength);
-                }
-                else
-                {
-                    // TODO make sure no constant is used
-
-                    // Fallback: Calculate duration manually if ExtraInfo isn't present/valid
-                    // This requires knowing the BytesPerSample and Channels from the *response* (ExtraInfo)
-                    // or assuming they match the request (less reliable).
-                    int bytesPerSample = _bytesPerSample; // Assuming PCM 16-bit based on common practice
-                    int channels = _channels; // Use response channel if available, else assume 1
-                    int sampleRate = _serviceConfig.TargetSampleRate; // Use response rate if available
-
-                    if (sampleRate > 0 && bytesPerSample > 0 && channels > 0 && audioData.Length > 0)
-                    {
-                        double durationSeconds = (double)audioData.Length / (sampleRate * channels * bytesPerSample);
-                        duration = TimeSpan.FromSeconds(durationSeconds);
-                    }
+                    _logger.LogError("MiniMax API audio status came as incomplete: {code}", responseData.Data.Status);
                 }
 
-                return (audioData, duration);
+                var sourceAudioData = Convert.FromHexString(responseData.Data.Audio);
 
-            }
-            catch (JsonException jsonEx)
-            {
-                // todo logging
-                Console.WriteLine($"MiniMax JSON Deserialization Error: {jsonEx.Message}");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (FormatException formatEx) // From hex decoding
-            {
-                // todo logging
-                Console.WriteLine($"MiniMax Hex Decoding Error: {formatEx.Message}");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (HttpRequestException httpEx)
-            {
-                // todo logging
-                Console.WriteLine($"MiniMax HTTP Request Error: {httpEx.Message}");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (TaskCanceledException ex) when (ex.CancellationToken == cancellationToken)
-            {
-                // todo logging
-                Console.WriteLine("MiniMax TTS synthesis was cancelled.");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
+                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalMiniMaxFormat);
+
+                if (_audioConversationNeeded)
+                {
+                    var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalMiniMaxFormat, _finalUserRequest, false);
+                    return (convertedData, duration);
+                }
+
+                return (sourceAudioData, duration);
             }
             catch (Exception ex)
             {
-                // todo logging
-                Console.WriteLine($"MiniMax TTS Error: {ex.GetType().Name} - {ex.Message}");
+                _logger.LogError(ex, "MiniMax Synthesis Error");
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
         }
 
-        // Helper function to decode hex string
-        private static byte[] ConvertHexStringToByteArray(string hexString)
+        public Task StopTextSynthesisAsync() => Task.CompletedTask;
+
+        public string GetProviderFullName() => "MiniMaxTextToSpeech";
+        public InterfaceTTSProviderEnum GetProviderType() => GetProviderTypeStatic();
+        public static InterfaceTTSProviderEnum GetProviderTypeStatic() => InterfaceTTSProviderEnum.MinimaxTextToSpeech;
+        public ITTSConfig GetCacheableConfig() => _serviceConfig;
+
+        public TTSProviderAvailableAudioFormat GetCurrentOutputFormat() => _optimalMiniMaxFormat;
+
+        public void Dispose() => GC.SuppressFinalize(this);
+
+        // =================================================================================================
+        // STATIC DATA & MAPPINGS
+        // =================================================================================================
+
+        private record MiniMaxOutputFormatDefinition(string FormatString, int SampleRate, int BitsPerSample);
+
+        private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> MiniMaxSupportedFormats;
+        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), MiniMaxOutputFormatDefinition> FormatMap;
+
+        static MiniMaxTTSService()
         {
-            if (hexString.Length % 2 != 0)
+            var supportedFormats = new List<TTSProviderAvailableAudioFormat>
             {
-                throw new FormatException("Hex string must have an even number of characters.");
-            }
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 8000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 22050, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 24000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 32000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 44100, BitsPerSample = 16 },
+            };
+            MiniMaxSupportedFormats = supportedFormats.AsReadOnly();
 
-            return Convert.FromHexString(hexString);
-        }
-
-        public Task StopTextSynthesisAsync()
-        {
-            // Cancellation is handled via the CancellationToken passed to SynthesizeTextAsync
-            return Task.CompletedTask;
-        }
-
-        public string GetProviderFullName()
-        {
-            return "MinimaxTextToSpeech";
-        }
-
-        public InterfaceTTSProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
-
-        public static InterfaceTTSProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceTTSProviderEnum.MinimaxTextToSpeech;
-        }
-
-        public ITTSConfig GetCacheableConfig()
-        {
-            return _serviceConfig;
-        }
-        public void Dispose()
-        {
-            // Static HttpClient doesn't need instance disposal
-            GC.SuppressFinalize(this);
+            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), MiniMaxOutputFormatDefinition>
+            {
+                { (AudioEncodingTypeEnum.PCM, 8000, 16), new("pcm", 8000, 16) },
+                { (AudioEncodingTypeEnum.PCM, 16000, 16), new("pcm", 16000, 16) },
+                { (AudioEncodingTypeEnum.PCM, 22050, 16), new("pcm", 22050, 16) },
+                { (AudioEncodingTypeEnum.PCM, 24000, 16), new("pcm", 24000, 16) },
+                { (AudioEncodingTypeEnum.PCM, 32000, 16), new("pcm", 32000, 16) },
+                { (AudioEncodingTypeEnum.PCM, 44100, 16), new("pcm", 44100, 16) },
+            };
+            FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), MiniMaxOutputFormatDefinition>(formatMap);
         }
     }
 }

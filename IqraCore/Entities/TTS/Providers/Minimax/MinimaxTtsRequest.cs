@@ -26,7 +26,7 @@ namespace IqraCore.Entities.TTS.Providers.Minimax
         public bool SubtitleEnable { get; set; } = false; // Explicitly false unless needed
 
         [JsonPropertyName("pronunciation_dict")]
-        public string PronunciationDict { get; set; } = string.Empty;
+        public Dictionary<string, List<string>>? PronunciationDict { get; set; } = null;
 
         [JsonPropertyName("language_boost")]
         public string LanguageBoost { get; set; } = string.Empty;

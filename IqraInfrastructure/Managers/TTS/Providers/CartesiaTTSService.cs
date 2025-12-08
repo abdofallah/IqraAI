@@ -100,7 +100,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             try
             {
-                // 1. Build Payload
                 var requestPayload = new
                 {
                     model_id = _serviceConfig.ModelId,
@@ -124,7 +123,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     }
                 };
 
-                // 2. Prepare Request
                 var jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
                 using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/tts/bytes");
 
@@ -133,7 +131,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 request.Headers.Add("X-API-Key", _apiKey); // Docs mention both, using header is safer
                 request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                // 3. Execute
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
@@ -143,14 +140,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                // 4. Process Audio
                 byte[] sourceAudioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
-                // 5. Calculate Duration
-                // Since we know exactly what we asked for (_optimalCartesiaFormat), we can calculate/parse it.
                 var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalCartesiaFormat);
 
-                // 6. Convert if needed
                 if (_audioConversationNeeded)
                 {
                     var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalCartesiaFormat, _finalUserRequest, false);

@@ -16,13 +16,13 @@ namespace IqraCore.Entities.TTS.Providers.Minimax
         [JsonPropertyName("pitch")]
         public int Pitch { get; set; } = 0;
 
-        // Optional fields like emotion, english_normalization can be added here if needed
         [JsonPropertyName("emotion")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Emotion { get; set; }
+        public List<string> Emotion { get; set; } = new List<string>();
 
-        [JsonPropertyName("english_normalization")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // default is false
-        public bool EnglishNormalization { get; set; } = false;
+        [JsonPropertyName("text_normalization")]
+        public bool TextNormalization { get; set; } = false;
+        
+        [JsonPropertyName("latex_read")]
+        public bool LatexRead { get; set; } = false;
     }
 }

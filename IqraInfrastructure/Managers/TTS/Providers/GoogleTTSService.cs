@@ -167,13 +167,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 byte[] sourceAudioData = response.AudioContent.ToByteArray();
 
 
+                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalGoogleFormat);
+
                 if (_audioConversationNeeded)
                 {
-                    var (convertedData, convertedDuration) = AudioConversationHelper.Convert(sourceAudioData, _optimalGoogleFormat, _finalUserRequest, false);
-                    return (convertedData, convertedDuration);
+                    var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalGoogleFormat, _finalUserRequest, false);
+                    return (convertedData, duration);
                 }
 
-                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalGoogleFormat);
                 return (sourceAudioData, duration);
             }
             catch (OperationCanceledException)

@@ -11,15 +11,19 @@ namespace IqraCore.Entities.TTS.Providers.ResembleAI
         public string VoiceUuid { get; set; }
 
         [JsonPropertyName("data")]
-        public string Data { get; set; } // The text to synthesize
+        public string Data { get; set; }
+
+        [JsonPropertyName("title")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Title { get; set; }
 
         [JsonPropertyName("precision")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Precision { get; set; } // "PCM_32", "PCM_24", "PCM_16", "MULAW". Default PCM_32. We'll request PCM_16 for consistency.
+        public string? Precision { get; set; }
 
         [JsonPropertyName("sample_rate")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? SampleRate { get; set; } // 8000, 16000, 22050, 32000, 44100, 48000. Default 22050.
+        public int? SampleRate { get; set; }
 
         [JsonPropertyName("output_format")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

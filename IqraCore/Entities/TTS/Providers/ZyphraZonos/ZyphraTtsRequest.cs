@@ -37,17 +37,15 @@ namespace IqraCore.Entities.TTS.Providers.ZyphraZonos
 
         [JsonPropertyName("pitchStd")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public double? PitchStd { get; set; } // 0 to 100
+        public double? PitchStd { get; set; }
 
         // Hybrid model specific
         [JsonPropertyName("vqscore")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public double? Vqscore { get; set; } // e.g., 0.7
+        public double? Vqscore { get; set; }
 
         [JsonPropertyName("speaker_noised")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // Default is false
-        public bool SpeakerNoised { get; set; } = false;
-
-        // Note: speaker_audio for voice cloning is not included here for simplicity
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool SpeakerNoised { get; set; }
     }
 }

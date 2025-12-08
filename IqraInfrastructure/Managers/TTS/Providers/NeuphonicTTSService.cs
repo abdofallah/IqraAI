@@ -1,8 +1,14 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.Neuphonic;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
+using IqraInfrastructure.Helpers.Audio;
+using IqraInfrastructure.Managers.TTS.Helpers;
+using Microsoft.Extensions.Logging;
+using System.Collections.ObjectModel;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -12,8 +18,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class NeuphonicTTSService : ITTSService, IDisposable
     {
-        private readonly NeuphonicConfig _serviceConfig;
+        private readonly ILogger<NeuphonicTTSService> _logger;
         private readonly string _apiKey;
+        private readonly NeuphonicConfig _serviceConfig;
 
         private static readonly HttpClient _httpClient = new();
         private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
@@ -22,10 +29,17 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             PropertyNameCaseInsensitive = true
         };
 
-        private const string BaseApiUrl = "https://eu-west-1.api.neuphonic.com";
+        private const string BaseApiUrl = "https://api.neuphonic.com";
 
-        public NeuphonicTTSService(string apiKey, NeuphonicConfig config)
+        // State
+        private AudioRequestDetails _finalUserRequest;
+        private TTSProviderAvailableAudioFormat _optimalNeuphonicFormat;
+        private NeuphonicOutputFormatDefinition _selectedApiFormat;
+        private bool _audioConversationNeeded = false;
+
+        public NeuphonicTTSService(ILogger<NeuphonicTTSService> logger, string apiKey, NeuphonicConfig config)
         {
+            _logger = logger;
             _apiKey = apiKey;
             _serviceConfig = config;
         }
@@ -34,35 +48,67 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             var result = new FunctionReturnResult();
 
-            return result.SetSuccessResult();
-        }
-
-        public async Task<FunctionReturnResult> CheckAccount()
-        {
-            var result = new FunctionReturnResult();
-
             try
             {
+                _finalUserRequest = new AudioRequestDetails
+                {
+                    RequestedEncoding = _serviceConfig.TargetEncodingType,
+                    RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
+                    RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
+                };
+
+                var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, NeuphonicSupportedFormats);
+                _optimalNeuphonicFormat = bestFallbackOrder.FirstOrDefault();
+
+                if (_optimalNeuphonicFormat == null)
+                {
+                    return result.SetFailureResult(
+                        "Initialize:FORMAT_NOT_SUPPORTED",
+                        $"Neuphonic TTS does not support a format compatible with: {_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz"
+                    );
+                }
+
+                var formatKey = (_optimalNeuphonicFormat.Encoding, _optimalNeuphonicFormat.SampleRateHz, _optimalNeuphonicFormat.BitsPerSample);
+                if (!FormatMap.TryGetValue(formatKey, out _selectedApiFormat))
+                {
+                    throw new InvalidOperationException($"Internal error: No mapping found for selected format: {formatKey}");
+                }
+
+                _audioConversationNeeded = _optimalNeuphonicFormat.Encoding != _finalUserRequest.RequestedEncoding ||
+                                           _optimalNeuphonicFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
+                                           _optimalNeuphonicFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
+
+                var accountCheck = await CheckAccount();
+                if (!accountCheck.Success)
+                {
+                    return result.SetFailureResult(accountCheck.Code, accountCheck.Message);
+                }
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult(
-                    $"CheckAccount:EXCEPTION",
-                    $"Internal server error occured: {ex.Message}"
-                );
+                return result.SetFailureResult("Initialize:EXCEPTION", $"Neuphonic init error: {ex.Message}");
             }
+        }
+
+        public async Task<FunctionReturnResult> CheckAccount()
+        {
+            // No explicit balance check API. Assume success.
+            return await Task.FromResult(new FunctionReturnResult().SetSuccessResult());
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
+            if (string.IsNullOrEmpty(text)) return (Array.Empty<byte>(), TimeSpan.Zero);
+
             var requestUrl = $"{BaseApiUrl}/sse/speak/{_serviceConfig.LanguageCode}";
 
             var apiRequestPayload = new NeuphonicTtsApiRequest
             {
                 Text = text,
                 VoiceId = _serviceConfig.VoiceId,
-                SamplingRate = _serviceConfig.TargetSampleRate,
+                SamplingRate = _selectedApiFormat.SampleRate,
                 Speed = _serviceConfig.Speed,
                 Encoding = "pcm_linear",
                 Model = _serviceConfig.Model
@@ -81,105 +127,107 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogError("Neuphonic API Error {Code}: {Body}", response.StatusCode, errorBody);
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
-
-                var accumulatedAudioBytes = new List<byte>();
-                int? actualSampleRateFromResponse = null;
 
                 using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
                 using var reader = new StreamReader(stream, Encoding.UTF8);
 
-                StringBuilder currentJsonDataBuffer = new StringBuilder();
+                var accumulatedAudioBytes = new List<byte>();
+
                 string? line;
                 while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
+
                     if (line.StartsWith("data:"))
                     {
-                        currentJsonDataBuffer.Append(line.Substring(5).Trim());
-                    }
-                    else if (string.IsNullOrWhiteSpace(line) && currentJsonDataBuffer.Length > 0)
-                    {
+                        var json = line.Substring(5).Trim();
+                        // SSE often sends "data: [DONE]" to signal end
+                        if (json == "[DONE]") break;
+
                         try
                         {
-                            var sseEventPayload = JsonSerializer.Deserialize<NeuphonicSseEventPayload>(currentJsonDataBuffer.ToString(), _jsonSerializerOptions);
-                            if (sseEventPayload?.AudioDetails?.Audio != null && sseEventPayload.StatusCode == 200)
+                            var sseEventPayload = JsonSerializer.Deserialize<NeuphonicSseEventPayload>(json, _jsonSerializerOptions);
+
+                            // Check for success (200) and data presence
+                            if (sseEventPayload?.StatusCode == 200 && !string.IsNullOrEmpty(sseEventPayload?.AudioDetails?.Audio))
                             {
                                 byte[] audioChunk = Convert.FromBase64String(sseEventPayload.AudioDetails.Audio);
                                 accumulatedAudioBytes.AddRange(audioChunk);
-
-                                if (!actualSampleRateFromResponse.HasValue && sseEventPayload.AudioDetails.SamplingRate.HasValue)
-                                {
-                                    actualSampleRateFromResponse = sseEventPayload.AudioDetails.SamplingRate.Value;
-                                }
                             }
                         }
-                        catch (JsonException) { }
-                        catch (FormatException) { }
-                        currentJsonDataBuffer.Clear();
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning("Neuphonic SSE Parse Error: {Message}", ex.Message);
+                        }
                     }
                 }
 
                 if (accumulatedAudioBytes.Count == 0)
                 {
+                    _logger.LogWarning("Neuphonic returned no audio bytes.");
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                byte[] finalAudioData = accumulatedAudioBytes.ToArray();
-                TimeSpan duration = TimeSpan.Zero;
+                byte[] sourceAudioData = accumulatedAudioBytes.ToArray();
 
-                int rateForDurationCalc = actualSampleRateFromResponse ?? _serviceConfig.TargetSampleRate;
-                const int channels = 1;
-                const int bitsPerSample = 16;
+                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalNeuphonicFormat);
 
-                if (rateForDurationCalc > 0 && finalAudioData.Length > 0)
+                if (_audioConversationNeeded)
                 {
-                    duration = TimeSpan.FromSeconds(finalAudioData.Length / (double)(rateForDurationCalc * channels * (bitsPerSample / 8)));
+                    var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalNeuphonicFormat, _finalUserRequest, false);
+                    return (convertedData, duration);
                 }
 
-                return (finalAudioData, duration);
+                return (sourceAudioData, duration);
             }
-            catch (HttpRequestException)
+            catch (Exception ex)
             {
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (TaskCanceledException)
-            {
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-            catch (Exception)
-            {
+                _logger.LogError(ex, "Neuphonic Synthesis Error");
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
         }
 
-        public Task StopTextSynthesisAsync()
-        {
-            return Task.CompletedTask;
-        }
+        public Task StopTextSynthesisAsync() => Task.CompletedTask;
 
-        public string GetProviderFullName()
-        {
-            return "NeuphonicTextToSpeech";
-        }
+        public string GetProviderFullName() => "NeuphonicTextToSpeech";
+        public InterfaceTTSProviderEnum GetProviderType() => GetProviderTypeStatic();
+        public static InterfaceTTSProviderEnum GetProviderTypeStatic() => InterfaceTTSProviderEnum.NeuphonicTextToSpeech;
+        public ITTSConfig GetCacheableConfig() => _serviceConfig;
 
-        public InterfaceTTSProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
+        public TTSProviderAvailableAudioFormat GetCurrentOutputFormat() => _optimalNeuphonicFormat;
 
-        public static InterfaceTTSProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceTTSProviderEnum.NeuphonicTextToSpeech;
-        }
+        public void Dispose() => GC.SuppressFinalize(this);
 
-        public ITTSConfig GetCacheableConfig()
+        // =================================================================================================
+        // STATIC DATA & MAPPINGS
+        // =================================================================================================
+
+        private record NeuphonicOutputFormatDefinition(int SampleRate);
+
+        private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> NeuphonicSupportedFormats;
+        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), NeuphonicOutputFormatDefinition> FormatMap;
+
+        static NeuphonicTTSService()
         {
-            return _serviceConfig;
-        }
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
+            var supportedFormats = new List<TTSProviderAvailableAudioFormat>
+            {
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 8000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 22050, BitsPerSample = 16 },
+            };
+            NeuphonicSupportedFormats = supportedFormats.AsReadOnly();
+
+            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), NeuphonicOutputFormatDefinition>
+            {
+                { (AudioEncodingTypeEnum.PCM, 8000, 16), new(8000) },
+                { (AudioEncodingTypeEnum.PCM, 16000, 16), new(16000) },
+                { (AudioEncodingTypeEnum.PCM, 22050, 16), new(22050) },
+            };
+            FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), NeuphonicOutputFormatDefinition>(formatMap);
         }
     }
 }

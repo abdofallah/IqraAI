@@ -30,6 +30,9 @@ namespace IqraCore.Entities.TTS.Providers.ResembleAI
 
         [JsonPropertyName("title")]
         public string? Title { get; set; }
+
+        [JsonPropertyName("message")] // Error message if success is false
+        public string? Message { get; set; }
     }
 
     public class ResembleAudioTimestamps

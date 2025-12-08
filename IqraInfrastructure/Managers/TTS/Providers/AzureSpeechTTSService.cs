@@ -150,14 +150,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 return (new byte[] { }, TimeSpan.Zero);
             }
 
-            (byte[], TimeSpan) finalAudioData = (result.AudioData, result.AudioDuration);
-
             if (_audioConversationNeeded)
             {
-                finalAudioData = AudioConversationHelper.Convert(result.AudioData, _optimalAzureFormat, _finalUserRequest);
+                var (convertedData, _) = AudioConversationHelper.Convert(result.AudioData, _optimalAzureFormat, _finalUserRequest, false);
+                return (convertedData, result.AudioDuration);
             }
 
-            return finalAudioData;
+            return (result.AudioData, result.AudioDuration);
         }
 
         public async Task StopTextSynthesisAsync()

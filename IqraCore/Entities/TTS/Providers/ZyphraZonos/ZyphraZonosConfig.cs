@@ -12,6 +12,7 @@ namespace IqraCore.Entities.TTS.Providers.ZyphraZonos
         public string LanguageIsoCode { get; set; }
         public Dictionary<string, float> Emotion { get; set; } = new Dictionary<string, float>();
         public float Vqscore { get; set; }
+        public bool SpeakerNoised { get; set; }
         public int TargetSampleRate { get; set; }
         public int TargetBitsPerSample { get; set; }
         public AudioEncodingTypeEnum TargetEncodingType { get; set; }

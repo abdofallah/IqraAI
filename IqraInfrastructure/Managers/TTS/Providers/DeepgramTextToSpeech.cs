@@ -167,18 +167,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                         sourceAudioData = ms.ToArray();
                     }
 
-                    // We don't need to dispose response.Stream here if ToStream owns it, 
-                    // but usually copying out is safer for memory management.
+                    var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalDeepgramFormat);
 
-                    // Post-Process if needed
                     if (_audioConversationNeeded)
                     {
-                        var (convertedData, convertedDuration) = AudioConversationHelper.Convert(sourceAudioData, _optimalDeepgramFormat, _finalUserRequest, false);
-                        return (convertedData, convertedDuration);
+                        var (convertedData, _) = AudioConversationHelper.Convert(sourceAudioData, _optimalDeepgramFormat, _finalUserRequest, false);
+                        return (convertedData, duration);
                     }
 
-                    // Calculate Duration based on the OPTIMAL format (what we asked Deepgram for)
-                    var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalDeepgramFormat);
                     return (sourceAudioData, duration);
                 }
                 else
