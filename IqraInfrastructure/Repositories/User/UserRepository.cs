@@ -81,22 +81,21 @@ namespace IqraInfrastructure.Repositories.User
             return await UpdateUser(filter, updateDefinition);
         }
 
+        public async Task<bool> UpdateUser(string email, UpdateDefinition<UserData> updateDefinition, IClientSessionHandle session)
+        {
+            var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);
+            return await UpdateUser(filter, updateDefinition, session);
+        }
+
         public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition, UpdateOptions? options = null)
         {
             var result = await _usersCollection.UpdateOneAsync(filter, updateDefinition, options);
             return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 
-        public async Task<bool> UpdateUser(string email, UpdateDefinition<UserData> updateDefinition, IClientSessionHandle session)
+        public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition, IClientSessionHandle session, UpdateOptions? options = null)
         {
-            var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);
-            var result = await _usersCollection.UpdateOneAsync(session, filter, updateDefinition);
-            return result.IsAcknowledged && result.ModifiedCount != 0;
-        }
-
-        public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition, IClientSessionHandle session)
-        {
-            var result = await _usersCollection.UpdateOneAsync(session, filter, updateDefinition);
+            var result = await _usersCollection.UpdateOneAsync(session, filter, updateDefinition, options);
             return result.IsAcknowledged && result.ModifiedCount != 0;
         }
 
