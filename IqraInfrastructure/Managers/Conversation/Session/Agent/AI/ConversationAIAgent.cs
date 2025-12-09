@@ -1,4 +1,5 @@
 ﻿using Humanizer;
+using Hume.EmpathicVoice;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Context;
@@ -27,7 +28,6 @@ using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using static Google.Cloud.TextToSpeech.V1.MultiSpeakerMarkup.Types;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -75,6 +75,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public ConversationAgentType AgentType => ConversationAgentType.AI;
         public ConversationAgentConfiguration AgentConfiguration => _agentConfiguration;
         public ConversationAIAgentState AgentState => _agentState;
+        public ConversationAIAgentAudioOutput AudioOutput => _audioOutputHandler;
 
         // Events
         public event EventHandler<ConversationAudioGeneratedEventArgs>? AudioGenerated;
@@ -292,6 +293,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 //await ShutdownAsync("Initialization failed"); // Attempt cleanup dont do it here, its handled by adding service
                 throw; // Re-throw to signal failure
             }
+        }
+        public async Task UpdateOutputFormatAsync(int sampleRate, int bitsPerSample)
+        {
+            _logger.LogInformation("Agent {AgentId}: Received request to update output format to {Rate}Hz {Bits}bit.", AgentId, sampleRate, bitsPerSample);
+
+            await _audioOutputHandler.UpgradeMasterFormatAndReinitalizeAsync(sampleRate, bitsPerSample);
         }
 
         // Agent Management

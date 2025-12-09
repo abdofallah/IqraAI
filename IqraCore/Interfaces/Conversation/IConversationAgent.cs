@@ -16,6 +16,7 @@ namespace IqraCore.Interfaces.Conversation
         Task ProcessTextAsync(string text, string clientId, CancellationToken cancellationToken);
         Task ProcessDTMFAsync(string digit, string clientId, CancellationToken cancellationToken);
         Task InitializeAsync();
+        Task UpdateOutputFormatAsync(int sampleRate, int bitsPerSample);
         Task ShutdownAsync(string reason);
 
         event EventHandler<ConversationAudioGeneratedEventArgs> AudioGenerated;

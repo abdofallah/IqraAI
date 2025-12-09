@@ -6,12 +6,12 @@ using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.TTS;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Logger;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.TTS.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
@@ -42,11 +42,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
     public class ConversationAIAgentAudioOutput : IDisposable
     {
+        // Events
         public event EventHandler<ConversationAudioGeneratedEventArgs>? AudioChunkGenerated;
         public event EventHandler<ConversationTurn>? AgentResponsePlaybackComplete;
         public event EventHandler<object?>? OnAudioBufferCleared;
         public event EventHandler<ConversationTurn>? TurnUpdate;
 
+        // Dependencies
         private readonly SessionLoggerFactory _sessionLoggerFactory;
         private readonly ILogger<ConversationAIAgentAudioOutput> _logger;
         private readonly ConversationSessionOrchestrator _conversationSession;
@@ -56,46 +58,32 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly BusinessManager _businessManager;
         private readonly TTSAudioCacheManager _cacheManager;
 
+        // Master Format State (Controlled by Orchestrator)
         private int _masterSampleRate;
         private int _masterBitsPerSample;
-        private int _masterChannels = 1;
-
         private int _bytesPerSample;
-        private int FrameDurationMs;
-        private int MaxBufferAheadMs;
-        private int InitialSegmentDurationMs;
-        private int _firstBytesPerChunk;
         private int _bytesPerChunk;
+        private const int FRAME_DURATION_MS = 20;
 
-        // Virtual Clock State
-        private string? _currentStreamingTurnId = null;
-        private DateTime? _turnStreamingStartedAt = null;
-        private TimeSpan _totalAudioDurationSent = TimeSpan.Zero;
+        public ConversationAIAgentBackgroundAudioProvider? BackgroundAudioProvider { get; private set; }
 
         // Queues & Tasks
         private BlockingCollection<SpeechSegment> _speechAudioQueue = new(new ConcurrentQueue<SpeechSegment>());
         private Task? _audioSendingTask;
-        private CancellationTokenSource _audioSendingCTS = new(); // CTS for the sending loop
+        private CancellationTokenSource _audioSendingCTS = new();
 
         // Background Audio State
         private int _backgroundAudioPosition = 0;
 
-        // Current Speech Playback State
+        // Current Playback State
         private string _currentSpeechSegmentId = string.Empty;
         private ReadOnlyMemory<byte> _currentSpeechSegmentAudio = ReadOnlyMemory<byte>.Empty;
-        private TimeSpan _currentSpeechSegmentDuration = TimeSpan.Zero;
-        private string _currentSpeechSegmentText = string.Empty;
         private int _currentSpeechSegmentAudioPosition = 0;
-
         private volatile bool _isPlaybackPaused = false;
         private DateTime? _playbackPausedAt = null;
 
-        private bool _isFirstBackgroundAudioChunkWithoutSpeech = true;
-
         // TTS Specific Task Management
         private CancellationTokenSource? _currentTtsTaskCTS = null;
-
-        // Synthesis Semaphore
         private SemaphoreSlim _synthesisSemaphore = new SemaphoreSlim(1, 1);
 
         public ConversationAIAgentAudioOutput(
@@ -121,41 +109,51 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Initalize
         public async Task InitializeAsync(CancellationToken agentCTS)
         {
-            _audioSendingCTS = CancellationTokenSource.CreateLinkedTokenSource(agentCTS); // Link to agent shutdown
-
-            // todo introduce this config into audio configuration for web session to manually define them,
-            // for twilio and etc we can calculate manually based on our server vs telephony server
-            FrameDurationMs = 20;
-            MaxBufferAheadMs = 150;
-            InitialSegmentDurationMs = 300;
-
             _masterSampleRate = _agentState.AgentConfiguration!.SampleRate;
             _masterBitsPerSample = _agentState.AgentConfiguration!.BitsPerSample;
-            _masterChannels = _agentState.AgentConfiguration!.Channels;
+
+            RecalculateFormatDerivedValues();
 
             await InitializeTTSAsync();
             await LoadBackgroundMusicAsync();
 
-            _logger.LogInformation("AudioOutput module initialized for Agent {AgentId}.", _agentState.AgentId);
+            _logger.LogInformation("AudioOutput module initialized. Master: {Rate}Hz {Bits}bit. Frame: {Frame}ms", _masterSampleRate, _masterBitsPerSample, FRAME_DURATION_MS);
         }
         public async Task UpgradeMasterFormatAndReinitalizeAsync(int newSampleRate, int newBitsPerSample)
         {
+            if (_masterSampleRate == newSampleRate &&
+                _masterBitsPerSample == newBitsPerSample
+            ) {
+                return;
+            }
+
+
             _logger.LogInformation("Upgrading Master Audio Format to {Rate}Hz with {Bits} bits...", newSampleRate, newBitsPerSample);
 
+            bool wasPaused = _isPlaybackPaused;
             await PausePlaybackAsync();
-            await CancelCurrentSpeechPlaybackAsync();
 
             _masterSampleRate = newSampleRate;
             _masterBitsPerSample = newBitsPerSample;
+            RecalculateFormatDerivedValues();
+
+            if (_agentState.AgentConfiguration != null)
+            {
+                _agentState.AgentConfiguration.SampleRate = newSampleRate;
+                _agentState.AgentConfiguration.BitsPerSample = newBitsPerSample;
+            }
+
+            await CancelCurrentSpeechPlaybackAsync();
 
             await ReInitializeTTSAndBackgroundAudio();
 
-            await ResumePlaybackAsync();
+            if (!wasPaused)
+            {
+                await ResumePlaybackAsync();
+            }
         }
         public async Task ReInitializeTTSAndBackgroundAudio()
         {
-            _logger.LogInformation("Agent {AgentId}: Re-initializing Audio Output Handler.", _agentState.AgentId);
-            await CancelCurrentSpeechPlaybackAsync();
             await InitializeTTSAsync();
             await LoadBackgroundMusicAsync();
         }
@@ -202,13 +200,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             var actualFormat = _agentState.TTSService.GetCurrentOutputFormat();
 
-            _masterSampleRate = actualFormat.SampleRateHz;
-            _masterBitsPerSample = actualFormat.BitsPerSample;
-            _masterChannels = 1; // remain staic one for now
-
-            _bytesPerSample = _masterBitsPerSample / 8;
-            _bytesPerChunk = _masterSampleRate * _bytesPerSample * _masterChannels * FrameDurationMs / 1000;
-            _firstBytesPerChunk = _masterSampleRate * _bytesPerSample * _masterChannels * InitialSegmentDurationMs / 1000;
+            if (actualFormat.SampleRateHz != _masterSampleRate)
+            {
+                _logger.LogWarning("TTS Provider Initialized at {Actual}Hz, but Master is {Master}Hz. Conversion will occur.", actualFormat.SampleRateHz, _masterSampleRate);
+            }
 
             _logger.LogInformation("Agent {AgentId}: TTS service initialized/re-initialized.", _agentState.AgentId);
         }
@@ -240,82 +235,41 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
                 }
 
-                // Determine Format and Convert
-                ReadOnlyMemory<byte> rawPcmData;
-                string? contentType = null;
-                if (fileResult.Metadata.TryGetValue("x-amz-meta-filecontenttype", out contentType) && !string.IsNullOrWhiteSpace(contentType))
+                AudioEncodingTypeEnum inputEncoding = AudioEncodingTypeEnum.MPEG; // Default guess
+                if (fileResult.Metadata.TryGetValue("x-amz-meta-filecontenttype", out var contentType))
                 {
-                    AudioEncodingTypeEnum? backgroundFileEncoding = null;
-                    if (contentType == "audio/mpeg")
-                    {
-                        backgroundFileEncoding = AudioEncodingTypeEnum.MPEG;
-                    }
-                    else if (contentType == "audio/wav")
-                    {
-                        backgroundFileEncoding = AudioEncodingTypeEnum.WAV;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Agent {AgentId}: Background audio file (ID: {FileId}) has unsupported format '{ContentType}'.", _agentState.AgentId, audioUrl, contentType);
-                    }
-
-                    if (backgroundFileEncoding != null)
-                    {
-                        var convertedBKGAudio = AudioConversationHelper.Convert(
-                            fileResult.Data.ToArray(),
-                            new TTSProviderAvailableAudioFormat()
-                            {
-                                Encoding = backgroundFileEncoding.Value,
-                                BitsPerSample = 0, // for wav and mpeg, its in the header
-                                SampleRateHz = 0 // for wav and mpeg, its in the header
-                            },
-                            new AudioRequestDetails()
-                            {
-                                RequestedEncoding = AudioEncodingTypeEnum.PCM,
-                                RequestedBitsPerSample = _masterBitsPerSample,
-                                RequestedSampleRateHz = _masterSampleRate
-                            },
-                            false
-                        );
-
-                        rawPcmData = convertedBKGAudio.audioData;
-                    }
-                    else
-                    {
-                        rawPcmData = ReadOnlyMemory<byte>.Empty; // Indicate failure
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("Agent {AgentId}: Background audio file (ID: {FileId}) is missing 'fileContentType' metadata. Cannot determine format.", _agentState.AgentId, audioUrl);
-                    rawPcmData = ReadOnlyMemory<byte>.Empty; // Indicate failure
+                    if (contentType == "audio/wav") inputEncoding = AudioEncodingTypeEnum.WAV;
                 }
 
+                var (convertedAudio, _) = AudioConversationHelper.Convert(
+                    fileResult.Data.ToArray(),
+                    new TTSProviderAvailableAudioFormat { Encoding = inputEncoding, SampleRateHz = 0, BitsPerSample = 0 },
+                    new AudioRequestDetails
+                    {
+                        RequestedEncoding = AudioEncodingTypeEnum.PCM,
+                        RequestedSampleRateHz = _masterSampleRate,
+                        RequestedBitsPerSample = _masterBitsPerSample
+                    },
+                    false
+                );
 
-                // Validate Conversion Result
-                if (rawPcmData.IsEmpty) // Conversion failed or format was unsupported
+                if (convertedAudio == null || convertedAudio.Length == 0)
                 {
-                    _logger.LogWarning("Agent {AgentId}: Failed to convert background audio (ID: {FileId}) to required PCM format.", _agentState.AgentId, audioUrl);
+                    _logger.LogError("Failed to convert background audio to Master PCM format.");
                     _agentState.IsBackgroundMusicEnabled = false;
-                    _agentState.IsBackgroundMusicLoaded = false;
+                    BackgroundAudioProvider = null;
                     return;
                 }
 
-                // Check alignment for the *converted* PCM data
-                if (rawPcmData.Length % _bytesPerSample != 0)
-                {
-                    _logger.LogError("Agent {AgentId}: Converted background audio (ID: {FileId}) has invalid length ({Length} bytes). This should not happen after successful PCM conversion.",
-                        _agentState.AgentId, audioUrl, rawPcmData.Length);
-                    _agentState.IsBackgroundMusicEnabled = false;
-                    _agentState.IsBackgroundMusicLoaded = false;
-                    return;
-                }
 
-                // Success
-                _agentState.BackgroundAudioData = rawPcmData;
-                // enable bkg audio in begin conversation
+                _agentState.BackgroundAudioData = convertedAudio; // Keep raw ref if needed
+                BackgroundAudioProvider = new ConversationAIAgentBackgroundAudioProvider(
+                    convertedAudio,
+                    _masterSampleRate,
+                    _masterBitsPerSample
+                );
+
                 _agentState.IsBackgroundMusicLoaded = true;
-                _backgroundAudioPosition = 0;
             }
             catch (Exception ex)
             {
@@ -324,13 +278,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _agentState.IsBackgroundMusicLoaded = false;
             }
         }
+        private void RecalculateFormatDerivedValues()
+        {
+            _bytesPerSample = _masterBitsPerSample / 8;
+            _bytesPerChunk = (_masterSampleRate * _bytesPerSample * FRAME_DURATION_MS) / 1000;
+        }
 
         // Management
         public void StartProcessingAudioTask()
         {
             if (_audioSendingTask != null) return;
 
-            _audioSendingTask = Task.Run(() => ProcessAudioSpeakingQueueAsync(_audioSendingCTS.Token), _audioSendingCTS.Token);
+            _audioSendingTask = Task.Run(() => ProcessAudioProducerLoopAsync(_audioSendingCTS.Token), _audioSendingCTS.Token);
         }
         public async Task<(bool Success, TimeSpan Duration)> SynthesizeAndQueueSpeechAsync(ConversationTurn turn, string text, bool markTurnAsCompleteAfterThis, CancellationToken externalToken) // Called by LLM Handler
         {
@@ -545,14 +504,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _currentSpeechSegmentId = string.Empty;
             _currentSpeechSegmentAudio = ReadOnlyMemory<byte>.Empty;
             _currentSpeechSegmentAudioPosition = 0;
-            _currentSpeechSegmentText = string.Empty;
             _isPlaybackPaused = false;
             _playbackPausedAt = null;
-
-            // Reset checks
-            _currentStreamingTurnId = null;
-            _turnStreamingStartedAt = null;
-            _totalAudioDurationSent = TimeSpan.Zero;
 
             OnAudioBufferCleared?.Invoke(this, null);
         }
@@ -622,8 +575,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 TurnUpdate?.Invoke(this, turnBeingCancelled);
             }
         }
-
-        // Audio Processing
         private async Task<(bool isHit, string? cacheGroupId, string? cacheEntryId)> IsTextCacheable(string text)
         {
             var agent = _agentState.BusinessAppAgent;
@@ -725,7 +676,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 return (true, autoCacheGroupId, newCacheAudio.Id);
             }
         }
-        private async Task ProcessAudioSpeakingQueueAsync(CancellationToken cancellationToken)
+
+        // Processing Task
+        private async Task ProcessAudioProducerLoopAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -734,63 +687,51 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     var currentTurn = _agentState.CurrentTurn;
                     if (currentTurn == null)
                     {
-                        _logger.LogError("Agent {AgentId}: No current turn found.", _agentState.AgentId);
+                        await Task.Delay(20, cancellationToken);
                         continue;
-                    }
-
-                    if (_currentStreamingTurnId != currentTurn.Id)
-                    {
-                        // New turn detected! Force a clock reset.
-                        _currentStreamingTurnId = currentTurn.Id;
-                        _turnStreamingStartedAt = null;
-                        _totalAudioDurationSent = TimeSpan.Zero;
-                        _logger.LogDebug("Agent {AgentId}: New turn detected {TurnId}. Resetting Virtual Clock.", _agentState.AgentId, currentTurn.Id);
                     }
 
                     byte[]? chunkToSend = null;
 
-                    // --- Process Current Speech Segment ---
+                    // Check if we have active speech in the buffer
                     if (
                         !_currentSpeechSegmentAudio.IsEmpty &&
                         _currentSpeechSegmentAudioPosition < _currentSpeechSegmentAudio.Length &&
                         !_isPlaybackPaused
                     ) {
-                        int remainingSpeechBytes = _currentSpeechSegmentAudio.Length - _currentSpeechSegmentAudioPosition;
-                        int speechChunkSize = Math.Min(_bytesPerChunk, remainingSpeechBytes);
+                        int remaining = _currentSpeechSegmentAudio.Length - _currentSpeechSegmentAudioPosition;
+                        int size = Math.Min(_bytesPerChunk, remaining);
 
-                        if (speechChunkSize > 0)
+                        if (size > 0)
                         {
-                            var speechChunk = _currentSpeechSegmentAudio.Slice(_currentSpeechSegmentAudioPosition, speechChunkSize);
-                            var backgroundChunk = GetNextBackgroundChunk(speechChunkSize);
-                            chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(speechChunk, backgroundChunk);
+                            chunkToSend = _currentSpeechSegmentAudio.Slice(_currentSpeechSegmentAudioPosition, size).ToArray();
+                            _currentSpeechSegmentAudioPosition += size;
 
-                            _currentSpeechSegmentAudioPosition += speechChunkSize;
-
+                            // Mark Segment Complete in Data
                             if (_currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length)
                             {
-                                _logger.LogDebug("Agent {AgentId}: Finished playing speech segment {SegmentId}.", _agentState.AgentId, _currentSpeechSegmentId);
-
-                                var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == _currentSpeechSegmentId);
-                                if (segmentDataToUpdate != null)
+                                var segData = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == _currentSpeechSegmentId);
+                                if (segData != null)
                                 {
-                                    segmentDataToUpdate.FinishedPlayingAt = DateTime.UtcNow;
+                                    segData.FinishedPlayingAt = DateTime.UtcNow;
                                     TurnUpdate?.Invoke(this, currentTurn);
                                 }
                             }
                         }
-                        else { _logger.LogError("Agent {AgentId}: Speech chunk size is zero.", _agentState.AgentId); } // Should not happen if logic is correct
                     }
 
-                    // If no current speech chunk, try dequeuing next segment
+                    // If buffer empty, try get next segment
                     if (chunkToSend == null && !_isPlaybackPaused && _speechAudioQueue.TryTake(out var nextSegment))
                     {
+                        // Verify turn match
                         if (currentTurn.Id != nextSegment.TurnId)
                         {
-                            _logger.LogError("Agent {AgentId}: Dequeued speech segment for turn {TurnId} but current turn is {CurrentTurnId}.", _agentState.AgentId, nextSegment.TurnId, currentTurn.Id);
+                            // Discard old turn audio
                             continue;
                         }
 
-                        var newSegmentData = new ConversationTurnSpeechSegmentData
+                        // Register Segment
+                        var newSegData = new ConversationTurnSpeechSegmentData
                         {
                             Id = nextSegment.Id,
                             Text = nextSegment.Text,
@@ -799,70 +740,31 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             IsCacheHit = nextSegment.IsCacheHit,
                             RetrievalLatencyMS = nextSegment.RetrievalLatencyMS
                         };
-                        currentTurn.Response.SpokenSegments.Add(newSegmentData);
+                        currentTurn.Response.SpokenSegments.Add(newSegData);
                         TurnUpdate?.Invoke(this, currentTurn);
 
+                        // Load into Local Buffer
                         _currentSpeechSegmentId = nextSegment.Id;
                         _currentSpeechSegmentAudio = nextSegment.AudioData;
-                        _currentSpeechSegmentDuration = nextSegment.Duration;
-                        _currentSpeechSegmentText = nextSegment.Text;
                         _currentSpeechSegmentAudioPosition = 0;
 
-                        // Immediately process the first chunk of the new segment
-                        int firstSpeechChunkSize = Math.Min(_firstBytesPerChunk, _currentSpeechSegmentAudio.Length);
-                        if (firstSpeechChunkSize > 0)
+                        // Immediately process first chunk
+                        int size = Math.Min(_bytesPerChunk, _currentSpeechSegmentAudio.Length);
+                        if (size > 0)
                         {
-                            var speechChunk = _currentSpeechSegmentAudio.Slice(_currentSpeechSegmentAudioPosition, firstSpeechChunkSize);
-                            var backgroundChunk = GetNextBackgroundChunk(firstSpeechChunkSize);
-                            chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(speechChunk, backgroundChunk);
-
-                            _currentSpeechSegmentAudioPosition += firstSpeechChunkSize;
-
-                            if (_currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length)
-                            {
-                                _logger.LogDebug("Agent {AgentId}: Finished playing speech segment {SegmentId}.", _agentState.AgentId, _currentSpeechSegmentId);
-
-                                var segmentDataToUpdate = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == _currentSpeechSegmentId);
-                                if (segmentDataToUpdate != null)
-                                {
-                                    segmentDataToUpdate.FinishedPlayingAt = DateTime.UtcNow;
-                                    TurnUpdate?.Invoke(this, currentTurn);
-                                }
-                            }
+                            chunkToSend = _currentSpeechSegmentAudio.Slice(0, size).ToArray();
+                            _currentSpeechSegmentAudioPosition += size;
                         }
-                        else { _logger.LogError("Agent {AgentId}: Dequeued speech segment for turn {TurnId} has no audio data.", _agentState.AgentId, nextSegment.TurnId); } // Should not happen if logic is correct
                     }
 
-                    if (chunkToSend == null || chunkToSend.Length == 0) // Queue is empty and no current segment / or is paused
-                    {
-                        // Play background only (if enabled)
-                        var backgroundChunk = GetNextBackgroundChunk(_isFirstBackgroundAudioChunkWithoutSpeech ? _firstBytesPerChunk : _bytesPerChunk);
-                        if (!backgroundChunk.IsEmpty)
-                        {
-                            chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(ReadOnlyMemory<byte>.Empty, backgroundChunk);
-                        }
-
-                        // we sent more chunks first time already now, so next time if its again background, it will just use bytes per chunk
-                        _isFirstBackgroundAudioChunkWithoutSpeech = false;
-                    }
-                    else
-                    {
-                        // means we have speech, so the next time chunk to send is empty, it will use the first bytes per chunk
-                        _isFirstBackgroundAudioChunkWithoutSpeech = true;
-                    }
-
-                    // --- Send Chunk and Delay ---
+                    // Send Chunk (Produce)
                     if (chunkToSend != null && chunkToSend.Length > 0)
                     {
-                        // A. Initialize Start Time on First Packet
-                        DateTime? turnStreamingStartedAt = _turnStreamingStartedAt;
-                        if (turnStreamingStartedAt == null)
-                        {
-                            turnStreamingStartedAt = DateTime.UtcNow;
-                            _turnStreamingStartedAt = turnStreamingStartedAt;
-                        }
+                        // Backpressure Logic (Simple for now: Don't flood loop without yielding)
+                        // In Phase 4, we can query the Mixer queue depth here.
+                        // For now, we rely on Task.Yield or a small delay to prevent CPU spinning 
+                        // if TTS is super fast, though usually TTS is the bottleneck.
 
-                        // B. Send the Audio (Fire & Forget to Socket)
                         AudioChunkGenerated?.Invoke(this, new ConversationAudioGeneratedEventArgs(
                             chunkToSend,
                             _masterSampleRate,
@@ -870,196 +772,41 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             _agentState.CurrentClientId
                         ));
 
-                        // C. Update Virtual Clock (How much audio duration have we sent?)
-                        // Calculation: (Bytes / BytesPerSecond) = Seconds
-                        double chunkDurationSec = (double)chunkToSend.Length / (_masterSampleRate * _bytesPerSample * _masterChannels);
-                        _totalAudioDurationSent = _totalAudioDurationSent.Add(TimeSpan.FromSeconds(chunkDurationSec));
-
-                        // D. CALCULATE BUDGET
-                        // How much time has passed in the real world since we started speaking?
-                        TimeSpan timeElapsedRealWorld = DateTime.UtcNow - turnStreamingStartedAt.Value;
-
-                        // How much audio is currently "ahead" of the real world? (Buffered on client/network)
-                        TimeSpan bufferCurrentSize = _totalAudioDurationSent - timeElapsedRealWorld;
-
-                        // E. THROTTLE DECISION
-                        if (bufferCurrentSize.TotalMilliseconds > MaxBufferAheadMs)
-                        {
-                            // We are too fast! The client has more than MaxBufferAheadMs (e.g., 600ms) of audio.
-                            // We must slow down to real-time speed to prevent overflowing the buffer.
-                            // We wait exactly the amount needed to bring the buffer back to the target.
-
-                            int delayNeeded = (int)(bufferCurrentSize.TotalMilliseconds - MaxBufferAheadMs);
-
-                            // Safety clamp (don't wait TOO long, or we might block processing of stop signals)
-                            //if (delayNeeded > 0)
-                            //{
-                            //    if (delayNeeded > 100) delayNeeded = 100; // Cap checks at 100ms to remain responsive
-                            //    await Task.Delay(delayNeeded, cancellationToken);
-                            //}
-
-                            await Task.Delay(delayNeeded, cancellationToken);
-                        }
-                        else
-                        {
-                            // BURST MODE:
-                            // bufferCurrentSize is LESS than MaxBufferAheadMs.
-                            // Do NOT await. Loop immediately to process the next chunk.
-                            // This fills the buffer as fast as the CPU/TTS can generate.
-                            await Task.Yield();
-                        }
+                        // Small yield to allow other tasks to process events
+                        // Not a strict "Pace", just polite concurrency.
+                        // Ideally, we wait if Mixer Queue > 300ms.
+                        // await Task.Delay(5); 
                     }
                     else
                     {
-                        // No audio (speech or background) to send, wait briefly
-                        await Task.Yield();
+                        // Idle (No speech)
+                        await Task.Delay(20, cancellationToken);
                     }
 
-                    // Check if current turn playback is complete
+                    // Check Turn Completion (Production Finished)
                     if (
                         currentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech &&
+                        currentTurn.Response.LLMStreamingCompletedAt != null &&
                         currentTurn.Response.SpeechCompletedAt == null &&
                         (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&
-                        (_speechAudioQueue.IsAddingCompleted && _speechAudioQueue.Count == 0)
+                        _speechAudioQueue.IsAddingCompleted &&
+                        _speechAudioQueue.Count == 0
                     )
                     {
-                        // We have sent all the data. But the user is still hearing the audio!
-                        // We must wait for the "Virtual Buffer" to drain before declaring the turn complete.
-                        if (_turnStreamingStartedAt != null)
-                        {
-                            TimeSpan timeElapsed = DateTime.UtcNow - _turnStreamingStartedAt.Value;
-                            TimeSpan remainingBufferToPlay = _totalAudioDurationSent - timeElapsed;
-
-                            if (remainingBufferToPlay > TimeSpan.Zero)
-                            {
-                                // Wait for the client to finish playing what we sent.
-                                // We use a loop with small delays to stay responsive to cancellations.
-                                while (remainingBufferToPlay.TotalMilliseconds > 50 && !cancellationToken.IsCancellationRequested)
-                                {
-                                    await Task.Delay(50, cancellationToken);
-                                    // Recalculate
-                                    timeElapsed = DateTime.UtcNow - _turnStreamingStartedAt.Value;
-                                    remainingBufferToPlay = _totalAudioDurationSent - timeElapsed;
-                                }
-
-                                // Wait the final remainder precision
-                                if (remainingBufferToPlay.TotalMilliseconds > 0)
-                                {
-                                    await Task.Delay(remainingBufferToPlay, cancellationToken);
-                                }
-                            }
-                        }
-
-                        _logger.LogInformation("Agent {AgentId}: Turn {TurnId} playback fully completed (Buffer Drained).", _agentState.AgentId, currentTurn.Id);
+                        _logger.LogInformation("Agent {AgentId}: Finished producing audio for turn {TurnId}.", _agentState.AgentId, currentTurn.Id);
 
                         currentTurn.Response.SpeechCompletedAt = DateTime.UtcNow;
 
-                        if (
-                            (currentTurn.Type == ConversationTurnType.User || currentTurn.Type == ConversationTurnType.ToolResult) &&
-                            currentTurn.Response.LLMStreamingCompletedAt != null &&
-                            currentTurn.Response.Type == ConversationTurnAgentResponseType.Speech
-                        )
-                        {
-                            AgentResponsePlaybackComplete?.Invoke(this, currentTurn);
-                        }
-                        
+                        // Fire event so Orchestrator knows we are done *producing*.
+                        // Orchestrator will check Mixer queue before switching state if needed.
+                        AgentResponsePlaybackComplete?.Invoke(this, currentTurn);
                     }
                 }
             }
-            catch (OperationCanceledException)
-            {
-                // TODO handle the completion of turn
-            }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                // TODO handle the completion of turn
-                _logger.LogError(ex, "Agent {AgentId}: Error in audio sending task.", _agentState.AgentId);
-                // TODO: Raise error event
-
-                StartProcessingAudioTask();
-            }
-        }
-        private ReadOnlyMemory<byte> GetNextBackgroundChunk(int desiredChunkSize)
-        {
-            if (!_agentState.IsBackgroundMusicEnabled || !_agentState.IsBackgroundMusicLoaded || _agentState.BackgroundAudioData.IsEmpty)
-            {
-                return ReadOnlyMemory<byte>.Empty;
-            }
-
-            int backgroundLength = _agentState.BackgroundAudioData.Length;
-            int remainingBackgroundBytes = backgroundLength - _backgroundAudioPosition;
-            int bytesToTake = Math.Min(desiredChunkSize, remainingBackgroundBytes);
-
-            ReadOnlyMemory<byte> chunk;
-
-            if (bytesToTake < desiredChunkSize) // Need to loop
-            {
-                var remainingChunk = _agentState.BackgroundAudioData.Slice(_backgroundAudioPosition, bytesToTake);
-                _backgroundAudioPosition = 0; // Reset position
-                int neededFromStart = desiredChunkSize - bytesToTake;
-                neededFromStart = Math.Min(neededFromStart, backgroundLength); // Handle total data < chunk size
-
-                if (neededFromStart > 0)
-                {
-                    var startChunk = _agentState.BackgroundAudioData.Slice(0, neededFromStart);
-                    // Combine - requires allocation
-                    var combined = new byte[bytesToTake + neededFromStart];
-                    remainingChunk.CopyTo(combined.AsMemory().Slice(0, bytesToTake));
-                    startChunk.CopyTo(combined.AsMemory().Slice(bytesToTake, neededFromStart));
-                    chunk = combined;
-                    _backgroundAudioPosition = neededFromStart; // Update position
-                }
-                else // Only remainingChunk was needed
-                {
-                    chunk = remainingChunk; // Position already reset
-                }
-            }
-            else // Simple chunk
-            {
-                chunk = _agentState.BackgroundAudioData.Slice(_backgroundAudioPosition, bytesToTake);
-                _backgroundAudioPosition += bytesToTake;
-            }
-
-            // Ensure position loops correctly if exactly at the end
-            if (_backgroundAudioPosition >= backgroundLength)
-            {
-                _backgroundAudioPosition = 0;
-            }
-
-            return chunk;
-        }
-        private byte[] MixAudioChunksWhileApplyingVolumeAndClipping(ReadOnlyMemory<byte> speechChunk, ReadOnlyMemory<byte> backgroundChunk)
-        {
-            try
-            {
-                return AudioConversationHelper.MixAudioChunks(AudioEncodingTypeEnum.PCM, _masterSampleRate, _masterBitsPerSample, speechChunk, _agentState.CurrentAgentVolumeFactor, backgroundChunk, _agentState.BackgroundMusicVolume);
-
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Agent {AgentId}: Error mixing audio chunks.", _agentState.AgentId);
-
-                if (speechChunk.IsEmpty && backgroundChunk.IsEmpty)
-                {
-                    return Array.Empty<byte>();
-                }
-
-                if (!speechChunk.IsEmpty && !backgroundChunk.IsEmpty)
-                {
-                    return speechChunk.ToArray();
-                }
-
-                if (speechChunk.IsEmpty)
-                {
-                    return backgroundChunk.ToArray();
-                }
-
-                if (backgroundChunk.IsEmpty)
-                {
-                    return speechChunk.ToArray();
-                }
-
-                return new byte[0];
+                _logger.LogError(ex, "Error in Agent Audio Producer Loop");
             }
         }
 

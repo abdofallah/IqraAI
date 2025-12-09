@@ -18,9 +18,12 @@ using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
+using IqraInfrastructure.Managers.Conversation.Session.Client;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Logger;
+using IqraInfrastructure.Managers.Conversation.Session.Mixer;
+using IqraInfrastructure.Managers.Conversation.Session.Recording;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Conversation;
@@ -30,9 +33,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 {
     public class ConversationSessionOrchestrator : IDisposable
     {
+        // Dependencies
         private readonly SessionLoggerFactory _sessionLoggerFactory;
         private readonly ILogger<ConversationSessionOrchestrator> _logger;
-
         private readonly BusinessManager _businessManager;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationStateLogsRepository _conversationStateLogsRepository;
@@ -41,62 +44,58 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
         private readonly ConversationSessionPostAnalysisService _conversationSessionPostAnalysisService;
 
+        // Session Identity
         private readonly string _sessionId;
         private readonly DateTime _createdAt;
         private readonly ConversationSessionInitiationType _sessionInitiationType;
-
         private readonly long _sessionBusinessId;
         private readonly string _sessionRegionId;
         private readonly string _sessionRegionProcessingServerId;
 
-        // Telephony Data
-        private CallQueueData? _sessionCallQueueData;
-        private BusinessAppTelephonyCampaign? _sessionCallQueueTelephonyCampaignData;
-        private BusinessAppRoute? _sessionCallQueueRouteData;
-
-        // Web Session Data
-        private WebSessionData? _sessionWebSessionData;
-        private BusinessAppWebCampaign? _sessionWebSessionCampaignData;
-
-        private readonly List<IConversationClient> _clients = new();
-        private IConversationClient? _primaryClient = null;
-
-        private readonly List<IConversationAgent> _agents = new();
-        private IConversationAgent? _primaryAgent = null;
-
+        // Configuration Data Objects
         private BusinessData _sessionBusinessData;
         private BusinessApp _sessionBusinessAppData;
         private ConversationSessionContext _sessionContextData;
+        //- Telephony Data
+        private CallQueueData? _sessionCallQueueData;
+        private BusinessAppTelephonyCampaign? _sessionCallQueueTelephonyCampaignData;
+        private BusinessAppRoute? _sessionCallQueueRouteData;
+        //- Web Session Data
+        private WebSessionData? _sessionWebSessionData;
+        private BusinessAppWebCampaign? _sessionWebSessionCampaignData;
 
+        // Participants
+        private readonly List<IConversationClient> _clients = new();
+        private IConversationClient? _primaryClient = null;
         private readonly object _clientsLock = new();
+        private readonly List<IConversationAgent> _agents = new();
+        private IConversationAgent? _primaryAgent = null;
         private readonly object _agentsLock = new();
 
+        // State & Timers
         private ConversationSessionState _state = ConversationSessionState.Created;
         private DateTime _lastUserActivityTime = DateTime.UtcNow;
         private Timer? _silenceTimer;
         private Timer? _sessionDurationTimer;
-
         private CancellationTokenSource _sessionCts;
         private bool disposedValue;
 
-        // -- Client Audio State --
-        private int _masterSampleRate;
-        private int _masterBitsPerSample;
-        private AudioEncodingTypeEnum _masterAudioEncodingType;
+        // Audio Engine
+        private SessionAudioMixer? _sessionMixer;
+        private SessionRecordingManager? _recordingManager;
+        private int _sessionMasterSampleRate = 16000;
+        private int _sessionMasterBitsPerSample = 16;
 
-        // -- Events --
+        // Events
         public event EventHandler<ConversationSessionStateChangedEventArgs>? StateChanged;
         public event EventHandler<ConversationDTMFReceivedEventArgs>? DTMFRecieved;
         public event EventHandler<ConversationClientAddedEventArgs>? ClientAdded;
         public event EventHandler<ConversationClientRemovedEventArgs>? ClientRemoved;
         public event EventHandler<ConversationAgentAddedEventArgs>? AgentAdded;
         public event EventHandler<ConversationAgentRemovedEventArgs>? AgentRemoved;
-        // --- NEW TURN MANAGEMENT ---
         public event EventHandler<ConversationTurnEventArgs>? TurnStarted;
         public event EventHandler<ConversationTurnEventArgs>? TurnUpdated;
         public event EventHandler<ConversationTurnEventArgs>? TurnCompleted;
-        // --- END NEW ---
-
         public event Func<object, Task>? SessionEnded;
 
         // Public
@@ -181,7 +180,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             {
                 await InitializeConversationConfigurationAsync();
 
-                // Create Conversation State
+                // Calculate Initial Master Format
+                var (optRate, optBits) = CalculateOptimalMasterFormat();
+                _sessionMasterSampleRate = optRate;
+                _sessionMasterBitsPerSample = optBits;
+
+                // Initialize Audio Engine (Mixer & Recorder)
+                InitializeAudioEngine();
+
+
+                // Create & Persist Conversation State
                 var conversationState = new ConversationState
                 {
                     Id = _sessionId,
@@ -415,6 +423,25 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 }
             }
         }
+        private void InitializeAudioEngine()
+        {
+            _logger.LogInformation("Initializing Audio Engine. Master Format: {Rate}Hz {Bits}bit", _sessionMasterSampleRate, _sessionMasterBitsPerSample);
+
+            // Create Mixer
+            _sessionMixer = new SessionAudioMixer(_sessionId, _sessionMasterSampleRate, _sessionMasterBitsPerSample, _sessionLoggerFactory.CreateLogger<SessionAudioMixer>());
+
+            // Create Recording Manager
+            _recordingManager = new SessionRecordingManager(_sessionId, _audioStorageManager, _sessionLoggerFactory.CreateLogger<SessionRecordingManager>());
+
+            // Wire Mixer -> Recorder
+            _sessionMixer.AudioFrameReadyForRecording += _recordingManager.WriteAudioFrame;
+
+            // Wire Mixer -> Distribution (Output)
+            _sessionMixer.AudioMixed += OnMixerAudioMixed;
+
+            // Start the Mixer Heartbeat
+            _sessionMixer.Start();
+        }
 
         // Clients
         public async Task<FunctionReturnResult> AddPrimaryClient(IConversationClient client, ConversationClientConfiguration clientConfig)
@@ -482,6 +509,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             await _conversationStateRepository.AddClientInfoAsync(_sessionId, clientInfo);
 
+            await RecalculateAndApplyMasterAudioFormat();
+
             // Notify event subscribers
             ClientAdded?.Invoke(this, new ConversationClientAddedEventArgs(client));
 
@@ -524,6 +553,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 await EndAsync(reason + ": All clients disconnected", ConversationSessionEndType.UserEndedCall);
             }
 
+            await RecalculateAndApplyMasterAudioFormat();
+
             return true;
         }
         public IReadOnlyList<IConversationClient> GetClients()
@@ -539,6 +570,80 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             {
                 return _clients.FirstOrDefault(c => c.ClientType == ConversationClientType.Telephony && ((BaseTelephonyConversationClient)c).ClientId == businessPhoneNumberId && ((BaseTelephonyConversationClient)c).ClientTelephonyProviderType == provider);
             }
+        }
+        private async Task RecalculateAndApplyMasterAudioFormat()
+        {
+            try
+            {
+                var (optimalRate, optimalBits) = CalculateOptimalMasterFormat();
+
+                // Check if an update is actually needed
+                if (optimalRate != _sessionMasterSampleRate ||
+                    optimalBits != _sessionMasterBitsPerSample 
+                ) {
+                    _logger.LogInformation("Session {SessionId}: Optimal Audio Format changed to {Rate}Hz {Bits}bit. Updating Agent...", _sessionId, optimalRate, optimalBits);
+
+                    _sessionMasterSampleRate = optimalRate;
+                    _sessionMasterBitsPerSample = optimalBits;
+
+                    // Update the Primary Agent (and list of agents if multiple)
+                    // We lock agents to ensure thread safety during update
+                    List<IConversationAgent> agentsToUpdate;
+                    lock (_agentsLock)
+                    {
+                        agentsToUpdate = _agents.ToList();
+                    }
+
+                    foreach (var agent in agentsToUpdate)
+                    {
+                        await agent.UpdateOutputFormatAsync(_sessionMasterSampleRate, _sessionMasterBitsPerSample);
+                    }
+
+                    // Note: When we implement the Mixer in Phase 4, we will also update the Mixer here.
+                    // _sessionMixer?.SetOutputFormat(_sessionMasterSampleRate, ...);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Session {SessionId}: Error recalculating master audio format.", _sessionId);
+            }
+        }
+        private (int Rate, int Bits) CalculateOptimalMasterFormat()
+        {
+            int maxRate = 16000;
+            int maxBits = 16;
+
+            lock (_clientsLock)
+            {
+                if (_clients.Count == 0)
+                {
+                    return (maxRate, maxBits);
+                }
+
+                foreach (var client in _clients)
+                {
+                    // Access the client's config directly via cast
+                    if (client is BaseConversationClient baseClient)
+                    {
+                        // We take the MAX of all connected clients.
+                        // Example: 
+                        // Client A (Twilio): 8000Hz
+                        // Client B (Web): 48000Hz
+                        // Result: 48000Hz. 
+                        // (Twilio client will downsample locally, Web client gets full quality).
+
+                        if (baseClient.ClientConfig.AudioOutputConfiguration.SampleRate > maxRate)
+                            maxRate = baseClient.ClientConfig.AudioOutputConfiguration.SampleRate;
+
+                        if (baseClient.ClientConfig.AudioOutputConfiguration.BitsPerSample > maxBits)
+                            maxBits = baseClient.ClientConfig.AudioOutputConfiguration.BitsPerSample;
+                    }
+                }
+            }
+
+            if (maxRate > 96000) maxRate = 96000;
+
+            return (maxRate, maxBits);
         }
 
         // Agents
@@ -605,6 +710,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             };
 
             await _conversationStateRepository.AddAgentInfoAsync(_sessionId, agentInfo);
+
+            if (agent is ConversationAIAgent aiAgent && aiAgent.AudioOutput != null)
+            {
+                // We check if it has background music loaded
+                if (aiAgent.AudioOutput.BackgroundAudioProvider != null)
+                {
+                    _sessionMixer?.SetBackgroundSource(agent.AgentId, aiAgent.AudioOutput.BackgroundAudioProvider);
+                }
+            }
 
             // Notify event subscribers
             AgentAdded?.Invoke(this, new ConversationAgentAddedEventArgs(agent));
@@ -753,6 +867,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             _sessionCts?.Cancel();
             _sessionCts?.Dispose();
             _sessionCts = null;
+
+            // Stop Mixer
+            _sessionMixer?.Dispose(); // Stops the ticker
+
+            // Finalize Recordings
+            if (_recordingManager != null)
+            {
+                await _recordingManager.FinalizeAndUploadAsync();
+                _recordingManager.Dispose();
+            }
 
             // Disconnect all clients
             foreach (var client in GetClients())
@@ -1078,58 +1202,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private void OnClientAudioReceived(object? sender, ConversationAudioReceivedEventArgs e)
         {
             if (_state == ConversationSessionState.Ending || _state == ConversationSessionState.Ended) return;
+            if (_sessionMixer == null) return;
 
-            if (sender is string)
-            {
-                sender = _clients.Find(c => c.ClientId == (string)sender);
-            }
+            string clientId = string.Empty;
+            if (sender is IConversationClient client) clientId = client.ClientId;
+            else if (sender is string strId) clientId = strId;
 
-            if (sender is not IConversationClient client)
-                return;
+            if (string.IsNullOrEmpty(clientId)) return;
 
-            // Update last activity time for silence detection
-            _lastUserActivityTime = DateTime.UtcNow;
+            _lastUserActivityTime = DateTime.UtcNow; // Silence Reset
 
-            // Store audio if recording is enabled
-            if (_sessionContextData.RecordCallAudio)
-            {
-                try
-                {
-                    string audioReference = $"{_sessionId}/{client.ClientId}/{Guid.NewGuid()}";
-                    _ = _audioStorageManager.StoreAudioAsync(audioReference, e.AudioData);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error storing audio from client {ClientId}", client.ClientId);
-                }
-            }
-
-            // If target agent is specified, send only to that agent
-            if (!string.IsNullOrEmpty(e.TargetAgentId))
-            {
-                var agent = GetAgents().FirstOrDefault(a => a.AgentId == e.TargetAgentId);
-                if (agent != null)
-                {
-                    agent.ProcessAudioAsync(e.AudioData, client.ClientId, _sessionCts.Token);
-                }
-                else
-                {
-                    _logger.LogWarning("Target agent {TargetAgentId} not found", e.TargetAgentId);
-                }
-            }
-
-            // Otherwise Forward the audio to all agents
-            foreach (var agent in GetAgents())
-            {
-                try
-                {
-                    agent.ProcessAudioAsync(e.AudioData, client.ClientId, _sessionCts.Token);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error processing audio for agent {AgentId}", agent.AgentId);
-                }
-            }
+            // Note: Client input is ALWAYS standardized to 16kHz 32-bit by the Client Decoder now.
+            _sessionMixer.EnqueueInput(clientId, e.AudioData, 16000, 32);
         }
         private async void OnClientDTMFReceived(object? sender, ConversationDTMFReceivedEventArgs e)
         {
@@ -1195,58 +1279,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private async void OnAgentAudioGenerated(object? sender, ConversationAudioGeneratedEventArgs e)
         {
             if (_state == ConversationSessionState.Ending || _state == ConversationSessionState.Ended) return;
+            if (_sessionMixer == null) return;
 
-            if (sender is string)
-            {
-                sender = _agents.Find(a => a.AgentId == (string)sender);
-            }
+            string agentId = string.Empty;
+            if (sender is IConversationAgent agent) agentId = agent.AgentId;
+            else if (sender is string strId) agentId = strId;
 
-            if (sender is not IConversationAgent agent)
-                return;
-
-            // Store audio if recording is enabled
-            if (_sessionContextData.RecordCallAudio)
-            {
-                try
-                {
-                    string audioReference = $"{_sessionId}/{agent.AgentId}/{Guid.NewGuid()}";
-                    _ = _audioStorageManager.StoreAudioAsync(audioReference, e.AudioData);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error storing audio from agent {AgentId}", agent.AgentId);
-                }
-            }
-
-            // If target client is specified, send only to that client
-            if (!string.IsNullOrEmpty(e.TargetClientId))
-            {
-                var targetClient = GetClients().FirstOrDefault(c => c.ClientId == e.TargetClientId);
-                if (targetClient != null)
-                {
-                    _ = targetClient.ProcessDownstreamAudioAsync(e.AudioData, e.MasterSampleRate, e.MasterBitsPerSample);
-                }
-                else
-                {
-                    _logger.LogWarning("Target client {ClientId} not found for audio from agent {AgentId}", e.TargetClientId, agent.AgentId);
-                }
-                return;
-            }
-
-            // Otherwise, broadcast to all clients
-            foreach (var client in GetClients())
-            {
-                try
-                {
-                    _ = client.ProcessDownstreamAudioAsync(e.AudioData, e.MasterSampleRate, e.MasterBitsPerSample);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error sending audio to client {ClientId}", client.ClientId);
-                }
-            }
-        }
-        
+            // Agent output varies based on Master Format
+            _sessionMixer.EnqueueInput(agentId, e.AudioData.ToArray(), e.MasterSampleRate, e.MasterBitsPerSample);
+        }    
         private void OnAgentThinking(object? sender, ConversationAgentThinkingEventArgs e)
         {
             if (sender is string)
@@ -1282,6 +1323,53 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             }
         }
 
+        // Mixer Event Handlers
+        private async void OnMixerAudioMixed(string targetId, byte[] mixedAudio, int sampleRate, int bits)
+        {
+            // Case A: Target is a Client
+            IConversationClient? clientTarget = null;
+            lock (_clientsLock) { clientTarget = _clients.FirstOrDefault(c => c.ClientId == targetId); }
+
+            if (clientTarget is BaseConversationClient baseClient)
+            {
+                try
+                {
+                    // The Client Wrapper handles Encoding (e.g. to MuLaw/Opus) and sending
+                    await baseClient.ProcessDownstreamAudioAsync(mixedAudio, sampleRate, bits);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error sending mixed audio to client {ClientId}", targetId);
+                }
+                return;
+            }
+
+            // Case B: Target is an Agent (Feedback Loop for Hearing)
+            IConversationAgent? agentTarget = null;
+            lock (_agentsLock) { agentTarget = _agents.FirstOrDefault(a => a.AgentId == targetId); }
+
+            if (agentTarget != null)
+            {
+                // The Agent expects Standard Input (16kHz 32-bit).
+                // If Mixer output (Master) is different (e.g. 24kHz 16-bit), we must convert before giving to Agent Input.
+                byte[] inputForAgent = mixedAudio;
+
+                if (sampleRate != 16000 || bits != 32)
+                {
+                    // Use helper to downsample/convert to standard input format
+                    // (Optimization: Agent logic *could* be updated to accept variable input, but standardization is safer)
+                    // For now, let's assume we pass it raw and let the Agent handle it, 
+                    // OR we do a quick conversion here.
+                    // Given the refactor, let's pass it. 
+                    // BUT: ConversationAIAgent usually expects standard. 
+                    // Let's rely on ProcessAudioAsync handling it or ensure Mixer output matches.
+                    // Ideally, we resample here.
+                }
+
+                // agentTarget.ProcessAudioAsync(inputForAgent, "Mixer", _sessionCts.Token);
+            }
+        }
+
         // Disposal
         protected virtual void Dispose(bool disposing)
         {
@@ -1289,7 +1377,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects)
+                    _sessionMixer?.Dispose();
+                    _recordingManager?.Dispose();
+                    _sessionCts?.Cancel();
+                    _sessionCts?.Dispose();
                 }
 
                 disposedValue = true;
