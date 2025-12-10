@@ -134,7 +134,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 var sessionInformationResult = await _systemPromptGenerator.FillSessionInformationInPrompt(
                 _agentState.LLMBaseSystemPrompt,
-                _agentState.CurrentClientId ?? "UnknownClient", // todo this is wrong, we need to make it primary for now, in future we will see how to handle it if multiple clients, maybe just let know in customer_query and adding all callers ids in the session information
                 _agentState.CurrentSessionContext!,
                 _agentState.BusinessAppAgent!,
                 _agentState.CurrentLanguageCode);

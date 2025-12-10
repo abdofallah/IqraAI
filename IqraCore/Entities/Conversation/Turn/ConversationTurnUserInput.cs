@@ -2,7 +2,6 @@
 {
     public class ConversationTurnUserInput
     {
-        public string SenderId { get; set; }
         public string? TranscribedText { get; set; }
         public DateTime StartedSpeakingAt { get; set; }
         public DateTime? FinishedSpeakingAt { get; set; }

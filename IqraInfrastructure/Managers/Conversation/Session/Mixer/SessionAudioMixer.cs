@@ -1,5 +1,6 @@
-﻿using IqraInfrastructure.Helpers.Audio;
-using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers; // For AudioFormatDetails, BackgroundProvider
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraInfrastructure.Helpers.Audio;
+using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
@@ -11,11 +12,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
         private readonly ILogger _logger;
 
         // Configuration
-        private int _masterSampleRate;
-        private int _masterBitsPerSample;
-        private int _masterChannels = 1;
-        private const int FRAME_DURATION_MS = 20; // The Heartbeat Speed
-        private int _bytesPerFrame; // Calculated based on Master Format
+        private AudioFormatDetails _masterFormat;
+        private const int FRAME_DURATION_MS = 20;
+        private int _bytesPerFrame;
 
         // State
         private readonly ConcurrentDictionary<string, MixerInputChannel> _inputs = new();
@@ -23,24 +22,24 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
         private readonly CancellationTokenSource _cts = new();
         private Task? _loopTask;
         private readonly object _lock = new();
+        private readonly SemaphoreSlim _semaphore = new(1);
 
         // Events
-        // TargetId, AudioData, MasterSampleRate, MasterBits
         public event Action<string, byte[], int, int>? AudioMixed;
-
-        // Event for Recording Manager (Phase 5) -> SourceId (or "Master"), Data
         public event Action<string, byte[], int, int>? AudioFrameReadyForRecording;
 
         public SessionAudioMixer(string sessionId, int initialSampleRate, int initialBits, ILogger logger)
         {
             _sessionId = sessionId;
             _logger = logger;
-            _masterSampleRate = initialSampleRate;
-            _masterBitsPerSample = initialBits;
+            _masterFormat = new AudioFormatDetails()
+            {
+                SampleRate = initialSampleRate,
+                BitsPerSample = initialBits
+            };
 
             RecalculateFrameSize();
 
-            // Initialize Timer
             _timer = new PeriodicTimer(TimeSpan.FromMilliseconds(FRAME_DURATION_MS));
         }
 
@@ -48,54 +47,103 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
         {
             if (_loopTask != null) return;
             _loopTask = Task.Run(MixingLoopAsync, _cts.Token);
-            _logger.LogInformation("SessionAudioMixer started for session {SessionId} @ {Rate}Hz.", _sessionId, _masterSampleRate);
+            _logger.LogInformation("SessionAudioMixer started for session {SessionId} @ {Rate}Hz.", _sessionId, _masterFormat.SampleRate);
         }
 
-        // --- Configuration ---
-
+        // Configuration
         private void RecalculateFrameSize()
         {
-            int bytesPerSample = _masterBitsPerSample / 8;
-            _bytesPerFrame = (_masterSampleRate * bytesPerSample * _masterChannels * FRAME_DURATION_MS) / 1000;
+            int bytesPerSample = _masterFormat.BitsPerSample / 8;
+            _bytesPerFrame = (_masterFormat.SampleRate * bytesPerSample * FRAME_DURATION_MS) / 1000;
         }
-
         public void UpdateMasterFormat(int sampleRate, int bits)
         {
             lock (_lock)
             {
-                _masterSampleRate = sampleRate;
-                _masterBitsPerSample = bits;
+                _semaphore.Wait(_cts.Token);
+
+                _masterFormat.SampleRate = sampleRate;
+                _masterFormat.BitsPerSample = bits;
                 RecalculateFrameSize();
+
+                // We must convert the existing buffer if any for all channels to the new format
+                foreach (var channel in _inputs)
+                {
+                    if (!channel.Value.SpeechQueue.IsEmpty && channel.Value.SpeechQueue.TryDequeue(out var buffer))
+                    {
+                        try
+                        {
+                            var (convertedBuffer, _) = AudioConversationHelper.Convert(
+                                buffer,
+                                new()
+                                {
+                                    Encoding = AudioEncodingTypeEnum.PCM,
+                                    SampleRateHz = channel.Value.CurrentFormat!.SampleRate,
+                                    BitsPerSample = channel.Value.CurrentFormat.BitsPerSample
+                                },
+                                new()
+                                {
+                                    RequestedEncoding = AudioEncodingTypeEnum.PCM,
+                                    RequestedSampleRateHz = channel.Value.CurrentFormat!.SampleRate,
+                                    RequestedBitsPerSample = channel.Value.CurrentFormat.BitsPerSample
+                                },
+                                false
+                            );
+
+                            channel.Value.SpeechQueue.Enqueue(convertedBuffer);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "SessionAudioMixer: Failed to convert buffer to new format for {channel}", channel.Key);
+                        }
+                    }
+                }
+
+                _semaphore.Release();
+
                 _logger.LogInformation("SessionAudioMixer: Master Format updated to {Rate}Hz {Bits}bit.", sampleRate, bits);
             }
         }
 
-        // --- Input Management ---
-
+        // Input Management
         public void EnqueueInput(string sourceId, byte[] audioData, int sampleRate, int bitsPerSample)
         {
-            var channel = _inputs.GetOrAdd(sourceId, _ => new MixerInputChannel());
+            _semaphore.Wait(_cts.Token);
+            _semaphore.Release();
 
-            // Update the channel's knowledge of its own format
-            channel.CurrentFormat = new AudioFormatDetails
+            var channel = _inputs.GetOrAdd(sourceId, _ => new MixerInputChannel()
             {
-                SampleRate = sampleRate,
-                BitsPerSample = bitsPerSample
-            };
+                CurrentFormat = new AudioFormatDetails
+                {
+                    SampleRate = sampleRate,
+                    BitsPerSample = bitsPerSample
+                }
+            });
 
-            // Slice and Enqueue
-            // Note: We assume the input 'audioData' is roughly chunked, but we must ensure we don't break frames.
-            // For robustness, we just enqueue the raw block. The Dequeue logic handles consumption.
-            // Ideally, the Agent/Client sends exactly 20ms chunks, but we handle variation.
-            channel.SpeechQueue.Enqueue(audioData);
+            byte[] masterAudioData = AudioMixingHelper.ResampleIfFormatMismatch(
+                audioData,
+                new AudioFormatDetails()
+                {
+                    SampleRate = sampleRate,
+                    BitsPerSample = bitsPerSample
+                },
+                _masterFormat
+            );
+
+            channel.SpeechQueue.Enqueue(masterAudioData);
         }
-
         public void SetBackgroundSource(string sourceId, ConversationAIAgentBackgroundAudioProvider? provider)
         {
-            var channel = _inputs.GetOrAdd(sourceId, _ => new MixerInputChannel());
+            var channel = _inputs.GetOrAdd(sourceId, _ => new MixerInputChannel()
+            {
+                CurrentFormat = new AudioFormatDetails
+                {
+                    SampleRate = _masterFormat.SampleRate,
+                    BitsPerSample = _masterFormat.BitsPerSample
+                }
+            });
             channel.BackgroundProvider = provider;
         }
-
         public void ClearInputQueue(string sourceId)
         {
             if (_inputs.TryGetValue(sourceId, out var channel))
@@ -106,7 +154,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
                 channel.LeftoverBuffer = Array.Empty<byte>();
             }
         }
-
         public double GetQueueDurationMs(string sourceId)
         {
             if (_inputs.TryGetValue(sourceId, out var channel))
@@ -118,8 +165,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
             return 0;
         }
 
-        // --- The Core Loop ---
-
+        // The Core Loop
         private async Task MixingLoopAsync()
         {
             try
@@ -136,18 +182,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Critical error in Mixer Loop for session {SessionId}", _sessionId);
+                // todo kill the session??
             }
         }
-
         private void ProcessTick()
         {
-            // Snapshot current master format (in case it changes mid-tick, though we locked)
-            var masterFormat = new AudioFormatDetails
-            {
-                SampleRate = _masterSampleRate,
-                BitsPerSample = _masterBitsPerSample
-            };
-
             var channelProcessedAudio = new Dictionary<string, byte[]>();
 
             // 1. PROCESS INDIVIDUAL CHANNELS
@@ -160,14 +199,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
                 // We need exactly _bytesPerFrame. 
                 // Channel handles the buffering/fragmentation logic helper.
                 byte[] rawSpeech = GetNextSpeechFrame(channel, _bytesPerFrame);
-
-                // B. Resample Speech if needed
-                // If the client sent 8k but master is 16k, convert now.
-                byte[] masterSpeech = AudioMixingHelper.ResampleIfFormatMismatch(
-                    rawSpeech,
-                    channel.CurrentFormat ?? masterFormat, // Fallback if unknown
-                    masterFormat
-                );
 
                 // C. Get Background Music (if any)
                 byte[] masterMusic = Array.Empty<byte>();
@@ -184,27 +215,27 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
                         masterMusic = AudioMixingHelper.ResampleIfFormatMismatch(
                             masterMusic,
                             channel.BackgroundProvider.Format,
-                            masterFormat
+                            _masterFormat
                         );
                     }
                 }
 
                 // D. Pre-Mix (Speech + Music) for this channel
                 // This represents "What this participant is contributing to the room"
-                byte[] channelMix = AudioMixingHelper.MixMultiple(new List<byte[]> { masterSpeech, masterMusic }, _masterBitsPerSample);
+                byte[] channelMix = AudioMixingHelper.MixMultiple(new List<byte[]> { rawSpeech, masterMusic }, _masterFormat.BitsPerSample);
 
                 channelProcessedAudio[sourceId] = channelMix;
 
                 // E. Send to Recording (Individual Track)
-                AudioFrameReadyForRecording?.Invoke(sourceId, channelMix, masterFormat.SampleRate, masterFormat.BitsPerSample);
+                AudioFrameReadyForRecording?.Invoke(sourceId, channelMix, _masterFormat.SampleRate, _masterFormat.BitsPerSample);
             }
 
             // 2. MASTER MIX
             // Sum of all channel contributions
-            byte[] masterMix = AudioMixingHelper.MixMultiple(channelProcessedAudio.Values.ToList(), _masterBitsPerSample);
+            byte[] masterMix = AudioMixingHelper.MixMultiple(channelProcessedAudio.Values.ToList(), _masterFormat.BitsPerSample);
 
             // 3. Send to Recording (Master Track)
-            AudioFrameReadyForRecording?.Invoke("Master", masterMix, masterFormat.SampleRate, masterFormat.BitsPerSample);
+            AudioFrameReadyForRecording?.Invoke("Master", masterMix, _masterFormat.SampleRate, _masterFormat.BitsPerSample);
 
             // 4. DISTRIBUTION (Mix-Minus)
             foreach (var kvp in channelProcessedAudio)
@@ -213,37 +244,36 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
                 byte[] sourceAudio = kvp.Value;
 
                 // Client hears: (Everyone - Themselves)
-                byte[] mixMinus = AudioMixingHelper.Subtract(masterMix, sourceAudio, _masterBitsPerSample);
+                byte[] mixMinus = AudioMixingHelper.Subtract(masterMix, sourceAudio, _masterFormat.BitsPerSample);
 
-                AudioMixed?.Invoke(targetId, mixMinus, _masterSampleRate, _masterBitsPerSample);
+                // TODO DEBUGGING ONLY
+                AudioFrameReadyForRecording?.Invoke($"Master-self-{targetId}", masterMix, _masterFormat.SampleRate, _masterFormat.BitsPerSample);
+
+                AudioMixed?.Invoke(targetId, mixMinus, _masterFormat.SampleRate, _masterFormat.BitsPerSample);
             }
         }
-
         /// <summary>
         /// Helper to pull exactly 'bytesNeeded' from the channel's queue, 
         /// handling cases where queued items are larger or smaller than a frame.
         /// </summary>
         private byte[] GetNextSpeechFrame(MixerInputChannel channel, int bytesNeeded)
         {
-            // If we have a leftover buffer from previous large chunk, use it.
-            // Logic simplified for clarity: We construct a buffer.
+            byte[] result = new byte[bytesNeeded]; // Zero-filled (Silence)
+            int destOffset = 0;
 
-            var buffer = new MemoryStream();
-            int bytesCollected = 0;
-
-            // 1. Use Leftover
+            // 1. Drain Leftover
             if (channel.LeftoverBuffer.Length > 0)
             {
-                int toTake = Math.Min(channel.LeftoverBuffer.Length, bytesNeeded);
-                buffer.Write(channel.LeftoverBuffer, 0, toTake);
-                bytesCollected += toTake;
+                int toCopy = Math.Min(channel.LeftoverBuffer.Length, bytesNeeded);
+                Array.Copy(channel.LeftoverBuffer, 0, result, 0, toCopy);
+                destOffset += toCopy;
 
-                // Update leftover
-                if (toTake < channel.LeftoverBuffer.Length)
+                // Shift Leftover or Clear
+                if (toCopy < channel.LeftoverBuffer.Length)
                 {
-                    // Still have leftovers
-                    byte[] newLeftover = new byte[channel.LeftoverBuffer.Length - toTake];
-                    Array.Copy(channel.LeftoverBuffer, toTake, newLeftover, 0, newLeftover.Length);
+                    int remaining = channel.LeftoverBuffer.Length - toCopy;
+                    byte[] newLeftover = new byte[remaining];
+                    Array.Copy(channel.LeftoverBuffer, toCopy, newLeftover, 0, remaining);
                     channel.LeftoverBuffer = newLeftover;
                 }
                 else
@@ -252,36 +282,42 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
                 }
             }
 
-            // 2. Pull from Queue if needed
-            while (bytesCollected < bytesNeeded)
+            // 2. Drain Queue
+            while (destOffset < bytesNeeded)
             {
                 if (channel.SpeechQueue.TryDequeue(out var chunk))
                 {
-                    int needed = bytesNeeded - bytesCollected;
-                    int toTake = Math.Min(chunk.Length, needed);
+                    int spaceRemaining = bytesNeeded - destOffset;
 
-                    buffer.Write(chunk, 0, toTake);
-                    bytesCollected += toTake;
-
-                    if (toTake < chunk.Length)
+                    if (chunk.Length <= spaceRemaining)
                     {
-                        // We took part of a chunk. Save the rest as leftover.
-                        int remaining = chunk.Length - toTake;
-                        channel.LeftoverBuffer = new byte[remaining];
-                        Array.Copy(chunk, toTake, channel.LeftoverBuffer, 0, remaining);
+                        // Fits entirely
+                        Array.Copy(chunk, 0, result, destOffset, chunk.Length);
+                        destOffset += chunk.Length;
+                    }
+                    else
+                    {
+                        // Chunk is too big, take what we need, save rest
+                        Array.Copy(chunk, 0, result, destOffset, spaceRemaining);
+
+                        int leftoverSize = chunk.Length - spaceRemaining;
+                        channel.LeftoverBuffer = new byte[leftoverSize];
+                        Array.Copy(chunk, spaceRemaining, channel.LeftoverBuffer, 0, leftoverSize);
+
+                        destOffset += spaceRemaining;
+                        // Loop ends because destOffset == bytesNeeded
                     }
                 }
                 else
                 {
-                    // Starvation / Silence
-                    // Fill the rest with zeros
-                    int needed = bytesNeeded - bytesCollected;
-                    buffer.Write(new byte[needed], 0, needed); // Write zeros
+                    // Queue empty. 
+                    // Result is already pre-filled with zeros from 'new byte[]'.
+                    // Just break.
                     break;
                 }
             }
 
-            return buffer.ToArray();
+            return result;
         }
 
         public void Dispose()

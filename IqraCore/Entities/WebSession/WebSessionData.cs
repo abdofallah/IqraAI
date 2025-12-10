@@ -55,20 +55,16 @@ namespace IqraCore.Entities.WebSession
 
     public class WebSessionAudioInputConfigurationData
     {
-        public int SampleRate { get; set; } = 16000;
-        public int BitsPerSample { get; set; } = 8;
+        public int SampleRate { get; set; } = 0;
+        public int BitsPerSample { get; set; } = 0;
         public AudioEncodingTypeEnum AudioEncodingType { get; set; } = AudioEncodingTypeEnum.PCM;
-        public AudioEncoderFallbackOptimizationMode AudioEncodingFallbackMode { get; set; } = AudioEncoderFallbackOptimizationMode.Performance;
     }
 
     public class WebSessionAudioOutputConfigurationData
     {
-        public int SampleRate { get; set; } = 16000;
-        public int BitsPerSample { get; set; } = 8;
+        public int SampleRate { get; set; } = 0;
+        public int BitsPerSample { get; set; } = 0;
         public AudioEncodingTypeEnum AudioEncodingType { get; set; } = AudioEncodingTypeEnum.PCM;
-        public AudioEncoderFallbackOptimizationMode AudioEncodingFallbackMode { get; set; } = AudioEncoderFallbackOptimizationMode.Performance;
-        public int FrameDurationMs { get; set; } = 60;
-        public int MaxBufferAheadMs { get; set; } = 150;
-        public int InitialSegmentDurationMs { get; set; } = 300;
+        public int FrameDurationMs { get; set; } = 0;
     }
 }

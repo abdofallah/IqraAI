@@ -8,7 +8,7 @@ namespace IqraCore.Entities.Conversation
     public class ConversationState
     {
         [BsonId]
-        public string Id { get; set; }
+        public string Id { get; set; } 
 
         public string BusinessMasterEmail { get; set; }
         public long BusinessId { get; set; }

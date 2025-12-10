@@ -1,5 +1,4 @@
 ﻿using Humanizer;
-using Hume.EmpathicVoice;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Context;
@@ -170,7 +169,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // STT Handler 
             _sttHandler.TranscriptionReceived += (text, isFinal) =>
             {
-                _turnManager.ProcessTranscriptionForTurnAnalysis(text, isFinal);
+                // todo should we await?
+                _ = _turnManager.ProcessTranscriptionForTurnAnalysis(text, isFinal);
             };
 
             // Turn End/Interruption
@@ -264,23 +264,24 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 );
 
                 // Initialize Modules
-                await _llmHandler.InitializeAsync();
-                await _audioOutputHandler.InitializeAsync(_conversationCTS.Token);
-                await _sttHandler.InitializeAsync();
-                await _scriptAccessor.LoadScriptAsync(
-                    _agentState.BusinessApp,
-                    _agentState.CurrentSessionContext,
-                    _agentState.CurrentLanguageCode
-                );
-                await _toolExecutor.InitializeAsync();
-                await _turnManager.InitializeAsync(_conversationCTS.Token);
-                _audioInputHandler.InitializeAsync(_conversationCTS.Token);
-                await _ragManager.InitializeAsync(_conversationCTS.Token);
+                var awaitTasks = new List<Task>();
 
+                awaitTasks.Add(_llmHandler.InitializeAsync());
+                awaitTasks.Add(_audioOutputHandler.InitializeAsync(_conversationCTS.Token));
+                awaitTasks.Add(_sttHandler.InitializeAsync());
+                awaitTasks.Add(_ragManager.InitializeAsync(_conversationCTS.Token));
+                awaitTasks.Add(_scriptAccessor.LoadScriptAsync(_agentState.BusinessApp, _agentState.CurrentSessionContext, _agentState.CurrentLanguageCode));
+                awaitTasks.Add(_turnManager.InitializeAsync(_conversationCTS.Token));
+                awaitTasks.Add(_toolExecutor.InitializeAsync());
                 if (_conversationSessionManager.IsOutboundCall)
                 {
-                    await _voicemailDetector.InitializeAsync(_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection, _conversationCTS.Token);
+                    awaitTasks.Add(_voicemailDetector.InitializeAsync(_conversationSessionManager.CallQueueTelephonyCampaignData!.VoicemailDetection, _conversationCTS.Token));
                 }
+
+                await Task.WhenAll(awaitTasks);
+
+
+                _audioInputHandler.InitializeAsync(_conversationCTS.Token);
 
                 _agentState.IsInitialized = true;
                 _logger.LogDebug("AI Agent {AgentId} initialized.", AgentId);
@@ -465,14 +466,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // Agent Input Management
-        public async Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken)
+        public async Task ProcessAudioAsync(byte[] audioData, CancellationToken cancellationToken)
         {
             if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested || !_isConversationStarted) return;
-
-            // Set client ID (important for multi-participant, maybe less so for 1-1)
-            // todo dont know what this is used for, might be problematic if turn by turn is not enabled?
-            // insetad of setting current client id, we should have a proper structure of client id + data being sent
-            _agentState.CurrentClientId = clientId;
 
             _agentState.SileroVadCore?.ProcessAudio(audioData);
             _turnManager.BufferAudioForMlAnalysis(audioData);
@@ -484,23 +480,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         public async Task ProcessTextAsync(string text, string? clientId, CancellationToken cancellationToken)
         {
-            if (clientId != null)
-            {
-                _agentState.CurrentClientId = clientId;
-            }
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested || !_isConversationStarted) return;
 
             await _turnManager.ProcessDirectTextInputAsync(text, cancellationToken);
         }
         public async Task ProcessDTMFAsync(string digit, string? clientId, CancellationToken cancellationToken)
         {
-            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested || !_isConversationStarted) return;
 
-            if (clientId != null) _agentState.CurrentClientId = clientId;
-
-            // Pass digit to the session manager
             _dtmfSessionManager.ProcessDigit(digit);
-
-            // No need for language selection logic here anymore, it's handled by OnDtmfSessionEnded
         }
         
         // Multi Language

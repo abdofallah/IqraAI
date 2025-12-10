@@ -202,7 +202,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             return result;
         }
 
-        public async Task<FunctionReturnResult<string?>> FillSessionInformationInPrompt(string? sessionInformationTemplate, string clientIdentifier, ConversationSessionContext currentSessionContext, BusinessAppAgent routeAgent, string languageCode)
+        public async Task<FunctionReturnResult<string?>> FillSessionInformationInPrompt(string? sessionInformationTemplate, ConversationSessionContext currentSessionContext, BusinessAppAgent routeAgent, string languageCode)
         {
             var result = new FunctionReturnResult<string?>();
 
@@ -249,7 +249,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             // Add Session data
             var sessionObject = new ScriptObject();
             var callerObject = new ScriptObject();
-            callerObject["PhoneNumber"] = clientIdentifier;
             sessionObject["Caller"] = callerObject;
             modelObject["Session"] = sessionObject;
 

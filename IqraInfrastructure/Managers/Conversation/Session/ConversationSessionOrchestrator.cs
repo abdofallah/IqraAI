@@ -15,6 +15,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User.Usage.Enums;
 using IqraCore.Entities.WebSession;
 using IqraCore.Interfaces.Conversation;
+using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
@@ -83,8 +84,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         // Audio Engine
         private SessionAudioMixer? _sessionMixer;
         private SessionRecordingManager? _recordingManager;
-        private int _sessionMasterSampleRate = 16000;
-        private int _sessionMasterBitsPerSample = 16;
+        public int _sessionMasterSampleRate { get; private set; }
+        public int _sessionMasterBitsPerSample { get; private set; }
 
         // Events
         public event EventHandler<ConversationSessionStateChangedEventArgs>? StateChanged;
@@ -117,6 +118,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         public IConversationClient? PrimaryClient => _primaryClient;
         public IConversationAgent? PrimaryAgent => _primaryAgent;
         public CancellationTokenSource CancellationTokenSource => _sessionCts;
+        public SessionAudioMixer? AudioEngine => _sessionMixer;
 
         public ConversationSessionOrchestrator(
             string sessionId,
@@ -438,9 +440,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             // Wire Mixer -> Distribution (Output)
             _sessionMixer.AudioMixed += OnMixerAudioMixed;
-
-            // Start the Mixer Heartbeat
-            _sessionMixer.Start();
         }
 
         // Clients
@@ -493,14 +492,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 ClientId = client.ClientId,
                 ClientType = client.ClientType,
                 JoinedAt = DateTime.UtcNow,
-                AudioInfo = new ConversationMemberAudioInfo()
-                { 
-                    // hard coded for now
-                    AudioEncodingType = AudioEncodingTypeEnum.PCM,
-                    SampleRate = 16000,
-                    Channels = 1,
-                    BitsPerSample = 32,
-                },
                 Metadata = new Dictionary<string, string>
                 {
                     ["Type"] = client.GetType().Name
@@ -586,21 +577,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     _sessionMasterSampleRate = optimalRate;
                     _sessionMasterBitsPerSample = optimalBits;
 
-                    // Update the Primary Agent (and list of agents if multiple)
-                    // We lock agents to ensure thread safety during update
                     List<IConversationAgent> agentsToUpdate;
                     lock (_agentsLock)
                     {
                         agentsToUpdate = _agents.ToList();
                     }
 
+                    _sessionMixer?.UpdateMasterFormat(_sessionMasterSampleRate, _sessionMasterBitsPerSample);
+
                     foreach (var agent in agentsToUpdate)
                     {
                         await agent.UpdateOutputFormatAsync(_sessionMasterSampleRate, _sessionMasterBitsPerSample);
                     }
-
-                    // Note: When we implement the Mixer in Phase 4, we will also update the Mixer here.
-                    // _sessionMixer?.SetOutputFormat(_sessionMasterSampleRate, ...);
                 }
             }
             catch (Exception ex)
@@ -696,13 +684,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 AgentId = agent.AgentId,
                 AgentType = agent.AgentType,
                 JoinedAt = DateTime.UtcNow,
-                AudioInfo = new ConversationMemberAudioInfo()
-                {
-                    AudioEncodingType = agent.AgentConfiguration.AudioEncodingType,
-                    SampleRate = agent.AgentConfiguration.SampleRate,
-                    Channels = agent.AgentConfiguration.Channels,
-                    BitsPerSample = agent.AgentConfiguration.BitsPerSample,
-                },
                 Metadata = new Dictionary<string, string>
                 {
                     ["Type"] = agent.GetType().Name
@@ -710,15 +691,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             };
 
             await _conversationStateRepository.AddAgentInfoAsync(_sessionId, agentInfo);
-
-            if (agent is ConversationAIAgent aiAgent && aiAgent.AudioOutput != null)
-            {
-                // We check if it has background music loaded
-                if (aiAgent.AudioOutput.BackgroundAudioProvider != null)
-                {
-                    _sessionMixer?.SetBackgroundSource(agent.AgentId, aiAgent.AudioOutput.BackgroundAudioProvider);
-                }
-            }
 
             // Notify event subscribers
             AgentAdded?.Invoke(this, new ConversationAgentAddedEventArgs(agent));
@@ -784,6 +756,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 // Update state
                 await UpdateStateAsync(ConversationSessionState.Starting, "Session starting");
 
+                // Start the Mixer Heartbeat first
+                _sessionMixer?.Start();
+
                 await PrimaryAgent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
 
                 StartTimers();
@@ -806,6 +781,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 {
                     // TODO
                 }
+
+                
 
                 return result.SetSuccessResult();
             }
@@ -942,9 +919,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 }   
 
                 await _userBillingUsageManager.ProcessAndBillUsageAsync(_sessionBusinessData.MasterUserEmail, _sessionBusinessData.Id, consumedFeatureInputs, UserUsageSourceTypeEnum.Conversation, _sessionId, "Conversation Session Usage");
-
-                // Run Audio Compilation in the background
-                RunAudioCompilationAsync();
             }  
 
             try
@@ -1144,21 +1118,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 return null;
             }
         }
-        private void RunAudioCompilationAsync()
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var compileService = new SessionAudioCompilationService(_sessionLoggerFactory.CreateLogger<SessionAudioCompilationService>(), _conversationStateRepository, _audioStorageManager);
-                    await compileService.CompileConversationAudioAsync(_sessionId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error executing audio compilation background task for session {SessionId}", _sessionId);
-                }
-            });
-        }
 
         // Turn Event Handlers
         public async Task NotifyTurnStarted(ConversationTurn turn)
@@ -1203,17 +1162,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         {
             if (_state == ConversationSessionState.Ending || _state == ConversationSessionState.Ended) return;
             if (_sessionMixer == null) return;
+            if (sender is not IConversationClient client) return;
 
-            string clientId = string.Empty;
-            if (sender is IConversationClient client) clientId = client.ClientId;
-            else if (sender is string strId) clientId = strId;
+            string clientId = client.ClientId;
 
-            if (string.IsNullOrEmpty(clientId)) return;
+            _lastUserActivityTime = DateTime.UtcNow;
+            // uhh what do we mean by "last user activity time"?
+            // is it no audio at all or are we jsut looking for silence
+            // if this is silence this will fail really bad
+            // currently the agent is handling this
+            // we might need a session level vad tracking
 
-            _lastUserActivityTime = DateTime.UtcNow; // Silence Reset
-
-            // Note: Client input is ALWAYS standardized to 16kHz 32-bit by the Client Decoder now.
-            _sessionMixer.EnqueueInput(clientId, e.AudioData, 16000, 32);
+            _sessionMixer.EnqueueInput(clientId, e.AudioData, e.SampleRate, e.BitsPerSample);
         }
         private async void OnClientDTMFReceived(object? sender, ConversationDTMFReceivedEventArgs e)
         {
@@ -1280,13 +1240,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         {
             if (_state == ConversationSessionState.Ending || _state == ConversationSessionState.Ended) return;
             if (_sessionMixer == null) return;
+            if (sender is not IConversationAgent agent) return;
 
-            string agentId = string.Empty;
-            if (sender is IConversationAgent agent) agentId = agent.AgentId;
-            else if (sender is string strId) agentId = strId;
+            string agentId = agent.AgentId;
 
-            // Agent output varies based on Master Format
-            _sessionMixer.EnqueueInput(agentId, e.AudioData.ToArray(), e.MasterSampleRate, e.MasterBitsPerSample);
+            _sessionMixer.EnqueueInput(agentId, e.AudioData.ToArray(), e.SampleRate, e.BitsPerSample);
         }    
         private void OnAgentThinking(object? sender, ConversationAgentThinkingEventArgs e)
         {
@@ -1326,7 +1284,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         // Mixer Event Handlers
         private async void OnMixerAudioMixed(string targetId, byte[] mixedAudio, int sampleRate, int bits)
         {
-            // Case A: Target is a Client
             IConversationClient? clientTarget = null;
             lock (_clientsLock) { clientTarget = _clients.FirstOrDefault(c => c.ClientId == targetId); }
 
@@ -1334,7 +1291,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             {
                 try
                 {
-                    // The Client Wrapper handles Encoding (e.g. to MuLaw/Opus) and sending
                     await baseClient.ProcessDownstreamAudioAsync(mixedAudio, sampleRate, bits);
                 }
                 catch (Exception ex)
@@ -1344,29 +1300,38 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 return;
             }
 
-            // Case B: Target is an Agent (Feedback Loop for Hearing)
+            // Target is an Agent (Feedback Loop for Hearing)
             IConversationAgent? agentTarget = null;
             lock (_agentsLock) { agentTarget = _agents.FirstOrDefault(a => a.AgentId == targetId); }
 
             if (agentTarget != null)
             {
-                // The Agent expects Standard Input (16kHz 32-bit).
-                // If Mixer output (Master) is different (e.g. 24kHz 16-bit), we must convert before giving to Agent Input.
                 byte[] inputForAgent = mixedAudio;
 
                 if (sampleRate != 16000 || bits != 32)
                 {
-                    // Use helper to downsample/convert to standard input format
-                    // (Optimization: Agent logic *could* be updated to accept variable input, but standardization is safer)
-                    // For now, let's assume we pass it raw and let the Agent handle it, 
-                    // OR we do a quick conversion here.
-                    // Given the refactor, let's pass it. 
-                    // BUT: ConversationAIAgent usually expects standard. 
-                    // Let's rely on ProcessAudioAsync handling it or ensure Mixer output matches.
-                    // Ideally, we resample here.
+                    (inputForAgent, _) = AudioConversationHelper.Convert(
+                        inputForAgent,
+                        new()
+                        {
+                            SampleRateHz = sampleRate,
+                            BitsPerSample = bits,
+                            Encoding = AudioEncodingTypeEnum.PCM
+                        },
+                        new()
+                        {
+                            RequestedSampleRateHz = 16000,
+                            RequestedBitsPerSample = 32,
+                            RequestedEncoding = AudioEncodingTypeEnum.PCM
+                        }
+                    );
                 }
 
-                // agentTarget.ProcessAudioAsync(inputForAgent, "Mixer", _sessionCts.Token);
+                try
+                {
+                    await agentTarget.ProcessAudioAsync(inputForAgent, _sessionCts.Token);
+                }
+                catch (Exception ex) { /* could happen if the call ends disconnects but there is audio */ }
             }
         }
 

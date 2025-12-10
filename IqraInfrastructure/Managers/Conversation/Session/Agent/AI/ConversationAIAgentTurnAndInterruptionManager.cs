@@ -156,7 +156,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogDebug("Configuring SmartTurnService for ML Turn End detection.");
                 _mlTurnService = new SmartTurnService(
                     _loggerFactory.CreateLogger<SmartTurnService>(),
-                    // hardcoded values for now
                     AudioEncodingTypeEnum.PCM,
                     16000,
                     32
@@ -419,7 +418,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     Type = ConversationTurnType.User,
                     UserInput = new ConversationTurnUserInput
                     {
-                        SenderId = _agentState.CurrentClientId ?? "UnknownClient",
                         TranscribedText = text,
                         StartedSpeakingAt = now,
                         FinishedSpeakingAt = now,
@@ -491,7 +489,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     Status = ConversationTurnStatus.UserInputStarted,
                     UserInput = new ConversationTurnUserInput
                     {
-                        SenderId = _agentState.CurrentClientId ?? "UnknownClient",
                         StartedSpeakingAt = DateTime.UtcNow
                     },
                     Response = new ConversationTurnAgentResponse()

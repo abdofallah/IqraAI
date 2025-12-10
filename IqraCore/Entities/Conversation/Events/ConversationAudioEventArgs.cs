@@ -3,18 +3,17 @@
     public class ConversationAudioGeneratedEventArgs : EventArgs
     {
         public byte[] AudioData { get; }
-        public int MasterSampleRate { get; }
-        public int MasterBitsPerSample { get; }
+        public int SampleRate { get; }
+        public int BitsPerSample { get; }
 
-        public string TargetClientId { get; }
         public DateTime Timestamp { get; }
 
-        public ConversationAudioGeneratedEventArgs(byte[] audioData, int masterSampleRate, int masterBitsPerSample, string targetClientId = null)
+        public ConversationAudioGeneratedEventArgs(byte[] audioData, int sampleRate, int bitsPerSample)
         {
             AudioData = audioData;
-            MasterSampleRate = masterSampleRate;
-            MasterBitsPerSample = masterBitsPerSample;
-            TargetClientId = targetClientId;
+            SampleRate = sampleRate;
+            BitsPerSample = bitsPerSample;
+
             Timestamp = DateTime.UtcNow;
         }
     }
@@ -22,13 +21,17 @@
     public class ConversationAudioReceivedEventArgs : EventArgs
     {
         public byte[] AudioData { get; }
-        public string TargetAgentId { get; }
+        public int SampleRate { get; }
+        public int BitsPerSample { get; }
+
         public DateTime Timestamp { get; }
 
-        public ConversationAudioReceivedEventArgs(byte[] audioData, string targetAgentId = null)
+        public ConversationAudioReceivedEventArgs(byte[] audioData, int sampleRate, int bitsPerSample)
         {
             AudioData = audioData;
-            TargetAgentId = targetAgentId;
+            SampleRate = sampleRate;
+            BitsPerSample = bitsPerSample;
+
             Timestamp = DateTime.UtcNow;
         }
     }

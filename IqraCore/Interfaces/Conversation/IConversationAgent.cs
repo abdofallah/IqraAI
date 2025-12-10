@@ -12,7 +12,7 @@ namespace IqraCore.Interfaces.Conversation
 
         Task NotifyConversationStarted();
         Task NotifyMaxDurationReached();
-        Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken);
+        Task ProcessAudioAsync(byte[] audioData, CancellationToken cancellationToken);
         Task ProcessTextAsync(string text, string clientId, CancellationToken cancellationToken);
         Task ProcessDTMFAsync(string digit, string clientId, CancellationToken cancellationToken);
         Task InitializeAsync();

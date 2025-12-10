@@ -360,11 +360,6 @@ namespace IqraInfrastructure.Managers.WebSession
 
             var agentConfig = new ConversationAgentConfiguration()
             {
-                BitsPerSample = webSessionData.AudioInputConfiguration.BitsPerSample,
-                SampleRate = webSessionData.AudioInputConfiguration.SampleRate,
-                AudioEncodingType = webSessionData.AudioInputConfiguration.AudioEncodingType,
-                AudioEncodingFallbackMode = webSessionData.AudioInputConfiguration.AudioEncodingFallbackMode,
-                Channels = 1 // static for now
             };
 
             var clientConfig = new ConversationWebClientConfiguration()
@@ -375,8 +370,7 @@ namespace IqraInfrastructure.Managers.WebSession
                     AudioEncodingType = webSessionData.AudioInputConfiguration.AudioEncodingType,
                     BitsPerSample = webSessionData.AudioInputConfiguration.BitsPerSample,
                     Channels = 1, // static for now
-                    SampleRate = webSessionData.AudioInputConfiguration.SampleRate,
-                    AudioEncodingFallbackMode = webSessionData.AudioInputConfiguration.AudioEncodingFallbackMode
+                    SampleRate = webSessionData.AudioInputConfiguration.SampleRate
                 },
                 AudioOutputConfiguration = new ConversationClientAudioOutputConfiguration()
                 {
@@ -384,10 +378,7 @@ namespace IqraInfrastructure.Managers.WebSession
                     BitsPerSample = webSessionData.AudioOutputConfiguration.BitsPerSample,
                     Channels = 1, // static for now
                     SampleRate = webSessionData.AudioOutputConfiguration.SampleRate,
-                    AudioEncodingFallbackMode = webSessionData.AudioOutputConfiguration.AudioEncodingFallbackMode,
                     FrameDurationMs = webSessionData.AudioOutputConfiguration.FrameDurationMs,
-                    MaxBufferAheadMs = webSessionData.AudioOutputConfiguration.MaxBufferAheadMs,
-                    InitialSegmentDurationMs = webSessionData.AudioOutputConfiguration.InitialSegmentDurationMs
                 }
             };
 

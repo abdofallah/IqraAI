@@ -780,11 +780,7 @@ namespace IqraInfrastructure.Managers.Business
 
             foreach (var client in state.Clients)
             {
-                string? audioUrl = null;
-                if (client.AudioInfo.AudioCompilationStatus == ConversationMemberAudioCompilationStatus.Compiled)
-                {
-                    audioUrl = _conversationAudioRepository.GeneratePresignedUrl($"{state.Id}/compiled/user_{client.ClientId}.wav", audioUrlExpirySeconds);
-                }
+                string? audioUrl = _conversationAudioRepository.GeneratePresignedUrl($"{state.Id}/compiled/user_{client.ClientId}.wav", audioUrlExpirySeconds);
 
                 var clientModel = new ConversationStateClientViewModel()
                 {
@@ -793,9 +789,7 @@ namespace IqraInfrastructure.Managers.Business
                     JoinedAt = client.JoinedAt,
                     LeftAt = client.LeftAt,
                     LeaveReason = client.LeaveReason,
-                    AudioCompilationStatus = client.AudioInfo.AudioCompilationStatus,
                     AudioUrl = audioUrl,
-                    AudioFailedReason = client.AudioInfo.FailedReason
                 };
 
                 resultModel.Clients.Add(clientModel);
@@ -803,11 +797,7 @@ namespace IqraInfrastructure.Managers.Business
 
             foreach (var agent in state.Agents)
             {
-                string? audioUrl = null;
-                if (agent.AudioInfo.AudioCompilationStatus == ConversationMemberAudioCompilationStatus.Compiled)
-                {
-                    audioUrl = _conversationAudioRepository.GeneratePresignedUrl($"{state.Id}/compiled/agent_{agent.AgentId}.wav", audioUrlExpirySeconds);
-                }
+                string? audioUrl = _conversationAudioRepository.GeneratePresignedUrl($"{state.Id}/recordings/{agent.AgentId}.wav", audioUrlExpirySeconds);
 
                 var clientModel = new ConversationStateAgentViewModel()
                 {
@@ -816,9 +806,7 @@ namespace IqraInfrastructure.Managers.Business
                     JoinedAt = agent.JoinedAt,
                     LeftAt = agent.LeftAt,
                     LeaveReason = agent.LeaveReason,
-                    AudioCompilationStatus = agent.AudioInfo.AudioCompilationStatus,
                     AudioUrl = audioUrl,
-                    AudioFailedReason = agent.AudioInfo.FailedReason
                 };
 
                 resultModel.Agents.Add(clientModel);
@@ -831,7 +819,6 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     var userMessageModel = new ConversationStateMessageViewModel()
                     {
-                        SenderId = turn.UserInput.SenderId,
                         Role = ConversationSenderRole.Client,
                         Content = turn.UserInput.TranscribedText ?? "",
                         Timestamp = turn.UserInput.StartedSpeakingAt,
@@ -842,7 +829,6 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     var userMessageModel = new ConversationStateMessageViewModel()
                     {
-                        SenderId = "System",
                         Role = ConversationSenderRole.System,
                         Content = turn.SystemInput.Type,
                         Timestamp = turn.CreatedAt
@@ -861,11 +847,11 @@ namespace IqraInfrastructure.Managers.Business
                     Content = "",
                     Timestamp = turn.Response.LLMStreamingStartedAt ?? turn.Response.LLMProcessStartedAt
                 };
-                if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.ConversationTurnAgentResponseType.Speech)
+                if (turn.Response.Type == ConversationTurnAgentResponseType.Speech)
                 {
                     turn.Response.SpokenSegments.ForEach(segment => agentMessageModel.Content += segment.Text + " ");
                 }
-                else if (turn.Response.Type == IqraCore.Entities.Conversation.Turn.ConversationTurnAgentResponseType.CustomTool || turn.Response.Type == IqraCore.Entities.Conversation.Turn.ConversationTurnAgentResponseType.SystemTool)
+                else if (turn.Response.Type == ConversationTurnAgentResponseType.CustomTool || turn.Response.Type == IqraCore.Entities.Conversation.Turn.ConversationTurnAgentResponseType.SystemTool)
                 {
                     if (turn.Response.ToolExecution != null)
                     {

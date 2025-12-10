@@ -28,9 +28,7 @@ namespace IqraCore.Models.Business.Conversations
         public DateTime? LeftAt { get; set; }
         public string? LeaveReason { get; set; }
 
-        public ConversationMemberAudioCompilationStatus AudioCompilationStatus { get; set; }   
         public string? AudioUrl { get; set; }
-        public string? AudioFailedReason { get; set; }
     }
 
     public class ConversationStateAgentViewModel
@@ -41,9 +39,7 @@ namespace IqraCore.Models.Business.Conversations
         public DateTime? LeftAt { get; set; }
         public string? LeaveReason { get; set; }
 
-        public ConversationMemberAudioCompilationStatus AudioCompilationStatus { get; set; }
         public string? AudioUrl { get; set; }
-        public string? AudioFailedReason { get; set; }
     }
 
     public class ConversationStateMessageViewModel

@@ -58,10 +58,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public float BackgroundMusicVolume { get; set; } = 0.3f; // Default, could be config
         public ReadOnlyMemory<byte> BackgroundAudioData { get; set; } = ReadOnlyMemory<byte>.Empty; // Loaded data
 
-        // Client Context
-        public string? CurrentClientId { get; set; }
-        public Dictionary<string, string> ClientContextMap { get; } = new(); // Example, adjust if needed
-
         public ConversationAIAgentState(string agentId, CancellationToken masterCTS)
         {
             AgentId = agentId;

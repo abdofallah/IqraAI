@@ -192,15 +192,6 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     newWebSessionData.AudioInputConfiguration.AudioEncodingType = modelData.AudioInputConfiguration.AudioEncodingType;
-
-                    if (!Enum.IsDefined(typeof(AudioEncoderFallbackOptimizationMode), modelData.AudioInputConfiguration.AudioEncodingFallbackMode))
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_INPUT_CONFIGURATION_AUDIO_ENCODING_FALLBACK_MODE_INVALID",
-                            "Audio Input Configuration audio encoding fallback mode is invalid."
-                        );
-                    }
-                    newWebSessionData.AudioInputConfiguration.AudioEncodingFallbackMode = modelData.AudioInputConfiguration.AudioEncodingFallbackMode;
                 }
 
                 // Audio Output Configuration
@@ -240,16 +231,7 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     newWebSessionData.AudioOutputConfiguration.AudioEncodingType = modelData.AudioOutputConfiguration.AudioEncodingType;
 
-                    if (!Enum.IsDefined(typeof(AudioEncoderFallbackOptimizationMode), modelData.AudioOutputConfiguration.AudioEncodingFallbackMode))
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_AUDIO_ENCODING_FALLBACK_MODE_INVALID",
-                            "Audio Output Configuration audio encoding fallback mode is invalid."
-                        );
-                    }
-                    newWebSessionData.AudioOutputConfiguration.AudioEncodingFallbackMode = modelData.AudioOutputConfiguration.AudioEncodingFallbackMode;
-
-                    // int FrameDurationMs, MaxBufferAheadMs, InitialSegmentDurationMs
+                    // int FrameDurationMs
                     if (modelData.AudioOutputConfiguration.FrameDurationMs < 20 || modelData.AudioOutputConfiguration.FrameDurationMs > 150)
                     {
                         return result.SetFailureResult(
@@ -258,24 +240,6 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     newWebSessionData.AudioOutputConfiguration.FrameDurationMs = modelData.AudioOutputConfiguration.FrameDurationMs;
-
-                    if (modelData.AudioOutputConfiguration.MaxBufferAheadMs < modelData.AudioOutputConfiguration.FrameDurationMs || modelData.AudioOutputConfiguration.MaxBufferAheadMs > 5000)
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_MAX_BUFFER_AHEAD_MS_INVALID",
-                            "Audio Output Configuration max buffer ahead is invalid. Allowed values: more than frame duration and less than 5000."
-                        );
-                    }
-                    newWebSessionData.AudioOutputConfiguration.MaxBufferAheadMs = modelData.AudioOutputConfiguration.MaxBufferAheadMs;
-
-                    if (modelData.AudioOutputConfiguration.InitialSegmentDurationMs < modelData.AudioOutputConfiguration.FrameDurationMs || modelData.AudioOutputConfiguration.InitialSegmentDurationMs > 5000)
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_INITIAL_SEGMENT_DURATION_MS_INVALID",
-                            "Audio Output Configuration initial segment duration is invalid. Allowed values: more than frame duration and less than 5000."
-                        );
-                    }
-                    newWebSessionData.AudioOutputConfiguration.InitialSegmentDurationMs = modelData.AudioOutputConfiguration.InitialSegmentDurationMs;
                 }
 
                 // Dynamic Variables

@@ -16,10 +16,7 @@ namespace IqraCore.Entities.Conversation.Configuration
         public int BitsPerSample { get; set; }
         public int Channels { get; set; } = 1;
         public AudioEncodingTypeEnum AudioEncodingType { get; set; }
-        public AudioEncoderFallbackOptimizationMode AudioEncodingFallbackMode { get; set; }
         public int FrameDurationMs { get; set; }
-        public int MaxBufferAheadMs { get; set; }
-        public int InitialSegmentDurationMs { get; set; }
     }
 
     public class ConversationClientAudioInputConfiguration
@@ -28,7 +25,6 @@ namespace IqraCore.Entities.Conversation.Configuration
         public int BitsPerSample { get; set; }
         public int Channels { get; set; } = 1;
         public AudioEncodingTypeEnum AudioEncodingType { get; set; }
-        public AudioEncoderFallbackOptimizationMode AudioEncodingFallbackMode { get; set; }
     }
 
     public class ConversationTelephonyClientConfiguration : ConversationClientConfiguration

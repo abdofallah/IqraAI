@@ -754,10 +754,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
 
             var agentConfig = new ConversationAgentConfiguration()
             {
-                BitsPerSample = sessionBitPerSample,
-                Channels = sessionChannels,
-                SampleRate = sessionSampleRate,
-                AudioEncodingType = sessionAudioEncodingType
             };
 
             var clientConfig = new ConversationTelephonyClientConfiguration()
@@ -768,8 +764,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     AudioEncodingType = sessionAudioEncodingType,
                     BitsPerSample = sessionBitPerSample,
                     Channels = sessionChannels,
-                    SampleRate = sessionSampleRate,
-                    AudioEncodingFallbackMode = AudioEncoderFallbackOptimizationMode.Performance
+                    SampleRate = sessionSampleRate
                 },
                 AudioOutputConfiguration = new ConversationClientAudioOutputConfiguration()
                 {
@@ -777,10 +772,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     BitsPerSample = sessionBitPerSample,
                     Channels = sessionChannels,
                     SampleRate = sessionSampleRate,
-                    AudioEncodingFallbackMode = AudioEncoderFallbackOptimizationMode.Performance,
                     FrameDurationMs = 60,
-                    MaxBufferAheadMs = 150,
-                    InitialSegmentDurationMs = 300
                 }
             };
 

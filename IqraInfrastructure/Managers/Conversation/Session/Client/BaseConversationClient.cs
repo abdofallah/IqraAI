@@ -138,14 +138,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         }
 
         // Protected event invokers for subclasses to raise the public-facing events
+        private const AudioEncodingTypeEnum TargetAudioEncodingType = AudioEncodingTypeEnum.PCM;
+        private const int TargetSampleRate = 16000;
+        private const int TargetBitsPerSample = 32;
         protected void RaiseAudioReceived(byte[] audioData)
         {
             if (audioData.Length == 0) return;
 
             byte[] decodedData;
-            if (ClientConfig.AudioInputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
-                ClientConfig.AudioInputConfiguration.SampleRate == 16000 &&
-                ClientConfig.AudioInputConfiguration.BitsPerSample == 32)
+            if (ClientConfig.AudioInputConfiguration.AudioEncodingType == TargetAudioEncodingType &&
+                ClientConfig.AudioInputConfiguration.SampleRate == TargetSampleRate &&
+                ClientConfig.AudioInputConfiguration.BitsPerSample == TargetBitsPerSample)
             {
                 decodedData = audioData;
             }
@@ -165,7 +168,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
 
             if (decodedData.Length > 0)
             {
-                AudioReceived?.Invoke(this, new(decodedData));
+                AudioReceived?.Invoke(this, new(decodedData, TargetSampleRate, TargetBitsPerSample));
             }
         }
         protected void RaiseTextReceived(string text) => TextReceived?.Invoke(this, new(text));

@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Business;
+﻿using Deepgram.Models.Agent.v2.WebSocket;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Audio;
@@ -27,8 +28,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public string TurnId { get; }
         public bool IsCacheHit { get; }
         public int RetrievalLatencyMS { get; }
+        public int SampleRate { get; }
+        public int BitsPerSample { get; }
 
-        public SpeechSegment(string id, string text, ReadOnlyMemory<byte> audioData, TimeSpan duration, string turnId, bool isCacheHit, int retrieveLatencyMS)
+        public SpeechSegment(string id, string text, ReadOnlyMemory<byte> audioData, TimeSpan duration, string turnId, bool isCacheHit, int retrieveLatencyMS, int sampleRate, int bitsPerSample)
         {
             Id = id;
             Text = text;
@@ -37,6 +40,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             TurnId = turnId;
             IsCacheHit = isCacheHit;
             RetrievalLatencyMS = retrieveLatencyMS;
+            SampleRate = sampleRate;
+            BitsPerSample = bitsPerSample;
         }
     }
 
@@ -64,6 +69,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private int _bytesPerSample;
         private int _bytesPerChunk;
         private const int FRAME_DURATION_MS = 20;
+        private const int BACKPRESSURE_THRESHOLD_MS = 200;
 
         public ConversationAIAgentBackgroundAudioProvider? BackgroundAudioProvider { get; private set; }
 
@@ -72,11 +78,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private Task? _audioSendingTask;
         private CancellationTokenSource _audioSendingCTS = new();
 
-        // Background Audio State
-        private int _backgroundAudioPosition = 0;
-
         // Current Playback State
-        private string _currentSpeechSegmentId = string.Empty;
+        private SpeechSegment? _currentSpeechSegment = null;
         private ReadOnlyMemory<byte> _currentSpeechSegmentAudio = ReadOnlyMemory<byte>.Empty;
         private int _currentSpeechSegmentAudioPosition = 0;
         private volatile bool _isPlaybackPaused = false;
@@ -109,9 +112,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Initalize
         public async Task InitializeAsync(CancellationToken agentCTS)
         {
-            _masterSampleRate = _agentState.AgentConfiguration!.SampleRate;
-            _masterBitsPerSample = _agentState.AgentConfiguration!.BitsPerSample;
-
+            _masterSampleRate = _conversationSession._sessionMasterSampleRate;
+            _masterBitsPerSample = _conversationSession._sessionMasterBitsPerSample;
             RecalculateFormatDerivedValues();
 
             await InitializeTTSAsync();
@@ -121,6 +123,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
         public async Task UpgradeMasterFormatAndReinitalizeAsync(int newSampleRate, int newBitsPerSample)
         {
+            // we wait for the current synthesis task to finish to update the master sample rate
+            // to be safe from messing up using the wrong sample rate/bits
+            await _synthesisSemaphore.WaitAsync();
+
             if (_masterSampleRate == newSampleRate &&
                 _masterBitsPerSample == newBitsPerSample
             ) {
@@ -136,12 +142,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _masterSampleRate = newSampleRate;
             _masterBitsPerSample = newBitsPerSample;
             RecalculateFormatDerivedValues();
-
-            if (_agentState.AgentConfiguration != null)
-            {
-                _agentState.AgentConfiguration.SampleRate = newSampleRate;
-                _agentState.AgentConfiguration.BitsPerSample = newBitsPerSample;
-            }
 
             await CancelCurrentSpeechPlaybackAsync();
 
@@ -264,12 +264,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 _agentState.BackgroundAudioData = convertedAudio; // Keep raw ref if needed
                 BackgroundAudioProvider = new ConversationAIAgentBackgroundAudioProvider(
+                    _agentState.BusinessAppAgent.Settings.BackgroundAudioVolume ?? 100,
                     convertedAudio,
                     _masterSampleRate,
                     _masterBitsPerSample
                 );
 
                 _agentState.IsBackgroundMusicLoaded = true;
+
+                _conversationSession.AudioEngine?.SetBackgroundSource(_agentState.AgentId, BackgroundAudioProvider);
             }
             catch (Exception ex)
             {
@@ -331,7 +334,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         cacheRetrievalLatencyStopwatch.Stop();
                         if (cacheResult.IsHit && !cacheResult.AudioData.IsEmpty)
                         {
-                            var cachedSegment = new SpeechSegment(Guid.NewGuid().ToString(), text, cacheResult.AudioData, cacheResult.Duration, turn.Id, true, (int)cacheRetrievalLatencyStopwatch.ElapsedMilliseconds);
+                            var cachedSegment = new SpeechSegment(Guid.NewGuid().ToString(), text, cacheResult.AudioData, cacheResult.Duration, turn.Id, true, (int)cacheRetrievalLatencyStopwatch.ElapsedMilliseconds, _masterSampleRate, _masterBitsPerSample);
                             _speechAudioQueue.Add(cachedSegment, _audioSendingCTS.Token);
                             if (markTurnAsCompleteAfterThis)
                             {
@@ -390,7 +393,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         );
                     }
 
-                    var segment = new SpeechSegment(Guid.NewGuid().ToString(), text, audioData, audioDuration.Value, turn.Id, false, (int)generationLatencyStopwatch.ElapsedMilliseconds);
+                    var segment = new SpeechSegment(Guid.NewGuid().ToString(), text, audioData, audioDuration.Value, turn.Id, false, (int)generationLatencyStopwatch.ElapsedMilliseconds, _masterSampleRate, _masterBitsPerSample);
                     _speechAudioQueue.Add(segment, _audioSendingCTS.Token);
                     if (markTurnAsCompleteAfterThis)
                     {
@@ -501,7 +504,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _speechAudioQueue = new BlockingCollection<SpeechSegment>(new ConcurrentQueue<SpeechSegment>());
 
             // Reset local playback state
-            _currentSpeechSegmentId = string.Empty;
+            _currentSpeechSegment = null;
             _currentSpeechSegmentAudio = ReadOnlyMemory<byte>.Empty;
             _currentSpeechSegmentAudioPosition = 0;
             _isPlaybackPaused = false;
@@ -549,13 +552,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public async Task InterruptCurrentTurnSegment()
         {
             var turnBeingCancelled = _agentState.CurrentTurn;
-            if (turnBeingCancelled != null &&
+            if (
+                _currentSpeechSegment.HasValue &&
+                turnBeingCancelled != null &&
                 turnBeingCancelled.Response.Type == ConversationTurnAgentResponseType.Speech &&
                 (turnBeingCancelled.Status == ConversationTurnStatus.AgentProcessing || turnBeingCancelled.Status == ConversationTurnStatus.AgentRespondingSpeech)
             ) {
                 _logger.LogDebug("Agent {AgentId}: Interrupting current turn segment for turn {TurnId}.", turnBeingCancelled.Id, _agentState.AgentId);
 
-                var activeSegment = turnBeingCancelled.Response.SpokenSegments.Find(s => s.Id == _currentSpeechSegmentId);
+                var activeSegment = turnBeingCancelled.Response.SpokenSegments.Find(s => s.Id == _currentSpeechSegment.Value.Id);
 
                 if (activeSegment != null)
                 {
@@ -684,6 +689,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
+                    // Check Mixer Health (Backpressure)
+                    // If the mixer has more than 300ms of our audio, we wait.
+                    // This keeps the "Future Audio" buffer small, so interruptions are snappy.
+                    if (_conversationSession.AudioEngine != null)
+                    {
+                        // Poll until buffer drops below threshold
+                        while (
+                            _conversationSession.AudioEngine.GetQueueDurationMs(_agentState.AgentId) > BACKPRESSURE_THRESHOLD_MS &&
+                            !cancellationToken.IsCancellationRequested &&
+                            !_isPlaybackPaused
+                        ) {
+                            await Task.Delay(20, cancellationToken);
+                        }
+                    }
+
                     var currentTurn = _agentState.CurrentTurn;
                     if (currentTurn == null)
                     {
@@ -710,7 +730,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             // Mark Segment Complete in Data
                             if (_currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length)
                             {
-                                var segData = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == _currentSpeechSegmentId);
+                                var segData = currentTurn.Response.SpokenSegments.FirstOrDefault(s => s.Id == _currentSpeechSegment!.Value.Id);
                                 if (segData != null)
                                 {
                                     segData.FinishedPlayingAt = DateTime.UtcNow;
@@ -744,7 +764,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         TurnUpdate?.Invoke(this, currentTurn);
 
                         // Load into Local Buffer
-                        _currentSpeechSegmentId = nextSegment.Id;
+                        _currentSpeechSegment = nextSegment;
                         _currentSpeechSegmentAudio = nextSegment.AudioData;
                         _currentSpeechSegmentAudioPosition = 0;
 
@@ -760,22 +780,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     // Send Chunk (Produce)
                     if (chunkToSend != null && chunkToSend.Length > 0)
                     {
-                        // Backpressure Logic (Simple for now: Don't flood loop without yielding)
-                        // In Phase 4, we can query the Mixer queue depth here.
-                        // For now, we rely on Task.Yield or a small delay to prevent CPU spinning 
-                        // if TTS is super fast, though usually TTS is the bottleneck.
-
                         AudioChunkGenerated?.Invoke(this, new ConversationAudioGeneratedEventArgs(
                             chunkToSend,
-                            _masterSampleRate,
-                            _masterBitsPerSample,
-                            _agentState.CurrentClientId
+                            _currentSpeechSegment!.Value.SampleRate,
+                            _currentSpeechSegment!.Value.BitsPerSample
                         ));
 
-                        // Small yield to allow other tasks to process events
-                        // Not a strict "Pace", just polite concurrency.
-                        // Ideally, we wait if Mixer Queue > 300ms.
-                        // await Task.Delay(5); 
+                        await Task.Yield();
                     }
                     else
                     {
@@ -786,20 +797,34 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     // Check Turn Completion (Production Finished)
                     if (
                         currentTurn.Status == ConversationTurnStatus.AgentRespondingSpeech &&
-                        currentTurn.Response.LLMStreamingCompletedAt != null &&
                         currentTurn.Response.SpeechCompletedAt == null &&
                         (_currentSpeechSegmentAudio.IsEmpty || _currentSpeechSegmentAudioPosition >= _currentSpeechSegmentAudio.Length) &&
                         _speechAudioQueue.IsAddingCompleted &&
                         _speechAudioQueue.Count == 0
                     )
                     {
+                        if (_conversationSession.AudioEngine != null)
+                        {
+                            // Wait until the mixer has less than 1 frame (20ms) left.
+                            // We use 40ms as a safe threshold to avoid race conditions causing infinite waits.
+                            while (_conversationSession.AudioEngine.GetQueueDurationMs(_agentState.AgentId) > 40 && !cancellationToken.IsCancellationRequested)
+                            {
+                                await Task.Delay(20, cancellationToken);
+                            }
+                        }
+
                         _logger.LogInformation("Agent {AgentId}: Finished producing audio for turn {TurnId}.", _agentState.AgentId, currentTurn.Id);
 
                         currentTurn.Response.SpeechCompletedAt = DateTime.UtcNow;
 
-                        // Fire event so Orchestrator knows we are done *producing*.
-                        // Orchestrator will check Mixer queue before switching state if needed.
-                        AgentResponsePlaybackComplete?.Invoke(this, currentTurn);
+                        if (
+                            (currentTurn.Type == ConversationTurnType.User || currentTurn.Type == ConversationTurnType.ToolResult) &&
+                            currentTurn.Response.LLMStreamingCompletedAt != null &&
+                            currentTurn.Response.Type == ConversationTurnAgentResponseType.Speech
+                        )
+                        {
+                            AgentResponsePlaybackComplete?.Invoke(this, currentTurn);
+                        }
                     }
                 }
             }
