@@ -12,6 +12,6 @@
         G729 = 6,
         OPUS = 7,
 
-        MPEG = 8
+        MPEG = 8 // disable mpeg
     }
 }

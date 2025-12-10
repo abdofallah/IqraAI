@@ -134,7 +134,7 @@ namespace ProjectIqraBackendApp
 
                         var pathSegments = context.Request.Path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
                         if (pathSegments == null || pathSegments.Length < 6 ||
-                            pathSegments[0] != "ws" || pathSegments[1] != "session" || (pathSegments[3] != "telephonyclient" && pathSegments[3] != "webclient"))
+                            pathSegments[0] != "ws" || pathSegments[1] != "session" || (pathSegments[3] != "telephonyclient" && pathSegments[3] != "websocket" && pathSegments[3] != "webrtc"))
                         {
                             context.Response.StatusCode = 400; await context.Response.WriteAsync("Invalid WebSocket path."); return;
                         }
@@ -177,13 +177,13 @@ namespace ProjectIqraBackendApp
                                 if (!context.Response.HasStarted) context.Response.StatusCode = 500;
                             }
                         }
-                        else if (clientType == "webclient")
+                        else if (clientType == "websocket" || clientType == "webrtc")
                         {
                             var webSessionProcessorManager = context.RequestServices.GetRequiredService<BackendWebSessionProcessorManager>();
                             try
                             {
                                 WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                                var assignResult = await webSessionProcessorManager.AssignWebSocketToClientAsync(sessionId, clientId, sessionToken, webSocket);
+                                var assignResult = await webSessionProcessorManager.AssignWebSocketToClientAsync(sessionId, clientId, sessionToken, webSocket, clientType);
                                 if (!assignResult.Success)
                                 {
                                     await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, $"[{assignResult.Code}] {assignResult.Message}", CancellationToken.None);

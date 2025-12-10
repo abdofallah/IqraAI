@@ -53,10 +53,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         // Audio Output State
         public float CurrentAgentVolumeFactor { get; set; } = 1.0f; // Volume for mixing
-        public bool IsBackgroundMusicEnabled { get; set; } = false;
         public bool IsBackgroundMusicLoaded { get; set; } = false;
         public float BackgroundMusicVolume { get; set; } = 0.3f; // Default, could be config
-        public ReadOnlyMemory<byte> BackgroundAudioData { get; set; } = ReadOnlyMemory<byte>.Empty; // Loaded data
 
         public ConversationAIAgentState(string agentId, CancellationToken masterCTS)
         {

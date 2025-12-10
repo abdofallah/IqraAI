@@ -1,10 +1,14 @@
 ﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.WebSession.Enum;
 using System.ComponentModel.DataAnnotations;
 
 namespace IqraCore.Models.WebSession
 {
     public class InitiateWebSessionRequestModel
     {
+        [Required]
+        public WebSessionTransportTypeEnum TransportType { get; set; } = WebSessionTransportTypeEnum.WebSocket;
+
         [Required]
         public string WebCampaignId { get; set; } = null!;
 
@@ -55,11 +59,5 @@ namespace IqraCore.Models.WebSession
 
         [Required]
         public int FrameDurationMs { get; set; }
-
-        [Required]
-        public int MaxBufferAheadMs { get; set; }
-
-        [Required]
-        public int InitialSegmentDurationMs { get; set; }
     }
 }

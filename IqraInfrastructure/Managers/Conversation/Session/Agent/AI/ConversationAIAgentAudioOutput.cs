@@ -127,29 +127,37 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // to be safe from messing up using the wrong sample rate/bits
             await _synthesisSemaphore.WaitAsync();
 
-            if (_masterSampleRate == newSampleRate &&
-                _masterBitsPerSample == newBitsPerSample
-            ) {
-                return;
-            }
-
-
-            _logger.LogInformation("Upgrading Master Audio Format to {Rate}Hz with {Bits} bits...", newSampleRate, newBitsPerSample);
-
-            bool wasPaused = _isPlaybackPaused;
-            await PausePlaybackAsync();
-
-            _masterSampleRate = newSampleRate;
-            _masterBitsPerSample = newBitsPerSample;
-            RecalculateFormatDerivedValues();
-
-            await CancelCurrentSpeechPlaybackAsync();
-
-            await ReInitializeTTSAndBackgroundAudio();
-
-            if (!wasPaused)
+            try
             {
-                await ResumePlaybackAsync();
+                if (_masterSampleRate == newSampleRate &&
+                _masterBitsPerSample == newBitsPerSample
+            )
+                {
+                    return;
+                }
+
+
+                _logger.LogInformation("Upgrading Master Audio Format to {Rate}Hz with {Bits} bits...", newSampleRate, newBitsPerSample);
+
+                bool wasPaused = _isPlaybackPaused;
+                await PausePlaybackAsync();
+
+                _masterSampleRate = newSampleRate;
+                _masterBitsPerSample = newBitsPerSample;
+                RecalculateFormatDerivedValues();
+
+                await CancelCurrentSpeechPlaybackAsync();
+
+                await ReInitializeTTSAndBackgroundAudio();
+
+                if (!wasPaused)
+                {
+                    await ResumePlaybackAsync();
+                }
+            }
+            finally
+            {
+                _synthesisSemaphore.Release();
             }
         }
         public async Task ReInitializeTTSAndBackgroundAudio()
@@ -211,7 +219,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (_agentState.BusinessAppAgent?.Settings?.BackgroundAudioS3StorageLink == null)
             {
-                _agentState.IsBackgroundMusicEnabled = false;
                 _agentState.IsBackgroundMusicLoaded = false;
                 return;
             }
@@ -229,7 +236,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     if (fileResult == null || fileResult.Data.IsEmpty)
                     {
                         _logger.LogWarning("Agent {AgentId}: Background audio file not found or is empty (ID: {FileId})", _agentState.AgentId, audioUrl);
-                        _agentState.IsBackgroundMusicEnabled = false;
                         _agentState.IsBackgroundMusicLoaded = false;
                         return;
                     }
@@ -256,13 +262,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (convertedAudio == null || convertedAudio.Length == 0)
                 {
                     _logger.LogError("Failed to convert background audio to Master PCM format.");
-                    _agentState.IsBackgroundMusicEnabled = false;
                     BackgroundAudioProvider = null;
                     return;
                 }
 
 
-                _agentState.BackgroundAudioData = convertedAudio; // Keep raw ref if needed
                 BackgroundAudioProvider = new ConversationAIAgentBackgroundAudioProvider(
                     _agentState.BusinessAppAgent.Settings.BackgroundAudioVolume ?? 100,
                     convertedAudio,
@@ -277,7 +281,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Agent {AgentId}: Error loading or converting background audio (ID: {FileId})", _agentState.AgentId, audioUrl);
-                _agentState.IsBackgroundMusicEnabled = false;
                 _agentState.IsBackgroundMusicLoaded = false;
             }
         }

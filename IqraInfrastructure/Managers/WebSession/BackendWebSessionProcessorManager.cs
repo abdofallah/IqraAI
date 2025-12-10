@@ -8,6 +8,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.Server;
 using IqraCore.Entities.WebSession;
+using IqraCore.Entities.WebSession.Enum;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Business;
@@ -177,7 +178,7 @@ namespace IqraInfrastructure.Managers.WebSession
                 var primaryWebSocketClient = componentsResult.Data.Client;
 
                 var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(session.SessionId, primaryWebSocketClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
-                var webhookUrl = BuildWebhookUrl(regionServerData, session.SessionId, primaryWebSocketClient.ClientId, generatedWebhookToken);
+                var webhookUrl = BuildWebhookUrl(regionServerData, session.SessionId, primaryWebSocketClient.ClientId, generatedWebhookToken, webSessionData.TransportType);
                 
                 await session.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initialized successfully, waiting for websocket connection.");
 
@@ -213,7 +214,7 @@ namespace IqraInfrastructure.Managers.WebSession
                 }
             }
         }
-        public async Task<FunctionReturnResult<CancellationTokenSource?>> AssignWebSocketToClientAsync(string sessionId, string clientId, string sessionToken, WebSocket webSocket)
+        public async Task<FunctionReturnResult<CancellationTokenSource?>> AssignWebSocketToClientAsync(string sessionId, string clientId, string sessionToken, WebSocket webSocket, string clientType)
         {
             var result = new FunctionReturnResult<CancellationTokenSource?>();
 
@@ -237,12 +238,26 @@ namespace IqraInfrastructure.Managers.WebSession
                     {
                         var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
 
-                        var realTransport = new WebSocketClientTransport(
-                            webSocket,
-                            loggerFactory.CreateLogger<WebSocketClientTransport>(),
-                            sessionOverallCts.Token
-                        );
-                        deferredTransport.Activate(realTransport);
+                        if (clientType == "websocket")
+                        {
+                            var realTransport = new WebSocketClientTransport(
+                                webSocket,
+                                loggerFactory.CreateLogger<WebSocketClientTransport>(),
+                                sessionOverallCts.Token
+                            );
+                            deferredTransport.Activate(realTransport);
+                        }
+                        else if (clientType == "webrtc")
+                        {
+                            var realTransport = new WebRtcClientTransport(
+                                webSocket,
+                                convClient.ClientConfig.AudioOutputConfiguration.AudioEncodingType,
+                                convClient.ClientConfig.AudioOutputConfiguration.SampleRate,
+                                convClient.ClientConfig.AudioOutputConfiguration.BitsPerSample,
+                                loggerFactory.CreateLogger<WebRtcClientTransport>(),
+                                sessionOverallCts.Token
+                            );
+                        }
 
                         // Start Session
                         if (sessionManager.State == ConversationSessionState.WaitingForPrimaryClient)
@@ -532,10 +547,25 @@ namespace IqraInfrastructure.Managers.WebSession
             }
         }
 
-        private string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken)
+        private string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken, WebSessionTransportTypeEnum transportType)
         {
+            var transportTypeText = "unkown";
+            switch(transportType)
+            {
+                case WebSessionTransportTypeEnum.WebSocket:
+                    transportTypeText = "websocket";
+                    break;
+
+                case WebSessionTransportTypeEnum.WebRTC:
+                    transportTypeText = "webrtc";
+                    break;
+
+                default:
+                    throw new NotImplementedException("BuildWebhookUrl:NOT_IMPLEMENTED");
+            }
+
             var baseURI = new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint);
-            return new Uri(baseURI, $"{(baseURI.AbsolutePath != "/" ? baseURI.AbsolutePath : "")}/ws/session/{sessionId}/webclient/{clientId}/{sessionToken}").ToString();
+            return new Uri(baseURI, $"{(baseURI.AbsolutePath != "/" ? baseURI.AbsolutePath : "")}/ws/session/{sessionId}/{transportTypeText}/{clientId}/{sessionToken}").ToString();
         }
     }
 

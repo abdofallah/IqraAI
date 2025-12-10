@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Helper.Audio;
+﻿using IqraCore.Entities.WebSession.Enum;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.WebSession
@@ -22,21 +22,12 @@ namespace IqraCore.Entities.WebSession
 
         public List<WebSessionLog> Logs { get; set; } = new List<WebSessionLog>();
 
+        public WebSessionTransportTypeEnum TransportType { get; set; } = WebSessionTransportTypeEnum.WebSocket;
+
         // If Session Created
         public string? SessionRegionBackendServerId { get; set; } = null;
         public string? SessionWebSocketUrl { get; set; } = null;
         public string? SessionId { get; set; } = null;  
-    }
-
-    public enum WebSessionStatusEnum
-    {
-        Queued = 0,
-        ProcessingQueue = 1,
-        ProcessingBackend = 2,
-        ProcessedBackend = 3,
-        Failed = 4,
-        Canceled = 5,
-        Expired = 6
     }
 
     public class WebSessionLog
@@ -51,20 +42,5 @@ namespace IqraCore.Entities.WebSession
         Information = 0,
         Warning = 1,
         Error = 2
-    }
-
-    public class WebSessionAudioInputConfigurationData
-    {
-        public int SampleRate { get; set; } = 0;
-        public int BitsPerSample { get; set; } = 0;
-        public AudioEncodingTypeEnum AudioEncodingType { get; set; } = AudioEncodingTypeEnum.PCM;
-    }
-
-    public class WebSessionAudioOutputConfigurationData
-    {
-        public int SampleRate { get; set; } = 0;
-        public int BitsPerSample { get; set; } = 0;
-        public AudioEncodingTypeEnum AudioEncodingType { get; set; } = AudioEncodingTypeEnum.PCM;
-        public int FrameDurationMs { get; set; } = 0;
     }
 }

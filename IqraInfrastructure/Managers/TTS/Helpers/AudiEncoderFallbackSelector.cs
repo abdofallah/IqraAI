@@ -53,6 +53,17 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
             }
 
             var scoredOptions = new List<ScoredOption>();
+
+            var currentFormat = availableFormats.ToList().Find(f =>
+                f.Encoding == request.RequestedEncoding &&
+                f.SampleRateHz == request.RequestedSampleRateHz &&
+                f.BitsPerSample == request.RequestedBitsPerSample
+            );
+            if (currentFormat != null)
+            {
+                return new List<TTSProviderAvailableAudioFormat> { currentFormat };
+            }
+
             var targetProfile = Profiles[request.RequestedEncoding];
 
             foreach (var availableFormat in availableFormats)

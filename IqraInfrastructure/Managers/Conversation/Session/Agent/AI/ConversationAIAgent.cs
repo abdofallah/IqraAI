@@ -593,11 +593,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             _logger.LogDebug("Agent {AgentId}: Starting conversation flow.", AgentId);
 
-            if (_agentState.IsBackgroundMusicLoaded)
-            {
-                _agentState.IsBackgroundMusicEnabled = true; // Logic to start/mix music is in AudioOutputHandler
-            }
-
             // Greeting / Opening depends on configuration
             if (_agentState.BusinessAppAgent?.Utterances.OpeningType == BusinessAppAgentOpeningType.AgentFirst)
             {

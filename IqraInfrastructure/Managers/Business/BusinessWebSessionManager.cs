@@ -4,6 +4,7 @@ using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.WebSession;
+using IqraCore.Entities.WebSession.Enum;
 using IqraCore.Models.Server;
 using IqraCore.Models.WebSession;
 using IqraInfrastructure.Managers.Region;
@@ -59,6 +60,16 @@ namespace IqraInfrastructure.Managers.Business
                     Logs = new List<WebSessionLog>(),
                 };
                 BusinessAppWebCampaign webCampaignData;
+
+                // Transport Type
+                if (!Enum.IsDefined(typeof(WebSessionTransportTypeEnum), modelData.TransportType))
+                {
+                    return result.SetFailureResult(
+                        "InitiateWebSession:CONFIG_TRANSPORT_TYPE_INVALID",
+                        "Transport type not found or invalid in config data."
+                    );
+                }
+                newWebSessionData.TransportType = modelData.TransportType;
 
                 // Web Campaign Id
                 if (string.IsNullOrWhiteSpace(modelData.WebCampaignId))
