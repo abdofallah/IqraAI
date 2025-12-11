@@ -502,6 +502,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             await RecalculateAndApplyMasterAudioFormat();
 
+            _sessionMixer?.EnqueueInput(client.ClientId, new byte[0], _sessionMasterSampleRate, _sessionMasterBitsPerSample);
+
             // Notify event subscribers
             ClientAdded?.Invoke(this, new ConversationClientAddedEventArgs(client));
 

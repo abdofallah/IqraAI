@@ -35,9 +35,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         /// <summary>
         /// Sends audio to the user by passing it to the transport, which will handle RTP packetization.
         /// </summary>
-        public override Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken)
+        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
         {
-            return Transport.SendBinaryAsync(audioData, cancellationToken);
+            return Transport.SendBinaryAsync(audioData, sampleRate, bitsPerSample, cancellationToken);
         }
 
         // The base class implementation of SendTextAsync already calls Transport.SendTextAsync,

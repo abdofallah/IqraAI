@@ -494,6 +494,30 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
 
+            // Opus must be 8khz ~ 48khz and 16 bits per sample
+            if (
+                (input.AudioEncodingType == AudioEncodingTypeEnum.OPUS) &&
+                (input.SampleRate < 8000 || input.SampleRate > 48000) &&
+                input.BitsPerSample != 16
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Input: Opus must have a sample rate between 8000 and 48000 and 16 bits per sample."
+                );
+            }
+
+            if (
+                (output.AudioEncodingType == AudioEncodingTypeEnum.OPUS) &&
+                (output.SampleRate < 8000 || output.SampleRate > 48000) &&
+                output.BitsPerSample != 16
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Output: Opus must have a sample rate between 8000 and 48000 and 16 bits per sample."
+                );
+            }
+
+
             // G.711 (MuLaw/ALaw) must be 8000Hz and 8 bits per sample
             if (
                 (input.AudioEncodingType == AudioEncodingTypeEnum.MULAW || input.AudioEncodingType == AudioEncodingTypeEnum.ALAW) &&
@@ -581,6 +605,14 @@ namespace IqraInfrastructure.Managers.Business
                     return result.SetFailureResult(
                         "VALIDATION:WEBRTC_UNSUPPORTED_FORMAT",
                         $"Output format {output.AudioEncodingType} is not supported over WebRTC. Use OPUS, MULAW, ALAW, or G722."
+                    );
+                }
+
+                if (input.AudioEncodingType != output.AudioEncodingType)
+                {
+                    return result.SetFailureResult(
+                        "VALIDATION:WEBRTC_ASYMMETRY",
+                        $"WebRTC requires the Input Codec and Output Codec to be the same (e.g., both OPUS). Current: Input={input.AudioEncodingType}, Output={output.AudioEncodingType}."
                     );
                 }
             }

@@ -93,7 +93,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         // --- Overriding base class methods ---
 
-        public override Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken)
+        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
         {
             if (_rtpSession?.IsAudioStarted == true)
             {

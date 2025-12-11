@@ -240,23 +240,22 @@ namespace IqraInfrastructure.Managers.WebSession
 
                         if (clientType == "websocket")
                         {
-                            var realTransport = new WebSocketClientTransport(
+                            var readWebSocketTransport = new WebSocketClientTransport(
                                 webSocket,
                                 loggerFactory.CreateLogger<WebSocketClientTransport>(),
                                 sessionOverallCts.Token
                             );
-                            deferredTransport.Activate(realTransport);
+                            deferredTransport.Activate(readWebSocketTransport);
                         }
                         else if (clientType == "webrtc")
                         {
-                            var realTransport = new WebRtcClientTransport(
+                            var realWebRtcTransport = new WebRtcClientTransport(
                                 webSocket,
                                 convClient.ClientConfig.AudioOutputConfiguration.AudioEncodingType,
-                                convClient.ClientConfig.AudioOutputConfiguration.SampleRate,
-                                convClient.ClientConfig.AudioOutputConfiguration.BitsPerSample,
                                 loggerFactory.CreateLogger<WebRtcClientTransport>(),
                                 sessionOverallCts.Token
                             );
+                            deferredTransport.Activate(realWebRtcTransport);
                         }
 
                         // Start Session

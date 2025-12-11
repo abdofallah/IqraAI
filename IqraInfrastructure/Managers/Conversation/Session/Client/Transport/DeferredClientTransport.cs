@@ -15,6 +15,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
         public event EventHandler<string> TextMessageReceived;
         public event EventHandler<string> Disconnected;
 
+        public bool IsActivated => _isActivated;
+        public Type TraspontType => _actualTransport.GetType();
+
         public DeferredClientTransport(ILogger logger)
         {
             _logger = logger;
@@ -47,14 +50,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             }
         }
 
-        public Task SendBinaryAsync(byte[] data, CancellationToken cancellationToken)
+        public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
         {
             if (!_isActivated)
             {
                 _logger.LogError("Attempted to send binary data before transport was activated.");
                 throw new InvalidOperationException("Transport is not yet active.");
             }
-            return _actualTransport.SendBinaryAsync(data, cancellationToken);
+            return _actualTransport.SendBinaryAsync(data, sampleRate, bitsPerSample, cancellationToken);
         }
 
         public Task SendTextAsync(string text, CancellationToken cancellationToken)

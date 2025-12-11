@@ -19,8 +19,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
 
         // Configuration
         private readonly AudioEncodingTypeEnum _targetEncoding;
-        private readonly int _sampleRate;
-        private readonly int _bitsPerSample;
 
         public event EventHandler<byte[]> BinaryMessageReceived;
         public event EventHandler<string> TextMessageReceived;
@@ -29,15 +27,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
         public WebRtcClientTransport(
             WebSocket signalingSocket,
             AudioEncodingTypeEnum targetEncoding,
-            int sampleRate,
-            int bitsPerSample,
             ILogger logger,
             CancellationToken sessionCts)
         {
             _logger = logger;
             _signalingSocket = signalingSocket;
             _targetEncoding = targetEncoding;
-            _sampleRate = sampleRate;
             _transportCts = CancellationTokenSource.CreateLinkedTokenSource(sessionCts);
 
             // 1. Configure SIPSorcery
@@ -49,9 +44,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
 
             // 2. Setup Audio Track based on Configuration
             // We tell SIPSorcery exactly what format we support
-            var audioFormat = MapToSipAudioFormat(_targetEncoding, _sampleRate);
+            var audioFormat = MapToSipAudioFormat(_targetEncoding);
 
             // Add a Send/Recv Audio Track
+            // This ensures the SDP we generate in the Answer includes this media section
             var track = new MediaStreamTrack(SDPMediaTypesEnum.audio, false, new List<SDPAudioVideoMediaFormat> { new SDPAudioVideoMediaFormat(audioFormat) });
             _peerConnection.addTrack(track);
 
@@ -60,23 +56,27 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             _peerConnection.onicecandidate += OnIceCandidateHandler;
             _peerConnection.onconnectionstatechange += OnConnectionStateChangeHandler;
 
-            var dataChannel = _peerConnection.createDataChannel("chat").GetAwaiter().GetResult();
-            dataChannel.onmessage += OnDataChannelMessageHandler;
+            _peerConnection.ondatachannel += (dc) =>
+            {
+                _logger.LogInformation($"Data channel established: {dc.label}");
+                dc.onmessage += OnDataChannelMessageHandler;
+
+                // Send a hello to confirm
+                dc.send("Chat Data Channel: Backend Connected"); 
+            };
 
             // 4. Start Signaling
             Task.Run(() => StartSignalingLoop(_transportCts.Token), _transportCts.Token);
         }
 
-        private AudioFormat MapToSipAudioFormat(AudioEncodingTypeEnum encoding, int rate)
+        private AudioFormat MapToSipAudioFormat(AudioEncodingTypeEnum encoding)
         {
             return encoding switch
             {
-                AudioEncodingTypeEnum.PCM => new AudioFormat(AudioCodecsEnum.OPUS, 111, rate, 2, "minptime=10;useinbandfec=1"),
-                AudioEncodingTypeEnum.OPUS => new AudioFormat(AudioCodecsEnum.OPUS, 111, rate, 2, "minptime=10;useinbandfec=1"),
+                AudioEncodingTypeEnum.OPUS => new AudioFormat(AudioCodecsEnum.OPUS, 111, 48000, 2, "minptime=10;useinbandfec=1"),
                 AudioEncodingTypeEnum.MULAW => new AudioFormat(AudioCodecsEnum.PCMU, 0, 8000, 1, ""),
                 AudioEncodingTypeEnum.ALAW => new AudioFormat(AudioCodecsEnum.PCMA, 8, 8000, 1, ""),
                 AudioEncodingTypeEnum.G722 => new AudioFormat(AudioCodecsEnum.G722, 9, 16000, 1, ""),
-                AudioEncodingTypeEnum.G729 => new AudioFormat(AudioCodecsEnum.G729, 0, 8000, 1, ""),
                 _ => throw new NotImplementedException($"MapToSipAudioFormat:Encoding {encoding} is not supported."),
             };
         }
@@ -112,27 +112,46 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             try
             {
                 var jsonMsg = JsonDocument.Parse(json).RootElement;
-
-                // Flexible parsing to handle different client JSON structures
-                string type = jsonMsg.TryGetProperty("type", out var prop) ? prop.GetString() : "";
+                string type = jsonMsg.TryGetProperty("type", out var prop) ? prop.GetString()?.ToLower() : "";
 
                 if (type == "offer")
                 {
                     var sdp = jsonMsg.GetProperty("sdp").GetString();
-                    _peerConnection.setRemoteDescription(new RTCSessionDescriptionInit { type = RTCSdpType.offer, sdp = sdp });
+
+                    // Create Offer Object
+                    var offerInit = new RTCSessionDescriptionInit { type = RTCSdpType.offer, sdp = sdp };
+
+                    // Check Result
+                    var setResult = _peerConnection.setRemoteDescription(offerInit);
+                    if (setResult != SetDescriptionResultEnum.OK)
+                    {
+                        _logger.LogError($"Failed to set remote description: {setResult}");
+                        await DisconnectAsync($"SDP Error: {setResult}");
+                        return;
+                    }
 
                     var answer = _peerConnection.createAnswer(null);
                     await _peerConnection.setLocalDescription(answer);
 
+                    // Send Answer back to client
                     var resp = new { type = "answer", sdp = answer.sdp };
                     await SendSignalingMessageAsync(JsonSerializer.Serialize(resp));
                 }
                 else if (type == "candidate")
                 {
-                    // Handle candidate JSON structure from frontend
-                    var candidateObj = jsonMsg.GetProperty("candidate");
-                    var candidateInit = JsonSerializer.Deserialize<RTCIceCandidateInit>(candidateObj.ToString(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    _peerConnection.addIceCandidate(candidateInit);
+                    if (jsonMsg.TryGetProperty("candidate", out var candidateProp))
+                    {
+                        // Handle candidate JSON structure from frontend
+                        var candidateInit = JsonSerializer.Deserialize<RTCIceCandidateInit>(
+                            candidateProp.ToString(),
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                        );
+
+                        if (candidateInit != null)
+                        {
+                            _peerConnection.addIceCandidate(candidateInit);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -152,40 +171,25 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
         }
 
         // --- Data Flow ---
-
         private void OnRtpPacketHandler(IPEndPoint ep, SDPMediaTypesEnum media, RTPPacket pkt)
         {
             if (media == SDPMediaTypesEnum.audio)
             {
-                // This is the Raw Encoded Payload (e.g., Opus frames or MuLaw bytes)
-                // We pass this up. The BaseConversationClient's Decoder (OpusStreamDecoder) handles it.
+                // Pass Raw Encoded Payload to BaseConversationClient -> Decoder
                 BinaryMessageReceived?.Invoke(this, pkt.Payload);
             }
         }
 
-        public Task SendBinaryAsync(byte[] data, CancellationToken cancellationToken)
+        public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
         {
-            // data is PCM. 
-            // We tell SIPSorcery to send it. SIPSorcery handles the Opus/MuLaw encoding internally based on the track setup.
+            // data is PCM (from BaseClient). SIPSorcery encodes it based on the Track we added.
 
-            // Samples calculation: 
-            // SIPSorcery SendAudio expects samples per duration.
-            // But SendAudio only accepts raw bytes for G711 usually. 
-            // For Opus, we typically need to use SendAudioRaw if we did encoding, OR pass Short[] if we want it to encode.
+            int bytesPerSample = bitsPerSample / 8;
 
-            // NOTE: SIPSorcery's RTCPeerConnection.SendAudio(uint duration, byte[] sample) is a helper.
-            // Ideally, we push raw RTP if we already encoded.
-            // BUT, since we agreed to let SIPSorcery handle encoding for WebRTC to keep RTP clean:
+            uint samples = (uint)(data.Length / bytesPerSample);
 
-            // We need to assume 'data' is PCM here (because BaseClient used PcmStreamEncoder).
-            // We pass it to SIPSorcery.
-
-            // Calculate duration of this chunk
-            // Duration = (Bytes / (Rate * Channels * BytesPerSample)) * 90000 (Video) or SampleRate (Audio)
-            // Simplified: If backend sends 20ms chunks.
-
-            // SIPSorcery needs Sample Count for timestamping
-            uint samples = (uint)(data.Length / 2); // Assuming 16-bit
+            // SIPSorcery SendAudio expects PCM data.
+            // It will encode this data based on the Track we added in the constructor (Opus/PCMU).
             _peerConnection.SendAudio(samples, data);
 
             return Task.CompletedTask;
@@ -215,7 +219,27 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
         {
             if (cand != null)
             {
-                var msg = new { type = "candidate", candidate = cand };
+                // 1. Fix the Candidate String
+                // SIPSorcery might give "12345 udp...", but Browser needs "candidate:12345 udp..."
+                string cleanCandidateStr = cand.candidate;
+                if (!string.IsNullOrEmpty(cleanCandidateStr) && !cleanCandidateStr.StartsWith("candidate:"))
+                {
+                    cleanCandidateStr = "candidate:" + cleanCandidateStr;
+                }
+
+                // 2. Create a clean anonymous object matching RTCIceCandidateInit
+                var candidateInit = new
+                {
+                    candidate = cleanCandidateStr,
+                    sdpMid = cand.sdpMid,
+                    sdpMLineIndex = cand.sdpMLineIndex,
+                    usernameFragment = cand.usernameFragment
+                };
+
+                // 3. Wrap in the message structure
+                var msg = new { type = "candidate", candidate = candidateInit };
+
+                // 4. Send
                 _ = SendSignalingMessageAsync(JsonSerializer.Serialize(msg));
             }
         }

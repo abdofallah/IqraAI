@@ -7,6 +7,7 @@ using IqraCore.Interfaces.Audio.Decoders;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Audio.Decoders;
 using IqraInfrastructure.Managers.Audio.Encoders;
+using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
 using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Client
@@ -86,18 +87,53 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         {
             if (masterAudioData.IsEmpty) return;
 
-            byte[] dataToSend;
-            if (ClientConfig.AudioOutputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
-                ClientConfig.AudioOutputConfiguration.SampleRate == masterSampleRate &&
-                ClientConfig.AudioOutputConfiguration.BitsPerSample == masterBitsPerSample)
+            bool isDeferredTransport = false;
+            bool isDeferredActivated = false;
+            bool isDeferredRealTransportWebRTC = false;
+            if (Transport is DeferredClientTransport deferredClientTransport)
             {
+                isDeferredTransport = true;
+                isDeferredActivated = deferredClientTransport.IsActivated;
+
+                if (isDeferredActivated && deferredClientTransport.TraspontType == typeof(WebRtcClientTransport))
+                {
+                    isDeferredRealTransportWebRTC = true;
+                }
+            }
+
+            if (isDeferredTransport && !isDeferredActivated)
+            {
+                return;
+            }
+
+            byte[] dataToSend;
+            int dataSampleRate;
+            int dataBitsPerSample;
+            if (
+                (
+                    Transport.GetType() == typeof(WebRtcClientTransport) ||
+                    (
+                        isDeferredTransport && isDeferredRealTransportWebRTC
+                    )
+                )
+                ||
+                (
+                    ClientConfig.AudioOutputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
+                    ClientConfig.AudioOutputConfiguration.SampleRate == masterSampleRate &&
+                    ClientConfig.AudioOutputConfiguration.BitsPerSample == masterBitsPerSample
+                )
+            ) {
                 dataToSend = masterAudioData.ToArray();
+                dataSampleRate = masterSampleRate;
+                dataBitsPerSample = masterBitsPerSample;
             }
             else
             {
                 if (_audioEncoder != null)
                 {
                     dataToSend = _audioEncoder.Encode(masterAudioData.Span, masterSampleRate, masterBitsPerSample);
+                    dataSampleRate = ClientConfig.AudioOutputConfiguration.SampleRate;
+                    dataBitsPerSample = ClientConfig.AudioOutputConfiguration.BitsPerSample;
                 }
                 else
                 {
@@ -109,7 +145,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
 
             if (dataToSend.Length > 0)
             {
-                await SendAudioAsync(dataToSend, CancellationToken.None);
+                await SendAudioAsync(dataToSend, dataSampleRate, dataBitsPerSample, CancellationToken.None);
             }
         }
 
@@ -127,7 +163,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         }
 
         // Implement IConversationClient methods by delegating to the transport
-        public abstract Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken);
+        public abstract Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, CancellationToken cancellationToken);
         public virtual Task SendTextAsync(string text, CancellationToken cancellationToken)
         {
             return Transport.SendTextAsync(text, cancellationToken);

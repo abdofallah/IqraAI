@@ -93,7 +93,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             _logger.LogWarning("Received an unexpected binary message on a Telnyx client stream. Ignoring {DataLength} bytes.", data.Length);
         }
 
-        public override Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken)
+        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(_streamId))
             {
