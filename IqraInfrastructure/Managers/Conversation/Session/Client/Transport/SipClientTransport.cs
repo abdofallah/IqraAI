@@ -50,7 +50,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             }
         }
 
-        public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
+        public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
             if (!_rtpSession.IsAudioStarted || _rtpSession.IsClosed)
             {

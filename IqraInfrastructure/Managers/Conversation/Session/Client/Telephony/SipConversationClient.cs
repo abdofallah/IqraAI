@@ -12,8 +12,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 {
     public class SipConversationClient : BaseTelephonyConversationClient
     {
-        private const uint PCMU_SAMPLES_PER_FRAME = 160;
-
         private readonly SIPUserAgent _userAgent;
 
         private VoIPMediaSession _rtpSession;
@@ -93,11 +91,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         // --- Overriding base class methods ---
 
-        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
+        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
             if (_rtpSession?.IsAudioStarted == true)
             {
-                _rtpSession.SendAudio(PCMU_SAMPLES_PER_FRAME, audioData);
+                _rtpSession.SendAudio((uint)(sampleRate * frameDurationMs), audioData);
             }
             return Task.CompletedTask;
         }

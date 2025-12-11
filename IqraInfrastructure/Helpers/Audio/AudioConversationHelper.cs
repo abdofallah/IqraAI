@@ -350,15 +350,14 @@ namespace IqraInfrastructure.Helpers.Audio
                         break;
                     }
 
-                case AudioEncodingTypeEnum.OPUS:
-                    rawProvider = DecodeFromOpus(sourceAudio, sourceFormat.SampleRateHz);
-                    break;
-
                 case AudioEncodingTypeEnum.MPEG:
                     var inputStream = new MemoryStream(sourceAudio);
                     var builder = new Mp3FileReaderBase.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
                     rawProvider = new Mp3FileReaderBase(inputStream, builder);
                     break;
+
+                case AudioEncodingTypeEnum.OPUS:
+                    throw new NotSupportedException("Opus is not supported. Use OpusStreamDecoder instead.");
 
                 default:
                     throw new NotSupportedException($"Unsupported source encoding type: {sourceFormat.Encoding}");
@@ -460,58 +459,14 @@ namespace IqraInfrastructure.Helpers.Audio
                     }
 
                 case AudioEncodingTypeEnum.OPUS:
-                    var pcm16ProviderOpus = new SampleToWaveProvider16(pcmProvider);
-                    return EncodeToOpus(pcm16ProviderOpus, targetFormat);
+                    throw new NotSupportedException($"Opus is not supported. Use OpusStreamEncoder instead.");
 
                 case AudioEncodingTypeEnum.MPEG:
-                    throw new NotSupportedException($"Encoding to {targetFormat.RequestedEncoding} is not supported.");
+                    throw new NotSupportedException($"Mpeg is not supported.");
 
                 default:
                     throw new ArgumentException($"Unsupported target encoding type: {targetFormat.RequestedEncoding}");
             }
-        }
-
-        private static IWaveProvider DecodeFromOpus(byte[] opusData, int sampleRate)
-        {
-            var decoder = OpusCodecFactory.CreateDecoder(sampleRate, 1);
-            int maxFrameSize = sampleRate * 120 / 1000;
-            var pcmBuffer = new short[maxFrameSize * 1]; // 1 channel
-            int samplesDecoded = decoder.Decode(opusData, pcmBuffer, maxFrameSize, false);
-            var pcmBytes = new byte[samplesDecoded * sizeof(short)];
-            Buffer.BlockCopy(pcmBuffer, 0, pcmBytes, 0, pcmBytes.Length);
-            var waveFormat = new WaveFormat(sampleRate, 16, 1);
-            return new RawSourceWaveStream(pcmBytes, 0, pcmBytes.Length, waveFormat);
-        }
-
-        private static byte[] EncodeToOpus(IWaveProvider pcmProvider, AudioRequestDetails targetFormat)
-        {
-            int sampleRate = pcmProvider.WaveFormat.SampleRate;
-            int frameSizeMs = 20; // Standard frame size
-            int frameSizeSamples = sampleRate * frameSizeMs / 1000;
-
-            var encoder = OpusCodecFactory.CreateEncoder(sampleRate, 1, Concentus.Enums.OpusApplication.OPUS_APPLICATION_VOIP);
-            encoder.Bitrate = 32000;
-
-            using var ms = new MemoryStream();
-            var pcmShortBuffer = new short[frameSizeSamples];
-            var readByteBuffer = new byte[frameSizeSamples * sizeof(short)];
-            int bytesRead;
-
-            while ((bytesRead = pcmProvider.Read(readByteBuffer, 0, readByteBuffer.Length)) > 0)
-            {
-                Buffer.BlockCopy(readByteBuffer, 0, pcmShortBuffer, 0, bytesRead);
-                int samplesInFrame = bytesRead / sizeof(short);
-                var encodedPacket = new byte[4000];
-                int encodedLength = encoder.Encode(
-                    pcmShortBuffer.AsSpan(0, samplesInFrame),
-                    samplesInFrame,
-                    encodedPacket.AsSpan(),
-                    encodedPacket.Length
-                );
-
-                ms.Write(encodedPacket, 0, encodedLength);
-            }
-            return ms.ToArray();
         }
 
         private static byte[] ReadAllBytes(IWaveProvider provider)

@@ -89,16 +89,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
 
             bool isDeferredTransport = false;
             bool isDeferredActivated = false;
-            bool isDeferredRealTransportWebRTC = false;
             if (Transport is DeferredClientTransport deferredClientTransport)
             {
                 isDeferredTransport = true;
                 isDeferredActivated = deferredClientTransport.IsActivated;
-
-                if (isDeferredActivated && deferredClientTransport.TraspontType == typeof(WebRtcClientTransport))
-                {
-                    isDeferredRealTransportWebRTC = true;
-                }
             }
 
             if (isDeferredTransport && !isDeferredActivated)
@@ -110,13 +104,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             int dataSampleRate;
             int dataBitsPerSample;
             if (
-                (
-                    Transport.GetType() == typeof(WebRtcClientTransport) ||
-                    (
-                        isDeferredTransport && isDeferredRealTransportWebRTC
-                    )
-                )
-                ||
                 (
                     ClientConfig.AudioOutputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
                     ClientConfig.AudioOutputConfiguration.SampleRate == masterSampleRate &&
@@ -145,7 +132,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
 
             if (dataToSend.Length > 0)
             {
-                await SendAudioAsync(dataToSend, dataSampleRate, dataBitsPerSample, CancellationToken.None);
+                await SendAudioAsync(dataToSend, dataSampleRate, dataBitsPerSample, ClientConfig.AudioOutputConfiguration.FrameDurationMs, CancellationToken.None);
             }
         }
 
@@ -163,7 +150,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         }
 
         // Implement IConversationClient methods by delegating to the transport
-        public abstract Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, CancellationToken cancellationToken);
+        public abstract Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken);
         public virtual Task SendTextAsync(string text, CancellationToken cancellationToken)
         {
             return Transport.SendTextAsync(text, cancellationToken);

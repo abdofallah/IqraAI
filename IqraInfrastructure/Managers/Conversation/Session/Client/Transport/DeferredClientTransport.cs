@@ -50,14 +50,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             }
         }
 
-        public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
+        public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
             if (!_isActivated)
             {
                 _logger.LogError("Attempted to send binary data before transport was activated.");
                 throw new InvalidOperationException("Transport is not yet active.");
             }
-            return _actualTransport.SendBinaryAsync(data, sampleRate, bitsPerSample, cancellationToken);
+            return _actualTransport.SendBinaryAsync(data, sampleRate, bitsPerSample, frameDurationMs, cancellationToken);
         }
 
         public Task SendTextAsync(string text, CancellationToken cancellationToken)

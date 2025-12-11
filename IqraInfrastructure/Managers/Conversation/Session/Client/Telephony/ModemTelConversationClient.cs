@@ -60,10 +60,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         /// <summary>
         /// Sends audio data by sending it directly as a binary message via the transport.
         /// </summary>
-        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
+        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
             // Delegate sending to the transport
-            return Transport.SendBinaryAsync(audioData, sampleRate, bitsPerSample, cancellationToken);
+            return Transport.SendBinaryAsync(audioData, sampleRate, bitsPerSample, frameDurationMs, cancellationToken);
         }
 
         public override Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken)

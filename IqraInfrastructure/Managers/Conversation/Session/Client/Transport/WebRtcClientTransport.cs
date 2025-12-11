@@ -180,17 +180,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             }
         }
 
-        public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
+        public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
-            // data is PCM (from BaseClient). SIPSorcery encodes it based on the Track we added.
-
-            int bytesPerSample = bitsPerSample / 8;
-
-            uint samples = (uint)(data.Length / bytesPerSample);
-
-            // SIPSorcery SendAudio expects PCM data.
-            // It will encode this data based on the Track we added in the constructor (Opus/PCMU).
-            _peerConnection.SendAudio(samples, data);
+            uint durationRtpUnits = (uint)(sampleRate * frameDurationMs);
+            _peerConnection.SendAudio(durationRtpUnits, data);
 
             return Task.CompletedTask;
         }

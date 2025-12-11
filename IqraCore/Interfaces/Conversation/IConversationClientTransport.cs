@@ -23,7 +23,7 @@
         /// </summary>
         /// <param name="data">The binary data to send.</param>
         /// <param name="cancellationToken">A token to cancel the operation.</param>
-        Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, CancellationToken cancellationToken);
+        Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken);
 
         /// <summary>
         /// Asynchronously sends text data over the transport layer.

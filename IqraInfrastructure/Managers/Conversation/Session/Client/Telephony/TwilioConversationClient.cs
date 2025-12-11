@@ -112,7 +112,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         /// <summary>
         /// Sends audio data by wrapping it in Twilio's expected JSON format and sending it as a text message.
         /// </summary>
-        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
+        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(_streamSidFromTwilio))
             {

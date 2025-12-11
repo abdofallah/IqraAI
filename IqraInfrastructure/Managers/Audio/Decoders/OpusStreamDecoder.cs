@@ -6,13 +6,14 @@ namespace IqraInfrastructure.Managers.Audio.Decoders
     public class OpusStreamDecoder : BaseAudioStreamDecoder
     {
         private readonly IOpusDecoder _decoder;
-        private readonly int _internalOpusRate = 48000;
-        private readonly int _channels = 1;
+        private readonly int _internalOpusRate;
+        private readonly int _channels = 2;
 
         public OpusStreamDecoder(int inputSampleRate)
             : base(AudioEncodingTypeEnum.OPUS, inputSampleRate, 16) // Opus usually decodes to 16-bit
         {
-            // We use 48kHz for the internal decoder as it's Opus's native rate
+            _internalOpusRate = inputSampleRate;
+
             _decoder = OpusCodecFactory.CreateDecoder(_internalOpusRate, _channels);
         }
 
@@ -22,24 +23,39 @@ namespace IqraInfrastructure.Managers.Audio.Decoders
 
             try
             {
-                // 1. Decode Opus Frame -> PCM Shorts (48kHz 16-bit)
-                // Max frame size for 60ms at 48kHz is 2880 samples
-                int maxFrameSize = _internalOpusRate * 120 / 1000; // ample buffer
-                short[] pcmShorts = new short[maxFrameSize];
+                // 1. Prepare Buffer
+                // Max frame size for 120ms at 48kHz = 5760 samples per channel.
+                int frameSizePerChannel = _internalOpusRate * 20 / 1000;
+                int totalSamples = frameSizePerChannel * _channels;
+                short[] pcmStereoShorts = new short[totalSamples];
 
-                // Decode
-                int samplesDecoded = _decoder.Decode(inputData.ToArray(), pcmShorts, maxFrameSize, false);
+                // 2. Decode (Produces Interleaved L-R-L-R...)
+                int samplesDecodedPerChannel = _decoder.Decode(inputData.ToArray(), pcmStereoShorts, frameSizePerChannel, false);
 
-                // Convert short[] to byte[]
-                byte[] pcm48k16bit = new byte[samplesDecoded * 2];
-                Buffer.BlockCopy(pcmShorts, 0, pcm48k16bit, 0, pcm48k16bit.Length);
+                // 3. Downmix Stereo to Mono
+                // We do this BEFORE converting to bytes to save memory allocation/copying.
+                short[] pcmMonoShorts = new short[samplesDecodedPerChannel];
 
-                // 2. Convert to System Standard (16kHz 32-bit)
-                return ConvertToSystemStandard(pcm48k16bit, _internalOpusRate, 16);
+                // Efficient Downmix Loop
+                // Mono = (Left + Right) / 2
+                for (int i = 0; i < samplesDecodedPerChannel; i++)
+                {
+                    int left = pcmStereoShorts[i * 2];
+                    int right = pcmStereoShorts[(i * 2) + 1];
+                    pcmMonoShorts[i] = (short)((left + right) / 2);
+                }
+
+                // 4. Convert Mono Shorts to Bytes
+                byte[] pcmMonoBytes = new byte[samplesDecodedPerChannel * 2];
+                Buffer.BlockCopy(pcmMonoShorts, 0, pcmMonoBytes, 0, pcmMonoBytes.Length);
+
+                // 5. Convert to System Standard (16kHz 32-bit)
+                // We pass the mono bytes, telling the converter it is 16-bit at the decoded rate.
+                return ConvertToSystemStandard(pcmMonoBytes, _internalOpusRate, 16);
             }
             catch
             {
-                // Packet loss or corruption. Return silence or empty to avoid crashing the session.
+                // Packet loss or corruption. Return silence.
                 return Array.Empty<byte>();
             }
         }

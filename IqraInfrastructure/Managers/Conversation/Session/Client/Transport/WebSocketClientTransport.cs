@@ -82,7 +82,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             }
         }
 
-        public async Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
+        public async Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
             if (_webSocket.State != WebSocketState.Open)
             {

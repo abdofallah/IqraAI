@@ -8,74 +8,84 @@ namespace IqraInfrastructure.Managers.Audio.Encoders
     public class OpusStreamEncoder : BaseAudioStreamEncoder
     {
         private readonly IOpusEncoder _encoder;
-        private readonly MemoryStream _buffer; // To accumulate incoming PCM bytes
-        private readonly int _frameSizeMs;
-        private readonly int _samplesPerFrame;
-        private readonly int _bytesPerFrame;
+        private readonly MemoryStream _buffer; // Accumulates MONO PCM bytes
 
-        // Opus usually works best at 48kHz, but supports 8, 12, 16, 24, 48.
-        // We will default to 48kHz for WebRTC compatibility unless specified otherwise.
-        private const int INTERNAL_OPUS_RATE = 48000;
+        private readonly int _samplesPerFramePerChannel;
+        private readonly int _monoBytesPerFrame;
+        private readonly int _sampleRate;
 
-        public OpusStreamEncoder(int targetSampleRate, int frameDurationMs = 60)
+        // WebRTC Standard: Stereo (2 Channels)
+        private const int OPUS_CHANNELS = 2;
+
+        public OpusStreamEncoder(int targetSampleRate, int frameDurationMs = 20)
             : base(AudioEncodingTypeEnum.OPUS, targetSampleRate, 16)
         {
+            _sampleRate = targetSampleRate;
+
             // Valid Frame Sizes: 2.5, 5, 10, 20, 40, 60ms
             if (!new[] { 20, 40, 60 }.Contains(frameDurationMs))
-                frameDurationMs = 60; // Default safe value
+            {
+                throw new ArgumentException($"Unsupported Frame Duration: {frameDurationMs}ms");
+            }
 
-            _frameSizeMs = frameDurationMs;
+            // Initialize Encoder as STEREO
+            _encoder = OpusCodecFactory.CreateEncoder(_sampleRate, OPUS_CHANNELS, OpusApplication.OPUS_APPLICATION_VOIP);
+            _encoder.Bitrate = 32000; // todo make configurable??
 
-            // Initialize Concentus Encoder
-            // Application.Voip optimizes for speech.
-            _encoder = OpusCodecFactory.CreateEncoder(INTERNAL_OPUS_RATE, 1, OpusApplication.OPUS_APPLICATION_VOIP);
-            _encoder.Bitrate = 32000; // 32kbps is good for speech
+            // Calculate Buffer Requirements based on MONO Input
+            // We need to wait until we have enough Mono samples to create a full Stereo frame.
+            // Duration is time-based, so samples count is constant regardless of channels for the *timeline*.
+            _samplesPerFramePerChannel = _sampleRate * frameDurationMs / 1000;
 
-            // Calculate Buffer Size requirements
-            // Samples = Rate * Time. (e.g., 48000 * 0.060 = 2880 samples)
-            _samplesPerFrame = INTERNAL_OPUS_RATE * _frameSizeMs / 1000;
-            _bytesPerFrame = _samplesPerFrame * 2; // 16-bit = 2 bytes
+            // Input is 16-bit (2 bytes) Mono (1 channel)
+            _monoBytesPerFrame = _samplesPerFramePerChannel * 2 * 1;
 
             _buffer = new MemoryStream();
         }
 
         public override byte[] Encode(ReadOnlySpan<byte> pcmData, int inputSampleRate, int inputBitsPerSample)
         {
-            // 1. Resample incoming data to Opus-compatible PCM (48kHz, 16-bit)
-            // Even if target is 24k, we upsample to 48k for the internal encoder 
-            // because Concentus works natively at 48k.
-            var compatiblePcm = ResampleAndFormat(pcmData, inputSampleRate, inputBitsPerSample, INTERNAL_OPUS_RATE, 16);
+            // 1. Resample incoming data to match Encoder Rate (e.g. 24k -> 48k), still MONO, 16-bit
+            var compatibleMonoPcm = ResampleAndFormat(pcmData, inputSampleRate, inputBitsPerSample, _sampleRate, 16);
 
             // 2. Add to Buffer
-            _buffer.Write(compatiblePcm, 0, compatiblePcm.Length);
+            _buffer.Write(compatibleMonoPcm, 0, compatibleMonoPcm.Length);
 
-            // 3. Check if we have enough for a full frame
-            if (_buffer.Length >= _bytesPerFrame)
+            // 3. Process Frames if we have enough data
+            if (_buffer.Length >= _monoBytesPerFrame)
             {
                 byte[] allBytes = _buffer.ToArray();
                 int offset = 0;
+
                 using var outputStream = new MemoryStream();
+
+                // Buffers for conversion
                 byte[] encodedBuffer = new byte[4096]; // Max Opus packet size
-                short[] pcmShorts = new short[_samplesPerFrame];
+                short[] monoShorts = new short[_samplesPerFramePerChannel];
+                short[] stereoShorts = new short[_samplesPerFramePerChannel * OPUS_CHANNELS];
 
-                // Process all full frames in the buffer
-                while ((allBytes.Length - offset) >= _bytesPerFrame)
+                while ((allBytes.Length - offset) >= _monoBytesPerFrame)
                 {
-                    // Copy bytes to short[]
-                    Buffer.BlockCopy(allBytes, offset, pcmShorts, 0, _bytesPerFrame);
+                    // A. Extract Mono Chunk
+                    Buffer.BlockCopy(allBytes, offset, monoShorts, 0, _monoBytesPerFrame);
 
-                    // Encode
-                    int encodedLength = _encoder.Encode(pcmShorts, _samplesPerFrame, encodedBuffer, encodedBuffer.Length);
+                    // B. Upmix Mono -> Stereo (Interleaved)
+                    // L = Mono, R = Mono
+                    for (int i = 0; i < _samplesPerFramePerChannel; i++)
+                    {
+                        short sample = monoShorts[i];
+                        stereoShorts[i * 2] = sample;     // Left
+                        stereoShorts[i * 2 + 1] = sample; // Right
+                    }
 
-                    // Write to output (Format: [Length (4 bytes)][Data])? 
-                    // No, for simple streaming usually just the data, but for sticking packets together 
-                    // the receiver needs to know boundaries. 
-                    // For WebRTC/RTP, we return ONE packet per Encode call usually. 
-                    // BUT, if we buffered multiple, we might return concatenated or just the last.
-                    // STRATEGY: Return concatenated packets. The transport handles packetization.
+                    // C. Encode
+                    // Note: frameSize arg is samples per channel (not total samples)
+                    int encodedLength = _encoder.Encode(stereoShorts, _samplesPerFramePerChannel, encodedBuffer, encodedBuffer.Length);
+
+                    // D. Write encoded frame
                     outputStream.Write(encodedBuffer, 0, encodedLength);
 
-                    offset += _bytesPerFrame;
+                    offset += _monoBytesPerFrame;
                 }
 
                 // 4. Reset Buffer with leftovers
@@ -88,14 +98,12 @@ namespace IqraInfrastructure.Managers.Audio.Encoders
                 return outputStream.ToArray();
             }
 
-            // Not enough data yet
             return Array.Empty<byte>();
         }
 
         public override void Dispose()
         {
             _buffer?.Dispose();
-            // Concentus encoder is managed C#, no unmanaged resource to free explicitly
         }
     }
 }

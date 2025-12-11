@@ -71,9 +71,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         /// <summary>
         /// Sends audio to Vonage by wrapping it in their expected JSON format.
         /// </summary>
-        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, CancellationToken cancellationToken)
+        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
-            return Transport.SendBinaryAsync(audioData, sampleRate, bitsPerSample, cancellationToken);
+            return Transport.SendBinaryAsync(audioData, sampleRate, bitsPerSample, frameDurationMs, cancellationToken);
         }
 
         /// <summary>
