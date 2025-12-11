@@ -71,7 +71,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
         {
             return encoding switch
             {
-                AudioEncodingTypeEnum.PCM => new AudioFormat(AudioCodecsEnum.PCM_S16LE, 0, rate, 1, ""),
+                AudioEncodingTypeEnum.PCM => new AudioFormat(AudioCodecsEnum.OPUS, 111, rate, 2, "minptime=10;useinbandfec=1"),
                 AudioEncodingTypeEnum.OPUS => new AudioFormat(AudioCodecsEnum.OPUS, 111, rate, 2, "minptime=10;useinbandfec=1"),
                 AudioEncodingTypeEnum.MULAW => new AudioFormat(AudioCodecsEnum.PCMU, 0, 8000, 1, ""),
                 AudioEncodingTypeEnum.ALAW => new AudioFormat(AudioCodecsEnum.PCMA, 8, 8000, 1, ""),

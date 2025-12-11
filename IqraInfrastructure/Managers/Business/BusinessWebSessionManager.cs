@@ -179,20 +179,8 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    if (modelData.AudioInputConfiguration.SampleRate < 8000 || modelData.AudioInputConfiguration.SampleRate > 96000) {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_INPUT_CONFIGURATION_SAMPLE_RATE_INVALID",
-                            "Audio Configuration sample rate is invalid. Allowed values: 8000~96000."
-                        );
-                    }
+                    // Validation is done later
                     newWebSessionData.AudioInputConfiguration.SampleRate = modelData.AudioInputConfiguration.SampleRate;
-
-                    if (modelData.AudioInputConfiguration.BitsPerSample != 8 && modelData.AudioInputConfiguration.BitsPerSample != 16 && modelData.AudioInputConfiguration.BitsPerSample != 24 && modelData.AudioInputConfiguration.BitsPerSample != 32) {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_INPUT_CONFIGURATION_BITS_PER_SAMPLE_INVALID",
-                            "Audio Input Configuration bits per sample is invalid. Allowed values: 8, 16, 24, 32."
-                        );
-                    }
                     newWebSessionData.AudioInputConfiguration.BitsPerSample = modelData.AudioInputConfiguration.BitsPerSample;
 
                     if (!Enum.IsDefined(typeof(AudioEncodingTypeEnum), modelData.AudioInputConfiguration.AudioEncodingType))
@@ -215,22 +203,8 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    if (modelData.AudioOutputConfiguration.SampleRate < 8000 || modelData.AudioOutputConfiguration.SampleRate > 96000)
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_SAMPLE_RATE_INVALID",
-                            "Audio Configuration sample rate is invalid. Allowed values: 8000~96000."
-                        );
-                    }
+                    // Validation is done later
                     newWebSessionData.AudioOutputConfiguration.SampleRate = modelData.AudioOutputConfiguration.SampleRate;
-
-                    if (modelData.AudioOutputConfiguration.BitsPerSample != 8 && modelData.AudioOutputConfiguration.BitsPerSample != 16 && modelData.AudioOutputConfiguration.BitsPerSample != 24 && modelData.AudioOutputConfiguration.BitsPerSample != 32)
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_BITS_PER_SAMPLE_INVALID",
-                            "Audio Output Configuration bits per sample is invalid. Allowed values: 8, 16, 24, 32."
-                        );
-                    }
                     newWebSessionData.AudioOutputConfiguration.BitsPerSample = modelData.AudioOutputConfiguration.BitsPerSample;
 
                     if (!Enum.IsDefined(typeof(AudioEncodingTypeEnum), modelData.AudioOutputConfiguration.AudioEncodingType))
@@ -242,7 +216,7 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     newWebSessionData.AudioOutputConfiguration.AudioEncodingType = modelData.AudioOutputConfiguration.AudioEncodingType;
 
-                    // int FrameDurationMs
+                    // int FrameDurationMs - always required?
                     if (modelData.AudioOutputConfiguration.FrameDurationMs < 20 || modelData.AudioOutputConfiguration.FrameDurationMs > 150)
                     {
                         return result.SetFailureResult(
@@ -320,6 +294,14 @@ namespace IqraInfrastructure.Managers.Business
                         }
                     }
                 }
+
+                // Perform General Audio Format and Transport Validations
+                var validationResult = ValidateSessionAudioConfiguration(modelData);
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(validationResult.Code, validationResult.Message);
+                }
+
 
                 var addWebSessionResult = await _webSessionRepoistory.AddWebSessionAsync(newWebSessionData);
                 if (!addWebSessionResult)
@@ -475,6 +457,135 @@ namespace IqraInfrastructure.Managers.Business
                     $"Error initiating web session: {ex.Message}"
                 );
             }
+        }
+
+        private FunctionReturnResult ValidateSessionAudioConfiguration(InitiateWebSessionRequestModel model)
+        {
+            var result = new FunctionReturnResult();
+
+            var input = model.AudioInputConfiguration;
+            var output = model.AudioOutputConfiguration;
+            var transport = model.TransportType;
+
+            // PCM must be 8khz ~ 48khz and 8, 16, 32 bits per sample
+            if (
+                (input.AudioEncodingType == AudioEncodingTypeEnum.PCM || input.AudioEncodingType == AudioEncodingTypeEnum.WAV) &&
+                (
+                    (input.BitsPerSample != 8 && input.BitsPerSample != 16 && input.BitsPerSample != 32) ||
+                    (input.SampleRate < 8000 || input.SampleRate > 48000)
+                )
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Input: PCM/WAV must have 8, 16, or 32 bits per sample and a sample rate between 8000 and 48000."
+                );
+            }
+
+            if (
+                (output.AudioEncodingType == AudioEncodingTypeEnum.PCM || output.AudioEncodingType == AudioEncodingTypeEnum.WAV) &&
+                (
+                    (output.BitsPerSample != 8 && output.BitsPerSample != 16 && output.BitsPerSample != 32) ||
+                    (output.SampleRate < 8000 || output.SampleRate > 48000)
+                )
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Output: PCM/WAV must have 8, 16, or 32 bits per sample and a sample rate between 8000 and 48000."
+                );
+            }
+
+            // G.711 (MuLaw/ALaw) must be 8000Hz and 8 bits per sample
+            if (
+                (input.AudioEncodingType == AudioEncodingTypeEnum.MULAW || input.AudioEncodingType == AudioEncodingTypeEnum.ALAW) &&
+                input.SampleRate != 8000 &&
+                input.BitsPerSample != 8
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Input: G.711 (MuLaw/ALaw) requires 8000Hz sample rate and 8 bits per sample."
+                );
+            }
+
+            if (
+                (output.AudioEncodingType == AudioEncodingTypeEnum.MULAW || output.AudioEncodingType == AudioEncodingTypeEnum.ALAW) &&
+                output.SampleRate != 8000 &&
+                output.BitsPerSample != 8
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Output: G.711 (MuLaw/ALaw) requires 8000Hz sample rate and 8 bits per sample."
+                );
+            }
+
+            // G.722 must be 16000Hz and 14 bits per sample
+            if (
+                input.AudioEncodingType == AudioEncodingTypeEnum.G722 &&
+                input.SampleRate != 16000 &&
+                input.BitsPerSample != 14
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Input: G.722 requires 16000Hz sample rate and 14 bits per sample."
+                );
+            }
+
+            if (
+                output.AudioEncodingType == AudioEncodingTypeEnum.G722 &&
+                output.SampleRate != 16000 &&
+                output.BitsPerSample != 14
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Output: G.722 requires 16000Hz sample rate."
+                );
+            }
+
+            // G.729 must be 8000Hz and 8 bits per sample
+            if (
+                input.AudioEncodingType == AudioEncodingTypeEnum.G729 &&
+                input.SampleRate != 8000 &&
+                input.BitsPerSample != 8
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Input: G.729 requires 8000Hz sample rate and 8 bits per sample."
+                );
+            }
+
+            if (
+                output.AudioEncodingType == AudioEncodingTypeEnum.G729 &&
+                output.SampleRate != 8000 &&
+                output.BitsPerSample != 8
+            ) {
+                return result.SetFailureResult(
+                    "VALIDATION:INVALID_SAMPLE_RATE",
+                    "Output: G.729 requires 8000Hz sample rate and 8 bits per sample."
+                );
+            }
+
+            // WebRTC Specific Rules
+            if (transport == WebSessionTransportTypeEnum.WebRTC)
+            {
+                var allowedWebRtcEncodings = new[] { AudioEncodingTypeEnum.OPUS, AudioEncodingTypeEnum.MULAW, AudioEncodingTypeEnum.ALAW, AudioEncodingTypeEnum.G722 };
+
+                if (!allowedWebRtcEncodings.Contains(input.AudioEncodingType))
+                {
+                    return result.SetFailureResult(
+                        "VALIDATION:WEBRTC_UNSUPPORTED_FORMAT",
+                        $"Input format {input.AudioEncodingType} is not supported over WebRTC. Use OPUS, MULAW, ALAW, or G722."
+                    );
+                }
+
+                if (!allowedWebRtcEncodings.Contains(output.AudioEncodingType))
+                {
+                    return result.SetFailureResult(
+                        "VALIDATION:WEBRTC_UNSUPPORTED_FORMAT",
+                        $"Output format {output.AudioEncodingType} is not supported over WebRTC. Use OPUS, MULAW, ALAW, or G722."
+                    );
+                }
+            }
+
+            return result.SetSuccessResult();
         }
 
         private async Task<FunctionReturnResult<FunctionReturnResult<BackendInitiateWebSessionResultModel>>> ForwardInitiateWebSessionRequestToBackendAsync(RegionServerData backendServer, BackendInitiateWebSessionRequestModel requestDto)
