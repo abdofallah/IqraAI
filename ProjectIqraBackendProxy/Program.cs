@@ -10,6 +10,7 @@ using IqraInfrastructure.Managers.Call.Proxy;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.SIP;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.App;
@@ -24,6 +25,7 @@ using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using System.Reflection;
 
@@ -458,6 +460,17 @@ namespace ProjectIqraBackendProxy
                     proxyAppConfig,
                     sp.GetRequiredService<OutboundCallProcessingOrchestrator>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>()
+                );
+            });
+
+            builder.Services.AddHostedService<SipProxyService>((sp) =>
+            {
+                return new SipProxyService(
+                    sp.GetRequiredService<ILogger<SipProxyService>>(),
+                    proxyAppConfig.SIPPort,
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<ServerSelectionManager>(),
+                    sp.GetRequiredService<RegionManager>()
                 );
             });
         }
