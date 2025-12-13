@@ -1,6 +1,4 @@
 ﻿using IqraCore.Entities.Conversation.Configuration;
-using IqraCore.Entities.Conversation.Enum;
-using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helper.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
 using Microsoft.Extensions.Logging;

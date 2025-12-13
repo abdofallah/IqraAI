@@ -31,6 +31,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
         private readonly UserUsageValidationManager _billingValidationManager;
+        private readonly UserManager _userManager;
 
         private JsonSerializerOptions _seralizationOptionCamelCase = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -45,7 +46,8 @@ namespace IqraInfrastructure.Managers.Call.Inbound
             TwilioManager twilioManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            UserUsageValidationManager billingValidationManager
+            UserUsageValidationManager billingValidationManager,
+            UserManager userManager
         )
         {
             _logger = logger;
@@ -59,6 +61,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
             _integrationsManager = integrationsManager;
             _regionManager = regionManager;
             _billingValidationManager = billingValidationManager;
+            _userManager = userManager;
         }
 
         public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> DistributeIncomingCall(TelephonyWebhookContextModel webhookContext)
@@ -120,7 +123,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                     return result.SetFailureResult($"DistributeIncomingCall:{planValidation.Code}", planValidation.Message);
                 }
 
-                var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId);
+                var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId, phoneNumberInfo.isUserAdmin);
                 if (!serverSelection.Success)
                 {
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"[{serverSelection.Code}]: {serverSelection.Message}", Type = CallQueueLogTypeEnum.Error });
@@ -299,6 +302,13 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                     return null;
                 }
 
+                var businessDataResult = await _businessManager.GetUserBusinessById(webhookContext.BusinessId, "GetPhoneNumberInfo");
+                if (!businessDataResult.Success || businessDataResult.Data == null)
+                {
+                    return null;
+                }
+                var isUserAdmin = await _userManager.CheckUserIsAdmin(businessDataResult.Data.MasterUserEmail);
+
                 var businessNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(webhookContext.BusinessId, webhookContext.PhoneNumberId);
                 if (businessNumber == null)
                 {
@@ -343,7 +353,8 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                         BusinessId = webhookContext.BusinessId,
                         NumberId = businessNumber.Id,
                         RouteId = businessNumber.RouteId,
-                        RegionId = businessNumber.RegionId
+                        RegionId = businessNumber.RegionId,
+                        isUserAdmin = isUserAdmin
                     };
                 }
                 // Twilio
@@ -385,6 +396,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
             public string NumberId { get; set; } = string.Empty;
             public string? RouteId { get; set; } = string.Empty;
             public string RegionId { get; set; } = string.Empty;
+            public bool isUserAdmin { get; set; }
         }
     }
 }

@@ -34,6 +34,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
         private readonly IntegrationsManager _integrationsManager;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
+        private readonly UserManager _userManager;
 
         private readonly JsonSerializerOptions _camelCaseSerializationOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -48,7 +49,8 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             TwilioManager twilioManager,
             IntegrationsManager integrationsManager,
             IHttpClientFactory httpClientFactory,
-            CampaignActionExecutorService campaignActionExecutorService
+            CampaignActionExecutorService campaignActionExecutorService,
+            UserManager userManager
         )
         {
             _logger = logger;
@@ -62,6 +64,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             _integrationsManager = integrationsManager;
             _httpClientFactory = httpClientFactory;
             _campaignActionExecutorService = campaignActionExecutorService;
+            _userManager = userManager;
         }
 
         public async Task ProcessCallAsync(OutboundCallQueueData callQueueData)
@@ -105,6 +108,22 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 );
                 return;
             }
+
+            var businessDataResult = await _businessManager.GetUserBusinessById(callQueueData.BusinessId, "ProcessCallAsync");
+            if (!businessDataResult.Success || businessDataResult.Data == null)
+            {
+                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    callQueueData,
+                    CallQueueStatusEnum.Canceled,
+                    new CallQueueLogEntry {
+                        Message = $"System error: Business {callQueueData.BusinessId} not found.",
+                        Type = CallQueueLogTypeEnum.Error
+                    },
+                    completedAt: DateTime.UtcNow
+                );
+                return;
+            }
+            var isUserAdmin = await _userManager.CheckUserIsAdmin(businessDataResult.Data.MasterUserEmail);
 
             var businessPhoneNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(callQueueData.BusinessId, callQueueData.CallingNumberId);
             if (businessPhoneNumber == null)
@@ -195,7 +214,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 processingStartedAt: DateTime.UtcNow
             );
 
-            var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(callQueueData.RegionId);
+            var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(callQueueData.RegionId, isUserAdmin);
             if (!serverSelectionResult.Success || !serverSelectionResult.Data.Any())
             {
                 // todo this should happen very critically but should we kill the queue because of it?

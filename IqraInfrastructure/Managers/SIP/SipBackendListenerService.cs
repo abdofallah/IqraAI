@@ -1,6 +1,4 @@
-﻿using IqraCore.Entities.Server;
-using IqraInfrastructure.Managers.Call.Backend;
-using Microsoft.Extensions.DependencyInjection;
+﻿using IqraInfrastructure.Managers.Call.Backend;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SIPSorcery.SIP;
@@ -12,22 +10,20 @@ namespace IqraInfrastructure.Managers.SIP
     public class SipBackendListenerService : BackgroundService
     {
         private readonly ILogger<SipBackendListenerService> _logger;
-        private readonly IServiceProvider _serviceProvider;
-        private readonly BackendAppConfig _appConfig;
+        public readonly int _sipPort;
+        private readonly BackendCallProcessorManager _backendCallProcessorManager;
 
         private SIPTransport _sipTransport;
         private bool _isRunning = false;
 
-        public const int SIP_PORT = 6261;
-
         public SipBackendListenerService(
             ILogger<SipBackendListenerService> logger,
-            IServiceProvider serviceProvider,
-            BackendAppConfig appConfig)
-        {
+            int sipPort,
+            BackendCallProcessorManager backendCallProcessorManager
+        ) {
             _logger = logger;
-            _serviceProvider = serviceProvider;
-            _appConfig = appConfig;
+            _sipPort = sipPort;
+            _backendCallProcessorManager = backendCallProcessorManager;
         }
 
         public override Task StartAsync(CancellationToken cancellationToken)
@@ -39,13 +35,13 @@ namespace IqraInfrastructure.Managers.SIP
                 _sipTransport = new SIPTransport();
 
                 // 1. Bind IPv4 UDP (Primary)
-                var udpChannel = new SIPUDPChannel(new IPEndPoint(IPAddress.Any, SIP_PORT));
+                var udpChannel = new SIPUDPChannel(new IPEndPoint(IPAddress.Any, _sipPort));
                 _sipTransport.AddSIPChannel(udpChannel);
 
                 // 2. Bind IPv4 TCP (Reliability for large packets)
                 try
                 {
-                    var tcpChannel = new SIPTCPChannel(new IPEndPoint(IPAddress.Any, SIP_PORT));
+                    var tcpChannel = new SIPTCPChannel(new IPEndPoint(IPAddress.Any, _sipPort));
                     _sipTransport.AddSIPChannel(tcpChannel);
                 }
                 catch (Exception ex)
@@ -57,7 +53,7 @@ namespace IqraInfrastructure.Managers.SIP
                 _sipTransport.SIPTransportRequestReceived += OnRequestReceived;
 
                 _isRunning = true;
-                _logger.LogInformation("SIP Backend Listener active on port {Port} (UDP/TCP).", SIP_PORT);
+                _logger.LogInformation("SIP Backend Listener active on port {Port} (UDP/TCP).", _sipPort);
             }
             catch (Exception ex)
             {
@@ -124,50 +120,46 @@ namespace IqraInfrastructure.Managers.SIP
             string callId = request.Header.CallId;
             string didNumber = request.URI.User;
 
-            _logger.LogInformation("Processing Inbound SIP Call: To={DID} From={From} Call-ID={CallId}",
-                didNumber, request.Header.From.FromURI.User, callId);
-
-            // 1. Create Transaction & User Agent
-            // We need to establish the SIP Transaction wrapper immediately to send "100 Trying".
+            // Create Transaction & User Agent
             var uasTransaction = new UASInviteTransaction(_sipTransport, request, null);
             var serverUserAgent = new SIPServerUserAgent(_sipTransport, null, uasTransaction, null);
 
-            // 2. Send "100 Trying"
-            // This stops the carrier from re-sending the INVITE immediately.
+            // Send "100 Trying"
             serverUserAgent.Progress(SIPResponseStatusCodesEnum.Trying, null, null, null, null);
 
-            // 3. Hand off to Processor Manager
-            // We create a scope because BackendCallProcessorManager relies on DB Contexts (Scoped).
-            using (var scope = _serviceProvider.CreateScope())
+            string? businessIdStr = request.URI.Parameters.Get("X-Business-Id");
+            if (!long.TryParse(businessIdStr, out long businessId))
             {
-                var processor = scope.ServiceProvider.GetRequiredService<BackendCallProcessorManager>();
+                serverUserAgent.Reject(SIPResponseStatusCodesEnum.NotFound, "Unable to parse business id to long", null);
+                return;
+            }
 
-                // This method will:
-                // a. Lookup the business/route.
-                // b. Create the Session Orchestrator & Mixer.
-                // c. Create the SipConversationClient (wrapping this serverUserAgent).
-                // d. Answer the call (200 OK).
-                var result = await processor.ProcessInboundSipCallAsync(serverUserAgent, didNumber);
+            string? phoneId = request.URI.Parameters.Get("X-Phone-Id");
+            if (string.IsNullOrEmpty(phoneId))
+            {
+                serverUserAgent.Reject(SIPResponseStatusCodesEnum.NotFound, "Phone id in request empty or not found", null);
+                return;
+            }
 
-                if (!result.Success)
+            // Hand off to Processor Manager
+            var result = await _backendCallProcessorManager.ProcessInboundSipCallAsync(serverUserAgent, businessId, phoneId);
+            if (!result.Success)
+            {
+                _logger.LogWarning("Rejecting SIP Call {CallId}: [{Code}] {Message}", callId, result.Code, result.Message);
+
+                // Map internal errors to SIP Response Codes
+                var sipResponseCode = SIPResponseStatusCodesEnum.ServiceUnavailable;
+                if (result.Code.Contains("NOT_FOUND") || result.Code.Contains("NO_ROUTE"))
                 {
-                    _logger.LogWarning("Rejecting SIP Call {CallId}: [{Code}] {Message}", callId, result.Code, result.Message);
-
-                    // Map internal errors to SIP Response Codes
-                    var sipResponseCode = SIPResponseStatusCodesEnum.ServiceUnavailable;
-
-                    if (result.Code.Contains("NOT_FOUND") || result.Code.Contains("NO_ROUTE"))
-                    {
-                        sipResponseCode = SIPResponseStatusCodesEnum.NotFound;
-                    }
-                    else if (result.Code.Contains("BUSY") || result.Code.Contains("CAPACITY"))
-                    {
-                        sipResponseCode = SIPResponseStatusCodesEnum.BusyHere;
-                    }
-
-                    // Reject the call
-                    serverUserAgent.Reject(sipResponseCode, null, null);
+                    sipResponseCode = SIPResponseStatusCodesEnum.NotFound;
                 }
+                else if (result.Code.Contains("BUSY") || result.Code.Contains("CAPACITY"))
+                {
+                    sipResponseCode = SIPResponseStatusCodesEnum.BusyHere;
+                }
+
+                // Reject the call
+                serverUserAgent.Reject(sipResponseCode, null, null);
             }
         }
     }

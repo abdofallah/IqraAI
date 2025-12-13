@@ -62,7 +62,7 @@ namespace ProjectIqraBackendProxy
             SetupManagers(builder, appConfig, proxyAppConfig);
 
             // HTTP Client
-            builder.Services.AddHttpClient("CallManagerServerForward").ConfigureHttpMessageHandlerBuilder(builder => builder.PrimaryHandler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true });
+            builder.Services.AddHttpClient("CallManagerServerForward");
             builder.Services.AddHttpClient("ModemTelClient", client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(10);
@@ -470,7 +470,9 @@ namespace ProjectIqraBackendProxy
                     proxyAppConfig.SIPPort,
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
-                    sp.GetRequiredService<RegionManager>()
+                    sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
+                    sp.GetRequiredService<UserUsageValidationManager>()
                 );
             });
         }

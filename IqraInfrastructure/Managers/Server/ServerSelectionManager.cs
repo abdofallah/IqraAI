@@ -28,7 +28,7 @@ namespace IqraInfrastructure.Managers.Server
             _serverLock = lockFactory;
         }
 
-        public async Task<FunctionReturnResult<List<ServerSelectionResultModel>?>> SelectOptimalServerAsync(string regionId, List<string>? ServersToIgnore = null)
+        public async Task<FunctionReturnResult<List<ServerSelectionResultModel>?>> SelectOptimalServerAsync(string regionId, bool canSelectDevelopmentServer = false, List<string>? ServersToIgnore = null)
         {
             var result = new FunctionReturnResult<List<ServerSelectionResultModel>?>();
 
@@ -46,7 +46,12 @@ namespace IqraInfrastructure.Managers.Server
 
                 // Get backend servers for the specified region
                 var backendServers = regionData.Servers
-                    .Where(s => s.Type == ServerTypeEnum.Backend && s.DisabledAt == null && (!ServersToIgnore?.Contains(s.Id) ?? true))
+                    .Where(s => 
+                        s.Type == ServerTypeEnum.Backend &&
+                        s.DisabledAt == null &&
+                        (!ServersToIgnore?.Contains(s.Id) ?? true) &&
+                        (canSelectDevelopmentServer || !s.IsDevelopmentServer)
+                    )
                     .Select(s => s.Id)
                     .ToList();
 

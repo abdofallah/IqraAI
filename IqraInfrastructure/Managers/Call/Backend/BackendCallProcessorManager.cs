@@ -628,16 +628,14 @@ namespace IqraInfrastructure.Managers.Call.Backend
             }
         }
 
-        public async Task<FunctionReturnResult> ProcessInboundSipCallAsync(SIPServerUserAgent uas, string didNumber)
+        public async Task<FunctionReturnResult> ProcessInboundSipCallAsync(SIPServerUserAgent uas, long businessId, string phoneNumberId)
         {
             var result = new FunctionReturnResult();
 
             try
             {
                 // 1. Lookup Number & Route
-                // We use the same logic as Proxy, but this time we need the Full Data to configure the Agent/Context.
-                var numberResult = await _businessManager.GetBusinessNumberByNumber(didNumber);
-
+                var numberResult = await _businessManager.GetNumberManager().GetBusinessNumberById(businessId, phoneNumberId);
                 if (numberResult == null || numberResult.Provider != TelephonyProviderEnum.SIP)
                 {
                     return result.SetFailureResult("ProcessInboundSipCallAsync:NUMBER_NOT_FOUND", "Number not configured.");

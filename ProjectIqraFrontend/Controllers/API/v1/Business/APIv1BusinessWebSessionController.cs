@@ -39,6 +39,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                         apiKeyValidaiton.Message
                     );
                 }
+                var userData = apiKeyValidaiton.Data!.userData!;
                 var businessData = apiKeyValidaiton.Data!.businessData!;
 
                 // Check WebSession Permissions
@@ -70,7 +71,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                 }
 
                 // Forward
-                var forwardResult = await _businessManager.GetWebSessionmanager().InitiateWebSession(businessData, modelData);
+                var forwardResult = await _businessManager.GetWebSessionmanager().InitiateWebSession(businessData, modelData, userData.Permission.IsAdmin);
                 if (!forwardResult.Success)
                 {
                     return result.SetFailureResult(

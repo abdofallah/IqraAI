@@ -45,7 +45,7 @@ namespace IqraInfrastructure.Managers.Business
             _httpClientFactory = httpClientFactory;
         }
 
-        public async Task<FunctionReturnResult<InitiateWebSessionResultModel?>> InitiateWebSession(BusinessData businessData, InitiateWebSessionRequestModel modelData)
+        public async Task<FunctionReturnResult<InitiateWebSessionResultModel?>> InitiateWebSession(BusinessData businessData, InitiateWebSessionRequestModel modelData, bool isUserAdmin)
         {
             var result = new FunctionReturnResult<InitiateWebSessionResultModel?>();
 
@@ -330,7 +330,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(newWebSessionData.RegionId);
+                var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(newWebSessionData.RegionId, isUserAdmin);
                 if (!serverSelectionResult.Success || !serverSelectionResult.Data.Any())
                 {
                     // todo this should happen very critically but should we kill the queue because of it?
