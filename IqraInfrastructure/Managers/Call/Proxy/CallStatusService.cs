@@ -55,7 +55,7 @@ namespace IqraInfrastructure.Managers.Call.Proxy
                     _logger.LogWarning("Region not found: {RegionId}", callQueueWithSession.Data.RegionId);
                     return result.SetFailureResult("NotifyInboundCallStarted:REGION_NOT_FOUND", "Region not found");
                 }
-                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == callQueueWithSession.Data.ProcessingBackendServerId);
+                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Id == callQueueWithSession.Data.ProcessingBackendServerId);
                 if (regionServerData == null)
                 {
                     _logger.LogWarning("Region server not found: {ServerEndpoint}", callQueueWithSession.Data.ProcessingBackendServerId);
@@ -93,7 +93,7 @@ namespace IqraInfrastructure.Managers.Call.Proxy
                     _logger.LogWarning("Region not found: {RegionId}", callQueueWithSession.Data.RegionId);
                     return result.SetFailureResult("NotifyInboundCallStarted:REGION_NOT_FOUND", "Region not found");
                 }
-                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == callQueueWithSession.Data.ProcessingBackendServerId);
+                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Id == callQueueWithSession.Data.ProcessingBackendServerId);
                 if (regionServerData == null)
                 {
                     _logger.LogWarning("Region server not found: {ServerEndpoint}", callQueueWithSession.Data.ProcessingBackendServerId);
@@ -163,7 +163,7 @@ namespace IqraInfrastructure.Managers.Call.Proxy
                 _logger.LogWarning("Region not found: {RegionId}", callQueueWithSession.Data.RegionId);
                 return result.SetFailureResult("NotifyOutboundCallStatus:REGION_NOT_FOUND", "Region not found");
             }
-            var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == callQueueWithSession.Data.ProcessingBackendServerId);
+            var regionServerData = regionData.Servers.FirstOrDefault(s => s.Id == callQueueWithSession.Data.ProcessingBackendServerId);
             if (regionServerData == null)
             {
                 _logger.LogWarning("Region server not found: {ServerEndpoint}", callQueueWithSession.Data.ProcessingBackendServerId);

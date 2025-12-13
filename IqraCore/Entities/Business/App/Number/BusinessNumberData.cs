@@ -1,10 +1,15 @@
-﻿using IqraCore.Entities.Helper.Business;
-using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Entities.Helper.Telephony;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
 {
-    [BsonKnownTypes(typeof(BusinessNumberModemTelData), typeof(BusinessNumberTwilioData), typeof(BusinessNumberVonageData), typeof(BusinessNumberTelnyxData))]
+    [BsonKnownTypes(
+        typeof(BusinessNumberModemTelData),
+        typeof(BusinessNumberTwilioData),
+        typeof(BusinessNumberVonageData),
+        typeof(BusinessNumberTelnyxData),
+        typeof(BusinessNumberSipData)
+    )]
     public class BusinessNumberData
     {
         public BusinessNumberData() { }
@@ -15,7 +20,7 @@ namespace IqraCore.Entities.Business
             this.Number = data.Number;
             this.RouteId = data.RouteId;
             this.RegionId = data.RegionId;
-            this.RegionWebhookEndpoint = data.RegionWebhookEndpoint;
+            this.RegionServerId = data.RegionServerId;
             this.Provider = data.Provider;
             this.IntegrationId = data.IntegrationId;
         }
@@ -28,7 +33,7 @@ namespace IqraCore.Entities.Business
 
         public string? RouteId { get; set; } = null;
         public string RegionId { get; set; } = string.Empty;
-        public string RegionWebhookEndpoint { get; set; } = string.Empty;
+        public string RegionServerId { get; set; } = string.Empty;
 
         public string IntegrationId { get; set; } = string.Empty;
 

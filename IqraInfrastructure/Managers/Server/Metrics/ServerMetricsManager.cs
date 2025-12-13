@@ -39,11 +39,11 @@ namespace IqraInfrastructure.Managers.Server.Metrics
                 try
                 {
                     // Update queued calls count
-                    long queuedCallsCount = await _callQueueRepository.GetActiveInboundCallCountForProcessingServerAsync(_serverConfig.ServerId, _serverConfig.RegionId);
+                    long queuedCallsCount = await _callQueueRepository.GetActiveInboundCallCountForProcessingServerAsync(_serverConfig.ServerEndpoint, _serverConfig.RegionId);
                     _serverStatusManager.SetQueuedCalls((int)queuedCallsCount);
 
                     // todo this might not be accurate, better to just check the number of active sessions in memory
-                    long activeCallCount = await _conversationStateRepository.GetActiveCallCountForServerAsync(_serverConfig.ServerId, _serverConfig.RegionId);
+                    long activeCallCount = await _conversationStateRepository.GetActiveCallCountForServerAsync(_serverConfig.ServerEndpoint, _serverConfig.RegionId);
                     _serverStatusManager.SetActiveCallsCount((int)activeCallCount);
 
                     // Update and publish server status

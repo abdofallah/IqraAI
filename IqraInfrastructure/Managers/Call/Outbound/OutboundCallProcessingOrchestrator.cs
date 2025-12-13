@@ -229,7 +229,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
 
             foreach (var optimalServer in serverSelectionResult.Data)
             {
-                RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Endpoint == optimalServer.ServerEndpoint && s.Type == ServerTypeEnum.Backend);
+                RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Id == optimalServer.ServerId && s.Type == ServerTypeEnum.Backend);
                 if (backendServerDetails == null)
                 {
                     await OnUpdateCallQueueStatusAndSendCampaignAction(

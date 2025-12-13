@@ -2,8 +2,7 @@
 {
     public class ServerSelectionResultModel
     {
-        public string ServerId { get; set; } = string.Empty;
-        public string ServerEndpoint { get; set; } = string.Empty;
+        public string ServerId { get; set; } = null!;
         public double Score { get; set; }
     }
 }

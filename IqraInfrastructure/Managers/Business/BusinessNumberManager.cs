@@ -124,8 +124,7 @@ namespace IqraInfrastructure.Managers.Business
                 return result;
             }
 
-            newNumberData.RegionWebhookEndpoint = getRegionWebhookServer.Endpoint;
-
+            newNumberData.RegionServerId = getRegionWebhookServer.Id;
             if (provider == TelephonyProviderEnum.Unknown)
             {
                 result.Code = "AddOrUpdateBusinessNumber:6";

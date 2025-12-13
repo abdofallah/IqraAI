@@ -7,12 +7,15 @@ namespace IqraCore.Entities.Region
     public class RegionServerData
     {
         [BsonId]
+        public string Id { get; set; } = Guid.NewGuid().ToString();
         public string Endpoint { get; set; } = string.Empty;
         public bool UseSSL { get; set; } = true;
         public string APIKey { get; set; } = string.Empty;
+        public int SIPPort { get; set; } = 5060;
 
         public virtual ServerTypeEnum Type { get; set; } = ServerTypeEnum.Unknown;
 
         public DateTime? DisabledAt { get; set; } = null;
+        public bool IsDevelopmentServer { get; set; } = false;
     }
 }

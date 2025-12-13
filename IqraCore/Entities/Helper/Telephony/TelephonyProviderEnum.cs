@@ -7,6 +7,6 @@
         Twilio = 2,
         Vonage = 3,
         Telnyx = 4,
-        SIPTrunking = 10
+        SIP = 10
     }
 }

@@ -33,7 +33,7 @@ namespace IqraInfrastructure.HostedServices.Conversation
                 try
                 {
                     // Check for expired conversations
-                    int expiredConversations = await _conversationStateRepository.CleanupMaxDurationReachedConversationsAsync(_serverConfig.RegionId, _serverConfig.ServerId, DateTime.UtcNow.AddMinutes(5));
+                    int expiredConversations = await _conversationStateRepository.CleanupMaxDurationReachedConversationsAsync(_serverConfig.RegionId, _serverConfig.ServerEndpoint, DateTime.UtcNow.AddMinutes(5));
 
                     // todo log to conversation logs repo
                     //.Push(c => c.Logs, new ConversationStateLogEntry() { Level = ConversationStateLogLevelEnum.Critical, Message = "Expected endtime reached for conversation but it wasnt ended, so manually cleaned up" });

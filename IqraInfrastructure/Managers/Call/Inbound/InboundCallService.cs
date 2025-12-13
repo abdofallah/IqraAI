@@ -147,14 +147,15 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                     forwardResult = new FunctionReturnResult<ProcessedInboundCallResponse?>();
                     var currentServer = serverSelection.Data[optimalServersTried];
 
-                    var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == currentServer.ServerEndpoint);
+                    var regionServerData = regionData.Servers.FirstOrDefault(s => s.Id == currentServer.ServerId);
                     if (regionServerData == null)
                     {
-                        errorsList.Add($"{optimalServersTried}: Region server not found: {currentServer.ServerEndpoint}");
+                        errorsList.Add($"{optimalServersTried}: Region server not found: {currentServer.ServerId}");
                         continue;
                     }
 
-                    var regionServerId = regionServerData.Endpoint;
+                    var regionServerId = regionServerData.Id;
+                    var regionServerEndpoint = regionServerData.Endpoint;
                     var regionServerApiKey = regionServerData.APIKey;
                     var resgionUseSSL = regionServerData.UseSSL;
 
@@ -166,7 +167,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                     int forwardCallAttempt = 0;
                     while (forwardCallAttempt < 3)
                     {
-                        forwardResult  = await ForwardIncomingCallToBackendAsync(regionServerId, regionServerApiKey, resgionUseSSL, webhookContext, callQueue);
+                        forwardResult  = await ForwardIncomingCallToBackendAsync(regionServerEndpoint, regionServerApiKey, resgionUseSSL, webhookContext, callQueue);
                         if (!forwardResult.Success)
                         {
                             await _inboundCallQueueRepository.UpdateInboundCallQueueStatusAsync(callQueue.Id, CallQueueStatusEnum.ProcessingProxy);

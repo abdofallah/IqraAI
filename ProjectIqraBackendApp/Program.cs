@@ -63,7 +63,7 @@ namespace ProjectIqraBackendApp
             var appConfig = builder.Configuration;
             var backendAppConfig = new BackendAppConfig
             {
-                ServerId = appConfig["Server:Identity"],
+                ServerEndpoint = appConfig["Server:Endpoint"],
                 RegionId = appConfig["Server:RegionId"],
                 ExpectedMaxConcurrentCalls = int.Parse(appConfig["Server:ExpectedMaxConcurrentCalls"]),
                 NetworkInterfaceName = appConfig["Server:NetworkInterfaceName"],

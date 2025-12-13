@@ -37,7 +37,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
 
             _currentStatus = new ServerStatusData
             {
-                ServerId = _serverConfig.ServerId,
+                ServerId = _serverConfig.ServerEndpoint,
                 RegionId = _serverConfig.RegionId,
                 Type = ServerTypeEnum.Backend, // TODO what if its loaded by proxy?
                 LastUpdated = DateTime.UtcNow,

@@ -117,7 +117,7 @@ namespace IqraInfrastructure.Managers.WebSession
                         "Web session data not found"
                     );
                 }
-                await _webSessionRepoistory.UpdateStatusProcessingBackendWithServerId(webSessionId, _backendAppConfig.ServerId);
+                await _webSessionRepoistory.UpdateStatusProcessingBackendWithServerId(webSessionId, _backendAppConfig.Id);
 
                 var regionData = await _regionManager.GetRegionById(_backendAppConfig.RegionId);
                 if (regionData == null)
@@ -127,7 +127,7 @@ namespace IqraInfrastructure.Managers.WebSession
                         "Region not found"
                     );
                 }
-                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == _backendAppConfig.ServerId);
+                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Id == _backendAppConfig.Id);
                 if (regionServerData == null)
                 {
                     return result.SetFailureResult(

@@ -3,7 +3,7 @@
     public class BackendAppConfig
     {
         // General
-        public string ServerId { get; set; } = string.Empty;
+        public string Id { get; set; } = string.Empty;
         public string RegionId { get; set; } = string.Empty;
 
         // Expected Calls at once

@@ -46,8 +46,8 @@ namespace IqraInfrastructure.Managers.Server
 
                 // Get backend servers for the specified region
                 var backendServers = regionData.Servers
-                    .Where(s => s.Type == ServerTypeEnum.Backend && s.DisabledAt == null && (!ServersToIgnore?.Contains(s.Endpoint) ?? true))
-                    .Select(s => s.Endpoint)
+                    .Where(s => s.Type == ServerTypeEnum.Backend && s.DisabledAt == null && (!ServersToIgnore?.Contains(s.Id) ?? true))
+                    .Select(s => s.Id)
                     .ToList();
 
                 if (!backendServers.Any())
@@ -106,11 +106,15 @@ namespace IqraInfrastructure.Managers.Server
                 var topServers = scoredServers
                     .Take(3)
                     .Select(
-                        s => new ServerSelectionResultModel()
+                        s =>
                         {
-                            ServerId = s.Server.ServerId,
-                            ServerEndpoint = s.Server.ServerId, // currently server id itself is the endpoint
-                            Score = s.Score
+                            var serverData = regionData.Servers.First(b => b.Id == s.Server.ServerId);
+
+                            return new ServerSelectionResultModel()
+                            {
+                                ServerId = s.Server.ServerId,
+                                Score = s.Score
+                            };
                         }
                     )
                     .ToList();

@@ -376,14 +376,14 @@ namespace IqraInfrastructure.Managers.Business
                 string? webSessionWebSocketUrl = null;
                 foreach (var optimalServer in serverSelectionResult.Data)
                 {
-                    RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Endpoint == optimalServer.ServerEndpoint && s.Type == ServerTypeEnum.Backend);
+                    RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Id == optimalServer.ServerId && s.Type == ServerTypeEnum.Backend);
                     if (backendServerDetails == null)
                     {
                         await _webSessionRepoistory.UpdateStatusAndAddLogAsync(
                             newWebSessionData.Id,
                             WebSessionStatusEnum.Failed,
                             new WebSessionLog {
-                                Message = $"[InitiateWebSession:BACKEND_SERVER_NOT_FOUND] Backend server details for {optimalServer.ServerEndpoint} not found.",
+                                Message = $"[InitiateWebSession:BACKEND_SERVER_NOT_FOUND] Backend server details for {optimalServer.ServerId} not found.",
                                 Type = WebSessionLogTypeEnum.Error
                             }
                         );
