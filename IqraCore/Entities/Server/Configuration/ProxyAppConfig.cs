@@ -2,9 +2,14 @@
 {
     public class ProxyAppConfig
     {
-        public string RegionId { get; set; }
-        public string Identity { get; set; }
-        public ProxyAppOutboundProcessingConfig OutboundProcessing { get; set; }
+        // Static Config
+        public string ServerId { get; set; } = null!;
+        public string RegionId { get; set; } = null!;
+        public ProxyAppOutboundProcessingConfig OutboundProcessing { get; set; } = new();
+
+        // Dynamic Config
+        public string ServerEndpoint { get; set; } = null!;
+        public int SIPPort { get; set; }
     }
 
     public class ProxyAppOutboundProcessingConfig

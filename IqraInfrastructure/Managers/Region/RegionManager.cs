@@ -8,15 +8,18 @@ using MongoDB.Driver.Linq;
 namespace IqraInfrastructure.Managers.Region
 {
     public class RegionManager
-    {
-        private readonly ILogger<RegionManager> _logger;
-
+    {      
         private readonly RegionRepository _regionRepository;
-        public RegionManager(ILogger<RegionManager> logger, RegionRepository regionRepository)
+        private ILogger<RegionManager>? _logger;
+
+        public RegionManager(RegionRepository regionRepository)
+        {
+            _regionRepository = regionRepository;
+        }
+
+        public void SetLogger(ILogger<RegionManager> logger)
         {
             _logger = logger;
-
-            _regionRepository = regionRepository;
         }
 
         public async Task<FunctionReturnResult<List<RegionData>?>> GetRegions(int page, int pageSize)
@@ -28,7 +31,7 @@ namespace IqraInfrastructure.Managers.Region
             if (businesses == null)
             {
                 result.Code = "GetRegions:1";
-                _logger.LogError("[RegionManager] Null - Regions not found");
+                _logger?.LogError("[RegionManager] Null - Regions not found");
             }
             else
             {
@@ -47,7 +50,7 @@ namespace IqraInfrastructure.Managers.Region
             if (businesses == null)
             {
                 result.Code = "GetRegions:1";
-                _logger.LogError("[RegionManager] Null - Regions not found");
+                _logger?.LogError("[RegionManager] Null - Regions not found");
             }
             else
             {

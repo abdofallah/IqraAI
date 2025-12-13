@@ -275,7 +275,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         Type = CallQueueLogTypeEnum.Information,
                         Message = "Being processed by backend app..."
                     },
-                    newProcessingServerId: _backendAppConfig.ServerEndpoint
+                    newProcessingServerId: _backendAppConfig.Id
                 );
 
                 if (!_serverMetricsMonitor.HasCapacity())

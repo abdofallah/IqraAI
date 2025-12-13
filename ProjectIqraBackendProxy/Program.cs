@@ -20,12 +20,10 @@ using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
-using IqraInfrastructure.Repositories.S3Storage;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using System.Reflection;
 
@@ -33,7 +31,7 @@ namespace ProjectIqraBackendProxy
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -42,7 +40,7 @@ namespace ProjectIqraBackendProxy
             ProxyAppConfig proxyAppConfig = new ProxyAppConfig()
             {
                 RegionId = appConfig["Proxy:RegionId"],
-                Identity = appConfig["Proxy:Identity"],
+                ServerId = appConfig["Proxy:Id"],
                 OutboundProcessing = new ProxyAppOutboundProcessingConfig()
                 {
                     DbFetchBatchSize = int.Parse(appConfig["Proxy:OutboundProcessing:DbFetchBatchSize"]),
@@ -51,6 +49,9 @@ namespace ProjectIqraBackendProxy
                     ScheduleWindowMinutes = int.Parse(appConfig["Proxy:OutboundProcessing:ScheduleWindowMinutes"])
                 }
             };
+
+            // Preflight
+            await SetupPreflight(builder, appConfig, proxyAppConfig);
 
             // Repositories
             SetupRepositories(builder, appConfig);
@@ -89,6 +90,9 @@ namespace ProjectIqraBackendProxy
 
             var app = builder.Build();
 
+            // Postflight: Inject dependecies where needed
+            SetupPostflight(app);
+
             // Initalize All Singleton Services
             InitializeAllSingletonServices(app.Services);
 
@@ -106,14 +110,38 @@ namespace ProjectIqraBackendProxy
             app.Run();
         }
 
+        private static async Task SetupPreflight(WebApplicationBuilder builder, IConfiguration appConfig, ProxyAppConfig proxyAppConfig)
+        {
+            // Basic Dependencies required for Preflight
+            var mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
+            builder.Services.AddSingleton<IMongoClient>(mongoClient);
+
+            var regionRepoistory = new RegionRepository(
+                mongoClient,
+                appConfig["MongoDatabase:AppRepositoryDatabaseName"]
+            );
+            builder.Services.AddSingleton<RegionRepository>(regionRepoistory);
+
+            var regionManager = new RegionManager(regionRepoistory);
+            builder.Services.AddSingleton<RegionManager>(regionManager);
+
+            // Build Remaning config from dependencies
+            var regionData = await regionManager.GetRegionById(proxyAppConfig.RegionId);
+            if (regionData == null)
+            {
+                throw new Exception("Region not found");
+            }
+            var regionServerData = regionData.Servers.FirstOrDefault(s => s.Id == proxyAppConfig.ServerId);
+            if (regionServerData == null)
+            {
+                throw new Exception("Server not found");
+            }
+            proxyAppConfig.ServerEndpoint = regionServerData.Endpoint;
+            proxyAppConfig.SIPPort = regionServerData.SIPPort;
+        }
+
         private static void SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig)
         {
-            // Build Base Services
-            builder.Services.AddSingleton<IMongoClient>((sp) =>
-            {
-                return new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
-            });
-
             // Repositories
             builder.Services.AddSingleton<AppRepository>((sp) =>
             {
@@ -172,17 +200,6 @@ namespace ProjectIqraBackendProxy
                     ),
                     sp.GetRequiredService<ILogger<DistributedLockRepository>>()
                 );
-            });
-
-            builder.Services.AddSingleton<RegionRepository>((sp) => {
-                var regionRepository = new RegionRepository(
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:AppRepositoryDatabaseName"]
-                );
-
-                regionRepository.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
-
-                return regionRepository;
             });
 
             builder.Services.AddSingleton<IntegrationsRepository>((sp) =>
@@ -270,13 +287,6 @@ namespace ProjectIqraBackendProxy
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, ProxyAppConfig proxyAppConfig)
         {
-            builder.Services.AddSingleton<RegionManager>((sp) =>
-            {
-                return new RegionManager(
-                    sp.GetRequiredService<ILogger<RegionManager>>(),
-                    sp.GetRequiredService<RegionRepository>()
-                );
-            });
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>
             {
                 AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(
@@ -450,6 +460,15 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<OutboundCallQueueRepository>()
                 );
             });
+        }
+
+        private static void SetupPostflight(WebApplication app)
+        {
+            var regionRepoistory = app.Services.GetRequiredService<RegionRepository>();
+            regionRepoistory.SetLogger(app.Services.GetRequiredService<ILogger<RegionRepository>>());
+
+            var regionManager = app.Services.GetRequiredService<RegionManager>();
+            regionManager.SetLogger(app.Services.GetRequiredService<ILogger<RegionManager>>());
         }
 
         private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)
