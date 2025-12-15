@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
@@ -26,7 +27,7 @@ namespace IqraCore.Entities.Business
         }
 
         [BsonId]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         public string CountryCode { get; set; } = string.Empty;
         public string Number { get; set; } = string.Empty;

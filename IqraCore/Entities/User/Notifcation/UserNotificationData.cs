@@ -1,10 +1,11 @@
 ﻿using IqraCore.Entities.User.Notifcation.Enum;
+using MongoDB.Bson;
 
 namespace IqraCore.Entities.User.Notifcation
 {
     public class UserNotificationData
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public UserNotificationTypeEnum Type { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Body { get; set; } = string.Empty;
@@ -21,7 +22,7 @@ namespace IqraCore.Entities.User.Notifcation
 
     public class UserNotificationActionData
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public string Title { get; set; } = string.Empty;
         public string CallbackJavascript { get; set; } = string.Empty;
 

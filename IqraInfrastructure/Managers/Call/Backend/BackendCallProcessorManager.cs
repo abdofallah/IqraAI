@@ -21,7 +21,6 @@ using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
-using IqraInfrastructure.Managers.Conversation.Session.Helpers;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -36,6 +35,7 @@ using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using PhoneNumbers;
 using SIPSorcery.SIP.App;
 using System.Collections.Concurrent;
@@ -111,12 +111,12 @@ namespace IqraInfrastructure.Managers.Call.Backend
             _userUsageValidationManager = userUsageValidationManager;
         }
 
-        public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> ProcessInboundCallAsync(string queueId)
+        public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> ProcessInboundCallAsync(string queueId, InboundCallQueueData? inboundQueueData = null, SIPUserAgent? userAgent = null, SIPServerUserAgent? uas = null)
         {
             var result = new FunctionReturnResult<ProcessedInboundCallResponse?>();
 
             // Session State
-            string sessionId = Guid.NewGuid().ToString();
+            string sessionId = ObjectId.GenerateNewId().ToString();
             FunctionReturnResult<ConversationSessionOrchestrator?>? sessionResult = null;
 
             // Call Concurrency State
@@ -125,15 +125,26 @@ namespace IqraInfrastructure.Managers.Call.Backend
 
             try
             {
-                InboundCallQueueData? inboundQueueData = await _inboundCallQueueRepository.GetInboundCallQueueByIdAsync(queueId);
                 if (inboundQueueData == null)
                 {
-                    return result.SetFailureResult(
-                        "ProcessInboundCallAsync:QUEUE_NOT_FOUND",
-                        "Queue not found"
-                    );
+                    inboundQueueData = await _inboundCallQueueRepository.GetInboundCallQueueByIdAsync(queueId);
+                    if (inboundQueueData == null)
+                    {
+                        return result.SetFailureResult(
+                            "ProcessInboundCallAsync:QUEUE_NOT_FOUND",
+                            "Queue not found"
+                        );
+                    }
                 }
                 await _inboundCallQueueRepository.UpdateInboundCallQueueStatusAsync(queueId, CallQueueStatusEnum.ProcessingBackend);
+
+                if (inboundQueueData.RouteNumberProvider == TelephonyProviderEnum.SIP && (userAgent == null || uas == null))
+                {
+                    return result.SetFailureResult(
+                        "ProcessInboundCallAsync:SIP_SERVER_USER_AGENT_NOT_FOUND",
+                        "SIP server user agent not found"
+                    );
+                }
 
                 RegionData? currentRegionData = await _regionManager.GetRegionById(_backendAppConfig.RegionId);
                 if (currentRegionData == null)
@@ -164,7 +175,6 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 callQueueBusinessId = inboundQueueData.BusinessId;
 
                 // --- Refactored Block Start ---
-
                 sessionResult = await CreateConversationSessionAsync(inboundQueueData, sessionId);
                 if (!sessionResult.Success)
                 {
@@ -184,7 +194,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     );
                 }
 
-                var componentsResult = await BuildAndConfigureSessionAsync(session, inboundQueueData);
+                var componentsResult = await BuildAndConfigureSessionAsync(session, inboundQueueData, userAgent, uas);
                 if (!componentsResult.Success)
                 {
                     return result.SetFailureResult(
@@ -194,11 +204,15 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 }
 
                 var primaryTelephonyClient = componentsResult.Data.Client;
-                var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(session.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
-                var webhookUrl = BuildWebhookUrl(regionServerData, session.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
+
+                string webhookUrl = "iqra.bot";
+                if (inboundQueueData.RouteNumberProvider != TelephonyProviderEnum.SIP)
+                {
+                    var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(session.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
+                    webhookUrl = BuildWebhookUrl(regionServerData, session.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
+                }
 
                 // --- Refactored Block End ---
-
                 await session.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initialized successfully so now waiting for primary telephony client to connect");
                 await _inboundCallQueueRepository.UpdateInboundCallQueueSessionIdAndStatusAsync(
                     queueId,
@@ -211,7 +225,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     new ProcessedInboundCallResponse()
                     {
                         SessionId = session.SessionId,
-                        WebhookUrl = webhookUrl.ToString()
+                        WebhookUrl = webhookUrl.ToString() 
                     }
                 );
             }
@@ -249,7 +263,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             };
 
             // Session State
-            string sessionId = Guid.NewGuid().ToString();     
+            string sessionId = ObjectId.GenerateNewId().ToString();     
             FunctionReturnResult<ConversationSessionOrchestrator?>? sessionResult = null;
 
             // Call Concurrency State
@@ -627,116 +641,46 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 return result.SetFailureResult("AssignWebSocketToClientAsync:SESSION_NOT_FOUND", "Session or session cts not found");
             }
         }
-
-        public async Task<FunctionReturnResult> ProcessInboundSipCallAsync(SIPServerUserAgent uas, long businessId, string phoneNumberId)
+        public async Task<FunctionReturnResult> AnswerPrimarySIPClientAndNotifyStarted(string sessionId)
         {
             var result = new FunctionReturnResult();
 
             try
             {
-                // 1. Lookup Number & Route
-                var numberResult = await _businessManager.GetNumberManager().GetBusinessNumberById(businessId, phoneNumberId);
-                if (numberResult == null || numberResult.Provider != TelephonyProviderEnum.SIP)
+                if (_activeSessions.TryGetValue(sessionId, out var sessionManager))
                 {
-                    return result.SetFailureResult("ProcessInboundSipCallAsync:NUMBER_NOT_FOUND", "Number not configured.");
-                }
-
-                var sipConfig = numberResult as BusinessNumberSipData;
-                if (sipConfig == null)
-                {
-                    return result.SetFailureResult("ProcessInboundSipCallAsync:INVALID_CONFIG", "Invalid SIP configuration.");
-                }
-
-                // 2. Validate Region (Sanity check, we are already on the backend)
-                if (sipConfig.RegionId != _backendAppConfig.RegionId)
-                {
-                    // This implies the Proxy routed incorrectly or DB changed.
-                    _logger.LogWarning("Received call for region {TargetRegion} on server in {CurrentRegion}", sipConfig.RegionId, _backendAppConfig.RegionId);
-                }
-
-                // 3. Get Call Queue / Campaign Data (Routing Logic)
-                // This logic is shared with Twilio/Telnyx. We need to extract the RouteId from the number.
-                // Assuming GetBusinessNumberByNumber returns the populated object with RouteId.
-                if (string.IsNullOrEmpty(sipConfig.RouteId))
-                {
-                    return result.SetFailureResult("ProcessInboundSipCallAsync:NO_ROUTE", "No route assigned to number.");
-                }
-
-                // Retrieve the InboundCallQueueData (or create it on the fly based on the Route)
-                // ... (Reuse logic from InboundCallService.DistributeIncomingCall essentially) ...
-                // For brevity, let's assume we fetch the Queue Data:
-                var queueData = await _businessManager.GetQueueManager().GetInboundQueueByRouteId(sipConfig.RouteId);
-                if (queueData == null) return result.SetFailureResult("ProcessInboundSipCallAsync:QUEUE_ERROR", "Queue not found.");
-
-                // 4. Create Session
-                string sessionId = Guid.NewGuid().ToString();
-
-                // Increase Concurrency ...
-
-                var createSessionResult = await CreateConversationSessionAsync(queueData, sessionId); // Using existing helper
-                if (!createSessionResult.Success) return result.SetFailureResult(createSessionResult.Code, createSessionResult.Message);
-
-                var session = createSessionResult.Data!;
-                await session.InitializeAsync();
-
-                // 5. Create SIP Client Wrapper
-                // This is where we hook SIPSorcery into our Platform
-
-                // Config: Telephony usually wants 8kHz MuLaw/ALaw.
-                var clientConfig = new ConversationTelephonyClientConfiguration
-                {
-                    AudioInputConfiguration = new ConversationClientAudioInputConfiguration
+                    var primaryClient = sessionManager.PrimaryClient;
+                    if (primaryClient == null)
                     {
-                        AudioEncodingType = AudioEncodingTypeEnum.MULAW,
-                        SampleRate = 8000,
-                        BitsPerSample = 8,
-                        Channels = 1
-                    },
-                    AudioOutputConfiguration = new ConversationClientAudioOutputConfiguration
-                    {
-                        AudioEncodingType = AudioEncodingTypeEnum.MULAW,
-                        SampleRate = 8000,
-                        BitsPerSample = 8,
-                        Channels = 1,
-                        FrameDurationMs = 20
+                        return result.SetFailureResult("AnswerAndNotifyStartedSIPClient:CLIENT_NOT_FOUND", "Client not found");
                     }
-                };
 
-                var deferredTransport = new DeferredClientTransport(_serviceProvider.GetRequiredService<ILogger<DeferredClientTransport>>());
+                    if (primaryClient is not SipConversationClient sipClient)
+                    {
+                        return result.SetFailureResult("AnswerAndNotifyStartedSIPClient:NOT_SIP_CLIENT", "Client is not a SIP client");
+                    }
+                    else
+                    {
+                        await sipClient.Answer();
+                    }
 
-                // Create the Client
-                // Note: SipConversationClient constructor needs to be updated to accept the 'uas' we created.
-                var sipClient = new SipConversationClient(
-                    didNumber, // ClientID is the phone number
-                    clientConfig,
-                    sipConfig.Number, // Our URI
-                    uas.CallDescriptor.From, // Customer URI
-                    uas, // Pass the User Agent!
-                    deferredTransport,
-                    _serviceProvider.GetRequiredService<ILogger<SipConversationClient>>()
-                );
+                    //var notifyResult = await sessionManager.NotifyConversationStarted();
+                    //if (!notifyResult.Success)
+                    //{
+                    //    return result.SetFailureResult($"AnswerAndNotifyStartedSIPClient:{notifyResult.Code}", notifyResult.Message);
+                    //}
 
-                // 6. Add Client to Session
-                // This triggers the Orchestrator to recalculate master format (likely 16k)
-                await session.AddPrimaryClient(sipClient, clientConfig);
+                    _ = await sessionManager.NotifyConversationStarted();
 
-                // 7. Create Agent
-                // ... (Same logic as BuildAndConfigureSessionAsync for Agent) ...
-                // ...
-
-                // 8. ANSWER THE CALL
-                // The SipConversationClient will handle the SDP negotiation and sending 200 OK.
-                // We trigger it here.
-                await sipClient.Answer();
-
-                // 9. Notify Started
-                await session.NotifyConversationStarted();
-
-                return result.SetSuccessResult();
+                    return result.SetSuccessResult();
+                }
+                else
+                {
+                    return result.SetFailureResult("AnswerAndNotifyStartedSIPClient:SESSION_NOT_FOUND", "Session not found");
+                }
             }
-            catch (Exception ex)
-            {
-                return result.SetFailureResult("ProcessInboundSipCallAsync:EXCEPTION", ex.Message);
+            catch (Exception ex) {
+                return result.SetFailureResult("AnswerAndNotifyStartedSIPClient:EXCEPTION", ex.Message);
             }
         }
 
@@ -833,7 +777,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 _sessionCreationLock.Release();
             }
         }
-        private async Task<FunctionReturnResult<SessionComponents>> BuildAndConfigureSessionAsync(ConversationSessionOrchestrator session, CallQueueData queueData)
+        private async Task<FunctionReturnResult<SessionComponents>> BuildAndConfigureSessionAsync(ConversationSessionOrchestrator session, CallQueueData queueData, SIPUserAgent? userAgent = null, SIPServerUserAgent? uas = null)
         {
             var result = new FunctionReturnResult<SessionComponents>();
 
@@ -842,6 +786,8 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 ? inbound.RouteNumberProvider
                 : ((OutboundCallQueueData)queueData).CallingNumberProvider;
 
+            int sessionChannels = 1;
+            int sessionSampleRate = 8000;
             int sessionBitPerSample;
             AudioEncodingTypeEnum sessionAudioEncodingType;
 
@@ -855,15 +801,18 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     sessionAudioEncodingType = AudioEncodingTypeEnum.MULAW;
                     sessionBitPerSample = 8;
                     break;
+                case TelephonyProviderEnum.SIP:
+                    // todo get from user config
+                    sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
+                    sessionSampleRate = 16000;
+                    sessionBitPerSample = 16;
+                    break;
                 default:
                     return result.SetFailureResult(
                         "BuildAndConfigureSessionAsync:UNSUPPORTED_PROVIDER",
                         $"Unsupported telephony provider: {provider}"
                     );
             }
-
-            int sessionChannels = 1;
-            int sessionSampleRate = 8000;
 
             var agentConfig = new ConversationAgentConfiguration()
             {
@@ -911,7 +860,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 agent = agentResult.Data;
 
                 // Create Telephony Client
-                var clientResult = await CreateTelephonyClient(queueData, session, clientConfig);
+                var clientResult = await CreateTelephonyClient(queueData, session, clientConfig, userAgent, uas);
                 if (!clientResult.Success)
                 {
                     await _conversationStateLogsRepository.AddLogEntryAsync(session.SessionId,
@@ -964,11 +913,11 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     new ConversationStateLogEntry {
                         SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                         Timestamp = DateTime.UtcNow,
-                        Message = $"[BuildAndConfigureSessionAsync:EXCEPTION] {ex.Message}"
+                        Message = $"[BuildAndConfigureSessionAsync:EXCEPTION] {ex.StackTrace} {ex.Message}"
                     });
                 return result.SetFailureResult(
                     "BuildAndConfigureSessionAsync:EXCEPTION",
-                    ex.Message
+                    $"{ex.Message}"
                 );
             }
             finally
@@ -983,7 +932,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 }
             }
         }
-        private async Task<FunctionReturnResult<IConversationClient?>> CreateTelephonyClient(CallQueueData queueData, ConversationSessionOrchestrator sessionManager, ConversationClientConfiguration clientConfig)
+        private async Task<FunctionReturnResult<IConversationClient?>> CreateTelephonyClient(CallQueueData queueData, ConversationSessionOrchestrator sessionManager, ConversationClientConfiguration clientConfig, SIPUserAgent? userAgent = null, SIPServerUserAgent? uas = null)
         {
             var result = new FunctionReturnResult<IConversationClient?>();
 
@@ -1073,6 +1022,29 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         );
                     }
 
+                case TelephonyProviderEnum.SIP:
+                    {
+                        if (userAgent == null || uas == null)
+                        {
+                            return result.SetFailureResult("CreateTelephonyClient:SIP_SERVER_USER_AGENT_NOT_FOUND", "SIP server user agent not found");
+                        }
+
+                        var deferredTransport = new DeferredClientTransport(sessionManager.SessionLoggerFactory.CreateLogger<DeferredClientTransport>());
+                        return result.SetSuccessResult(
+                            new SipConversationClient(
+                                clientId,
+                                clientConfig,
+                                ((BusinessNumberSipData)businessNumberData).Number,
+                                numberId,
+                                customerNumber,
+                                userAgent,
+                                uas,
+                                deferredTransport,
+                                _serviceProvider.GetRequiredService<ILogger<SipConversationClient>>()
+                            )
+                        );
+                    }
+
                 default:
                     return result.SetFailureResult("CreateTelephonyClient:INVALID_PROVIDER", "Invalid provider");
             }
@@ -1082,7 +1054,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
             var result = new FunctionReturnResult<IConversationAgent?>();
 
             // Create agent ID
-            string agentId = $"{Guid.NewGuid().ToString()}";
+            string agentId = $"{ObjectId.GenerateNewId().ToString()}";
             try
             {
                 var AIAgent = new ConversationAIAgent(
@@ -1182,39 +1154,39 @@ namespace IqraInfrastructure.Managers.Call.Backend
         {
             var result = new OutboundCallResultModel();
 
-            var sipCallManager = _serviceProvider.GetRequiredService<SipCallManager>();
+            //var sipCallManager = _serviceProvider.GetRequiredService<SipCallManager>();
 
-            // 1. Get a new User Agent from our manager
-            var uac = sipCallManager.CreateOutboundUserAgent();
+            //// 1. Get a new User Agent from our manager
+            //var uac = sipCallManager.CreateOutboundUserAgent();
 
-            // 2. Create our client wrapper
-            var sipClient = new SipConversationClient(
-                uac.CallDescriptor.CallId,
-                null, // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO IMPORTANT
-                sipNumber.Number, // SIP URI
-                $"sip:{toNumber}@{sipNumber.Number}", // PROVIDER DOMAIN
-                uac,
-                _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<SipConversationClient>()
-            );
+            //// 2. Create our client wrapper
+            //var sipClient = new SipConversationClient(
+            //    uac.CallDescriptor.CallId,
+            //    null, // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO IMPORTANT
+            //    sipNumber.Number, // SIP URI
+            //    $"sip:{toNumber}@{sipNumber.Number}", // PROVIDER DOMAIN
+            //    uac,
+            //    _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<SipConversationClient>()
+            //);
 
-            // 3. The CallProcessor will create and manage the session as before...
-            // ...
-            // var sessionResult = await CreateConversationSessionAsync(...);
-            // sessionResult.Data.SetPrimaryClient(sipClient); // pseudo-code
+            //// 3. The CallProcessor will create and manage the session as before...
+            //// ...
+            //// var sessionResult = await CreateConversationSessionAsync(...);
+            //// sessionResult.Data.SetPrimaryClient(sipClient); // pseudo-code
 
-            // 4. Now, tell the client to place the call
-            bool callSucceeded = await sipClient.Call($"sip:{toNumber}@{sipNumber.Number}"); // PROVIDER DOMAIN
+            //// 4. Now, tell the client to place the call
+            //bool callSucceeded = await sipClient.Call($"sip:{toNumber}@{sipNumber.Number}"); // PROVIDER DOMAIN
 
-            if (callSucceeded)
-            {
-                result.Success = true;
-                result.CallId = sipClient.ClientId;
-                //result.Client = sipClient; // Pass the active client back
-            }
-            else
-            {
-                result.Message = "Failed to initiate SIP call.";
-            }
+            //if (callSucceeded)
+            //{
+            //    result.Success = true;
+            //    result.CallId = sipClient.ClientId;
+            //    //result.Client = sipClient; // Pass the active client back
+            //}
+            //else
+            //{
+            //    result.Message = "Failed to initiate SIP call.";
+            //}
 
             return result;
         }

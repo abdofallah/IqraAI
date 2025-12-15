@@ -6,6 +6,7 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
 
@@ -340,7 +341,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 var knowledgeBaseRetrievalManagerCreateResult = await _knowledgeBaseRetrievalManagerFactory.CreateManagerAsync(
                     businessId,
                     knowledgeBaseId,
-                    $"IQRAPPTESTRETRIEVAL{Guid.NewGuid().ToString()}",
+                    $"IQRAPPTESTRETRIEVAL{ObjectId.GenerateNewId().ToString()}",
                     TimeSpan.FromMinutes(5)
                 );
                 if (!knowledgeBaseRetrievalManagerCreateResult.Success)

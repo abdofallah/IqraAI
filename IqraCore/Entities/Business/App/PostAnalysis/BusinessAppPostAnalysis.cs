@@ -1,8 +1,10 @@
-﻿namespace IqraCore.Entities.Business
+﻿using MongoDB.Bson;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppPostAnalysis
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         public BusinessAppPostAnalysisGeneral General { get; set; } = new BusinessAppPostAnalysisGeneral();
         public BusinessAppPostAnalysisConfiguration Configuration { get; set; } = new BusinessAppPostAnalysisConfiguration();

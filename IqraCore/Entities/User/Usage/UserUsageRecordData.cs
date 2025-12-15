@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.User.Usage.Enums;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.User.Usage
@@ -6,7 +7,7 @@ namespace IqraCore.Entities.User.Usage
     public class UserUsageRecordData
     {
         [BsonId]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public string BusinessMasterUserEmail { get; set; } = string.Empty;
         public long BusinessId { get; set; }
         public string PlanId { get; set; } = string.Empty;

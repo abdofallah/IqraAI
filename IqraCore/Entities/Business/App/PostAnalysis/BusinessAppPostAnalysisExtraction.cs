@@ -1,4 +1,6 @@
-﻿namespace IqraCore.Entities.Business
+﻿using MongoDB.Bson;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppPostAnalysisExtraction
     {
@@ -8,7 +10,7 @@
 
     public class BusinessAppPostAnalysisExtractionField
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         public string KeyName { get; set; } = string.Empty;
 
@@ -44,7 +46,7 @@
 
     public class BusinessAppPostAnalysisExtractionConditionalRule
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         public BusinessAppPostAnalysisExtractionFieldCondition Condition { get; set; } = new BusinessAppPostAnalysisExtractionFieldCondition();
         public List<BusinessAppPostAnalysisExtractionField> FieldsToExtract { get; set; } = new List<BusinessAppPostAnalysisExtractionField>();

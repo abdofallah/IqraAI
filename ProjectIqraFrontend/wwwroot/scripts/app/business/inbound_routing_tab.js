@@ -76,7 +76,7 @@ const editRouteNumberSilenceEnd = routeManagerConfigurationTab.find("#editRouteN
 const editRouteNumberTotalCallTime = routeManagerConfigurationTab.find("#editRouteNumberTotalCallTime");
 
 // Agent Tab
-const editChangeRouteAgentModalElement = $("#editChangeRouteAgentModal");
+const editChangeRouteAgentModalElement = routingTab.find("#editChangeRouteAgentModal");
 let editChangeRouteAgentModal = null;
 const routingManagerSelectAgentModalList = editChangeRouteAgentModalElement.find("#routing-manager-select-agent-modal-list");
 const saveChangeRouteAgentButton = editChangeRouteAgentModalElement.find("#saveChangeRouteAgentButton");
@@ -1192,11 +1192,14 @@ function createRouteAgentModalListElement(agentData) {
 
 /** Numbers Tab **/
 function createAddedRouteNumberListElement(numberData) {
-	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
+	const countryData = undefined;
+	if (numberData.provider.value !== NumberProviderEnum.SIP || numberData.isE164Number) {
+        countryData = CountriesList[numberData.countryCode.toUpperCase()]
+    }
 
 	const element = `
 		<tr>
-			<td>${countryData["Alpha-2 code"]} ${countryData.phone_code}</td>
+			<td>${countryData ? `${countryData["Alpha-2 code"]} ${countryData.phone_code}` : '-'}</td>
 			<td>${numberData.number}</td>
 			<td>${numberData.provider.name}</td>
 			<td>
@@ -1211,7 +1214,10 @@ function createAddedRouteNumberListElement(numberData) {
 }
 
 function createRouteNumberModalListElement(numberData) {
-	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
+	var countryData = undefined;
+	if (numberData.provider.value !== NumberProviderEnum.SIP || numberData.isE164Number) {
+		countryData = CountriesList[numberData.countryCode.toUpperCase()]
+	}
 
 	// TODO CHANGE
 	const isNumberActiveInRoute = currentRouteNumbersList.findIndex((number) => number === numberData.id) !== -1;
@@ -1219,7 +1225,7 @@ function createRouteNumberModalListElement(numberData) {
 
 	const element = `
 		<button type="button" class="list-group-item list-group-item-action ${isUsedByOtherRoute || isNumberActiveInRoute ? "disabled" : ""}" button-type="add-number-to-route" number-id="${numberData.id}" number-provider="${numberData.provider.value}">
-			${countryData.phone_code} ${numberData.number} ${isUsedByOtherRoute ? "(Used by another route)" : ""} ${isNumberActiveInRoute ? "(Already added)" : ""}
+			${countryData ? `${countryData.phone_code} ` : ""}${numberData.number} ${isUsedByOtherRoute ? "(Used by another route)" : ""} ${isNumberActiveInRoute ? "(Already added)" : ""}
 		</button>
 	`;
 

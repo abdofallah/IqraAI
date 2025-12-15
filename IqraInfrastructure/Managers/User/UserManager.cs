@@ -15,6 +15,7 @@ using IqraInfrastructure.Repositories.Payment;
 using IqraInfrastructure.Repositories.User;
 using Konscious.Security.Cryptography;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using System.Security.Cryptography;
@@ -162,7 +163,7 @@ namespace IqraInfrastructure.Managers.User
 
         public async Task<string> GenerateResetPasswordToken(string userEmail, string? requestedBy)
         {
-            string token = Guid.NewGuid().ToString();
+            string token = ObjectId.GenerateNewId().ToString();
 
             var resetPassword = new UserResetPassword()
             {
@@ -181,7 +182,7 @@ namespace IqraInfrastructure.Managers.User
 
         public async Task<string> GenerateUserRegisterVerifyToken(string userEmail)
         {
-            string token = Guid.NewGuid().ToString();
+            string token = ObjectId.GenerateNewId().ToString();
 
             var updateDefinition = Builders<UserData>.Update
                 .Set(d => d.VerifyEmailToken, token);
@@ -192,7 +193,7 @@ namespace IqraInfrastructure.Managers.User
 
         public async Task<UserSession?> CreateUserSession(string userEmail)
         {
-            string sessionId = Guid.NewGuid().ToString();
+            string sessionId = ObjectId.GenerateNewId().ToString();
             string authKey = GenerateAuthKey();
 
             UserSession userSession = new UserSession
@@ -307,7 +308,7 @@ namespace IqraInfrastructure.Managers.User
 
         public string GenerateAuthKey()
         {
-            return Guid.NewGuid().ToString();
+            return ObjectId.GenerateNewId().ToString();
         }
 
         public async Task<FunctionReturnResult> GenerateAndSendUserRegisterVerifyEmail(string userEmail)

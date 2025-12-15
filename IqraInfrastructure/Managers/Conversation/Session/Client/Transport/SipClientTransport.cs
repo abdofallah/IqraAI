@@ -31,18 +31,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             _transportCts = CancellationTokenSource.CreateLinkedTokenSource(sessionToken);
 
             // Wire up Signaling Events
-            _userAgent.OnCallHungup += OnCallHungupHandler;
+            _userAgent.OnCallHungup += (d) => Disconnected?.Invoke(this, "Remote Hangup");
 
             // Wire up Media Events
             _rtpSession.OnRtpPacketReceived += OnRtpPacketHandler;
             _rtpSession.OnRtpClosed += OnRtpClosedHandler;
         }
 
-        // --- Event Handlers ---
-
         private void OnCallHungupHandler(SIPDialogue dialogue)
         {
-            _logger.LogInformation("[SipClientTransport] Call hung up by signaling (BYE/CANCEL). Call-ID: {CallID}", _userAgent.CallDescriptor?.CallId);
             Disconnected?.Invoke(this, "Call hung up by remote party.");
         }
 
@@ -62,8 +59,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             }
         }
 
-        // --- IConversationClientTransport Implementation ---
-
         public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
             if (!_rtpSession.IsAudioStarted || _rtpSession.IsClosed)
@@ -72,14 +67,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
                 return Task.CompletedTask;
             }
 
-            // data is PCM (16-bit).
-            // SIPSorcery's SendAudio expects the duration in RTP Timestamp Units.
-            // For G.711 (8kHz) and most audio, this corresponds to the sample count at the clock rate.
+            uint durationRtpUnits = (uint)(sampleRate * frameDurationMs);
 
-            // Formula: Rate * DurationSeconds
-            uint durationRtpUnits = (uint)(sampleRate * frameDurationMs / 1000);
-
-            // SIPSorcery handles the encoding (PCM -> PCMU/PCMA) based on the negotiated codec.
             _rtpSession.SendAudio(durationRtpUnits, data);
 
             return Task.CompletedTask;
@@ -95,8 +84,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
 
         public async Task DisconnectAsync(string reason)
         {
-            if (_userAgent.IsHangingUp) return;
-
             _logger.LogInformation("[SipClientTransport] Disconnecting... Reason: {Reason}", reason);
 
             if (_userAgent.IsCallActive)

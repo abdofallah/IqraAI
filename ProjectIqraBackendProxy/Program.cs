@@ -380,7 +380,8 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<TwilioManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<UserUsageValidationManager>()
+                    sp.GetRequiredService<UserUsageValidationManager>(),
+                    sp.GetRequiredService<UserManager>()
                 );
             });
             builder.Services.AddSingleton<UserManager>((sp) =>
@@ -426,7 +427,8 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<TwilioManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<IHttpClientFactory>(),
-                    sp.GetRequiredService<CampaignActionExecutorService>()
+                    sp.GetRequiredService<CampaignActionExecutorService>(),
+                    sp.GetRequiredService<UserManager>()
                 );
             });
             builder.Services.AddSingleton<CallStatusService>((sp) =>
@@ -472,7 +474,8 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<ServerSelectionManager>(),
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<InboundCallQueueRepository>(),
-                    sp.GetRequiredService<UserUsageValidationManager>()
+                    sp.GetRequiredService<UserUsageValidationManager>(),
+                    sp.GetRequiredService<UserManager>()
                 );
             });
         }

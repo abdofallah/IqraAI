@@ -6,6 +6,7 @@ using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Business;
+using MongoDB.Bson;
 using PhoneNumbers;
 using System.Text.Json;
 
@@ -59,158 +60,228 @@ namespace IqraInfrastructure.Managers.Business
             return await _businessAppRepository.CheckBusinessNumberExistsById(exisitingNumberId, businessId);
         }
 
-        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(JsonDocument? changes, string countryCode, string number, string integrationId, TelephonyProviderEnum provider, string postType, BusinessNumberData? exisitingNumberData, long businessId, RegionManager regionManager)
+        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(JsonDocument changes, string countryCode, string number, string integrationId, TelephonyProviderEnum provider, string postType, BusinessNumberData? existingNumberData, long businessId, RegionManager regionManager, bool isUserAdmin)
         {
             var result = new FunctionReturnResult<BusinessNumberData?>();
 
-            BusinessNumberData newNumberData = new BusinessNumberData()
+            BusinessNumberData newNumberData;
+            switch (provider)
             {
-                Id = postType == "new" ? Guid.NewGuid().ToString() : exisitingNumberData.Id,
-                CountryCode = countryCode,
-                Number = number,
-                Provider = provider,
-                RouteId = postType == "new" ? null : (exisitingNumberData.RouteId ?? null)
-            };
-   
-            // Get Integration Data
-            var integrationData = await _parentBusinessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, integrationId);
-            if (!integrationData.Success)
-            {
-                result.Code = "AddOrUpdateBusinessNumber:" + integrationData.Code;
-                result.Message = integrationData.Message;
-                return result;
+                case TelephonyProviderEnum.SIP:
+                    newNumberData = new BusinessNumberSipData();
+                    break;
+                case TelephonyProviderEnum.Twilio:
+                    newNumberData = new BusinessNumberTwilioData();
+                    break;
+                case TelephonyProviderEnum.ModemTel:
+                    newNumberData = new BusinessNumberModemTelData();
+                    break;
+                default:
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:INVALID_PROVIDER",
+                        "Provider not supported."
+                    );
             }
 
+            newNumberData.Id = postType == "new" ? ObjectId.GenerateNewId().ToString() : existingNumberData!.Id;
+            newNumberData.CountryCode = countryCode;
+            newNumberData.Number = number;
+            newNumberData.Provider = provider;
+            newNumberData.RouteId = postType == "new" ? null : existingNumberData?.RouteId;
             newNumberData.IntegrationId = integrationId;
+
+            // Get Integration Data
+            var integrationDataResult = await _parentBusinessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, newNumberData.IntegrationId);
+            if (!integrationDataResult.Success)
+            {
+                return result.SetFailureResult(
+                    $"AddOrUpdateBusinessNumber:{integrationDataResult.Code}",
+                    integrationDataResult.Message
+                );
+            }
 
             // Get region ID
             if (!changes.RootElement.TryGetProperty("regionId", out var regionIdElement))
             {
-                result.Code = "AddOrUpdateBusinessNumber:1";
-                result.Message = "Region ID not found in changes.";
-                return result;
+                return result.SetFailureResult(
+                    $"AddOrUpdateBusinessNumber:REGION_ID_NOT_FOUND",
+                    "Region ID not found in changes."
+                );
             }
             string? regionId = regionIdElement.GetString();
             if (string.IsNullOrWhiteSpace(regionId))
             {
-                result.Code = "AddOrUpdateBusinessNumber:2";
-                result.Message = "Region ID cannot be empty.";
-                return result;
+                return result.SetFailureResult(
+                    "AddOrUpdateBusinessNumber:REGION_ID_EMPTY",
+                    "Region ID cannot be empty."
+                );
             }
 
             // Validate region exists
             var regionData = await regionManager.GetRegionById(regionId);
             if (regionData == null)
             {
-                result.Code = "AddOrUpdateBusinessNumber:3";
-                result.Message = "Region not found.";
-                return result;
+                return result.SetFailureResult(
+                    "AddOrUpdateBusinessNumber:REGION_NOT_FOUND",
+                    "Region not found."
+                );
             }
             if (regionData.DisabledAt != null)
             {
-                result.Code = "AddOrUpdateBusinessNumber:4";
-                result.Message = "Region is disabled.";
-                return result;
+                return result.SetFailureResult(
+                    "AddOrUpdateBusinessNumber:REGION_DISABLED",
+                    "Region is disabled."
+                );
             }
 
             newNumberData.RegionId = regionId;
 
             // Get Regions's Webhook
-            var getRegionWebhookServer = regionData.Servers.Find(x => x.Type == ServerTypeEnum.Proxy);
-            if (getRegionWebhookServer == null)
+            var getRegionProxyServer = regionData.Servers.Find(x => x.Type == ServerTypeEnum.Proxy && (isUserAdmin || !x.IsDevelopmentServer));
+            if (getRegionProxyServer == null)
             {
-                result.Code = "AddOrUpdateBusinessNumber:5";
-                result.Message = "Region does not have a proxy server.";
-                return result;
+                return result.SetFailureResult(
+                    "AddOrUpdateBusinessNumber:REGION_NO_PROXY_SERVER",
+                    "Region does not have a proxy server."
+                );
             }
+            newNumberData.RegionServerId = getRegionProxyServer.Id;
 
-            newNumberData.RegionServerId = getRegionWebhookServer.Id;
-            if (provider == TelephonyProviderEnum.Unknown)
+            if (provider == TelephonyProviderEnum.SIP)
             {
-                result.Code = "AddOrUpdateBusinessNumber:6";
-                result.Message = "Invalid provider type.";
-                return result;
+                var sipData = (BusinessNumberSipData)newNumberData;
+
+                // E.164 Flag
+                if (
+                    !changes.RootElement.TryGetProperty("isE164Number", out var e164El) ||
+                    (e164El.ValueKind != JsonValueKind.True && e164El.ValueKind != JsonValueKind.False)
+                ) {
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:E164_FLAG_NOT_FOUND",
+                        "E.164 flag not found in changes."
+                    );
+                }
+                sipData.IsE164Number = e164El.GetBoolean();
+
+                // Allowed Source IPs
+                if (
+                    !changes.RootElement.TryGetProperty("allowedSourceIps", out var ipsEl) ||
+                    ipsEl.ValueKind != JsonValueKind.Array
+                ) {
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:ALLOWED_SOURCE_IPS_NOT_FOUND",
+                        "Allowed source IPs not found in changes."
+                    );
+                }
+                var ipsEnum = ipsEl.EnumerateArray();
+                foreach (var ip in ipsEnum)
+                {
+                    if (ip.ValueKind != JsonValueKind.String)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateBusinessNumber:ALLOWED_SOURCE_IPS_INVALID_TYPE",
+                            "Allowed source IPs must be an array of strings."
+                        );
+                    }
+
+                    if (string.IsNullOrWhiteSpace(ip.GetString()))
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateBusinessNumber:ALLOWED_SOURCE_IPS_EMPTY",
+                            "Allowed source IPs cannot be empty."
+                        );
+                    }
+
+                    sipData.AllowedSourceIps.Add(ip.GetString()!);
+                }
             }
-
-            if (provider == TelephonyProviderEnum.ModemTel)
+            else if (provider == TelephonyProviderEnum.ModemTel)
             {
-                newNumberData = new BusinessNumberModemTelData(newNumberData);
+                var modemTelData = (BusinessNumberModemTelData)newNumberData;
 
-                var decryptedKey = _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]);
+                var decryptedKey = _integrationsManager.DecryptField(integrationDataResult.Data.EncryptedFields["apikey"]);
 
-                var phoneNumberData = await _modemTelManager.GetPhoneNumberByCountryCodeAndNumberAsync(decryptedKey, integrationData.Data.Fields["endpoint"], countryCode, number);
+                var phoneNumberData = await _modemTelManager.GetPhoneNumberByCountryCodeAndNumberAsync(decryptedKey, integrationDataResult.Data.Fields["endpoint"], countryCode, number);
                 if (!phoneNumberData.Success)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:" + phoneNumberData.Code;
-                    result.Message = phoneNumberData.Message;
-                    return result;
+                    return result.SetFailureResult(
+                        $"AddOrUpdateBusinessNumber:{phoneNumberData.Code}",
+                        phoneNumberData.Message
+                    );
                 }
 
                 if (!phoneNumberData.Data.IsActive)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:7";
-                    result.Message = "Phone number is not active.";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:PHONE_NUMBER_NOT_ACTIVE",
+                        "Phone number is not active."
+                    );
                 }
 
                 if (!phoneNumberData.Data.CanMakeCalls)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:8";
-                    result.Message = "Phone number cannot make calls.";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:PHONE_NUMBER_CANNOT_MAKE_CALLS",
+                        "Phone number cannot make calls."
+                    );
                 }
 
                 if (!phoneNumberData.Data.CanSendSms)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:9";
-                    result.Message = "Phone number cannot make SMS.";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:PHONE_NUMBER_CANNOT_SEND_SMS",
+                        "Phone number cannot send SMS."
+                    );
                 }
 
-                ((BusinessNumberModemTelData)newNumberData).ModemTelPhoneNumberId = phoneNumberData.Data.Id;
+                modemTelData.ModemTelPhoneNumberId = phoneNumberData.Data.Id;
 
                 // TODO update the webhook url in-app
             }
             else if (provider == TelephonyProviderEnum.Twilio)
             {
-                newNumberData = new BusinessNumberTwilioData(newNumberData);
+                var twilioData = (BusinessNumberTwilioData)newNumberData;
 
-                var accountSid = integrationData.Data.Fields["sid"];
-                var accountAuthToken = _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["auth"]);
+                var accountSid = integrationDataResult.Data.Fields["sid"];
+                var accountAuthToken = _integrationsManager.DecryptField(integrationDataResult.Data.EncryptedFields["auth"]);
 
                 var phoneNumberData = await _twilioManager.GetPhoneNumbersByNumberAsync(accountSid, accountAuthToken, PhoneNumberUtil.GetInstance().GetCountryCodeForRegion(countryCode).ToString(), number);
                 if (!phoneNumberData.Success)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:" + phoneNumberData.Code;
-                    result.Message = phoneNumberData.Message;
-                    return result;
+                    return result.SetFailureResult(
+                        $"AddOrUpdateBusinessNumber:{phoneNumberData.Code}",
+                        phoneNumberData.Message
+                    );
                 }
 
                 if (phoneNumberData.Data.Count == 0)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:7";
-                    result.Message = "Phone number not found.";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:PHONE_NUMBER_NOT_FOUND",
+                        "Phone number not found."
+                    );
                 }
                 var firstNumber = phoneNumberData.Data.FirstOrDefault();
 
                 if (!firstNumber.Capabilities.Voice)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:8";
-                    result.Message = "Phone number cannot make calls.";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:PHONE_NUMBER_CANNOT_MAKE_CALLS",
+                        "Phone number cannot make calls."
+                    );
                 }
 
                 if (!firstNumber.Capabilities.SMS)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:9";
-                    result.Message = "Phone number cannot make SMS.";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:PHONE_NUMBER_CANNOT_SEND_SMS",
+                        "Phone number cannot send SMS."
+                    );
                 }
 
-                ((BusinessNumberTwilioData)newNumberData).TwilioPhoneNumberId = firstNumber.Sid;
+                twilioData.TwilioPhoneNumberId = firstNumber.Sid;
 
-                var regionProxyServerBaseURI = new Uri((getRegionWebhookServer.UseSSL ? "https://" : "http://") + getRegionWebhookServer.Endpoint);
+                var regionProxyServerBaseURI = new Uri((getRegionProxyServer.UseSSL ? "https://" : "http://") + getRegionProxyServer.Endpoint);
                 var regionProxyABSPATH = (regionProxyServerBaseURI.AbsolutePath != "/" ? regionProxyServerBaseURI.AbsolutePath : "");
 
                 string statusCallbackUrl = new Uri(regionProxyServerBaseURI, $"{regionProxyABSPATH}/api/twilio/webhook/voice/status/{businessId}/{newNumberData.Id}").ToString();
@@ -225,15 +296,17 @@ namespace IqraInfrastructure.Managers.Business
             }
             else if (provider == TelephonyProviderEnum.Vonage || provider == TelephonyProviderEnum.Telnyx)
             {
-                result.Code = "AddOrUpdateBusinessNumber:10";
-                result.Message = "Provider type currently not implemented.";
-                return result;
+                return result.SetFailureResult(
+                    "AddOrUpdateBusinessNumber:PROVIDER_TYPE_NOT_IMPLEMENTED",
+                    "Provider type currently not implemented."
+                );
             }
             else
             {
-                result.Code = "AddOrUpdateBusinessNumber:11";
-                result.Message = "Invalid provider type.";
-                return result;
+                return result.SetFailureResult(
+                    "AddOrUpdateBusinessNumber:PROVIDER_TYPE_INVALID",
+                    "Provider type is invalid."
+                );
             }
 
             if (postType == "new")
@@ -241,9 +314,10 @@ namespace IqraInfrastructure.Managers.Business
                 bool addNumberResult = await _businessAppRepository.AddBusinessNumber(businessId, newNumberData);
                 if (!addNumberResult)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:12";
-                    result.Message = $"Failed to add number to business.";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:FAILED_TO_ADD_NUMBER_TO_BUSINESS",
+                        "Failed to add number to business."
+                    );
                 }
             }
             else
@@ -251,15 +325,14 @@ namespace IqraInfrastructure.Managers.Business
                 bool updateNumberResult = await _businessAppRepository.UpdateBusinessNumber(businessId, newNumberData);
                 if (!updateNumberResult)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:13";
-                    result.Message = $"Failed to update number.";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:FAILED_TO_UPDATE_NUMBER_TO_BUSINESS",
+                        "Failed to update number to business."
+                    );
                 }
             }
 
-            result.Success = true;
-            result.Data = newNumberData;
-            return result;
+            return result.SetSuccessResult(newNumberData);
         }
     }
 }

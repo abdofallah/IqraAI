@@ -75,4 +75,8 @@ class BootstrapConfirmDialog {
 	destroy() {
 		$(`#${this.modalId}`).remove();
 	}
+
+	getModalElement() {
+        return document.getElementById(this.modalId);
+    }
 }

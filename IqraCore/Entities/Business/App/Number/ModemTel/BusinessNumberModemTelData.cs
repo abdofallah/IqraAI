@@ -5,7 +5,7 @@ namespace IqraCore.Entities.Business
 {
     public class BusinessNumberModemTelData : BusinessNumberData
     {
-        public BusinessNumberModemTelData(BusinessNumberData data) : base(data)
+        public BusinessNumberModemTelData()
         {
         }
 

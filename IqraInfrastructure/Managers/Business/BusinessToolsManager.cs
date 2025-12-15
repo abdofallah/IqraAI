@@ -7,6 +7,7 @@ using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.AspNetCore.Http;
+using MongoDB.Bson;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -669,7 +670,7 @@ namespace IqraInfrastructure.Managers.Business
             // Saving or Adding to Database
             if (postType == "new")
             {
-                NewBusinessAppToolData.Id = Guid.NewGuid().ToString();
+                NewBusinessAppToolData.Id = ObjectId.GenerateNewId().ToString();
 
                 var addBusinessAppToolResult = await _businessAppRepository.AddBusinessAppTool(businessId, NewBusinessAppToolData);
                 if (!addBusinessAppToolResult)

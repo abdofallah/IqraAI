@@ -1,10 +1,11 @@
 ﻿using IqraCore.Entities.S3Storage;
+using MongoDB.Bson;
 
 namespace IqraCore.Entities.Integrations
 {
     public class IntegrationData
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public DateTime? DisabledAt { get; set; } = null;

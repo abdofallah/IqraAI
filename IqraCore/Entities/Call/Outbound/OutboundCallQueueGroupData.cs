@@ -1,10 +1,11 @@
 ﻿using IqraCore.Models.Business.MakeCalls;
+using MongoDB.Bson;
 
 namespace IqraCore.Entities.Call.Outbound
 {
     public class OutboundCallQueueGroupData
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public long BusinessId { get; set; }
 

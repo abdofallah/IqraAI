@@ -17,6 +17,7 @@ using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
@@ -366,7 +367,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             {
                                 var newCacheEntry = new BusinessAppCacheEmbedding()
                                 {
-                                    Id = Guid.NewGuid().ToString(),
+                                    Id = ObjectId.GenerateNewId().ToString(),
                                     Query = q,
                                     UnusedExpiryHours = agentCacheConfig.EmbeddingsCacheSettings.AutoCacheEmbeddingResponsesDefaultExpiryHours!.Value,
                                     GeneratedCacheLinks = new List<BusinessAppCacheEmbeddingCacheLink>()

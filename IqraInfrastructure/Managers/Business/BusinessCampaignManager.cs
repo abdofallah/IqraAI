@@ -7,6 +7,7 @@ using IqraInfrastructure.Helpers;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
+using MongoDB.Bson;
 using PhoneNumbers;
 using System.Text.Json;
 
@@ -1291,7 +1292,7 @@ namespace IqraInfrastructure.Managers.Business
                 // Save or Update in Database
                 if (postType == "new")
                 {
-                    newBusinessAppCampaignData.Id = Guid.NewGuid().ToString();
+                    newBusinessAppCampaignData.Id = ObjectId.GenerateNewId().ToString();
                     var addResult = await _businessAppRepository.AddBusinessAppTelephonyCampaign(businessId, newBusinessAppCampaignData);
                     if (!addResult)
                     {
@@ -1905,7 +1906,7 @@ namespace IqraInfrastructure.Managers.Business
                 // Save or Update in Database
                 if (postType == "new")
                 {
-                    newBusinessAppCampaignData.Id = Guid.NewGuid().ToString();
+                    newBusinessAppCampaignData.Id = ObjectId.GenerateNewId().ToString();
                     var addResult = await _businessAppRepository.AddBusinessAppWebCampaign(businessId, newBusinessAppCampaignData);
                     if (!addResult)
                     {

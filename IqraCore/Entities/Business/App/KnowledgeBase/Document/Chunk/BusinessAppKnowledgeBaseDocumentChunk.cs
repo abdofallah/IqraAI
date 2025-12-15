@@ -8,7 +8,7 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk
     public abstract class BusinessAppKnowledgeBaseDocumentChunk
     {
         [BsonId]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         public abstract KnowledgeBaseDocumentType Type { get; }
 

@@ -1,5 +1,6 @@
 ﻿using IqraCore.Attributes;
 using IqraCore.Entities.Helper.Call.Queue;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Call.Queue
@@ -8,7 +9,7 @@ namespace IqraCore.Entities.Call.Queue
     public class CallQueueData
     {
         [BsonId]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
          
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? EnqueuedAt { get; set; } = null;

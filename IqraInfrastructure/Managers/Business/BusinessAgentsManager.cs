@@ -15,6 +15,7 @@ using System.Text.Json;
 using IqraInfrastructure.Helpers.Business;
 using IqraCore.Entities.S3Storage;
 using IqraInfrastructure.Repositories.S3Storage;
+using MongoDB.Bson;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -1302,7 +1303,7 @@ namespace IqraInfrastructure.Managers.Business
 
             if (postType == "new")
             {
-                newAgentData.Id = Guid.NewGuid().ToString();
+                newAgentData.Id = ObjectId.GenerateNewId().ToString();
 
                 var addAgentResult = await _businessAppRepository.AddAgent(businessId, newAgentData);
                 if (!addAgentResult)
@@ -1455,7 +1456,7 @@ namespace IqraInfrastructure.Managers.Business
             {
                 if (postType == "new")
                 {
-                    newScriptData.Id = Guid.NewGuid().ToString();
+                    newScriptData.Id = ObjectId.GenerateNewId().ToString();
 
                     var updateResult = await _businessAppRepository.AddAgentScript(businessId, agentId, newScriptData);
                     if (!updateResult)

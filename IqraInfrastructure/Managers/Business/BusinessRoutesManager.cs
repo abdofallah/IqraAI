@@ -5,6 +5,7 @@ using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
+using MongoDB.Bson;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Business
@@ -468,7 +469,7 @@ namespace IqraInfrastructure.Managers.Business
             // Save or Update in Database
             if (postType == "new")
             {
-                newBusinessAppRouteData.Id = Guid.NewGuid().ToString();
+                newBusinessAppRouteData.Id = ObjectId.GenerateNewId().ToString();
                 var addRouteResult = await _businessAppRepository.AddBusinessAppRoute(businessId, newBusinessAppRouteData);
                 if (!addRouteResult)
                 {

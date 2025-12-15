@@ -1,10 +1,11 @@
 ﻿using IqraCore.Attributes;
+using MongoDB.Bson;
 
 namespace IqraCore.Entities.Business
 {
     public class BusinessAppIntegration
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public string Type { get; set; } = string.Empty;
         public string FriendlyName { get; set; } = string.Empty;
         public Dictionary<string, string> Fields { get; set; } = new Dictionary<string, string>();

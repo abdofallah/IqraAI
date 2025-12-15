@@ -10,6 +10,7 @@ using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Repositories.Call;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using nietras.SeparatedValues;
 using PhoneNumbers;
 using System.Globalization;
@@ -375,7 +376,7 @@ namespace IqraInfrastructure.Managers.Business
             // Create Outbound Call Queue Group
             var callQueueGroupData = new OutboundCallQueueGroupData()
             {
-                Id = Guid.NewGuid().ToString(),
+                Id = ObjectId.GenerateNewId().ToString(),
                 CreatedAt = DateTime.UtcNow,
                 BusinessId = businessData.Id,
                 CallRequestData = callConfigData,

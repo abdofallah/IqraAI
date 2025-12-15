@@ -76,7 +76,7 @@ namespace IqraInfrastructure.Managers.RAG.Processors
 
             foreach (var parentText in parentTextChunks)
             {
-                var parentId = Guid.NewGuid().ToString();
+                var parentId = ObjectId.GenerateNewId().ToString();
                 var parentChunk = new ProcessedDocumentChunkModel
                 {
                     Id = parentId,
@@ -93,7 +93,7 @@ namespace IqraInfrastructure.Managers.RAG.Processors
                 {
                     var childChunk = new ProcessedDocumentChunkModel
                     {
-                        Id = Guid.NewGuid().ToString(),
+                        Id = ObjectId.GenerateNewId().ToString(),
                         Text = childText,
                         Hash = GenerateHash(childText),
                         OriginalDocumentId = documentId,

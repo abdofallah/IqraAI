@@ -13,6 +13,7 @@ using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.TTS.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
@@ -337,7 +338,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         cacheRetrievalLatencyStopwatch.Stop();
                         if (cacheResult.IsHit && !cacheResult.AudioData.IsEmpty)
                         {
-                            var cachedSegment = new SpeechSegment(Guid.NewGuid().ToString(), text, cacheResult.AudioData, cacheResult.Duration, turn.Id, true, (int)cacheRetrievalLatencyStopwatch.ElapsedMilliseconds, _masterSampleRate, _masterBitsPerSample);
+                            var cachedSegment = new SpeechSegment(ObjectId.GenerateNewId().ToString(), text, cacheResult.AudioData, cacheResult.Duration, turn.Id, true, (int)cacheRetrievalLatencyStopwatch.ElapsedMilliseconds, _masterSampleRate, _masterBitsPerSample);
                             _speechAudioQueue.Add(cachedSegment, _audioSendingCTS.Token);
                             if (markTurnAsCompleteAfterThis)
                             {
@@ -396,7 +397,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         );
                     }
 
-                    var segment = new SpeechSegment(Guid.NewGuid().ToString(), text, audioData, audioDuration.Value, turn.Id, false, (int)generationLatencyStopwatch.ElapsedMilliseconds, _masterSampleRate, _masterBitsPerSample);
+                    var segment = new SpeechSegment(ObjectId.GenerateNewId().ToString(), text, audioData, audioDuration.Value, turn.Id, false, (int)generationLatencyStopwatch.ElapsedMilliseconds, _masterSampleRate, _masterBitsPerSample);
                     _speechAudioQueue.Add(segment, _audioSendingCTS.Token);
                     if (markTurnAsCompleteAfterThis)
                     {
@@ -647,7 +648,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 var newCacheAudio = new BusinessAppCacheAudio
                 {
-                    Id = Guid.NewGuid().ToString(), // Generate a new unique ID
+                    Id = ObjectId.GenerateNewId().ToString(), // Generate a new unique ID
                     Query = text,
                     UnusedExpiryHours = autoCacheSettings.AutoCacheAudioResponsesDefaultExpiryHours ?? 24
                 };

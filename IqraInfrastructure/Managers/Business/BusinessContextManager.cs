@@ -4,6 +4,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
+using MongoDB.Bson;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -464,7 +465,7 @@ namespace IqraInfrastructure.Managers.Business
             // Save to database
             if (postType == "new")
             {
-                newBusinessContextBranch.Id = Guid.NewGuid().ToString();
+                newBusinessContextBranch.Id = ObjectId.GenerateNewId().ToString();
                 var addResult = await _businessAppRepository.AddBusinessContextBranch(businessId, newBusinessContextBranch);
                 if (!addResult)
                 {
@@ -658,7 +659,7 @@ namespace IqraInfrastructure.Managers.Business
             // Save to database
             if (postType == "new")
             {
-                newBusinessContextService.Id = Guid.NewGuid().ToString();
+                newBusinessContextService.Id = ObjectId.GenerateNewId().ToString();
                 var addResult = await _businessAppRepository.AddBusinessContextService(businessId, newBusinessContextService);
                 if (!addResult)
                 {
@@ -823,7 +824,7 @@ namespace IqraInfrastructure.Managers.Business
             // Save to database
             if (postType == "new")
             {
-                newBusinessContextProduct.Id = Guid.NewGuid().ToString();
+                newBusinessContextProduct.Id = ObjectId.GenerateNewId().ToString();
                 var addResult = await _businessAppRepository.AddBusinessContextProduct(businessId, newBusinessContextProduct);
                 if (!addResult)
                 {

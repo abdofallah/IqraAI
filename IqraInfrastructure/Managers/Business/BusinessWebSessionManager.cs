@@ -11,6 +11,7 @@ using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.WebSession;
+using MongoDB.Bson;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -53,7 +54,7 @@ namespace IqraInfrastructure.Managers.Business
             {
                 WebSessionData newWebSessionData = new WebSessionData()
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    Id = ObjectId.GenerateNewId().ToString(),
                     BusinessId = businessData.Id,
                     CreatedAt = DateTime.UtcNow,
                     Status = WebSessionStatusEnum.Queued,

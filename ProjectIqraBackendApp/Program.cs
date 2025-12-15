@@ -1,5 +1,6 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
+using IqraCore.Entities.Server.Configuration;
 using IqraCore.Interfaces.Server;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
@@ -17,6 +18,7 @@ using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.Server.Metrics;
+using IqraInfrastructure.Managers.SIP;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
@@ -45,6 +47,7 @@ using IqraInfrastructure.Repositories.TTS.Cache;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using Mosaik.Core;
 using System.Net.WebSockets;
@@ -63,7 +66,7 @@ namespace ProjectIqraBackendApp
             var appConfig = builder.Configuration;
             var backendAppConfig = new BackendAppConfig
             {
-                ServerEndpoint = appConfig["Server:Endpoint"],
+                Id = appConfig["Server:Id"],
                 RegionId = appConfig["Server:RegionId"],
                 ExpectedMaxConcurrentCalls = int.Parse(appConfig["Server:ExpectedMaxConcurrentCalls"]),
                 NetworkInterfaceName = appConfig["Server:NetworkInterfaceName"],
@@ -72,13 +75,13 @@ namespace ProjectIqraBackendApp
                 ApiKey = appConfig["Server:ApiKey"],
                 WebhookTokenSecret = appConfig["Server:WebhookTokenSecret"],
             };
-            builder.Services.AddSingleton<BackendAppConfig>(sp =>
-            {
-                return backendAppConfig;
-            });
+            builder.Services.AddSingleton<BackendAppConfig>(backendAppConfig);
 
             // Dependencies
-            RegisterCatalystLanguages();
+            //RegisterCatalystLanguages();
+
+            // Preflight
+            await SetupPreflight(builder, appConfig, backendAppConfig);
 
             // Repositories
             await SetupRepositories(builder, appConfig, backendAppConfig);
@@ -114,6 +117,9 @@ namespace ProjectIqraBackendApp
             });
 
             var app = builder.Build();
+
+            // Postflight: Inject dependecies where needed
+            SetupPostflight(app);
 
             // Initalize All Singleton Services
             InitializeAllSingletonServices(app.Services);
@@ -231,21 +237,52 @@ namespace ProjectIqraBackendApp
             app.Run();
         }
 
-        private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
+        private static async Task SetupPreflight(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
         {
-            // Build Base Services
-            IMongoClient mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
-            RegionRepository regionRepository = new RegionRepository(mongoClient, appConfig["MongoDatabase:AppRepositoryDatabaseName"]);
-            var allRegionServers = await regionRepository.GetRegions();
-            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory(appConfig["Server:RegionId"]);
-            var s3StorageInitResult = await s3StorageClientFactory.Initalize(allRegionServers);
+            // Basic Dependencies required for Preflight
+            var mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
+            builder.Services.AddSingleton<IMongoClient>(mongoClient);
+
+            var regionRepoistory = new RegionRepository(
+                mongoClient,
+                appConfig["MongoDatabase:AppRepositoryDatabaseName"]
+            );
+            builder.Services.AddSingleton<RegionRepository>(regionRepoistory);
+
+            var regionManager = new RegionManager(regionRepoistory);
+            builder.Services.AddSingleton<RegionManager>(regionManager);
+
+            // Build Remaning config from dependencies
+            var regionData = await regionManager.GetRegionById(backendAppConfig.RegionId);
+            if (regionData == null)
+            {
+                throw new Exception("Region not found");
+            }
+            var regionServerData = regionData.Servers.FirstOrDefault(s => s.Id == backendAppConfig.Id);
+            if (regionServerData == null)
+            {
+                throw new Exception("Server not found");
+            }
+            backendAppConfig.ServerEndpoint = regionServerData.Endpoint;
+            backendAppConfig.SIPPort = regionServerData.SIPPort;
+
+            var allRegionsDataResult = await regionManager.GetRegions();
+            if (!allRegionsDataResult.Success)
+            {
+                throw new Exception($"[{allRegionsDataResult.Code}] {allRegionsDataResult.Message}");
+            }
+
+            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory(backendAppConfig.RegionId);
+            builder.Services.AddSingleton<S3StorageClientFactory>(s3StorageClientFactory);
+            var s3StorageInitResult = await s3StorageClientFactory.Initalize(allRegionsDataResult.Data!);
             if (!s3StorageInitResult.Success)
             {
                 throw new Exception($"[{s3StorageInitResult.Code}] {s3StorageInitResult.Message}");
             }
+        }
 
-            builder.Services.AddSingleton<IMongoClient>(mongoClient);
-            builder.Services.AddSingleton<S3StorageClientFactory>(s3StorageClientFactory);
+        private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
+        {
             builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
             {
                 return new MilvusKnowledgeBaseClient(
@@ -270,11 +307,6 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:AppRepositoryDatabaseName"]
                 );
-            });
-
-            builder.Services.AddSingleton<RegionRepository>((sp) => {
-                regionRepository.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
-                return regionRepository;
             });
 
             builder.Services.AddSingleton<LanguagesRepository>((sp) =>
@@ -580,13 +612,6 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<LanguagesRepository>()
                 );
             });
-            builder.Services.AddSingleton<RegionManager>((sp) =>
-            {
-                return new RegionManager(
-                    sp.GetRequiredService<ILogger<RegionManager>>(),
-                    sp.GetRequiredService<RegionRepository>()
-                );
-            });
             builder.Services.AddSingleton<ModemTelManager>((sp) =>
             {
                 return new ModemTelManager(
@@ -884,6 +909,25 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BackendAppConfig>()
                 );
             });
+
+            builder.Services.AddHostedService<SipBackendListenerService>((sp) =>
+            {
+                return new SipBackendListenerService(
+                    sp.GetRequiredService<ILogger<SipBackendListenerService>>(),
+                    backendAppConfig.SIPPort,
+                    sp.GetRequiredService<BackendCallProcessorManager>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>()
+                );
+            });
+        }
+
+        private static void SetupPostflight(WebApplication app)
+        {
+            var regionRepoistory = app.Services.GetRequiredService<RegionRepository>();
+            regionRepoistory.SetLogger(app.Services.GetRequiredService<ILogger<RegionRepository>>());
+
+            var regionManager = app.Services.GetRequiredService<RegionManager>();
+            regionManager.SetLogger(app.Services.GetRequiredService<ILogger<RegionManager>>());
         }
 
         private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)

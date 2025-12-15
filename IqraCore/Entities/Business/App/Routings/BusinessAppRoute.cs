@@ -1,8 +1,10 @@
-﻿namespace IqraCore.Entities.Business
+﻿using MongoDB.Bson;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppRoute 
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public BusinessAppRouteGeneral General { get; set; } = new BusinessAppRouteGeneral();
         public BusinessAppRouteLanguage Language { get; set; } = new BusinessAppRouteLanguage();
         public BusinessAppRouteConfiguration Configuration { get; set; } = new BusinessAppRouteConfiguration();

@@ -3,6 +3,7 @@ using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
+using MongoDB.Bson;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -278,7 +279,7 @@ namespace IqraInfrastructure.Managers.Business
                 // Final DB Operation
                 if (postType == "new")
                 {
-                    newTemplate.Id = Guid.NewGuid().ToString();
+                    newTemplate.Id = ObjectId.GenerateNewId().ToString();
                     var addResult = await _businessAppRepository.AddBusinessAppPostAnalysisTemplate(businessId, newTemplate);
                     if (!addResult)
                     {

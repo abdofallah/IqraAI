@@ -33,6 +33,7 @@ using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 
@@ -100,7 +101,7 @@ namespace IqraInfrastructure.Managers.WebSession
             var result = new FunctionReturnResult<BackendInitiateWebSessionResultModel?>();
 
             // Session State
-            string sessionId = Guid.NewGuid().ToString();
+            string sessionId = ObjectId.GenerateNewId().ToString();
             FunctionReturnResult<ConversationSessionOrchestrator?>? sessionResult = null;
 
             // Call Concurrency State
@@ -514,7 +515,7 @@ namespace IqraInfrastructure.Managers.WebSession
             var result = new FunctionReturnResult<IConversationAgent?>();
 
             // Create agent ID
-            string agentId = $"{Guid.NewGuid().ToString()}";
+            string agentId = $"{ObjectId.GenerateNewId().ToString()}";
             try
             {
                 var AIAgent = new ConversationAIAgent(

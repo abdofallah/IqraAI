@@ -3,6 +3,7 @@ using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Business
@@ -81,7 +82,7 @@ namespace IqraInfrastructure.Managers.Business
             // Saving or Updating
             if (postType == "new")
             {
-                newMessageGroup.Id = Guid.NewGuid().ToString();
+                newMessageGroup.Id = ObjectId.GenerateNewId().ToString();
 
                 var addResult = await _businessAppRepository.AddCacheMessageGroup(businessId, newMessageGroup);
                 if (!addResult)
@@ -167,7 +168,7 @@ namespace IqraInfrastructure.Managers.Business
             // Saving or updating
             if (postType == "new")
             {
-                newMessage.Id = Guid.NewGuid().ToString();
+                newMessage.Id = ObjectId.GenerateNewId().ToString();
 
                 var addResult = await _businessAppRepository.AddMessageToGroup(
                     businessId,
@@ -272,7 +273,7 @@ namespace IqraInfrastructure.Managers.Business
             // Saving or Updating
             if (postType == "new")
             {
-                newAudioGroup.Id = Guid.NewGuid().ToString();
+                newAudioGroup.Id = ObjectId.GenerateNewId().ToString();
 
                 var addResult = await _businessAppRepository.AddCacheAudioGroup(businessId, newAudioGroup);
                 if (!addResult)
@@ -358,7 +359,7 @@ namespace IqraInfrastructure.Managers.Business
             // Saving or updating
             if (postType == "new")
             {
-                newAudio.Id = Guid.NewGuid().ToString();
+                newAudio.Id = ObjectId.GenerateNewId().ToString();
 
                 var addResult = await _businessAppRepository.AddAudioToGroup(
                     businessId,
@@ -410,7 +411,7 @@ namespace IqraInfrastructure.Managers.Business
                 result.Message = "Audio cannot be null.";
                 return result;
             }
-            audio.Id = Guid.NewGuid().ToString();
+            audio.Id = ObjectId.GenerateNewId().ToString();
             var addResult = await _businessAppRepository.AddAudioToGroup(
                 businessId,
                 groupId,
@@ -514,7 +515,7 @@ namespace IqraInfrastructure.Managers.Business
             // Saving or Updating
             if (postType == "new")
             {
-                newEmbeddingGroup.Id = Guid.NewGuid().ToString();
+                newEmbeddingGroup.Id = ObjectId.GenerateNewId().ToString();
 
                 var addResult = await _businessAppRepository.AddCacheEmbeddingGroup(businessId, newEmbeddingGroup);
                 if (!addResult)
@@ -589,7 +590,7 @@ namespace IqraInfrastructure.Managers.Business
             // Saving or updating
             if (postType == "new")
             {
-                newEmbedding.Id = Guid.NewGuid().ToString();
+                newEmbedding.Id = ObjectId.GenerateNewId().ToString();
 
                 var addResult = await _businessAppRepository.AddEmbeddingEntryToGroup(
                     businessId,

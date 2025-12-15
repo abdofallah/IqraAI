@@ -1,4 +1,7 @@
-﻿using IqraInfrastructure.Managers.Call.Backend;
+﻿using IqraCore.Entities.Call.Queue;
+using IqraCore.Entities.Helper.Call.Queue;
+using IqraInfrastructure.Managers.Call.Backend;
+using IqraInfrastructure.Repositories.Call;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SIPSorcery.SIP;
@@ -12,6 +15,7 @@ namespace IqraInfrastructure.Managers.SIP
         private readonly ILogger<SipBackendListenerService> _logger;
         public readonly int _sipPort;
         private readonly BackendCallProcessorManager _backendCallProcessorManager;
+        private readonly InboundCallQueueRepository _inboundCallQueueRepository;
 
         private SIPTransport _sipTransport;
         private bool _isRunning = false;
@@ -19,11 +23,13 @@ namespace IqraInfrastructure.Managers.SIP
         public SipBackendListenerService(
             ILogger<SipBackendListenerService> logger,
             int sipPort,
-            BackendCallProcessorManager backendCallProcessorManager
+            BackendCallProcessorManager backendCallProcessorManager,
+            InboundCallQueueRepository inboundCallQueueRepository
         ) {
             _logger = logger;
             _sipPort = sipPort;
             _backendCallProcessorManager = backendCallProcessorManager;
+            _inboundCallQueueRepository = inboundCallQueueRepository;
         }
 
         public override Task StartAsync(CancellationToken cancellationToken)
@@ -103,6 +109,14 @@ namespace IqraInfrastructure.Managers.SIP
                 if (request.Method == SIPMethodsEnum.INVITE)
                 {
                     await HandleInviteAsync(request);
+                    return;
+                }
+
+                if (request.Method == SIPMethodsEnum.ACK)
+                {
+                    var response = SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.Ok, null);
+                    await _sipTransport.SendResponseAsync(response);
+                    return;
                 }
 
                 // Note: BYE, CANCEL, ACK are handled by the specific SIPServerUserAgent 
@@ -117,37 +131,39 @@ namespace IqraInfrastructure.Managers.SIP
 
         private async Task HandleInviteAsync(SIPRequest request)
         {
+            // if its a new invite
             string callId = request.Header.CallId;
             string didNumber = request.URI.User;
 
-            // Create Transaction & User Agent
-            var uasTransaction = new UASInviteTransaction(_sipTransport, request, null);
-            var serverUserAgent = new SIPServerUserAgent(_sipTransport, null, uasTransaction, null);
+            var userAgent = new SIPUserAgent(_sipTransport, null, true);
+            var uas = userAgent.AcceptCall(request);
 
-            // Send "100 Trying"
-            serverUserAgent.Progress(SIPResponseStatusCodesEnum.Trying, null, null, null, null);
-
-            string? businessIdStr = request.URI.Parameters.Get("X-Business-Id");
-            if (!long.TryParse(businessIdStr, out long businessId))
+            var queueId = request.URI.Parameters.Get("X-CallQueue-Id");
+            if (string.IsNullOrEmpty(queueId))
             {
-                serverUserAgent.Reject(SIPResponseStatusCodesEnum.NotFound, "Unable to parse business id to long", null);
+                uas.Reject(SIPResponseStatusCodesEnum.NotFound, "Call queue id in request empty or not found", null);
                 return;
             }
 
-            string? phoneId = request.URI.Parameters.Get("X-Phone-Id");
-            if (string.IsNullOrEmpty(phoneId))
+            var inboundQueueData = await _inboundCallQueueRepository.GetInboundCallQueueByIdAsync(queueId);
+            if (inboundQueueData == null)
             {
-                serverUserAgent.Reject(SIPResponseStatusCodesEnum.NotFound, "Phone id in request empty or not found", null);
+                uas.Reject(SIPResponseStatusCodesEnum.NotFound, "Call queue not found", null);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(inboundQueueData.SessionId))
+            {
+                // most likely a re-invite
+                // just ack/ok for now, later we can update the userAgent/uas for the client
+                await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.Ok, null));
                 return;
             }
 
             // Hand off to Processor Manager
-            var result = await _backendCallProcessorManager.ProcessInboundSipCallAsync(serverUserAgent, businessId, phoneId);
+            var result = await _backendCallProcessorManager.ProcessInboundCallAsync(queueId, inboundQueueData, userAgent, uas);
             if (!result.Success)
             {
-                _logger.LogWarning("Rejecting SIP Call {CallId}: [{Code}] {Message}", callId, result.Code, result.Message);
-
-                // Map internal errors to SIP Response Codes
                 var sipResponseCode = SIPResponseStatusCodesEnum.ServiceUnavailable;
                 if (result.Code.Contains("NOT_FOUND") || result.Code.Contains("NO_ROUTE"))
                 {
@@ -158,8 +174,20 @@ namespace IqraInfrastructure.Managers.SIP
                     sipResponseCode = SIPResponseStatusCodesEnum.BusyHere;
                 }
 
-                // Reject the call
-                serverUserAgent.Reject(sipResponseCode, null, null);
+                if (!string.IsNullOrWhiteSpace(queueId))
+                {
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(queueId, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"[{result.Code}] {result.Message}", Type = CallQueueLogTypeEnum.Error });
+                }
+
+                uas.Reject(sipResponseCode, result.Message, null);
+                return;
+            }
+
+            var finalResult = await _backendCallProcessorManager.AnswerPrimarySIPClientAndNotifyStarted(result.Data!.SessionId);
+            if (!finalResult.Success)
+            {
+                uas.Reject(SIPResponseStatusCodesEnum.ServiceUnavailable, $"[{finalResult.Code}] {finalResult.Message}", null);
+                return;
             }
         }
     }

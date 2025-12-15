@@ -79,6 +79,26 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             }
         }
 
+        public void UpdateAudioConfiguration(AudioEncodingTypeEnum inputEncoding, int inputRate, int inputBits)
+        {
+            // 1. Update Config Object
+            ClientConfig.AudioInputConfiguration.AudioEncodingType = inputEncoding;
+            ClientConfig.AudioInputConfiguration.SampleRate = inputRate;
+            ClientConfig.AudioInputConfiguration.BitsPerSample = inputBits;
+
+            ClientConfig.AudioOutputConfiguration.AudioEncodingType = inputEncoding;
+            ClientConfig.AudioOutputConfiguration.SampleRate = inputRate;
+            ClientConfig.AudioOutputConfiguration.BitsPerSample = inputBits;
+
+            // 2. Re-Initialize Decoder
+            _audioDecoder?.Dispose();
+            InitializeDecoder();
+
+            // 3. Re-Initialize Encoder
+            _audioEncoder?.Dispose();
+            InitializeEncoder();
+        }
+
         /// <summary>
         /// The main entry point for audio coming FROM the AI Agent to be sent TO the User.
         /// This method handles the "Edge Encoding" logic.
@@ -89,6 +109,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
 
             bool isDeferredTransport = false;
             bool isDeferredActivated = false;
+
             if (Transport is DeferredClientTransport deferredClientTransport)
             {
                 isDeferredTransport = true;
@@ -103,6 +124,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             byte[] dataToSend;
             int dataSampleRate;
             int dataBitsPerSample;
+            int frameDurationMs = 20; // from session mixer, find a better way to access it
+
+            if (ClientConfig.AudioOutputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.OPUS)
+            {
+                frameDurationMs = ClientConfig.AudioOutputConfiguration.FrameDurationMs;
+            }
+
             if (
                 (
                     ClientConfig.AudioOutputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.PCM &&
@@ -132,7 +160,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
 
             if (dataToSend.Length > 0)
             {
-                await SendAudioAsync(dataToSend, dataSampleRate, dataBitsPerSample, ClientConfig.AudioOutputConfiguration.FrameDurationMs, CancellationToken.None);
+                await SendAudioAsync(dataToSend, dataSampleRate, dataBitsPerSample, frameDurationMs, CancellationToken.None);
             }
         }
 

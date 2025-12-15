@@ -5,7 +5,7 @@ namespace IqraCore.Entities.Business
 {
     public class BusinessNumberTwilioData : BusinessNumberData
     {
-        public BusinessNumberTwilioData(BusinessNumberData data) : base(data)
+        public BusinessNumberTwilioData()
         {
         }
 

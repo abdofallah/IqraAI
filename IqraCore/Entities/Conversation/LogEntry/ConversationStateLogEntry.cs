@@ -1,10 +1,11 @@
 ﻿using IqraCore.Entities.Conversation.Logs.Enums;
+using MongoDB.Bson;
 
 namespace IqraCore.Entities.Conversation.Logs
 {
     public class ConversationStateLogEntry
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         public ConversationStateLogSenderTypeEnum SenderType { get; set; } = ConversationStateLogSenderTypeEnum.Unknown;
 

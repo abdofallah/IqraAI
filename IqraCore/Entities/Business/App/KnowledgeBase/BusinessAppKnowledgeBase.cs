@@ -7,7 +7,7 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase
     public class BusinessAppKnowledgeBase
     {
         [BsonId]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         public BusinessAppKnowledgeBaseGeneral General { get; set; } = new BusinessAppKnowledgeBaseGeneral();
         public BusinessAppKnowledgeBaseConfiguration Configuration { get; set; } = new BusinessAppKnowledgeBaseConfiguration();

@@ -2,6 +2,7 @@
 {
     public class BackendAppConfig
     {
+        // Static Config
         // General
         public string Id { get; set; } = string.Empty;
         public string RegionId { get; set; } = string.Empty;
@@ -17,5 +18,10 @@
         // Security/Api
         public string ApiKey { get; set; }
         public string WebhookTokenSecret { get; set; }
+
+
+        // Dynamic Config
+        public string ServerEndpoint { get; set; } = null!;
+        public int SIPPort { get; set; }
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace IqraCore.Entities.Business
+﻿using MongoDB.Bson;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppPostAnalysisTagging
     {
@@ -8,7 +10,7 @@
 
     public class BusinessAppPostAnalysisTagDefinition
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
 

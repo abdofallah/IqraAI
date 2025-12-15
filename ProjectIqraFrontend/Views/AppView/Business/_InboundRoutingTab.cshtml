@@ -465,6 +465,9 @@
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="routing-manager-assign-number-modal-telnyx-tab" number-provider="4" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-telnyx" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-telnyx" aria-selected="true">Telnyx</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="routing-manager-assign-number-modal-sip-tab" number-provider="10" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-sip" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-sip" aria-selected="true">SIP</button>
+                            </li>
                         </ul>
                     </div>
                     <div class="tab-content w-100 mb-3" id="routing-manager-assign-number-modal-tabContent">
@@ -502,12 +505,48 @@
                                 <!-- Dynamically Generated -->
                             </div>
                         </div>
+
+                        <!-- SIP -->
+                        <div class="tab-pane fade" id="routing-manager-assign-number-modal-sip" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-sip-tab">
+                            <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="10">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <button type="button" class="btn btn-primary" id="saveChangeRouteNumberButton" disabled>
                         Select Number
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Select Route Agent Modal -->
+    <div class="modal fade" id="editChangeRouteAgentModal" tabindex="-1" aria-labelledby="editChangeRouteAgentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="editChangeRouteAgentModalLabel">Select Agent</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="inputRouteManagerSelectAgent" placeholder="Agent Name">
+                        <button class="btn btn-primary" id="searchRouteManagerSelectAgentList">
+                            <i class="fa-regular fa-magnifying-glass"></i>
+                        </button>
+                    </div>
+                    <div class="list-group" id="routing-manager-select-agent-modal-list">
+                        <!-- Dynamically Generated -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveChangeRouteAgentButton" disabled>
+                        Select Agent
                     </button>
                 </div>
             </div>

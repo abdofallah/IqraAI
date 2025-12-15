@@ -1,96 +1,134 @@
 ﻿using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helper.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
+using Jint.Runtime;
 using Microsoft.Extensions.Logging;
 using SIPSorcery.Media;
-using SIPSorcery.Net;
 using SIPSorcery.SIP;
 using SIPSorcery.SIP.App;
 using SIPSorceryMedia.Abstractions;
+using System.Net;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 {
     public class SipConversationClient : BaseTelephonyConversationClient
     {
-        private readonly SIPServerUserAgent _uas; // The incoming call transaction
+        private readonly SIPUserAgent _userAgent;
+        private readonly SIPServerUserAgent? _uas;
         private VoIPMediaSession? _rtpSession;
         private readonly ILogger _logger;
 
         public SipConversationClient(
             string clientId,
             ConversationClientConfiguration clientConfig,
-            string ourSipUri,
-            string customerSipUri,
-            SIPServerUserAgent uas, // Passed from Listener -> Processor -> Here
-            DeferredClientTransport deferredTransport, // We pass the deferred transport to base
+            string telephonyPhoneNumber,
+            string telephonyProviderPhoneNumberId,
+            string customerPhoneNumber,
+            SIPUserAgent userAgent,
+            SIPServerUserAgent uas,
+            DeferredClientTransport deferredTransport,
             ILogger<SipConversationClient> logger
-            ) : base(clientId, clientConfig, ourSipUri, ourSipUri, customerSipUri, deferredTransport, logger)
+            ) : base(clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, deferredTransport, logger)
         {
+            _userAgent = userAgent;
             _uas = uas;
             _logger = logger;
             ClientTelephonyProviderType = TelephonyProviderEnum.SIP;
         }
 
-        // Called by BackendCallProcessorManager to accept the call
         public async Task Answer()
         {
-            _logger.LogInformation("[SipConversationClient] Preparing to answer call for ClientID: {ClientId}", this.ClientId);
+            if (_uas == null) throw new InvalidOperationException("Cannot Answer: No Inbound Transaction (UAS) provided.");
 
-            // 1. Create Media Session (RTP)
-            // We enable standard telephony codecs.
+            var encoder = new AudioEncoder(true, true);
             var mediaEndpoints = new MediaEndPoints
             {
-                AudioSource = new AudioExtrasSource(new AudioEncoder(), new AudioSourceOptions { AudioSource = AudioSourcesEnum.External })
+                AudioSource = new AudioExtrasSource(
+                    encoder,
+                    new AudioSourceOptions {
+                        AudioSource = AudioSourcesEnum.None
+                    }
+                )
             };
 
-            // Allow G.711 (ULAW/ALAW) and G.722. Opus is optional for SIP but good to have.
-            // Note: SIPSorcery defaults usually include PCMU/PCMA/G722.
             _rtpSession = new VoIPMediaSession(mediaEndpoints);
-            _rtpSession.AcceptRtpFromAny = true; // Required for some NAT scenarios
+            _rtpSession.AcceptRtpFromAny = true;
 
-            // 2. Initialize Real Transport
-            var realTransport = new SipClientTransport(_uas, _rtpSession, _logger, CancellationToken.None);
-
-            // 3. Activate Deferred Transport
-            // This connects the BaseClient (Mixer Output) to the SipClientTransport
+            var realTransport = new SipClientTransport(_userAgent, _rtpSession, _logger, CancellationToken.None);
             if (Transport is DeferredClientTransport deferred)
             {
                 deferred.Activate(realTransport);
             }
 
-            // 4. Negotiate SDP
-            // SIPSorcery checks the Offer in _uas and generates a compatible Answer
-            var answerSdp = _rtpSession.CreateAnswer(null);
+            await _userAgent.Answer(_uas, _rtpSession, new string[] { "X-TEST-ANSWER: TRUE" });
 
-            // 5. Send 200 OK
-            _logger.LogInformation("[SipConversationClient] Sending 200 OK...");
-            _uas.Answer(SDP.SDP_MIME_CONTENTTYPE, answerSdp.ToString(), null, SIPDialogueTransferModesEnum.NotAllowed);
+            var selectedFormat = _rtpSession.AudioStream.RemoteTrack.Capabilities.FirstOrDefault().ToAudioFormat();
 
-            // 6. Start RTP Flow
+            var (encoding, rate, bits) = MapSipCodecToIqra(selectedFormat);
+
+            UpdateAudioConfiguration(encoding, rate, bits);
+
+            // 5. Start RTP Flow
             await _rtpSession.Start();
+        }
 
-            _logger.LogInformation("[SipConversationClient] Call Answered. RTP Started.");
+        private (AudioEncodingTypeEnum, int, int) MapSipCodecToIqra(AudioFormat format)
+        {
+            switch (format.FormatName.ToLower())
+            {
+                case "pcm":
+                case "lpcm":
+                case "l16":
+                    return (AudioEncodingTypeEnum.PCM, format.ClockRate, 16);
+                case "pcmu":
+                case "mulaw":
+                    return (AudioEncodingTypeEnum.MULAW, 8000, 8);
+                case "alaw":
+                case "pcma":
+                    return (AudioEncodingTypeEnum.ALAW, 8000, 8);
+                case "g.722":
+                case "g722":
+                    return (AudioEncodingTypeEnum.G722, 16000, 16);
+                case "opus":
+                    return (AudioEncodingTypeEnum.OPUS, format.ClockRate, 16);
+                case "g.729":
+                case "g729":
+                    return (AudioEncodingTypeEnum.G729, 8000, 8);
+                default:
+                    _logger.LogWarning("Unknown SIP Codec {Codec}, defaulting to MULAW", format.Codec);
+                    return (AudioEncodingTypeEnum.MULAW, 8000, 8);
+            }
         }
 
         // --- SIP Specifics ---
-
         public override Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken)
         {
-            // SIPSorcery handles DTMF via RFC2833 (RTP Events) if negotiated.
             foreach (var digit in digits)
             {
-                // 0-9, *, # are standard.
-                // Duration usually 100-250ms
                 if (_rtpSession != null && _rtpSession.IsAudioStarted)
                 {
                     // Convert char to byte event ID (0-9, 10=*, 11=#)
-                    // _rtpSession.SendDtmf((byte)digit); // Requires helper mapping
+                    _rtpSession.SendDtmf((byte)digit, cancellationToken); // Requires helper mapping
                     // Implementation skipped for brevity, but this is where it goes.
                 }
             }
             return Task.CompletedTask;
         }
 
-        // Base methods (SendText, etc) are handled by the Transport implementation
+        protected override void OnTransportBinaryMessageReceived(object sender, byte[] data)
+        {
+            RaiseAudioReceived(data);
+        }
+
+        protected override void OnTransportTextMessageReceived(object sender, string message)
+        {
+            RaiseTextReceived(message);
+        }
+
+        public override Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
+        {
+            return Transport.SendBinaryAsync(audioData, sampleRate, bitsPerSample, frameDurationMs, cancellationToken);
+        }
     }
 }

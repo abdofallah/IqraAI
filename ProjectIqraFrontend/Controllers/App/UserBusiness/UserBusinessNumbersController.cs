@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using PhoneNumbers;
 using System.Text.Json;
+using Twilio.TwiML.Voice;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
@@ -156,149 +157,199 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 return result;
             }
 
+            // Get Provider First
+            if (
+                !changes.RootElement.TryGetProperty("provider", out var providerElement) ||
+                !providerElement.TryGetInt32(out var providerInt) ||
+                !Enum.IsDefined(typeof(TelephonyProviderEnum), providerInt)
+            ) {
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:MISSING_PROVIDER",
+                    "Provider not found or invalid."
+                );
+            }
+            var provider = (TelephonyProviderEnum)providerInt;
+
             // Get Integration Id
             if (!changes.RootElement.TryGetProperty("integrationId", out var integrationIdElement))
             {
-                result.Code = "SaveBusinessNumber:12";
-                result.Message = "Integration ID not found in changes.";
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:MISSING_INTEGRATION",
+                    "Integration ID not found in changes."
+                );
             }
             string? integrationId = integrationIdElement.GetString();
             if (string.IsNullOrWhiteSpace(integrationId))
             {
-                result.Code = "SaveBusinessNumber:13";
-                result.Message = "Integration ID cannot be empty.";
-                return result;
-            }
-
-            // Get country code
-            if (!changes.RootElement.TryGetProperty("countryCode", out var countryCodeElement))
-            {
-                result.Code = "SaveBusinessNumber:14";
-                result.Message = "Country code not found in changes.";
-                return result;
-            }
-            string? countryCode = countryCodeElement.GetString();
-            if (string.IsNullOrWhiteSpace(countryCode))
-            {
-                result.Code = "SaveBusinessNumber:15";
-                result.Message = "Country code cannot be empty.";
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:EMPTY_INTEGRATION",
+                    "Integration ID cannot be empty."
+                );
             }
 
             // Get number
             if (!changes.RootElement.TryGetProperty("number", out var numberElement))
             {
-                result.Code = "SaveBusinessNumber:16";
-                result.Message = "Number not found in changes.";
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:MISSING_NUMBER",
+                    "Number not found in changes."
+                );
             }
             string? number = numberElement.GetString();
             if (string.IsNullOrWhiteSpace(number))
             {
-                result.Code = "SaveBusinessNumber:17";
-                result.Message = "Number cannot be empty.";
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:EMPTY_NUMBER",
+                    "Number cannot be empty."
+                );
             }
 
-            // Validate Number based on number and country code
-            PhoneNumber parsedPhoneNumber = PhoneNumberUtil.GetInstance().Parse(number, countryCode);
-            if (!PhoneNumberUtil.GetInstance().IsValidNumber(parsedPhoneNumber))
+            // Country Code
+            string countryCode = "";
+            bool isE164 = false;
+            if (provider == TelephonyProviderEnum.SIP)
             {
-                result.Code = "SaveBusinessNumber:16";
-                result.Message = "Number validation failed for specified country";
-                return result;
+                // Check IsE164 flag
+                if (
+                    !changes.RootElement.TryGetProperty("isE164Number", out var isE164El) ||
+                    (isE164El.ValueKind != JsonValueKind.True && isE164El.ValueKind != JsonValueKind.False)
+                ) {
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:MISSING_IS_E164",
+                        "IsE164 flag not found."
+                    );
+                }
+                isE164 = isE164El.GetBoolean();
+
+                if (isE164)
+                {
+                    if (
+                        !changes.RootElement.TryGetProperty("countryCode", out var countryCodeElement) ||
+                        countryCodeElement.ValueKind != JsonValueKind.String
+                    ) {
+                        return result.SetFailureResult(
+                            "SaveBusinessNumber:MISSING_COUNTRY",
+                            "Country code not found for E164 sip number in changes."
+                        );
+                    }
+
+                    countryCode = countryCodeElement.GetString()!;
+                }
+            }
+            else
+            {
+                // Get country code
+                if (
+                    !changes.RootElement.TryGetProperty("countryCode", out var countryCodeElement) ||
+                    countryCodeElement.ValueKind != JsonValueKind.String
+                ) {
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:MISSING_COUNTRY",
+                        "Country code not found in changes."
+                    );
+                }
+
+                countryCode = countryCodeElement.GetString()!;
+                isE164 = true;
             }
 
-            // Provider Type
-            TelephonyProviderEnum provider = TelephonyProviderEnum.Unknown;
-            if (!changes.RootElement.TryGetProperty("provider", out var providerElement))
+            // Validate Number
+            if (isE164)
             {
-                result.Code = "SaveBusinessNumber:17";
-                result.Message = "Provider not found in changes.";
-                return result;
+                try
+                {
+                    PhoneNumber parsedPhoneNumber = PhoneNumberUtil.GetInstance().Parse(number, countryCode);
+                    if (!PhoneNumberUtil.GetInstance().IsValidNumber(parsedPhoneNumber))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessNumber:INVALID_NUMBER_FORMAT",
+                            "Number validation failed for specified country."
+                        );
+                    }
+                }
+                catch
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:INVALID_NUMBER_PARSE_EXCEPTION",
+                        "Could not parse phone number."
+                    );
+                }
             }
-            if (!providerElement.TryGetInt32(out var providerInt))
-            {
-                result.Code = "SaveBusinessNumber:18";
-                result.Message = "Invalid provider type.";
-                return result;
-            }
-            if (!Enum.IsDefined(typeof(TelephonyProviderEnum), providerInt))
-            {
-                result.Code = "SaveBusinessNumber:19";
-                result.Message = "Invalid provider type.";
-                return result;
-            }
-            provider = (TelephonyProviderEnum)providerInt;
 
             BusinessNumberData? exisitingNumberData = null;
             if (postType == "new")
             {
                 if (businessResult.Data.Permission.Numbers.DisabledAddingAt != null)
                 {
-                    result.Code = "SaveBusinessAgent:20";
-                    result.Message = "Business does not have permission to add new numbers";
-
+                    var message = "Business does not have permission to add new numbers";
                     if (!string.IsNullOrEmpty(businessResult.Data.Permission.Numbers.DisabledAddingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Numbers.DisabledAddingReason;
+                        message += ": " + businessResult.Data.Permission.Numbers.DisabledAddingReason;
                     }
 
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:DISABLED_ADDING",
+                        message
+                    );
                 }
 
                 bool numberExists = await _businessManager.GetNumberManager().CheckBusinessNumberExistsByNumber(countryCode, number, businessId);
                 if (numberExists)
                 {
-                    result.Code = "SaveBusinessNumber:21";
-                    result.Message = "Number already exists for business with same country code and number";
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:NUMBER_EXISTS",
+                        "Number already exists for business with same country code and number"
+                    );
                 }
             }
             else
             {
                 if (businessResult.Data.Permission.Numbers.DisabledEditingAt != null)
                 {
-                    result.Code = "SaveBusinessAgent:22";
-                    result.Message = "Business does not have permission to edit numbers";
-
+                    var message = "Business does not have permission to edit numbers";
                     if (!string.IsNullOrEmpty(businessResult.Data.Permission.Numbers.DisabledEditingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Numbers.DisabledEditingReason;
+                        message += ": " + businessResult.Data.Permission.Numbers.DisabledEditingReason;
                     }
 
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:DISABLED_EDITING",
+                        message
+                    );
                 }
 
                 if (!formData.TryGetValue("numberId", out StringValues numberIdValue))
                 {
-                    result.Code = "SaveBusinessNumber:23";
-                    result.Message = "Missing number id";
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:MISSING_NUMBER_ID",
+                        "Missing number id"
+                    );
                 }
 
                 string? exisitingNumberId = numberIdValue.ToString();
                 if (string.IsNullOrWhiteSpace(exisitingNumberId))
                 {
-                    result.Code = "SaveBusinessNumber:24";
-                    result.Message = "Invalid number id";
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:INVALID_NUMBER_ID",
+                        "Invalid number id"
+                    );
                 }
 
                 exisitingNumberData = await _businessManager.GetNumberManager().GetBusinessNumberById(businessId, exisitingNumberId);
                 if (exisitingNumberData == null)
                 {
-                    result.Code = "SaveBusinessNumber:25";
-                    result.Message = "Number not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:NUMBER_NOT_FOUND",
+                        "Number not found"
+                    );
                 }
 
-                if (exisitingNumberData.CountryCode != countryCode || exisitingNumberData.Number != number || exisitingNumberData.Provider != provider || exisitingNumberData.IntegrationId != integrationId)
+                if (exisitingNumberData.CountryCode != countryCode || exisitingNumberData.Number != number || exisitingNumberData.Provider != provider)
                 {
-                    result.Code = "SaveBusinessNumber:26";
-                    result.Message = "You are not allowed to edit a number's country code or number or provider or integration";
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:NOT_ALLOWED_TO_EDIT",
+                        "You are not allowed to edit a number's country code or number or provider or integration"
+                    );
                 }
             }
 
@@ -311,19 +362,19 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 postType,
                 exisitingNumberData,
                 businessId,
-                _regionManager
+                _regionManager,
+                user.Permission.IsAdmin
             );
 
             if (!saveResult.Success)
             {
-                result.Code = "SaveBusinessNumber:" + saveResult.Code;
-                result.Message = saveResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    $"SaveBusinessNumber:{saveResult.Code}",
+                    result.Message
+                );
             }
 
-            result.Success = true;
-            result.Data = saveResult.Data;
-            return result;
+            return result.SetSuccessResult(saveResult.Data);
         }
     }
 }

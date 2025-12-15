@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.WebSession.Enum;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.WebSession
@@ -6,7 +7,7 @@ namespace IqraCore.Entities.WebSession
     public class WebSessionData
     {
         [BsonId]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public WebSessionStatusEnum Status { get; set; } = WebSessionStatusEnum.Queued;

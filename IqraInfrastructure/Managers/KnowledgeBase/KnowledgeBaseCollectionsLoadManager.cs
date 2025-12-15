@@ -2,6 +2,7 @@
 using IqraInfrastructure.Repositories.Redis;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using StackExchange.Redis;
 
 namespace IqraInfrastructure.Managers.KnowledgeBase
@@ -117,7 +118,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
             while (!stoppingToken.IsCancellationRequested)
             {
                 var db = _redisFactory.GetDatabase();
-                var lockToken = Guid.NewGuid().ToString();
+                var lockToken = ObjectId.GenerateNewId().ToString();
 
                 // Acquire a global lock to ensure only one janitor runs across all backend instances.
                 if (await db.LockTakeAsync(JanitorLockKey, lockToken, _lockTimeout))

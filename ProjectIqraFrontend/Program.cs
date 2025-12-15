@@ -661,10 +661,13 @@ namespace ProjectIqraFrontend
             });
             builder.Services.AddSingleton<RegionManager>((sp) =>
             {
-                return new RegionManager(
-                    sp.GetRequiredService<ILogger<RegionManager>>(),
+                var regionManager = new RegionManager(
                     sp.GetRequiredService<RegionRepository>()
                 );
+
+                regionManager.SetLogger(sp.GetRequiredService<ILogger<RegionManager>>());
+
+                return regionManager;
             });
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>
             {

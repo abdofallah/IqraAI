@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Server;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Region
@@ -7,7 +8,7 @@ namespace IqraCore.Entities.Region
     public class RegionServerData
     {
         [BsonId]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public string Endpoint { get; set; } = string.Empty;
         public bool UseSSL { get; set; } = true;
         public string APIKey { get; set; } = string.Empty;

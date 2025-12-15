@@ -13,7 +13,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
 
         // Configuration
         private AudioFormatDetails _masterFormat;
-        private const int FRAME_DURATION_MS = 20;
+        private const int FRAME_DURATION_MS = 20; // this is hard coded in BaseConversationClient as well absed on this value so careful
         private int _bytesPerFrame;
 
         // State

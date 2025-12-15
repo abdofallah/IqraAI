@@ -5,6 +5,7 @@ using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
+using MongoDB.Bson;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -79,7 +80,7 @@ namespace IqraInfrastructure.Managers.Business
                 // Create new integration object
                 var newIntegration = new BusinessAppIntegration
                 {
-                    Id = postType == "new" ? Guid.NewGuid().ToString() : businessIntegrationData!.Id,
+                    Id = postType == "new" ? ObjectId.GenerateNewId().ToString() : businessIntegrationData!.Id,
                     Type = integrationTypeData.Id
                 };
 

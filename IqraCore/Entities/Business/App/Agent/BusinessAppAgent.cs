@@ -1,8 +1,10 @@
-﻿namespace IqraCore.Entities.Business
+﻿using MongoDB.Bson;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppAgent
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public BusinessAppAgentGeneral General { get; set; } = new BusinessAppAgentGeneral();
         public BusinessAppAgentContext Context { get; set; } = new BusinessAppAgentContext();
         public BusinessAppAgentPersonality Personality { get; set; } = new BusinessAppAgentPersonality();
