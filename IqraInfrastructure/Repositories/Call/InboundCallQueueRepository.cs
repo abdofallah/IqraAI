@@ -277,13 +277,18 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task UpdateInboundCallQueueProcessingBackendServerIdAsync(string queueId, string? serverId)
+        public async Task UpdateInboundCallQueueProcessingBackendServerIdAsync(string queueId, string? serverId, CallQueueStatusEnum? status = null)
         {
             try
             {
                 var filter = Builders<InboundCallQueueData>.Filter.Eq(c => c.Id, queueId);
                 var update = Builders<InboundCallQueueData>.Update
                     .Set(c => c.ProcessingBackendServerId, serverId);
+
+                if (status != null)
+                {
+                    update = update.Set(c => c.Status, status);
+                }
 
                 await _inboundCallQueueCollection.UpdateOneAsync(filter, update);
             }

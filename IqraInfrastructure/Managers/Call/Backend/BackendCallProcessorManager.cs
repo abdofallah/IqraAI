@@ -664,13 +664,11 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         await sipClient.Answer();
                     }
 
-                    //var notifyResult = await sessionManager.NotifyConversationStarted();
-                    //if (!notifyResult.Success)
-                    //{
-                    //    return result.SetFailureResult($"AnswerAndNotifyStartedSIPClient:{notifyResult.Code}", notifyResult.Message);
-                    //}
-
-                    _ = await sessionManager.NotifyConversationStarted();
+                    var notifyResult = await sessionManager.NotifyConversationStarted(false);
+                    if (!notifyResult.Success)
+                    {
+                        return result.SetFailureResult($"AnswerAndNotifyStartedSIPClient:{notifyResult.Code}", notifyResult.Message);
+                    }
 
                     return result.SetSuccessResult();
                 }
@@ -834,7 +832,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     BitsPerSample = sessionBitPerSample,
                     Channels = sessionChannels,
                     SampleRate = sessionSampleRate,
-                    FrameDurationMs = 60,
+                    FrameDurationMs = 30, // for opus
                 }
             };
 
@@ -987,6 +985,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         var deferredTransport = new DeferredClientTransport(sessionManager.SessionLoggerFactory.CreateLogger<DeferredClientTransport>());
                         return result.SetSuccessResult(
                             new ModemTelConversationClient(
+                                sessionManager.SessionId,
                                 clientId,
                                 clientConfig,
                                 phoneNumberData,
@@ -1007,6 +1006,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         var deferredTransport = new DeferredClientTransport(sessionManager.SessionLoggerFactory.CreateLogger<DeferredClientTransport>());
                         return result.SetSuccessResult(
                             new TwilioConversationClient(
+                                sessionManager.SessionId,
                                 clientId,
                                 clientConfig,
                                 phoneNumberData,
@@ -1032,6 +1032,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         var deferredTransport = new DeferredClientTransport(sessionManager.SessionLoggerFactory.CreateLogger<DeferredClientTransport>());
                         return result.SetSuccessResult(
                             new SipConversationClient(
+                                sessionManager.SessionId,
                                 clientId,
                                 clientConfig,
                                 ((BusinessNumberSipData)businessNumberData).Number,

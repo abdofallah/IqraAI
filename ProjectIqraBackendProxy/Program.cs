@@ -469,7 +469,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new SipProxyService(
                     sp.GetRequiredService<ILogger<SipProxyService>>(),
-                    proxyAppConfig.SIPPort,
+                    proxyAppConfig,
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
                     sp.GetRequiredService<RegionManager>(),

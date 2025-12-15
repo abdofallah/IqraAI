@@ -13,7 +13,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
 
         // Configuration
         private AudioFormatDetails _masterFormat;
-        private const int FRAME_DURATION_MS = 20; // this is hard coded in BaseConversationClient as well absed on this value so careful
+        private const int FRAME_DURATION_MS = 30;
         private int _bytesPerFrame;
 
         // State
@@ -25,7 +25,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
         private readonly SemaphoreSlim _semaphore = new(1);
 
         // Events
-        public event Action<string, byte[], int, int>? AudioMixed;
+        public event Action<string, byte[], int, int, int>? AudioMixed;
         public event Action<string, byte[], int, int>? AudioFrameReadyForRecording;
 
         public SessionAudioMixer(string sessionId, int initialSampleRate, int initialBits, ILogger logger)
@@ -249,7 +249,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
                 // TODO DEBUGGING ONLY
                 AudioFrameReadyForRecording?.Invoke($"Master-self-{targetId}", masterMix, _masterFormat.SampleRate, _masterFormat.BitsPerSample);
 
-                AudioMixed?.Invoke(targetId, mixMinus, _masterFormat.SampleRate, _masterFormat.BitsPerSample);
+                AudioMixed?.Invoke(targetId, mixMinus, _masterFormat.SampleRate, _masterFormat.BitsPerSample, FRAME_DURATION_MS);
             }
         }
         /// <summary>

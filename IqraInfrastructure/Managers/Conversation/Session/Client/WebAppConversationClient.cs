@@ -10,11 +10,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         public override ConversationClientType ClientType => ConversationClientType.Web;
 
         public WebAppConversationClient(
+            string sessionId,
             string clientId,
             ConversationWebClientConfiguration clientConfig,
             IConversationClientTransport transport, // This will be an instance of WebRtcClientTransport
             ILogger<WebAppConversationClient> logger
-        ) : base(clientId, clientConfig, transport, logger) { }
+        ) : base(sessionId, clientId, clientConfig, transport, logger) { }
 
         /// <summary>
         /// For a WebRTC client, a binary message from the transport is audio from the user.

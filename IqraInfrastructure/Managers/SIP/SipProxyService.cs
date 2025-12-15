@@ -2,6 +2,8 @@
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
+using IqraCore.Entities.Server;
+using IqraCore.Entities.Server.Configuration;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
@@ -10,6 +12,7 @@ using IqraInfrastructure.Repositories.Call;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SIPSorcery.SIP;
+using SIPSorcery.SIP.App;
 using System.Net;
 
 namespace IqraInfrastructure.Managers.SIP
@@ -23,13 +26,13 @@ namespace IqraInfrastructure.Managers.SIP
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
         private readonly UserUsageValidationManager _userUsageValidationManager;
         private readonly UserManager _userManager;
-        private readonly int _sipPort;
+        private readonly ProxyAppConfig _proxyAppConfig;
         private SIPTransport _sipTransport;
         private bool _isRunning = false;
 
         public SipProxyService(
             ILogger<SipProxyService> logger,
-            int sipPort,
+            ProxyAppConfig proxyAppConfig,
             BusinessManager businessManager,
             ServerSelectionManager serverSelectionManager,
             RegionManager regionManager,
@@ -39,7 +42,7 @@ namespace IqraInfrastructure.Managers.SIP
         )
         {
             _logger = logger;
-            _sipPort = sipPort;
+            _proxyAppConfig = proxyAppConfig;
             _businessManager = businessManager;
             _serverSelectionManager = serverSelectionManager;
             _regionManager = regionManager;
@@ -56,14 +59,12 @@ namespace IqraInfrastructure.Managers.SIP
             {
                 _sipTransport = new SIPTransport();
 
-                // IPv4 UDP
-                var udpChannel = new SIPUDPChannel(new IPEndPoint(IPAddress.Any, _sipPort));
+                var udpChannel = new SIPUDPChannel(new IPEndPoint(IPAddress.Any, _proxyAppConfig.SIPPort));
                 _sipTransport.AddSIPChannel(udpChannel);
 
-                // IPv4 TCP (Reliability)
                 try
                 {
-                    var tcpChannel = new SIPTCPChannel(new IPEndPoint(IPAddress.Any, _sipPort));
+                    var tcpChannel = new SIPTCPChannel(new IPEndPoint(IPAddress.Any, _proxyAppConfig.SIPPort));
                     _sipTransport.AddSIPChannel(tcpChannel);
                 }
                 catch (Exception ex)
@@ -71,11 +72,10 @@ namespace IqraInfrastructure.Managers.SIP
                     _logger.LogWarning("Could not bind SIP TCP channel (continuing UDP only): {Message}", ex.Message);
                 }
 
-                // Wire up events
                 _sipTransport.SIPTransportRequestReceived += OnRequestReceived;
 
                 _isRunning = true;
-                _logger.LogInformation("SIP Proxy listening on port {Port} (UDP/TCP).", _sipPort);
+                _logger.LogInformation("SIP Proxy listening on port {Port} (UDP/TCP).", _proxyAppConfig.SIPPort);
             }
             catch (Exception ex)
             {
@@ -119,14 +119,7 @@ namespace IqraInfrastructure.Managers.SIP
                     return;
                 }
 
-                if (request.Method == SIPMethodsEnum.ACK || request.Method == SIPMethodsEnum.BYE || request.Method == SIPMethodsEnum.CANCEL)
-                {
-                    await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.Ok, null));
-                    //await HandleBackendForwarding(remoteEndPoint, request);
-                    return;
-                }
-
-                // Other methods (REGISTER) are not handled by the Load Balancer proxy.
+                // Other methods are not handled by the Load Balancer proxy.
                 await _sipTransport.SendResponseAsync(
                     SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.MethodNotAllowed, "Proxy does not handle this method type")
                 );
@@ -209,6 +202,8 @@ namespace IqraInfrastructure.Managers.SIP
                     RouteId = sipNumberConfig.RouteId,
                     RouteNumberId = sipNumberConfig.Id,
 
+                    ProcessingProxyServerId = _proxyAppConfig.ServerId,
+
                     RouteNumberProvider = TelephonyProviderEnum.SIP,
                     ProviderCallId = callId,
                     CallerNumber = didNumber // todo confirm
@@ -270,6 +265,8 @@ namespace IqraInfrastructure.Managers.SIP
                 contactUri.Parameters.Set("X-CallQueue-Id", callQueueId);
                 redirectResponse.Header.Contact = new List<SIPContactHeader> { new SIPContactHeader(null, contactUri) };
 
+                await _inboundCallQueueRepository.UpdateInboundCallQueueProcessingBackendServerIdAsync(callQueueId, backend.ServerId, CallQueueStatusEnum.ProcessedProxy);
+
                 await _sipTransport.SendResponseAsync(redirectResponse);
             }
             catch (Exception ex)
@@ -281,66 +278,6 @@ namespace IqraInfrastructure.Managers.SIP
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueueId, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = ex.Message, Type = CallQueueLogTypeEnum.Error });
                 }
        
-                await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.InternalServerError, ex.Message));
-            }
-        }
-    
-        private async Task HandleBackendForwarding(SIPEndPoint remoteEndPoint, SIPRequest request)
-        {
-            try
-            {
-                string callId = request.Header.CallId;
-                string didNumber = request.URI.User;
-
-                var tryingResponse = SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.Trying, null);
-                await _sipTransport.SendResponseAsync(tryingResponse);
-
-                string? businessIdStr = request.URI.Parameters.Get("X-Business-Id");
-                if (!long.TryParse(businessIdStr, out long businessId))
-                {
-                    await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.NotFound, "Unable to parse business id to long"));
-                    return;
-                }
-
-                string? phoneId = request.URI.Parameters.Get("X-Phone-Id");
-                if (string.IsNullOrEmpty(phoneId))
-                {
-                    await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.NotFound, "Phone id in request empty or not found"));
-                    return;
-                }
-
-                var callQueue = await _inboundCallQueueRepository.GetInboundCallQueueByProviderCallIdAsync(TelephonyProviderEnum.SIP, callId, businessId, phoneId);
-                if (callQueue == null)
-                {
-                    await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.ServiceUnavailable, "Call queue not found"));
-                    return;
-                }
-
-                if (callQueue.Status != CallQueueStatusEnum.ProcessingBackend && callQueue.Status != CallQueueStatusEnum.ProcessedBackend)
-                {
-                    await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.ServiceUnavailable, "Call queue not processing backend"));
-                    return;
-                }
-
-                var regionData = await _regionManager.GetRegionById(callQueue.RegionId!);
-                if (regionData == null)
-                {
-                    await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.ServiceUnavailable, "Region not enabled"));
-                    return;
-                }
-
-                var regionBackendServer = regionData.Servers.Find(s => s.Id == callQueue.ProcessingBackendServerId);
-                if (regionBackendServer == null)
-                {
-                    await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.ServiceUnavailable, "Backend server not found"));
-                    return;
-                }
-
-                // let the server know about the response so it can update the session accordingly
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing SIP Request {Method} from {Remote}", request.Method, remoteEndPoint);
                 await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.InternalServerError, ex.Message));
             }
         }

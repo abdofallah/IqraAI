@@ -18,6 +18,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         protected readonly ILogger _logger;
         private bool _hasDisconnected = false;
 
+        public string SessionId { get; }
         public string ClientId { get; }
         public ConversationClientConfiguration ClientConfig { get; }
         public abstract ConversationClientType ClientType { get; }
@@ -29,11 +30,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         public event EventHandler<ConversationTextReceivedEventArgs> TextReceived;
         public event EventHandler<ConversationClientDisconnectedEventArgs> Disconnected;
 
-        protected BaseConversationClient(string clientId, ConversationClientConfiguration clientConfig, IConversationClientTransport transport, ILogger logger)
+        protected BaseConversationClient(string sessionId, string clientId, ConversationClientConfiguration clientConfig, IConversationClientTransport transport, ILogger logger)
         {
+            SessionId = sessionId;
             ClientId = clientId;
             ClientConfig = clientConfig;
-            Transport = transport; // Use the public property
+            Transport = transport;
             _logger = logger;
 
             Transport.BinaryMessageReceived += OnTransportBinaryMessageReceived;
@@ -103,7 +105,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         /// The main entry point for audio coming FROM the AI Agent to be sent TO the User.
         /// This method handles the "Edge Encoding" logic.
         /// </summary>
-        public virtual async Task ProcessDownstreamAudioAsync(ReadOnlyMemory<byte> masterAudioData, int masterSampleRate, int masterBitsPerSample)
+        public virtual async Task ProcessDownstreamAudioAsync(ReadOnlyMemory<byte> masterAudioData, int masterSampleRate, int masterBitsPerSample, int frameDurationMs)
         {
             if (masterAudioData.IsEmpty) return;
 
@@ -124,8 +126,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             byte[] dataToSend;
             int dataSampleRate;
             int dataBitsPerSample;
-            int frameDurationMs = 20; // from session mixer, find a better way to access it
 
+            // Special case for OPUS where we define custom frame duration
             if (ClientConfig.AudioOutputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.OPUS)
             {
                 frameDurationMs = ClientConfig.AudioOutputConfiguration.FrameDurationMs;

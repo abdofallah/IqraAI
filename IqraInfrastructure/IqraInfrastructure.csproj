@@ -108,7 +108,6 @@
     <PackageReference Include="OpenAI" Version="2.2.0" />
     <PackageReference Include="Scriban" Version="6.2.1" />
     <PackageReference Include="Sep" Version="0.11.0" />
-    <PackageReference Include="SIPSorcery" Version="8.0.23" />
     <PackageReference Include="SIPSorceryMedia.FFmpeg" Version="8.0.12" />
     <PackageReference Include="SIPSorceryMedia.SDL2" Version="8.0.7" />
     <PackageReference Include="StackExchange.Redis" Version="2.8.58" />
@@ -120,6 +119,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Dependencies\ElevenLabs\src\libs\ElevenLabs\ElevenLabs.csproj" />
+    <ProjectReference Include="..\Dependencies\sipsorcery\src\SIPSorcery.csproj" />
     <ProjectReference Include="..\Dependencies\w3c-validator-net\src\W3CValidator.Core\W3CValidator.Core.csproj" />
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
   </ItemGroup>

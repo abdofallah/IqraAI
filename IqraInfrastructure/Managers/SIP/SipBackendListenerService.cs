@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Call.Queue;
+using IqraCore.Entities.Server;
 using IqraInfrastructure.Managers.Call.Backend;
 using IqraInfrastructure.Repositories.Call;
 using Microsoft.Extensions.Hosting;
@@ -13,21 +14,21 @@ namespace IqraInfrastructure.Managers.SIP
     public class SipBackendListenerService : BackgroundService
     {
         private readonly ILogger<SipBackendListenerService> _logger;
-        public readonly int _sipPort;
+        public readonly BackendAppConfig _backendAppConfig;
         private readonly BackendCallProcessorManager _backendCallProcessorManager;
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
 
+        private SIPUserAgent _sipUserAgent;
         private SIPTransport _sipTransport;
-        private bool _isRunning = false;
 
         public SipBackendListenerService(
             ILogger<SipBackendListenerService> logger,
-            int sipPort,
+            BackendAppConfig backendAppConfig,
             BackendCallProcessorManager backendCallProcessorManager,
             InboundCallQueueRepository inboundCallQueueRepository
         ) {
             _logger = logger;
-            _sipPort = sipPort;
+            _backendAppConfig = backendAppConfig;
             _backendCallProcessorManager = backendCallProcessorManager;
             _inboundCallQueueRepository = inboundCallQueueRepository;
         }
@@ -40,14 +41,12 @@ namespace IqraInfrastructure.Managers.SIP
             {
                 _sipTransport = new SIPTransport();
 
-                // 1. Bind IPv4 UDP (Primary)
-                var udpChannel = new SIPUDPChannel(new IPEndPoint(IPAddress.Any, _sipPort));
+                var udpChannel = new SIPUDPChannel(new IPEndPoint(IPAddress.Any, _backendAppConfig.SIPPort));
                 _sipTransport.AddSIPChannel(udpChannel);
 
-                // 2. Bind IPv4 TCP (Reliability for large packets)
                 try
                 {
-                    var tcpChannel = new SIPTCPChannel(new IPEndPoint(IPAddress.Any, _sipPort));
+                    var tcpChannel = new SIPTCPChannel(new IPEndPoint(IPAddress.Any, _backendAppConfig.SIPPort));
                     _sipTransport.AddSIPChannel(tcpChannel);
                 }
                 catch (Exception ex)
@@ -55,11 +54,13 @@ namespace IqraInfrastructure.Managers.SIP
                     _logger.LogWarning("Could not bind SIP TCP channel (port likely busy, continuing with UDP only): {Message}", ex.Message);
                 }
 
-                // 3. Wire up Request Handler
-                _sipTransport.SIPTransportRequestReceived += OnRequestReceived;
+                //_sipTransport.SIPTransportRequestReceived += OnRequestReceived;
 
-                _isRunning = true;
-                _logger.LogInformation("SIP Backend Listener active on port {Port} (UDP/TCP).", _sipPort);
+                _sipUserAgent = new SIPUserAgent(_sipTransport, null, false, null);
+
+                _sipUserAgent.OnIncomingCall += async (sipUserAgent, request) => await OnIncomingCall(sipUserAgent, request);
+
+                _logger.LogInformation("SIP Backend Listener active on port {Port} (UDP/TCP).", _backendAppConfig.SIPPort);
             }
             catch (Exception ex)
             {
@@ -79,64 +80,28 @@ namespace IqraInfrastructure.Managers.SIP
         public override Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Stopping SIP Backend Listener...");
-            _isRunning = false;
+
+            if (_sipUserAgent != null)
+            {
+                _sipUserAgent.OnIncomingCall -= async (sipUserAgent, request) => await OnIncomingCall(sipUserAgent, request);
+                _sipUserAgent.Dispose();
+            }
 
             if (_sipTransport != null)
             {
-                _sipTransport.SIPTransportRequestReceived -= OnRequestReceived;
                 _sipTransport.Shutdown();
+                _sipTransport.Dispose();
             }
 
             return base.StopAsync(cancellationToken);
         }
 
-        private async Task OnRequestReceived(SIPEndPoint localEndPoint, SIPEndPoint remoteEndPoint, SIPRequest request)
+        private async Task OnIncomingCall(SIPUserAgent sipUserAgent, SIPRequest request)
         {
-            if (!_isRunning) return;
-
-            try
-            {
-                // 1. HEALTH CHECK (OPTIONS)
-                // Carriers send this to check if the media server is alive.
-                if (request.Method == SIPMethodsEnum.OPTIONS)
-                {
-                    var response = SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.Ok, null);
-                    await _sipTransport.SendResponseAsync(response);
-                    return;
-                }
-
-                // 2. INCOMING CALL (INVITE)
-                if (request.Method == SIPMethodsEnum.INVITE)
-                {
-                    await HandleInviteAsync(request);
-                    return;
-                }
-
-                if (request.Method == SIPMethodsEnum.ACK)
-                {
-                    var response = SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.Ok, null);
-                    await _sipTransport.SendResponseAsync(response);
-                    return;
-                }
-
-                // Note: BYE, CANCEL, ACK are handled by the specific SIPServerUserAgent 
-                // instances created inside the session logic, routed automatically by SIPSorcery 
-                // based on the Transaction/Call ID.
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing SIP Request {Method} from {Remote}", request.Method, remoteEndPoint);
-            }
-        }
-
-        private async Task HandleInviteAsync(SIPRequest request)
-        {
-            // if its a new invite
             string callId = request.Header.CallId;
             string didNumber = request.URI.User;
 
-            var userAgent = new SIPUserAgent(_sipTransport, null, true);
-            var uas = userAgent.AcceptCall(request);
+            var uas = sipUserAgent.AcceptCall(request);
 
             var queueId = request.URI.Parameters.Get("X-CallQueue-Id");
             if (string.IsNullOrEmpty(queueId))
@@ -152,16 +117,20 @@ namespace IqraInfrastructure.Managers.SIP
                 return;
             }
 
-            if (!string.IsNullOrEmpty(inboundQueueData.SessionId))
+            if (inboundQueueData.RegionId != _backendAppConfig.RegionId || inboundQueueData.ProcessingBackendServerId != _backendAppConfig.Id)
             {
-                // most likely a re-invite
-                // just ack/ok for now, later we can update the userAgent/uas for the client
-                await _sipTransport.SendResponseAsync(SIPResponse.GetResponse(request, SIPResponseStatusCodesEnum.Ok, null));
+                uas.Reject(SIPResponseStatusCodesEnum.Forbidden, "Not authorized for this region/server", null);
+                return;
+            }
+
+            if (inboundQueueData.Status != CallQueueStatusEnum.ProcessedProxy)
+            {
+                uas.Reject(SIPResponseStatusCodesEnum.Forbidden, "Call queue not in processed proxy state", null);
                 return;
             }
 
             // Hand off to Processor Manager
-            var result = await _backendCallProcessorManager.ProcessInboundCallAsync(queueId, inboundQueueData, userAgent, uas);
+            var result = await _backendCallProcessorManager.ProcessInboundCallAsync(queueId, inboundQueueData, sipUserAgent, uas);
             if (!result.Success)
             {
                 var sipResponseCode = SIPResponseStatusCodesEnum.ServiceUnavailable;

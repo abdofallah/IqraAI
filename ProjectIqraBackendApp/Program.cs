@@ -914,7 +914,7 @@ namespace ProjectIqraBackendApp
             {
                 return new SipBackendListenerService(
                     sp.GetRequiredService<ILogger<SipBackendListenerService>>(),
-                    backendAppConfig.SIPPort,
+                    backendAppConfig,
                     sp.GetRequiredService<BackendCallProcessorManager>(),
                     sp.GetRequiredService<InboundCallQueueRepository>()
                 );

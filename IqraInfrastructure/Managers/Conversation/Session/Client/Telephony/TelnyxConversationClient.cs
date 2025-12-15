@@ -18,6 +18,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         private string _streamId;
 
         public TelnyxConversationClient(
+            string sessionId,
             string clientId, // This would typically be the call_control_id
             ConversationWebClientConfiguration clientConfig,
             string telephonyPhoneNumber,
@@ -27,7 +28,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             TelnyxManager telnyxManager,
             IConversationClientTransport transport,
             ILogger<TelnyxConversationClient> logger
-        ) : base(clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
+        ) : base(sessionId, clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
         {
             _callControlId = clientId; // The client ID is the call control ID for Telnyx.
             _apiKey = apiKey;

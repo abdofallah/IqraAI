@@ -17,6 +17,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         private string? _streamSidFromTwilio;
 
         public TwilioConversationClient(
+            string sessionId,
             string clientId,
             ConversationClientConfiguration clientConfig,
             string telephonyPhoneNumber,
@@ -28,7 +29,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             TwilioManager twilioManager,
             IConversationClientTransport transport,
             ILogger<TwilioConversationClient> logger
-        ) : base(clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
+        ) : base(sessionId, clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
         {
             _providerCallSid = providerCallSid;
             _accountSid = accountSid;

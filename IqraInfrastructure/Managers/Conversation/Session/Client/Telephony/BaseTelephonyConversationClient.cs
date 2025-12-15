@@ -18,6 +18,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         public event EventHandler<ConversationDTMFReceivedEventArgs> DTMFReceived;
 
         protected BaseTelephonyConversationClient(
+            string sessionId,
             string clientId,
             ConversationClientConfiguration clientConfig,
             string telephonyPhoneNumber,
@@ -25,7 +26,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             string customerPhoneNumber,
             IConversationClientTransport transport,
             ILogger logger
-        ) : base(clientId, clientConfig, transport, logger)
+        ) : base(sessionId, clientId, clientConfig, transport, logger)
         {
             ClientTelephonyPhoneNumber = telephonyPhoneNumber;
             ClientTelephonyProviderPhoneNumberId = telephonyProviderPhoneNumberId;

@@ -182,7 +182,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
 
         public Task SendBinaryAsync(byte[] data, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken)
         {
-            uint durationRtpUnits = (uint)(sampleRate * frameDurationMs);
+            uint durationRtpUnits = (uint)(sampleRate * frameDurationMs) / 1000;
             _peerConnection.SendAudio(durationRtpUnits, data);
 
             return Task.CompletedTask;

@@ -2,13 +2,12 @@
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helper.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
-using Jint.Runtime;
 using Microsoft.Extensions.Logging;
 using SIPSorcery.Media;
 using SIPSorcery.SIP;
 using SIPSorcery.SIP.App;
 using SIPSorceryMedia.Abstractions;
-using System.Net;
+using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 {
@@ -20,6 +19,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         private readonly ILogger _logger;
 
         public SipConversationClient(
+            string sessionId,
             string clientId,
             ConversationClientConfiguration clientConfig,
             string telephonyPhoneNumber,
@@ -29,12 +29,20 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             SIPServerUserAgent uas,
             DeferredClientTransport deferredTransport,
             ILogger<SipConversationClient> logger
-            ) : base(clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, deferredTransport, logger)
+            ) : base(sessionId, clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, deferredTransport, logger)
         {
             _userAgent = userAgent;
             _uas = uas;
             _logger = logger;
             ClientTelephonyProviderType = TelephonyProviderEnum.SIP;
+
+            _userAgent.OnDtmfTone += (value, duration) =>
+            {
+                string conValue = value.ToString();
+                if (conValue == "10") conValue = "*";
+                if (conValue == "11") conValue = "#";
+                RaiseDTMFReceived(conValue);
+            };
         }
 
         public async Task Answer()
@@ -61,7 +69,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
                 deferred.Activate(realTransport);
             }
 
-            await _userAgent.Answer(_uas, _rtpSession, new string[] { "X-TEST-ANSWER: TRUE" });
+            SIPURI contactSIPURI = _uas.CallRequest.URI.CopyOf(); // confirm this uri is of the backend, must be how else will it get the call request
+            contactSIPURI.Parameters.RemoveAll();
+            contactSIPURI.Parameters.Set("X-Session-Id", SessionId);
+            SIPContactHeader contactHeader = new SIPContactHeader(null, contactSIPURI);
+
+            await _userAgent.Answer(_uas, _rtpSession, null, contactHeader);
 
             var selectedFormat = _rtpSession.AudioStream.RemoteTrack.Capabilities.FirstOrDefault().ToAudioFormat();
 
@@ -96,24 +109,45 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
                 case "g729":
                     return (AudioEncodingTypeEnum.G729, 8000, 8);
                 default:
-                    _logger.LogWarning("Unknown SIP Codec {Codec}, defaulting to MULAW", format.Codec);
-                    return (AudioEncodingTypeEnum.MULAW, 8000, 8);
+                    throw new ArgumentException($"Unsupported audio format: {format.FormatName}");
             }
         }
 
-        // --- SIP Specifics ---
-        public override Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken)
+        public override async Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken)
         {
             foreach (var digit in digits)
             {
                 if (_rtpSession != null && _rtpSession.IsAudioStarted)
                 {
-                    // Convert char to byte event ID (0-9, 10=*, 11=#)
-                    _rtpSession.SendDtmf((byte)digit, cancellationToken); // Requires helper mapping
-                    // Implementation skipped for brevity, but this is where it goes.
+                    byte sendDigit;
+
+                    if (char.IsDigit(digit))
+                    {
+                        // Convert char '5' to byte 5.
+                        // We subtract the ASCII value of '0' (48) from the digit char.
+                        sendDigit = (byte)(digit - '0');
+                    }
+                    else if (digit == '*')
+                    {
+                        sendDigit = 10;
+                    }
+                    else if (digit == '#')
+                    {
+                        sendDigit = 11;
+                    }
+                    else if (digit >= 'A' && digit <= 'D') // Optional: A, B, C, D keys
+                    {
+                        sendDigit = (byte)(12 + (digit - 'A'));
+                    }
+                    else
+                    {
+                        // Invalid digit
+                        continue;
+                    }
+
+                    await _rtpSession.SendDtmf(sendDigit, cancellationToken);
                 }
             }
-            return Task.CompletedTask;
         }
 
         protected override void OnTransportBinaryMessageReceived(object sender, byte[] data)

@@ -749,7 +749,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         }
 
         // Session Management
-        public async Task<FunctionReturnResult> NotifyConversationStarted()
+        public async Task<FunctionReturnResult> NotifyConversationStarted(bool awaitNotify = true)
         {
             var result = new FunctionReturnResult();
 
@@ -761,7 +761,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 // Start the Mixer Heartbeat first
                 _sessionMixer?.Start();
 
-                await PrimaryAgent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
+                if (PrimaryAgent != null)
+                {
+                    if (awaitNotify)
+                    {
+                        await PrimaryAgent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
+                    }
+                    else
+                    {
+                        _ = PrimaryAgent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
+                    }
+                }
 
                 StartTimers();
 
@@ -783,8 +793,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 {
                     // TODO
                 }
-
-                
 
                 return result.SetSuccessResult();
             }
@@ -1073,7 +1081,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             if (isAnyAIAgentToEndCall)
             {
-                await Task.Delay(5000, _sessionCts.Token);
+                try
+                {
+                    await Task.Delay(5000, _sessionCts.Token);
+                }
+                catch (TaskCanceledException)
+                {
+                    return;
+                }
                 // if session still not ended after 5 seconds, force end it
 
                 if (_sessionCts.IsCancellationRequested)
@@ -1284,7 +1299,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         }
 
         // Mixer Event Handlers
-        private async void OnMixerAudioMixed(string targetId, byte[] mixedAudio, int sampleRate, int bits)
+        private async void OnMixerAudioMixed(string targetId, byte[] mixedAudio, int sampleRate, int bits, int frameDurationMs)
         {
             IConversationClient? clientTarget = null;
             lock (_clientsLock) { clientTarget = _clients.FirstOrDefault(c => c.ClientId == targetId); }
@@ -1293,7 +1308,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             {
                 try
                 {
-                    await baseClient.ProcessDownstreamAudioAsync(mixedAudio, sampleRate, bits);
+                    await baseClient.ProcessDownstreamAudioAsync(mixedAudio, sampleRate, bits, frameDurationMs);
                 }
                 catch (Exception ex)
                 {

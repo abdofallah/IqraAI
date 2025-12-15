@@ -503,6 +503,7 @@ namespace IqraInfrastructure.Managers.WebSession
             var deferredTransport = new DeferredClientTransport(sessionManager.SessionLoggerFactory.CreateLogger<DeferredClientTransport>());
             return result.SetSuccessResult(
                 new WebAppConversationClient(
+                    sessionManager.SessionId,
                     webSessionData.ClientIdentifier,
                     clientConfig,
                     deferredTransport,

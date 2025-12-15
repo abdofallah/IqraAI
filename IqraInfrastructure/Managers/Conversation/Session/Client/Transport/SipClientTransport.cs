@@ -31,11 +31,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             _transportCts = CancellationTokenSource.CreateLinkedTokenSource(sessionToken);
 
             // Wire up Signaling Events
-            _userAgent.OnCallHungup += (d) => Disconnected?.Invoke(this, "Remote Hangup");
+            _userAgent.OnCallHungup += OnCallHungupHandler;
 
             // Wire up Media Events
             _rtpSession.OnRtpPacketReceived += OnRtpPacketHandler;
-            _rtpSession.OnRtpClosed += OnRtpClosedHandler;
         }
 
         private void OnCallHungupHandler(SIPDialogue dialogue)
@@ -43,18 +42,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             Disconnected?.Invoke(this, "Call hung up by remote party.");
         }
 
-        private void OnRtpClosedHandler(string reason)
-        {
-            _logger.LogInformation("[SipClientTransport] RTP Session closed: {Reason}", reason);
-            // Don't necessarily disconnect the whole client if RTP closes, but usually they go together.
-        }
-
         private void OnRtpPacketHandler(IPEndPoint remoteEndPoint, SDPMediaTypesEnum media, RTPPacket rtpPacket)
         {
             if (media == SDPMediaTypesEnum.audio)
             {
-                // We receive the Raw Encoded Payload (e.g. PCMU bytes)
-                // This is passed up to BaseConversationClient -> Decoder -> Mixer
                 BinaryMessageReceived?.Invoke(this, rtpPacket.Payload);
             }
         }
@@ -67,7 +58,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
                 return Task.CompletedTask;
             }
 
-            uint durationRtpUnits = (uint)(sampleRate * frameDurationMs);
+            uint durationRtpUnits = (uint)(sampleRate * frameDurationMs) / 1000;
 
             _rtpSession.SendAudio(durationRtpUnits, data);
 
@@ -105,7 +96,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
             if (_rtpSession != null)
             {
                 _rtpSession.OnRtpPacketReceived -= OnRtpPacketHandler;
-                _rtpSession.OnRtpClosed -= OnRtpClosedHandler;
             }
             _transportCts?.Cancel();
             _transportCts?.Dispose();

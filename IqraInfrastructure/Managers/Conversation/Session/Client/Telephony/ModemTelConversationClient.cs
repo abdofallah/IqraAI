@@ -14,6 +14,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         private readonly string _apiBaseUrl;
 
         public ModemTelConversationClient(
+            string sessionId,
             string clientId,
             ConversationClientConfiguration clientConfig,
             string telephonyPhoneNumber,
@@ -25,7 +26,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             ModemTelManager modemTelManager,
             IConversationClientTransport transport,
             ILogger<ModemTelConversationClient> logger
-        ) : base(clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
+        ) : base(sessionId, clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
         {
             _providerCallId = providerCallId;
             _apiBaseUrl = apiBaseUrl;

@@ -15,6 +15,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         private readonly string _jwt;
 
         public VonageConversationClient(
+            string sessionId,
             string clientId,
             ConversationWebClientConfiguration clientConfig,
             string telephonyPhoneNumber,
@@ -25,7 +26,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             VonageManager vonageManager,
             IConversationClientTransport transport,
             ILogger<VonageConversationClient> logger
-        ) : base(clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
+        ) : base(sessionId, clientId, clientConfig, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
         {
             _callUuid = callUuid;
             _jwt = jwt;
