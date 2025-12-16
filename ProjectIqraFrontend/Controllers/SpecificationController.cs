@@ -2,7 +2,6 @@
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Languages;
 using IqraCore.Entities.LLM;
-using IqraCore.Entities.Region;
 using IqraCore.Entities.Rerank;
 using IqraCore.Entities.STT;
 using IqraCore.Entities.TTS;
@@ -102,9 +101,9 @@ namespace ProjectIqraFrontend.Controllers
         }
 
         [HttpGet("/app/specification/regions")]
-        public async Task<FunctionReturnResult<List<RegionData>?>> GetRegions()
+        public async Task<FunctionReturnResult<List<RegionViewModel>?>> GetRegions()
         {
-            var result = new FunctionReturnResult<List<RegionData>?>();
+            var result = new FunctionReturnResult<List<RegionViewModel>?>();
 
             var getRegionsListResult = await _regionManager.GetRegions();
             if (!getRegionsListResult.Success)
@@ -115,7 +114,16 @@ namespace ProjectIqraFrontend.Controllers
                 );
             }
 
-            return result.SetSuccessResult(getRegionsListResult.Data);
+
+#if DEBUG
+            const bool includeDevServers = true;
+#else
+            const bool includeDevServers = false;
+#endif
+
+            var modelList = getRegionsListResult.Data!.Select(r => RegionViewModel.BuildViewModelFromEntity(r, false, includeDevServers)).ToList();
+
+            return result.SetSuccessResult(modelList);
         }
 
         [HttpGet("/app/specification/llmproviders/getbyintegration/{integrationType}")]

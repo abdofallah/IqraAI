@@ -207,6 +207,22 @@
                         <input type="tel" class="form-control" id="physicalNumberModalNumberInput" placeholder="Number">
                     </div>
                     <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" value="" id="physicalNumberModalVoiceEnabledCheck" switch>
+                            <label class="form-check-label" for="physicalNumberModalVoiceEnabledCheck">
+                                Voice Enabled
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" value="" id="physicalNumberModalSmsEnabledCheck" switch>
+                            <label class="form-check-label" for="physicalNumberModalSmsEnabledCheck">
+                                Sms Enabled
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
                         <label for="physicalNumberModalRegionSelect" class="form-label">Route Server Region <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Iqra's server region that will be used to process the call (For low latency, match your TTS/STT/LLM/etc intergation's region closed to this region)."><i class="fa-regular fa-circle-question"></i></a></label>
                         <select class="form-select" id="physicalNumberModalRegionSelect">
                             <!-- Dynamically Generated Once -->
@@ -247,6 +263,22 @@
                         <input type="tel" class="form-control" id="twilioNumberModalNumberInput" placeholder="Number">
                     </div>
                     <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" value="" id="twilioNumberModalVoiceEnabledCheck" switch>
+                            <label class="form-check-label" for="twilioNumberModalVoiceEnabledCheck">
+                                Voice Enabled
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" value="" id="twilioNumberModalSmsEnabledCheck" switch>
+                            <label class="form-check-label" for="twilioNumberModalSmsEnabledCheck">
+                                Sms Enabled
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
                         <label for="twilioNumberModalRegionSelect" class="form-label">Route Server Region <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Iqra's server region that will be used to process the call (For low latency, match your TTS/STT/LLM/etc intergation's region closed to this region)."><i class="fa-regular fa-circle-question"></i></a></label>
                         <select class="form-select" id="twilioNumberModalRegionSelect">
                             <!-- Dynamically Generated Once -->
@@ -271,7 +303,6 @@
                 </div>
                 <div class="modal-body">
 
-                    <!-- 1. Integration Select -->
                     <div class="mb-3">
                         <label for="sipNumberModalIntegrationSelect" class="form-label">SIP Trunk Integration</label>
                         <select class="form-select" id="sipNumberModalIntegrationSelect">
@@ -280,13 +311,11 @@
                         <div class="form-text">Select the SIP Trunk configuration (Host, Port, Auth) this number belongs to.</div>
                     </div>
 
-                    <!-- 2. E.164 Toggle -->
                     <div class="mb-3 form-check form-switch">
                         <input class="form-check-input" type="checkbox" role="switch" id="sipNumberModalIsE164">
                         <label class="form-check-label" for="sipNumberModalIsE164">Is E.164 Number? (Standard Phone Number)</label>
                     </div>
 
-                    <!-- 3. Country Code (Dynamic Visibility) -->
                     <div class="mb-3" id="sipNumberModalCountryContainer" style="display:none;">
                         <label for="sipNumberModalCountrySelect" class="form-label">Country Code</label>
                         <select class="form-select" id="sipNumberModalCountrySelect">
@@ -294,14 +323,29 @@
                         </select>
                     </div>
 
-                    <!-- 4. Number / DID Input -->
                     <div class="mb-3">
                         <label for="sipNumberModalNumberInput" class="form-label">DID Number / Extension</label>
                         <input type="text" class="form-control" id="sipNumberModalNumberInput" placeholder="e.g. 1001 or 888">
                         <div class="form-text" id="sipNumberModalNumberHelp">The user part of the SIP URI.</div>
                     </div>
 
-                    <!-- 5. Region -->
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" value="" id="sipNumberModalVoiceEnabledCheck" switch>
+                            <label class="form-check-label" for="sipNumberModalVoiceEnabledCheck">
+                                Voice Enabled
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" value="" id="sipNumberModalSmsEnabledCheck" switch>
+                            <label class="form-check-label" for="sipNumberModalSmsEnabledCheck">
+                                Sms Enabled
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="sipNumberModalRegionSelect" class="form-label">Processing Region</label>
                         <select class="form-select" id="sipNumberModalRegionSelect">
@@ -309,7 +353,6 @@
                         </select>
                     </div>
 
-                    <!-- 6. Allowed IPs (Override) -->
                     <div class="mb-3">
                         <label for="sipNumberModalAllowedIpsInput" class="form-label">Allowed Source IPs (Optional Override)</label>
                         <input type="text" class="form-control" id="sipNumberModalAllowedIpsInput" placeholder="e.g. 192.168.1.50">

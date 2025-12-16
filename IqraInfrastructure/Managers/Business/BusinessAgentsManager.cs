@@ -21,6 +21,7 @@ namespace IqraInfrastructure.Managers.Business
 {
     public class BusinessAgentsManager
     {
+        private readonly IMongoClient _mongoClient;
         private readonly BusinessManager _parentBusinessManager;
 
         private readonly BusinessAppRepository _businessAppRepository;
@@ -33,6 +34,7 @@ namespace IqraInfrastructure.Managers.Business
 
         public BusinessAgentsManager(
             BusinessManager businessManager,
+            IMongoClient mongoClient,
             BusinessAppRepository businessAppRepository,
             BusinessRepository businessRepository,
             S3StorageClientFactory s3StorageClientFactory,
@@ -41,6 +43,7 @@ namespace IqraInfrastructure.Managers.Business
             IntegrationConfigurationManager integrationConfigurationManager
         )
         {
+            _mongoClient = mongoClient;
             _parentBusinessManager = businessManager;
 
             _businessAppRepository = businessAppRepository;
@@ -66,6 +69,11 @@ namespace IqraInfrastructure.Managers.Business
         public async Task<bool> CheckAgentScriptExists(long businessId, string agentId, string scriptId)
         {
             return await _businessAppRepository.CheckAgentScriptExists(businessId, agentId, scriptId);
+        }
+
+        public async Task<BusinessAppAgentScript?> GetAgentScriptById(long businessId, string agentId, string scriptId)
+        {
+            return await _businessAppRepository.GetAgentScriptById(businessId, agentId, scriptId);
         }
 
         // SAVING/ADDING AGENT
@@ -1335,7 +1343,7 @@ namespace IqraInfrastructure.Managers.Business
             string agentId,
             string postType,
             IFormCollection formData,
-            string? existingScriptId
+            BusinessAppAgentScript? existingScriptData
         )
         {
             var result = new FunctionReturnResult<BusinessAppAgentScript?>();
@@ -1365,7 +1373,9 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Create new script instance
-            var newScriptData = new BusinessAppAgentScript();
+            var newScriptData = new BusinessAppAgentScript() {
+                Id = postType == "new" ? ObjectId.GenerateNewId().ToString() : existingScriptData!.Id
+            };
 
             // General Section
             if (!changesRootElement.TryGetProperty("general", out var generalTabElement))
@@ -1411,7 +1421,7 @@ namespace IqraInfrastructure.Managers.Business
                 return result;
             }
 
-            var validateNodesResult = await ValidateAndCreateNodes(businessId, agentId, existingScriptId, nodesElement, businessLanguages);
+            var validateNodesResult = await ValidateAndCreateNodes(businessId, agentId, existingScriptData!.Id, nodesElement, businessLanguages);
             if (!validateNodesResult.Success)
             {
                 result.Code = "AddOrUpdateAgentScript:" + validateNodesResult.Code;
@@ -1452,43 +1462,157 @@ namespace IqraInfrastructure.Managers.Business
                 return result;
             }
 
+            // References
+            List<(string, BusinessNumberAgentScriptSMSNodeReference)> newSmsNodeBusinessNumberReferences = new List<(string, BusinessNumberAgentScriptSMSNodeReference)>();
+            foreach (var node in newScriptData.Nodes)
+            {
+                if (node.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool)
+                {
+                    var systemToolNode = node as BusinessAppAgentScriptSystemToolNode;
+                    if (systemToolNode != null && systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS)
+                    {
+                        var smsNode = node as BusinessAppAgentScriptSendSMSToolNode;
+                        if (smsNode != null)
+                        {
+                            var phoneNumberId = smsNode.PhoneNumberId;
+
+                            newSmsNodeBusinessNumberReferences.Add((
+                                phoneNumberId,
+                                new BusinessNumberAgentScriptSMSNodeReference()
+                                {
+                                    AgentId = agentId,
+                                    AgentScriptId = newScriptData.Id,
+                                    NodeReference = node.Id
+                                }
+                            ));
+                        }
+                    }
+                }
+            }
+
+            List<(string, BusinessNumberAgentScriptSMSNodeReference)> deletedSmsNodeBusinessNumberReferences = new List<(string, BusinessNumberAgentScriptSMSNodeReference)>();
+            if (postType != "new" && existingScriptData != null)
+            {
+                var oldSmsNodes = existingScriptData.Nodes
+                    .OfType<BusinessAppAgentScriptSendSMSToolNode>();
+
+                foreach (var oldSmsNode in oldSmsNodes)
+                {
+                    var newCorrespondingNode = newScriptData.Nodes.FirstOrDefault(n => n.Id == oldSmsNode.Id);
+
+                    if (newCorrespondingNode is not BusinessAppAgentScriptSendSMSToolNode newSmsNode)
+                    {
+                        deletedSmsNodeBusinessNumberReferences.Add((
+                            oldSmsNode.PhoneNumberId,
+                            new BusinessNumberAgentScriptSMSNodeReference()
+                            {
+                                AgentId = agentId,
+                                AgentScriptId = existingScriptData.Id,
+                                NodeReference = oldSmsNode.Id
+                            }
+                        ));
+                    }
+                    else if (oldSmsNode.PhoneNumberId != newSmsNode.PhoneNumberId)
+                    {
+                        deletedSmsNodeBusinessNumberReferences.Add((
+                            oldSmsNode.PhoneNumberId,
+                            new BusinessNumberAgentScriptSMSNodeReference()
+                            {
+                                AgentId = agentId,
+                                AgentScriptId = existingScriptData.Id,
+                                NodeReference = oldSmsNode.Id
+                            }
+                        ));
+                    }
+                }
+            }
+
             try
             {
-                if (postType == "new")
+                using (var session = await _mongoClient.StartSessionAsync())
                 {
-                    newScriptData.Id = ObjectId.GenerateNewId().ToString();
-
-                    var updateResult = await _businessAppRepository.AddAgentScript(businessId, agentId, newScriptData);
-                    if (!updateResult)
+                    session.StartTransaction();
+                    try
                     {
-                        result.Code = "AddOrUpdateAgentScript:8";
-                        result.Message = "Failed to add new script to agent.";
-                        return result;
+                        if (postType == "new")
+                        {
+                            var addResult = await _businessAppRepository.AddAgentScript(businessId, agentId, newScriptData, session);
+                            if (!addResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgentScript:ADD_FAILED",
+                                    "Failed to add new script to agent."
+                                );
+                            }
+                        }
+                        else
+                        {
+                            var updateResult = await _businessAppRepository.UpdateAgentScript(businessId, agentId, newScriptData, session);
+                            if (!updateResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgentScript:UPDATE_FAILED",
+                                    "Failed to update existing script."
+                                );
+                            }
+                        }
+
+                        // Add new sms node references
+                        foreach (var (phoneNumberId, reference) in newSmsNodeBusinessNumberReferences)
+                        {
+                            var addReferenceResult = await _businessAppRepository.AddAgentScriptSMSNodeReferenceToBusinessNumber(
+                                businessId,
+                                phoneNumberId,
+                                reference,
+                                session
+                            );
+                            if (!addReferenceResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgentScript:SMS_NODE_REFERENCE_ADD_FAILED",
+                                    "Failed to add sms node reference to business phone number."
+                                );
+                            }
+                        }
+
+                        foreach (var (phoneNumberId, reference) in deletedSmsNodeBusinessNumberReferences)
+                        {
+                            var deleteReferenceResult = await _businessAppRepository.RemoveAgentScriptSMSNodeReferenceFromBusinessNumber(
+                                businessId,
+                                phoneNumberId,
+                                reference,
+                                session
+                            );
+                            if (!deleteReferenceResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgentScript:SMS_NODE_REFERENCE_DELETE_FAILED",
+                                    "Failed to delete sms node reference from business phone number."
+                                );
+                            }
+                        }
+
+                        await session.CommitTransactionAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgentScript:DB_EXCEPTION",
+                            ex.Message
+                        );
                     }
                 }
-                else
-                {
-                    newScriptData.Id = existingScriptId!;
 
-                    var updateResult = await _businessAppRepository.UpdateAgentScript(businessId, agentId, newScriptData);
-                    if (!updateResult)
-                    {
-                        result.Code = "AddOrUpdateAgentScript:9";
-                        result.Message = "Failed to update existing script.";
-                        return result;
-                    }
-                }
+                return result.SetSuccessResult(newScriptData);
             }
             catch (Exception ex)
             {
-                result.Code = "AddOrUpdateAgentScript:10";
-                result.Message = "Error occurred while saving script: " + ex.Message;
-                return result;
+                return result.SetFailureResult(
+                    "AddOrUpdateAgentScript:EXCEPTION",
+                    ex.Message
+                );
             }
-
-            result.Success = true;
-            result.Data = newScriptData;
-            return result;
         }
 
         private async Task<FunctionReturnResult<List<BusinessAppAgentScriptNode>>> ValidateAndCreateNodes(
@@ -1981,11 +2105,18 @@ namespace IqraInfrastructure.Managers.Business
                             return result;
                         }
 
-                        var numberExists = await _parentBusinessManager.GetNumberManager().CheckBusinessNumberExistsById(phoneNumberId, businessId);
-                        if (!numberExists)
+                        var businessNumberData = await _parentBusinessManager.GetNumberManager().GetBusinessNumberById(businessId, phoneNumberId);
+                        if (businessNumberData == null)
                         {
                             result.Code = "ValidateAndCreateNodes:SEND_SMS_TOOL_PHONE_NUMBER_NOT_FOUND";
                             result.Message = "Phone number not found for send SMS node.";
+                            return result;
+                        }
+
+                        if (!businessNumberData.SmsEnabled)
+                        {
+                            result.Code = "ValidateAndCreateNodes:SEND_SMS_TOOL_PHONE_NUMBER_SMS_NOT_ENABLED";
+                            result.Message = "Phone number SMS not enabled.";
                             return result;
                         }
 

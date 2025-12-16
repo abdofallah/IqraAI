@@ -225,7 +225,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 }
 
                 // Script validation for edit mode
-                string? existingScriptId = null;
+                BusinessAppAgentScript? existingScriptData = null;
                 if (postType == "edit")
                 {
                     if (!formData.TryGetValue("scriptId", out StringValues scriptIdValue))
@@ -235,7 +235,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                             "Agent Script ID is missing for edit mode"
                         );
                     }
-                    existingScriptId = scriptIdValue.ToString();
+                    string? existingScriptId = scriptIdValue.ToString();
                     if (string.IsNullOrWhiteSpace(existingScriptId))
                     {
                         return result.SetFailureResult(
@@ -243,8 +243,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                             "Agent Script ID is required for edit mode"
                         );
                     }
-                    var agentScriptExists = await _businessManager.GetAgentsManager().CheckAgentScriptExists(businessId, agentId, existingScriptId);
-                    if (!agentScriptExists)
+                    existingScriptData = await _businessManager.GetAgentsManager().GetAgentScriptById(businessId, agentId, existingScriptId);
+                    if (existingScriptData == null)
                     {
                         return result.SetFailureResult(
                             "SaveBusinessAgentScript:AGENT_SCRIPT_NOT_FOUND",
@@ -258,7 +258,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     agentId,
                     postType,
                     formData,
-                    existingScriptId
+                    existingScriptData
                 );
                 if (!addOrUpdateResult.Success)
                 {

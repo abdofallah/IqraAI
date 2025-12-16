@@ -8,6 +8,7 @@ class BootstrapConfirmDialog {
 				cancelText: "Cancel",
 				confirmButtonClass: "btn-primary",
 				cancelButtonClass: "btn-secondary",
+				hideCancel: false,
 				modalClass: "",
 				zIndex: 1051,
 			},
@@ -30,7 +31,7 @@ class BootstrapConfirmDialog {
                             ${this.options.message}
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn ${this.options.cancelButtonClass}" id="${this.modalId}-cancel">${this.options.cancelText}</button>
+							${this.options.hideCancel ? "" : `<button type="button" class="btn ${this.options.cancelButtonClass}" id="${this.modalId}-cancel">${this.options.cancelText}</button>`}
                             <button type="button" class="btn ${this.options.confirmButtonClass}" id="${this.modalId}-confirm">${this.options.confirmText}</button>
                         </div>
                     </div>

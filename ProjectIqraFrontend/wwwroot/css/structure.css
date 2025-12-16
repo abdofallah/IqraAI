@@ -74,10 +74,12 @@ body {
 }
 
 #BootstrapAlertManager {
-     position: fixed;
-     bottom: 30px;
-     right: 30px;
-     z-index: 9999999;
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999999;
+    width: 80vw;
+    max-width: 450px;
 }
 
 #page-loader {

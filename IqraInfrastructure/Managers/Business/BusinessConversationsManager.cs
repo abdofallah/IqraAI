@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Turn;
+using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.Conversations;
 using IqraCore.Models.Business.Queues;
@@ -39,6 +40,91 @@ namespace IqraInfrastructure.Managers.Business
             _conversationStateRepository = conversationStateRepository;
             _conversationAudioRepository = conversationAudioRepository;
             _webSessionRepository = webSessionRepository;
+        }
+
+        /*
+         * 
+         * Common
+         * 
+        **/
+
+        public async Task<FunctionReturnResult<bool?>> CheckHasOngoingQueuesOrConversationsForBusinessNumber(long businessId, string businessNumberId)
+        {
+            var result = new FunctionReturnResult<bool?>();
+
+            try
+            {
+                var inboundCallQueuesCount = await _inboundCallQueueRepository.GetInboundCallQueuesCountAsync(
+                    businessId,
+                    new () { 
+                        RouteNumberIds = new() {
+                            businessNumberId
+                        },
+                        QueueStatusTypes = new()
+                        {
+                            CallQueueStatusEnum.Queued,
+                            CallQueueStatusEnum.ProcessingProxy,
+                            CallQueueStatusEnum.ProcessedProxy,
+                            CallQueueStatusEnum.ProcessingBackend
+                        }
+                    }
+                );
+                if (inboundCallQueuesCount == null)
+                {
+                    return result.SetFailureResult(
+                        "CheckHasOngoingQueuesOrConversationsForBusinessNumber:DATABASE_COUNT_ERROR",
+                        "Unable to fetch inbound queues count from database."
+                    );
+                }
+
+                var outboundCallQueuesCount = await _outboundCallQueueRepository.GetOutboundCallQueuesCountAsync(
+                    businessId,
+                    new()
+                    {
+                        CallingNumberIds = new() {
+                            businessNumberId
+                        },
+                        QueueStatusTypes = new()
+                        {
+                            CallQueueStatusEnum.Queued,
+                            CallQueueStatusEnum.ProcessingProxy,
+                            CallQueueStatusEnum.ProcessedProxy,
+                            CallQueueStatusEnum.ProcessingBackend
+                        }
+                    }
+                );
+                if (outboundCallQueuesCount == null)
+                {
+                    return result.SetFailureResult(
+                        "CheckHasOngoingQueuesOrConversationsForBusinessNumber:DATABASE_COUNT_ERROR",
+                        "Unable to fetch outbound queues count from database."
+                    );
+                }
+
+                var conversationsCount = await _conversationStateRepository.GetOngoingConversationsCountByBusinessNumberIds(
+                    businessId,
+                    businessNumberId
+                );
+                if (conversationsCount == null)
+                {
+                    return result.SetFailureResult(
+                        "CheckHasOngoingQueuesOrConversationsForBusinessNumber:DATABASE_COUNT_ERROR",
+                        "Unable to fetch conversation count from database."
+                    );
+                }
+
+                var totalCount = inboundCallQueuesCount.Value + outboundCallQueuesCount.Value + conversationsCount.Value;
+
+                return result.SetSuccessResult(totalCount > 0);
+            }
+            catch (Exception ex)
+            {
+                result.SetFailureResult(
+                    "CheckHasOngoingQueuesOrConversationsForBusinessNumber:EXCEPTION",
+                    $"An error occurred while fetching conversation state: {ex.Message}"
+                );
+                return result;
+            }
         }
 
         /**

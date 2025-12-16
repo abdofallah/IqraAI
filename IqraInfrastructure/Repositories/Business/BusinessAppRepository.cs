@@ -676,7 +676,19 @@ namespace IqraInfrastructure.Repositories.Business
             return await query;
         }
 
-        public async Task<bool> AddAgentScript(long businessId, string agentId, BusinessAppAgentScript newScriptData)
+        public async Task<BusinessAppAgentScript?> GetAgentScriptById(long businessId, string agentId, string scriptId)
+        {
+            var scriptQuery = _businessAppCollection.AsQueryable()
+                .Where(b => b.Id == businessId)
+                .SelectMany(b => b.Agents)
+                .Where(agent => agent.Id == agentId)
+                .SelectMany(agent => agent.Scripts)
+                .Where(script => script.Id == scriptId);
+
+            return await scriptQuery.FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> AddAgentScript(long businessId, string agentId, BusinessAppAgentScript newScriptData, IClientSessionHandle? session = null)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -688,11 +700,11 @@ namespace IqraInfrastructure.Repositories.Business
 
             var update = Builders<BusinessApp>.Update.Push(d => d.Agents.FirstMatchingElement().Scripts, newScriptData);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged && result.ModifiedCount > 0;
         }
         
-        public async Task<bool> UpdateAgentScript(long businessId, string agentId, BusinessAppAgentScript updatedScriptData)
+        public async Task<bool> UpdateAgentScript(long businessId, string agentId, BusinessAppAgentScript updatedScriptData, IClientSessionHandle? session = null)
         {
             const string UpdateAgentScriptAgentPathIdentifier = "agentElem";
             const string UpdateAgentScriptScriptPathIdentifier = "scriptElem";
@@ -718,7 +730,7 @@ namespace IqraInfrastructure.Repositories.Business
 
                 var updateOptions = new UpdateOptions { ArrayFilters = arrayFilters };
 
-                var result = await _businessAppCollection.UpdateOneAsync(filter, update, updateOptions);
+                var result = await _businessAppCollection.UpdateOneAsync(session, filter, update, updateOptions);
                 return result.IsAcknowledged && result.ModifiedCount > 0;
             }
             catch (Exception ex)
@@ -800,6 +812,43 @@ namespace IqraInfrastructure.Repositories.Business
                 $"Numbers.$",
                 new BsonDocument(newNumberData.ToBsonDocument())
             );
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> AddAgentScriptSMSNodeReferenceToBusinessNumber(long businessId, string phoneNumberId, BusinessNumberAgentScriptSMSNodeReference data, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == phoneNumberId)
+            );
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Numbers.FirstMatchingElement().AgentScriptSMSNodeReferences, data);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveAgentScriptSMSNodeReferenceFromBusinessNumber(long businessId, string phoneNumberId, BusinessNumberAgentScriptSMSNodeReference data, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == phoneNumberId)
+            );
+            var update = Builders<BusinessApp>.Update.PullFilter(
+                d => d.Numbers.FirstMatchingElement().AgentScriptSMSNodeReferences,
+                f => f.AgentId == data.AgentId && f.AgentScriptId == data.AgentScriptId && f.NodeReference == data.NodeReference
+            );
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> DeleteBusinessNumber(long businessId, string numberId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == numberId)
+            );
+            var update = Builders<BusinessApp>.Update.PullFilter(b => b.Numbers, t => t.Id == numberId);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
         }

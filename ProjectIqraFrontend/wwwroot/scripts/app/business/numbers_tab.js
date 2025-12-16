@@ -1,26 +1,38 @@
+/** Constants **/
+const DeleteNumberNoteMessage = "<br><br><b>Note</b> You must remove any references (script send sms node references or routes) to this number before deleting and wait or cancel any ongoing call queues or conversations.";
+
 /** Dynamic Variables **/
 const NumberProviderEnum = {
-	MODEMTEL: 1,
-	TWILIO: 2,
-	VONAGE: 3,
-	TELYNX: 4,
+	ModemTel: 1,
+	Twilio: 2,
+	Vonage: 3,
+	Telnyx: 4,
 	SIP: 10
 };
 
 // ModemTel
-let CurrentManageModemTelNumberData = null;
-let ManageModemTelNumberType = null;
-let IsSavingModemTelNumber = false;
+const ModemTelNumbersState = {
+	CurrentManageData: null,
+	CurrentManageType: null,
+	IsSaving: false,
+	IsDeleting: false
+}
 
 // Twilio
-let CurrentManageTwilioNumberData = null;
-let ManageTwilioNumberType = null;
-let IsSavingTwilioNumber = false;
+const TwilioNumbersState = {
+	CurrentManageData: null,
+	CurrentManageType: null,
+	IsSaving: false,
+	IsDeleting: false
+}
 
-// SIP Variables
-let CurrentManageSipNumberData = null;
-let ManageSipNumberType = null;
-let IsSavingSipNumber = false;
+// SIP
+const SipNumbersState = {
+	CurrentManageData: null,
+	CurrentManageType: null,
+	IsSaving: false,
+	IsDeleting: false
+}
 
 /** Element Variables **/
 const numbersTabTooltipTriggerList = document.querySelectorAll('#phone-numbers-tab [data-bs-toggle="tooltip"]');
@@ -36,9 +48,10 @@ let addNewCustomSimNumberModal = null;
 const physicalNumberModalIntegrationSelect = addNewCustomSimNumberModalElement.find("#physicalNumberModalIntegrationSelect");
 const physicalNumberModalCountrySelect = addNewCustomSimNumberModalElement.find("#physicalNumberModalCountrySelect");
 const physicalNumberModalNumberInput = addNewCustomSimNumberModalElement.find("#physicalNumberModalNumberInput");
+const physicalNumberModalVoiceEnabledCheck = addNewCustomSimNumberModalElement.find("#physicalNumberModalVoiceEnabledCheck");
+const physicalNumberModalSmsEnabledCheck = addNewCustomSimNumberModalElement.find("#physicalNumberModalSmsEnabledCheck");
 const physicalNumberModalRegionSelect = addNewCustomSimNumberModalElement.find("#physicalNumberModalRegionSelect");
 const addNewPhysicalNumberButton = addNewCustomSimNumberModalElement.find("#addNewPhysicalNumberButton");
-const addNewPhysicalNumberButtonSpinner = addNewPhysicalNumberButton.find(".save-button-spinner");
 
 // Twilio
 const twilioNumbersTable = numbersTab.find("#twilioNumbersTable");
@@ -48,6 +61,8 @@ let addNewTwilioNumberModal = null;
 const twilioNumberModalIntegrationSelect = addNewTwilioNumberModalElement.find("#twilioNumberModalIntegrationSelect");
 const twilioNumberModalCountrySelect = addNewTwilioNumberModalElement.find("#twilioNumberModalCountrySelect");
 const twilioNumberModalNumberInput = addNewTwilioNumberModalElement.find("#twilioNumberModalNumberInput");
+const twilioNumberModalVoiceEnabledCheck = addNewTwilioNumberModalElement.find("#twilioNumberModalVoiceEnabledCheck");
+const twilioNumberModalSmsEnabledCheck = addNewTwilioNumberModalElement.find("#twilioNumberModalSmsEnabledCheck");
 const twilioNumberModalRegionSelect = addNewTwilioNumberModalElement.find("#twilioNumberModalRegionSelect");
 const addNewTwilioNumberButton = addNewTwilioNumberModalElement.find("#addNewTwilioNumberButton");
 const addNewTwilioNumberButtonSpinner = addNewTwilioNumberButton.find(".save-button-spinner");
@@ -66,17 +81,18 @@ let addNewSipNumberModal = null;
 const sipNumberModalIntegrationSelect = addNewSipNumberModalElement.find("#sipNumberModalIntegrationSelect");
 const sipNumberModalIsE164 = addNewSipNumberModalElement.find("#sipNumberModalIsE164");
 const sipNumberModalNumberInput = addNewSipNumberModalElement.find("#sipNumberModalNumberInput");
+const sipNumberModalVoiceEnabledCheck = addNewSipNumberModalElement.find("#sipNumberModalVoiceEnabledCheck");
+const sipNumberModalSmsEnabledCheck = addNewSipNumberModalElement.find("#sipNumberModalSmsEnabledCheck");
 const sipNumberModalCountryContainer = addNewSipNumberModalElement.find("#sipNumberModalCountryContainer");
 const sipNumberModalCountrySelect = addNewSipNumberModalElement.find("#sipNumberModalCountrySelect");
 const sipNumberModalNumberHelp = addNewSipNumberModalElement.find("#sipNumberModalNumberHelp");
 const sipNumberModalAllowedIpsInput = addNewSipNumberModalElement.find("#sipNumberModalAllowedIpsInput");
 const sipNumberModalRegionSelect = addNewSipNumberModalElement.find("#sipNumberModalRegionSelect");
 const addNewSipNumberSaveButton = addNewSipNumberModalElement.find("#addNewSipNumberSaveButton");
-const addNewSipNumberSaveButtonSpinner = addNewSipNumberSaveButton.find(".save-button-spinner");
 
 /** API Functions **/
 function SaveBusinessNumberToAPI(formData, successCallback, errorCallback) {
-	$.ajax({
+	return $.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/numbers/save`,
 		type: "POST",
 		data: formData,
@@ -96,8 +112,324 @@ function SaveBusinessNumberToAPI(formData, successCallback, errorCallback) {
 		},
 	});
 }
+function DeleteBusinessNumberFromAPI(numberId, successCallback, errorCallback) {
+	return $.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/numbers/${numberId}/delete`,
+		type: "POST",
+		contentType: "application/json",
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
 
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		},
+    });
+}
 /** Functions **/
+
+// Common Functions
+async function deleteBusinessNumberHandler(event) {
+	event.preventDefault();
+	const button = $(event.currentTarget);
+	const numberId = button.attr("number-id");
+	const numberData = BusinessFullData.businessApp.numbers.find((n) => n.id === numberId);
+	if (!numberData) return;
+
+	const numberProviderState = getNumberProviderState(numberData.provider.value);
+	const numberProviderName = getNumberProviderName(numberData.provider.value);
+
+	if (SipNumbersState.IsDeleting) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: `A delete operation for ${numberProviderName} number is already in progress. Please try again once the operation is complete.`,
+			timeout: 6000,
+		});
+        return;
+	}
+
+	const confirmDialog = new BootstrapConfirmDialog({
+		title: `Delete ${numberProviderName} Number`,
+		message: `Are you sure you want to delete this ${numberProviderName} Trunking number?${DeleteNumberNoteMessage}`,
+		confirmText: "Delete",
+		confirmButtonClass: "btn-danger"
+	});
+
+	if (await confirmDialog.show()) {
+		showHideButtonSpinnerWithDisableEnable(button, true);
+		numberProviderState.IsDeleting = true;
+
+		DeleteBusinessNumberFromAPI(
+			numberId,
+			() => {
+				const numberIndex = BusinessFullData.businessApp.numbers.findIndex(n => n.id === numberId);
+				if (numberIndex === -1) return;
+				BusinessFullData.businessApp.numbers.splice(numberIndex, 1);
+
+				const numbersProviderTable = getNumberProviderTable(numberData.provider.value);
+				numbersProviderTable.find("tbody").find(`tr[number-id="${numberId}"]`).remove();
+
+                AlertManager.createAlert({
+                    type: "success",
+                    message: `${numberProviderName} number deleted successfully.`,
+                    timeout: 6000,
+                });
+			},
+			(errorResult) => {
+				var resultMessage = "Check console logs for more details.";
+				if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+				AlertManager.createAlert({
+					type: "danger",
+					message: "Error occured while deleting business number.",
+					resultMessage: resultMessage,
+					timeout: 6000,
+				});
+
+				console.log("Error occured while deleting business number: ", errorResult);
+			}
+		).always(() => {
+			showHideButtonSpinnerWithDisableEnable(button, false);
+			numberProviderState.IsDeleting = false;
+		});
+	}
+}
+function saveBusinessNumberHandler(event, numberProviderType) {
+	event.preventDefault();
+
+	const numberProviderState = getNumberProviderState(numberProviderType);
+	const numberProviderName = getNumberProviderName(numberProviderType);
+
+	if (numberProviderState.IsSaving) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: `A save operation for ${numberProviderName} number is already in progress.`,
+			timeout: 6000,
+		});
+        return;
+	}
+
+	const button = $(event.currentTarget);
+
+	const numberProviderValidateModalFunction = getNumberProviderValidateModalFunction(numberProviderType);
+	const validationResult = numberProviderValidateModalFunction(false);
+	if (!validationResult.validated) {
+		AlertManager.createAlert({
+			type: "danger",
+			message: `${numberProviderName} Saving Validation failed.`,
+			resultMessage: validationResult.errors.join("<br>"),
+			timeout: 6000,
+		});
+		return;
+	}
+
+	const numberProviderCheckChangesFunction = getNumberProviderCheckModalHasChangesFunction(numberProviderType);
+	const changes = numberProviderCheckChangesFunction(false);
+	if (!changes.hasChanges) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: `There are no changes to save for ${numberProviderName} number.`,
+			timeout: 6000,
+		});
+        return;
+	}
+
+	numberProviderState.IsSaving = true;
+
+	showHideButtonSpinnerWithDisableEnable(button, true);
+
+	const formData = new FormData();
+	formData.append("postType", numberProviderState.CurrentManageType);
+	formData.append("changes", JSON.stringify(changes.changes));
+
+	if (numberProviderState.CurrentManageType === "edit") {
+		formData.append("numberId", numberProviderState.CurrentManageData.id);
+	}
+
+	SaveBusinessNumberToAPI(
+		formData,
+		(responseResult) => {
+			const numberProviderTable = getNumberProviderTable(numberProviderType);
+			const numberProviderTableElementFunc = getNumberProviderCreateTableElementFunction(numberProviderType);
+			const numberProviderModal = getNumberProviderModal(numberProviderType);
+
+			if (numberProviderState.CurrentManageType === "new") {
+				BusinessFullData.businessApp.numbers.push(responseResult);
+
+				numberProviderTable.find("tbody").prepend(numberProviderTableElementFunc(responseResult));
+
+				numberProviderTable.find('tbody tr[tr-type="none-notice"]').remove();
+			} else {
+				const exisitingIndex = BusinessFullData.businessApp.numbers.findIndex((numberData) => numberData.id === numberProviderState.CurrentManageData.id);
+				BusinessFullData.businessApp.numbers[exisitingIndex] = responseResult;
+
+				const exisitingUserPhysicalNumbersTableElement = numberProviderTable.find(`tbody tr[number-id="${numberProviderState.CurrentManageData.id}"]`);
+				exisitingUserPhysicalNumbersTableElement.replaceWith(numberProviderTableElementFunc(responseResult));
+			}
+
+			AlertManager.createAlert({
+				type: "success",
+				message: `Successfully ${numberProviderState.CurrentManageType === "new" ? "added" : "updated"} business ${numberProviderName} number.`,
+				timeout: 6000,
+			});
+
+			numberProviderState.IsSaving = false; // needed in order to hide the modal
+			numberProviderModal.hide();
+		},
+		(errorResult) => {
+			var resultMessage = "Check console logs for more details.";
+			if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+			AlertManager.createAlert({
+				type: "danger",
+				message: `Error occured while saving ${numberProviderName} business number.`,
+				resultMessage: resultMessage,
+				timeout: 6000,
+			});
+		},
+	).always(() => {
+		showHideButtonSpinnerWithDisableEnable(button, false);
+		numberProviderState.IsSaving = false;
+	})
+}
+
+// Common Helpers
+function getNumberProviderName(numberProvider) {
+	var numberProviderName = "Unknown";
+	switch (numberProvider) {
+		case NumberProviderEnum.ModemTel:
+			numberProviderName = "ModemTel";
+			break;
+		case NumberProviderEnum.Twilio:
+			numberProviderName = "Twilio";
+			break;
+		case NumberProviderEnum.Vonage:
+			numberProviderName = "Vonage";
+			break;
+		case NumberProviderEnum.Telnyx:
+			numberProviderName = "Telnyx";
+			break;
+		case NumberProviderEnum.SIP:
+			numberProviderName = "SIP";
+			break;
+		default:
+			break;
+	}
+
+    return numberProviderName;
+}
+function getNumberProviderTable(numberProvider) {
+	switch (numberProvider) {
+		case NumberProviderEnum.ModemTel:
+			return modemTelNumbersTable;
+		case NumberProviderEnum.Twilio:
+			return  twilioNumbersTable;
+		case NumberProviderEnum.Vonage:
+			return  vonageNumbersTable;
+		case NumberProviderEnum.Telnyx:
+			return  telnyxNumbersTable;
+		case NumberProviderEnum.SIP:
+			return sipNumbersTable;
+		default:
+			break;
+	}
+
+	return null;
+}
+function getNumberProviderState(numberProvider) {
+	switch (numberProvider) {
+		case NumberProviderEnum.ModemTel:
+			return ModemTelNumbersState;
+		case NumberProviderEnum.Twilio:
+			return TwilioNumbersState;
+		case NumberProviderEnum.Vonage:
+			return VonageNumbersState;
+		case NumberProviderEnum.Telnyx:
+			return TelnyxNumbersState;
+		case NumberProviderEnum.SIP:
+			return SipNumbersState;
+		default:
+			break;
+	}
+
+    return null;
+}
+function getNumberProviderValidateModalFunction(numberProvider) {
+	switch (numberProvider) {
+		case NumberProviderEnum.ModemTel:
+			return ValidateModemTelNumberModalData;
+		case NumberProviderEnum.Twilio:
+			return ValidateTwilioNumberModalData;
+		case NumberProviderEnum.Vonage:
+			return ValidateVonageNumberModalData;
+		case NumberProviderEnum.Telnyx:
+			return ValidateTelnyxNumberModalData;
+		case NumberProviderEnum.SIP:
+			return ValidateSipNumberModalData;
+		default:
+			break;
+	}
+
+	return null;
+}
+function getNumberProviderCheckModalHasChangesFunction(numberProvider) {
+	switch (numberProvider) {
+		case NumberProviderEnum.ModemTel:
+			return CheckModemTelNumberModalHasChanges;
+		case NumberProviderEnum.Twilio:
+			return CheckTwilioNumberModalHasChanges;
+		case NumberProviderEnum.Vonage:
+			return CheckVonageNumberModalHasChanges;
+		case NumberProviderEnum.Telnyx:
+			return CheckTelnyxNumberModalHasChanges;	
+		case NumberProviderEnum.SIP:
+			return CheckSipNumberModalHasChanges;
+		default:
+			break;
+	}
+
+    return null;
+}
+function getNumberProviderCreateTableElementFunction(numberProvider) {
+	switch (numberProvider) {
+		case NumberProviderEnum.ModemTel:
+			return CreateBusinessModemTelNumbersTableElement;
+		case NumberProviderEnum.Twilio:
+			return CreateBusinessTwilioNumbersTableElement;
+		case NumberProviderEnum.Vonage:
+			return CreateBusinessVonageNumbersTableElement;
+		case NumberProviderEnum.Telnyx:
+			return CreateBusinessTelnyxNumbersTableElement;
+		case NumberProviderEnum.SIP:
+			return CreateBusinessSipNumbersTableElement;
+		default:
+			break;
+	}
+
+    return null;
+}
+function getNumberProviderModal(numberProvider) {
+	switch (numberProvider) {
+		case NumberProviderEnum.ModemTel:
+			return addNewCustomSimNumberModal;
+		case NumberProviderEnum.Twilio:
+			return addNewTwilioNumberModal;
+		case NumberProviderEnum.Vonage:
+			return addNewVonageNumberModal;
+		case NumberProviderEnum.Telnyx:
+			return addNewTelnyxNumberModal;
+		case NumberProviderEnum.SIP:
+			return addNewSipNumberModal;
+		default:
+			break;
+	}
+
+    return null;
+}
 
 // ModemTel
 function resetOrClearModemTelModal() {
@@ -119,11 +451,13 @@ function createDefaultModemTelNumberObject() {
 		integrationId: "",
 		countryCode: "",
 		number: "",
+		voiceEnabled: false,
+        smsEnabled: false,
 		routeId: null,
 		regionId: "",
 		regionWebhookEndpoint: "",
 		provider: {
-			value: NumberProviderEnum.MODEMTEL,
+			value: NumberProviderEnum.ModemTel,
 		},
 	};
 
@@ -162,7 +496,7 @@ function CreateBusinessModemTelNumbersTableElement(numberData) {
 function FillBusinessModemTelList() {
 	physicalSimNumbersTable.find("tbody").empty();
 
-	const physicalSimNumbersList = BusinessFullData.businessApp.numbers.filter((numberData) => numberData.provider.value === NumberProviderEnum.MODEMTEL);
+	const physicalSimNumbersList = BusinessFullData.businessApp.numbers.filter((numberData) => numberData.provider.value === NumberProviderEnum.ModemTel);
 
 	if (physicalSimNumbersList.length === 0) {
 		physicalSimNumbersTable.find("tbody").append(`<tr tr-type="none-notice"><td colspan="5">No ModemTel numbers found</td></tr>`);
@@ -191,26 +525,43 @@ function FillInitialModemTelModal() {
 function CheckModemTelNumberModalHasChanges(enableDisableButton = true) {
 	let hasChanges = false;
 	const changes = {
-		provider: NumberProviderEnum.MODEMTEL,
+		provider: NumberProviderEnum.ModemTel,
 	};
 
+	// Integration
 	changes.integrationId = physicalNumberModalIntegrationSelect.find("option:selected").val();
-	if (CurrentManageModemTelNumberData.integrationId !== changes.integrationId) {
+	if (ModemTelNumbersState.CurrentManageData.integrationId !== changes.integrationId) {
         hasChanges = true;
     }
 
+	// Country
 	changes.countryCode = physicalNumberModalCountrySelect.find("option:selected").val();
-	if (CurrentManageModemTelNumberData.countryCode !== changes.countryCode) {
+	if (ModemTelNumbersState.CurrentManageData.countryCode !== changes.countryCode) {
 		hasChanges = true;
 	}
 
+	// Number
 	changes.number = physicalNumberModalNumberInput.val();
-	if (CurrentManageModemTelNumberData.number !== changes.number) {
+	if (ModemTelNumbersState.CurrentManageData.number !== changes.number) {
 		hasChanges = true;
 	}
 
+	// Voice Enabled
+    const voiceEnabled = physicalNumberModalVoiceEnabledCheck.is(":checked");
+    if (ModemTelNumbersState.CurrentManageData.voiceEnabled !== voiceEnabled) {
+        hasChanges = true;
+    }
+	changes.voiceEnabled = voiceEnabled;
+
+	// Sms Enabled
+    const smsEnabled = physicalNumberModalSmsEnabledCheck.is(":checked");
+    if (ModemTelNumbersState.CurrentManageData.smsEnabled !== smsEnabled) {
+        hasChanges = true;
+    }
+
+	// Region
 	changes.regionId = physicalNumberModalRegionSelect.find("option:selected").val();
-	if (CurrentManageModemTelNumberData.regionId !== changes.regionId) {
+	if (ModemTelNumbersState.CurrentManageData.regionId !== changes.regionId) {
 		hasChanges = true;
 	}
 
@@ -282,9 +633,9 @@ function ValidateModemTelNumberModalData(onlyRemove = true) {
 }
 function initModemtelNumberEvents() {
 	addNewCustomSimNumberModalButton.on("click", () => {
-		CurrentManageModemTelNumberData = createDefaultModemTelNumberObject();
+		ModemTelNumbersState.CurrentManageData = createDefaultModemTelNumberObject();
 
-		ManageModemTelNumberType = "new";
+		ModemTelNumbersState.CurrentManageType = "new";
 
 		addNewCustomSimNumberModal.show();
 	});
@@ -292,13 +643,15 @@ function initModemtelNumberEvents() {
 	addNewCustomSimNumberModalElement.on("show.bs.modal", () => {
 		resetOrClearModemTelModal();
 
-		physicalNumberModalIntegrationSelect.val(CurrentManageModemTelNumberData.integrationId);
-		physicalNumberModalNumberInput.val(CurrentManageModemTelNumberData.number);
+		physicalNumberModalIntegrationSelect.val(ModemTelNumbersState.CurrentManageData.integrationId);
+		physicalNumberModalNumberInput.val(ModemTelNumbersState.CurrentManageData.number);
+        physicalNumberModalVoiceEnabledCheck.prop("checked", ModemTelNumbersState.CurrentManageData.voiceEnabled);
+        physicalNumberModalSmsEnabledCheck.prop("checked", ModemTelNumbersState.CurrentManageData.smsEnabled);
 
-		physicalNumberModalCountrySelect.val(CurrentManageModemTelNumberData.countryCode);
-		physicalNumberModalRegionSelect.val(CurrentManageModemTelNumberData.regionId);
+		physicalNumberModalCountrySelect.val(ModemTelNumbersState.CurrentManageData.countryCode);
+		physicalNumberModalRegionSelect.val(ModemTelNumbersState.CurrentManageData.regionId);
 
-		const shouldDisableFields = ManageModemTelNumberType === "edit";
+		const shouldDisableFields = ModemTelNumbersState.CurrentManageType === "edit";
 
 		physicalNumberModalNumberInput.prop("disabled", shouldDisableFields);
 		physicalNumberModalCountrySelect.prop("disabled", shouldDisableFields);
@@ -306,7 +659,7 @@ function initModemtelNumberEvents() {
 	});
 
 	addNewCustomSimNumberModalElement.on("hide.bs.modal", (event) => {
-		if (IsSavingModemTelNumber) {
+		if (ModemTelNumbersState.IsSaving) {
 			AlertManager.createAlert({
 				type: "warning",
 				message: "Please wait while saving changes before closing the ModemTel number modal...",
@@ -317,13 +670,12 @@ function initModemtelNumberEvents() {
 			return false;
 		}
 
-		CurrentManageModemTelNumberData = null;
-		ManageModemTelNumberType = null;
+		ModemTelNumbersState.CurrentManageData = null;
+		ModemTelNumbersState.CurrentManageType = null;
 
 		addNewCustomSimNumberModalElement.find(".is-invalid").removeClass("is-invalid");
 
 		addNewPhysicalNumberButton.prop("disabled", true);
-		addNewPhysicalNumberButtonSpinner.addClass("d-none");
 	});
 
 	addNewCustomSimNumberModalElement.on("change, input", "input, textarea, select", () => {
@@ -332,78 +684,7 @@ function initModemtelNumberEvents() {
 	});
 
 	addNewPhysicalNumberButton.on("click", (event) => {
-		event.preventDefault();
-
-		if (IsSavingModemTelNumber) return;
-
-		const validationResult = ValidateModemTelNumberModalData(false);
-		if (!validationResult.validated) {
-			AlertManager.createAlert({
-				type: "danger",
-				message: `ModemTel Saving Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
-				timeout: 6000,
-			});
-			return;
-		}
-
-		const changes = CheckModemTelNumberModalHasChanges(false);
-		if (!changes.hasChanges) return;
-
-		IsSavingModemTelNumber = true;
-
-		addNewPhysicalNumberButton.prop("disabled", true);
-		addNewPhysicalNumberButtonSpinner.removeClass("d-none");
-
-		const formData = new FormData();
-		formData.append("postType", ManageModemTelNumberType);
-		formData.append("changes", JSON.stringify(changes.changes));
-
-		if (ManageModemTelNumberType === "edit") {
-			formData.append("numberId", CurrentManageModemTelNumberData.id);
-		}
-
-		SaveBusinessNumberToAPI(
-			formData,
-			(responseResult) => {
-				if (ManageModemTelNumberType === "new") {
-					BusinessFullData.businessApp.numbers.push(responseResult);
-
-					physicalSimNumbersTable.find("tbody").prepend(CreateBusinessModemTelNumbersTableElement(responseResult));
-
-					physicalSimNumbersTable.find('tbody tr[tr-type="none-notice"]').remove();
-				} else {
-					const exisitingIndex = BusinessFullData.businessApp.numbers.findIndex((numberData) => numberData.id === CurrentManageModemTelNumberData.id);
-					BusinessFullData.businessApp.numbers[exisitingIndex] = responseResult;
-
-					const exisitingUserPhysicalNumbersTableElement = physicalSimNumbersTable.find(`tbody tr[number-id="${CurrentManageModemTelNumberData.id}"]`);
-					exisitingUserPhysicalNumbersTableElement.replaceWith(CreateBusinessModemTelNumbersTableElement(responseResult));
-				}
-
-				AlertManager.createAlert({
-					type: "success",
-					message: `Successfully ${ManageModemTelNumberType === "new" ? "added" : "updated"} business ModemTel number.`,
-					timeout: 6000,
-				});
-
-				IsSavingModemTelNumber = false;
-
-				addNewCustomSimNumberModal.hide();
-			},
-			(errorResult) => {
-				AlertManager.createAlert({
-					type: "danger",
-					message: "Error occured while saving business number. Check browser console for logs.",
-					timeout: 6000,
-				});
-
-				console.log("Error occured while saving business number: ", errorResult);
-
-				addNewPhysicalNumberButton.prop("disabled", false);
-				addNewPhysicalNumberButtonSpinner.addClass("d-none");
-
-				IsSavingModemTelNumber = false;
-			},
-		);
+		saveBusinessNumberHandler(event, NumberProviderEnum.ModemTel);
 	});
 
 	physicalSimNumbersTable.on("click", 'button[button-type="edit-physical-number"]', (event) => {
@@ -415,8 +696,8 @@ function initModemtelNumberEvents() {
 		const numberId = currentElement.attr("number-id");
 		const numberData = BusinessFullData.businessApp.numbers.find((number) => number.id === numberId);
 
-		CurrentManageModemTelNumberData = numberData;
-		ManageModemTelNumberType = "edit";
+		ModemTelNumbersState.CurrentManageData = numberData;
+		ModemTelNumbersState.CurrentManageType = "edit";
 
 		addNewCustomSimNumberModal.show();
 	});
@@ -430,7 +711,32 @@ function initModemtelNumberEvents() {
 		const numberId = currentElement.attr("number-id");
 		const numberData = BusinessFullData.businessApp.numbers.find((number) => number.id === numberId);
 
-		const webhookURI = `https://${numberData.regionWebhookEndpoint}/api/modemtel/webhook/incoming/${CurrentBusinessId}/${numberId}`;
+		const regionData = SpecificationRegionsListData.find((r) => r.countryRegion === numberData.regionId);
+		if (!regionData) {
+			AlertManager.createAlert({
+				type: "danger",
+				message: `Could not find region data for: ${numberData.regionId}`,
+				timeout: 6000,
+			});
+
+			return;
+		}
+
+		const regionProxyServerData = regionData.servers.find((p) => p.id === numberData.regionServerId);
+		if (!regionProxyServerData) {
+			AlertManager.createAlert({
+				type: "danger",
+				message: `Could not find proxy server data for: ${numberData.regionServerId}`,
+				timeout: 6000,
+			});
+
+			return;
+		}
+
+		const proxyHost = regionProxyServerData.endpoint;
+		const proxyIsSSL = regionProxyServerData.isSSL;
+
+		const webhookURI = `${proxyIsSSL ? "https" : "http"}://${proxyHost}/api/modemtel/webhook/incoming/${CurrentBusinessId}/${numberId}`;
 
 		const webhookDialog = new BootstrapConfirmDialog({
 			title: `Number (${numberData.countryCode}-${numberData.number})  Webhook`,
@@ -462,6 +768,11 @@ function initModemtelNumberEvents() {
 			});
 		}
 	});
+
+	// Table Action: Delete ModemTel Number
+	physicalSimNumbersTable.on("click", 'button[button-type="delete-physical-number"]', async (event) => {
+		await deleteBusinessNumberHandler(event);
+	});
 }
 
 // Twilio
@@ -484,11 +795,13 @@ function createDefaultTwilioNumberObject() {
 		integrationId: "",
 		countryCode: "",
 		number: "",
+		voiceEnabled: false,
+		smsEnabled: false,
 		routeId: null,
 		regionId: "",
 		regionWebhookEndpoint: "",
 		provider: {
-			value: NumberProviderEnum.TWILIO,
+			value: NumberProviderEnum.Twilio,
 		},
 	};
 
@@ -527,7 +840,7 @@ function CreateBusinessTwilioNumbersTableElement(numberData) {
 function FillBusinessTwilioList() {
 	twilioNumbersTable.find("tbody").empty();
 
-	const twilioNumbersList = BusinessFullData.businessApp.numbers.filter((numberData) => numberData.provider.value === NumberProviderEnum.TWILIO);
+	const twilioNumbersList = BusinessFullData.businessApp.numbers.filter((numberData) => numberData.provider.value === NumberProviderEnum.Twilio);
 
 	if (twilioNumbersList.length === 0) {
 		twilioNumbersTable.find("tbody").append(`<tr tr-type="none-notice"><td colspan="5">No Twilio numbers found</td></tr>`);
@@ -554,26 +867,44 @@ function FillInitialTwilioModal() {
 function CheckTwilioNumberModalHasChanges(enableDisableButton = true) {
 	let hasChanges = false;
 	const changes = {
-		provider: NumberProviderEnum.TWILIO,
+		provider: NumberProviderEnum.Twilio,
 	};
 
+	// Integration
 	changes.integrationId = twilioNumberModalIntegrationSelect.find("option:selected").val();
-	if (CurrentManageTwilioNumberData.integrationId !== changes.integrationId) {
+	if (TwilioNumbersState.CurrentManageData.integrationId !== changes.integrationId) {
 		hasChanges = true;
 	}
 
+	// Country
 	changes.countryCode = twilioNumberModalCountrySelect.find("option:selected").val();
-	if (CurrentManageTwilioNumberData.countryCode !== changes.countryCode) {
+	if (TwilioNumbersState.CurrentManageData.countryCode !== changes.countryCode) {
 		hasChanges = true;
 	}
 
+	// Number
 	changes.number = twilioNumberModalNumberInput.val();
-	if (CurrentManageTwilioNumberData.number !== changes.number) {
+	if (TwilioNumbersState.CurrentManageData.number !== changes.number) {
 		hasChanges = true;
 	}
 
+	// Voice Enabled
+    const voiceEnabled = twilioNumberModalVoiceEnabledCheck.is(":checked");
+    if (TwilioNumbersState.CurrentManageData.voiceEnabled !== voiceEnabled) {
+        hasChanges = true;
+    }
+	changes.voiceEnabled = voiceEnabled;
+
+	// SMS Enabled
+    const smsEnabled = twilioNumberModalSmsEnabledCheck.is(":checked");
+    if (TwilioNumbersState.CurrentManageData.smsEnabled !== smsEnabled) {
+        hasChanges = true;
+    }
+    changes.smsEnabled = smsEnabled;
+
+	// Region
 	changes.regionId = twilioNumberModalRegionSelect.find("option:selected").val();
-	if (CurrentManageTwilioNumberData.regionId !== changes.regionId) {
+	if (TwilioNumbersState.CurrentManageData.regionId !== changes.regionId) {
 		hasChanges = true;
 	}
 
@@ -645,9 +976,9 @@ function ValidateTwilioNumberModalData(onlyRemove = true) {
 }
 function initTwilioNumberEvents() {
 	addNewTwilioNumberModalButton.on("click", () => {
-		CurrentManageTwilioNumberData = createDefaultModemTelNumberObject();
+		TwilioNumbersState.CurrentManageData = createDefaultModemTelNumberObject();
 
-		ManageTwilioNumberType = "new";
+		TwilioNumbersState.CurrentManageType = "new";
 
 		addNewTwilioNumberModal.show();
 	});
@@ -655,13 +986,15 @@ function initTwilioNumberEvents() {
 	addNewTwilioNumberModalElement.on("show.bs.modal", () => {
 		resetOrClearTwilioNumberModalData();
 
-		twilioNumberModalIntegrationSelect.val(CurrentManageTwilioNumberData.integrationId);
-		twilioNumberModalNumberInput.val(CurrentManageTwilioNumberData.number);
+		twilioNumberModalIntegrationSelect.val(TwilioNumbersState.CurrentManageData.integrationId);
+		twilioNumberModalNumberInput.val(TwilioNumbersState.CurrentManageData.number);
+        twilioNumberModalVoiceEnabledCheck.prop("checked", TwilioNumbersState.CurrentManageData.voiceEnabled);
+        twilioNumberModalSmsEnabledCheck.prop("checked", TwilioNumbersState.CurrentManageData.smsEnabled);
 
-		twilioNumberModalCountrySelect.val(CurrentManageTwilioNumberData.countryCode);
-		twilioNumberModalRegionSelect.val(CurrentManageTwilioNumberData.regionId);
+		twilioNumberModalCountrySelect.val(TwilioNumbersState.CurrentManageData.countryCode);
+		twilioNumberModalRegionSelect.val(TwilioNumbersState.CurrentManageData.regionId);
 
-		const shouldDisableFields = ManageTwilioNumberType === "edit";
+		const shouldDisableFields = TwilioNumbersState.CurrentManageType === "edit";
 
 		twilioNumberModalNumberInput.prop("disabled", shouldDisableFields);
 		twilioNumberModalCountrySelect.prop("disabled", shouldDisableFields);
@@ -669,7 +1002,7 @@ function initTwilioNumberEvents() {
 	});
 
 	addNewTwilioNumberModalElement.on("hide.bs.modal", (event) => {
-		if (IsSavingTwilioNumber) {
+		if (TwilioNumbersState.IsSaving) {
 			AlertManager.createAlert({
 				type: "warning",
 				message: "Please wait while saving changes before closing the Twilio number modal...",
@@ -680,13 +1013,12 @@ function initTwilioNumberEvents() {
 			return false;
 		}
 
-		CurrentManageTwilioNumberData = null;
-		ManageTwilioNumberType = null;
+		TwilioNumbersState.CurrentManageData = null;
+		TwilioNumbersState.CurrentManageType = null;
 
 		addNewTwilioNumberModalElement.find(".is-invalid").removeClass("is-invalid");
 
 		addNewTwilioNumberButton.prop("disabled", true);
-		addNewTwilioNumberButtonSpinner.addClass("d-none");
 	});
 
 	addNewTwilioNumberModalElement.on("change, input", "input, textarea, select", () => {
@@ -695,78 +1027,7 @@ function initTwilioNumberEvents() {
 	});
 
 	addNewTwilioNumberButton.on("click", (event) => {
-		event.preventDefault();
-
-		if (IsSavingTwilioNumber) return;
-
-		const validationResult = ValidateTwilioNumberModalData(false);
-		if (!validationResult.validated) {
-			AlertManager.createAlert({
-				type: "danger",
-				message: `Twilio Saving Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
-				timeout: 6000,
-			});
-			return;
-		}
-
-		const changes = CheckTwilioNumberModalHasChanges(false);
-		if (!changes.hasChanges) return;
-
-		IsSavingTwilioNumber = true;
-
-		addNewTwilioNumberButton.prop("disabled", true);
-		addNewTwilioNumberButtonSpinner.removeClass("d-none");
-
-		const formData = new FormData();
-		formData.append("postType", ManageTwilioNumberType);
-		formData.append("changes", JSON.stringify(changes.changes));
-
-		if (ManageTwilioNumberType === "edit") {
-			formData.append("numberId", CurrentManageTwilioNumberData.id);
-		}
-
-		SaveBusinessNumberToAPI(
-			formData,
-			(responseResult) => {
-				if (ManageTwilioNumberType === "new") {
-					BusinessFullData.businessApp.numbers.push(responseResult);
-
-					twilioNumbersTable.find("tbody").prepend(CreateBusinessTwilioNumbersTableElement(responseResult));
-
-					twilioNumbersTable.find('tbody tr[tr-type="none-notice"]').remove();
-				} else {
-					const exisitingIndex = BusinessFullData.businessApp.numbers.findIndex((numberData) => numberData.id === CurrentManageTwilioNumberData.id);
-					BusinessFullData.businessApp.numbers[exisitingIndex] = responseResult;
-
-					const exisitingUserTwilioNumbersTableElement = twilioNumbersTable.find(`tbody tr[number-id="${CurrentManageTwilioNumberData.id}"]`);
-					exisitingUserTwilioNumbersTableElement.replaceWith(CreateBusinessTwilioNumbersTableElement(responseResult));
-				}
-
-				AlertManager.createAlert({
-					type: "success",
-					message: `Successfully ${ManageTwilioNumberType === "new" ? "added" : "updated"} business Twilio number.`,
-					timeout: 6000,
-				});
-
-				IsSavingTwilioNumber = false;
-
-				addNewTwilioNumberModal.hide();
-			},
-			(errorResult) => {
-				AlertManager.createAlert({
-					type: "danger",
-					message: "Error occured while saving Twilio number. Check browser console for logs.",
-					timeout: 6000,
-				});
-
-				console.log("Error occured while saving Twilio number: ", errorResult);
-
-				addNewTwilioNumberButton.prop("disabled", false);
-				addNewTwilioNumberButtonSpinner.addClass("d-none");
-
-				IsSavingTwilioNumber = false;
-			},
-		);
+		saveBusinessNumberHandler(event, NumberProviderEnum.Twilio);
 	});
 
 	twilioNumbersTable.on("click", 'button[button-type="edit-twilio-number"]', (event) => {
@@ -778,8 +1039,8 @@ function initTwilioNumberEvents() {
 		const numberId = currentElement.attr("number-id");
 		const numberData = BusinessFullData.businessApp.numbers.find((number) => number.id === numberId);
 
-		CurrentManageTwilioNumberData = numberData;
-		ManageTwilioNumberType = "edit";
+		TwilioNumbersState.CurrentManageData = numberData;
+		TwilioNumbersState.CurrentManageType = "edit";
 
 		addNewTwilioNumberModal.show();
 	});
@@ -793,7 +1054,32 @@ function initTwilioNumberEvents() {
 		const numberId = currentElement.attr("number-id");
 		const numberData = BusinessFullData.businessApp.numbers.find((number) => number.id === numberId);
 
-		const webhookURI = `https://${numberData.regionWebhookEndpoint}/api/twilio/webhook/incoming/${CurrentBusinessId}/${numberId}`;
+		const regionData = SpecificationRegionsListData.find((r) => r.countryRegion === numberData.regionId);
+		if (!regionData) {
+			AlertManager.createAlert({
+				type: "danger",
+				message: `Could not find region data for: ${numberData.regionId}`,
+				timeout: 6000,
+			});
+
+			return;
+		}
+
+		const regionProxyServerData = regionData.servers.find((p) => p.id === numberData.regionServerId);
+		if (!regionProxyServerData) {
+			AlertManager.createAlert({
+				type: "danger",
+				message: `Could not find proxy server data for: ${numberData.regionServerId}`,
+				timeout: 6000,
+			});
+
+			return;
+		}
+
+		const proxyHost = regionProxyServerData.endpoint;
+		const proxyIsSSL = regionProxyServerData.isSSL;
+
+		const webhookURI = `${proxyIsSSL ? "https" : "http"}://${proxyHost}/api/twilio/webhook/voice/incoming/${CurrentBusinessId}/${numberId}`;
 
 		const webhookDialog = new BootstrapConfirmDialog({
 			title: `Twilio Number (${numberData.countryCode}-${numberData.number})  Webhook`,
@@ -824,6 +1110,11 @@ function initTwilioNumberEvents() {
 				timeout: 2000,
 			});
 		}
+	});
+
+	// Table Action: Delete Twilio Number
+	twilioNumbersTable.on("click", 'button[button-type="delete-twilio-number"]', async (event) => {
+		await deleteBusinessNumberHandler(event);
 	});
 }
 
@@ -889,6 +1180,8 @@ function createDefaultSipNumberObject() {
 		isE164Number: false,
 		countryCode: "", // Empty if not E.164
 		number: "",
+		voiceEnabled: false,
+		smsEnabled: false,
 		allowedSourceIps: [],
 		routeId: null,
 		regionId: "",
@@ -941,47 +1234,61 @@ function CheckSipNumberModalHasChanges(enableButton = true) {
 	let hasChanges = false;
 	const changes = { provider: NumberProviderEnum.SIP };
 
-	// 1. Integration
-	const newIntegrationId = sipNumberModalIntegrationSelect.val();
-	if (CurrentManageSipNumberData.integrationId !== newIntegrationId) {
+	// Integration
+	const newIntegrationId = sipNumberModalIntegrationSelect.find("option:selected").val();
+	if (SipNumbersState.CurrentManageData.integrationId !== newIntegrationId) {
 		hasChanges = true;
 	}
 	changes.integrationId = newIntegrationId;
 
-	// 2. Is E.164 & Country
+	// Is E.164 & Country
 	const isE164 = sipNumberModalIsE164.is(':checked');
-	if (CurrentManageSipNumberData.isE164Number !== isE164) {
+	if (SipNumbersState.CurrentManageData.isE164Number !== isE164) {
 		hasChanges = true;
 	}
 	changes.isE164Number = isE164;
 
 	let newCountryCode = "";
 	if (isE164) {
-		newCountryCode = sipNumberModalCountrySelect.val();
-		if (CurrentManageSipNumberData.countryCode !== newCountryCode) {
+		newCountryCode = sipNumberModalCountrySelect.find("option:selected").val();
+		if (SipNumbersState.CurrentManageData.countryCode !== newCountryCode) {
 			hasChanges = true;
 		}
 	}
 	changes.countryCode = newCountryCode;
 
-	// 3. Number
+	// Number
 	const newNumber = sipNumberModalNumberInput.val().trim();
-	if (CurrentManageSipNumberData.number !== newNumber) {
+	if (SipNumbersState.CurrentManageData.number !== newNumber) {
 		hasChanges = true;
 	}
 	changes.number = newNumber;
 
-	// 4. Region
-	const newRegion = sipNumberModalRegionSelect.val();
-	if (CurrentManageSipNumberData.regionId !== newRegion) {
+	// Voice Enabled
+    const voiceEnabled = sipNumberModalVoiceEnabledCheck.is(':checked');
+    if (SipNumbersState.CurrentManageData.voiceEnabled !== voiceEnabled) {
+        hasChanges = true;
+    }
+	changes.voiceEnabled = voiceEnabled;
+
+	// SMS Enabled
+    const smsEnabled = sipNumberModalSmsEnabledCheck.is(':checked');
+    if (SipNumbersState.CurrentManageData.smsEnabled !== smsEnabled) {
+        hasChanges = true;
+    }
+    changes.smsEnabled = smsEnabled;
+
+	// Region
+	const newRegion = sipNumberModalRegionSelect.find("option:selected").val();
+	if (SipNumbersState.CurrentManageData.regionId !== newRegion) {
 		hasChanges = true;
 	}
 	changes.regionId = newRegion;
 
-	// 5. IPs
+	// IPs
 	const newIpsStr = sipNumberModalAllowedIpsInput.val();
 	const newIps = newIpsStr.split(',').map(s => s.trim()).filter(s => s !== "");
-	if (JSON.stringify(CurrentManageSipNumberData.allowedSourceIps || []) !== JSON.stringify(newIps)) {
+	if (JSON.stringify(SipNumbersState.CurrentManageData.allowedSourceIps || []) !== JSON.stringify(newIps)) {
 		hasChanges = true;
 	}
 	changes.allowedSourceIps = newIps;
@@ -996,6 +1303,7 @@ function ValidateSipNumberModalData(onlyRemove = true) {
 
 	// Integration
 	if (!sipNumberModalIntegrationSelect.val()) {
+        errors.push("Integration is required.");
 		validated = false;
 		if (!onlyRemove) sipNumberModalIntegrationSelect.addClass("is-invalid");
 	} else {
@@ -1004,6 +1312,7 @@ function ValidateSipNumberModalData(onlyRemove = true) {
 
 	// Country Code (Only if E.164)
 	if (isE164 && !sipNumberModalCountrySelect.val()) {
+        errors.push("Country code is required if E.164 is enabled.");
 		validated = false;
 		if (!onlyRemove) sipNumberModalCountrySelect.addClass("is-invalid");
 	} else {
@@ -1013,6 +1322,7 @@ function ValidateSipNumberModalData(onlyRemove = true) {
 	// Number
 	const num = sipNumberModalNumberInput.val().trim();
 	if (!num) {
+        errors.push("Number is required.");
 		validated = false;
 		if (!onlyRemove) sipNumberModalNumberInput.addClass("is-invalid");
 	} else {
@@ -1028,6 +1338,7 @@ function ValidateSipNumberModalData(onlyRemove = true) {
 
 	// Region
 	if (!sipNumberModalRegionSelect.val()) {
+        errors.push("Region is required.");
 		validated = false;
 		if (!onlyRemove) sipNumberModalRegionSelect.addClass("is-invalid");
 	} else {
@@ -1050,28 +1361,31 @@ function toggleSipCountrySelect(isE164) {
 function initSipNumberEvents() {
 	// Open "Add New" Modal
 	addNewSipNumberModalButton.on("click", () => {
-		CurrentManageSipNumberData = createDefaultSipNumberObject();
-		ManageSipNumberType = "new";
+		SipNumbersState.CurrentManageData = createDefaultSipNumberObject();
+		SipNumbersState.CurrentManageType = "new";
 		addNewSipNumberModal.show();
 	});
 
 	// Modal Show Event (Populate Data)
 	addNewSipNumberModalElement.on("show.bs.modal", () => {
+		// Load Values
 		resetOrClearSipNumberModalData(); // Refill integration list
 
-		// Load Values
-		sipNumberModalIntegrationSelect.val(CurrentManageSipNumberData.integrationId);
-		sipNumberModalIsE164.prop('checked', CurrentManageSipNumberData.isE164Number);
+		sipNumberModalIntegrationSelect.val(SipNumbersState.CurrentManageData.integrationId);
+		sipNumberModalIsE164.prop('checked', SipNumbersState.CurrentManageData.isE164Number);
 
-		toggleSipCountrySelect(CurrentManageSipNumberData.isE164Number);
+        sipNumberModalVoiceEnabledCheck.prop('checked', SipNumbersState.CurrentManageData.voiceEnabled);
+        sipNumberModalSmsEnabledCheck.prop('checked', SipNumbersState.CurrentManageData.smsEnabled);
 
-		if (CurrentManageSipNumberData.isE164Number) {
-			sipNumberModalCountrySelect.val(CurrentManageSipNumberData.countryCode);
+		toggleSipCountrySelect(SipNumbersState.CurrentManageData.isE164Number);
+
+		if (SipNumbersState.CurrentManageData.isE164Number) {
+			sipNumberModalCountrySelect.val(SipNumbersState.CurrentManageData.countryCode);
 		}
 
-		sipNumberModalNumberInput.val(CurrentManageSipNumberData.number);
-		sipNumberModalRegionSelect.val(CurrentManageSipNumberData.regionId);
-		sipNumberModalAllowedIpsInput.val((CurrentManageSipNumberData.allowedSourceIps || []).join(", "));
+		sipNumberModalNumberInput.val(SipNumbersState.CurrentManageData.number);
+		sipNumberModalRegionSelect.val(SipNumbersState.CurrentManageData.regionId);
+		sipNumberModalAllowedIpsInput.val((SipNumbersState.CurrentManageData.allowedSourceIps || []).join(", "));
 	});
 
 	// Toggle Switch Listener
@@ -1084,20 +1398,22 @@ function initSipNumberEvents() {
 
 	// Modal Hide Event (Cleanup)
 	addNewSipNumberModalElement.on("hide.bs.modal", (event) => {
-		if (IsSavingSipNumber) {
+		if (SipNumbersState.IsSaving) {
 			AlertManager.createAlert({
 				type: "warning",
-				message: "Please wait while saving changes...",
+				message: "Please wait while saving changes before closing the SIP number modal...",
 				timeout: 6000,
 			});
 			event.preventDefault();
 			return false;
 		}
 
-		CurrentManageSipNumberData = null;
-		ManageSipNumberType = null;
+		SipNumbersState.CurrentManageData = null;
+		SipNumbersState.CurrentManageType = null;
+
+		addNewSipNumberModalElement.find(".is-invalid").removeClass("is-invalid");
+
 		addNewSipNumberSaveButton.prop("disabled", true);
-		// addNewSipNumberSaveButtonSpinner.addClass("d-none"); // If spinner exists
 	});
 
 	// Input Changes (Validation Trigger)
@@ -1108,76 +1424,7 @@ function initSipNumberEvents() {
 
 	// Save Button Click
 	addNewSipNumberSaveButton.on("click", (event) => {
-		event.preventDefault();
-
-		if (IsSavingSipNumber) return;
-
-		// Run Validation
-		const validationResult = ValidateSipNumberModalData(false);
-		if (!validationResult.validated) {
-			AlertManager.createAlert({
-				type: "danger",
-				message: `Validation failed:<br>${validationResult.errors.join("<br>")}`,
-				timeout: 6000,
-			});
-			return;
-		}
-
-		// Run Change Check
-		const check = CheckSipNumberModalHasChanges(false);
-		if (!check.hasChanges) return;
-
-		IsSavingSipNumber = true;
-		addNewSipNumberSaveButton.prop("disabled", true);
-		// addNewSipNumberSaveButtonSpinner.removeClass("d-none");
-
-		// Prepare Payload
-		const formData = new FormData();
-		formData.append("postType", ManageSipNumberType);
-		// Important: Backend expects JSON string in "changes" field
-		formData.append("changes", JSON.stringify(check.changes));
-
-		if (ManageSipNumberType === "edit") {
-			formData.append("numberId", CurrentManageSipNumberData.id);
-		}
-
-		// Send API Request
-		SaveBusinessNumberToAPI(
-			formData,
-			(responseResult) => {
-				// Success
-				if (ManageSipNumberType === "new") {
-					BusinessFullData.businessApp.numbers.push(responseResult);
-					// Prepend logic handled in FillBusinessSipList usually, or manual:
-					FillBusinessSipList();
-				} else {
-					const idx = BusinessFullData.businessApp.numbers.findIndex(n => n.id === CurrentManageSipNumberData.id);
-					if (idx > -1) BusinessFullData.businessApp.numbers[idx] = responseResult;
-					FillBusinessSipList();
-				}
-
-				AlertManager.createAlert({
-					type: "success",
-					message: `Successfully ${ManageSipNumberType === "new" ? "added" : "updated"} SIP number.`,
-					timeout: 6000,
-				});
-
-				IsSavingSipNumber = false;
-				addNewSipNumberModal.hide();
-			},
-			(errorResult) => {
-				// Error
-				console.error("Save Error:", errorResult);
-				AlertManager.createAlert({
-					type: "danger",
-					message: errorResult.message || "Error saving SIP number.",
-					timeout: 6000,
-				});
-
-				addNewSipNumberSaveButton.prop("disabled", false);
-				IsSavingSipNumber = false;
-			}
-		);
+		saveBusinessNumberHandler(event, NumberProviderEnum.SIP);
 	});
 
 	// Table Action: Edit
@@ -1187,8 +1434,8 @@ function initSipNumberEvents() {
 		const numberData = BusinessFullData.businessApp.numbers.find(n => n.id === numberId);
 
 		if (numberData) {
-			CurrentManageSipNumberData = numberData;
-			ManageSipNumberType = "edit";
+			SipNumbersState.CurrentManageData = numberData;
+			SipNumbersState.CurrentManageType = "edit";
 			addNewSipNumberModal.show();
 		}
 	});
@@ -1200,9 +1447,30 @@ function initSipNumberEvents() {
 		const numberData = BusinessFullData.businessApp.numbers.find(n => n.id === numberId);
 
 		// Determine Proxy Endpoint
-		// Use the regionWebhookEndpoint stored in data, fallback to current window location if missing (dev mode)
-		const proxyHost = numberData.regionWebhookEndpoint || "sip.your-platform.com";
-		const proxyPort = 5060;
+		const regionData = SpecificationRegionsListData.find((r) => r.countryRegion === numberData.regionId);
+		if (!regionData) {
+			AlertManager.createAlert({
+                type: "danger",
+                message: `Could not find region data for: ${numberData.regionId}`,
+				timeout: 6000,
+			});
+
+            return;
+		}
+
+		const regionProxyServerData = regionData.servers.find((p) => p.id === numberData.regionServerId);
+		if (!regionProxyServerData) {
+			AlertManager.createAlert({
+                type: "danger",
+				message: `Could not find proxy server data for: ${numberData.regionServerId}`,
+                timeout: 6000,
+			});
+
+            return;
+		}
+
+		const proxyHost = regionProxyServerData.endpoint;
+		const proxyPort = regionProxyServerData.sipPort;
 
 		// Construct the SIP URI that the carrier should send to
 		// sip:DID@ProxyHost:Port
@@ -1225,15 +1493,8 @@ function initSipNumberEvents() {
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Proxy Address</label>
-                     <div class="input-group">
-                        <input type="text" class="form-control" value="${proxyHost}" readonly>
-                         <button class="btn btn-outline-secondary copy-btn" type="button"><i class="fa-regular fa-copy"></i></button>
-                    </div>
-                </div>
-                <div class="mb-3">
                     <label class="form-label fw-bold">Required Headers / URI Parameters</label>
-                    <div class="form-text mb-1">Add these to your Invite Request URI for faster routing.</div>
+                    <div class="form-text mb-1">Add these to your Invite Request URI.</div>
                     <div class="input-group">
                         <input type="text" class="form-control" value="${headerString}" readonly>
                          <button class="btn btn-outline-secondary copy-btn" type="button"><i class="fa-regular fa-copy"></i></button>
@@ -1257,41 +1518,9 @@ function initSipNumberEvents() {
 		await configDialog.show();
 	});
 
-	// Table Action: Delete
+	// Table Action: Delete SIP Number
 	sipNumbersTable.on("click", 'button[button-type="delete-sip-number"]', async (event) => {
-		event.preventDefault();
-		const numberId = $(event.currentTarget).attr("number-id");
-
-		const confirmDialog = new BootstrapConfirmDialog({
-			title: "Delete SIP Number",
-			message: "Are you sure you want to delete this SIP Trunking number? Incoming calls will stop working immediately.",
-			confirmText: "Delete",
-			confirmButtonClass: "btn-danger"
-		});
-
-		if (await confirmDialog.show()) {
-			// Assume generic delete endpoint exists or create specific one
-			// Using jQuery ajax directly as per previous examples structure
-			$.ajax({
-				url: `/app/user/business/${CurrentBusinessId}/numbers/delete/${numberId}`,
-				type: "POST", // or DELETE
-				success: (res) => {
-					if (res.success) {
-						// Remove from Array
-						const idx = BusinessFullData.businessApp.numbers.findIndex(n => n.id === numberId);
-						if (idx > -1) BusinessFullData.businessApp.numbers.splice(idx, 1);
-
-						// Refresh UI
-						FillBusinessSipList();
-
-						AlertManager.createAlert({ type: "success", message: "Number deleted successfully.", timeout: 3000 });
-					} else {
-						AlertManager.createAlert({ type: "danger", message: res.message || "Failed to delete.", timeout: 3000 });
-					}
-				},
-				error: () => AlertManager.createAlert({ type: "danger", message: "Network error.", timeout: 3000 })
-			});
-		}
+		await deleteBusinessNumberHandler(event);
 	});
 }
 

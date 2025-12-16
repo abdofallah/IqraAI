@@ -65,6 +65,7 @@ namespace IqraInfrastructure.Managers.Business
 
         public BusinessManager(
             ILoggerFactory loggerFactory,
+            IMongoClient mongoClient,
             BusinessManagerInitalizationSettings settings,
             BusinessRepository businessRepository,
             BusinessAppRepository businessAppRepository,
@@ -154,7 +155,7 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     throw new Exception("Null constructor input variable for BusinessAgentsManager");
                 }
-                _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, _s3StorageClientFactory, businessAgentAudioRepository, _audioProcessor, integrationConfigurationManager);
+                _businessAgentsManager = new BusinessAgentsManager(this, mongoClient, businessAppRepository, businessRepository, _s3StorageClientFactory, businessAgentAudioRepository, _audioProcessor, integrationConfigurationManager);
             }
             if (_settings.InitalizeNumberManager)
             {

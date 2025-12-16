@@ -16,6 +16,7 @@ class BootstrapAlertManager {
         const {
             type = 'danger',
             message = '',
+            resultMessage = '',
             fade = true,
             timeout = 0,
             customClassName = '',
@@ -27,6 +28,7 @@ class BootstrapAlertManager {
             role: 'alert',
             html: `
                 ${message}
+                ${resultMessage ? `<code class="bg-dark p-2 rounded border mt-2" style="display: block;">${resultMessage}</code>` : ""}
                 ${(enableDismiss ? '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' : "")}
             `
         });

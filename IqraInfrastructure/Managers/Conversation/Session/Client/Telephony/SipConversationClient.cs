@@ -7,7 +7,6 @@ using SIPSorcery.Media;
 using SIPSorcery.SIP;
 using SIPSorcery.SIP.App;
 using SIPSorceryMedia.Abstractions;
-using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 {
@@ -69,9 +68,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
                 deferred.Activate(realTransport);
             }
 
-            SIPURI contactSIPURI = _uas.CallRequest.URI.CopyOf(); // confirm this uri is of the backend, must be how else will it get the call request
-            contactSIPURI.Parameters.RemoveAll();
-            contactSIPURI.Parameters.Set("X-Session-Id", SessionId);
+            SIPURI contactSIPURI = _uas.CallRequest.URI.CopyOf();
             SIPContactHeader contactHeader = new SIPContactHeader(null, contactSIPURI);
 
             await _userAgent.Answer(_uas, _rtpSession, null, contactHeader);
@@ -88,7 +85,36 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
 
         private (AudioEncodingTypeEnum, int, int) MapSipCodecToIqra(AudioFormat format)
         {
-            switch (format.FormatName.ToLower())
+            string formatName = format.FormatName.ToLower();
+            if (format.Codec != null)
+            {
+                switch (format.Codec)
+                {
+                    case AudioCodecsEnum.PCM_S16LE:
+                    case AudioCodecsEnum.L16:
+                        formatName = "l16";
+                        break;
+                    case AudioCodecsEnum.PCMU:
+                        formatName = "mulaw";
+                        break;
+                    case AudioCodecsEnum.PCMA:
+                        formatName = "alaw";
+                        break;
+                    case AudioCodecsEnum.G722:
+                        formatName = "g722";
+                        break;
+                    case AudioCodecsEnum.OPUS:
+                        formatName = "opus";
+                        break;
+                    case AudioCodecsEnum.G729:
+                        formatName = "g729";
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            switch (formatName)
             {
                 case "pcm":
                 case "lpcm":

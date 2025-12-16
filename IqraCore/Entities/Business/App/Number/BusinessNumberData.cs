@@ -14,17 +14,6 @@ namespace IqraCore.Entities.Business
     public class BusinessNumberData
     {
         public BusinessNumberData() { }
-        public BusinessNumberData(BusinessNumberData data)
-        {
-            this.Id = data.Id;
-            this.CountryCode = data.CountryCode;
-            this.Number = data.Number;
-            this.RouteId = data.RouteId;
-            this.RegionId = data.RegionId;
-            this.RegionServerId = data.RegionServerId;
-            this.Provider = data.Provider;
-            this.IntegrationId = data.IntegrationId;
-        }
 
         [BsonId]
         public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
@@ -38,6 +27,18 @@ namespace IqraCore.Entities.Business
 
         public string IntegrationId { get; set; } = string.Empty;
 
+        public bool VoiceEnabled { get; set; } = false;
+        public bool SmsEnabled { get; set; } = false;
+
+        public List<BusinessNumberAgentScriptSMSNodeReference> AgentScriptSMSNodeReferences { get; set; } = new List<BusinessNumberAgentScriptSMSNodeReference>();
+
         public virtual TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Unknown;
+    }
+
+    public class BusinessNumberAgentScriptSMSNodeReference
+    {
+        public string AgentId { get; set; } = string.Empty;
+        public string AgentScriptId { get; set; } = string.Empty;
+        public string NodeReference { get; set; } = string.Empty;
     }
 }

@@ -9,6 +9,7 @@ using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using PhoneNumbers;
+using ProjectIqraFrontend.Middlewares;
 using System.Text.Json;
 using Twilio.TwiML.Voice;
 
@@ -19,12 +20,18 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly RegionManager _regionManager;
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
         
-        public UserBusinessNumbersController(UserManager userManager, BusinessManager businessManager, RegionManager regionManager)
-        {
+        public UserBusinessNumbersController(
+            UserManager userManager,
+            BusinessManager businessManager,
+            RegionManager regionManager,
+            UserSessionValidationHelper userSessionValidationHelper
+        ) {
             _userManager = userManager;
             _businessManager = businessManager;
             _regionManager = regionManager;
+            _userSessionValidationHelper = userSessionValidationHelper;
         }
 
         [HttpPost("/app/user/business/{businessId}/numbers/save")]
@@ -32,118 +39,62 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessNumberData?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkUserBusinessesDisabled: true,
+                checkUserBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = "SaveBusinessNumber:1";
-                result.Message = "Invalid session data";
+                result.Code = $"SaveBusinessTelephonyCampaign:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
                 return result;
             }
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
+            if (businessData.Permission.Numbers.DisabledFullAt != null)
             {
-                result.Code = "SaveBusinessNumber:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessNumber:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessNumber:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                var message = "Business does not have permission to access numbers";
+                if (!string.IsNullOrEmpty(businessData.Permission.Numbers.DisabledFullReason))
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    message += ": " + businessData.Permission.Numbers.DisabledFullReason;
                 }
 
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
-                {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessNumber:5";
-                result.Message = "User does not own this business";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessNumber:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessNumber:6";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Numbers.DisabledFullAt != null)
-            {
-                result.Code = "SaveBusinessNumber:7";
-                result.Message = "Business does not have permission to access numbers";
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Numbers.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Numbers.DisabledFullReason;
-                }
-
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:BUSINESS_NUMBERS_DISABLED",
+                    message
+                );
             }
 
             if (!formData.TryGetValue("postType", out StringValues postTypeValue))
             {
-                result.Code = "SaveBusinessNumber:8";
-                result.Message = "Missing post type";
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:MISSING_POST_TYPE",
+                    "Post type not found in form data."
+                );
             }
 
             string? postType = postTypeValue.ToString();
             if (string.IsNullOrWhiteSpace(postType)
                 || postType != "new" && postType != "edit")
             {
-                result.Code = "SaveBusinessNumber:9";
-                result.Message = "Invalid post type";
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:INVALID_POST_TYPE",
+                    "Invalid post type."
+                );
             }
 
             // Number Changes Data
             if (!formData.TryGetValue("changes", out var changesJsonString))
             {
-                result.Code = "SaveBusinessNumber:10";
-                result.Message = "Changes not found in form data.";
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:MISSING_CHANGES",
+                    "Changes not found in form data."
+                );
             }
             JsonDocument? changes;
             try
@@ -152,9 +103,10 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             }
             catch
             {
-                result.Code = "SaveBusinessNumber:11";
-                result.Message = "Unable to parse changes json string.";
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:INVALID_CHANGES",
+                    "Invalid changes."
+                );
             }
 
             // Get Provider First
@@ -279,12 +231,12 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             BusinessNumberData? exisitingNumberData = null;
             if (postType == "new")
             {
-                if (businessResult.Data.Permission.Numbers.DisabledAddingAt != null)
+                if (businessData.Permission.Numbers.DisabledAddingAt != null)
                 {
                     var message = "Business does not have permission to add new numbers";
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Numbers.DisabledAddingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Numbers.DisabledAddingReason))
                     {
-                        message += ": " + businessResult.Data.Permission.Numbers.DisabledAddingReason;
+                        message += ": " + businessData.Permission.Numbers.DisabledAddingReason;
                     }
 
                     return result.SetFailureResult(
@@ -304,12 +256,12 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             }
             else
             {
-                if (businessResult.Data.Permission.Numbers.DisabledEditingAt != null)
+                if (businessData.Permission.Numbers.DisabledEditingAt != null)
                 {
                     var message = "Business does not have permission to edit numbers";
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Numbers.DisabledEditingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Numbers.DisabledEditingReason))
                     {
-                        message += ": " + businessResult.Data.Permission.Numbers.DisabledEditingReason;
+                        message += ": " + businessData.Permission.Numbers.DisabledEditingReason;
                     }
 
                     return result.SetFailureResult(
@@ -363,7 +315,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 exisitingNumberData,
                 businessId,
                 _regionManager,
-                user.Permission.IsAdmin
+                userData.Permission.IsAdmin
             );
 
             if (!saveResult.Success)
@@ -375,6 +327,63 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             }
 
             return result.SetSuccessResult(saveResult.Data);
+        }
+
+        [HttpPost("/app/user/business/{businessId}/numbers/{numberId}/delete")]
+        public async Task<FunctionReturnResult> DeleteBusinessNumber(long businessId, string numberId)
+        {
+            var result = new FunctionReturnResult<BusinessNumberData?>();
+
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkUserBusinessesDisabled: true,
+                checkUserBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
+            {
+                result.Code = $"DeleteBusinessNumber:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
+                return result;
+            }
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+            if (businessData.Permission.Numbers.DisabledFullAt != null)
+            {
+                var message = "Business does not have permission to access numbers";
+                if (!string.IsNullOrEmpty(businessData.Permission.Numbers.DisabledFullReason))
+                {
+                    message += ": " + businessData.Permission.Numbers.DisabledFullReason;
+                }
+
+                return result.SetFailureResult(
+                    "SaveBusinessNumber:BUSINESS_NUMBERS_DISABLED",
+                    message
+                );
+            }
+
+            var numberData = await _businessManager.GetNumberManager().GetBusinessNumberById(businessId, numberId);
+            if (numberData == null)
+            {
+                return result.SetFailureResult(
+                    "DeleteBusinessNumber:NUMBER_NOT_FOUND",
+                    "Number not found"
+                );
+            }
+
+            var deleteResult = await _businessManager.GetNumberManager().DeleteBusinessNumber(businessId, numberData);
+            if (!deleteResult.Success)
+            {
+                return result.SetFailureResult(
+                    $"DeleteBusinessNumber:{deleteResult.Code}",
+                    deleteResult.Message
+                );
+            }
+
+            return result.SetSuccessResult();
         }
     }
 }

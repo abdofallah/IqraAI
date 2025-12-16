@@ -321,6 +321,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new BusinessManager(
                     sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<IMongoClient>(),
                     new BusinessManagerInitalizationSettings()
                     {
                         InitalizeIntegrationsManager = true,

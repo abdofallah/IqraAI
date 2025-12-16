@@ -87,8 +87,12 @@ namespace IqraInfrastructure.Managers.Business
             newNumberData.CountryCode = countryCode;
             newNumberData.Number = number;
             newNumberData.Provider = provider;
-            newNumberData.RouteId = postType == "new" ? null : existingNumberData?.RouteId;
             newNumberData.IntegrationId = integrationId;
+            if (postType == "edit")
+            {
+                newNumberData.RouteId = existingNumberData!.RouteId;
+                newNumberData.AgentScriptSMSNodeReferences = existingNumberData!.AgentScriptSMSNodeReferences;
+            }
 
             // Get Integration Data
             var integrationDataResult = await _parentBusinessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, newNumberData.IntegrationId);
@@ -146,6 +150,38 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
             newNumberData.RegionServerId = getRegionProxyServer.Id;
+
+            // Voice Enabled
+            if (
+                !changes.RootElement.TryGetProperty("voiceEnabled", out var voiceEnabledEl) ||
+                (voiceEnabledEl.ValueKind != JsonValueKind.True && voiceEnabledEl.ValueKind != JsonValueKind.False)
+            ) {
+                return result.SetFailureResult(
+                    "AddOrUpdateBusinessNumber:VOICE_ENABLED_NOT_FOUND",
+                    "Voice enabled not found in changes."
+                );
+            }
+            newNumberData.VoiceEnabled = voiceEnabledEl.GetBoolean();
+
+            // Sms Enabled
+            if (
+                !changes.RootElement.TryGetProperty("smsEnabled", out var smsEnabledEl) ||
+                (smsEnabledEl.ValueKind != JsonValueKind.True && smsEnabledEl.ValueKind != JsonValueKind.False)
+            ) {
+                return result.SetFailureResult(
+                    "AddOrUpdateBusinessNumber:SMS_ENABLED_NOT_FOUND",
+                    "SMS enabled not found in changes."
+                );
+            }
+            newNumberData.SmsEnabled = smsEnabledEl.GetBoolean();
+
+            if (!newNumberData.SmsEnabled && newNumberData.AgentScriptSMSNodeReferences.Count > 0)
+            {
+                return result.SetFailureResult(
+                    "AddOrUpdateBusinessNumber:SMS_NODE_REFERENCES_FOUND",
+                    "SMS is not enabled but has SMS node references. Remove References first to disable SMS."
+                );
+            }
 
             if (provider == TelephonyProviderEnum.SIP)
             {
@@ -218,19 +254,19 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                if (!phoneNumberData.Data.CanMakeCalls)
+                if (!phoneNumberData.Data.CanMakeCalls && newNumberData.VoiceEnabled)
                 {
                     return result.SetFailureResult(
                         "AddOrUpdateBusinessNumber:PHONE_NUMBER_CANNOT_MAKE_CALLS",
-                        "Phone number cannot make calls."
+                        "Phone number cannot make calls (info by modemtel api) but voice is enabled."
                     );
                 }
 
-                if (!phoneNumberData.Data.CanSendSms)
+                if (!phoneNumberData.Data.CanSendSms && newNumberData.SmsEnabled)
                 {
                     return result.SetFailureResult(
                         "AddOrUpdateBusinessNumber:PHONE_NUMBER_CANNOT_SEND_SMS",
-                        "Phone number cannot send SMS."
+                        "Phone number cannot send SMS (info by modemtel api) but SMS is enabled."
                     );
                 }
 
@@ -263,19 +299,19 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 var firstNumber = phoneNumberData.Data.FirstOrDefault();
 
-                if (!firstNumber.Capabilities.Voice)
+                if (!firstNumber.Capabilities.Voice && newNumberData.VoiceEnabled)
                 {
                     return result.SetFailureResult(
                         "AddOrUpdateBusinessNumber:PHONE_NUMBER_CANNOT_MAKE_CALLS",
-                        "Phone number cannot make calls."
+                        "Phone number cannot make calls (info by twilio api) but voice is enabled."
                     );
                 }
 
-                if (!firstNumber.Capabilities.SMS)
+                if (!firstNumber.Capabilities.SMS && newNumberData.SmsEnabled)
                 {
                     return result.SetFailureResult(
                         "AddOrUpdateBusinessNumber:PHONE_NUMBER_CANNOT_SEND_SMS",
-                        "Phone number cannot send SMS."
+                        "Phone number cannot send SMS (info by twilio api) but SMS is enabled."
                     );
                 }
 
@@ -333,6 +369,66 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             return result.SetSuccessResult(newNumberData);
+        }
+
+        public async Task<FunctionReturnResult> DeleteBusinessNumber(long businessId, BusinessNumberData numberData)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                if (numberData.AgentScriptSMSNodeReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessNumber:SCRIPT_SMS_NODE_REFERENCES_FOUND",
+                        "Script sms node references found. Delete or change the sms references in script first."
+                    );
+                }
+
+                if (!string.IsNullOrEmpty(numberData.RouteId))
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessNumber:ROUTE_REFERENCE_FOUND",
+                        "Route reference found. Remove the number from the assigned inbound route first."
+                    );
+                }
+
+                var hasOngoingQueuesOrConversations = await _parentBusinessManager.GetConversationsManager().CheckHasOngoingQueuesOrConversationsForBusinessNumber(businessId, numberData.Id);
+                if (!hasOngoingQueuesOrConversations.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteBusinessNumber:{hasOngoingQueuesOrConversations.Code}",
+                        hasOngoingQueuesOrConversations.Message
+                    );
+                }
+
+                if (hasOngoingQueuesOrConversations.Data!.Value == true)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessNumber:ONGOING_QUEUES_OR_CONVERSATIONS_FOUND",
+                        "Ongoing queues or conversations found. Wait for queues or conversations to finish or cancel them."
+                    );
+                }
+
+                var deleteResult = await _businessAppRepository.DeleteBusinessNumber(businessId, numberData.Id);
+                if (!deleteResult)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessNumber:FAILED_TO_DELETE_NUMBER_FROM_BUSINESS",
+                        "Failed to delete number from business."
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                return result.SetFailureResult(
+                    "DeleteBusinessNumber:EXCEPTION",
+                    $"An error occurred: {ex.Message}"
+                );
+            }
         }
     }
 }

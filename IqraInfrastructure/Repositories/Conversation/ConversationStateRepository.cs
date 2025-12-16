@@ -576,6 +576,33 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        
+        public async Task<long?> GetOngoingConversationsCountByBusinessNumberIds(long businessId, string businessNumberId)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.BusinessId, businessId),
+                    Builders<ConversationState>.Filter.In(c => c.Status, new List<ConversationSessionState>()
+                    {
+                        ConversationSessionState.Created,
+                        ConversationSessionState.WaitingForPrimaryClient,
+                        ConversationSessionState.Starting,
+                        ConversationSessionState.Active,
+                        ConversationSessionState.Paused,
+                        ConversationSessionState.Ending,
+                    }),
+                    Builders<ConversationState>.Filter.ElemMatch(c => c.Clients, client => client.ClientId == businessNumberId)
+                );
+
+                var count = await _conversationStateCollection.CountDocumentsAsync(filter);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting ongoing conversations count for business {BusinessId} and business number id {BusinessNumberId}", businessId, businessNumberId);
+                return null;
+            }
+        }
     }
 }

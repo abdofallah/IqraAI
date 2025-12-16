@@ -373,24 +373,6 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
-            // Create Outbound Call Queue Group
-            var callQueueGroupData = new OutboundCallQueueGroupData()
-            {
-                Id = ObjectId.GenerateNewId().ToString(),
-                CreatedAt = DateTime.UtcNow,
-                BusinessId = businessData.Id,
-                CallRequestData = callConfigData,
-                IsBulkCall = callConfigData.Number.Type == OutboundCallNumberType.Bulk
-            };
-            var callQueueGroupAddResult = await _outboundCallQueueGroupRepository.CreateOutboundCallQueueGroupAsync(callQueueGroupData);
-            if (!callQueueGroupAddResult)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:OUTBOUND_CALL_QUEUE_GROUP_ADD_ERROR",
-                    "Failed to add outbound call queue group."
-                );
-            }
-
             // Forward the Call To Proxy
             if (callConfigData.Number.Type == OutboundCallNumberType.Single)
             {
@@ -411,6 +393,32 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
+                if (!singleBusinessNumberData.VoiceEnabled)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:BUSINESS_NUMBER_VOICE_DISABLED",
+                        "Business number voice disabled."
+                    );
+                }
+
+                // Create Outbound Call Queue Group
+                var callQueueGroupData = new OutboundCallQueueGroupData()
+                {
+                    Id = ObjectId.GenerateNewId().ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    BusinessId = businessData.Id,
+                    CallRequestData = callConfigData,
+                    IsBulkCall = callConfigData.Number.Type == OutboundCallNumberType.Bulk
+                };
+                var callQueueGroupAddResult = await _outboundCallQueueGroupRepository.CreateOutboundCallQueueGroupAsync(callQueueGroupData);
+                if (!callQueueGroupAddResult)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:OUTBOUND_CALL_QUEUE_GROUP_ADD_ERROR",
+                        "Failed to add outbound call queue group."
+                    );
+                }
+
                 var singleForwardResult = await QueueSingleCall(callConfigData, businessData, telephonyCampaignData, singleBusinessNumberData, callQueueGroupData.Id);
                 if (!singleForwardResult.Success)
                 {
@@ -424,6 +432,24 @@ namespace IqraInfrastructure.Managers.Business
             }
             else if (callConfigData.Number.Type == OutboundCallNumberType.Bulk)
             {
+                // Create Outbound Call Queue Group
+                var callQueueGroupData = new OutboundCallQueueGroupData()
+                {
+                    Id = ObjectId.GenerateNewId().ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    BusinessId = businessData.Id,
+                    CallRequestData = callConfigData,
+                    IsBulkCall = callConfigData.Number.Type == OutboundCallNumberType.Bulk
+                };
+                var callQueueGroupAddResult = await _outboundCallQueueGroupRepository.CreateOutboundCallQueueGroupAsync(callQueueGroupData);
+                if (!callQueueGroupAddResult)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:OUTBOUND_CALL_QUEUE_GROUP_ADD_ERROR",
+                        "Failed to add outbound call queue group."
+                    );
+                }
+
                 var bulkForwardResult = await QueueBulkCalls(callConfigData, businessData, telephonyCampaignData, bulkCallFileResult!.Data, callQueueGroupData.Id);
                 if (!bulkForwardResult.Success)
                 {
@@ -511,6 +537,13 @@ namespace IqraInfrastructure.Managers.Business
 
                     businessNumberData = businessNumberResult;
                     businessNumberDataCache.Add(businessNumberId.Data!, businessNumberData);
+                }
+
+                if (!businessNumberData.VoiceEnabled)
+                {
+                    callQueueIds.Add(null);
+                    errors.Add("Business number voice is disabled for to number " + outboundCallRow.ToNumber + " at row " + (i + 1) + ".");
+                    continue;
                 }
 
                 OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(callConfig, businessData, campaignData, businessNumberData, outboundCallRow, queueGroupId);

@@ -10,21 +10,18 @@ namespace ProjectIqraFrontend.Controllers.App.Business
     public class UserBusinessMakeCallController : Controller
     {
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
-        private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly UserUsageValidationManager _billingValidationManager;
         private readonly WhiteLabelContext _whiteLabelContext;
 
         public UserBusinessMakeCallController(
             UserSessionValidationHelper userSessionValidationHelper,
-            UserManager userManager,
             BusinessManager businessManager,
             UserUsageValidationManager billingValidationManager,
             WhiteLabelContext whiteLabelContext
         )
         {
             _userSessionValidationHelper = userSessionValidationHelper;
-            _userManager = userManager;
             _businessManager = businessManager;
             _billingValidationManager = billingValidationManager;
             _whiteLabelContext = whiteLabelContext;
