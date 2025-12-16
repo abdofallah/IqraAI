@@ -72,15 +72,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     return result;
                 }
 
-                BusinessAppAgentScript? openingAgentScript = agent.Scripts.Find(d => d.Id == currentSessionContext.Agent.OpeningScriptId);
-                if (openingAgentScript == null)
+                BusinessAppScript? openingScript = businessApp.Scripts.Find(d => d.Id == currentSessionContext.Agent.OpeningScriptId);
+                if (openingScript == null)
                 {
                     result.Code = "GenerateSystemPrompt:4";
-                    result.Message = "Opening agent script not found";
+                    result.Message = "Opening script not found";
                     return result;
                 }
 
-                var openingAgentScriptNodesData = GetScriptNodesData(openingAgentScript, businessApp, agent);
+                var openingScriptNodesData = GetScriptNodesData(openingScript, businessApp);
 
                 // Initialize Scriban template
                 var template = Template.Parse(systemPromptForLanguage);    
@@ -104,13 +104,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                 var agentObject = new ScriptObject();
                 agentObject["Personality"] = CreateAgentPersonalityObject(agent.Personality, languageCode);
                 agentObject["Context"] = CreateAgentContextObject(agent.Context);
-                agentObject["Scripts"] = CreateAgentScriptsObject(openingAgentScriptNodesData.tools, new List<BusinessAppAgentScript>() { openingAgentScript }, languageCode);
-                agentObject["ScriptTools"] = CreateAgentScriptToolsObject(openingAgentScriptNodesData.tools, languageCode);
-                agentObject["ScriptAgents"] = CreateAgentScriptAgentsObject(openingAgentScriptNodesData.agents, languageCode);
-                agentObject["ScriptAddableScripts"] = CreateAgentScriptAddableScriptsObject(openingAgentScriptNodesData.scripts, languageCode);
-                agentObject["HasDTMFRequestTool"] = openingAgentScriptNodesData.hasDTMFRequestTool;
-                agentObject["HasSendSMSTool"] = openingAgentScriptNodesData.hasSendSMSTool;
-                agentObject["HasRetrieveKnowledgeBaseTool"] = openingAgentScriptNodesData.hasRetrieveKnowledgeBaseTool;
+                agentObject["Scripts"] = CreateAgentScriptsObject(openingScriptNodesData.tools, new List<BusinessAppScript>() { openingScript }, languageCode);
+                agentObject["ScriptTools"] = CreateAgentScriptToolsObject(openingScriptNodesData.tools, languageCode);
+                agentObject["ScriptAgents"] = CreateAgentScriptAgentsObject(openingScriptNodesData.agents, languageCode);
+                agentObject["ScriptAddableScripts"] = CreateAgentScriptAddableScriptsObject(openingScriptNodesData.scripts, languageCode);
+                agentObject["HasDTMFRequestTool"] = openingScriptNodesData.hasDTMFRequestTool;
+                agentObject["HasSendSMSTool"] = openingScriptNodesData.hasSendSMSTool;
+                agentObject["HasRetrieveKnowledgeBaseTool"] = openingScriptNodesData.hasRetrieveKnowledgeBaseTool;
                 modelObject["Agent"] = agentObject;
                 
                 // Add Context (company) data
@@ -311,7 +311,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             return contextObject;
         }
 
-        private ScriptArray CreateAgentScriptsObject(List<BusinessAppTool> scriptCustomTools, List<BusinessAppAgentScript> scripts, string languageCode)
+        private ScriptArray CreateAgentScriptsObject(List<BusinessAppTool> scriptCustomTools, List<BusinessAppScript> scripts, string languageCode)
         {
             var scriptsArray = new ScriptArray();
             if (scripts == null || !scripts.Any())
@@ -433,7 +433,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             return agentsArray;
         }
 
-        private ScriptArray CreateAgentScriptAddableScriptsObject(List<BusinessAppAgentScript> scripts, string languageCode)
+        private ScriptArray CreateAgentScriptAddableScriptsObject(List<BusinessAppScript> scripts, string languageCode)
         {
             var scriptsArray = new ScriptArray();
             if (scripts != null)
@@ -709,15 +709,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             return languageContainerObject;
         }
 
-        private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents, List<BusinessAppAgentScript> scripts, bool hasDTMFRequestTool, bool hasSendSMSTool, bool hasRetrieveKnowledgeBaseTool) GetScriptNodesData(BusinessAppAgentScript currentScriptToCheck, BusinessApp businessApp, BusinessAppAgent sessionRouteAgent)
+        private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents, List<BusinessAppScript> scripts, bool hasDTMFRequestTool, bool hasSendSMSTool, bool hasRetrieveKnowledgeBaseTool) GetScriptNodesData(BusinessAppScript currentScriptToCheck, BusinessApp businessApp)
         {
-            var (tools, agents, scripts, hasDTMFRequestTool, hasSendSMSTool, hasRetrieveKnowledgeBaseTool) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>(), new List<BusinessAppAgentScript>(), false, false, false);
+            var (tools, agents, scripts, hasDTMFRequestTool, hasSendSMSTool, hasRetrieveKnowledgeBaseTool) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>(), new List<BusinessAppScript>(), false, false, false);
 
             foreach (var node in currentScriptToCheck.Nodes)
             {
                 if (node.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool)
                 {
-                    var customToolNode = node as BusinessAppAgentScriptCustomToolNode;
+                    var customToolNode = node as BusinessAppScriptCustomToolNode;
                     if (customToolNode != null)
                     {
                         var alreadyAddedTool = tools.Find(t => t.Id == customToolNode.ToolId) != null;
@@ -733,13 +733,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                 }
                 else if (node.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool)
                 {
-                    var systemToolNode = node as BusinessAppAgentScriptSystemToolNode;
+                    var systemToolNode = node as BusinessAppScriptSystemToolNode;
 
                     if (systemToolNode != null)
                     {
                         if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToAgent)
                         {
-                            var transferToAgentNode = node as BusinessAppAgentScriptTransferToAgentToolNode;
+                            var transferToAgentNode = node as BusinessAppScriptTransferToAgentToolNode;
                             if (transferToAgentNode != null)
                             {
                                 var alreadyAddedAgent = agents.Find(a => a.Id == transferToAgentNode.AgentId) != null;
@@ -755,13 +755,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                         }
                         else if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.AddScriptToContext)
                         {
-                            var addScriptToContextNode = node as BusinessAppAgentScriptAddScriptToContextToolNode;
+                            var addScriptToContextNode = node as BusinessAppScriptAddScriptToContextToolNode;
                             if (addScriptToContextNode != null)
                             {
                                 var alreadyAddedScript = scripts.Find(s => s.Id == addScriptToContextNode.ScriptId) != null;
                                 if (!alreadyAddedScript && addScriptToContextNode.ScriptId != currentScriptToCheck.Id)
                                 {
-                                    var scriptData = sessionRouteAgent.Scripts.Find(s => s.Id == addScriptToContextNode.ScriptId);
+                                    var scriptData = businessApp.Scripts.Find(s => s.Id == addScriptToContextNode.ScriptId);
                                     if (scriptData != null)
                                     {
                                         scripts.Add(scriptData);

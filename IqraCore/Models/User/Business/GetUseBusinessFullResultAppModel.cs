@@ -12,6 +12,7 @@ namespace IqraCore.Models.User.Business
             Context = data.Context;
             Tools = data.Tools;
             Agents = data.Agents.Select(x => new BusinessAppAgentModel(x)).ToList();
+            Scripts = data.Scripts;
             Integrations = data.Integrations;
             Cache = data.Cache;
             Routings = data.Routings;
@@ -27,6 +28,7 @@ namespace IqraCore.Models.User.Business
         public BusinessAppContext Context { get; set; } = new BusinessAppContext();
         public List<BusinessAppTool> Tools { get; set; } = new List<BusinessAppTool>();
         public List<BusinessAppAgentModel> Agents { get; set; } = new List<BusinessAppAgentModel>();
+        public List<BusinessAppScript> Scripts { get; set; } = new List<BusinessAppScript>();
         public List<BusinessAppIntegration> Integrations { get; set; } = new List<BusinessAppIntegration>();
         public BusinessAppCache Cache { get; set; } = new BusinessAppCache();
         public List<BusinessAppRoute> Routings { get; set; } = new List<BusinessAppRoute>();

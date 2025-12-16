@@ -2,7 +2,7 @@
 
 namespace IqraCore.Entities.Business
 {
-    public class BusinessAppAgentScriptAddScriptToContextToolNode : BusinessAppAgentScriptSystemToolNode
+    public class BusinessAppScriptAddScriptToContextToolNode : BusinessAppScriptSystemToolNode
     {
         public override BusinessAppAgentScriptNodeSystemToolTypeENUM ToolType { get; set; } = BusinessAppAgentScriptNodeSystemToolTypeENUM.AddScriptToContext;
 

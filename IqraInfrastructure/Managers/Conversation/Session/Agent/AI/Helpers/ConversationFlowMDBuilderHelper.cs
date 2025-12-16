@@ -7,16 +7,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
 {
     public class ConversationFlowMDBuilderHelper
     {
-        private readonly BusinessAppAgentScript _script;
+        private readonly BusinessAppScript _script;
         private readonly string _selectedLanguageCode;
         private readonly List<BusinessAppTool> _scriptCustomTools;
 
-        private readonly Dictionary<string, BusinessAppAgentScriptNode> _nodesMap = new();
+        private readonly Dictionary<string, BusinessAppScriptNode> _nodesMap = new();
         private readonly Dictionary<string, List<ScriptEdge>> _edgesMap = new();
         private readonly Dictionary<string, string> _nodeContentMap = new();
         private readonly Dictionary<string, string> _nodeLabelMap = new();
 
-        public ConversationFlowMDBuilderHelper(BusinessAppAgentScript script, string languageCode, List<BusinessAppTool> scriptCustomTools)
+        public ConversationFlowMDBuilderHelper(BusinessAppScript script, string languageCode, List<BusinessAppTool> scriptCustomTools)
         {
             _script = script;
             _selectedLanguageCode = languageCode;
@@ -59,7 +59,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             foreach (var node in _script.Nodes)
             {
                 _nodeContentMap[node.Id] = GenerateNodeContent(node);
-                _nodeLabelMap[node.Id] = $"Node {(node.NodeType != BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool ? node.NodeType : node.NodeType + " " + ((BusinessAppAgentScriptSystemToolNode)node).ToolType)} ({node.Id})";
+                _nodeLabelMap[node.Id] = $"Node {(node.NodeType != BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool ? node.NodeType : node.NodeType + " " + ((BusinessAppScriptSystemToolNode)node).ToolType)} ({node.Id})";
             }
 
             var startNode = _script.Nodes.FirstOrDefault(n => n.NodeType == BusinessAppAgentScriptNodeTypeENUM.Start);
@@ -166,25 +166,25 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
         /// <summary>
         /// Generates the single-line Markdown content for a given node. This is part of Phase 1.
         /// </summary>
-        private string GenerateNodeContent(BusinessAppAgentScriptNode node)
+        private string GenerateNodeContent(BusinessAppScriptNode node)
         {
             switch (node.NodeType)
             {
                 case BusinessAppAgentScriptNodeTypeENUM.UserQuery:
-                    var userQueryNode = (BusinessAppAgentScriptUserQueryNode)node;
+                    var userQueryNode = (BusinessAppScriptUserQueryNode)node;
                     return $"customer_query: NodeId=\"{node.Id}\" CustomerQuery=\"{GetLocalizedString(userQueryNode.Query, _selectedLanguageCode, "Customer query")}\"";
 
                 case BusinessAppAgentScriptNodeTypeENUM.AIResponse:
-                    var aiResponseNode = (BusinessAppAgentScriptAIResponseNode)node;
+                    var aiResponseNode = (BusinessAppScriptAIResponseNode)node;
                     return $"response_to_customer: NodeId=\"{node.Id}\" AgentResponse=\"{GetLocalizedString(aiResponseNode.Response, _selectedLanguageCode, "AI response")}\"";
 
                 case BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool:
                     {
-                        var systemToolNode = (BusinessAppAgentScriptSystemToolNode)node;
+                        var systemToolNode = (BusinessAppScriptSystemToolNode)node;
 
                         if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GoToNode)
                         {
-                            var goToNode = (BusinessAppAgentScriptGoToNodeToolNode)systemToolNode;
+                            var goToNode = (BusinessAppScriptGoToNodeToolNode)systemToolNode;
                             return $"--> Flow continues at ({_nodeLabelMap[goToNode.GoToNodeId]})";
                         }
                         else
@@ -194,7 +194,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     }
 
                 case BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool:
-                    var customToolNode = (BusinessAppAgentScriptCustomToolNode)node;
+                    var customToolNode = (BusinessAppScriptCustomToolNode)node;
                     var nodeCustomTool = _scriptCustomTools.FirstOrDefault(t => t.Id == customToolNode.ToolId);
                     if (nodeCustomTool != null)
                     {
@@ -211,11 +211,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
 
         private List<ScriptEdge> GetNodeChildren(string nodeId) => _edgesMap.GetValueOrDefault(nodeId, new List<ScriptEdge>());
 
-        private bool IsMultiOutcomeTool(BusinessAppAgentScriptNode node, List<ScriptEdge> edges)
+        private bool IsMultiOutcomeTool(BusinessAppScriptNode node, List<ScriptEdge> edges)
         {
-            if (node is BusinessAppAgentScriptDTMFInputToolNode) return true;
-            if (node is BusinessAppAgentScriptSendSMSToolNode) return true;
-            if (node is BusinessAppAgentScriptCustomToolNode && edges.Count > 1)
+            if (node is BusinessAppScriptDTMFInputToolNode) return true;
+            if (node is BusinessAppScriptSendSMSToolNode) return true;
+            if (node is BusinessAppScriptCustomToolNode && edges.Count > 1)
             {
                 // It's a multi-outcome tool if its edges originate from different source ports.
                 return edges.Select(e => e.SourcePort).Distinct().Count() > 1;
@@ -223,15 +223,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             return false;
         }
 
-        private string GetOutcomeLabel(string sourcePort, BusinessAppAgentScriptNode node)
+        private string GetOutcomeLabel(string sourcePort, BusinessAppScriptNode node)
         {
-            if (node is BusinessAppAgentScriptDTMFInputToolNode dtmfNode)
+            if (node is BusinessAppScriptDTMFInputToolNode dtmfNode)
             {
                 if (sourcePort == "timeout") return "timeout";
                 var outcome = dtmfNode.Outcomes.FirstOrDefault(o => o.PortId == sourcePort);
                 return outcome != null ? GetLocalizedString(outcome.Value, _selectedLanguageCode, sourcePort) : "default";
             }
-            if (node is BusinessAppAgentScriptCustomToolNode)
+            if (node is BusinessAppScriptCustomToolNode)
             {
                 if (sourcePort.StartsWith("outcome-"))
                 {
@@ -242,7 +242,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             return sourcePort ?? "next";
         }
 
-        private string GetSystemToolTypeFormat(BusinessAppAgentScriptNodeSystemToolTypeENUM type, BusinessAppAgentScriptSystemToolNode systemToolNode, string currentLanguage)
+        private string GetSystemToolTypeFormat(BusinessAppAgentScriptNodeSystemToolTypeENUM type, BusinessAppScriptSystemToolNode systemToolNode, string currentLanguage)
         {
             string nodeId = systemToolNode.Id;
 
@@ -250,7 +250,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             {
                 case BusinessAppAgentScriptNodeSystemToolTypeENUM.EndCall:
                     {
-                        var endCallNode = systemToolNode as BusinessAppAgentScriptEndCallToolNode;
+                        var endCallNode = systemToolNode as BusinessAppScriptEndCallToolNode;
                         var messageToSpeak = endCallNode.Messages?[currentLanguage] ?? null;
 
                         string originalFormat = $"end_call: \"reason for ending the call\", \"{(!string.IsNullOrEmpty(messageToSpeak) ? messageToSpeak : "null")}\", \"{nodeId}\"";
@@ -270,7 +270,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     return "add_script_to_context";
                 case BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS:
                     {
-                        var sendSMSNode = systemToolNode as BusinessAppAgentScriptSendSMSToolNode;
+                        var sendSMSNode = systemToolNode as BusinessAppScriptSendSMSToolNode;
                         var messageToSend = sendSMSNode.Messages?[currentLanguage] ?? null;
                         if (messageToSend == null) throw new Exception("Message to send is null"); // here it should never be null tho
 
@@ -278,7 +278,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     }
                 case BusinessAppAgentScriptNodeSystemToolTypeENUM.RetrieveKnowledgeBase:
                     {
-                        var retrieveKnowledgeBaseNode = systemToolNode as BusinessAppAgentScriptRetrieveKnowledgeBaseNode;
+                        var retrieveKnowledgeBaseNode = systemToolNode as BusinessAppScriptRetrieveKnowledgeBaseNode;
                         var responseBeforeExecution = retrieveKnowledgeBaseNode.ResponseBeforeExecution[currentLanguage] ?? null;
                         if (responseBeforeExecution == null) throw new Exception("Response before execution is null for language " + currentLanguage + "."); // here it should never be null tho
 

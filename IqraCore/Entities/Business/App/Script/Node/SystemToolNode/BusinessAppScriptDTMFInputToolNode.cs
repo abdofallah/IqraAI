@@ -2,7 +2,7 @@
 
 namespace IqraCore.Entities.Business
 {
-    public class BusinessAppAgentScriptDTMFInputToolNode : BusinessAppAgentScriptSystemToolNode
+    public class BusinessAppScriptDTMFInputToolNode : BusinessAppScriptSystemToolNode
     {
         public override BusinessAppAgentScriptNodeSystemToolTypeENUM ToolType { get; set; } = BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput;
 

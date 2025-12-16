@@ -2,7 +2,7 @@
 
 namespace IqraCore.Entities.Business
 {
-    public class BusinessAppAgentScriptGeneral
+    public class BusinessAppScriptGeneral
     {
         [MultiLanguageProperty]
         public Dictionary<string, string> Name { get; set; } = new Dictionary<string, string>();

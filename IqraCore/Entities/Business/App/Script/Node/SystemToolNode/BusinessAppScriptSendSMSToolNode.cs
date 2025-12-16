@@ -3,7 +3,7 @@ using IqraCore.Entities.Helper.Agent;
 
 namespace IqraCore.Entities.Business
 {
-    public class BusinessAppAgentScriptSendSMSToolNode : BusinessAppAgentScriptSystemToolNode
+    public class BusinessAppScriptSendSMSToolNode : BusinessAppScriptSystemToolNode
     {
         public override BusinessAppAgentScriptNodeSystemToolTypeENUM ToolType { get; set; } = BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS;
 

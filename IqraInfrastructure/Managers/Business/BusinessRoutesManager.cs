@@ -340,8 +340,8 @@ namespace IqraInfrastructure.Managers.Business
                 result.Message = "Selected agent id is required.";
                 return result;
             }
-            var getBusinessAgent = await _businessAppRepository.GetAgentById(businessId, selectedAgentId);
-            if (getBusinessAgent == null)
+            var businessAgentExists = await _businessAppRepository.CheckAgentExists(businessId, selectedAgentId);
+            if (!businessAgentExists)
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:32";
                 result.Message = "Selected agent not found.";
@@ -362,10 +362,11 @@ namespace IqraInfrastructure.Managers.Business
                 result.Message = "Opening script id is required.";
                 return result;
             }
-            if (getBusinessAgent.Scripts.Find(x => x.Id == openingScriptId) == null)
+            var businessScriptExists = await _businessAppRepository.CheckScriptExists(businessId, openingScriptId);
+            if (!businessScriptExists)
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:34";
-                result.Message = "Opening script not found within selected agent.";
+                result.Message = "Opening script not found.";
                 return result;
             }
             newBusinessAppRouteData.Agent.OpeningScriptId = openingScriptId;

@@ -5,14 +5,14 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace IqraCore.Entities.Business
 {
     [BsonKnownTypes(
-        typeof(BusinessAppAgentScriptStartNode),
-        typeof(BusinessAppAgentScriptUserQueryNode),
-        typeof(BusinessAppAgentScriptAIResponseNode),
-        typeof(BusinessAppAgentScriptSystemToolNode),
-        typeof(BusinessAppAgentScriptCustomToolNode),
-        typeof(BusinessAppAgentScriptGoToNodeToolNode)
+        typeof(BusinessAppScriptStartNode),
+        typeof(BusinessAppScriptUserQueryNode),
+        typeof(BusinessAppScriptAIResponseNode),
+        typeof(BusinessAppScriptSystemToolNode),
+        typeof(BusinessAppScriptCustomToolNode),
+        typeof(BusinessAppScriptGoToNodeToolNode)
     )]
-    public class BusinessAppAgentScriptNode
+    public class BusinessAppScriptNode
     {
         public string Id { get; set; } = "";
         public virtual BusinessAppAgentScriptNodeTypeENUM NodeType { get; set; } = BusinessAppAgentScriptNodeTypeENUM.Unknown;

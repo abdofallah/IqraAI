@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.Business
 {
-    public class BusinessAppAgentScriptEdge
+    public class BusinessAppScriptEdge
     {
         public string Id { get; set; } = "";
         public string SourceNodeId { get; set; } = "";

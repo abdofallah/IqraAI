@@ -12,7 +12,6 @@ namespace IqraCore.Models.User.Business.App.Agent
             Personality = data.Personality;
             Utterances = data.Utterances;
             Interruptions = data.Interruptions;
-            Scripts = data.Scripts;
             KnowledgeBase = data.KnowledgeBase;
             Integrations = data.Integrations;
             Cache = data.Cache;
@@ -25,7 +24,6 @@ namespace IqraCore.Models.User.Business.App.Agent
         public BusinessAppAgentPersonality Personality { get; set; }
         public BusinessAppAgentUtterances Utterances { get; set; }
         public BusinessAppAgentInterruption Interruptions { get; set; }
-        public List<BusinessAppAgentScript> Scripts { get; set; }
         public BusinessAppAgentKnowledgeBase KnowledgeBase { get; set; }
         public BusinessAppAgentIntegrations Integrations { get; set; }
         public BusinessAppAgentCache Cache { get; set; }

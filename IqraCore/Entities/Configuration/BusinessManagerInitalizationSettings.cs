@@ -9,6 +9,7 @@
         public bool InitalizeCacheManager { get; set; } = false;
         public bool InitalizeIntegrationsManager { get; set; } = false;
         public bool InitalizeAgentsManager { get; set; } = false;
+        public bool InitalizeScriptsManager { get; set; } = false;
         public bool InitalizeNumberManager { get; set; } = false;
         public bool InitalizeRoutesManager { get; set; } = false;
         public bool InitalizeConversationsManager { get; set; } = false;

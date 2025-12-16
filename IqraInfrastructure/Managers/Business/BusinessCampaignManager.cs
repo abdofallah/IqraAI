@@ -331,8 +331,8 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     var selectedAgentId = selectedAgentIdProperty.GetString()!;
-                    var getBusinessAgent = await _businessAppRepository.GetAgentById(businessId, selectedAgentId);
-                    if (getBusinessAgent == null)
+                    var checkBusinessAgentExists = await _businessAppRepository.CheckAgentExists(businessId, selectedAgentId);
+                    if (!checkBusinessAgentExists)
                     {
                         return result.SetFailureResult(
                             "AddOrUpdateTelephonyCampaignAsync:AGENT_NOT_FOUND_IN_DB",
@@ -344,16 +344,17 @@ namespace IqraInfrastructure.Managers.Business
                     if (!agentTabRootElement.TryGetProperty("openingScriptId", out var openingScriptIdProperty) || string.IsNullOrWhiteSpace(openingScriptIdProperty.GetString()))
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:AGENT_SCRIPT_ID_IS_REQUIRED",
+                            "AddOrUpdateTelephonyCampaignAsync:SCRIPT_ID_IS_REQUIRED",
                             "Opening script id is required."
                         );
                     }
                     var openingScriptId = openingScriptIdProperty.GetString()!;
-                    if (getBusinessAgent.Scripts.Find(x => x.Id == openingScriptId) == null)
+                    var checkBusinessScriptExists = await _businessAppRepository.CheckScriptExists(businessId, openingScriptId);
+                    if (!checkBusinessScriptExists)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:AGENT_SCRIPT_NOT_FOUND_IN_AGENT",
-                            "Opening script not found within selected agent."
+                            "AddOrUpdateTelephonyCampaignAsync:SCRIPT_NOT_FOUND_IN_AGENT",
+                            "Opening script not found."
                         );
                     }
                     newBusinessAppCampaignData.Agent.OpeningScriptId = openingScriptId;
@@ -1443,8 +1444,8 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     var selectedAgentId = selectedAgentIdProperty.GetString()!;
-                    var getBusinessAgent = await _businessAppRepository.GetAgentById(businessId, selectedAgentId);
-                    if (getBusinessAgent == null)
+                    var checkBusinessAgentExists = await _businessAppRepository.CheckAgentExists(businessId, selectedAgentId);
+                    if (!checkBusinessAgentExists)
                     {
                         return result.SetFailureResult(
                             "AddOrUpdateWebCampaignAsync:AGENT_NOT_FOUND_IN_DB",
@@ -1461,11 +1462,12 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     var openingScriptId = openingScriptIdProperty.GetString()!;
-                    if (getBusinessAgent.Scripts.Find(x => x.Id == openingScriptId) == null)
+                    var checkBusinessScriptExists = await _businessAppRepository.CheckScriptExists(businessId, openingScriptId);
+                    if (!checkBusinessScriptExists)
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateWebCampaignAsync:AGENT_SCRIPT_NOT_FOUND_IN_AGENT",
-                            "Opening script not found within selected agent."
+                            "AddOrUpdateWebCampaignAsync:SCRIPT_NOT_FOUND_IN_AGENT",
+                            "Opening script not found."
                         );
                     }
                     newBusinessAppCampaignData.Agent.OpeningScriptId = openingScriptId;

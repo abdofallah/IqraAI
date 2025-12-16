@@ -54,6 +54,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessCacheManager? _businessCacheManager;
         private readonly BusinessIntegrationsManager? _businessIntegrationsManager;
         private readonly BusinessAgentsManager? _businessAgentsManager;
+        private readonly BusinessScriptsManager? _businessScriptsManager;
         private readonly BusinessNumberManager? _businessNumberManager;
         private readonly BusinessRoutesManager? _businessRoutesManager;
         private readonly BusinessConversationsManager? _businessConversationsManager;
@@ -156,6 +157,14 @@ namespace IqraInfrastructure.Managers.Business
                     throw new Exception("Null constructor input variable for BusinessAgentsManager");
                 }
                 _businessAgentsManager = new BusinessAgentsManager(this, mongoClient, businessAppRepository, businessRepository, _s3StorageClientFactory, businessAgentAudioRepository, _audioProcessor, integrationConfigurationManager);
+            }
+            if (_settings.InitalizeScriptsManager)
+            {
+                if (businessAppRepository == null || businessRepository == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessScriptsManager");
+                }
+                _businessScriptsManager = new BusinessScriptsManager(this, mongoClient, businessAppRepository, businessRepository);
             }
             if (_settings.InitalizeNumberManager)
             {
@@ -561,6 +570,12 @@ namespace IqraInfrastructure.Managers.Business
         {
             if (!_settings.InitalizeAgentsManager || _businessAgentsManager == null) throw new Exception("Agents manager not initalized");
             return _businessAgentsManager;
+        }
+
+        public BusinessScriptsManager GetScriptsManager()
+        {
+            if (!_settings.InitalizeScriptsManager || _businessScriptsManager == null) throw new Exception("Scripts manager not initalized");
+            return _businessScriptsManager;
         }
 
         public BusinessNumberManager GetNumberManager()

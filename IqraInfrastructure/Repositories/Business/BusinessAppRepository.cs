@@ -103,7 +103,7 @@ namespace IqraInfrastructure.Repositories.Business
                 
             var update = Builders<BusinessApp>.Update.Set(b => b.Tools.FirstMatchingElement(), newBusinessAppToolData);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> AddBusinessAppTool(long businessId, BusinessAppTool newBusinessAppToolData)
@@ -111,7 +111,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Tools, newBusinessAppToolData);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> CheckBusinessAppBranchExists(long businessId, string branchId)
@@ -129,7 +129,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Set(b => b.Context.Branding, newBusinessContextBranding);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> AddBusinessContextBranch(long businessId, BusinessAppContextBranch newBusinessContextBranch)
@@ -137,7 +137,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Context.Branches, newBusinessContextBranch);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateBusinessContextBranch(long businessId, BusinessAppContextBranch newBusinessContextBranch)
@@ -148,7 +148,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.Set(b => b.Context.Branches.FirstMatchingElement(), newBusinessContextBranch);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> CheckBusinessAppContextServiceExists(long businessId, string exisitingServiceId)
@@ -176,7 +176,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Context.Services, newBusinessContextService);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateBusinessContextService(long businessId, BusinessAppContextService newBusinessContextService)
@@ -187,7 +187,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.Set(b => b.Context.Services.FirstMatchingElement(), newBusinessContextService);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> AddBusinessContextProduct(long businessId, BusinessAppContextProduct newBusinessContextProduct)
@@ -195,7 +195,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Context.Products, newBusinessContextProduct);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateBusinessContextProduct(long businessId, BusinessAppContextProduct newBusinessContextProduct)
@@ -206,7 +206,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.Set(b => b.Context.Products.FirstMatchingElement(), newBusinessContextProduct);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> MoveBusinessToArchivedAsync(long businessId, IClientSessionHandle session)
@@ -250,7 +250,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Cache.MessageGroups, newMessageGroup);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateMessageGroupName(long businessId, string messageGroupId, string newMessageGroupName)
@@ -263,7 +263,7 @@ namespace IqraInfrastructure.Repositories.Business
             var update = Builders<BusinessApp>.Update.Set(b => b.Cache.MessageGroups.FirstMatchingElement().Name, newMessageGroupName);
 
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> AddMessageToGroup(long businessId, string groupId, string language, BusinessAppCacheMessage newMessage)
@@ -274,7 +274,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.Push(b => b.Cache.MessageGroups.FirstMatchingElement().Messages[language], newMessage);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateMessageInGroup(long businessId, string groupId, string language, BusinessAppCacheMessage newMessage)
@@ -329,7 +329,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Cache.AudioGroups, newAudioGroup);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateAudioGroupName(long businessId, string audioGroupId, string newAudioGroupName)
@@ -340,7 +340,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.Set(b => b.Cache.AudioGroups.FirstMatchingElement().Name, newAudioGroupName);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> AddAudioToGroup(long businessId, string groupId, string language, BusinessAppCacheAudio newAudio)
@@ -351,7 +351,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.Push(b => b.Cache.AudioGroups.FirstMatchingElement().Audios[language], newAudio);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateAudioInGroup(long businessId, string groupId, string language, BusinessAppCacheAudio newAudio)
@@ -426,7 +426,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Cache.EmbeddingGroups, newEmbeddingGroup);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateEmbeddingGroupName(long businessId, string embeddingGroupId, string newEmbeddingGroupName)
@@ -437,7 +437,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.Set(b => b.Cache.EmbeddingGroups.FirstMatchingElement().Name, newEmbeddingGroupName);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> AddEmbeddingEntryToGroup(long businessId, string groupId, string language, BusinessAppCacheEmbedding newEmbedding)
@@ -448,7 +448,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.Push(b => b.Cache.EmbeddingGroups.FirstMatchingElement().Embeddings[language], newEmbedding);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateEmbeddingInGroup(long businessId, string groupId, string language, BusinessAppCacheEmbedding newEmbedding)
@@ -568,7 +568,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Integrations, newIntegration);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateBusinessIntegration(long businessId, BusinessAppIntegration newIntegration)
@@ -583,7 +583,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
 
@@ -637,7 +637,7 @@ namespace IqraInfrastructure.Repositories.Business
 
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 
-            return result.IsAcknowledged && result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateAgentDataExceptScripts(long businessId, BusinessAppAgent agent)
@@ -660,83 +660,55 @@ namespace IqraInfrastructure.Repositories.Business
 
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 
-            return result.IsAcknowledged && result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
-        // Agent Scripts
-        public async Task<bool> CheckAgentScriptExists(long businessId, string agentId, string scriptId)
+        /**
+         * 
+         * Scripts
+         * 
+        **/
+        public async Task<bool> CheckScriptExists(long businessId, string scriptId)
         {
             var query = _businessAppCollection.AsQueryable()
                 .Where(b => b.Id == businessId)
-                .SelectMany(b => b.Agents)
-                .Where(agent => agent.Id == agentId)
-                .SelectMany(agent => agent.Scripts)
+                .SelectMany(b => b.Scripts)
                 .AnyAsync(script => script.Id == scriptId);
 
             return await query;
         }
 
-        public async Task<BusinessAppAgentScript?> GetAgentScriptById(long businessId, string agentId, string scriptId)
+        public async Task<BusinessAppScript?> GetScriptById(long businessId, string scriptId)
         {
             var scriptQuery = _businessAppCollection.AsQueryable()
                 .Where(b => b.Id == businessId)
-                .SelectMany(b => b.Agents)
-                .Where(agent => agent.Id == agentId)
-                .SelectMany(agent => agent.Scripts)
+                .SelectMany(b => b.Scripts)
                 .Where(script => script.Id == scriptId);
 
             return await scriptQuery.FirstOrDefaultAsync();
         }
 
-        public async Task<bool> AddAgentScript(long businessId, string agentId, BusinessAppAgentScript newScriptData, IClientSessionHandle? session = null)
+        public async Task<bool> AddScript(long businessId, BusinessAppScript newScriptData, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+
+            var update = Builders<BusinessApp>.Update.Push(d => d.Scripts, newScriptData);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        
+        public async Task<bool> UpdateScript(long businessId, BusinessAppScript updatedScriptData, IClientSessionHandle? session = null)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, agent =>
-                    agent.Id == agentId &&
-                    !agent.Scripts.Any(script => script.Id == newScriptData.Id)
-                )
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == updatedScriptData.Id)
             );
 
-            var update = Builders<BusinessApp>.Update.Push(d => d.Agents.FirstMatchingElement().Scripts, newScriptData);
+            var update = Builders<BusinessApp>.Update.Set(d => d.Scripts.FirstMatchingElement(), updatedScriptData);
 
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
-            return result.IsAcknowledged && result.ModifiedCount > 0;
-        }
-        
-        public async Task<bool> UpdateAgentScript(long businessId, string agentId, BusinessAppAgentScript updatedScriptData, IClientSessionHandle? session = null)
-        {
-            const string UpdateAgentScriptAgentPathIdentifier = "agentElem";
-            const string UpdateAgentScriptScriptPathIdentifier = "scriptElem";
-            const string UpdateAgentScriptUpdatePath = $"{nameof(BusinessApp.Agents)}.$[{UpdateAgentScriptAgentPathIdentifier}].{nameof(BusinessAppAgent.Scripts)}.$[{UpdateAgentScriptScriptPathIdentifier}]";
-
-            try
-            {
-                var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents,
-                        a => a.Id == agentId &&
-                        a.Scripts.Any(s => s.Id == updatedScriptData.Id)
-                    )
-                );
-
-                var update = Builders<BusinessApp>.Update.Set(UpdateAgentScriptUpdatePath, updatedScriptData);
-
-                var arrayFilters = new List<ArrayFilterDefinition>
-                {
-                    TypeSafeArrayFilter.Create<BusinessAppAgent>(UpdateAgentScriptAgentPathIdentifier, agent => agent.Id == agentId),
-                    TypeSafeArrayFilter.Create<BusinessAppAgentScript>(UpdateAgentScriptScriptPathIdentifier, script => script.Id == updatedScriptData.Id)
-                };
-
-                var updateOptions = new UpdateOptions { ArrayFilters = arrayFilters };
-
-                var result = await _businessAppCollection.UpdateOneAsync(session, filter, update, updateOptions);
-                return result.IsAcknowledged && result.ModifiedCount > 0;
-            }
-            catch (Exception ex)
-            {
-                return false;
-            }
+            return result.IsAcknowledged;
         }     
 
         /**
@@ -799,7 +771,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Numbers, newNumberData);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateBusinessNumber(long businessId, BusinessNumberData newNumberData)
@@ -813,30 +785,30 @@ namespace IqraInfrastructure.Repositories.Business
                 new BsonDocument(newNumberData.ToBsonDocument())
             );
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
-        public async Task<bool> AddAgentScriptSMSNodeReferenceToBusinessNumber(long businessId, string phoneNumberId, BusinessNumberAgentScriptSMSNodeReference data, IClientSessionHandle? session = null)
+        public async Task<bool> AddAgentScriptSMSNodeReferenceToBusinessNumber(long businessId, string phoneNumberId, BusinessNumberScriptSMSNodeReference data, IClientSessionHandle? session = null)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == phoneNumberId)
             );
-            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Numbers.FirstMatchingElement().AgentScriptSMSNodeReferences, data);
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Numbers.FirstMatchingElement().ScriptSMSNodeReferences, data);
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> RemoveAgentScriptSMSNodeReferenceFromBusinessNumber(long businessId, string phoneNumberId, BusinessNumberAgentScriptSMSNodeReference data, IClientSessionHandle? session = null)
+        public async Task<bool> RemoveAgentScriptSMSNodeReferenceFromBusinessNumber(long businessId, string phoneNumberId, BusinessNumberScriptSMSNodeReference data, IClientSessionHandle? session = null)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == phoneNumberId)
             );
             var update = Builders<BusinessApp>.Update.PullFilter(
-                d => d.Numbers.FirstMatchingElement().AgentScriptSMSNodeReferences,
-                f => f.AgentId == data.AgentId && f.AgentScriptId == data.AgentScriptId && f.NodeReference == data.NodeReference
+                d => d.Numbers.FirstMatchingElement().ScriptSMSNodeReferences,
+                f => f.ScriptId == data.ScriptId && f.NodeReference == data.NodeReference
             );
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
@@ -850,7 +822,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.PullFilter(b => b.Numbers, t => t.Id == numberId);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         /**
@@ -883,7 +855,7 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Routings, newBusinessAppRouteData);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateBusinessAppRoute(long businessId, BusinessAppRoute newBusinessAppRouteData)
@@ -897,7 +869,7 @@ namespace IqraInfrastructure.Repositories.Business
                 new BsonDocument(newBusinessAppRouteData.ToBsonDocument())
             );
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateBusinessNumberRoute(long businessId, string numberId, string? routeId)
@@ -912,7 +884,7 @@ namespace IqraInfrastructure.Repositories.Business
                 routeId
             );
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         /**
@@ -930,7 +902,7 @@ namespace IqraInfrastructure.Repositories.Business
                 ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
                 : await _businessAppCollection.UpdateOneAsync(filter, update);
 
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateKnowledgeBaseInArrayAsync(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle? session = null)
@@ -946,7 +918,7 @@ namespace IqraInfrastructure.Repositories.Business
                 ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
                 : await _businessAppCollection.UpdateOneAsync(filter, update);
 
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> RemoveKnowledgeBaseFromArrayAsync(long businessId, string kbId, IClientSessionHandle? session = null)
@@ -958,7 +930,7 @@ namespace IqraInfrastructure.Repositories.Business
                 ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
                 : await _businessAppCollection.UpdateOneAsync(filter, update);
 
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> AddDocumentIdToKnowledgeBaseAsync(long businessId, string kbId, long documentId, IClientSessionHandle? session = null)
@@ -975,7 +947,7 @@ namespace IqraInfrastructure.Repositories.Business
                 ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
                 : await _businessAppCollection.UpdateOneAsync(filter, update);
 
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> RemoveDocumentIdFromKnowledgeBaseAsync(long businessId, string kbId, long documentId, IClientSessionHandle? session = null)
@@ -991,7 +963,7 @@ namespace IqraInfrastructure.Repositories.Business
                 ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
                 : await _businessAppCollection.UpdateOneAsync(filter, update);
 
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<BusinessAppKnowledgeBase?> GetBusinessAppKnowledgeBaseAsync(long businessId, string existingKbId)

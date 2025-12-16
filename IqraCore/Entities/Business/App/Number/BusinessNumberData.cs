@@ -30,15 +30,14 @@ namespace IqraCore.Entities.Business
         public bool VoiceEnabled { get; set; } = false;
         public bool SmsEnabled { get; set; } = false;
 
-        public List<BusinessNumberAgentScriptSMSNodeReference> AgentScriptSMSNodeReferences { get; set; } = new List<BusinessNumberAgentScriptSMSNodeReference>();
+        public List<BusinessNumberScriptSMSNodeReference> ScriptSMSNodeReferences { get; set; } = new List<BusinessNumberScriptSMSNodeReference>();
 
         public virtual TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Unknown;
     }
 
-    public class BusinessNumberAgentScriptSMSNodeReference
+    public class BusinessNumberScriptSMSNodeReference
     {
-        public string AgentId { get; set; } = string.Empty;
-        public string AgentScriptId { get; set; } = string.Empty;
+        public string ScriptId { get; set; } = string.Empty;
         public string NodeReference { get; set; } = string.Empty;
     }
 }

@@ -14,12 +14,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
         private BusinessApp? _businessApp;
         private ConversationSessionContext? _currentSessionContext;
         private BusinessAppAgent? _currentRouteAgent;
-        private BusinessAppAgentScript? _curentAgentActiveScript;
+        private BusinessAppScript? _curentActiveScript;
         private string? _currentSessionlanguageCode;
         private bool _isScriptInitialized;
 
-        public bool IsScriptActive => _isScriptInitialized && _curentAgentActiveScript != null;
-        public BusinessAppAgentScript? ActiveScript => _curentAgentActiveScript;
+        public bool IsScriptActive => _isScriptInitialized && _curentActiveScript != null;
+        public BusinessAppScript? ActiveScript => _curentActiveScript;
 
         public ScriptExecutionManager(
             ILogger<ScriptExecutionManager> logger
@@ -37,7 +37,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             _isScriptInitialized = false;
 
             var currentRouteAgentId = _currentSessionContext.Agent.SelectedAgentId;
-            var routeAgentScriptId = _currentSessionContext.Agent.OpeningScriptId; // Assuming opening script is the main one for now
+            var routeScriptId = _currentSessionContext.Agent.OpeningScriptId;
 
             try
             {
@@ -48,28 +48,28 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     throw new InvalidOperationException($"Agent not found with ID {currentRouteAgentId} in business {businessApp.Id}");
                 }
 
-                if (_currentRouteAgent.Scripts == null) throw new InvalidOperationException($"Agent {currentRouteAgentId} Scripts collection is null.");
-                _curentAgentActiveScript = _currentRouteAgent.Scripts.FirstOrDefault(s => s.Id == routeAgentScriptId);
-                if (_curentAgentActiveScript == null)
+                if (businessApp.Scripts == null) throw new InvalidOperationException($"BusinessApp Scripts collection is null.");
+                _curentActiveScript = businessApp.Scripts.FirstOrDefault(s => s.Id == routeScriptId);
+                if (_curentActiveScript == null)
                 {
                     // Optional: Log available scripts if needed for debugging
                     // var availableScripts = string.Join(", ", _currentRouteAgent.Scripts.Select(s => s.Id));
                     // _logger.LogWarning("Available scripts for agent {AgentId}: {Scripts}", currentRouteAgentId, availableScripts);
-                    throw new InvalidOperationException($"Script not found with ID {routeAgentScriptId} for agent {currentRouteAgentId} in business {businessApp.Id}");
+                    throw new InvalidOperationException($"Script not found with ID {routeScriptId} in business {businessApp.Id}");
                 }
 
-                if (_curentAgentActiveScript.Nodes == null) _curentAgentActiveScript.Nodes = new List<BusinessAppAgentScriptNode>(); // Ensure nodes list exists
-                if (_curentAgentActiveScript.Edges == null) _curentAgentActiveScript.Edges = new List<BusinessAppAgentScriptEdge>(); // Ensure edges list exists
+                if (_curentActiveScript.Nodes == null) _curentActiveScript.Nodes = new List<BusinessAppScriptNode>(); // Ensure nodes list exists
+                if (_curentActiveScript.Edges == null) _curentActiveScript.Edges = new List<BusinessAppScriptEdge>(); // Ensure edges list exists
                 if (_businessApp.Tools == null) _businessApp.Tools = new List<BusinessAppTool>(); // Ensure tools list exists
 
 
                 _isScriptInitialized = true;
-                _logger.LogInformation("Script data loaded successfully. Script ID: {ScriptId}", _curentAgentActiveScript.Id);
+                _logger.LogInformation("Script data loaded successfully. Script ID: {ScriptId}", _curentActiveScript.Id);
                 return Task.CompletedTask; // Make method async Task if future awaits needed
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading agent {AgentId} script {ScriptId} for business {BusinessId}", currentRouteAgentId, routeAgentScriptId, _businessApp?.Id);
+                _logger.LogError(ex, "Error loading agent {AgentId} script {ScriptId} for business {BusinessId}", currentRouteAgentId, routeScriptId, _businessApp?.Id);
                 _isScriptInitialized = false; // Ensure state reflects failure
                 throw; // Re-throw to signal failure
             }
@@ -80,7 +80,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
         public FunctionReturnResult<DTMFSessionConfig> GetDTMFNodeDetails(string nodeId)
         {
             var result = new FunctionReturnResult<DTMFSessionConfig>();
-            if (!IsScriptActive || _curentAgentActiveScript?.Nodes == null)
+            if (!IsScriptActive || _curentActiveScript?.Nodes == null)
             {
                 result.Code = "GetDTMFNode:1";
                 result.Message = "Script is not active or loaded.";
@@ -89,7 +89,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
 
             _logger.LogDebug("Searching for DTMF node with ID: {NodeId}", nodeId);
-            var nodeData = _curentAgentActiveScript.Nodes.FirstOrDefault(n => n.Id == nodeId);
+            var nodeData = _curentActiveScript.Nodes.FirstOrDefault(n => n.Id == nodeId);
 
             if (nodeData == null)
             {
@@ -100,9 +100,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
 
             if (nodeData.NodeType != BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool ||
-                !(nodeData is BusinessAppAgentScriptSystemToolNode systemToolNode) ||
+                !(nodeData is BusinessAppScriptSystemToolNode systemToolNode) ||
                 systemToolNode.ToolType != BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput ||
-                !(systemToolNode is BusinessAppAgentScriptDTMFInputToolNode dtmfNode))
+                !(systemToolNode is BusinessAppScriptDTMFInputToolNode dtmfNode))
             {
                 result.Code = "GetDTMFNode:3";
                 result.Message = $"Node {nodeId} is not a valid 'GetDTMFKeypadInput' system tool node. Actual type: {nodeData.NodeType}";
@@ -129,10 +129,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
         }
 
         // Get Send SMS Tool Node Details
-        public FunctionReturnResult<BusinessAppAgentScriptSendSMSToolNode> GetSendSMSToolNodeDetails(string nodeId)
+        public FunctionReturnResult<BusinessAppScriptSendSMSToolNode> GetSendSMSToolNodeDetails(string nodeId)
         {
-            var result = new FunctionReturnResult<BusinessAppAgentScriptSendSMSToolNode>();
-            if (!IsScriptActive || _curentAgentActiveScript?.Nodes == null)
+            var result = new FunctionReturnResult<BusinessAppScriptSendSMSToolNode>();
+            if (!IsScriptActive || _curentActiveScript?.Nodes == null)
             {
                 result.Code = "GetSendSMSToolNode:1";
                 result.Message = "Script is not active or loaded.";
@@ -141,7 +141,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
 
             _logger.LogDebug("Searching for Send SMS node with ID: {NodeId}", nodeId);
-            var nodeData = _curentAgentActiveScript.Nodes.FirstOrDefault(n => n.Id == nodeId);
+            var nodeData = _curentActiveScript.Nodes.FirstOrDefault(n => n.Id == nodeId);
 
             if (nodeData == null)
             {
@@ -152,9 +152,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
 
             if (nodeData.NodeType != BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool ||
-                !(nodeData is BusinessAppAgentScriptSystemToolNode systemToolNode) ||
+                !(nodeData is BusinessAppScriptSystemToolNode systemToolNode) ||
                 systemToolNode.ToolType != BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS ||
-                !(systemToolNode is BusinessAppAgentScriptSendSMSToolNode smsNode))
+                !(systemToolNode is BusinessAppScriptSendSMSToolNode smsNode))
             {
                 result.Code = "GetSendSMSToolNode:3";
                 result.Message = $"Node {nodeId} is not a valid 'SendSMS' system tool node. Actual type: {nodeData.NodeType}";
@@ -173,7 +173,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
         public FunctionReturnResult<BusinessAppTool> GetCustomToolNodeDetails(string nodeId)
         {
             var result = new FunctionReturnResult<BusinessAppTool>();
-            if (!IsScriptActive || _curentAgentActiveScript?.Nodes == null || _businessApp?.Tools == null)
+            if (!IsScriptActive || _curentActiveScript?.Nodes == null || _businessApp?.Tools == null)
             {
                 result.Code = "GetCustomToolNode:1";
                 result.Message = "Script or Business Tools are not active or loaded.";
@@ -182,7 +182,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
 
             _logger.LogDebug("Searching for Custom Tool node with ID: {NodeId}", nodeId);
-            var nodeData = _curentAgentActiveScript.Nodes.FirstOrDefault(n => n.Id == nodeId);
+            var nodeData = _curentActiveScript.Nodes.FirstOrDefault(n => n.Id == nodeId);
 
             if (nodeData == null)
             {
@@ -193,7 +193,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
 
             if (nodeData.NodeType != BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool ||
-                !(nodeData is BusinessAppAgentScriptCustomToolNode customToolNode))
+                !(nodeData is BusinessAppScriptCustomToolNode customToolNode))
             {
                 result.Code = "GetCustomToolNode:3";
                 result.Message = $"Node {nodeId} is not an 'ExecuteCustomTool' node. Actual type: {nodeData.NodeType}";

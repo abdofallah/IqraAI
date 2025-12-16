@@ -37,7 +37,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             _businessApp = businessApp;
         }
 
-        public async Task<FunctionReturnResult> SendMessageAsync(BusinessAppAgentScriptSendSMSToolNode sendSMSNode, string message, string toNumber, CancellationToken cancellationToken)
+        public async Task<FunctionReturnResult> SendMessageAsync(BusinessAppScriptSendSMSToolNode sendSMSNode, string message, string toNumber, CancellationToken cancellationToken)
         {
             var result = new FunctionReturnResult();
 

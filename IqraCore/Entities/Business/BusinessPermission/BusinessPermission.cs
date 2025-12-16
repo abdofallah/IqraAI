@@ -14,6 +14,7 @@
         // UI Facing Permissions
         public BusinessRoutesPermission Routings { get; set; } = new BusinessRoutesPermission();
         public BusinessAgentsPermission Agents { get; set; } = new BusinessAgentsPermission();
+        public BusinessScriptsPermission Scripts { get; set; } = new BusinessScriptsPermission();
         public BusinessCachePermission Cache { get; set; } = new BusinessCachePermission();
         public BusnessIntegrationsPermission Integrations { get; set; } = new BusnessIntegrationsPermission();
         public BusinessToolsPermission Tools { get; set; } = new BusinessToolsPermission();

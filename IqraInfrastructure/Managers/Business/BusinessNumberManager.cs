@@ -104,7 +104,7 @@ namespace IqraInfrastructure.Managers.Business
             if (postType == "edit")
             {
                 newNumberData.RouteId = existingNumberData!.RouteId;
-                newNumberData.AgentScriptSMSNodeReferences = existingNumberData!.AgentScriptSMSNodeReferences;
+                newNumberData.ScriptSMSNodeReferences = existingNumberData!.ScriptSMSNodeReferences;
             }
 
             // Validate not editing immutable fields
@@ -215,7 +215,7 @@ namespace IqraInfrastructure.Managers.Business
             }
             newNumberData.SmsEnabled = smsEnabledEl.GetBoolean();
 
-            if (!newNumberData.SmsEnabled && newNumberData.AgentScriptSMSNodeReferences.Count > 0)
+            if (!newNumberData.SmsEnabled && newNumberData.ScriptSMSNodeReferences.Count > 0)
             {
                 return result.SetFailureResult(
                     "AddOrUpdateBusinessNumber:SMS_NODE_REFERENCES_FOUND",
@@ -408,7 +408,7 @@ namespace IqraInfrastructure.Managers.Business
 
             try
             {
-                if (numberData.AgentScriptSMSNodeReferences.Count > 0)
+                if (numberData.ScriptSMSNodeReferences.Count > 0)
                 {
                     return result.SetFailureResult(
                         "DeleteBusinessNumber:SCRIPT_SMS_NODE_REFERENCES_FOUND",

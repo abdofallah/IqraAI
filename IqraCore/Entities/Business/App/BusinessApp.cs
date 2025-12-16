@@ -11,6 +11,7 @@ namespace IqraCore.Entities.Business
         public BusinessAppContext Context { get; set; } = new BusinessAppContext();
         public List<BusinessAppTool> Tools { get; set; } = new List<BusinessAppTool>();
         public List<BusinessAppAgent> Agents { get; set; } = new List<BusinessAppAgent>();
+        public List<BusinessAppScript> Scripts { get; set; } = new List<BusinessAppScript>();
         public List<BusinessAppIntegration> Integrations { get; set; } = new List<BusinessAppIntegration>();
         public BusinessAppCache Cache { get; set; } = new BusinessAppCache();
         public List<BusinessAppRoute> Routings { get; set; } = new List<BusinessAppRoute>();

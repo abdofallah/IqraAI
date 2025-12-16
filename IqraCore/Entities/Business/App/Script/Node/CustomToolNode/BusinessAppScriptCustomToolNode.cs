@@ -3,7 +3,7 @@ using IqraCore.Entities.Helper.Agent;
 
 namespace IqraCore.Entities.Business
 {
-    public class BusinessAppAgentScriptCustomToolNode : BusinessAppAgentScriptNode
+    public class BusinessAppScriptCustomToolNode : BusinessAppScriptNode
     {
         public override BusinessAppAgentScriptNodeTypeENUM NodeType { get; set; } = BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool;
 

@@ -728,6 +728,7 @@ namespace ProjectIqraFrontend
                     new BusinessManagerInitalizationSettings()
                     { 
                         InitalizeAgentsManager = true,
+                        InitalizeScriptsManager = true,
                         InitalizeCacheManager = true,
                         InitalizeContextManager = true,
                         InitalizeIntegrationsManager = true,
