@@ -1,36 +1,25 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.Region;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using PhoneNumbers;
 using ProjectIqraFrontend.Middlewares;
 using System.Text.Json;
-using Twilio.TwiML.Voice;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessNumbersController : Controller
     {
-        private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
-        private readonly RegionManager _regionManager;
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
         
         public UserBusinessNumbersController(
-            UserManager userManager,
             BusinessManager businessManager,
-            RegionManager regionManager,
             UserSessionValidationHelper userSessionValidationHelper
         ) {
-            _userManager = userManager;
             _businessManager = businessManager;
-            _regionManager = regionManager;
             _userSessionValidationHelper = userSessionValidationHelper;
         }
 
@@ -295,18 +284,11 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                         "Number not found"
                     );
                 }
-
-                if (exisitingNumberData.CountryCode != countryCode || exisitingNumberData.Number != number || exisitingNumberData.Provider != provider)
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessNumber:NOT_ALLOWED_TO_EDIT",
-                        "You are not allowed to edit a number's country code or number or provider or integration"
-                    );
-                }
             }
 
             var saveResult = await _businessManager.GetNumberManager().AddOrUpdateBusinessNumber(
-                changes, 
+                changes,
+                isE164,
                 countryCode,
                 number,
                 integrationId,
@@ -314,7 +296,6 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 postType,
                 exisitingNumberData,
                 businessId,
-                _regionManager,
                 userData.Permission.IsAdmin
             );
 

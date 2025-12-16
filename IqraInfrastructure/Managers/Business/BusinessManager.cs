@@ -159,11 +159,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeNumberManager)
             {
-                if (modemTelManager == null || twilioManager == null || integrationsManager == null)
+                if (modemTelManager == null || twilioManager == null || integrationsManager == null || regionManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessNumberManager");
                 }
-                _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository, modemTelManager, twilioManager, integrationsManager);
+                _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository, modemTelManager, twilioManager, integrationsManager, regionManager);
             }
             if (_settings.InitalizeRoutesManager || integrationConfigurationManager == null)
             {

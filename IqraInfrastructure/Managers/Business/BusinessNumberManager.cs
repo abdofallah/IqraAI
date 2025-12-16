@@ -23,6 +23,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly TwilioManager _twilioManager;
 
         private readonly IntegrationsManager _integrationsManager;
+        private readonly RegionManager _regionManager;
 
         public BusinessNumberManager(
             BusinessManager businessManager,
@@ -30,7 +31,8 @@ namespace IqraInfrastructure.Managers.Business
             BusinessRepository businessRepository,
             ModemTelManager modemTelManager,
             TwilioManager twilioManager,
-            IntegrationsManager integrationsManager
+            IntegrationsManager integrationsManager,
+            RegionManager regionManager
         )
         {
             _parentBusinessManager = businessManager;
@@ -42,6 +44,7 @@ namespace IqraInfrastructure.Managers.Business
             _twilioManager = twilioManager;
 
             _integrationsManager = integrationsManager;
+            _regionManager = regionManager;
         }
 
         public async Task<BusinessNumberData?> GetBusinessNumberById(long businessId, string numberId)
@@ -60,8 +63,18 @@ namespace IqraInfrastructure.Managers.Business
             return await _businessAppRepository.CheckBusinessNumberExistsById(exisitingNumberId, businessId);
         }
 
-        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(JsonDocument changes, string countryCode, string number, string integrationId, TelephonyProviderEnum provider, string postType, BusinessNumberData? existingNumberData, long businessId, RegionManager regionManager, bool isUserAdmin)
-        {
+        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(
+            JsonDocument changes,
+            bool isE164,
+            string countryCode,
+            string number,
+            string integrationId,
+            TelephonyProviderEnum provider,
+            string postType,
+            BusinessNumberData? existingNumberData,
+            long businessId,
+            bool isUserAdmin
+        ) {
             var result = new FunctionReturnResult<BusinessNumberData?>();
 
             BusinessNumberData newNumberData;
@@ -94,6 +107,33 @@ namespace IqraInfrastructure.Managers.Business
                 newNumberData.AgentScriptSMSNodeReferences = existingNumberData!.AgentScriptSMSNodeReferences;
             }
 
+            // Validate not editing immutable fields
+            if (postType == "edit")
+            {
+                if (
+                    existingNumberData!.CountryCode != countryCode ||
+                    existingNumberData!.Number != number ||
+                    existingNumberData!.Provider != provider
+                ) {
+                    return result.SetFailureResult(
+                        "SaveBusinessNumber:NOT_ALLOWED_TO_EDIT",
+                        "You are not allowed to edit a number's country code or number or provider or integration"
+                    );
+                }
+
+                if (provider == TelephonyProviderEnum.SIP)
+                {
+                    var existingSipData = (BusinessNumberSipData)existingNumberData;
+                    if (existingSipData.IsE164Number != isE164)
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessNumber:NOT_ALLOWED_TO_EDIT",
+                            "You are not allowed to edit a number's SIP server"
+                        );
+                    }
+                }
+            }
+
             // Get Integration Data
             var integrationDataResult = await _parentBusinessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, newNumberData.IntegrationId);
             if (!integrationDataResult.Success)
@@ -122,7 +162,7 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Validate region exists
-            var regionData = await regionManager.GetRegionById(regionId);
+            var regionData = await _regionManager.GetRegionById(regionId);
             if (regionData == null)
             {
                 return result.SetFailureResult(
@@ -188,16 +228,7 @@ namespace IqraInfrastructure.Managers.Business
                 var sipData = (BusinessNumberSipData)newNumberData;
 
                 // E.164 Flag
-                if (
-                    !changes.RootElement.TryGetProperty("isE164Number", out var e164El) ||
-                    (e164El.ValueKind != JsonValueKind.True && e164El.ValueKind != JsonValueKind.False)
-                ) {
-                    return result.SetFailureResult(
-                        "AddOrUpdateBusinessNumber:E164_FLAG_NOT_FOUND",
-                        "E.164 flag not found in changes."
-                    );
-                }
-                sipData.IsE164Number = e164El.GetBoolean();
+                sipData.IsE164Number = isE164;
 
                 // Allowed Source IPs
                 if (
