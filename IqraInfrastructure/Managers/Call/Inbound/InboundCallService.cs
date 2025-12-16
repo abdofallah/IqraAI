@@ -82,14 +82,6 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 string? numberRouteId = phoneNumberInfo.RouteId;
                 string regionId = phoneNumberInfo.RegionId;
 
-                // Ignore the call for now if the business number has no route
-                // TODO in future if phone number has options of what to do in case of no route, set it here
-                if (string.IsNullOrWhiteSpace(numberRouteId))
-                {
-                    _logger.LogError("Error distributing call {CallId} for provider {Provider}: business number has no route set", webhookContext.CallId, webhookContext.Provider);
-                    return result.SetFailureResult("DistributeIncomingCall:NO_ROUTE_SET", "Business number has no route set");
-                }
-
                 // Create call queue entry
                 InboundCallQueueData callQueue = new InboundCallQueueData
                 {
@@ -113,7 +105,19 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 {
                     return result.SetFailureResult("DistributeIncomingCall:CALL_QUEUE_NOT_CREATED", "Unable to create call queue entry");
                 }
-                callQueue.Id = callQueueId;
+                callQueue.Id = callQueueId!;
+
+                if (!phoneNumberInfo.IsVoiceEnabled)
+                {
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"Phone number voice is disabled", Type = CallQueueLogTypeEnum.Error });
+                    return result.SetFailureResult("DistributeIncomingCall:NUMBER_VOICE_DISABLED", "Phone number voice is disabled");
+                }
+
+                if (string.IsNullOrWhiteSpace(numberRouteId))
+                {
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"Business number has no inbound route set", Type = CallQueueLogTypeEnum.Error });
+                    return result.SetFailureResult("DistributeIncomingCall:NO_ROUTE_SET", "Business number has no inbound route set");
+                }
 
                 var planValidation = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
                 if (!planValidation.Success)
@@ -354,6 +358,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                         NumberId = businessNumber.Id,
                         RouteId = businessNumber.RouteId,
                         RegionId = businessNumber.RegionId,
+                        IsVoiceEnabled = businessNumber.VoiceEnabled,
                         isUserAdmin = isUserAdmin
                     };
                 }
@@ -376,7 +381,9 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                         BusinessId = webhookContext.BusinessId,
                         NumberId = businessNumber.Id,
                         RouteId = businessNumber.RouteId,
-                        RegionId = businessNumber.RegionId
+                        RegionId = businessNumber.RegionId,
+                        IsVoiceEnabled = businessNumber.VoiceEnabled,
+                        isUserAdmin = isUserAdmin
                     };
                 }
                 else
@@ -396,6 +403,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
             public string NumberId { get; set; } = string.Empty;
             public string? RouteId { get; set; } = string.Empty;
             public string RegionId { get; set; } = string.Empty;
+            public bool IsVoiceEnabled { get; set; }
             public bool isUserAdmin { get; set; }
         }
     }

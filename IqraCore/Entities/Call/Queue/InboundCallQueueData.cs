@@ -7,7 +7,7 @@ namespace IqraCore.Entities.Call.Queue
     { 
         public override CallQueueTypeEnum Type { get; set; } = CallQueueTypeEnum.Inbound;
 
-        public string RouteId { get; set; } = string.Empty;
+        public string? RouteId { get; set; } = null;
         public string RouteNumberId { get; set; } = string.Empty; // this is the business phone number id
 
         public TelephonyProviderEnum RouteNumberProvider { get; set; } = TelephonyProviderEnum.Unknown;

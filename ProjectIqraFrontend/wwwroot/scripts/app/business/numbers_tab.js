@@ -1386,6 +1386,13 @@ function initSipNumberEvents() {
 		sipNumberModalNumberInput.val(SipNumbersState.CurrentManageData.number);
 		sipNumberModalRegionSelect.val(SipNumbersState.CurrentManageData.regionId);
 		sipNumberModalAllowedIpsInput.val((SipNumbersState.CurrentManageData.allowedSourceIps || []).join(", "));
+
+		const shouldDisableFields = SipNumbersState.CurrentManageType === "edit";
+
+		sipNumberModalNumberInput.prop("disabled", shouldDisableFields);
+		sipNumberModalIsE164.prop("disabled", shouldDisableFields);
+		sipNumberModalCountrySelect.prop("disabled", shouldDisableFields);
+		sipNumberModalIntegrationSelect.prop("disabled", shouldDisableFields);
 	});
 
 	// Toggle Switch Listener
