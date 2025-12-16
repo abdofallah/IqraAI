@@ -1,0 +1,1 @@
+Moved to [SIPSorcery.OpenAI.WebRTC](https://github.com/sipsorcery-org/SIPSorcery.OpenAI.WebRTC).
