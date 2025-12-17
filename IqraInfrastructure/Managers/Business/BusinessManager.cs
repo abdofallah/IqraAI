@@ -234,7 +234,7 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     throw new Exception("Null constructor input variable for BusinessPostAnalysisManager");
                 }
-               _businessPostAnalysisManager = new BusinessPostAnalysisManager(this, businessAppRepository, integrationConfigurationManager);
+               _businessPostAnalysisManager = new BusinessPostAnalysisManager(this, mongoClient, businessAppRepository, integrationConfigurationManager);
             }
         }
 

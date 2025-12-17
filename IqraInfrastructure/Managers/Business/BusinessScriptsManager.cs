@@ -421,7 +421,7 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         else
                         {
-                            var updateResult = await _businessAppRepository.UpdateScript(businessId, newScriptData, session);
+                            var updateResult = await _businessAppRepository.UpdateScriptExceptReferences(businessId, newScriptData, session);
                             if (!updateResult)
                             {
                                 return result.SetFailureResult(

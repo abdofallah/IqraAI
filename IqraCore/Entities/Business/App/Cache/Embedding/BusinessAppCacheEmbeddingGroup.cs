@@ -9,5 +9,8 @@ namespace IqraCore.Entities.Business
 
         [MultiLanguageProperty]
         public Dictionary<string, List<BusinessAppCacheEmbedding>> Embeddings { get; set; } = new Dictionary<string, List<BusinessAppCacheEmbedding>>();
+
+        public List<string> AgentReferences { get; set; } = new List<string>();
+        public List<string> AgentAutoCacheReferences { get; set; } = new List<string>();
     }
 }

@@ -147,5 +147,76 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             }
             
         }
+
+        [HttpPost("/app/user/business/{businessId}/agents/{agentId}/delete")]
+        public async Task<FunctionReturnResult> DeleteBusinessAgent(long businessId, string agentId)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteBusinessAgent:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Business Agents Permission
+                if (businessData.Permission.Agents.DisabledFullAt != null)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessAgent:BUSINESS_AGENTS_DISABLED_FULL",
+                        $"Business does not have permission to access agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledFullReason) ? "." : ": " + businessData.Permission.Agents.DisabledFullReason)}"
+                    );
+                }
+
+                if (businessData.Permission.Agents.DisabledDeletingAt != null)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessAgent:BUSINESS_AGENTS_DISABLED_FULL",
+                        $"Business does not have permission to access agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledDeletingReason) ? "." : ": " + businessData.Permission.Agents.DisabledDeletingReason)}"
+                    );
+                }
+
+                var agentData = await _businessManager.GetAgentsManager().GetAgentById(businessId, agentId);
+                if (agentData == null)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessAgent:AGENT_DOES_NOT_EXIST",
+                        "Agent does not exist for business."
+                    );
+                }
+
+                var deleteResult = await _businessManager.GetAgentsManager().DeleteAgent(businessId, agentData);
+                if (!deleteResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteBusinessAgent:{deleteResult.Code}",
+                        deleteResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeleteBusinessAgent:EXCEPTION",
+                    $"Internal Server Error: {ex.Message}"
+                );
+            }
+        }
     }
 }

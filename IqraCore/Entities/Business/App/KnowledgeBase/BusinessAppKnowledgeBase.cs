@@ -12,12 +12,7 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase
         public BusinessAppKnowledgeBaseGeneral General { get; set; } = new BusinessAppKnowledgeBaseGeneral();
         public BusinessAppKnowledgeBaseConfiguration Configuration { get; set; } = new BusinessAppKnowledgeBaseConfiguration();
         public List<long> Documents { get; set; } = new List<long>();
-    }
 
-    public class BusinessAppKnowledgeBaseGeneral
-    {
-        public string Emoji { get; set; } = "🧠";
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
+        public List<string> AgentReferences { get; set; } = new List<string>();
     }
 }

@@ -399,7 +399,7 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        bool updateNumberResult = await _businessAppRepository.UpdateBusinessNumber(businessId, newNumberData, session);
+                        bool updateNumberResult = await _businessAppRepository.UpdateBusinessNumberExceptReferences(businessId, newNumberData, session);
                         if (!updateNumberResult)
                         {
                             return result.SetFailureResult(

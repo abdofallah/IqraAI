@@ -66,8 +66,15 @@ namespace IqraInfrastructure.Managers.Business
         }
 
         // SAVING/ADDING AGENT
-        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, BusinessAppAgent? exisitingAgentData, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
-        {
+        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(
+            long businessId,
+            string postType,
+            IFormCollection formData,
+            BusinessAppAgent? exisitingAgentData,
+            LLMProviderManager llmProviderManager,
+            STTProviderManager sttProviderManager,
+            TTSProviderManager ttsProviderManager
+        ) {
             var result = new FunctionReturnResult<BusinessAppAgent?>();
 
             // Get business languages
@@ -1332,16 +1339,17 @@ namespace IqraInfrastructure.Managers.Business
                         }
                     }
 
+                    // UPDATE ALL REFERENCES
                     try
                     {
-                        await UpdateAgentIntegrationReferences(businessId, newAgentData.Id, exisitingAgentData, newAgentData, session);
+                        await UpdateAllAgentReferences(businessId, newAgentData.Id, exisitingAgentData, newAgentData, session);
                     }
                     catch (Exception ex)
                     {
                         await session.AbortTransactionAsync();
                         return result.SetFailureResult(
                             "AddOrUpdateAgent:REF_UPDATE_FAILED",
-                            $"Failed to update integration references: {ex.Message}"
+                            $"Failed to update agent references: {ex.Message}"
                         );
                     }
 
@@ -1358,90 +1366,71 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
         }
-
-        private async Task<bool> UpdateAgentIntegrationReferences(
+        private async Task UpdateAllAgentReferences(
             long businessId,
             string agentId,
             BusinessAppAgent? oldAgent,
             BusinessAppAgent newAgent,
             IClientSessionHandle session
         ) {
-            // ---------------------------------------------------------
-            // 1. Single References (TurnEnd, Verification, Refinement, SearchStrategy)
-            // ---------------------------------------------------------
+            // ==================================================================================
+            // HELPERS
+            // ==================================================================================
 
-            // Helper Action to handle single reference swap
+            // Helper 1: For List<string> references (e.g. Linked Groups, Cache Lists)
+            async Task HandleListReferences(
+                List<string>? oldList,
+                List<string> newList,
+                Func<long, string, string, IClientSessionHandle, Task<bool>> addFunc,
+                Func<long, string, string, IClientSessionHandle, Task<bool>> removeFunc)
+            {
+                var oldSet = oldList != null ? new HashSet<string>(oldList) : new HashSet<string>();
+                var newSet = new HashSet<string>(newList);
+
+                // Remove Deleted
+                foreach (var oldId in oldSet)
+                {
+                    if (!newSet.Contains(oldId))
+                    {
+                        await removeFunc(businessId, oldId, agentId, session);
+                    }
+                }
+
+                // Add New
+                foreach (var newId in newSet)
+                {
+                    await addFunc(businessId, newId, agentId, session);
+                }
+            }
+
+            // Helper 2: For Single ID references (e.g. AutoCache Group, Single Integrations)
             async Task HandleSingleReference(
-                string? oldIntId,
-                string? newIntId,
+                string? oldId,
+                string? newId,
                 Func<long, string, string, IClientSessionHandle, Task<bool>> addFunc,
                 Func<long, string, string, IClientSessionHandle, Task<bool>> removeFunc)
             {
                 // If we have an old reference and it's different from the new one, remove it
-                if (!string.IsNullOrEmpty(oldIntId) && oldIntId != newIntId)
+                if (!string.IsNullOrEmpty(oldId) && oldId != newId)
                 {
-                    await removeFunc(businessId, oldIntId, agentId, session);
+                    await removeFunc(businessId, oldId, agentId, session);
                 }
-                // Always add the new one (idempotent)
-                if (!string.IsNullOrEmpty(newIntId))
+
+                // Always add the new one (idempotent via AddToSet)
+                if (!string.IsNullOrEmpty(newId))
                 {
-                    await addFunc(businessId, newIntId, agentId, session);
+                    await addFunc(businessId, newId, agentId, session);
                 }
             }
 
-            // A. Interruption Turn End
-            string? oldTurnEndId = (oldAgent?.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI && !oldAgent.Interruptions.TurnEnd.UseAgentLLM.GetValueOrDefault())
-                ? oldAgent.Interruptions.TurnEnd.LLMIntegration?.Id : null;
-            string? newTurnEndId = (newAgent.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI && !newAgent.Interruptions.TurnEnd.UseAgentLLM.GetValueOrDefault())
-                ? newAgent.Interruptions.TurnEnd.LLMIntegration?.Id : null;
-
-            await HandleSingleReference(oldTurnEndId, newTurnEndId,
-                _businessAppRepository.AddAgentInterruptionTurnEndRefToIntegration,
-                _businessAppRepository.RemoveAgentInterruptionTurnEndRefFromIntegration);
-
-            // B. Interruption Verification
-            string? oldVerifId = (oldAgent?.Interruptions.Verification != null && oldAgent.Interruptions.Verification.Enabled && !oldAgent.Interruptions.Verification.UseAgentLLM)
-                ? oldAgent.Interruptions.Verification.LLMIntegration?.Id : null;
-            string? newVerifId = (newAgent.Interruptions.Verification != null && newAgent.Interruptions.Verification.Enabled && !newAgent.Interruptions.Verification.UseAgentLLM)
-                ? newAgent.Interruptions.Verification.LLMIntegration?.Id : null;
-
-            await HandleSingleReference(oldVerifId, newVerifId,
-                _businessAppRepository.AddAgentInterruptionVerificationRefToIntegration,
-                _businessAppRepository.RemoveAgentInterruptionVerificationRefFromIntegration);
-
-            // C. KB Refinement
-            string? oldRefineId = (oldAgent?.KnowledgeBase.Refinement.Enabled == true && !oldAgent.KnowledgeBase.Refinement.UseAgentLLM.GetValueOrDefault())
-                ? oldAgent.KnowledgeBase.Refinement.LLMIntegration?.Id : null;
-            string? newRefineId = (newAgent.KnowledgeBase.Refinement.Enabled && !newAgent.KnowledgeBase.Refinement.UseAgentLLM.GetValueOrDefault())
-                ? newAgent.KnowledgeBase.Refinement.LLMIntegration?.Id : null;
-
-            await HandleSingleReference(oldRefineId, newRefineId,
-                _businessAppRepository.AddAgentKBQueryRefinementRefToIntegration,
-                _businessAppRepository.RemoveAgentKBQueryRefinementRefFromIntegration);
-
-            // D. KB Search Strategy (LLM Classifier)
-            string? oldSearchId = (oldAgent?.KnowledgeBase.SearchStrategy.Type == AgentKnowledgeBaseSearchStartegyTypeENUM.LLM && !oldAgent.KnowledgeBase.SearchStrategy.LLMClassifier!.UseAgentLLM)
-                ? oldAgent.KnowledgeBase.SearchStrategy.LLMClassifier!.LLMIntegration?.Id : null;
-            string? newSearchId = (newAgent.KnowledgeBase.SearchStrategy.Type == AgentKnowledgeBaseSearchStartegyTypeENUM.LLM && !newAgent.KnowledgeBase.SearchStrategy.LLMClassifier!.UseAgentLLM)
-                ? newAgent.KnowledgeBase.SearchStrategy.LLMClassifier!.LLMIntegration?.Id : null;
-
-            await HandleSingleReference(oldSearchId, newSearchId,
-                _businessAppRepository.AddAgentKBSearchStrategyRefToIntegration,
-                _businessAppRepository.RemoveAgentKBSearchStrategyRefFromIntegration);
-
-
-            // ---------------------------------------------------------
-            // 2. Multi-Language References (STT, LLM, TTS)
-            // ---------------------------------------------------------
-
-            // Helper Action to handle Dictionary<string, List<Data>>
+            // Helper 3: For Multi-Language Dictionary references (STT, LLM, TTS)
             async Task HandleMultiLangReferences(
                 Dictionary<string, List<BusinessAppAgentIntegrationData>>? oldDict,
                 Dictionary<string, List<BusinessAppAgentIntegrationData>> newDict,
                 Func<long, string, string, string, IClientSessionHandle, Task<bool>> addFunc,
                 Func<long, string, string, string, IClientSessionHandle, Task<bool>> removeFunc)
             {
-                // 1. Remove references that are in OLD but NOT in NEW (for that specific language)
+                // 1. Remove references that are in OLD but NOT in NEW
                 if (oldDict != null)
                 {
                     foreach (var langPair in oldDict)
@@ -1473,7 +1462,7 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                // 2. Add all NEW references (Idempotent)
+                // 2. Add all NEW references
                 foreach (var langPair in newDict)
                 {
                     string lang = langPair.Key;
@@ -1484,28 +1473,525 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
-            // A. STT
+            // ==================================================================================
+            // PART 1: ENTITY REFERENCES (KB, CACHE)
+            // ==================================================================================
+
+            // 1. Knowledge Base
+            await HandleListReferences(
+                oldAgent?.KnowledgeBase.LinkedGroups,
+                newAgent.KnowledgeBase.LinkedGroups,
+                _businessAppRepository.AddAgentReferenceToKB,
+                _businessAppRepository.RemoveAgentReferenceFromKB
+            );
+
+            // 2. Cache - Message Groups
+            await HandleListReferences(
+                oldAgent?.Cache.Messages,
+                newAgent.Cache.Messages,
+                _businessAppRepository.AddAgentReferenceToMessageCacheGroup,
+                _businessAppRepository.RemoveAgentReferenceFromMessageCacheGroup
+            );
+
+            // 3. Cache - Audio Groups (Usage List)
+            await HandleListReferences(
+                oldAgent?.Cache.Audios,
+                newAgent.Cache.Audios,
+                _businessAppRepository.AddAgentReferenceToAudioCacheGroup,
+                _businessAppRepository.RemoveAgentReferenceFromAudioCacheGroup
+            );
+
+            // 4. Cache - Audio Auto Cache (Single Reference)
+            string? oldAudioAutoId = (oldAgent?.Cache.AudioCacheSettings != null && oldAgent.Cache.AudioCacheSettings.AutoCacheAudioResponses)
+                ? oldAgent.Cache.AudioCacheSettings.AutoCacheAudioResponseCacheGroupId : null;
+            string? newAudioAutoId = (newAgent.Cache.AudioCacheSettings != null && newAgent.Cache.AudioCacheSettings.AutoCacheAudioResponses)
+                ? newAgent.Cache.AudioCacheSettings.AutoCacheAudioResponseCacheGroupId : null;
+
+            await HandleSingleReference(
+                oldAudioAutoId,
+                newAudioAutoId,
+                _businessAppRepository.AddAgentAutoCacheReferenceToAudioCacheGroup,
+                _businessAppRepository.RemoveAgentAutoCacheReferenceFromAudioCacheGroup
+            );
+
+            // 5. Cache - Embedding Groups (Usage List)
+            await HandleListReferences(
+                oldAgent?.Cache.Embeddings,
+                newAgent.Cache.Embeddings,
+                _businessAppRepository.AddAgentReferenceToEmbeddingCacheGroup,
+                _businessAppRepository.RemoveAgentReferenceFromEmbeddingCacheGroup
+            );
+
+            // 6. Cache - Embedding Auto Cache (Single Reference)
+            string? oldEmbeddingAutoId = (oldAgent?.Cache.EmbeddingsCacheSettings != null && oldAgent.Cache.EmbeddingsCacheSettings.AutoCacheEmbeddingResponses)
+                ? oldAgent.Cache.EmbeddingsCacheSettings.AutoCacheEmbeddingResponseCacheGroupId : null;
+            string? newEmbeddingAutoId = (newAgent.Cache.EmbeddingsCacheSettings != null && newAgent.Cache.EmbeddingsCacheSettings.AutoCacheEmbeddingResponses)
+                ? newAgent.Cache.EmbeddingsCacheSettings.AutoCacheEmbeddingResponseCacheGroupId : null;
+
+            await HandleSingleReference(
+                oldEmbeddingAutoId,
+                newEmbeddingAutoId,
+                _businessAppRepository.AddAgentAutoCacheReferenceToEmbeddingCacheGroup,
+                _businessAppRepository.RemoveAgentAutoCacheReferenceFromEmbeddingCacheGroup
+            );
+
+
+            // ==================================================================================
+            // PART 2: INTEGRATION REFERENCES
+            // ==================================================================================
+
+            // 7. Interruption Turn End
+            string? oldTurnEndId = null;
+            if (oldAgent?.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI && !oldAgent.Interruptions.TurnEnd.UseAgentLLM.GetValueOrDefault())
+            {
+                oldTurnEndId = oldAgent.Interruptions.TurnEnd.LLMIntegration?.Id;
+            }
+
+            string? newTurnEndId = null;
+            if (newAgent.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI && !newAgent.Interruptions.TurnEnd.UseAgentLLM.GetValueOrDefault())
+            {
+                newTurnEndId = newAgent.Interruptions.TurnEnd.LLMIntegration?.Id;
+            }
+
+            await HandleSingleReference(
+                oldTurnEndId,
+                newTurnEndId,
+                _businessAppRepository.AddAgentInterruptionTurnEndRefToIntegration,
+                _businessAppRepository.RemoveAgentInterruptionTurnEndRefFromIntegration
+            );
+
+            // 8. Interruption Verification
+            string? oldVerifId = null;
+            if (oldAgent?.Interruptions.Verification != null && oldAgent.Interruptions.Verification.Enabled && !oldAgent.Interruptions.Verification.UseAgentLLM)
+            {
+                oldVerifId = oldAgent.Interruptions.Verification.LLMIntegration?.Id;
+            }
+
+            string? newVerifId = null;
+            if (newAgent.Interruptions.Verification != null && newAgent.Interruptions.Verification.Enabled && !newAgent.Interruptions.Verification.UseAgentLLM)
+            {
+                newVerifId = newAgent.Interruptions.Verification.LLMIntegration?.Id;
+            }
+
+            await HandleSingleReference(
+                oldVerifId,
+                newVerifId,
+                _businessAppRepository.AddAgentInterruptionVerificationRefToIntegration,
+                _businessAppRepository.RemoveAgentInterruptionVerificationRefFromIntegration
+            );
+
+            // 9. KB Refinement
+            string? oldRefineId = null;
+            if (oldAgent?.KnowledgeBase.Refinement.Enabled == true && !oldAgent.KnowledgeBase.Refinement.UseAgentLLM.GetValueOrDefault())
+            {
+                oldRefineId = oldAgent.KnowledgeBase.Refinement.LLMIntegration?.Id;
+            }
+
+            string? newRefineId = null;
+            if (newAgent.KnowledgeBase.Refinement.Enabled && !newAgent.KnowledgeBase.Refinement.UseAgentLLM.GetValueOrDefault())
+            {
+                newRefineId = newAgent.KnowledgeBase.Refinement.LLMIntegration?.Id;
+            }
+
+            await HandleSingleReference(
+                oldRefineId,
+                newRefineId,
+                _businessAppRepository.AddAgentKBQueryRefinementRefToIntegration,
+                _businessAppRepository.RemoveAgentKBQueryRefinementRefFromIntegration
+            );
+
+            // 10. KB Search Strategy (LLM Classifier)
+            string? oldSearchId = null;
+            if (oldAgent?.KnowledgeBase.SearchStrategy.Type == AgentKnowledgeBaseSearchStartegyTypeENUM.LLM &&
+                oldAgent.KnowledgeBase.SearchStrategy.LLMClassifier != null &&
+                !oldAgent.KnowledgeBase.SearchStrategy.LLMClassifier.UseAgentLLM)
+            {
+                oldSearchId = oldAgent.KnowledgeBase.SearchStrategy.LLMClassifier.LLMIntegration?.Id;
+            }
+
+            string? newSearchId = null;
+            if (newAgent.KnowledgeBase.SearchStrategy.Type == AgentKnowledgeBaseSearchStartegyTypeENUM.LLM &&
+                newAgent.KnowledgeBase.SearchStrategy.LLMClassifier != null &&
+                !newAgent.KnowledgeBase.SearchStrategy.LLMClassifier.UseAgentLLM)
+            {
+                newSearchId = newAgent.KnowledgeBase.SearchStrategy.LLMClassifier.LLMIntegration?.Id;
+            }
+
+            await HandleSingleReference(
+                oldSearchId,
+                newSearchId,
+                _businessAppRepository.AddAgentKBSearchStrategyRefToIntegration,
+                _businessAppRepository.RemoveAgentKBSearchStrategyRefFromIntegration
+            );
+
+
+            // ==================================================================================
+            // PART 3: MULTI-LANGUAGE INTEGRATION REFERENCES
+            // ==================================================================================
+
+            // 11. STT
             await HandleMultiLangReferences(
                 oldAgent?.Integrations.STT,
                 newAgent.Integrations.STT,
                 _businessAppRepository.AddAgentSTTReferenceToIntegration,
-                _businessAppRepository.RemoveAgentSTTReferenceFromIntegration);
+                _businessAppRepository.RemoveAgentSTTReferenceFromIntegration
+            );
 
-            // B. LLM
+            // 12. LLM
             await HandleMultiLangReferences(
                 oldAgent?.Integrations.LLM,
                 newAgent.Integrations.LLM,
                 _businessAppRepository.AddAgentLLMReferenceToIntegration,
-                _businessAppRepository.RemoveAgentLLMReferenceFromIntegration);
+                _businessAppRepository.RemoveAgentLLMReferenceFromIntegration
+            );
 
-            // C. TTS
+            // 13. TTS
             await HandleMultiLangReferences(
                 oldAgent?.Integrations.TTS,
                 newAgent.Integrations.TTS,
                 _businessAppRepository.AddAgentTTSReferenceToIntegration,
-                _businessAppRepository.RemoveAgentTTSReferenceFromIntegration);
+                _businessAppRepository.RemoveAgentTTSReferenceFromIntegration
+            );
+        }
 
-            return true;
+        // Delete Agent
+        public async Task<FunctionReturnResult> DeleteAgent(long businessId, BusinessAppAgent businessAppAgent)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                if (businessAppAgent.InboundRoutingReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteAgent:INBOUND_ROUTING_REFERENCES",
+                        "Cannot delete agent with inbound routing references."
+                    );
+                }
+
+                if (businessAppAgent.TelephonyCampaignReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteAgent:TELEPHONY_CAMPAIGN_REFERENCES",
+                        "Cannot delete agent with telephony campaign references."
+                    );
+                }
+
+                if (businessAppAgent.WebCampaignReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteAgent:WEB_CAMPAIGN_REFERENCES",
+                        "Cannot delete agent with web campaign references."
+                    );
+                }
+
+                if (businessAppAgent.ScriptTransferToAgentNodeReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteAgent:SCRIPT_TRANSFER_TO_AGENT_NODE_REFERENCES",
+                        "Cannot delete agent with script transfer to agent node references."
+                    );
+                }
+
+                // TODO check any ongoing queues/conversations with this agent
+                // too complex allow for queues or conversations to just fail gracefully
+
+                using (var session = await _mongoClient.StartSessionAsync())
+                {
+                    session.StartTransaction();
+                    try
+                    {
+                        // Interruption Turn End
+                        if (businessAppAgent.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI &&
+                            !businessAppAgent.Interruptions.TurnEnd.UseAgentLLM.GetValueOrDefault() &&
+                            businessAppAgent.Interruptions.TurnEnd.LLMIntegration != null)
+                        {
+                            var removeTurnEndRefResult =  await _businessAppRepository.RemoveAgentInterruptionTurnEndRefFromIntegration(
+                                businessId,
+                                businessAppAgent.Interruptions.TurnEnd.LLMIntegration.Id,
+                                businessAppAgent.Id,
+                                session
+                            );
+                            if (!removeTurnEndRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_TURN_END_REF",
+                                    "Failed to remove interruption turn end integration reference."
+                                );
+                            }
+                        }
+
+                        // Interruption Verification
+                        if (businessAppAgent.Interruptions.Verification != null &&
+                            businessAppAgent.Interruptions.Verification.Enabled &&
+                            !businessAppAgent.Interruptions.Verification.UseAgentLLM &&
+                            businessAppAgent.Interruptions.Verification.LLMIntegration != null)
+                        {
+                            var removeInterruptionVerificationRefResult = await _businessAppRepository.RemoveAgentInterruptionVerificationRefFromIntegration(
+                                businessId,
+                                businessAppAgent.Interruptions.Verification.LLMIntegration.Id,
+                                businessAppAgent.Id,
+                                session
+                            );
+                            if (!removeInterruptionVerificationRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_INTERRUPTION_VERIFICATION_REF",
+                                    "Failed to remove interruption verification integration reference."
+                                );
+                            }
+                        }
+
+                        // Knowledge Base Refinement
+                        if (businessAppAgent.KnowledgeBase.Refinement.Enabled &&
+                            !businessAppAgent.KnowledgeBase.Refinement.UseAgentLLM.GetValueOrDefault() &&
+                            businessAppAgent.KnowledgeBase.Refinement.LLMIntegration != null)
+                        {
+                            var removeRefinementRefResult = await _businessAppRepository.RemoveAgentKBQueryRefinementRefFromIntegration(
+                                businessId,
+                                businessAppAgent.KnowledgeBase.Refinement.LLMIntegration.Id,
+                                businessAppAgent.Id,
+                                session
+                            );
+                            if (!removeRefinementRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_REFINEMENT_REF",
+                                    "Failed to remove knowledge base query refinement integration reference."
+                                );
+                            }
+                        }
+
+                        // Knowledge Base Search Strategy (LLM Classifier)
+                        if (businessAppAgent.KnowledgeBase.SearchStrategy.Type == AgentKnowledgeBaseSearchStartegyTypeENUM.LLM &&
+                            businessAppAgent.KnowledgeBase.SearchStrategy.LLMClassifier != null &&
+                            !businessAppAgent.KnowledgeBase.SearchStrategy.LLMClassifier.UseAgentLLM &&
+                            businessAppAgent.KnowledgeBase.SearchStrategy.LLMClassifier.LLMIntegration != null)
+                        {
+                            var removeLLMClassifierRefResult = await _businessAppRepository.RemoveAgentKBSearchStrategyRefFromIntegration(
+                                businessId,
+                                businessAppAgent.KnowledgeBase.SearchStrategy.LLMClassifier.LLMIntegration.Id,
+                                businessAppAgent.Id,
+                                session
+                            );
+                            if (!removeLLMClassifierRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_LLM_CLASSIFIER_REF",
+                                    "Failed to remove knowledge base search strategy integration reference."
+                                );
+                            }
+                        }
+
+                        // STT
+                        if (businessAppAgent.Integrations.STT != null)
+                        {
+                            foreach (var langPair in businessAppAgent.Integrations.STT)
+                            {
+                                foreach (var integration in langPair.Value)
+                                {
+                                    var removeSTTRefResult = await _businessAppRepository.RemoveAgentSTTReferenceFromIntegration(
+                                        businessId,
+                                        integration.Id,
+                                        langPair.Key,
+                                        businessAppAgent.Id,
+                                        session
+                                    );
+                                    if (!removeSTTRefResult)
+                                    {
+                                        await session.AbortTransactionAsync();
+                                        return result.SetFailureResult(
+                                            "DeleteAgent:REMOVE_STT_REF",
+                                            "Failed to remove STT integration reference."
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
+                        // LLM
+                        if (businessAppAgent.Integrations.LLM != null)
+                        {
+                            foreach (var langPair in businessAppAgent.Integrations.LLM)
+                            {
+                                foreach (var integration in langPair.Value)
+                                {
+                                    var removeLLMRefResult = await _businessAppRepository.RemoveAgentLLMReferenceFromIntegration(
+                                        businessId,
+                                        integration.Id,
+                                        langPair.Key,
+                                        businessAppAgent.Id,
+                                        session
+                                    );
+                                    if (!removeLLMRefResult)
+                                    {
+                                        await session.AbortTransactionAsync();
+                                        return result.SetFailureResult(
+                                            "DeleteAgent:REMOVE_LLM_REF",
+                                            "Failed to remove LLM integration reference."
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
+                        // TTS
+                        if (businessAppAgent.Integrations.TTS != null)
+                        {
+                            foreach (var langPair in businessAppAgent.Integrations.TTS)
+                            {
+                                foreach (var integration in langPair.Value)
+                                {
+                                    var removeTTSRefResult = await _businessAppRepository.RemoveAgentTTSReferenceFromIntegration(
+                                        businessId,
+                                        integration.Id,
+                                        langPair.Key,
+                                        businessAppAgent.Id,
+                                        session
+                                    );
+                                    if (!removeTTSRefResult)
+                                    {
+                                        await session.AbortTransactionAsync();
+                                        return result.SetFailureResult(
+                                            "DeleteAgent:REMOVE_TTS_REF",
+                                            "Failed to remove TTS integration reference."
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
+                        // Knowledge Base
+                        foreach (var kbId in businessAppAgent.KnowledgeBase.LinkedGroups)
+                        {
+                            var removeKBRefResult = await _businessAppRepository.RemoveAgentReferenceFromKB(businessId, kbId, businessAppAgent.Id, session);
+                            if (!removeKBRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_KB_REF",
+                                    "Failed to remove knowledge base reference."
+                                );
+                            }
+                        }
+
+                        // Cache - Messages
+                        foreach (var msgGroupId in businessAppAgent.Cache.Messages)
+                        {
+                            var removeMsgGroupRefResult = await _businessAppRepository.RemoveAgentReferenceFromMessageCacheGroup(businessId, msgGroupId, businessAppAgent.Id, session);
+                            if (!removeMsgGroupRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_MSG_GROUP_REF",
+                                    "Failed to remove message group reference."
+                                );
+                            }
+                        }
+
+                        // Cache - Audios
+                        foreach (var audioGroupId in businessAppAgent.Cache.Audios)
+                        {
+                            var removeAudioGroupRefResult = await _businessAppRepository.RemoveAgentReferenceFromAudioCacheGroup(businessId, audioGroupId, businessAppAgent.Id, session);
+                            if (!removeAudioGroupRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_AUDIO_GROUP_REF",
+                                    "Failed to remove audio group reference."
+                                );
+                            }
+                        }
+
+                        // Cache - Audio Auto Cache
+                        if (businessAppAgent.Cache.AudioCacheSettings != null &&
+                            businessAppAgent.Cache.AudioCacheSettings.AutoCacheAudioResponses &&
+                            !string.IsNullOrEmpty(businessAppAgent.Cache.AudioCacheSettings.AutoCacheAudioResponseCacheGroupId))
+                        {
+                            var removeAudioGroupRefResult = await _businessAppRepository.RemoveAgentAutoCacheReferenceFromAudioCacheGroup(
+                                businessId,
+                                businessAppAgent.Cache.AudioCacheSettings.AutoCacheAudioResponseCacheGroupId,
+                                businessAppAgent.Id,
+                                session
+                            );
+                            if (!removeAudioGroupRefResult) {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_AUDIO_GROUP_REF",
+                                    "Failed to remove audio group reference."
+                                );
+                            }
+                        }
+
+                        // Cache - Embeddings
+                        foreach (var embGroupId in businessAppAgent.Cache.Embeddings)
+                        {
+                            var removeEmbeddingGroupRefResult = await _businessAppRepository.RemoveAgentReferenceFromEmbeddingCacheGroup(businessId, embGroupId, businessAppAgent.Id, session);
+                            if (!removeEmbeddingGroupRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_EMB_GROUP_REF",
+                                    "Failed to remove embedding group reference."
+                                );
+                            }
+                        }
+
+                        // Cache - Embedding Auto Cache
+                        if (businessAppAgent.Cache.EmbeddingsCacheSettings != null &&
+                            businessAppAgent.Cache.EmbeddingsCacheSettings.AutoCacheEmbeddingResponses &&
+                            !string.IsNullOrEmpty(businessAppAgent.Cache.EmbeddingsCacheSettings.AutoCacheEmbeddingResponseCacheGroupId))
+                        {
+                            var removeEmbeddingGroupRefResult = await _businessAppRepository.RemoveAgentAutoCacheReferenceFromEmbeddingCacheGroup(
+                                businessId,
+                                businessAppAgent.Cache.EmbeddingsCacheSettings.AutoCacheEmbeddingResponseCacheGroupId,
+                                businessAppAgent.Id,
+                                session
+                            );
+                            if (!removeEmbeddingGroupRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteAgent:REMOVE_EMB_GROUP_REF",
+                                    "Failed to remove embedding group reference."
+                                );
+                            }
+                        }
+
+                        // Delete DB
+                        var deleteResult = await _businessAppRepository.DeleteAgent(businessId, businessAppAgent.Id, session);
+                        if (!deleteResult)
+                        {
+                            return result.SetFailureResult(
+                                "DeleteAgent:FAILED_DB_DELETE",
+                                "Failed to delete agent from database."
+                            );
+                        }
+
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "DeleteAgent:EXCEPTION",
+                            $"An error occurred: {ex.Message}"
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeleteAgent:EXCEPTION",
+                    $"An error occurred: {ex.Message}"
+                );
+            }
         }
     }
 }
