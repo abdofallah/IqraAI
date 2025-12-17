@@ -106,40 +106,32 @@ function SaveBusinessScript(formData, onSuccess, onError) {
 // Scripts Tab Functions
 function showScriptManagerTab() {
 	scriptsListTab.removeClass("show");
-	agentsManagerBreadcrumb.removeClass("show");
-	agentsManagerListTab.removeClass("show");
 	setTimeout(() => {
 		scriptsListTab.addClass("d-none");
-		agentsManagerBreadcrumb.addClass("d-none");
-		agentsManagerListTab.addClass("d-none");
 
 		scriptsManagerTab.removeClass("d-none");
-		agentsManagerScriptTab.removeClass("d-none");
-		agentsScriptManagerBreadcrumb.removeClass("d-none");
+		scriptsManagerHeader.removeClass("d-none");
 		setTimeout(() => {
 			scriptsManagerTab.addClass("show");
-			agentsManagerScriptTab.addClass("show");
-			agentsScriptManagerBreadcrumb.addClass("show");
+			scriptsManagerHeader.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
 function showScriptListTab() {
 	scriptsManagerTab.removeClass("show");
-	agentsManagerScriptTab.removeClass("show");
-	agentsScriptManagerBreadcrumb.removeClass("show");
+	scriptsManagerHeader.removeClass("show");
 	setTimeout(() => {
 		scriptsManagerTab.addClass("d-none");
-		agentsManagerScriptTab.addClass("d-none");
-		agentsScriptManagerBreadcrumb.addClass("d-none");
+		scriptsManagerHeader.addClass("d-none");
 
 		scriptsListTab.removeClass("d-none");
-		agentsManagerBreadcrumb.removeClass("d-none");
-		agentsManagerListTab.removeClass("d-none");
 		setTimeout(() => {
 			scriptsListTab.addClass("show");
-			agentsManagerBreadcrumb.addClass("show");
-			agentsManagerListTab.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
@@ -3696,6 +3688,7 @@ function initScriptsTab() {
 		nodeConfigOffcanvas = new bootstrap.Offcanvas("#nodeConfigOffcanvas");
 		scriptsManagerLanguageDropdown = new MultiLanguageDropdown("scriptsManagerMultiLanguageContainer", BusinessFullLanguagesData);
 
+		registerScriptNodes();
 		initScriptsTabHandlers();
 		fillScriptsListTab();
 	});

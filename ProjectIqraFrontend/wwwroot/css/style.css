@@ -1735,8 +1735,8 @@ table.table > thead > * > * {
 	object-fit: contain;
 }
 
-/** Agent Script Tab **/
-#agents-tab .inner-container:has(#agents-manager-script-conversation.active) {
+/** Script Tab **/
+#scripts-tab .inner-container:has(#scripts-manager-conversation.active) {
 	padding: 0px !important;
 	border: 0px !important;
 }
