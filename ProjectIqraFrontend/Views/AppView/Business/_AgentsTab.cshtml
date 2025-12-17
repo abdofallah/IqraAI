@@ -27,32 +27,6 @@
             </div>
         </div>
 
-        <!-- Agent Script Manager Breadcrumb -->
-        <div class="mb-4 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="agents-script-manager-breadcrumb">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item">
-                        <span>Agents</span>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <span id="agentNameScriptBreadcrumb">Agent</span>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <a href="#" id="switchBackToAgentsScriptManagerTab">Scripts</a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page"><span id="currentAgentScriptName">Script</span></li>
-                </ol>
-            </nav>
-            <div>
-                <div class="btn-group" id="saveAgentScriptDropdown">
-                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveAgentScriptButton">
-                        <i class='fa-regular fa-floppy-disk'></i>
-                        <span> Save</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <!-- Agent Manager Inner Tabs -->
         <div class="d-flex flex-row align-items-center justify-content-between w-100 fade d-none" id="agents-manager-tab">
             <ul class="nav" role="tablist">
@@ -72,9 +46,6 @@
                     <button class="nav-link" id="agents-manager-interruptions-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-interruptions" type="button" role="tab" aria-controls="agents-manager-interruptions" aria-selected="true">Interruptions</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link" id="agents-manager-scripts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-scripts" type="button" role="tab" aria-controls="agents-manager-scripts" aria-selected="true">Scripts</button>
-                </li>
-                <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="agents-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations" type="button" role="tab" aria-controls="agents-manager-integrations" aria-selected="true">Integrations</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
@@ -89,23 +60,6 @@
             </ul>
 
             <div class="ms-4" id="agentsManagerMultiLanguageContainer">
-            </div>
-        </div>
-
-        <!-- Agent Script Manager Inner Tabs -->
-        <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="agents-manager-script-tab">
-            <ul class="nav" role="tablist">
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link active" id="agents-manager-script-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-general" type="button" role="tab" aria-controls="agents-manager-script-general" aria-selected="true">General</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="agents-manager-script-conversation-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-conversation" type="button" role="tab" aria-controls="agents-manager-script-conversation" aria-selected="true">Conversation</button>
-                </li>
-            </ul>
-
-            <div class="ms-4" id="agentsScriptManagerMultiLanguageParentContainer">
-                <div id="agentsScriptManagerMultiLanguageContainer">
-                </div>
             </div>
         </div>
 
@@ -401,132 +355,6 @@
                                 <label class="form-label">Interruption Verification LLM</label>
                                 <div id="agentInterruptionVerifyLLMIntegrationContainer">
                                     <!-- The IntegrationConfigurationManager class will automatically build the UI here. -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Scripts -->
-                <div class="tab-pane fade w-100" id="agents-manager-scripts" role="tabpanel" aria-labelledby="agents-manager-scripts-tab" tabindex="0">
-                    <!-- Scripts List Tab -->
-                    <div class="fade show w-100" id="agentScriptsListTab">
-                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                            <div style="min-width: 200px" class="me-4">
-                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentScriptButton">
-                                    <span>+ Add New Script</span>
-                                </button>
-                            </div>
-                            <div class="input-group w-100">
-                                <input type="text" class="form-control" placeholder="Script Name" aria-label="Script Name" aria-describedby="searchAgentScriptButton">
-                                <button class="input-group-button btn btn-primary" id="searchAgentScriptButton">
-                                    <i class='fa-regular fa-magnifying-glass'></i>
-                                </button>
-                            </div>
-                        </div>
-                        <table id="agentScriptsTable" class="table w-100">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Name</th>
-                                    <th scope="col">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Dynamically Generated -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- Agent Scripts Manager Tab -->
-                    <div class="fade d-none w-100" id="agentScriptsManagerTab">
-                        <div class="tab-content w-100" id="agents-manager-tabContent">
-                            <!-- General -->
-                            <div class="tab-pane fade show active w-100" id="agents-manager-script-general" role="tabpanel" aria-labelledby="agents-manager-script-general-tab" tabindex="0">
-                                <div class="mb-3">
-                                    <label class="form-label btn-ic-span-align" for="inputAgentScriptName"><span>Name</span> <i class="fa-regular fa-language"></i></label>
-                                    <input type="text" class="form-control" id="inputAgentScriptName" placeholder="Script Name">
-                                </div>
-                                <div>
-                                    <label class="form-label btn-ic-span-align" for="inputAgentScriptDescription"><span>Description</span> <i class="fa-regular fa-language"></i></label>
-                                    <textarea class="form-control" id="inputAgentScriptDescription" rows="1" placeholder="Script Description"></textarea>
-                                </div>
-                            </div>
-                            <!-- Conversation -->
-                            <div class="tab-pane fade w-100" id="agents-manager-script-conversation" role="tabpanel" aria-labelledby="agents-manager-script-conversation-tab" tabindex="0">
-                                <!-- Graph Container -->
-                                <div class="agent-script-graph-container">
-                                    <!-- Left Sidebar -->
-                                    <div class="agent-script-graph-sidebar-left bg-dark border-dark text-bg-dark">
-                                        <div class=" sidebar-header">
-                                            <h6>Add Nodes</h6>
-                                        </div>
-                                        <div class="sidebar-content">
-                                            <button class="btn btn-primary sidebar-node-button" data-node-type="user-query">
-                                                <i class="fa-regular fa-message"></i>
-                                                <span>User Query</span>
-                                            </button>
-                                            <button class="btn btn-primary sidebar-node-button" data-node-type="ai-response">
-                                                <i class="fa-regular fa-robot"></i>
-                                                <span>AI Response</span>
-                                            </button>
-                                            <button class="btn btn-primary sidebar-node-button" data-node-type="system-tool">
-                                                <i class="fa-regular fa-toolbox"></i>
-                                                <span>System Tool</span>
-                                            </button>
-                                            <button class="btn btn-primary sidebar-node-button" data-node-type="custom-tool">
-                                                <i class="fa-regular fa-wrench"></i>
-                                                <span>Custom Tool</span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Graph Area -->
-                                    <div id="agent-script-graph"></div>
-
-                                    <!-- Right Side Controls -->
-                                    <div class="agent-script-graph-side-controls">
-                                        <!-- Minimap -->
-                                        <div id="agent-script-graph-minimap" class="agent-script-graph-minimap"></div>
-
-                                        <!-- Language -->
-                                        <div id="agentsScriptManagerMultiLanguageParentSideControlContainer" style="margin-bottom: 10px;">
-
-                                        </div>
-
-                                        <!-- Controls -->
-                                        <div class="agent-script-graph-controls">
-                                            <div class="btn-group d-flex mb-2">
-                                                <button id="agent-script-graph-fullscreen" class="btn btn-primary btn-sm flex-fill" title="Toggle Fullscreen">
-                                                    <i class="fa-regular fa-expand"></i>
-                                                </button>
-                                            </div>
-                                            <div class="btn-group d-flex mb-2">
-                                                <button id="agent-script-graph-zoom-in" class="btn btn-primary btn-sm flex-fill" title="Zoom In">
-                                                    <i class="fa-regular fa-magnifying-glass-plus"></i>
-                                                </button>
-                                                <button id="agent-script-graph-zoom-out" class="btn btn-primary btn-sm flex-fill" title="Zoom Out">
-                                                    <i class="fa-regular fa-magnifying-glass-minus"></i>
-                                                </button>
-                                            </div>
-                                            <div class="btn-group d-flex">
-                                                <button id="agent-script-graph-undo" class="btn btn-primary btn-sm flex-fill" title="Undo" disabled>
-                                                    <i class="fa-regular fa-rotate-left"></i>
-                                                </button>
-                                                <button id="agent-script-graph-redo" class="btn btn-primary btn-sm flex-fill" title="Redo" disabled>
-                                                    <i class="fa-regular fa-rotate-right"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Configuration Offcanvas -->
-                                    <div class="offcanvas offcanvas-end text-bg-dark" data-bs-scroll="true" data-bs-backdrop="false" data-bs-keyboard="false" id="nodeConfigOffcanvas" tabindex="-1">
-                                        <div class="offcanvas-header">
-                                            <h5 class="offcanvas-title" id="nodeConfigTitle">Node Configuration</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-                                        </div>
-                                        <div class="offcanvas-body" id="nodeConfigContent">
-                                            <!-- Configuration content will be loaded here -->
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>

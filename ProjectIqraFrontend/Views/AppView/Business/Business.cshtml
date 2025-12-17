@@ -139,6 +139,10 @@
                         <i class='fa-regular fa-headset nav_icon'></i>
                         <span class="nav_name">Agents</span>
                     </a>
+                    <a class="nav_link" for="scripts-tab" nav-url-path="scripts" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-scroll nav_icon'></i>
+                        <span class="nav_name">Scripts</span>
+                    </a>
                     <a class="nav_link" for="cache-tab" nav-url-path="cache" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-recycle nav_icon'></i>
                         <span class="nav_name">Cache</span>
@@ -228,6 +232,9 @@
         -->
         <!-- Agents Container -->
         <partial name="_AgentsTab.cshtml" />
+
+        <!-- Scripts Container -->
+        <partial name="_ScriptsTab.cshtml" />
 
         <!-- Cache Container -->
         <partial name="_CacheTab.cshtml" />
@@ -895,6 +902,7 @@
     <script src="~/scripts/app/business/integrations_tab.js"></script>
     <script src="~/scripts/app/business/numbers_tab.js"></script>
     <script src="~/scripts/app/business/agents_tab.js"></script>
+    <script src="~/scripts/app/business/scripts_tab.js"></script>
     <script src="~/scripts/app/business/overview_tab.js"></script>
     <script src="~/scripts/app/business/inbound_routing_tab.js"></script>
     <script src="~/scripts/app/business/telephony_campaigns_tab.js"></script>

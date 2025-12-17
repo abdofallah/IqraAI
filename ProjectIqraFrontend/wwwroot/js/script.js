@@ -425,7 +425,6 @@ $(document).ready(() => {
 
 	// Handles window resize events to keep the layout responsive.
 	$(window).on("resize", () => {
-		console.log("resize");
 		const $body = $("body");
 		$body.css("overflow", "hidden");
 		makeSureNavToggleIconIsCorrect();
@@ -433,7 +432,6 @@ $(document).ready(() => {
 			clearTimeout(resizeTimeout);
 		}
 		resizeTimeout = setTimeout(() => {
-			console.log("resize complete");
 			$body.css("overflow", "initial");
 			const currentWidth = $(window).width();
 			const currentHeight = $(window).height();
