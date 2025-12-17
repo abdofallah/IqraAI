@@ -2,6 +2,7 @@ class BootstrapConfirmDialog {
 	constructor(options = {}) {
 		this.options = Object.assign(
 			{
+				bodySelectorQuery: "body#body-pd",
 				title: "Confirm Action",
 				message: "Are you sure you want to proceed?",
 				confirmText: "Confirm",
@@ -39,7 +40,7 @@ class BootstrapConfirmDialog {
             </div>
         `);
 
-		$("body").append(modal);
+		$(this.options.bodySelectorQuery).append(modal);
 
 		const modalElement = document.getElementById(this.modalId);
 		this.modal = new bootstrap.Modal(modalElement, {

@@ -59,7 +59,7 @@ let CurrentScriptDescriptionMultiLangData = {};
 
 let CheckScriptMultiLangInterval = null;
 
-let IsSavingScript = false;
+let IsSavingScriptTab = false;
 
 /** Element Variables **/
 const scriptTab = $("#scripts-tab");
@@ -158,8 +158,32 @@ function ResetAndEmptyScriptsManageTab() {
 	$("#scripts-manager-general-tab").click();
 }
 
-async function canLeaveScriptsManagerTab() {
-	// todo
+async function canLeaveScriptsManagerTab(leaveMessage = "") {
+	if (IsSavingScriptTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Script is currently being saved. Please wait for the save to finish.",
+			timeout: 6000,
+		});
+		return false;
+	}
+
+	const changes = checkScriptTabHasChanges(false, false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the script.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
 
 	return true;
 }
@@ -2628,6 +2652,24 @@ function initScriptsTabHandlers() {
 		}
 	});
 
+	$("#nav-bar").on("tabChange", async (event) => {
+		const activeTab = event.detail.from;
+		if (activeTab !== "scripts-tab") return;
+
+		if (ManageCurrentScriptType == null) return;
+
+		const canLeaveResult = await canLeaveScriptsManagerTab(" Are you sure you want to discard these changes and leave the scripts tab?");
+
+		if (canLeaveResult) {
+			if (ManageCurrentScriptType != null) {
+				ManageCurrentScriptType = null;
+				switchBackToScriptsListTab.click();
+			}
+		} else {
+			event.preventDefault();
+		}
+	});
+
 	addNewScriptButton.on("click", (event) => {
 		event.preventDefault();
 
@@ -2645,18 +2687,20 @@ function initScriptsTabHandlers() {
 	switchBackToScriptsListTab.on("click", async (event) => {
 		event.preventDefault();
 
-		const canLeave = await canLeaveScriptsManagerTab();
-		if (!canLeave) return;
+		if (ManageCurrentScriptType !== null) {
+			const canLeave = await canLeaveScriptsManagerTab(" Are you sure you want to discard these changes and leave the scripts manage tab?");
+			if (!canLeave) return false;
+		}
+
+		ManageCurrentScriptType = null;
 
 		ResetAndEmptyScriptsManageTab();
 		showScriptListTab();
-
-		ManageCurrentScriptType = null;
 	});
 
 	CheckScriptMultiLangInterval = setInterval(() => {
 		if (ManageCurrentScriptType === null) return;
-		if (IsSavingScript) return;
+		if (IsSavingScriptTab) return;
 
 		validateScriptMultilanguageElements(true);
 		validateScriptNodes(true);
@@ -3601,7 +3645,7 @@ function initScriptsTabHandlers() {
 			return;
 		}
 
-		IsSavingScript = true;
+		IsSavingScriptTab = true;
 		saveScriptButton.prop("disabled", true);
 		saveScriptButtonSpinner.removeClass("d-none");
 
@@ -3635,7 +3679,7 @@ function initScriptsTabHandlers() {
 				saveScriptButton.prop("disabled", true);
 				saveScriptButtonSpinner.addClass("d-none");
 
-				IsSavingScript = false;
+				IsSavingScriptTab = false;
 
 				AlertManager.createAlert({
 					type: "success",
@@ -3643,7 +3687,7 @@ function initScriptsTabHandlers() {
 					timeout: 6000,
 				});
 
-				IsSavingScript = false;
+				IsSavingScriptTab = false;
 				ManageCurrentScriptType = "edit";
 			},
 			(saveError, isUnsuccessful) => {
@@ -3658,7 +3702,7 @@ function initScriptsTabHandlers() {
 				saveScriptButton.prop("disabled", false);
 				saveScriptButtonSpinner.addClass("d-none");
 
-				IsSavingScript = false;
+				IsSavingScriptTab = false;
 			},
 		);
 	});
