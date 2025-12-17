@@ -1,4 +1,5 @@
-﻿using GenerativeAI.Types;
+﻿using Catalyst;
+using GenerativeAI.Types;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Chunking;
@@ -29,6 +30,7 @@ namespace IqraInfrastructure.Managers.Business
     public class BusinessKnowledgeBaseManager
     {
         private readonly BusinessManager _parentBusinessManager;
+        private readonly IMongoClient _mongoClient;
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessKnowledgeBaseDocumentRepository _knowledgeBaseDocumentRepository;
         private readonly IntegrationConfigurationManager _integrationConfigurationManager;
@@ -43,6 +45,7 @@ namespace IqraInfrastructure.Managers.Business
 
         public BusinessKnowledgeBaseManager(
             BusinessManager parentBusinessManager,
+            IMongoClient mongoClient,
             BusinessAppRepository businessAppRepository,
             BusinessKnowledgeBaseDocumentRepository knowledgeBaseDocumentRepository,
             IntegrationConfigurationManager integrationConfigurationManager,
@@ -55,6 +58,7 @@ namespace IqraInfrastructure.Managers.Business
         )
         {
             _parentBusinessManager = parentBusinessManager;
+            _mongoClient = mongoClient;
             _businessAppRepository = businessAppRepository;
             _knowledgeBaseDocumentRepository = knowledgeBaseDocumentRepository;
             _integrationConfigurationManager = integrationConfigurationManager;
@@ -535,6 +539,7 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Retrival
+            string? currentRerankIntegrationId = null;
             if (!configurationTabElement.TryGetProperty("retrieval", out var retrievalElement))
             {
                 return result.SetFailureResult(
@@ -544,7 +549,6 @@ namespace IqraInfrastructure.Managers.Business
             }
             else
             {
-                // type enum KnowledgeBaseRetrievalType
                 if (!retrievalElement.TryGetProperty("type", out var typeElement))
                 {
                     return result.SetFailureResult(
@@ -677,7 +681,8 @@ namespace IqraInfrastructure.Managers.Business
                                 );
                             }
 
-                            vectorRetrival.Rerank.Integration = validationBuildResult.Data;
+                            vectorRetrival.Rerank.Integration = validationBuildResult.Data!;
+                            currentRerankIntegrationId = vectorRetrival.Rerank.Integration.Id;
                         }
                     }
 
@@ -748,7 +753,8 @@ namespace IqraInfrastructure.Managers.Business
                                 );
                             }
 
-                            fullTextRetrival.Rerank.Integration = validationBuildResult.Data;
+                            fullTextRetrival.Rerank.Integration = validationBuildResult.Data!;
+                            currentRerankIntegrationId = fullTextRetrival.Rerank.Integration.Id;
                         }
                     }
 
@@ -825,7 +831,8 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
-                        hybirdRetrival.RerankIntegration = validationBuildResult.Data;
+                        hybirdRetrival.RerankIntegration = validationBuildResult.Data!;
+                        currentRerankIntegrationId = hybirdRetrival.RerankIntegration.Id;
                     }
                     else
                     {
@@ -901,55 +908,169 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Database Changes
-            if (postType == "new")
+            using (var session = await _mongoClient.StartSessionAsync())
             {
-                newKnowledgeBaseData.Id = ObjectId.GenerateNewId().ToString();
-                string collectionName = $"b{businessId}_kb{newKnowledgeBaseData.Id}";
+                session.StartTransaction();
 
-                bool vectorCollectionCreated = await _documentVectorRepository.CreateCollectionAsync(
-                    collectionName,
-                    (int)newKnowledgeBaseData.Configuration.Embedding.FieldValues["model_vector_dimension"],
-                    newKnowledgeBaseData.Configuration.Retrieval.Type == KnowledgeBaseRetrievalType.HybirdSearch
-                );
-                if (!vectorCollectionCreated)
+                try
                 {
-                    return result.SetFailureResult(
-                        "AddOrUpdateKnowledgeBaseAsync:VECTOR_COLLECTION_CREATION_FAILED",
-                        "Failed to create vector database collection."
-                    );
+                    if (postType == "new")
+                    {
+                        newKnowledgeBaseData.Id = ObjectId.GenerateNewId().ToString();
+                        string collectionName = $"b{businessId}_kb{newKnowledgeBaseData.Id}";
+
+                        bool vectorCollectionCreated = await _documentVectorRepository.CreateCollectionAsync(
+                            collectionName,
+                            (int)newKnowledgeBaseData.Configuration.Embedding.FieldValues["model_vector_dimension"],
+                            newKnowledgeBaseData.Configuration.Retrieval.Type == KnowledgeBaseRetrievalType.HybirdSearch
+                        );
+                        if (!vectorCollectionCreated)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateKnowledgeBaseAsync:VECTOR_COLLECTION_CREATION_FAILED",
+                                "Failed to create vector database collection."
+                            );
+                        }
+
+                        // Add the KB to the business app
+                        bool dbResult = await _businessAppRepository.AddKnowledgeBaseToArrayAsync(businessId, newKnowledgeBaseData, session);
+                        if (!dbResult)
+                        {
+                            // may want to delete vectorCollectionCreated
+                            var deleteResult = await _documentVectorRepository.DeleteKnowledgeBaseAsync(collectionName);
+                            if (!deleteResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateKnowledgeBaseAsync:DB_FAILED_AND_FALLBACK_VECTOR_COLLECTION_DELETION_FAILED",
+                                    "Failed to delete vector database collection beause of database failure."
+                                );
+                            }
+
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateKnowledgeBaseAsync:DATABASE_SAVE_FAILED",
+                                "Failed to save new knowledge base to the database."
+                            );
+                        }
+                    }
+                    else if (postType == "edit")
+                    {
+                        newKnowledgeBaseData.Id = existingKbData!.Id;
+                        newKnowledgeBaseData.Documents = existingKbData.Documents;
+
+                        bool dbResult = await _businessAppRepository.UpdateKnowledgeBaseInArrayAsync(businessId, newKnowledgeBaseData, session);
+                        if (!dbResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateKnowledgeBaseAsync:DATABASE_UPDATE_FAILED",
+                                "Failed to update knowledge base in the database."
+                            );
+                        }
+
+                        if (existingKbData.Configuration.Embedding.Id != newKnowledgeBaseData.Configuration.Embedding.Id)
+                        {
+                            bool removeEmbeddingModelReferenceFromIntegration = await _businessAppRepository.RemoveKBEmbeddingModelReferenceFromIntegration(businessId, existingKbData.Configuration.Embedding.Id, newKnowledgeBaseData.Id, session);
+                            if (!removeEmbeddingModelReferenceFromIntegration)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateKnowledgeBaseAsync:DATABASE_UPDATE_FAILED",
+                                    "Failed to update knowledge base in the database."
+                                );
+                            }
+                        }
+
+                        if (existingKbData.Configuration.Retrieval is BusinessAppKnowledgeBaseConfigurationVectorRetrieval vectorSearchData)
+                        {
+                            if (vectorSearchData.Rerank.Enabled && vectorSearchData.Rerank.Integration!.Id != currentRerankIntegrationId) {
+                                var removeRerankReferenceToIntegration = await _businessAppRepository.RemoveKBRerankReferenceFromIntegration(businessId, vectorSearchData.Rerank.Integration!.Id, newKnowledgeBaseData.Id, session);
+                                if (!removeRerankReferenceToIntegration)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateKnowledgeBaseAsync:FAILED_TO_REMOVE_RERANK_REFERENCE_TO_INTEGRATION",
+                                        "Failed to remove rerank reference to integration."
+                                    );
+                                }
+                            }
+                        }
+                        else if (existingKbData.Configuration.Retrieval is BusinessAppKnowledgeBaseConfigurationFullTextRetrieval fullTextSearchData)
+                        {
+                            if (fullTextSearchData.Rerank.Enabled && fullTextSearchData.Rerank.Integration!.Id != currentRerankIntegrationId)
+                            {
+                                var removeRerankReferenceToIntegration = await _businessAppRepository.RemoveKBRerankReferenceFromIntegration(businessId, fullTextSearchData.Rerank.Integration!.Id, newKnowledgeBaseData.Id, session);
+                                if (!removeRerankReferenceToIntegration)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateKnowledgeBaseAsync:FAILED_TO_REMOVE_RERANK_REFERENCE_TO_INTEGRATION",
+                                        "Failed to remove rerank reference to integration."
+                                    );
+                                }
+                            }
+                        }
+                        else if (existingKbData.Configuration.Retrieval is BusinessAppKnowledgeBaseConfigurationHybridRetrieval hybirdSearchData)
+                        {
+                            if (hybirdSearchData.Mode == KnowledgeBaseHybridRetrievalMode.RerankModel && hybirdSearchData.RerankIntegration!.Id != currentRerankIntegrationId)
+                            {
+                                var removeRerankReferenceToIntegration = await _businessAppRepository.RemoveKBRerankReferenceFromIntegration(businessId, hybirdSearchData.RerankIntegration!.Id, newKnowledgeBaseData.Id, session);
+                                if (!removeRerankReferenceToIntegration)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateKnowledgeBaseAsync:FAILED_TO_REMOVE_RERANK_REFERENCE_TO_INTEGRATION",
+                                        "Failed to remove rerank reference to integration."
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    var addEmbeddingModelReferenceToIntegration = await _businessAppRepository.AddKBEmbeddingModelReferenceToIntegration(businessId, newKnowledgeBaseData.Configuration.Embedding.Id, newKnowledgeBaseData.Id, session);
+                    if (!addEmbeddingModelReferenceToIntegration)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "AddOrUpdateKnowledgeBaseAsync:FAILED_TO_ADD_EMBEDDING_MODEL_REFERENCE_TO_INTEGRATION",
+                            "Failed to add embedding model reference to integration."
+                        );
+                    }
+
+                    if (!string.IsNullOrEmpty(currentRerankIntegrationId))
+                    {
+                        var addRerankReferenceToIntegration = await _businessAppRepository.AddKBRerankReferenceToIntegration(businessId, currentRerankIntegrationId, newKnowledgeBaseData.Id, session);
+                        if (!addRerankReferenceToIntegration)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateKnowledgeBaseAsync:FAILED_TO_ADD_RERANK_REFERENCE_TO_INTEGRATION",
+                                "Failed to add rerank reference to integration."
+                            );
+                        }
+                    }
+
+                    if (postType == "edit")
+                    {
+                        if (isEmbeddingModelForEditChanged)
+                        {
+                            // TODO RUN A BACKGROUND TASK TO UPDATE ALL DOCUMENTS
+                        }
+                    }
+
+                    await session.CommitTransactionAsync();
+                    return result.SetSuccessResult(newKnowledgeBaseData);
                 }
-
-                // Add the KB to the business app
-                bool dbResult = await _businessAppRepository.AddKnowledgeBaseToArrayAsync(businessId, newKnowledgeBaseData);
-                if (!dbResult)
-                {
+                catch (Exception ex) {
+                    await session.AbortTransactionAsync();
                     return result.SetFailureResult(
-                        "AddOrUpdateKnowledgeBaseAsync:DATABASE_SAVE_FAILED",
-                        "Failed to save new knowledge base to the database."
+                        "AddOrUpdateKnowledgeBaseAsync:DB_EXCEPTION",
+                        $"An error occurred in the database: {ex.Message}"
                     );
                 }
             }
-            else if (postType == "edit")
-            {
-                newKnowledgeBaseData.Id = existingKbData!.Id;
-                newKnowledgeBaseData.Documents = existingKbData.Documents;
-
-                bool dbResult = await _businessAppRepository.UpdateKnowledgeBaseInArrayAsync(businessId, newKnowledgeBaseData);
-                if (!dbResult)
-                {
-                    return result.SetFailureResult(
-                        "AddOrUpdateKnowledgeBaseAsync:DATABASE_UPDATE_FAILED",
-                        "Failed to update knowledge base in the database."
-                    );
-                }
-
-                if (isEmbeddingModelForEditChanged)
-                {
-                    // TODO RUN A BACKGROUND TASK TO UPDATE ALL DOCUMENTS
-                }
-            }
-
-            return result.SetSuccessResult(newKnowledgeBaseData);
         }
 
         public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> ProcessAndAddDocumentAsync(long businessId, string knowledgeBaseId, IFormCollection formData, IFormFile file)

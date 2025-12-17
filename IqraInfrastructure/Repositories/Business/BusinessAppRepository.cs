@@ -577,12 +577,272 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, g => g.Id == newIntegration.Id)
             );
-            var update = Builders<BusinessApp>.Update.Set(
-                $"Integrations.$",
-                new BsonDocument(newIntegration.ToBsonDocument())
-            );
+            var update = Builders<BusinessApp>.Update.Set(b => b.Integrations.FirstMatchingElement(), newIntegration);
+
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> DeleteBusinessIntegration(long businessId, string integrationId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, g => g.Id == integrationId)
+            );
+            var update = Builders<BusinessApp>.Update.PullFilter(b => b.Integrations, g => g.Id == integrationId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddBusinessNumberReferenceToIntegration(long businessId, string integrationId, string businessNumberId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().BusinessNumberReferences, businessNumberId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveBusinessNumberReferenceFromIntegration(long businessId, string integrationId, string businessNumberId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().BusinessNumberReferences, businessNumberId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddKBEmbeddingModelReferenceToIntegration(long businessId, string integrationId, string kbId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().KnowledgeBaseEmbeddingModelReferences, kbId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveKBEmbeddingModelReferenceFromIntegration(long businessId, string integrationId, string kbId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().KnowledgeBaseEmbeddingModelReferences, kbId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddKBRerankReferenceToIntegration(long businessId, string integrationId, string kbId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().KnowledgeBaseRerankReferences, kbId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveKBRerankReferenceFromIntegration(long businessId, string integrationId, string kbId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().KnowledgeBaseRerankReferences, kbId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddPostAnalysisLLMReferenceToIntegration(long businessId, string integrationId, string analysisId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().PostAnalysisLLMReferences, analysisId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemovePostAnalysisLLMReferenceFromIntegration(long businessId, string integrationId, string analysisId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().PostAnalysisLLMReferences, analysisId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddAgentInterruptionTurnEndRefToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentInterruptionTurnEndViaAILLMReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveAgentInterruptionTurnEndRefFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentInterruptionTurnEndViaAILLMReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddAgentInterruptionVerificationRefToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentInterruptionVerificationLLMReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveAgentInterruptionVerificationRefFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentInterruptionVerificationLLMReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddAgentSTTReferenceToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentSTTReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveAgentSTTReferenceFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentSTTReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddAgentLLMReferenceToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentLLMReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveAgentLLMReferenceFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentLLMReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddAgentTTSReferenceToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentTTSReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveAgentTTSReferenceFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentTTSReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddAgentKBQueryRefinementRefToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentKnowledgeBaseQueryAIRefinementLLMReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveAgentKBQueryRefinementRefFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentKnowledgeBaseQueryAIRefinementLLMReferences, agentId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
 
@@ -663,6 +923,121 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
+        public async Task<bool> AddInboundRoutingReferenceToAgent(long businessId, string agentId, string inboundRoutingId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Agents.FirstMatchingElement().InboundRoutingReferences, inboundRoutingId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveInboundRoutingReferenceFromAgent(long businessId, string agentId, string inboundRoutingId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(d => d.Agents.FirstMatchingElement().InboundRoutingReferences, inboundRoutingId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddTelephonyCampaignReferenceToAgent(long businessId, string agentId, string telephonyCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Agents.FirstMatchingElement().TelephonyCampaignReferences, telephonyCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveTelephonyCampaignReferenceFromAgent(long businessId, string agentId, string telephonyCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(d => d.Agents.FirstMatchingElement().TelephonyCampaignReferences, telephonyCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddWebCampaignReferenceToAgent(long businessId, string agentId, string webCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Agents.FirstMatchingElement().WebCampaignReferences, webCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveWebCampaignReferenceFromAgent(long businessId, string agentId, string webCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(d => d.Agents.FirstMatchingElement().WebCampaignReferences, webCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddScriptTransferToAgentNodeReferenceToAgent(long businessId, string agentId, BusinessAppAgentScriptTransferToAgentNodeReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Agents.FirstMatchingElement().ScriptTransferToAgentNodeReferences, reference);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveScriptTransferToAgentNodeReferenceFromAgent(long businessId, string agentId, BusinessAppAgentScriptTransferToAgentNodeReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+
+            var update = Builders<BusinessApp>.Update.PullFilter(
+                d => d.Agents.FirstMatchingElement().ScriptTransferToAgentNodeReferences,
+                r => r.ScriptId == reference.ScriptId && r.NodeId == reference.NodeId
+            );
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
         /**
          * 
          * Scripts
@@ -724,6 +1099,113 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
+        public async Task<bool> AddInboundRoutingReferenceToScript(long businessId, string scriptId, string inboundRoutingId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Scripts.FirstMatchingElement().InboundRoutingReferences, inboundRoutingId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveInboundRoutingReferenceFromScript(long businessId, string scriptId, string inboundRoutingId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(d => d.Scripts.FirstMatchingElement().InboundRoutingReferences, inboundRoutingId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddTelephonyCampaignReferenceToScript(long businessId, string scriptId, string telephonyCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Scripts.FirstMatchingElement().TelephonyCampaignReferences, telephonyCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveTelephonyCampaignReferenceFromScript(long businessId, string scriptId, string telephonyCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(d => d.Scripts.FirstMatchingElement().TelephonyCampaignReferences, telephonyCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddWebCampaignReferenceToScript(long businessId, string scriptId, string webCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Scripts.FirstMatchingElement().WebCampaignReferences, webCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveWebCampaignReferenceFromScript(long businessId, string scriptId, string webCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(d => d.Scripts.FirstMatchingElement().WebCampaignReferences, webCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddScriptToContextNodeReferenceToScript(long businessId, string scriptId, BusinessAppScriptAddScriptToContextNodeReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Scripts.FirstMatchingElement().ScriptAddScriptNodeReferences, reference);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveAddScriptToContextReferenceFromScript(long businessId, string scriptId, BusinessAppScriptAddScriptToContextNodeReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+
+            var update = Builders<BusinessApp>.Update.PullFilter(
+                d => d.Scripts.FirstMatchingElement().ScriptAddScriptNodeReferences,
+                r => r.ScriptId == reference.ScriptId && r.NodeId == reference.NodeId
+            );
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
         /**
         * 
         * Numbers
@@ -779,15 +1261,15 @@ namespace IqraInfrastructure.Repositories.Business
             return result != null;
         }
 
-        public async Task<bool> AddBusinessNumber(long businessId, BusinessNumberData newNumberData)
+        public async Task<bool> AddBusinessNumber(long businessId, BusinessNumberData newNumberData, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Numbers, newNumberData);
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessNumber(long businessId, BusinessNumberData newNumberData)
+        public async Task<bool> UpdateBusinessNumber(long businessId, BusinessNumberData newNumberData, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -797,7 +1279,7 @@ namespace IqraInfrastructure.Repositories.Business
                 $"Numbers.$",
                 new BsonDocument(newNumberData.ToBsonDocument())
             );
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
 
@@ -838,6 +1320,19 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
+        public async Task<bool> UpdateBusinessNumberRoute(long businessId, string numberId, string? routeId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, g => g.Id == numberId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Set(b => b.Numbers.FirstMatchingElement().RouteId, routeId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
         /**
         * 
         * Routes
@@ -863,40 +1358,23 @@ namespace IqraInfrastructure.Repositories.Business
             return result.Routings.FirstOrDefault(t => t.Id == existingRouteId);
         }
 
-        public async Task<bool> AddBusinessAppRoute(long businessId, BusinessAppRoute newBusinessAppRouteData)
+        public async Task<bool> AddBusinessAppRoute(long businessId, BusinessAppRoute newBusinessAppRouteData, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.Routings, newBusinessAppRouteData);
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessAppRoute(long businessId, BusinessAppRoute newBusinessAppRouteData)
+        public async Task<bool> UpdateBusinessAppRoute(long businessId, BusinessAppRoute newBusinessAppRouteData, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Routings, g => g.Id == newBusinessAppRouteData.Id)
             );
-            var update = Builders<BusinessApp>.Update.Set(
-                $"Routings.$",
-                new BsonDocument(newBusinessAppRouteData.ToBsonDocument())
-            );
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.IsAcknowledged;
-        }
+            var update = Builders<BusinessApp>.Update.Set(b => b.Routings.FirstMatchingElement(), newBusinessAppRouteData);
 
-        public async Task<bool> UpdateBusinessNumberRoute(long businessId, string numberId, string? routeId)
-        {
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, g => g.Id == numberId)
-            );
-
-            var update = Builders<BusinessApp>.Update.Set(
-                $"Numbers.$.RouteId",
-                routeId
-            );
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
 
@@ -906,30 +1384,26 @@ namespace IqraInfrastructure.Repositories.Business
         * 
         **/
 
-        public async Task<bool> AddKnowledgeBaseToArrayAsync(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle? session = null)
+        public async Task<bool> AddKnowledgeBaseToArrayAsync(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.KnowledgeBases, kb);
 
-            var result = session != null
-                ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
-                : await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateKnowledgeBaseInArrayAsync(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle? session = null)
+        public async Task<bool> UpdateKnowledgeBaseInArrayAsync(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == kb.Id)
             );
 
-            var update = Builders<BusinessApp>.Update.Set("KnowledgeBases.$", kb);
+            var update = Builders<BusinessApp>.Update.Set(b => b.KnowledgeBases.FirstMatchingElement(), kb);
 
-            var result = session != null
-                ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
-                : await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
@@ -953,8 +1427,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == kbId)
             );
 
-            // Use the positional operator '$' to update the 'Documents' array of the matched knowledge base
-            var update = Builders<BusinessApp>.Update.Push("KnowledgeBases.$.Documents", documentId);
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.KnowledgeBases.FirstMatchingElement().Documents, documentId);
 
             var result = session != null
                 ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
@@ -970,7 +1443,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == kbId)
             );
 
-            var update = Builders<BusinessApp>.Update.Pull("KnowledgeBases.$.Documents", documentId);
+            var update = Builders<BusinessApp>.Update.Pull(b => b.KnowledgeBases.FirstMatchingElement().Documents, documentId);
 
             var result = session != null
                 ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
@@ -1026,17 +1499,17 @@ namespace IqraInfrastructure.Repositories.Business
             return result?.TelephonyCampaigns.FirstOrDefault();
         }
 
-        public async Task<bool> AddBusinessAppTelephonyCampaign(long businessId, BusinessAppTelephonyCampaign newBusinessAppCampaignTelephonyData)
+        public async Task<bool> AddBusinessAppTelephonyCampaign(long businessId, BusinessAppTelephonyCampaign newBusinessAppCampaignTelephonyData, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.TelephonyCampaigns, newBusinessAppCampaignTelephonyData);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessAppTelephonyCampaign(long businessId, BusinessAppTelephonyCampaign newBusinessAppCampaignTelephonyData)
+        public async Task<bool> UpdateBusinessAppTelephonyCampaign(long businessId, BusinessAppTelephonyCampaign newBusinessAppCampaignTelephonyData, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -1046,7 +1519,7 @@ namespace IqraInfrastructure.Repositories.Business
             var update = Builders<BusinessApp>.Update
                 .Set(b => b.TelephonyCampaigns.FirstMatchingElement(), newBusinessAppCampaignTelephonyData);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
@@ -1087,17 +1560,17 @@ namespace IqraInfrastructure.Repositories.Business
             return result?.WebCampaigns.FirstOrDefault();
         }
 
-        public async Task<bool> AddBusinessAppWebCampaign(long businessId, BusinessAppWebCampaign newBusinessAppCampaignWebData)
+        public async Task<bool> AddBusinessAppWebCampaign(long businessId, BusinessAppWebCampaign newBusinessAppCampaignWebData, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.WebCampaigns, newBusinessAppCampaignWebData);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessAppWebCampaign(long businessId, BusinessAppWebCampaign newBusinessAppCampaignWebData)
+        public async Task<bool> UpdateBusinessAppWebCampaign(long businessId, BusinessAppWebCampaign newBusinessAppCampaignWebData, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -1107,7 +1580,7 @@ namespace IqraInfrastructure.Repositories.Business
             var update = Builders<BusinessApp>.Update
                 .Set(b => b.WebCampaigns.FirstMatchingElement(), newBusinessAppCampaignWebData);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }

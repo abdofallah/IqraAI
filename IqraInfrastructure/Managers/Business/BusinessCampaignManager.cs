@@ -8,6 +8,7 @@ using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using PhoneNumbers;
 using System.Text.Json;
 
@@ -16,6 +17,7 @@ namespace IqraInfrastructure.Managers.Business
     public class BusinessCampaignManager
     {
         private readonly BusinessManager _parentBusinessManager;
+        private readonly IMongoClient _mongoClient;
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
         private readonly IntegrationConfigurationManager _integrationConfigurationManager;
@@ -203,11 +205,13 @@ namespace IqraInfrastructure.Managers.Business
 
         public BusinessCampaignManager(
             BusinessManager businessManager,
+            IMongoClient mongoClient,
             BusinessAppRepository businessAppRepository,
             BusinessRepository businessRepository,
             IntegrationConfigurationManager integrationConfigurationManager
         ) {
             _parentBusinessManager = businessManager;
+            _mongoClient = mongoClient;
             _businessAppRepository = businessAppRepository;
             _businessRepository = businessRepository;
             _integrationConfigurationManager = integrationConfigurationManager;;
@@ -1290,28 +1294,88 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                // Save or Update in Database
-                if (postType == "new")
+                using (var session = await _mongoClient.StartSessionAsync())
                 {
-                    newBusinessAppCampaignData.Id = ObjectId.GenerateNewId().ToString();
-                    var addResult = await _businessAppRepository.AddBusinessAppTelephonyCampaign(businessId, newBusinessAppCampaignData);
-                    if (!addResult)
+                    session.StartTransaction();
+                    try
                     {
-                        return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:DB_ADD_FAILED",
-                            "Failed to add business app telephony campaign."
-                        );
+                        // Save or Update in Database
+                        if (postType == "new")
+                        {
+                            newBusinessAppCampaignData.Id = ObjectId.GenerateNewId().ToString();
+                            var addResult = await _businessAppRepository.AddBusinessAppTelephonyCampaign(businessId, newBusinessAppCampaignData, session);
+                            if (!addResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTelephonyCampaignAsync:DB_ADD_FAILED",
+                                    "Failed to add business app telephony campaign."
+                                );
+                            }
+                        }
+                        else // postType == "edit"
+                        {
+                            newBusinessAppCampaignData.Id = existingCampaignData.Id;
+                            var updateResult = await _businessAppRepository.UpdateBusinessAppTelephonyCampaign(businessId, newBusinessAppCampaignData, session);
+                            if (!updateResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTelephonyCampaignAsync:DB_UPDATE_FAILED",
+                                    "Failed to update business app telephony campaign."
+                                );
+                            }
+
+                            if (existingCampaignData.Agent.SelectedAgentId != newBusinessAppCampaignData.Agent.SelectedAgentId)
+                            {
+                                var removeAgentCampaignReferenceResult = await _businessAppRepository.RemoveTelephonyCampaignReferenceFromAgent(businessId, existingCampaignData.Agent.SelectedAgentId, newBusinessAppCampaignData.Id, session);
+                                if (!removeAgentCampaignReferenceResult)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:DB_REMOVE_AGENT_REFERENCE_FAILED",
+                                        "Failed to remove agent reference from business app telephony campaign."
+                                    );
+                                }
+                            }
+
+                            if (existingCampaignData.Agent.OpeningScriptId != newBusinessAppCampaignData.Agent.OpeningScriptId)
+                            {
+                                var removeScriptCampaignReferenceResult = await _businessAppRepository.RemoveTelephonyCampaignReferenceFromScript(businessId, existingCampaignData.Agent.OpeningScriptId, newBusinessAppCampaignData.Id, session);
+                                if (!removeScriptCampaignReferenceResult)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:DB_REMOVE_SCRIPT_REFERENCE_FAILED",
+                                        "Failed to remove script reference from business app telephony campaign."
+                                    );
+                                }
+                            }
+                        }
+
+                        var addAgentCampaignReferenceResult = await _businessAppRepository.AddTelephonyCampaignReferenceToAgent(businessId, newBusinessAppCampaignData.Agent.SelectedAgentId, newBusinessAppCampaignData.Id, session);
+                        if (!addAgentCampaignReferenceResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:DB_ADD_AGENT_REFERENCE_FAILED",
+                                "Failed to add agent reference to business app telephony campaign."
+                            );
+                        }
+
+                        var addScriptCampaignReferenceResult = await _businessAppRepository.AddTelephonyCampaignReferenceToScript(businessId, newBusinessAppCampaignData.Agent.OpeningScriptId, newBusinessAppCampaignData.Id, session);
+                        if (!addScriptCampaignReferenceResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:DB_ADD_SCRIPT_REFERENCE_FAILED",
+                                "Failed to add script reference to business app telephony campaign."
+                            );
+                        }
                     }
-                }
-                else // postType == "edit"
-                {
-                    newBusinessAppCampaignData.Id = existingCampaignData.Id;
-                    var updateResult = await _businessAppRepository.UpdateBusinessAppTelephonyCampaign(businessId, newBusinessAppCampaignData);
-                    if (!updateResult)
-                    {
+                    catch (Exception ex) {
+                        await session.AbortTransactionAsync();
                         return result.SetFailureResult(
-                            "AddOrUpdateTelephonyCampaignAsync:DB_UPDATE_FAILED",
-                            "Failed to update business app telephony campaign."
+                            "AddOrUpdateTelephonyCampaignAsync:DB_EXCEPTION",
+                            $"Error adding or updating telephony campaign: {ex.Message}"
                         );
                     }
                 }
@@ -1905,28 +1969,89 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                // Save or Update in Database
-                if (postType == "new")
+                using (var session = await _mongoClient.StartSessionAsync())
                 {
-                    newBusinessAppCampaignData.Id = ObjectId.GenerateNewId().ToString();
-                    var addResult = await _businessAppRepository.AddBusinessAppWebCampaign(businessId, newBusinessAppCampaignData);
-                    if (!addResult)
+                    session.StartTransaction();
+                    try
                     {
-                        return result.SetFailureResult(
-                            "AddOrUpdateWebCampaignAsync:DB_ADD_FAILED",
-                            "Failed to add business app web campaign."
-                        );
+                        // Save or Update in Database
+                        if (postType == "new")
+                        {
+                            newBusinessAppCampaignData.Id = ObjectId.GenerateNewId().ToString();
+                            var addResult = await _businessAppRepository.AddBusinessAppWebCampaign(businessId, newBusinessAppCampaignData, session);
+                            if (!addResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateWebCampaignAsync:DB_ADD_FAILED",
+                                    "Failed to add business app web campaign."
+                                );
+                            }
+                        }
+                        else // postType == "edit"
+                        {
+                            newBusinessAppCampaignData.Id = existingCampaignData.Id;
+                            var updateResult = await _businessAppRepository.UpdateBusinessAppWebCampaign(businessId, newBusinessAppCampaignData, session);
+                            if (!updateResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateWebCampaignAsync:DB_UPDATE_FAILED",
+                                    "Failed to update business app web campaign."
+                                );
+                            }
+
+                            if (existingCampaignData.Agent.SelectedAgentId != newBusinessAppCampaignData.Agent.SelectedAgentId)
+                            {
+                                var removeAgentCampaignReferenceResult = await _businessAppRepository.RemoveWebCampaignReferenceFromAgent(businessId, existingCampaignData.Agent.SelectedAgentId, newBusinessAppCampaignData.Id, session);
+                                if (!removeAgentCampaignReferenceResult)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:DB_REMOVE_AGENT_REFERENCE_FAILED",
+                                        "Failed to remove agent reference from business app web campaign."
+                                    );
+                                }
+                            }
+
+                            if (existingCampaignData.Agent.OpeningScriptId != newBusinessAppCampaignData.Agent.OpeningScriptId)
+                            {
+                                var removeScriptCampaignReferenceResult = await _businessAppRepository.RemoveWebCampaignReferenceFromScript(businessId, existingCampaignData.Agent.OpeningScriptId, newBusinessAppCampaignData.Id, session);
+                                if (!removeScriptCampaignReferenceResult)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:DB_REMOVE_SCRIPT_REFERENCE_FAILED",
+                                        "Failed to remove script reference from business app web campaign."
+                                    );
+                                }
+                            }
+                        }
+
+                        var addAgentCampaignReferenceResult = await _businessAppRepository.AddWebCampaignReferenceToAgent(businessId, newBusinessAppCampaignData.Agent.SelectedAgentId, newBusinessAppCampaignData.Id, session);
+                        if (!addAgentCampaignReferenceResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateWebCampaignAsync:DB_ADD_AGENT_REFERENCE_FAILED",
+                                "Failed to add agent reference to business app web campaign."
+                            );
+                        }
+
+                        var addScriptCampaignReferenceResult = await _businessAppRepository.AddWebCampaignReferenceToScript(businessId, newBusinessAppCampaignData.Agent.OpeningScriptId, newBusinessAppCampaignData.Id, session);
+                        if (!addScriptCampaignReferenceResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateWebCampaignAsync:DB_ADD_SCRIPT_REFERENCE_FAILED",
+                                "Failed to add script reference to business app web campaign."
+                            );
+                        }
                     }
-                }
-                else // postType == "edit"
-                {
-                    newBusinessAppCampaignData.Id = existingCampaignData.Id;
-                    var updateResult = await _businessAppRepository.UpdateBusinessAppWebCampaign(businessId, newBusinessAppCampaignData);
-                    if (!updateResult)
+                    catch (Exception ex)
                     {
+                        await session.AbortTransactionAsync();
                         return result.SetFailureResult(
-                            "AddOrUpdateWebCampaignAsync:DB_UPDATE_FAILED",
-                            "Failed to update business app web campaign."
+                            "AddOrUpdateWebCampaignAsync:DB_EXCEPTION",
+                            $"Error adding or updating web campaign: {ex.Message}"
                         );
                     }
                 }

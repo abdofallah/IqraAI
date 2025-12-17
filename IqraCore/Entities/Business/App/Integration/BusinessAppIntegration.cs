@@ -3,7 +3,7 @@ using MongoDB.Bson;
 
 namespace IqraCore.Entities.Business
 {
-    public class BusinessAppIntegration
+    public class BusinessAppIntegration 
     {
         public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public string Type { get; set; } = string.Empty;
@@ -14,11 +14,11 @@ namespace IqraCore.Entities.Business
         public Dictionary<string, string> EncryptedFields { get; set; } = new Dictionary<string, string>();
 
         // Business Number References
-        public List<string> BusinessNumberReferences { get; set; } = new List<string>();
+        public List<string> BusinessNumberReferences { get; set; } = new List<string>(); // Done
 
         // Knowledge Base References
-        public List<string> KnowledgeBaseEmbeddingModelReferences { get; set; } = new List<string>();
-        public List<string> KnowledgeBaseRerankReferences { get; set; } = new List<string>();
+        public List<string> KnowledgeBaseEmbeddingModelReferences { get; set; } = new List<string>(); // Done
+        public List<string> KnowledgeBaseRerankReferences { get; set; } = new List<string>(); // Done
 
         // Post Analysis References
         public List<string> PostAnalysisLLMReferences { get; set; } = new List<string>();

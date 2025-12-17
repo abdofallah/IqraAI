@@ -18,17 +18,10 @@ namespace IqraCore.Entities.Business
         public List<string> WebCampaignReferences { get; set; } = new List<string>();
 
         // Add/Transfer Script Node References
-        public List<BusinessAppScriptAddScriptNodeReference> ScriptAddScriptNodeReferences { get; set; } = new List<BusinessAppScriptAddScriptNodeReference>();
-        public List<BusinessAppScriptTransferToScriptNodeReference> ScriptTransferToScriptNodeReferences { get; set; } = new List<BusinessAppScriptTransferToScriptNodeReference>();
+        public List<BusinessAppScriptAddScriptToContextNodeReference> ScriptAddScriptNodeReferences { get; set; } = new List<BusinessAppScriptAddScriptToContextNodeReference>();
     }
 
-    public class BusinessAppScriptAddScriptNodeReference
-    {
-        public string ScriptId { get; set; }
-        public string NodeId { get; set; }
-    }
-
-    public class BusinessAppScriptTransferToScriptNodeReference
+    public class BusinessAppScriptAddScriptToContextNodeReference
     {
         public string ScriptId { get; set; }
         public string NodeId { get; set; }

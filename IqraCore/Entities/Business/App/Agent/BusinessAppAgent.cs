@@ -14,5 +14,19 @@ namespace IqraCore.Entities.Business
         public BusinessAppAgentIntegrations Integrations { get; set; } = new BusinessAppAgentIntegrations();
         public BusinessAppAgentCache Cache { get; set; } = new BusinessAppAgentCache();
         public BusinessAppAgentSettings Settings { get; set; } = new BusinessAppAgentSettings();
+
+        // Route/Campaigns References
+        public List<string> InboundRoutingReferences { get; set; } = new List<string>();
+        public List<string> TelephonyCampaignReferences { get; set; } = new List<string>();
+        public List<string> WebCampaignReferences { get; set; } = new List<string>();
+
+        // Add/Transfer Script Node References
+        public List<BusinessAppAgentScriptTransferToAgentNodeReference> ScriptTransferToAgentNodeReferences { get; set; } = new List<BusinessAppAgentScriptTransferToAgentNodeReference>();
+    }
+
+    public class BusinessAppAgentScriptTransferToAgentNodeReference
+    {
+        public string ScriptId { get; set; }
+        public string NodeId { get; set; }
     }
 }

@@ -201,5 +201,98 @@ namespace IqraInfrastructure.Managers.Business
             return result;
         }
 
+        public async Task<FunctionReturnResult> DeleteBusinessIntegration(long businessId, BusinessAppIntegration integrationData)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                //// Business Number References
+                if (integrationData.BusinessNumberReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:BUSINESS_NUMBER_REFERENCES",
+                        "Cannot delete integration with business number references."
+                    );
+                }
+
+                //// Knowledge Base References
+                if (integrationData.KnowledgeBaseEmbeddingModelReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:KNOWLEDGE_BASE_EMBEDDING_MODEL_REFERENCES",
+                        "Cannot delete integration with knowledge base embedding model references."
+                    );
+                }
+                if (integrationData.KnowledgeBaseRerankReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:KNOWLEDGE_BASE_RERANK_REFERENCES",
+                        "Cannot delete integration with knowledge base rerank references."
+                    );
+                }
+
+                //// Post Analysis References
+                if (integrationData.PostAnalysisLLMReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:POST_ANALYSIS_LLM_REFERENCES",
+                        "Cannot delete integration with post analysis LLM references."
+                    );
+                }
+
+                //// Agent References
+                if (integrationData.AgentInterruptionTurnEndViaAILLMReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:AGENT_INTERUPTION_TURN_END_VIA_AI_LLM_REFERENCES",
+                        "Cannot delete integration with agent interruption turn end via AI LLM references."
+                    );
+                }
+                if (integrationData.AgentInterruptionVerificationLLMReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:AGENT_INTERUPTION_VERIFICATION_LLM_REFERENCES",
+                        "Cannot delete integration with agent interruption verification LLM references."
+                    );
+                }
+                if (integrationData.AgentSTTReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:AGENT_STT_REFERENCES",
+                        "Cannot delete integration with agent STT references."
+                    );
+                }
+                if (integrationData.AgentLLMReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:AGENT_LLM_REFERENCES",
+                        "Cannot delete integration with agent LLM references."
+                    );
+                }
+                if (integrationData.AgentTTSReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:AGENT_TTS_REFERENCES",
+                        "Cannot delete integration with agent TTS references."
+                    );
+                }
+                if (integrationData.AgentKnowledgeBaseQueryAIRefinementLLMReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:AGENT_KNOWLEDGE_BASE_QUERY_AI_REFINEMENT_LLM_REFERENCES",
+                        "Cannot delete integration with agent knowledge base query AI refinement LLM references."
+                    );
+                }
+
+                var deleteResult = await _businessAppRepository.DeleteBusinessIntegration(businessId, integrationData.Id);
+                if (!deleteResult)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:DB_FAILED",
+                        "Error deleting integration in db."
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeleteBusinessIntegration:EXCEPTION",
+                    $"Error deleting integration: {ex.Message}"
+                );
+            }
+        }
     }
 }

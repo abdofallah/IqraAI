@@ -1,29 +1,28 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Integrations;
-using IqraCore.Entities.User;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessIntegrationsController : Controller
     {
-        private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
 
         public UserBusinessIntegrationsController(
-            UserManager userManager,
             BusinessManager businessManager,
-            IntegrationsManager integrationsManager)
-        {
-            _userManager = userManager;
+            IntegrationsManager integrationsManager,
+            UserSessionValidationHelper userSessionValidationHelper
+        ) {
             _businessManager = businessManager;
             _integrationsManager = integrationsManager;
+            _userSessionValidationHelper = userSessionValidationHelper;
         }
 
         [HttpPost("/app/user/business/{businessId}/integrations/save")]
@@ -31,211 +30,244 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppIntegration?>();
 
-            // Session validation
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveBusinessIntegration:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessIntegration:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            // User validation
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessIntegration:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            // User business permission validation
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessIntegration:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null &&
-                    !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    return result.SetFailureResult(
+                        $"SaveBusinessIntegration:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
                 }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
+                // Integration permission validation
+                if (businessData.Permission.Integrations.DisabledFullAt != null)
                 {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
-                }
-
-                return result;
-            }
-
-            // Business ownership validation
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessIntegration:5";
-                result.Message = "User does not own this business";
-                return result;
-            }
-
-            // Get business data and validate
-            var businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessIntegration:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            // Business general permission validation
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessIntegration:6";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null &&
-                    !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            // Integration permission validation
-            if (businessResult.Data.Permission.Integrations.DisabledFullAt != null)
-            {
-                result.Code = "SaveBusinessIntegration:7";
-                result.Message = "Business does not have permission to access integrations";
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Integrations.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Integrations.DisabledFullReason;
-                }
-
-                return result;
-            }
-
-            // Post type validation
-            string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
-            {
-                result.Code = "SaveBusinessIntegration:8";
-                result.Message = "Invalid post type";
-                return result;
-            }
-
-            // Check operation-specific permissions and validate existing integration
-            formData.TryGetValue("currentIntegrationId", out StringValues currentIntegrationIdValue);
-            string? currentIntegrationId = currentIntegrationIdValue.ToString();
-
-            formData.TryGetValue("currentIntegrationType", out StringValues currentIntegrationTypeValue);
-            string? currentIntegrationType = currentIntegrationTypeValue.ToString();
-            if (string.IsNullOrWhiteSpace(currentIntegrationType))
-            {
-                result.Code = "SaveBusinessIntegration:9";
-                result.Message = "Missing existing integration type";
-                return result;
-            }
-
-            var currentIntergationTypeData = await _integrationsManager.getIntegrationData(currentIntegrationType);
-            if (!currentIntergationTypeData.Success)
-            {
-                result.Code = "SaveBusinessIntegration:" + currentIntergationTypeData.Code;
-                result.Message = currentIntergationTypeData.Message;
-                return result;
-            }
-
-            if (currentIntergationTypeData.Data.DisabledAt != null)
-            {
-                result.Code = "SaveBusinessIntegration:10";
-                result.Message = "Current integration type is currently disabled";
-                return result;
-            }
-
-            BusinessAppIntegration? businessIntegrationData = null;
-            if (postType == "edit")
-            {
-                if (businessResult.Data.Permission.Integrations.DisabledEditingAt != null)
-                {
-                    result.Code = "SaveBusinessIntegration:11";
-                    result.Message = "Business does not have permission to edit integrations";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Integrations.DisabledEditingReason))
+                    var message = "Business does not have permission to access integrations";
+                    if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledFullReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Integrations.DisabledEditingReason;
+                        message += ": " + businessData.Permission.Integrations.DisabledFullReason;
                     }
 
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_FULL",
+                        message
+                    );
                 }
 
-                if (string.IsNullOrWhiteSpace(currentIntegrationId))
+                // Post type validation
+                string? postType = formData["postType"].ToString();
+                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
                 {
-                    result.Code = "SaveBusinessIntegration:12";
-                    result.Message = "Missing existing integration id";
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessIntegration:INVALID_POST_TYPE",
+                        "Invalid post type"
+                    );
                 }
 
-                var businessIntegrationResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, currentIntegrationId);
-                if (!businessIntegrationResult.Success)
+                // Check operation-specific permissions and validate existing integration
+                formData.TryGetValue("currentIntegrationId", out StringValues currentIntegrationIdValue);
+                string? currentIntegrationId = currentIntegrationIdValue.ToString();
+
+                formData.TryGetValue("currentIntegrationType", out StringValues currentIntegrationTypeValue);
+                string? currentIntegrationType = currentIntegrationTypeValue.ToString();
+                if (string.IsNullOrWhiteSpace(currentIntegrationType))
                 {
-                    result.Code = "SaveBusinessIntegration:" + businessIntegrationResult.Code;
-                    result.Message = businessIntegrationResult.Message;
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveBusinessIntegration:INVALID_INTEGRATION_TYPE",
+                        "Invalid integration type"
+                    );
                 }
 
-                businessIntegrationData = businessIntegrationResult.Data;
-            }
-            else if (postType == "new")
-            {
-                if (businessResult.Data.Permission.Integrations.DisabledAddingAt != null)
+                var currentIntergationTypeData = await _integrationsManager.getIntegrationData(currentIntegrationType);
+                if (!currentIntergationTypeData.Success)
                 {
-                    result.Code = "SaveBusinessIntegration:13";
-                    result.Message = "Business does not have permission to add integrations";
+                    return result.SetFailureResult(
+                        $"SaveBusinessIntegration:{currentIntergationTypeData.Code}",
+                        currentIntergationTypeData.Message
+                    );
+                }
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Integrations.DisabledAddingReason))
+                if (currentIntergationTypeData.Data!.DisabledAt != null)
+                {
+                    return result.SetFailureResult(
+                        $"SaveBusinessIntegration:INTEGRATION_TYPE_DISABLED",
+                        "Current integration type is currently disabled"
+                    );
+                }
+
+                BusinessAppIntegration? businessIntegrationData = null;
+                if (postType == "edit")
+                {
+                    if (businessData.Permission.Integrations.DisabledEditingAt != null)
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Integrations.DisabledAddingReason;
+                        var message = "Business does not have permission to edit integrations";
+                        if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledEditingReason))
+                        {
+                            message += ": " + businessData.Permission.Integrations.DisabledEditingReason;
+                        }
+
+                        return result.SetFailureResult(
+                            "SaveBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_EDITING",
+                            message
+                        );
                     }
 
-                    return result;
+                    if (string.IsNullOrWhiteSpace(currentIntegrationId))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessIntegration:MISSING_EXISTING_INTEGRATION_ID",
+                            "Missing existing integration id"
+                        );
+                    }
+
+                    var businessIntegrationResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, currentIntegrationId);
+                    if (!businessIntegrationResult.Success)
+                    {
+                        return result.SetFailureResult(
+                            $"SaveBusinessIntegration:{businessIntegrationResult.Code}",
+                            businessIntegrationResult.Message
+                        );
+                    }
+
+                    businessIntegrationData = businessIntegrationResult.Data;
                 }
+                else if (postType == "new")
+                {
+                    if (businessData.Permission.Integrations.DisabledAddingAt != null)
+                    {
+                        var message = "Business does not have permission to add integrations";
+                        if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledAddingReason))
+                        {
+                            message += ": " + businessData.Permission.Integrations.DisabledAddingReason;
+                        }
+
+                        return result.SetFailureResult(
+                            "SaveBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_ADDING",
+                            message
+                        );
+                    }
+                }
+
+                // Process the integration
+                var saveResult = await _businessManager.GetIntegrationsManager().AddOrUpdateBusinessIntegration(
+                    businessId,
+                    formData,
+                    postType,
+                    currentIntergationTypeData.Data,
+                    businessIntegrationData,
+                    _integrationsManager
+                );
+
+                if (!saveResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveBusinessIntegration:{saveResult.Code}",
+                        saveResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(saveResult.Data);
             }
-
-            // Process the integration
-            var saveResult = await _businessManager.GetIntegrationsManager().AddOrUpdateBusinessIntegration(
-                businessId,
-                formData,
-                postType,
-                currentIntergationTypeData.Data,
-                businessIntegrationData,
-                _integrationsManager
-            );
-
-            if (!saveResult.Success)
+            catch (Exception ex)
             {
-                result.Code = "SaveBusinessIntegration:" + saveResult.Code;
-                result.Message = saveResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessIntegration:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
             }
+        }
 
-            result.Success = true;
-            result.Data = saveResult.Data;
-            return result;
+        [HttpPost("/app/user/business/{businessId}/integrations/{integrationId}/delete")]
+        public async Task<FunctionReturnResult> DeleteBusinessIntegration(long businessId, string integrationId)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteBusinessIntegration:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Integration permission validation
+                if (businessData.Permission.Integrations.DisabledFullAt != null)
+                {
+                    var message = "Business does not have permission to access integrations";
+                    if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledFullReason))
+                    {
+                        message += ": " + businessData.Permission.Integrations.DisabledFullReason;
+                    }
+
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_FULL",
+                        message
+                    );
+                }
+
+                if (businessData.Permission.Integrations.DisabledDeletingAt != null)
+                {
+                    var message = "Business does not have permission to delete integrations";
+                    if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledDeletingReason))
+                    {
+                        message += ": " + businessData.Permission.Integrations.DisabledDeletingReason;
+                    }
+
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_DELETING",
+                        message
+                    );
+                }
+
+                var integrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, integrationId);
+                if (!integrationData.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteBusinessIntegration:{integrationData.Code}",
+                        integrationData.Message
+                    );
+                }
+
+                var deleteResult = await _businessManager.GetIntegrationsManager().DeleteBusinessIntegration(businessId, integrationData.Data!);
+                if (!deleteResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteBusinessIntegration:{deleteResult.Code}",
+                        deleteResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex) {
+                return result.SetFailureResult(
+                    "DeleteBusinessIntegration:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
+            }
         }
     }
 }

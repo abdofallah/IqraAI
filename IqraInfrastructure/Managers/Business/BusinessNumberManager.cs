@@ -7,6 +7,7 @@ using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Business;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using PhoneNumbers;
 using System.Text.Json;
 
@@ -15,6 +16,7 @@ namespace IqraInfrastructure.Managers.Business
     public class BusinessNumberManager
     {
         private readonly BusinessManager _parentBusinessManager;
+        private readonly IMongoClient _mongoClient;
 
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
@@ -27,6 +29,7 @@ namespace IqraInfrastructure.Managers.Business
 
         public BusinessNumberManager(
             BusinessManager businessManager,
+            IMongoClient mongoClient,
             BusinessAppRepository businessAppRepository,
             BusinessRepository businessRepository,
             ModemTelManager modemTelManager,
@@ -36,6 +39,7 @@ namespace IqraInfrastructure.Managers.Business
         )
         {
             _parentBusinessManager = businessManager;
+            _mongoClient = mongoClient;
 
             _businessAppRepository = businessAppRepository;
             _businessRepository = businessRepository;
@@ -376,30 +380,55 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
 
-            if (postType == "new")
+            using (var session = await _mongoClient.StartSessionAsync())
             {
-                bool addNumberResult = await _businessAppRepository.AddBusinessNumber(businessId, newNumberData);
-                if (!addNumberResult)
-                {
-                    return result.SetFailureResult(
-                        "AddOrUpdateBusinessNumber:FAILED_TO_ADD_NUMBER_TO_BUSINESS",
-                        "Failed to add number to business."
-                    );
-                }
-            }
-            else
-            {
-                bool updateNumberResult = await _businessAppRepository.UpdateBusinessNumber(businessId, newNumberData);
-                if (!updateNumberResult)
-                {
-                    return result.SetFailureResult(
-                        "AddOrUpdateBusinessNumber:FAILED_TO_UPDATE_NUMBER_TO_BUSINESS",
-                        "Failed to update number to business."
-                    );
-                }
-            }
+                session.StartTransaction();
 
-            return result.SetSuccessResult(newNumberData);
+                try
+                {
+                    if (postType == "new")
+                    {
+                        bool addNumberResult = await _businessAppRepository.AddBusinessNumber(businessId, newNumberData, session);
+                        if (!addNumberResult)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateBusinessNumber:FAILED_TO_ADD_NUMBER_TO_BUSINESS",
+                                "Failed to add number to business."
+                            );
+                        }
+                    }
+                    else
+                    {
+                        bool updateNumberResult = await _businessAppRepository.UpdateBusinessNumber(businessId, newNumberData, session);
+                        if (!updateNumberResult)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateBusinessNumber:FAILED_TO_UPDATE_NUMBER_TO_BUSINESS",
+                                "Failed to update number to business."
+                            );
+                        }
+                    }
+
+                    var addReferenceToIntegration = await _businessAppRepository.AddBusinessNumberReferenceToIntegration(businessId, newNumberData.IntegrationId, newNumberData.Id, session);
+                    if (!addReferenceToIntegration)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateBusinessNumber:FAILED_TO_ADD_NUMBER_REFERENCE_TO_INTEGRATION",
+                            "Failed to add number reference to integration."
+                        );
+                    }
+
+                    await session.CommitTransactionAsync();
+                    return result.SetSuccessResult(newNumberData);
+                }
+                catch (Exception ex) {
+                    await session.AbortTransactionAsync();
+                    return result.SetFailureResult(
+                        "AddOrUpdateBusinessNumber:DB_EXCEPTION",
+                        $"An error occurred while adding or updating business number: {ex.Message}"
+                    );
+                }
+            }
         }
 
         public async Task<FunctionReturnResult> DeleteBusinessNumber(long businessId, BusinessNumberData numberData)

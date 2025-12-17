@@ -92,14 +92,6 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                if (scriptData.ScriptTransferToScriptNodeReferences.Count > 0)
-                {
-                    return result.SetFailureResult(
-                        "DeleteScript:SCRIPT_TRANSFER_TO_SCRIPT_NODE_REFERENCES",
-                        "Cannot delete script with script transfer to script node references."
-                    );
-                }
-
                 var deleteResult = await _businessAppRepository.DeleteScript(businessId, scriptData.Id);
                 if (!deleteResult)
                 {
@@ -247,32 +239,72 @@ namespace IqraInfrastructure.Managers.Business
 
             // References
             List<(string, BusinessNumberScriptSMSNodeReference)> newSmsNodeBusinessNumberReferences = new List<(string, BusinessNumberScriptSMSNodeReference)>();
+            List<(string, BusinessAppScriptAddScriptToContextNodeReference)> newAddScriptToContextNodeScriptReferences = new List<(string, BusinessAppScriptAddScriptToContextNodeReference)>();
+            List<(string, BusinessAppAgentScriptTransferToAgentNodeReference)> newTransferToAgentNodeAgentReferences = new List<(string, BusinessAppAgentScriptTransferToAgentNodeReference)>();
             foreach (var node in newScriptData.Nodes)
             {
                 if (node.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool)
                 {
-                    var systemToolNode = node as BusinessAppScriptSystemToolNode;
-                    if (systemToolNode != null && systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS)
+                    if (node is BusinessAppScriptSystemToolNode systemToolNode)
                     {
-                        var smsNode = node as BusinessAppScriptSendSMSToolNode;
-                        if (smsNode != null)
+                        if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS)
                         {
-                            var phoneNumberId = smsNode.PhoneNumberId;
+                            var smsNode = node as BusinessAppScriptSendSMSToolNode;
+                            if (smsNode != null)
+                            {
+                                var phoneNumberId = smsNode.PhoneNumberId;
 
-                            newSmsNodeBusinessNumberReferences.Add((
-                                phoneNumberId,
-                                new BusinessNumberScriptSMSNodeReference()
-                                {
-                                    ScriptId = newScriptData.Id,
-                                    NodeReference = node.Id
-                                }
-                            ));
+                                newSmsNodeBusinessNumberReferences.Add((
+                                    phoneNumberId,
+                                    new BusinessNumberScriptSMSNodeReference()
+                                    {
+                                        ScriptId = newScriptData.Id,
+                                        NodeReference = node.Id
+                                    }
+                                ));
+                            }
+                        }
+                        else if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.AddScriptToContext)
+                        {
+                            var addContextNode = node as BusinessAppScriptAddScriptToContextToolNode;
+                            if (addContextNode != null)
+                            {
+                                var scriptId = addContextNode.ScriptId;
+
+                                newAddScriptToContextNodeScriptReferences.Add((
+                                    scriptId,
+                                    new BusinessAppScriptAddScriptToContextNodeReference()
+                                    {
+                                        ScriptId = newScriptData.Id,
+                                        NodeId = node.Id
+                                    }
+                                ));
+                            }
+                        }
+                        else if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToAgent)
+                        {
+                            var transferToAgentNode = node as BusinessAppScriptTransferToAgentToolNode;
+                            if (transferToAgentNode != null)
+                            {
+                                var agentId = transferToAgentNode.AgentId;
+
+                                newTransferToAgentNodeAgentReferences.Add((
+                                    agentId,
+                                    new BusinessAppAgentScriptTransferToAgentNodeReference()
+                                    {
+                                        ScriptId = newScriptData.Id,
+                                        NodeId = node.Id
+                                    }
+                                ));
+                            }
                         }
                     }
                 }
             }
 
             List<(string, BusinessNumberScriptSMSNodeReference)> deletedSmsNodeBusinessNumberReferences = new List<(string, BusinessNumberScriptSMSNodeReference)>();
+            List<(string, BusinessAppScriptAddScriptToContextNodeReference)> deletedAddNodeScriptReferences = new List<(string, BusinessAppScriptAddScriptToContextNodeReference)>();
+            List<(string, BusinessAppAgentScriptTransferToAgentNodeReference)> deletedTransferToAgentNodeAgentReferences = new List<(string, BusinessAppAgentScriptTransferToAgentNodeReference)>();
             if (postType != "new" && existingScriptData != null)
             {
                 var oldSmsNodes = existingScriptData.Nodes
@@ -301,6 +333,68 @@ namespace IqraInfrastructure.Managers.Business
                             {
                                 ScriptId = existingScriptData.Id,
                                 NodeReference = oldSmsNode.Id
+                            }
+                        ));
+                    }
+                }
+
+                var oldAddNodes = existingScriptData.Nodes
+                    .OfType<BusinessAppScriptAddScriptToContextToolNode>();
+
+                foreach (var oldAddNode in oldAddNodes)
+                {
+                    var newCorrespondingNode = newScriptData.Nodes.FirstOrDefault(n => n.Id == oldAddNode.Id);
+
+                    if (newCorrespondingNode is not BusinessAppScriptAddScriptToContextToolNode newAddNode)
+                    {
+                        deletedAddNodeScriptReferences.Add((
+                            oldAddNode.ScriptId,
+                            new BusinessAppScriptAddScriptToContextNodeReference()
+                            {
+                                ScriptId = existingScriptData.Id,
+                                NodeId = oldAddNode.Id
+                            }
+                        ));
+                    }
+                    else if (oldAddNode.ScriptId != newAddNode.ScriptId)
+                    {
+                        deletedAddNodeScriptReferences.Add((
+                            oldAddNode.ScriptId,
+                            new BusinessAppScriptAddScriptToContextNodeReference()
+                            {
+                                ScriptId = existingScriptData.Id,
+                                NodeId = oldAddNode.Id
+                            }
+                        ));
+                    }
+                }
+
+                var oldTransferToAgentNodes = existingScriptData.Nodes
+                    .OfType<BusinessAppScriptTransferToAgentToolNode>();
+
+                foreach (var oldTransferToAgentNode in oldTransferToAgentNodes)
+                {
+                    var newCorrespondingNode = newScriptData.Nodes.FirstOrDefault(n => n.Id == oldTransferToAgentNode.Id);
+
+                    if (newCorrespondingNode is not BusinessAppScriptTransferToAgentToolNode newTransferToAgentNode)
+                    {
+                        deletedTransferToAgentNodeAgentReferences.Add((
+                            oldTransferToAgentNode.AgentId,
+                            new BusinessAppAgentScriptTransferToAgentNodeReference()
+                            {
+                                ScriptId = existingScriptData.Id,
+                                NodeId = oldTransferToAgentNode.Id
+                            }
+                        ));
+                    }
+                    else if (oldTransferToAgentNode.AgentId != newTransferToAgentNode.AgentId)
+                    {
+                        deletedTransferToAgentNodeAgentReferences.Add((
+                            oldTransferToAgentNode.AgentId,
+                            new BusinessAppAgentScriptTransferToAgentNodeReference()
+                            {
+                                ScriptId = existingScriptData.Id,
+                                NodeId = oldTransferToAgentNode.Id
                             }
                         ));
                     }
@@ -337,7 +431,7 @@ namespace IqraInfrastructure.Managers.Business
                             }
                         }
 
-                        // Add new sms node references
+                        // SmsNode Reference to Business Number
                         foreach (var (phoneNumberId, reference) in newSmsNodeBusinessNumberReferences)
                         {
                             var addReferenceResult = await _businessAppRepository.AddAgentScriptSMSNodeReferenceToBusinessNumber(
@@ -354,7 +448,6 @@ namespace IqraInfrastructure.Managers.Business
                                 );
                             }
                         }
-
                         foreach (var (phoneNumberId, reference) in deletedSmsNodeBusinessNumberReferences)
                         {
                             var deleteReferenceResult = await _businessAppRepository.RemoveAgentScriptSMSNodeReferenceFromBusinessNumber(
@@ -368,6 +461,73 @@ namespace IqraInfrastructure.Managers.Business
                                 return result.SetFailureResult(
                                     "AddOrUpdateScript:SMS_NODE_REFERENCE_DELETE_FAILED",
                                     "Failed to delete sms node reference from business phone number."
+                                );
+                            }
+                        }
+                        // Add Script To Context Node Reference
+                        foreach (var (refScriptId, reference) in newAddScriptToContextNodeScriptReferences)
+                        {
+                            var addReferenceResult = await _businessAppRepository.AddScriptToContextNodeReferenceToScript(
+                                businessId,
+                                refScriptId,
+                                reference,
+                                session
+                            );
+                            if (!addReferenceResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateScript:SCRIPT_ADD_NODE_TO_CONTEXT_REFERENCE_ADD_FAILED",
+                                    "Failed to add add node reference to script."
+                                );
+                            }
+                        }
+                        foreach (var (refScriptId, reference) in deletedAddNodeScriptReferences)
+                        {
+                            var deleteReferenceResult = await _businessAppRepository.RemoveAddScriptToContextReferenceFromScript(
+                                businessId,
+                                refScriptId,
+                                reference,
+                                session
+                            );
+                            if (!deleteReferenceResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateScript:SCRIPT_ADD_NODE_TO_CONTEXT_REFERENCE_DELETE_FAILED",
+                                    "Failed to delete add node reference from script."
+                                );
+                            }
+                        }
+
+                        // Transfer To Agent Node Reference
+                        foreach (var (agentId, reference) in newTransferToAgentNodeAgentReferences)
+                        {
+                            var addReferenceResult = await _businessAppRepository.AddScriptTransferToAgentNodeReferenceToAgent(
+                                businessId,
+                                agentId,
+                                reference,
+                                session
+                            );
+                            if (!addReferenceResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateScript:TRANSFER_TO_AGENT_NODE_REFERENCE_ADD_FAILED",
+                                    "Failed to add transfer to agent node reference to agent."
+                                );
+                            }
+                        }
+                        foreach (var (agentId, reference) in deletedTransferToAgentNodeAgentReferences)
+                        {
+                            var deleteReferenceResult = await _businessAppRepository.RemoveScriptTransferToAgentNodeReferenceFromAgent(
+                                businessId,
+                                agentId,
+                                reference,
+                                session
+                            );
+                            if (!deleteReferenceResult)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateScript:TRANSFER_TO_AGENT_NODE_REFERENCE_DELETE_FAILED",
+                                    "Failed to delete transfer to agent node reference from agent."
                                 );
                             }
                         }

@@ -6,6 +6,7 @@ using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Business
@@ -13,14 +14,16 @@ namespace IqraInfrastructure.Managers.Business
     public class BusinessRoutesManager
     {
         private readonly BusinessManager _parentBusinessManager;
+        private readonly IMongoClient _mongoClient;
 
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
         private readonly IntegrationConfigurationManager _integrationConfigurationManager;
 
-        public BusinessRoutesManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, IntegrationConfigurationManager integrationConfigurationManager)
+        public BusinessRoutesManager(BusinessManager businessManager, IMongoClient mongoClient, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, IntegrationConfigurationManager integrationConfigurationManager)
         {
             _parentBusinessManager = businessManager;
+            _mongoClient = mongoClient;
 
             _businessAppRepository = businessAppRepository;
             _businessRepository = businessRepository;
@@ -467,46 +470,127 @@ namespace IqraInfrastructure.Managers.Business
             }
             newBusinessAppRouteData.Actions.CallEndedTool = endedToolValidationResult.Data;
 
-            // Save or Update in Database
-            if (postType == "new")
+            using (var session = await _mongoClient.StartSessionAsync())
             {
-                newBusinessAppRouteData.Id = ObjectId.GenerateNewId().ToString();
-                var addRouteResult = await _businessAppRepository.AddBusinessAppRoute(businessId, newBusinessAppRouteData);
-                if (!addRouteResult)
+                session.StartTransaction();
+                try
                 {
-                    result.Code = "AddOrUpdateUserBusinessRoute:51";
-                    result.Message = "Failed to add business app route.";
-                    return result;
-                }
-            }
-            else
-            {
-                newBusinessAppRouteData.Id = existingRouteData.Id;
-                var updateRouteResult = await _businessAppRepository.UpdateBusinessAppRoute(businessId, newBusinessAppRouteData);
-                if (!updateRouteResult)
-                {
-                    result.Code = "AddOrUpdateUserBusinessRoute:52";
-                    result.Message = "Failed to update business app route.";
-                    return result;
-                }
-
-                foreach (var oldNumberId in existingRouteData.Numbers)
-                {
-                    if (!newBusinessAppRouteData.Numbers.Contains(oldNumberId))
+                    // Save or Update in Database
+                    if (postType == "new")
                     {
-                        await _businessAppRepository.UpdateBusinessNumberRoute(businessId, oldNumberId, null);
+                        newBusinessAppRouteData.Id = ObjectId.GenerateNewId().ToString();
+                        var addRouteResult = await _businessAppRepository.AddBusinessAppRoute(businessId, newBusinessAppRouteData, session);
+                        if (!addRouteResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateUserBusinessRoute:DB_ADD_FAILED",
+                                "Failed to add business app route."
+                            );
+                        }
                     }
+                    else
+                    {
+                        newBusinessAppRouteData.Id = existingRouteData!.Id;
+                        var updateRouteResult = await _businessAppRepository.UpdateBusinessAppRoute(businessId, newBusinessAppRouteData, session);
+                        if (!updateRouteResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateUserBusinessRoute:DB_UPDATE_FAILED",
+                                "Failed to update business app route."
+                            );
+                        }
+
+                        foreach (var oldNumberId in existingRouteData.Numbers)
+                        {
+                            if (!newBusinessAppRouteData.Numbers.Contains(oldNumberId))
+                            {
+                                var removeNumberRouteResult = await _businessAppRepository.UpdateBusinessNumberRoute(businessId, oldNumberId, null, session);
+                                if (!removeNumberRouteResult)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateUserBusinessRoute:NUMBER_ROUTE_REMOVAL_FAILED",
+                                        "Failed to remove previous number route."
+                                    );
+                                }
+                            }
+                        }
+
+                        if (existingRouteData.Agent.SelectedAgentId != newBusinessAppRouteData.Agent.SelectedAgentId)
+                        {
+                            var removeAgentRouteReferenceResult = await _businessAppRepository.RemoveInboundRoutingReferenceFromAgent(businessId, existingRouteData.Agent.SelectedAgentId, newBusinessAppRouteData.Id, session);
+                            if (!removeAgentRouteReferenceResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateUserBusinessRoute:AGENT_ROUTE_REMOVAL_FAILED",
+                                    "Failed to remove agent route reference."
+                                );
+                            }
+                        }
+
+                        if (existingRouteData.Agent.OpeningScriptId != newBusinessAppRouteData.Agent.OpeningScriptId)
+                        {
+                            var removeScriptRouteReferenceResult = await _businessAppRepository.RemoveInboundRoutingReferenceFromScript(businessId, existingRouteData.Agent.OpeningScriptId, newBusinessAppRouteData.Id, session);
+                            if (!removeScriptRouteReferenceResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateUserBusinessRoute:SCRIPT_ROUTE_REMOVAL_FAILED",
+                                    "Failed to remove script route reference."
+                                );
+                            }
+                        }
+                    }
+
+                    foreach (var numberId in newBusinessAppRouteData.Numbers)
+                    {
+                        var updateNumberRouteResult = await _businessAppRepository.UpdateBusinessNumberRoute(businessId, numberId, newBusinessAppRouteData.Id, session);
+                        if (!updateNumberRouteResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateUserBusinessRoute:NUMBER_ROUTE_UPDATE_FAILED",
+                                "Failed to update number route."
+                            );
+                        }
+                    }
+
+                    var addAgentRouteReferenceResult = await _businessAppRepository.AddInboundRoutingReferenceToAgent(businessId, newBusinessAppRouteData.Agent.SelectedAgentId, newBusinessAppRouteData.Id, session);
+                    if (!addAgentRouteReferenceResult)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "AddOrUpdateUserBusinessRoute:AGENT_ROUTE_ADD_FAILED",
+                            "Failed to add agent route reference."
+                        );
+                    }
+
+                    var addScriptRouteReferenceResult = await _businessAppRepository.AddInboundRoutingReferenceToScript(businessId, newBusinessAppRouteData.Agent.OpeningScriptId, newBusinessAppRouteData.Id, session);
+                    if (!addScriptRouteReferenceResult)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "AddOrUpdateUserBusinessRoute:SCRIPT_ROUTE_ADD_FAILED",
+                            "Failed to add script route reference."
+                        );
+                    }
+
+                    await session.CommitTransactionAsync();
+                }
+                catch (Exception ex)
+                {
+                    await session.AbortTransactionAsync();
+                    return result.SetFailureResult(
+                        "AddOrUpdateUserBusinessRoute:DB_EXCEPTION",
+                        $"An error occurred while adding or updating user business route: {ex.Message}"
+                    );
                 }
             }
 
-            foreach (var numberId in newBusinessAppRouteData.Numbers)
-            {
-                await _businessAppRepository.UpdateBusinessNumberRoute(businessId, numberId, newBusinessAppRouteData.Id);
-            }
-
-            result.Success = true;
-            result.Data = newBusinessAppRouteData;
-            return result;
+            return result.SetSuccessResult(newBusinessAppRouteData);
         }
 
         private async Task<FunctionReturnResult<BusinessAppRouteActionTool>> ValidateBusinessRouteActionData(long businessId, string businessDefaultLanguage, JsonElement actionsTabRootElement, string actionType)

@@ -172,11 +172,16 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     throw new Exception("Null constructor input variable for BusinessNumberManager");
                 }
-                _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository, modemTelManager, twilioManager, integrationsManager, regionManager);
+                _businessNumberManager = new BusinessNumberManager(this, mongoClient, businessAppRepository, businessRepository, modemTelManager, twilioManager, integrationsManager, regionManager);
             }
-            if (_settings.InitalizeRoutesManager || integrationConfigurationManager == null)
+            if (_settings.InitalizeRoutesManager)
             {
-                _businessRoutesManager = new BusinessRoutesManager(this, businessAppRepository, businessRepository, integrationConfigurationManager);
+                if (integrationConfigurationManager == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessRoutesManager");
+                }
+
+                _businessRoutesManager = new BusinessRoutesManager(this, mongoClient, businessAppRepository, businessRepository, integrationConfigurationManager);
             }
             if (_settings.InitalizeConversationsManager)
             {
@@ -200,7 +205,7 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     throw new Exception("Null constructor input variable for BusinessKnowledgeBaseManager");
                 }
-                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, indexProcessorFactory, extractProcessor, keywordExtractor, embeddingProviderManager, ragKeywordStore);
+                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, mongoClient, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, indexProcessorFactory, extractProcessor, keywordExtractor, embeddingProviderManager, ragKeywordStore);
             }
             if (_settings.InitalizeCampaignManager || _settings.InitalizeCampaignCURDManager)
             {
@@ -213,7 +218,7 @@ namespace IqraInfrastructure.Managers.Business
                     throw new Exception("Null constructor input variable for BusinessCampaignManager with CURD");
                 }
 
-                _businessCampaignManager = new BusinessCampaignManager(this, businessAppRepository, businessRepository, integrationConfigurationManager);
+                _businessCampaignManager = new BusinessCampaignManager(this, mongoClient, businessAppRepository, businessRepository, integrationConfigurationManager);
             }
             if (_settings.InitalizeWebSessionManager)
             {
