@@ -4,6 +4,7 @@ using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -12,6 +13,7 @@ namespace IqraInfrastructure.Managers.Business
     public class BusinessPostAnalysisManager
     {
         private BusinessManager _parent;
+        private IMongoClient _mongoClient;
         private BusinessAppRepository _businessAppRepository;
         private IntegrationConfigurationManager _integrationConfigurationManager;
 
@@ -21,9 +23,14 @@ namespace IqraInfrastructure.Managers.Business
         private const int MAX_PCA_FIELDS_PER_LEVEL = 5;
         private const int MAX_PCA_RULES_PER_FIELD = 5;
 
-        public BusinessPostAnalysisManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, IntegrationConfigurationManager integrationConfigurationManager)
-        {
+        public BusinessPostAnalysisManager(
+            BusinessManager businessManager,
+            IMongoClient mongoClient,
+            BusinessAppRepository businessAppRepository,
+            IntegrationConfigurationManager integrationConfigurationManager
+        ) {
             _parent = businessManager;
+            _mongoClient = mongoClient;
             _businessAppRepository = businessAppRepository;
             _integrationConfigurationManager = integrationConfigurationManager;
         }
@@ -277,32 +284,73 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 // Final DB Operation
-                if (postType == "new")
+                using (var session = await _mongoClient.StartSessionAsync())
                 {
-                    newTemplate.Id = ObjectId.GenerateNewId().ToString();
-                    var addResult = await _businessAppRepository.AddBusinessAppPostAnalysisTemplate(businessId, newTemplate);
-                    if (!addResult)
+                    session.StartTransaction();
+                    try
                     {
-                        return result.SetFailureResult(
-                            "AddOrUpdateTemplate:DB_ADD_FAILED",
-                            "Failed to add new template to the database."
-                        );
-                    }
-                }
-                else // "edit"
-                {
-                    newTemplate.Id = existingTemplateData!.Id;
-                    var updateResult = await _businessAppRepository.UpdateBusinessAppPostAnalysisTemplate(businessId, newTemplate);
-                    if (!updateResult)
-                    {
-                        return result.SetFailureResult(
-                            "AddOrUpdateTemplate:DB_UPDATE_FAILED",
-                            "Failed to update template in the database."
-                        );
-                    }
-                }
+                        if (postType == "new")
+                        {
+                            newTemplate.Id = ObjectId.GenerateNewId().ToString();
+                            var addResult = await _businessAppRepository.AddBusinessAppPostAnalysisTemplate(businessId, newTemplate, session);
+                            if (!addResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTemplate:DB_ADD_FAILED",
+                                    "Failed to add new template to the database."
+                                );
+                            }
+                        }
+                        else // "edit"
+                        {
+                            newTemplate.Id = existingTemplateData!.Id;
+                            var updateResult = await _businessAppRepository.UpdateBusinessAppPostAnalysisTemplate(businessId, newTemplate, session);
+                            if (!updateResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTemplate:DB_UPDATE_FAILED",
+                                    "Failed to update template in the database."
+                                );
+                            }
 
-                return result.SetSuccessResult(newTemplate);
+                            if (existingTemplateData.Configuration.LLMIntegration.Id != newTemplate.Configuration.LLMIntegration.Id)
+                            {
+                                var removePALLMReferenceFromIntegration = await _businessAppRepository.RemovePostAnalysisLLMReferenceFromIntegration(businessId, existingTemplateData.Configuration.LLMIntegration.Id, newTemplate.Id, session);
+                                if (!removePALLMReferenceFromIntegration)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTemplate:FAILED_TO_REMOVE_PALLM_REFERENCE_FROM_INTEGRATION",
+                                        "Failed to remove Post Analysis LLM reference from integration."
+                                    );
+                                }
+                            }
+                        }
+
+                        var addPALLMReferenceToIntegration = await _businessAppRepository.AddPostAnalysisLLMReferenceToIntegration(businessId, newTemplate.Configuration.LLMIntegration.Id, newTemplate.Id, session);
+                        if (!addPALLMReferenceToIntegration)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateTemplate:FAILED_TO_ADD_PALLM_REFERENCE_TO_INTEGRATION",
+                                "Failed to add Post Analysis LLM reference to integration."
+                            );
+                        }
+
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult(newTemplate);
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:DB_EXCEPTION",
+                            $"An unexpected error occurred: {ex.Message}"
+                        );
+                    }
+                }
             }
             catch (Exception ex)
             {

@@ -746,79 +746,63 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> AddAgentSTTReferenceToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        public async Task<bool> AddAgentSTTReferenceToIntegration(long businessId, string integrationId, string language, string agentId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
             );
+            var update = Builders<BusinessApp>.Update.AddToSet($"Integrations.$.AgentSTTReferences.{language}", agentId);
 
-            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentSTTReferences, agentId);
-
-            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
-            return result.IsAcknowledged;
+            return (await _businessAppCollection.UpdateOneAsync(session, filter, update)).IsAcknowledged;
         }
-        public async Task<bool> RemoveAgentSTTReferenceFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        public async Task<bool> RemoveAgentSTTReferenceFromIntegration(long businessId, string integrationId, string language, string agentId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
             );
+            var update = Builders<BusinessApp>.Update.Pull($"Integrations.$.AgentSTTReferences.{language}", agentId);
 
-            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentSTTReferences, agentId);
-
-            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
-            return result.IsAcknowledged;
+            return (await _businessAppCollection.UpdateOneAsync(session, filter, update)).IsAcknowledged;
         }
 
-        public async Task<bool> AddAgentLLMReferenceToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        public async Task<bool> AddAgentLLMReferenceToIntegration(long businessId, string integrationId, string language, string agentId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
             );
-
-            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentLLMReferences, agentId);
-
-            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
-            return result.IsAcknowledged;
+            var update = Builders<BusinessApp>.Update.AddToSet($"Integrations.$.AgentLLMReferences.{language}", agentId);
+            return (await _businessAppCollection.UpdateOneAsync(session, filter, update)).IsAcknowledged;
         }
-        public async Task<bool> RemoveAgentLLMReferenceFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        public async Task<bool> RemoveAgentLLMReferenceFromIntegration(long businessId, string integrationId, string language, string agentId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
             );
-
-            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentLLMReferences, agentId);
-
-            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
-            return result.IsAcknowledged;
+            var update = Builders<BusinessApp>.Update.Pull($"Integrations.$.AgentLLMReferences.{language}", agentId);
+            return (await _businessAppCollection.UpdateOneAsync(session, filter, update)).IsAcknowledged;
         }
 
-        public async Task<bool> AddAgentTTSReferenceToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        public async Task<bool> AddAgentTTSReferenceToIntegration(long businessId, string integrationId, string language, string agentId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
             );
-
-            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentTTSReferences, agentId);
-
-            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
-            return result.IsAcknowledged;
+            var update = Builders<BusinessApp>.Update.AddToSet($"Integrations.$.AgentTTSReferences.{language}", agentId);
+            return (await _businessAppCollection.UpdateOneAsync(session, filter, update)).IsAcknowledged;
         }
-        public async Task<bool> RemoveAgentTTSReferenceFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        public async Task<bool> RemoveAgentTTSReferenceFromIntegration(long businessId, string integrationId, string language, string agentId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
             );
-
-            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentTTSReferences, agentId);
-
-            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
-            return result.IsAcknowledged;
+            var update = Builders<BusinessApp>.Update.Pull($"Integrations.$.AgentTTSReferences.{language}", agentId);
+            return (await _businessAppCollection.UpdateOneAsync(session, filter, update)).IsAcknowledged;
         }
 
         public async Task<bool> AddAgentKBQueryRefinementRefToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
@@ -844,6 +828,25 @@ namespace IqraInfrastructure.Repositories.Business
 
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddAgentKBSearchStrategyRefToIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().AgentKnowledgeBaseSearchStrategyLLMReferences, agentId);
+            return (await _businessAppCollection.UpdateOneAsync(session, filter, update)).IsAcknowledged;
+        }
+        public async Task<bool> RemoveAgentKBSearchStrategyRefFromIntegration(long businessId, string integrationId, string agentId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, i => i.Id == integrationId)
+            );
+            var update = Builders<BusinessApp>.Update.Pull(b => b.Integrations.FirstMatchingElement().AgentKnowledgeBaseSearchStrategyLLMReferences, agentId);
+            return (await _businessAppCollection.UpdateOneAsync(session, filter, update)).IsAcknowledged;
         }
 
 
@@ -884,7 +887,7 @@ namespace IqraInfrastructure.Repositories.Business
             return await urlQuery.FirstOrDefaultAsync();
         }
 
-        public async Task<bool> AddAgent(long businessId, BusinessAppAgent agent)
+        public async Task<bool> AddAgent(long businessId, BusinessAppAgent agent, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -895,12 +898,12 @@ namespace IqraInfrastructure.Repositories.Business
 
             var update = Builders<BusinessApp>.Update.Push(b => b.Agents, agent);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateAgentDataExceptScripts(long businessId, BusinessAppAgent agent)
+        public async Task<bool> UpdateAgentDataExceptReferences(long businessId, BusinessAppAgent agent, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -918,7 +921,7 @@ namespace IqraInfrastructure.Repositories.Business
                 .Set(d => d.Agents.FirstMatchingElement().Cache, agent.Cache)
                 .Set(d => d.Agents.FirstMatchingElement().Settings, agent.Settings);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
@@ -1619,16 +1622,16 @@ namespace IqraInfrastructure.Repositories.Business
             return businessApp.PostAnalysis.FirstOrDefault(t => t.Id == templateId);
         }
 
-        public async Task<bool> AddBusinessAppPostAnalysisTemplate(long businessId, BusinessAppPostAnalysis newTemplate)
+        public async Task<bool> AddBusinessAppPostAnalysisTemplate(long businessId, BusinessAppPostAnalysis newTemplate, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.PostAnalysis, newTemplate);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessAppPostAnalysisTemplate(long businessId, BusinessAppPostAnalysis updatedTemplate)
+        public async Task<bool> UpdateBusinessAppPostAnalysisTemplate(long businessId, BusinessAppPostAnalysis updatedTemplate, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -1636,7 +1639,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var update = Builders<BusinessApp>.Update.Set(b => b.PostAnalysis.FirstMatchingElement(), updatedTemplate);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
     }

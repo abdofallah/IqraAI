@@ -66,7 +66,7 @@ namespace IqraInfrastructure.Managers.Business
         }
 
         // SAVING/ADDING AGENT
-        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, string? exisitingAgentId, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
+        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, BusinessAppAgent? exisitingAgentData, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
         {
             var result = new FunctionReturnResult<BusinessAppAgent?>();
 
@@ -1262,7 +1262,7 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
-                        var exisitingAgentSettingsBackgroundAudioS3StorageLink = await _businessAppRepository.GetAgentSettingsBackgroundAudioS3StorageLink(businessId, exisitingAgentId!);
+                        var exisitingAgentSettingsBackgroundAudioS3StorageLink = await _businessAppRepository.GetAgentSettingsBackgroundAudioS3StorageLink(businessId, exisitingAgentData!.Id);
                         if (exisitingAgentSettingsBackgroundAudioS3StorageLink == null)
                         {
                             return result.SetFailureResult(
@@ -1298,32 +1298,214 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
-            if (postType == "new")
+            using (var session = await _mongoClient.StartSessionAsync())
             {
-                newAgentData.Id = ObjectId.GenerateNewId().ToString();
-
-                var addAgentResult = await _businessAppRepository.AddAgent(businessId, newAgentData);
-                if (!addAgentResult)
+                session.StartTransaction();
+                try
                 {
-                    result.Code = "AddOrUpdateAgent:20";
-                    result.Message = "Failed to add business agent.";
-                    return result;
+                    if (postType == "new")
+                    {
+                        newAgentData.Id = ObjectId.GenerateNewId().ToString();
+
+                        var addAgentResult = await _businessAppRepository.AddAgent(businessId, newAgentData, session);
+                        if (!addAgentResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:DB_ADD_FAILED",
+                                "Failed to add business agent."
+                            );
+                        }
+                    }
+                    else if (postType == "edit")
+                    {
+                        newAgentData.Id = exisitingAgentData!.Id;
+
+                        var updateAgentResult = await _businessAppRepository.UpdateAgentDataExceptReferences(businessId, newAgentData, session);
+                        if (!updateAgentResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:DB_UPDATE_FAILED",
+                                "Failed to update business agent."
+                            );
+                        }
+                    }
+
+                    try
+                    {
+                        await UpdateAgentIntegrationReferences(businessId, newAgentData.Id, exisitingAgentData, newAgentData, session);
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:REF_UPDATE_FAILED",
+                            $"Failed to update integration references: {ex.Message}"
+                        );
+                    }
+
+                    await session.CommitTransactionAsync();
+                    return result.SetSuccessResult(newAgentData);
+                }
+                catch (Exception ex)
+                {
+                    await session.AbortTransactionAsync();
+                    return result.SetFailureResult(
+                        "AddOrUpdateAgent:EXCEPTION",
+                        $"An unexpected error occurred: {ex.Message}"
+                    );
                 }
             }
-            else if (postType == "edit")
-            {
-                newAgentData.Id = exisitingAgentId!;
+        }
 
-                var updateAgentResult = await _businessAppRepository.UpdateAgentDataExceptScripts(businessId, newAgentData);
-                if (!updateAgentResult)
+        private async Task<bool> UpdateAgentIntegrationReferences(
+            long businessId,
+            string agentId,
+            BusinessAppAgent? oldAgent,
+            BusinessAppAgent newAgent,
+            IClientSessionHandle session
+        ) {
+            // ---------------------------------------------------------
+            // 1. Single References (TurnEnd, Verification, Refinement, SearchStrategy)
+            // ---------------------------------------------------------
+
+            // Helper Action to handle single reference swap
+            async Task HandleSingleReference(
+                string? oldIntId,
+                string? newIntId,
+                Func<long, string, string, IClientSessionHandle, Task<bool>> addFunc,
+                Func<long, string, string, IClientSessionHandle, Task<bool>> removeFunc)
+            {
+                // If we have an old reference and it's different from the new one, remove it
+                if (!string.IsNullOrEmpty(oldIntId) && oldIntId != newIntId)
                 {
-                    result.Code = "AddOrUpdateAgent:21";
-                    result.Message = "Failed to update business agent.";
-                    return result;
+                    await removeFunc(businessId, oldIntId, agentId, session);
+                }
+                // Always add the new one (idempotent)
+                if (!string.IsNullOrEmpty(newIntId))
+                {
+                    await addFunc(businessId, newIntId, agentId, session);
                 }
             }
 
-            return result.SetSuccessResult(newAgentData);
+            // A. Interruption Turn End
+            string? oldTurnEndId = (oldAgent?.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI && !oldAgent.Interruptions.TurnEnd.UseAgentLLM.GetValueOrDefault())
+                ? oldAgent.Interruptions.TurnEnd.LLMIntegration?.Id : null;
+            string? newTurnEndId = (newAgent.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI && !newAgent.Interruptions.TurnEnd.UseAgentLLM.GetValueOrDefault())
+                ? newAgent.Interruptions.TurnEnd.LLMIntegration?.Id : null;
+
+            await HandleSingleReference(oldTurnEndId, newTurnEndId,
+                _businessAppRepository.AddAgentInterruptionTurnEndRefToIntegration,
+                _businessAppRepository.RemoveAgentInterruptionTurnEndRefFromIntegration);
+
+            // B. Interruption Verification
+            string? oldVerifId = (oldAgent?.Interruptions.Verification != null && oldAgent.Interruptions.Verification.Enabled && !oldAgent.Interruptions.Verification.UseAgentLLM)
+                ? oldAgent.Interruptions.Verification.LLMIntegration?.Id : null;
+            string? newVerifId = (newAgent.Interruptions.Verification != null && newAgent.Interruptions.Verification.Enabled && !newAgent.Interruptions.Verification.UseAgentLLM)
+                ? newAgent.Interruptions.Verification.LLMIntegration?.Id : null;
+
+            await HandleSingleReference(oldVerifId, newVerifId,
+                _businessAppRepository.AddAgentInterruptionVerificationRefToIntegration,
+                _businessAppRepository.RemoveAgentInterruptionVerificationRefFromIntegration);
+
+            // C. KB Refinement
+            string? oldRefineId = (oldAgent?.KnowledgeBase.Refinement.Enabled == true && !oldAgent.KnowledgeBase.Refinement.UseAgentLLM.GetValueOrDefault())
+                ? oldAgent.KnowledgeBase.Refinement.LLMIntegration?.Id : null;
+            string? newRefineId = (newAgent.KnowledgeBase.Refinement.Enabled && !newAgent.KnowledgeBase.Refinement.UseAgentLLM.GetValueOrDefault())
+                ? newAgent.KnowledgeBase.Refinement.LLMIntegration?.Id : null;
+
+            await HandleSingleReference(oldRefineId, newRefineId,
+                _businessAppRepository.AddAgentKBQueryRefinementRefToIntegration,
+                _businessAppRepository.RemoveAgentKBQueryRefinementRefFromIntegration);
+
+            // D. KB Search Strategy (LLM Classifier)
+            string? oldSearchId = (oldAgent?.KnowledgeBase.SearchStrategy.Type == AgentKnowledgeBaseSearchStartegyTypeENUM.LLM && !oldAgent.KnowledgeBase.SearchStrategy.LLMClassifier!.UseAgentLLM)
+                ? oldAgent.KnowledgeBase.SearchStrategy.LLMClassifier!.LLMIntegration?.Id : null;
+            string? newSearchId = (newAgent.KnowledgeBase.SearchStrategy.Type == AgentKnowledgeBaseSearchStartegyTypeENUM.LLM && !newAgent.KnowledgeBase.SearchStrategy.LLMClassifier!.UseAgentLLM)
+                ? newAgent.KnowledgeBase.SearchStrategy.LLMClassifier!.LLMIntegration?.Id : null;
+
+            await HandleSingleReference(oldSearchId, newSearchId,
+                _businessAppRepository.AddAgentKBSearchStrategyRefToIntegration,
+                _businessAppRepository.RemoveAgentKBSearchStrategyRefFromIntegration);
+
+
+            // ---------------------------------------------------------
+            // 2. Multi-Language References (STT, LLM, TTS)
+            // ---------------------------------------------------------
+
+            // Helper Action to handle Dictionary<string, List<Data>>
+            async Task HandleMultiLangReferences(
+                Dictionary<string, List<BusinessAppAgentIntegrationData>>? oldDict,
+                Dictionary<string, List<BusinessAppAgentIntegrationData>> newDict,
+                Func<long, string, string, string, IClientSessionHandle, Task<bool>> addFunc,
+                Func<long, string, string, string, IClientSessionHandle, Task<bool>> removeFunc)
+            {
+                // 1. Remove references that are in OLD but NOT in NEW (for that specific language)
+                if (oldDict != null)
+                {
+                    foreach (var langPair in oldDict)
+                    {
+                        string lang = langPair.Key;
+                        var oldIntegrations = langPair.Value;
+
+                        // If the language still exists in new data
+                        if (newDict.TryGetValue(lang, out var newIntegrations))
+                        {
+                            var newIds = newIntegrations.Select(x => x.Id).ToHashSet();
+                            foreach (var oldInt in oldIntegrations)
+                            {
+                                // If old ID is not in the new list for this language, remove it
+                                if (!newIds.Contains(oldInt.Id))
+                                {
+                                    await removeFunc(businessId, oldInt.Id, lang, agentId, session);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Language was completely removed? Remove all old integrations for this language
+                            foreach (var oldInt in oldIntegrations)
+                            {
+                                await removeFunc(businessId, oldInt.Id, lang, agentId, session);
+                            }
+                        }
+                    }
+                }
+
+                // 2. Add all NEW references (Idempotent)
+                foreach (var langPair in newDict)
+                {
+                    string lang = langPair.Key;
+                    foreach (var newInt in langPair.Value)
+                    {
+                        await addFunc(businessId, newInt.Id, lang, agentId, session);
+                    }
+                }
+            }
+
+            // A. STT
+            await HandleMultiLangReferences(
+                oldAgent?.Integrations.STT,
+                newAgent.Integrations.STT,
+                _businessAppRepository.AddAgentSTTReferenceToIntegration,
+                _businessAppRepository.RemoveAgentSTTReferenceFromIntegration);
+
+            // B. LLM
+            await HandleMultiLangReferences(
+                oldAgent?.Integrations.LLM,
+                newAgent.Integrations.LLM,
+                _businessAppRepository.AddAgentLLMReferenceToIntegration,
+                _businessAppRepository.RemoveAgentLLMReferenceFromIntegration);
+
+            // C. TTS
+            await HandleMultiLangReferences(
+                oldAgent?.Integrations.TTS,
+                newAgent.Integrations.TTS,
+                _businessAppRepository.AddAgentTTSReferenceToIntegration,
+                _businessAppRepository.RemoveAgentTTSReferenceFromIntegration);
+
+            return true;
         }
     }
 }

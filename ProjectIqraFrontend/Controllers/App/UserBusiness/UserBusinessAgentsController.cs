@@ -79,7 +79,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                string? exisitingAgentId = null;
+                BusinessAppAgent? exisitingAgentData = null;
                 if (postType == "new")
                 {
                     if (businessData.Permission.Agents.DisabledAddingAt != null)
@@ -107,7 +107,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                             "Existing Agent ID is required for edit mode."
                         );
                     }
-                    exisitingAgentId = existingAgentIdValue.ToString();
+                    string? exisitingAgentId = existingAgentIdValue.ToString();
                     if (string.IsNullOrWhiteSpace(exisitingAgentId))
                     {
                         return result.SetFailureResult(
@@ -116,8 +116,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                         );
                     }
 
-                    var checkAgentExists = await _businessManager.GetAgentsManager().CheckAgentExists(businessId, exisitingAgentId);
-                    if (checkAgentExists == false)
+                    exisitingAgentData = await _businessManager.GetAgentsManager().GetAgentById(businessId, exisitingAgentId);
+                    if (exisitingAgentData == null)
                     {
                         return result.SetFailureResult(
                             "SaveBusinessAgent:AGENT_DOES_NOT_EXIST",
@@ -127,7 +127,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 }
 
                 // Forward Result
-                var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, exisitingAgentId, _llmProviderManager, _sttProviderManager, _ttsProviderManager);
+                var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, exisitingAgentData, _llmProviderManager, _sttProviderManager, _ttsProviderManager);
                 if (!addOrUpdateResult.Success)
                 {
                     return result.SetFailureResult(

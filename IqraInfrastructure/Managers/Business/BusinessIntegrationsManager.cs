@@ -274,6 +274,12 @@ namespace IqraInfrastructure.Managers.Business
                         "Cannot delete integration with agent knowledge base query AI refinement LLM references."
                     );
                 }
+                if (integrationData.AgentKnowledgeBaseSearchStrategyLLMReferences.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:AGENT_KNOWLEDGE_BASE_SEARCH_STRATEGY_LLM_REFERENCES",
+                        "Cannot delete integration with agent knowledge base search strategy LLM references."
+                    );
+                }
 
                 var deleteResult = await _businessAppRepository.DeleteBusinessIntegration(businessId, integrationData.Id);
                 if (!deleteResult)
