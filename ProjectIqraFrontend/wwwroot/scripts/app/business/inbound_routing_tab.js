@@ -147,28 +147,35 @@ function showRoutingListTab() {
 	}, 300);
 }
 
-function createRouteListElement(routeData) {
+function createRouteListCardElement(routeData) {
 	const agentData = BusinessFullData.businessApp.agents.find((agent) => agent.id === routeData.agent.selectedAgentId);
-
-	return `
-        <div class="col-lg-4 col-md-6 col-12">
-            <div class="routing-card d-flex flex-column align-items-start justify-content-center" route-id="${routeData.id}">
-                <div class="d-flex flex-row align-items-center justify-content-start mb-4">
-                    <span class="route-icon">${routeData.general.emoji}</span>
-                    <div class="card-data">
-                        <h4>${routeData.general.name}</h4>
-                        <h6>${routeData.numbers.length} Number${routeData.numbers.length === 1 ? "" : "s"} Assigned</h6>
-						<h6>Agent ${agentData.general.emoji} ${agentData.general.name[BusinessDefaultLanguage]}</h6>
-                    </div>
-                </div>
-                <div>
-                    <h5 class="h5-info agent-description">
-                        <span>${routeData.general.description}</span>
-                    </h5>
-                </div>
-            </div>
+	const actionDropdownHtml = `
+        <div class="dropdown action-dropdown dropdown-menu-end">
+            <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <span class="dropdown-item text-danger" data-item-id="${routeData.id}" button-type="delete-route">
+                        <i class="fa-solid fa-trash me-2"></i>Delete
+                    </span>
+                </li>
+            </ul>
         </div>
     `;
+
+	return createIqraCardElement({
+		id: routeData.id,
+		type: 'routing',
+		visualHtml: `<span>${routeData.general.emoji}</span>`,
+		titleHtml: routeData.general.name,
+		subTitleHtml: `
+            <h6>${routeData.numbers.length} Number${routeData.numbers.length === 1 ? "" : "s"} Assigned</h6>
+            <h6>Agent ${agentData.general.emoji} ${agentData.general.name[BusinessDefaultLanguage]}</h6>
+        `,
+		descriptionHtml: routeData.general.description,
+		actionDropdownHtml: actionDropdownHtml,
+	});
 }
 
 function fillRouteList() {
@@ -179,48 +186,9 @@ function fillRouteList() {
 		routingListTable.append('<div class="col-12 none-routes-list-notice"><h6 class="text-center mt-5">No routes added yet...</h6></div>');
 	} else {
 		routes.forEach((route) => {
-			const element = createRouteListElement(route);
+			const element = createRouteListCardElement(route);
 			routingListTable.append($(element));
 		});
-	}
-}
-
-function SetRoutingCardDynamicWidth() {
-	if (!routingTab.hasClass("show")) return;
-
-	const anyRoutingCard = routingListTable.find(".routing-card");
-	if (anyRoutingCard.length > 0) {
-		const firstRoutingCard = anyRoutingCard.first();
-
-		const routingCardWidth = firstRoutingCard.innerWidth();
-
-		const routingCardLeftRightPadding = parseInt(firstRoutingCard.css("padding-left")) + parseInt(firstRoutingCard.css("padding-right"));
-		const routingCardIconWidthAndPadding = firstRoutingCard.find(".route-icon").innerWidth();
-
-		// .routing-card h4
-		const marginLeftForH4 = 20; // .routing-card h4 in style.css
-
-		const currentUsedUpSpace = routingCardLeftRightPadding + routingCardIconWidthAndPadding + marginLeftForH4;
-
-		let availableH4Space = routingCardWidth - currentUsedUpSpace;
-
-		if (availableH4Space < 5) {
-			availableH4Space = 5;
-		}
-
-		// .routing-card h5-info
-		let availableH5Space = routingCardWidth - routingCardLeftRightPadding;
-
-		// FINAL
-		$("#dynamicRoutingCardCSS").html(`
-            .routing-card .card-data {
-				width: ${availableH4Space}px;
-			}
-
-            .routing-card .h5-info {
-                width: ${availableH5Space}px;
-            }
-		`);
 	}
 }
 
@@ -1127,7 +1095,7 @@ function handleInboundRoutingURLRouting(subPath) {
 	}
 
 	const action = subPath[0];
-	const routingCard = telephonyCampaignsListContainer.find(`.routing-card[route-id="${action}"]`);
+	const routingCard = telephonyCampaignsListContainer.find(`.routing-card[data-item-id="${action}"]`);
 
 	if (action === 'new') {
 		if (!routingManagerTab.hasClass('show')) {
@@ -1291,8 +1259,14 @@ function initRoutingTab() {
 
 		routingListTable.on("click", ".routing-card", (event) => {
 			event.preventDefault();
+			event.stopPropagation();
 
-			const routeId = $(event.currentTarget).attr("route-id");
+			// check if target was button or its icon
+			if ($(event.target).closest(".dropdown").length != 0) {
+				return;
+			}
+
+			const routeId = $(event.currentTarget).attr("data-item-id");
 			ManageCurrentRouteData = BusinessFullData.businessApp.routings.find((route) => route.id === routeId);
 			currentRouteNumbersList = [...ManageCurrentRouteData.numbers];
 
@@ -1308,23 +1282,9 @@ function initRoutingTab() {
 			updateUrlForTab(`routings/${routeId}`);
 		});
 
-		$(window).resize(() => {
-			SetRoutingCardDynamicWidth();
-		});
-
-		$(document).on("containerResizeProgress", (event) => {
-			SetRoutingCardDynamicWidth();
-		});
-
 		$(document).on("tabShowing", function (event, data) {
 			if (data.tabId === 'routing-tab') {
 				handleInboundRoutingURLRouting(data.urlSubPath);
-			}
-		});
-
-		$(document).on("tabShown", function (event, data) {
-			if (data.tabId === 'routing-tab') {
-				SetRoutingCardDynamicWidth();
 			}
 		});
 
@@ -1885,14 +1845,14 @@ function initRoutingTab() {
 						BusinessFullData.businessApp.routings[existingDataIndex] = ManageCurrentRouteData;
 
 						// Update route in list
-						const routeListElement = routingListTable.find(`[route-id="${ManageCurrentRouteData.id}"]`);
-						routeListElement.parent().replaceWith(createRouteListElement(ManageCurrentRouteData));
+						const routeListElement = routingListTable.find(`[data-item-id="${ManageCurrentRouteData.id}"]`);
+						routeListElement.parent().replaceWith(createRouteListCardElement(ManageCurrentRouteData));
 					} else if (ManageRouteType === "new") {
 						// Add new route to business data
 						BusinessFullData.businessApp.routings.push(ManageCurrentRouteData);
 
 						// Add new route to list
-						const newRouteElement = $(createRouteListElement(ManageCurrentRouteData));
+						const newRouteElement = $(createRouteListCardElement(ManageCurrentRouteData));
 						routingListTable.append(newRouteElement);
 					}
 

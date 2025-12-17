@@ -249,75 +249,6 @@ a:focus {
 	padding: 0.4em 0.6em;
 }
 
-.new-business-type-card
-{
-	padding: 1.3em 1em;
-	background-color: var(--tcolor-lighter-green);
-	width: 100%;
-	border-radius: 10px;
-	color: var(--tcolor-dark);
-	transition: 0.15s ease-in-out;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	text-rendering: optimizeLegibility;
-	cursor: pointer;
-	z-index: 999;
-	position: relative;
-}
-
-.new-business-type-card p {
-	margin: 0;
-	font-weight: 500;
-	letter-spacing: 0;
-	font-size: 12px;
-}
-
-.new-business-type-card h4 {
-	margin: 0;
-	font-size: 20px;
-	margin-bottom: 6px;
-}
-
-.new-business-type-card i {
-	font-size: 30px;
-	background-color: var(--tcolor-light-green);
-	padding: 16px;
-	margin-right: 10px;
-	border-radius: 10px;
-	transition: 1.2s;
-}
-
-.new-business-type-card:not(.disabled):not(.active):hover {
-	transform: scale(1.02);
-	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
-}
-
-.new-business-type-card:not(.disabled):hover i {
-	rotate: 360deg;
-}
-
-.new-business-type-card.active {
-	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
-	background-color: var(--tcolor-light-green);
-	cursor: default;
-}
-
-.new-business-type-card.active i {
-	background-color: var(--tcolor-lighter-green);
-	rotate: 360deg;
-}
-
-.new-business-type-card.disabled {
-	background-color: #979797;
-	color: rgb(219, 219, 219);
-	cursor: default;
-}
-
-.new-business-type-card.disabled i {
-	background-color: #6e6e6e;
-	color: rgb(219, 219, 219);
-}
-
 @media screen and (max-width: 768px)
 {
 	#businessesListActions
@@ -331,125 +262,6 @@ a:focus {
 		margin-bottom: 12px !important;
 		width: 100% !important;
 	}
-}
-
-.business-card {
-	padding: 2em;
-	background-color: var(--tcolor-light-green);
-	width: 100%;
-	border-radius: 16px;
-	margin-bottom: 30px;
-	color: var(--tcolor-dark);
-	border: 3px solid var(--tcolor-lighter-green);
-	transition: 0.15s ease-in-out;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	text-rendering: optimizeLegibility;
-	cursor: pointer;
-	z-index: 999;
-	position: relative;
-	text-decoration: none;
-}
-
-.business-card img {
-	max-width: 100%;
-	width: 60px;
-	height: 60px;
-	object-fit: contain;
-	background-color: var(--tcolor-lighter-green);
-	border-radius: 10px;
-	padding: 8px;
-	transition: 1s;
-}
-
-.business-card h4 {
-	margin: 0;
-	margin-left: 20px;
-	font-weight: 700;
-	line-height: normal;
-	white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.business-card .h5-info {
-	margin-bottom: 0;
-	font-weight: 600;
-}
-
-.business-card .h5-info:not(:last-child) {
-	margin-bottom: 20px;
-}
-
-.business-card .h5-info i {
-	font-size: 26px;
-	vertical-align: middle;
-	width: 30px;
-}
-
-.business-card .h5-info span {
-	line-height: normal;
-	vertical-align: middle;
-}
-
-.business-card:hover {
-	transform: scale(1.02);
-	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
-}
-
-.business-card:hover,
-.business-card:active,
-.business-card:focus {
-	color: black !important;
-}
-
-.business-card:hover img {
-	transform: rotate(360deg);
-}
-
-.business-card .action-dropdown
-{
-	position: absolute !important;
-	top: 10px !important;
-	right: 10px !important;
-}
-
-.business-card .action-dropdown .dropdown-menu
-{
-	box-shadow: 0px 3px 10px 0px rgb(0 0 0 / 30%);
-	padding: 0;
-}
-
-.business-card .action-dropdown .dropdown-menu .dropdown-item
-{
-	border-radius: 6px !important;
-}
-
-.business-card .action-dropdown .dropdown-menu .dropdown-item.active, .business-card .action-dropdown .dropdown-menu .dropdown-item:active
-{
-	background-color: #3a3a3a;
-}
-
-.business-card .action-button::before
-{
-	display: none;
-}
-
-.business-card .action-button
-{
-	background-color: var(--tcolor-lighter-green);
-	color: #2a2a2a;
-	padding: 0px 4px;
-	transition: all 500ms;
-}
-
-.business-card .action-button:hover {
-	color: black;
-	background-color: var(--tcolor-dark-green);
-}
-
-.business-card .action-button i {
-	line-height: normal;
 }
 
 .nav .nav-item .nav-link {
@@ -844,130 +656,6 @@ table.table > thead > * > * {
 #contextProductInformationList {
 	max-height: 300px;
 	overflow-y: scroll;
-}
-
-.agent-card {
-	padding: 2em;
-	background-color: var(--tcolor-light-green);
-	width: 100%;
-	border-radius: 16px;
-	margin-bottom: 30px;
-	color: var(--tcolor-dark);
-	border: 3px solid var(--tcolor-lighter-green);
-	transition: 0.15s ease-in-out;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	text-rendering: optimizeLegibility;
-	cursor: pointer;
-	z-index: 9999;
-	position: relative;
-}
-
-.agent-card:hover {
-	transform: scale(1.02);
-	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
-}
-
-.agent-card .agent-icon {
-	max-width: 100%;
-	width: 60px;
-	text-align: center;
-	font-size: 28px;
-	background-color: var(--tcolor-lighter-green);
-	border-radius: 10px;
-	padding: 8px;
-	transition: 1s;
-}
-
-.agent-card:hover .agent-icon {
-	transform: rotate(360deg);
-}
-
-.agent-card h4 {
-	margin: 0;
-	margin-left: 20px;
-	font-weight: 700;
-	line-height: normal;
-	white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.agent-card .h5-info {
-	margin-bottom: 0;
-	font-weight: 600;
-	opacity: 0.7;
-	font-size: 18px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.routing-card {
-	padding: 2em;
-	background-color: var(--tcolor-light-green);
-	width: 100%;
-	border-radius: 16px;
-	margin-bottom: 30px;
-	color: var(--tcolor-dark);
-	border: 3px solid var(--tcolor-lighter-green);
-	transition: 0.15s ease-in-out;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	text-rendering: optimizeLegibility;
-	cursor: pointer;
-	z-index: 9999;
-	position: relative;
-}
-
-.routing-card:hover {
-	transform: scale(1.02);
-	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
-}
-
-.routing-card .route-icon {
-	max-width: 100%;
-	width: 60px;
-	text-align: center;
-	font-size: 28px;
-	background-color: var(--tcolor-lighter-green);
-	border-radius: 10px;
-	padding: 8px;
-	transition: 1s;
-}
-
-.routing-card:hover .route-icon {
-	transform: rotate(360deg);
-}
-
-.routing-card h4 {
-	margin: 0;
-	font-weight: 700;
-	line-height: normal;
-	white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.routing-card .h5-info {
-	margin-bottom: 0;
-	font-weight: 600;
-	opacity: 0.7;
-	font-size: 18px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.routing-card .card-data {
-	margin-left: 20px;
-}
-
-.routing-card .card-data h6 {
-	margin-bottom: 0px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
 
@@ -2350,157 +2038,6 @@ table.table > thead > * > * {
 	cursor: pointer;
 }
 
-.campaign-card
-{
-	padding: 2em;
-	background-color: var(--tcolor-light-green);
-	width: 100%;
-	border-radius: 16px;
-	margin-bottom: 30px;
-	color: var(--tcolor-dark);
-	border: 3px solid var(--tcolor-lighter-green);
-	transition: 0.15s ease-in-out;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	text-rendering: optimizeLegibility;
-	cursor: pointer;
-	z-index: 9999;
-	position: relative;
-}
-
-.campaign-card:hover
-{
-	transform: scale(1.02);
-	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
-}
-
-.campaign-card .route-icon
-{
-	max-width: 100%;
-	width: 60px;
-	text-align: center;
-	font-size: 28px;
-	background-color: var(--tcolor-lighter-green);
-	border-radius: 10px;
-	padding: 8px;
-	transition: 1s;
-}
-
-.campaign-card:hover .route-icon
-{
-	transform: rotate(360deg);
-}
-
-.campaign-card h4
-{
-	margin: 0;
-	font-weight: 700;
-	line-height: normal;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.campaign-card .h5-info
-{
-	margin-bottom: 0;
-	font-weight: 600;
-	opacity: 0.7;
-	font-size: 18px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.campaign-card .card-data
-{
-	margin-left: 20px;
-}
-
-.campaign-card .card-data h6
-{
-	margin-bottom: 0px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-
-.post-analysis-card
-{
-	padding: 2em;
-	background-color: var(--tcolor-light-green);
-	width: 100%;
-	border-radius: 16px;
-	margin-bottom: 30px;
-	color: var(--tcolor-dark);
-	border: 3px solid var(--tcolor-lighter-green);
-	transition: 0.15s ease-in-out;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	text-rendering: optimizeLegibility;
-	cursor: pointer;
-	z-index: 9999;
-	position: relative;
-}
-
-.post-analysis-card:hover
-{
-	transform: scale(1.02);
-	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
-}
-
-.post-analysis-card .route-icon
-{
-	max-width: 100%;
-	width: 60px;
-	text-align: center;
-	font-size: 28px;
-	background-color: var(--tcolor-lighter-green);
-	border-radius: 10px;
-	padding: 8px;
-	transition: 1s;
-}
-
-.post-analysis-card:hover .route-icon
-{
-	transform: rotate(360deg);
-}
-
-.post-analysis-card h4
-{
-	margin: 0;
-	font-weight: 700;
-	line-height: normal;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.post-analysis-card .h5-info
-{
-	margin-bottom: 0;
-	font-weight: 600;
-	opacity: 0.7;
-	font-size: 18px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.post-analysis-card .card-data
-{
-	margin-left: 20px;
-}
-
-.post-analysis-card .card-data h6
-{
-	margin-bottom: 0px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
 /**
 
  Custom Variable Input
@@ -2724,4 +2261,181 @@ table.table > thead > * > * {
 	margin-left: 5px;
 	cursor: pointer;
 	font-weight: bold;
+}
+
+/* Base Card Styles */
+.iqra-card {
+	padding: 2em;
+	background-color: var(--tcolor-light-green);
+	width: 100%;
+	border-radius: 16px;
+	margin-bottom: 30px;
+	color: var(--tcolor-dark);
+	border: 3px solid var(--tcolor-lighter-green);
+	transition: 0.15s ease-in-out;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+	cursor: pointer;
+	z-index: 999;
+	position: relative;
+	text-decoration: none;
+}
+
+.iqra-card.disabled {
+    opacity: 0.6;                 
+    pointer-events: none;         
+    cursor: not-allowed;          
+    filter: grayscale(100%);      
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.iqra-card:hover {
+	transform: scale(1.02);
+	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
+	text-decoration: none;
+}
+
+.iqra-card.iqra-card-link:hover,
+.iqra-card.iqra-card-link:active,
+.iqra-card.iqra-card-link:focus {
+	color: black !important;
+	text-decoration: none;
+}
+
+.iqra-card > div:not(.action-dropdown) {
+	width: 100%;
+	min-width: 0;
+}
+
+.iqra-card .iqra-card-header {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-start;
+	width: 100%;
+}
+
+.iqra-card .iqra-card-visual {
+	width: 60px;
+	height: 60px;
+	background-color: var(--tcolor-lighter-green);
+	border-radius: 10px;
+	padding: 8px;
+	transition: 1s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.iqra-card .iqra-card-visual img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	display: block;
+	border-radius: 6px;
+}
+
+.iqra-card .iqra-card-visual span,
+.iqra-card .iqra-card-visual i {
+	font-size: 28px;
+	line-height: 1;
+	text-align: center;
+	width: 100%;
+}
+
+.iqra-card:hover .iqra-card-visual {
+	transform: rotate(360deg);
+}
+
+.iqra-card .iqra-card-title,
+.iqra-card .card-data {
+	flex-grow: 1;
+	min-width: 0;
+}
+
+.iqra-card .iqra-card-title {
+	margin: 0;
+	margin-left: 20px;
+	font-weight: 700;
+	line-height: normal;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.iqra-card .card-data .iqra-card-title {
+	margin-left: 0;
+}
+
+.iqra-card .iqra-card-info-line {
+	margin-bottom: 0;
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: block;
+}
+
+.iqra-card .iqra-card-info-line.iqra-card-description {
+	opacity: 0.7;
+	font-size: 18px;
+	margin-top: 10px;
+}
+
+.iqra-card .card-data {
+	margin-left: 20px;
+	display: flex;
+	flex-direction: column;
+}
+
+.iqra-card .card-data h6 {
+	margin-bottom: 0px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.iqra-card .action-dropdown {
+	position: absolute !important;
+	top: 10px !important;
+	right: 10px !important;
+	z-index: 1000;
+}
+
+.iqra-card .action-dropdown .dropdown-menu {
+	box-shadow: 0px 3px 10px 0px rgb(0 0 0 / 30%);
+	padding: 0;
+}
+
+.iqra-card .action-dropdown .dropdown-menu .dropdown-item {
+	border-radius: 6px !important;
+}
+
+.iqra-card .action-dropdown .dropdown-menu .dropdown-item.active,
+.iqra-card .action-dropdown .dropdown-menu .dropdown-item:active {
+	background-color: #3a3a3a;
+}
+
+.iqra-card .action-button::before {
+	display: none;
+}
+
+.iqra-card .action-button {
+	background-color: var(--tcolor-lighter-green);
+	color: #2a2a2a;
+	padding: 0px 4px;
+	transition: all 500ms;
+}
+
+.iqra-card .action-button:hover {
+	color: black;
+	background-color: var(--tcolor-dark-green);
+}
+
+.iqra-card .action-button i {
+	line-height: normal;
 }

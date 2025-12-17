@@ -447,21 +447,30 @@ function showWebCampaignsManagerView() {
 function createWebCampaignListElement(campaignData) {
     const agentData = BusinessFullData.businessApp.agents.find((agent) => agent.id === campaignData.agent.selectedAgentId);
     const agentName = agentData ? `Agent: ${agentData.general.emoji} ${agentData.general.name[BusinessDefaultLanguage]}` : 'No Agent Assigned';
-
-    return `
-        <div class="col-lg-4 col-md-6 col-12">
-            <div class="campaign-card web-campaign-card d-flex flex-column align-items-start justify-content-center" data-campaign-id="${campaignData.id}">
-                <div class="d-flex flex-row align-items-center justify-content-start mb-4">
-                    <span class="route-icon">${campaignData.general.emoji}</span>
-                    <div class="card-data">
-                        <h4>${campaignData.general.name}</h4>
-                        <h6>${agentName}</h6>
-                    </div>
-                </div>
-                <div><h5 class="h5-info agent-description"><span>${campaignData.general.description}</span></h5></div>
-            </div>
+    const actionDropdownHtml = `
+        <div class="dropdown action-dropdown dropdown-menu-end">
+            <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <span class="dropdown-item text-danger" data-item-id="${campaignData.id}" button-type="delete-campaign">
+                        <i class="fa-solid fa-trash me-2"></i>Delete
+                    </span>
+                </li>
+            </ul>
         </div>
     `;
+
+    return createIqraCardElement({
+        id: campaignData.id,
+        type: 'web-campaign',
+        visualHtml: `<span>${campaignData.general.emoji}</span>`,
+        titleHtml: campaignData.general.name,
+        subTitleHtml: `<h6>${agentName}</h6>`,
+        descriptionHtml: campaignData.general.description,
+        actionDropdownHtml: actionDropdownHtml,
+    });
 }
 
 function fillWebCampaignsList() {
@@ -1188,7 +1197,7 @@ function handleWebCampaignRouting(subPath) {
     }
 
     const action = subPath[0];
-    const campaignCard = webCampaignsListContainer.find(`.campaign-card[data-campaign-id="${action}"]`);
+    const campaignCard = webCampaignsListContainer.find(`.campaign-card[data-item-id="${action}"]`);
 
     if (action === 'new') {
         if (!webCampaignsManagerView.hasClass('show')) {
@@ -1201,45 +1210,6 @@ function handleWebCampaignRouting(subPath) {
     } else {
         showWebCampaignsListView();
         replaceUrlForTab('webcampaigns');
-    }
-}
-
-function SetWebCampaignCardDynamicWidth() {
-    if (!webCampaignsTab.hasClass("show")) return;
-
-    const anyWebCampaignCard = webCampaignsListContainer.find(".web-campaign-card");
-    if (anyWebCampaignCard.length > 0) {
-        const firstWebCampaignCard = anyWebCampaignCard.first();
-
-        const webCampaignCardWidth = firstWebCampaignCard.innerWidth();
-
-        const webCampaignCardLeftRightPadding = parseInt(firstWebCampaignCard.css("padding-left")) + parseInt(firstWebCampaignCard.css("padding-right"));
-        const webCampaignCardIconWidthAndPadding = firstWebCampaignCard.find(".route-icon").innerWidth();
-
-        // .campaign-card h4
-        const marginLeftForH4 = 20; // .campaign-card h4 in style.css
-
-        const currentUsedUpSpace = webCampaignCardLeftRightPadding + webCampaignCardIconWidthAndPadding + marginLeftForH4;
-
-        let availableH4Space = webCampaignCardWidth - currentUsedUpSpace;
-
-        if (availableH4Space < 5) {
-            availableH4Space = 5;
-        }
-
-        // .campaign-card h5-info
-        let availableH5Space = webCampaignCardWidth - webCampaignCardLeftRightPadding;
-
-        // FINAL
-        $("#dynamicWebCampaignCardCSS").html(`
-            .web-campaign-card .card-data {
-				width: ${availableH4Space}px;
-			}
-
-            .web-campaign-card .h5-info {
-                width: ${availableH5Space}px;
-            }
-		`);
     }
 }
 
@@ -1624,23 +1594,9 @@ function initWebCampaignsTab() {
         });
 
         /** Event Handlers **/
-        $(window).resize(() => {
-            SetWebCampaignCardDynamicWidth();
-        });
-
-        $(document).on("containerResizeProgress", (event) => {
-            SetWebCampaignCardDynamicWidth();
-        })
-
         $(document).on("tabShowing", function (event, data) {
             if (data.tabId === 'web-campaigns-tab') {
                 handleWebCampaignRouting(data.urlSubPath);
-            }
-        });
-
-        $(document).on("tabShown", function (event, data) {
-            if (data.tabId === 'web-campaigns-tab') {
-                SetWebCampaignCardDynamicWidth();
             }
         });
 
@@ -1665,15 +1621,25 @@ function initWebCampaignsTab() {
 
         webCampaignsListContainer.on("click", ".campaign-card", (e) => {
             e.preventDefault();
-            const campaignId = $(e.currentTarget).attr("data-campaign-id");
+            e.stopPropagation();
+
+            // check if target was button or its icon
+            if ($(event.target).closest(".dropdown").length != 0) {
+                return;
+            }
+
+            const campaignId = $(e.currentTarget).attr("data-item-id");
             const campaignData = BusinessFullData.businessApp.webCampaigns.find(c => c.id === campaignId);
             if (!campaignData) return;
 
             currentWebCampaignData = JSON.parse(JSON.stringify(campaignData));
             webCampaignManagerNameBreadcrumb.text(currentWebCampaignData.general.name);
+
             resetWebCampaignManager();
             fillWebCampaignManager();
+
             manageWebCampaignType = "edit";
+
             showWebCampaignsManagerView();
             updateUrlForTab(`webcampaigns/${campaignId}`);
         });

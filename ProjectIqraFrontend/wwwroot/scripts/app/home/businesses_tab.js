@@ -74,27 +74,26 @@ function MoveToBusinessPage(BusinessId) {
 }
 
 function CreateUserBusinessCard(businessData) {
-	let element = `
-                <div class="col-lg-4 col-md-6 col-12">
-                    <a href="/business/${businessData.id}" class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}" style="z-index: ${lastBusinessCardIndex--};">
-						<div class="dropdown action-dropdown dropdown-menu-end">
-							<button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false"><i class="fa-solid fa-ellipsis"></i></button>
-							<ul class="dropdown-menu">
-								<li>
-									<span class="dropdown-item text-danger" data-business-id="${businessData.id}" button-type="delete-business"><i class="fa-solid fa-trash me-2"></i>Delete</span>
-								</li>
-							</ul>
-						</div>
-						
-						<div class="d-flex flex-row align-items-center justify-content-start">
-                            <img src="${businessData.logoUrl}">
-                            <h4>${businessData.name}</h4>
-                        </div>
-                    </a>
-                </div>
-            `;
+	const actionDropdownHtml = `
+        <div class="dropdown action-dropdown dropdown-menu-end">
+            <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false"><i class="fa-solid fa-ellipsis"></i></button>
+            <ul class="dropdown-menu">
+                <li>
+                    <span class="dropdown-item text-danger" data-item-id="${businessData.id}" button-type="delete-business"><i class="fa-solid fa-trash me-2"></i>Delete</span>
+                </li>
+            </ul>
+        </div>
+    `;
 
-	return $(element);
+	return createIqraCardElement({
+		id: businessData.id,
+		type: 'business',
+		href: `/business/${businessData.id}`,
+		zIndex: lastBusinessCardIndex--,
+		visualHtml: `<img src="${businessData.logoUrl}" alt="${businessData.name} logo">`,
+		titleHtml: businessData.name,
+		actionDropdownHtml: actionDropdownHtml,
+	});
 }
 
 function ValidateAddNewBusinessModal(enableDisableButton = false) {
@@ -138,33 +137,6 @@ function FillAddNewBusinessModalDefaults() {
 	});
 }
 
-function SetBusinessCardH4Width() {
-	const anyBusinessCard = BusinessesList.find(".business-card");
-	if (anyBusinessCard.length > 0) {
-		const firstBusinessCard = anyBusinessCard.first();
-
-		const businessCardWidth = firstBusinessCard.innerWidth();
-
-		const businessCardLeftRightPadding = parseInt(firstBusinessCard.css("padding-left")) + parseInt(firstBusinessCard.css("padding-right"));
-		const businessCardImageWidthAndPadding = firstBusinessCard.find("img").innerWidth();
-		const marginLeftForH4 = 20; // .business-card h4 in style.css
-
-		const currentUsedUpSpace = businessCardLeftRightPadding + businessCardImageWidthAndPadding + marginLeftForH4;
-
-		let availableH4Space = businessCardWidth - currentUsedUpSpace;
-
-		if (availableH4Space < 5) {
-            availableH4Space = 5;
-		}
-
-		$("#dynamicBusinessCardH4CSS").html(`
-            .business-card h4 {
-				width: ${availableH4Space}px;
-			}
-		`);
-    }
-}
-
 /** Search Functions **/
 function performBusinessSearch(searchTerm) {
 	const trimmedSearchTerm = searchTerm.trim().toLowerCase();
@@ -190,7 +162,7 @@ function performBusinessSearch(searchTerm) {
 	// Animate out non-matching cards
 	BusinessesList.find('.business-card').each(function () {
 		const card = $(this);
-		const businessId = card.attr('data-business-id');
+		const businessId = card.attr('data-item-id');
 		const isMatch = filteredBusinesses.some(business => business.id == businessId);
 
 		if (!isMatch) {
@@ -204,7 +176,7 @@ function performBusinessSearch(searchTerm) {
 	setTimeout(() => {
 		BusinessesList.find('.business-card').each(function () {
 			const card = $(this);
-			const businessId = card.attr('data-business-id');
+			const businessId = card.attr('data-item-id');
 			const isMatch = filteredBusinesses.some(business => business.id == businessId);
 
 			if (isMatch && !card.parent().is(':visible')) {
@@ -292,17 +264,8 @@ function InitBusinessesTab() {
 	// Init
 	FillBusinessList();
 	FillAddNewBusinessModalDefaults();
-	SetBusinessCardH4Width();
 
 	// Event Handlers
-	$(window).resize(() => {
-		SetBusinessCardH4Width();
-	});
-
-	$(document).on("containerResizeProgress", (event) => {
-        SetBusinessCardH4Width();
-	})
-
 	BusinessesList.on("click", ".business-card", (event) => {
 		event.preventDefault();
 		event.stopPropagation();
@@ -313,7 +276,7 @@ function InitBusinessesTab() {
         }
 
 		let currentCardElement = $(event.currentTarget);
-		let businessDataId = currentCardElement.attr("data-business-id");
+		let businessDataId = currentCardElement.attr("data-item-id");
 
 		if (!businessDataId || !businessDataId.length) {
 			return;
@@ -356,7 +319,7 @@ function InitBusinessesTab() {
 		}
 
         let currentCardElement = $(event.currentTarget);
-		let businessDataId = currentCardElement.attr("data-business-id");
+		let businessDataId = currentCardElement.attr("data-item-id");
 
 		var businessData = CurrentBusinessesList.find((business) => business.id == businessDataId);
 
@@ -382,7 +345,7 @@ function InitBusinessesTab() {
 				var businessIndex = CurrentBusinessesList.findIndex((business) => business.id == businessDataId);
 				CurrentBusinessesList.splice(businessIndex, 1);
 
-				BusinessesList.find(`.business-card[data-business-id=${businessDataId}]`).parent().remove();
+				BusinessesList.find(`.business-card[data-item-id=${businessDataId}]`).parent().remove();
 
 				if (isSearchActive) {
 					performBusinessSearch(searchBusinessInput.val());
@@ -479,7 +442,6 @@ function InitBusinessesTab() {
 				addNewBusinessButton.prop("disabled", false);
 				addNewBusinessButtonSpinner.addClass("d-none");
 				addNewBusinessModal.modal("hide");
-				SetBusinessCardH4Width();
 			},
 			(businessError) => {
 				AlertManager.createAlert({

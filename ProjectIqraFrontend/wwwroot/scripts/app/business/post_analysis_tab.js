@@ -141,7 +141,7 @@ function fillPCAList() {
         pcaListContainer.append('<div class="col-12"><h6 class="text-center mt-5">No analysis templates created yet...</h6></div>');
     } else {
         templates.forEach(template => {
-            pcaListContainer.append($(createPCAListElement(template)));
+            pcaListContainer.append($(createPCAListCardElement(template)));
         });
     }
 }
@@ -369,7 +369,7 @@ function handlePCARouting(subPath) {
     }
 
     const action = subPath[0];
-    const postAnalysisCard = pcaListContainer.find(`.post-analysis-card[data-template-id="${action}"]`);
+    const postAnalysisCard = pcaListContainer.find(`.post-analysis-card[data-item-id="${action}"]`);
 
     if (action === 'new') {
         if (!pcaManagerView.hasClass('show')) {
@@ -382,44 +382,6 @@ function handlePCARouting(subPath) {
     } else {
         showPCAListView();
         replaceUrlForTab('postanalysis');
-    }
-}
-function SetPostAnalysisCardDynamicWidth() {
-    if (!postAnalysisTab.hasClass("show")) return;
-
-    const anyPostAnalysisCard = pcaListContainer.find(".post-analysis-card");
-    if (anyPostAnalysisCard.length > 0) {
-        const firstPostAnalysisCard = anyPostAnalysisCard.first();
-
-        const postAnalysisCardWidth = firstPostAnalysisCard.innerWidth();
-
-        const postAnalysisCardLeftRightPadding = parseInt(firstPostAnalysisCard.css("padding-left")) + parseInt(firstPostAnalysisCard.css("padding-right"));
-        const postAnalysisIconWidthAndPadding = firstPostAnalysisCard.find(".route-icon").innerWidth();
-
-        // .campaign-card h4
-        const marginLeftForH4 = 20; // .campaign-card h4 in style.css
-
-        const currentUsedUpSpace = postAnalysisCardLeftRightPadding + postAnalysisIconWidthAndPadding + marginLeftForH4;
-
-        let availableH4Space = postAnalysisCardWidth - currentUsedUpSpace;
-
-        if (availableH4Space < 5) {
-            availableH4Space = 5;
-        }
-
-        // .campaign-card h5-info
-        let availableH5Space = postAnalysisCardWidth - postAnalysisCardLeftRightPadding;
-
-        // FINAL
-        $("#dynamicPostAnalysisCardCSS").html(`
-            .post-analysis-card .card-data {
-				width: ${availableH4Space}px;
-			}
-
-            .post-analysis-card .h5-info {
-                width: ${availableH5Space}px;
-            }
-		`);
     }
 }
 
@@ -962,19 +924,30 @@ function renderPCAFieldOptionsContainer($selectElement) {
 }
 
 // DYNAMIC ELEMENT CREATORS
-function createPCAListElement(templateData) {
-    return `
-        <div class="col-lg-4 col-md-6 col-12">
-            <div class="post-analysis-card d-flex flex-column align-items-start justify-content-center" data-template-id="${templateData.id}">
-                 <div class="d-flex flex-row align-items-center justify-content-start mb-4">
-                    <span class="route-icon">${templateData.general.emoji}</span>
-                    <div class="card-data">
-                        <h4>${templateData.general.name}</h4>
-                    </div>
-                </div>
-                <div><h5 class="h5-info agent-description"><span>${templateData.general.description}</span></h5></div>
-            </div>
-        </div>`;
+function createPCAListCardElement(templateData) {
+    const actionDropdownHtml = `
+        <div class="dropdown action-dropdown dropdown-menu-end">
+            <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <span class="dropdown-item text-danger" data-item-id="${templateData.id}" button-type="delete-template">
+                        <i class="fa-solid fa-trash me-2"></i>Delete
+                    </span>
+                </li>
+            </ul>
+        </div>
+    `;
+
+    return createIqraCardElement({
+        id: templateData.id,
+        type: 'post-analysis',
+        visualHtml: `<span>${templateData.general.emoji}</span>`,
+        titleHtml: templateData.general.name,
+        descriptionHtml: templateData.general.description,
+        actionDropdownHtml: actionDropdownHtml,
+    });
 }
 function createPCATagElement(tagData, level) {
     const data = tagData || {};
@@ -1346,23 +1319,9 @@ function initPostAnalysisTab() {
     // Event Handlers
     initPCAManagerEventHandlers();
 
-    $(window).resize(() => {
-        SetPostAnalysisCardDynamicWidth();
-    });
-
-    $(document).on("containerResizeProgress", (event) => {
-        SetPostAnalysisCardDynamicWidth();
-    })
-
     $(document).on("tabShowing", function (event, data) {
         if (data.tabId === 'post-analysis-tab') {
             handlePCARouting(data.urlSubPath);
-        }
-    });
-
-    $(document).on("tabShown", function (event, data) {
-        if (data.tabId === 'post-analysis-tab') {
-            SetPostAnalysisCardDynamicWidth();
         }
     });
 
@@ -1388,7 +1347,7 @@ function initPostAnalysisTab() {
 
     pcaListContainer.on('click', '.post-analysis-card', (e) => {
         e.preventDefault();
-        const templateId = $(e.currentTarget).attr('data-template-id');
+        const templateId = $(e.currentTarget).attr('data-item-id');
         const templateData = BusinessFullData.businessApp.postAnalysis.find(t => t.id === templateId);
         if (!templateData) return;
 

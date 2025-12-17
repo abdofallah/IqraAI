@@ -805,24 +805,33 @@ function showTelephonyCampaignsManagerView() {
     }, 300);
 }
 
-function createTelephonyCampaignListElement(campaignData) {
+function createTelephonyCampaignListCardElement(campaignData) {
     const agentData = BusinessFullData.businessApp.agents.find((agent) => agent.id === campaignData.agent.selectedAgentId);
     const agentName = agentData ? `Agent: ${agentData.general.emoji} ${agentData.general.name[BusinessDefaultLanguage]}` : 'No Agent Assigned';
-
-    return `
-        <div class="col-lg-4 col-md-6 col-12">
-            <div class="campaign-card telephony-campaign-card d-flex flex-column align-items-start justify-content-center" data-campaign-id="${campaignData.id}">
-                <div class="d-flex flex-row align-items-center justify-content-start mb-4">
-                    <span class="route-icon">${campaignData.general.emoji}</span>
-                    <div class="card-data">
-                        <h4>${campaignData.general.name}</h4>
-                        <h6>${agentName}</h6>
-                    </div>
-                </div>
-                <div><h5 class="h5-info agent-description"><span>${campaignData.general.description}</span></h5></div>
-            </div>
+    const actionDropdownHtml = `
+        <div class="dropdown action-dropdown dropdown-menu-end">
+            <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <span class="dropdown-item text-danger" data-item-id="${campaignData.id}" button-type="delete-campaign">
+                        <i class="fa-solid fa-trash me-2"></i>Delete
+                    </span>
+                </li>
+            </ul>
         </div>
     `;
+
+    return createIqraCardElement({
+        id: campaignData.id,
+        type: 'telephony-campaign',
+        visualHtml: `<span>${campaignData.general.emoji}</span>`,
+        titleHtml: campaignData.general.name,
+        subTitleHtml: `<h6>${agentName}</h6>`,
+        descriptionHtml: campaignData.general.description,
+        actionDropdownHtml: actionDropdownHtml,
+    });
 }
 
 function fillTelephonyCampaignsList() {
@@ -832,7 +841,7 @@ function fillTelephonyCampaignsList() {
         telephonyCampaignsListContainer.append('<div class="col-12"><h6 class="text-center mt-5">No telephony campaigns created yet...</h6></div>');
     } else {
         telephonyCampaigns.forEach(campaign => {
-            telephonyCampaignsListContainer.append($(createTelephonyCampaignListElement(campaign)));
+            telephonyCampaignsListContainer.append($(createTelephonyCampaignListCardElement(campaign)));
         });
     }
 }
@@ -1823,7 +1832,7 @@ function handleTelephonyCampaignRouting(subPath) {
     }
 
     const action = subPath[0];
-    const campaignCard = telephonyCampaignsListContainer.find(`.campaign-card[data-campaign-id="${action}"]`);
+    const campaignCard = telephonyCampaignsListContainer.find(`.campaign-card[data-item-id="${action}"]`);
 
     if (action === 'new') {
         if (!telephonyCampaignsManagerView.hasClass('show')) {
@@ -1836,45 +1845,6 @@ function handleTelephonyCampaignRouting(subPath) {
     } else {
         showTelephonyCampaignsListView();
         replaceUrlForTab('telephonycampaigns');
-    }
-}
-
-function SetTelephonyCampaignCardDynamicWidth() {
-    if (!telephonyCampaignsTab.hasClass("show")) return;
-
-    const anyTelephonyCampaignCard = telephonyCampaignsListContainer.find(".telephony-campaign-card");
-    if (anyTelephonyCampaignCard.length > 0) {
-        const firstTelephonyCampaignCard = anyTelephonyCampaignCard.first();
-
-        const telephonyCampaignCardWidth = firstTelephonyCampaignCard.innerWidth();
-
-        const telephonyCampaignCardLeftRightPadding = parseInt(firstTelephonyCampaignCard.css("padding-left")) + parseInt(firstTelephonyCampaignCard.css("padding-right"));
-        const telephonyCampaignCardIconWidthAndPadding = firstTelephonyCampaignCard.find(".route-icon").innerWidth();
-
-        // .campaign-card h4
-        const marginLeftForH4 = 20; // .campaign-card h4 in style.css
-
-        const currentUsedUpSpace = telephonyCampaignCardLeftRightPadding + telephonyCampaignCardIconWidthAndPadding + marginLeftForH4;
-
-        let availableH4Space = telephonyCampaignCardWidth - currentUsedUpSpace;
-
-        if (availableH4Space < 5) {
-            availableH4Space = 5;
-        }
-
-        // .campaign-card h5-info
-        let availableH5Space = telephonyCampaignCardWidth - telephonyCampaignCardLeftRightPadding;
-
-        // FINAL
-        $("#dynamicTelephonyCampaignCardCSS").html(`
-            .telephony-campaign-card .card-data {
-				width: ${availableH4Space}px;
-			}
-
-            .telephony-campaign-card .h5-info {
-                width: ${availableH5Space}px;
-            }
-		`);
     }
 }
 
@@ -2577,23 +2547,9 @@ function initTelephonyCampaignsTab() {
         });
 
         /** Event Handlers **/
-        $(window).resize(() => {
-            SetTelephonyCampaignCardDynamicWidth();
-        });
-
-        $(document).on("containerResizeProgress", (event) => {
-            SetTelephonyCampaignCardDynamicWidth();
-        });
-
         $(document).on("tabShowing", function (event, data) {
             if (data.tabId === 'telephony-campaigns-tab') {
                 handleTelephonyCampaignRouting(data.urlSubPath);
-            }
-        });
-
-        $(document).on("tabShown", function (event, data) {
-            if (data.tabId === 'telephony-campaigns-tab') {
-                SetTelephonyCampaignCardDynamicWidth();
             }
         });
 
@@ -2618,14 +2574,25 @@ function initTelephonyCampaignsTab() {
 
         telephonyCampaignsListContainer.on("click", ".campaign-card", (e) => {
             e.preventDefault();
-            const campaignId = $(e.currentTarget).attr("data-campaign-id");
+            e.stopPropagation();
+
+            // check if target was button or its icon
+            if ($(event.target).closest(".dropdown").length != 0) {
+                return;
+            }
+
+            const campaignId = $(e.currentTarget).attr("data-item-id");
             const campaignData = BusinessFullData.businessApp.telephonyCampaigns.find(c => c.id === campaignId);
             if (!campaignData) return;
+
             currentTelephonyCampaignData = JSON.parse(JSON.stringify(campaignData)); // Deep copy
             telephonyCampaignManagerNameBreadcrumb.text(currentTelephonyCampaignData.general.name);
+
             resetTelephonyCampaignManager();
             fillTelephonyCampaignManager();
+
             manageTelephonyCampaignType = "edit";
+
             showTelephonyCampaignsManagerView();
             updateUrlForTab(`telephonycampaigns/${campaignId}`);
         });

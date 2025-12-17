@@ -154,9 +154,10 @@ async function deleteBusinessNumberHandler(event) {
 
 	const confirmDialog = new BootstrapConfirmDialog({
 		title: `Delete ${numberProviderName} Number`,
-		message: `Are you sure you want to delete this ${numberProviderName} Trunking number?${DeleteNumberNoteMessage}`,
+		message: `Are you sure you want to delete this ${numberProviderName} number?${DeleteNumberNoteMessage}`,
 		confirmText: "Delete",
-		confirmButtonClass: "btn-danger"
+		confirmButtonClass: "btn-danger",
+		modalClass: "modal-lg"
 	});
 
 	if (await confirmDialog.show()) {

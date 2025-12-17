@@ -28,6 +28,7 @@ let manageAgentsLanguageDropdown = null;
 let AgentBackgroundAudioWaveSurfer = null;
 
 let IsSavingAgentTab = false;
+let IsDeletingAgentTab = false;
 
 // Integration Configuration Manager
 let agentSTTIntegrationManager = null;
@@ -195,7 +196,7 @@ const agentBackgroundAudioVolumeInput = agentBackgroundAudioBox.find("#agentBack
 /** API FUNCTIONS **/
 
 function SaveBusinessAgent(formData, onSuccess, onError) {
-	$.ajax({
+	return $.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/agents/save`,
 		method: "POST",
 		data: formData,
@@ -212,6 +213,22 @@ function SaveBusinessAgent(formData, onSuccess, onError) {
 			onError(error, false);
 		},
 	});
+}
+function DeleteBusinessAgent(agentId, onSuccess, onError) {
+    return $.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/agents/${agentId}/delete`,
+		method: "POST",
+        success: (response) => {
+            if (response.success) {
+                onSuccess(response);
+            } else {
+                onError(response, true);
+            }
+        },
+        error: (error) => {
+            onError(error, false);
+        },
+    });
 }
 
 /** Functions **/
@@ -756,24 +773,30 @@ function ValidateAgentTab(onlyRemove = true) {
 	return { isValid, errors };
 }
 
-function CreateAgentsTableElement(agentData) {
-	const element = `
-		<div class="col-lg-4 col-md-6 col-12">
-			<div class="agent-card d-flex flex-column align-items-start justify-content-center" data-agent-id="${agentData.id}">
-				<div class="d-flex flex-row align-items-center justify-content-start mb-4">
-					<span class="agent-icon">${agentData.general.emoji}</span>
-					<h4>${agentData.general.name[BusinessDefaultLanguage]}</h4>
-				</div>
-				<div>
-					<h5 class="h5-info agent-description">
-						<span>${agentData.general.description[BusinessDefaultLanguage]}</span>
-					</h5>
-				</div>
-			</div>
-		</div>
-	`;
+function CreateAgentsCardElement(agentData) {
+	const actionDropdownHtml = `
+        <div class="dropdown action-dropdown dropdown-menu-end">
+            <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <span class="dropdown-item text-danger" data-item-id="${agentData.id}" button-type="delete-agent">
+                        <i class="fa-solid fa-trash me-2"></i>Delete
+                    </span>
+                </li>
+            </ul>
+        </div>
+    `;
 
-	return element;
+	return createIqraCardElement({
+		id: agentData.id,
+		type: 'agent',
+		visualHtml: `<span>${agentData.general.emoji}</span>`,
+		titleHtml: agentData.general.name[BusinessDefaultLanguage],
+		descriptionHtml: agentData.general.description[BusinessDefaultLanguage],
+		actionDropdownHtml: actionDropdownHtml,
+	});
 }
 
 function FillAgentsListTab() {
@@ -785,7 +808,7 @@ function FillAgentsListTab() {
 	}
 
 	agents.forEach((agent) => {
-		const element = CreateAgentsTableElement(agent);
+		const element = CreateAgentsCardElement(agent);
 		agentsListTable.append(element);
 	});
 }
@@ -800,45 +823,6 @@ function FillAgentsManagerTab() {
 	fillIntegrationsFromAgentData();
 	fillAgentCacheTab();
 	fillAgentSettingsTab();
-}
-
-function SetAgentCardDynamicWidth() {
-	if (!agentTab.hasClass("show")) return;
-
-	const anyAgentCard = agentsListTable.find(".agent-card");
-	if (anyAgentCard.length > 0) {
-		const firstAgentCard = anyAgentCard.first();
-
-		const agentCardWidth = firstAgentCard.innerWidth();
-
-		const agentCardLeftRightPadding = parseInt(firstAgentCard.css("padding-left")) + parseInt(firstAgentCard.css("padding-right"));
-		const agentCardIconWidthAndPadding = firstAgentCard.find(".agent-icon").innerWidth();
-
-		// .agent-card h4
-		const marginLeftForH4 = 20; // .agent-card h4 in style.css
-
-		const currentUsedUpSpace = agentCardLeftRightPadding + agentCardIconWidthAndPadding + marginLeftForH4;
-
-		let availableH4Space = agentCardWidth - currentUsedUpSpace;
-
-		if (availableH4Space < 5) {
-			availableH4Space = 5;
-		}
-
-		// .agent-card h5-info
-		let availableH5Space = agentCardWidth - agentCardLeftRightPadding;
-
-		// FINAL
-		$("#dynamicAgentCardCSS").html(`
-            .agent-card h4 {
-				width: ${availableH4Space}px;
-			}
-
-            .agent-card .h5-info {
-                width: ${availableH5Space}px;
-            }
-		`);
-	}
 }
 
 // General Tab Functions
@@ -2212,7 +2196,6 @@ function initAgentTab() {
 	$(document).ready(() => {
 		// Init
 		FillAgentsListTab();
-		SetAgentCardDynamicWidth();
 
 		manageAgentsLanguageDropdown = new MultiLanguageDropdown("agentsManagerMultiLanguageContainer", BusinessFullLanguagesData);
 
@@ -2327,7 +2310,12 @@ function initAgentTab() {
 			event.stopPropagation();
 			event.preventDefault();
 
-			const agentId = $(event.currentTarget).attr("data-agent-id");
+			// check if target was button or its icon
+			if ($(event.target).closest(".dropdown").length != 0) {
+				return;
+			}
+
+			const agentId = $(event.currentTarget).attr("data-item-id");
 			CurrentManageAgentData = BusinessFullData.businessApp.agents.find((a) => a.id === agentId);
 
 			currentAgentName.text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
@@ -2340,6 +2328,79 @@ function initAgentTab() {
 			ManageAgentType = "edit";
 
 			validateAgentMultiLanguageElements();
+		});
+
+		agentsListTable.on("click", ".agent-card span[button-type='delete-agent']", async (event) => {
+			event.preventDefault();
+
+			const button = $(event.currentTarget);
+			const agentId = button.attr("data-item-id");
+			const agentIndex = BusinessFullData.businessApp.agents.findIndex(n => n.id === agentId);
+			if (agentIndex === -1) return;
+			const agentData = BusinessFullData.businessApp.agents[agentIndex];
+			if (!agentData) return;
+			const agentCard = agentsListTable.find(`.agent-card[data-item-id="${agentId}"]`);
+
+			if (IsDeletingAgentTab) {
+				AlertManager.createAlert({
+					type: "warning",
+					message: `A delete operation for agent is already in progress. Please try again once the operation is complete.`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			const confirmDialog = new BootstrapConfirmDialog({
+				title: `Delete "${agentData.general.name[BusinessDefaultLanguage]}" Agent`,
+				message: `Are you sure you want to delete this agent?<br><br><b>Note:</b> You must remove any references to this agent (script transfer to agent, inbound route, telephony/web campaigns) and wait or cancel any ongoing call queues or conversations.`,
+				confirmText: "Delete",
+				confirmButtonClass: "btn-danger",
+				modalClass: "modal-lg"
+			});
+
+			if (await confirmDialog.show()) {
+				showHideButtonSpinnerWithDisableEnable(button, true);
+				IsDeletingAgentTab = true;
+				agentCard.addClass("disabled");
+
+				DeleteBusinessAgent(
+					agentId,
+					() => {
+						
+						BusinessFullData.businessApp.agents.splice(agentIndex, 1);
+
+						agentCard.remove();
+
+						if (BusinessFullData.businessApp.agents.length === 0) {
+                            agentsListTable.append('<div class="col-12 none-agents-list-notice"><h6 class="text-center mt-5">No agents added yet...</h6></div>');
+                        }
+
+						AlertManager.createAlert({
+							type: "success",
+							message: `Agent "${agentData.general.name[BusinessDefaultLanguage]}" deleted successfully.`,
+							timeout: 6000,
+						});
+					},
+					(errorResult) => {
+						agentCard.removeClass("disabled");
+
+						var resultMessage = "Check console logs for more details.";
+						if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+						AlertManager.createAlert({
+							type: "danger",
+							message: "Error occured while deleting business agent.",
+							resultMessage: resultMessage,
+							timeout: 6000,
+						});
+
+						console.log("Error occured while deleting business agent: ", errorResult);
+					}
+				).always(() => {
+					showHideButtonSpinnerWithDisableEnable(button, false);
+					IsDeletingAgentTab = false;
+				});
+			}
 		});
 
 		$("#nav-bar").on("tabChange", async (event) => {
@@ -2359,14 +2420,6 @@ function initAgentTab() {
 				event.preventDefault();
 			}
 		});
-
-		$(window).resize(() => {
-			SetAgentCardDynamicWidth();
-		});
-
-		$(document).on("containerResizeProgress", (event) => {
-			SetAgentCardDynamicWidth();
-		})
 
 		// General Tab Handlers
 		function initAgentGeneralTabHandlers() {
@@ -2975,7 +3028,7 @@ function initAgentTab() {
 						const exisitingDataIndex = BusinessFullData.businessApp.agents.findIndex((agent) => agent.id === CurrentManageAgentData.id);
 						BusinessFullData.businessApp.agents[exisitingDataIndex] = CurrentManageAgentData;
 
-						agentsListTable.find(`[agent-id="${CurrentManageAgentData.id}"]`).find(".agent-name").text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
+						agentsListTable.find(`.agent-card[data-item-id="${CurrentManageAgentData.id}"]`).find(".agent-name").text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
 					} else if (ManageAgentType === "new") {
 						BusinessFullData.businessApp.agents.push(CurrentManageAgentData);
 
@@ -2984,7 +3037,7 @@ function initAgentTab() {
 							noneAgentNotice.remove();
 						}
 
-						agentsListTable.prepend($(CreateAgentsTableElement(CurrentManageAgentData)));
+						agentsListTable.prepend($(CreateAgentsCardElement(CurrentManageAgentData)));
 					}
 
 					if (agentBackgroundAudioUploadInput[0].files.length > 0) {
