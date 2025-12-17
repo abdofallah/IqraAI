@@ -580,7 +580,7 @@ function checkScriptTabHasChanges(enableDisableButton = true, compileConversatio
 				pushNewNode.config = newScriptNodeData.config;
 
 				if (oldNodeIndex !== -1) {
-					if (oldNode.toolId !== newScriptNodeData.toolId || JSON.stringify(oldNode.config) !== JSON.stringify(newScriptNodeData.config)) {
+					if (oldNode.toolId !== newScriptNodeData.toolId || JSON.stringify(oldNode.config ?? {}) !== JSON.stringify(newScriptNodeData.config)) {
 						hasChanges = true;
 						if (!compileConversationChanges) break;
 					}
