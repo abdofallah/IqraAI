@@ -44,6 +44,82 @@ namespace IqraInfrastructure.Managers.Business
             return await _businessAppRepository.GetScriptById(businessId, scriptId);
         }
 
+        // Deleting Script
+        public async Task<FunctionReturnResult> DeleteScript(long businessId, BusinessAppScript scriptData)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                if (scriptData.InboundRoutingReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteScript:INBOUND_ROUTING_REFERENCES",
+                        "Cannot delete script with inbound routing references."
+                    );
+                }
+
+                // TODO: check any ongoing inbound routing queues or its conversations
+                // too complex, would rather let the queue or conversation fail
+
+                if (scriptData.TelephonyCampaignReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteScript:TELEPHONY_CAMPAIGN_REFERENCES",
+                        "Cannot delete script with telephony campaign references."
+                    );
+                }
+
+                // TODO: check any ongoing telephony campaigns queues or its conversations
+                // too complex, would rather let the queue or conversation fail
+
+                if (scriptData.WebCampaignReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteScript:WEB_CAMPAIGN_REFERENCES",
+                        "Cannot delete script with web campaign references."
+                    );
+                }
+
+                // TODO: check any ongoing web campaigns queues or its conversations
+                // too complex, would rather let the queue or conversation fail
+
+                if (scriptData.ScriptAddScriptNodeReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteScript:SCRIPT_ADD_SCRIPT_NODE_REFERENCES",
+                        "Cannot delete script with script add script node references."
+                    );
+                }
+
+                if (scriptData.ScriptTransferToScriptNodeReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteScript:SCRIPT_TRANSFER_TO_SCRIPT_NODE_REFERENCES",
+                        "Cannot delete script with script transfer to script node references."
+                    );
+                }
+
+                var deleteResult = await _businessAppRepository.DeleteScript(businessId, scriptData.Id);
+                if (!deleteResult)
+                {
+                    return result.SetFailureResult(
+                        "DeleteScript:DELETE_SCRIPT",
+                        "Failed to delete script in db."
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeleteScript:EXCEPTION",
+                    $"An error occurred: {ex.Message}"
+                );
+            }
+        }
+
         // SAVING/ADDING SCRIPT
         public async Task<FunctionReturnResult<BusinessAppScript?>> AddOrUpdateScript(
             long businessId,

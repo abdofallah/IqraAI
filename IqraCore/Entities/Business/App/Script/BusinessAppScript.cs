@@ -15,7 +15,7 @@ namespace IqraCore.Entities.Business
         // Route/Campaigns References
         public List<string> InboundRoutingReferences { get; set; } = new List<string>();
         public List<string> TelephonyCampaignReferences { get; set; } = new List<string>();
-        public List<string> WebCampiagnReferences { get; set; } = new List<string>();
+        public List<string> WebCampaignReferences { get; set; } = new List<string>();
 
         // Add/Transfer Script Node References
         public List<BusinessAppScriptAddScriptNodeReference> ScriptAddScriptNodeReferences { get; set; } = new List<BusinessAppScriptAddScriptNodeReference>();

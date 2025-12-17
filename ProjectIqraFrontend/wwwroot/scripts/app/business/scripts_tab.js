@@ -60,6 +60,7 @@ let CurrentScriptDescriptionMultiLangData = {};
 let CheckScriptMultiLangInterval = null;
 
 let IsSavingScriptTab = false;
+let IsDeletingScriptTab = false;
 
 /** Element Variables **/
 const scriptTab = $("#scripts-tab");
@@ -84,7 +85,7 @@ const inputScriptDescription = scriptsManagerTab.find("#inputScriptDescription")
 
 /** API FUNCTIONS **/
 function SaveBusinessScript(formData, onSuccess, onError) {
-	$.ajax({
+	return $.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/scripts/save`,
 		method: "POST",
 		data: formData,
@@ -101,6 +102,22 @@ function SaveBusinessScript(formData, onSuccess, onError) {
 			onError(error, false);
 		},
 	});
+}
+function DeleteBusinessScript(scriptId, onSuccess, onError) {
+    return $.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/scripts/${scriptId}/delete`,
+        method: "POST",
+        success: (response) => {
+            if (response.success) {
+                onSuccess(response);
+            } else {
+                onError(response, true);
+            }
+        },
+        error: (error) => {
+            onError(error, false);
+        },
+    });
 }
 
 // Scripts Tab Functions
@@ -695,12 +712,16 @@ function createScriptTableElement(scriptData) {
 }
 
 function fillScriptsListTab() {
+	scriptsTable.find("tbody").empty();
+
 	if (BusinessFullData.businessApp.scripts.length !== 0) {
-		scriptsListTab.find("tbody").empty();
 		BusinessFullData.businessApp.scripts.forEach((script) => {
 			const element = createScriptTableElement(script);
-			scriptsListTab.find("tbody").append($(element));
+			scriptsTable.find("tbody").append($(element));
 		});
+	}
+	else {
+		scriptsTable.append("<tr class='none-script-notice'><td colspan='2'>No scripts found.</td></tr>");
 	}
 }
 
@@ -2725,10 +2746,70 @@ function initScriptsTabHandlers() {
 		showScriptManagerTab();
 	});
 
-	scriptsTable.on("click", 'button[button-type="delete-script"]', (event) => {
+	scriptsTable.on("click", 'button[button-type="remove-script"]', async (event) => {
 		event.preventDefault();
 
-		alert("not implemented");
+		const button = $(event.currentTarget);
+		const scriptId = button.attr("script-id");
+
+		if (IsDeletingScriptTab) {
+			AlertManager.createAlert({
+				type: "warning",
+				message: "A delete operation for script is already in progress. Please try again once the operation is complete.",
+				timeout: 6000,
+			});
+			return;
+		}
+
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Delete Script",
+			message: "Are you sure you want to delete this script?<br><br><b>Note:</b> You must remove any references (inbound route, telephony/web campaigns, transfer to script node, add to context script node) to this script before deleting and wait or cancel any ongoing call queues or conversations.",
+			confirmText: "Delete",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		if (await confirmDialog.show()) {
+			showHideButtonSpinnerWithDisableEnable(button, true);
+			IsDeletingScriptTab = true;
+
+			DeleteBusinessScript(
+				scriptId,
+				() => {
+					const scriptIndex = BusinessFullData.businessApp.scripts.findIndex(n => n.id === scriptId);
+					if (scriptIndex === -1) return;
+					BusinessFullData.businessApp.scripts.splice(scriptIndex, 1);
+
+					scriptsListTab.find("tbody").find(`tr[script-id="${scriptId}"]`).remove();
+
+					if (BusinessFullData.businessApp.scripts.length === 0) {
+                        scriptsTable.append("<tr class='none-script-notice'><td colspan='2'>No scripts found.</td></tr>");
+                    }
+
+					AlertManager.createAlert({
+						type: "success",
+						message: "Script deleted successfully.",
+						timeout: 6000,
+					});
+				},
+				(errorResult) => {
+					var resultMessage = "Check console logs for more details.";
+					if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occured while deleting script.",
+						resultMessage: resultMessage,
+						timeout: 6000,
+					});
+
+					console.log("Error occured while deleting script: ", errorResult);
+				}
+			).always(() => {
+				showHideButtonSpinnerWithDisableEnable(button, false);
+				IsDeletingScriptTab = false;
+			});
+		}
 	});
 
 	// General Tab
@@ -3691,9 +3772,13 @@ function initScriptsTabHandlers() {
 				ManageCurrentScriptType = "edit";
 			},
 			(saveError, isUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (saveError && saveError.message) resultMessage = saveError.message;
+
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occured while saving business script data. Check browser console for logs.",
+					message: "Error occured while saving business script data.",
+					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 

@@ -53,14 +53,14 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
                 {
                     return result.SetFailureResult(
                         "SaveBusinessScript:BUSINESS_SCRIPTS_DISABLED_FULL",
-                        $"Business does not have permission to access agents{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledFullReason) ? "." : ": " + businessData.Permission.Scripts.DisabledFullReason)}"
+                        $"Business does not have permission to access scripts{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledFullReason) ? "." : ": " + businessData.Permission.Scripts.DisabledFullReason)}"
                     );
                 }
                 if (businessData.Permission.Scripts.DisabledEditingAt != null)
                 {
                     return result.SetFailureResult(
                         "SaveBusinessScript:BUSINESS_SCRIPTS_DISABLED_EDITING",
-                        $"Business does not have permission to edit agents{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledEditingReason) ? "." : ": " + businessData.Permission.Scripts.DisabledEditingReason)}"
+                        $"Business does not have permission to edit scripts{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledEditingReason) ? "." : ": " + businessData.Permission.Scripts.DisabledEditingReason)}"
                     );
                 }
 
@@ -81,24 +81,24 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
                     if (!formData.TryGetValue("scriptId", out StringValues scriptIdValue))
                     {
                         return result.SetFailureResult(
-                            "SaveBusinessScript:MISSING_AGENT_SCRIPT_ID",
-                            "Agent Script ID is missing for edit mode"
+                            "SaveBusinessScript:MISSING_SCRIPT_ID",
+                            "Script ID is missing for edit mode"
                         );
                     }
                     string? existingScriptId = scriptIdValue.ToString();
                     if (string.IsNullOrWhiteSpace(existingScriptId))
                     {
                         return result.SetFailureResult(
-                            "SaveBusinessScript:INVALID_AGENT_SCRIPT_ID",
-                            "Agent Script ID is required for edit mode"
+                            "SaveBusinessScript:INVALID_SCRIPT_ID",
+                            "Script ID is required for edit mode"
                         );
                     }
                     existingScriptData = await _businessManager.GetScriptsManager().GetScriptById(businessId, existingScriptId);
                     if (existingScriptData == null)
                     {
                         return result.SetFailureResult(
-                            "SaveBusinessScript:AGENT_SCRIPT_NOT_FOUND",
-                            "Agent script not found"
+                            "SaveBusinessScript:SCRIPT_NOT_FOUND",
+                            "script not found"
                         );
                     }
                 }
@@ -123,6 +123,76 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
             {
                 return result.SetFailureResult(
                     "SaveBusinessScript:EXCEPTION",
+                    $"Internal Server Error: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpPost("/app/user/business/{businessId}/scripts/{scriptId}/delete")]
+        public async Task<FunctionReturnResult> DeleteBusinessScript(long businessId, string scriptId)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteBusinessScript:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Scripts Permission
+                if (businessData.Permission.Scripts.DisabledFullAt != null)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessScript:BUSINESS_SCRIPTS_DISABLED_FULL",
+                        $"Business does not have permission to access scripts{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledFullReason) ? "." : ": " + businessData.Permission.Scripts.DisabledFullReason)}"
+                    );
+                }
+                if (businessData.Permission.Scripts.DisabledDeletingAt != null)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessScript:BUSINESS_SCRIPTS_DISABLED_DELETING",
+                        $"Business does not have permission to edit scripts{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledDeletingReason) ? "." : ": " + businessData.Permission.Scripts.DisabledDeletingReason)}"
+                    );
+                }
+
+                var scriptData = await _businessManager.GetScriptsManager().GetScriptById(businessId, scriptId);
+                if (scriptData == null)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessScript:SCRIPT_NOT_FOUND",
+                        "script not found"
+                    );
+                }
+
+                var deleteResult = await _businessManager.GetScriptsManager().DeleteScript(businessId, scriptData);
+                if (!deleteResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessScript:" + deleteResult.Code,
+                        deleteResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeleteBusinessScript:EXCEPTION",
                     $"Internal Server Error: {ex.Message}"
                 );
             }

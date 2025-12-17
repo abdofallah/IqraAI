@@ -709,7 +709,20 @@ namespace IqraInfrastructure.Repositories.Business
 
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
-        }     
+        }
+
+        public async Task<bool> DeleteScript(long businessId, string scriptId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+
+            var update = Builders<BusinessApp>.Update.PullFilter(d => d.Scripts, s => s.Id == scriptId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.IsAcknowledged;
+        }
 
         /**
         * 
