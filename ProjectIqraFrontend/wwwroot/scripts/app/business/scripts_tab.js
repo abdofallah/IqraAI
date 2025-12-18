@@ -69,7 +69,7 @@ const addNewScriptButton = scriptTab.find("#addNewScriptButton");
 
 // Script - List Tab
 const scriptsListTab = scriptTab.find("#scriptsListTab");
-const scriptsTable = scriptsListTab.find("#scriptsTable");
+const scriptsCardListContainer = scriptsListTab.find("#scriptsCardListContainer");
 
 // Script - Manager Tab
 const switchBackToScriptsListTab = scriptTab.find("#switchBackToScriptsListTab");
@@ -170,6 +170,8 @@ function ResetAndEmptyScriptsManageTab() {
 		CurrentScriptNameMultiLangData[language] = "";
 		CurrentScriptDescriptionMultiLangData[language] = "";
 	});
+
+	scriptsManagerTab.find("input, textarea").val("");
 
 	saveScriptButton.prop("disabled", true);
 	$("#scripts-manager-general-tab").click();
@@ -695,33 +697,43 @@ function checkScriptTabHasChanges(enableDisableButton = true, compileConversatio
 	};
 }
 
-function createScriptTableElement(scriptData) {
-	return `
-		<tr script-id="${scriptData.id}">
-			<td class="script-name">${scriptData.general.name[BusinessDefaultLanguage]}</td>
-			<td>
-				<button class="btn btn-info btn-sm" button-type="edit-script" script-id="${scriptData.id}">
-                    <i class="fa-regular fa-pen-to-square"></i>
-                </button>
-                <button class="btn btn-danger btn-sm" button-type="remove-script" script-id="${scriptData.id}">
-                    <i class="fa-regular fa-trash"></i>
-                </button>
-			</td>
-		</tr>
-	`;
+function createScriptListCardElement(scriptData) {
+	const actionDropdownHtml = `
+        <div class="dropdown action-dropdown dropdown-menu-end">
+            <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <span class="dropdown-item text-danger" data-item-id="${scriptData.id}" button-type="delete-script">
+                        <i class="fa-solid fa-trash me-2"></i>Delete
+                    </span>
+                </li>
+            </ul>
+        </div>
+    `;
+
+	return createIqraCardElement({
+		id: scriptData.id,
+		type: 'script',
+		visualHtml: `<span>${scriptData.general.emoji}</span>`,
+		titleHtml: scriptData.general.name[BusinessDefaultLanguage],
+		descriptionHtml: scriptData.general.description[BusinessDefaultLanguage],
+		actionDropdownHtml: actionDropdownHtml,
+	});
 }
 
 function fillScriptsListTab() {
-	scriptsTable.find("tbody").empty();
+	scriptsCardListContainer.empty();
 
 	if (BusinessFullData.businessApp.scripts.length !== 0) {
 		BusinessFullData.businessApp.scripts.forEach((script) => {
-			const element = createScriptTableElement(script);
-			scriptsTable.find("tbody").append($(element));
+			const element = createScriptListCardElement(script);
+			scriptsCardListContainer.append($(element));
 		});
 	}
 	else {
-		scriptsTable.append("<tr class='none-script-notice'><td colspan='2'>No scripts found.</td></tr>");
+		scriptsCardListContainer.append("<div class='none-script-notice col-12'>No scripts found.</tr>");
 	}
 }
 
@@ -2728,10 +2740,16 @@ function initScriptsTabHandlers() {
 		checkScriptTabHasChanges(true, false); // todo remove out of here later
 	}, 500);
 
-	scriptsTable.on("click", 'button[button-type="edit-script"]', (event) => {
+	scriptsCardListContainer.on("click", '.script-card', (event) => {
 		event.preventDefault();
+		event.stopPropagation();
 
-		const scriptId = $(event.currentTarget).attr("script-id");
+		// check if target was button or its icon
+		if ($(event.target).closest(".dropdown").length != 0) {
+			return;
+		}
+
+		const scriptId = $(event.currentTarget).attr("data-item-id");
 
 		ResetAndEmptyScriptsManageTab();
 		initializeScriptGraph(false);
@@ -2746,11 +2764,17 @@ function initScriptsTabHandlers() {
 		showScriptManagerTab();
 	});
 
-	scriptsTable.on("click", 'button[button-type="remove-script"]', async (event) => {
+	scriptsCardListContainer.on("click", '.script-card span[button-type="delete-script"]', async (event) => {
 		event.preventDefault();
 
 		const button = $(event.currentTarget);
-		const scriptId = button.attr("script-id");
+		const scriptId = button.attr("data-item-id");
+		const scriptIndex = BusinessFullData.businessApp.scripts.findIndex(n => n.id === scriptId);
+		if (scriptIndex === -1) return;
+		const scriptData = BusinessFullData.businessApp.scripts[scriptIndex];
+		if (scriptData == null) return;
+
+		const scriptCard = scriptsCardListContainer.find(`.script-card[data-item-id="${scriptId}"]`);
 
 		if (IsDeletingScriptTab) {
 			AlertManager.createAlert({
@@ -2762,7 +2786,7 @@ function initScriptsTabHandlers() {
 		}
 
 		const confirmDialog = new BootstrapConfirmDialog({
-			title: "Delete Script",
+			title: `Delete "${scriptData.general.name[BusinessDefaultLanguage]}" Script`,
 			message: "Are you sure you want to delete this script?<br><br><b>Note:</b> You must remove any references (inbound route, telephony/web campaigns, transfer to script node, add to context script node) to this script before deleting and wait or cancel any ongoing call queues or conversations.",
 			confirmText: "Delete",
 			confirmButtonClass: "btn-danger",
@@ -2772,27 +2796,28 @@ function initScriptsTabHandlers() {
 		if (await confirmDialog.show()) {
 			showHideButtonSpinnerWithDisableEnable(button, true);
 			IsDeletingScriptTab = true;
+			scriptCard.addClass("disabled");
 
 			DeleteBusinessScript(
 				scriptId,
 				() => {
-					const scriptIndex = BusinessFullData.businessApp.scripts.findIndex(n => n.id === scriptId);
-					if (scriptIndex === -1) return;
+					scriptCard.parent().remove()
+
 					BusinessFullData.businessApp.scripts.splice(scriptIndex, 1);
 
-					scriptsListTab.find("tbody").find(`tr[script-id="${scriptId}"]`).remove();
-
 					if (BusinessFullData.businessApp.scripts.length === 0) {
-                        scriptsTable.append("<tr class='none-script-notice'><td colspan='2'>No scripts found.</td></tr>");
+						scriptsCardListContainer.append("<div class='none-script-notice col-12'>No scripts found.</div>");
                     }
 
 					AlertManager.createAlert({
 						type: "success",
-						message: "Script deleted successfully.",
+						message: `Script "${scriptData.general.name[BusinessDefaultLanguage]}" deleted successfully.`,
 						timeout: 6000,
 					});
 				},
 				(errorResult) => {
+					scriptCard.removeClass("disabled");
+
 					var resultMessage = "Check console logs for more details.";
 					if (errorResult && errorResult.message) resultMessage = errorResult.message;
 
@@ -3747,14 +3772,19 @@ function initScriptsTabHandlers() {
 				if (ManageCurrentScriptType === "edit") {
 					const exisitingScriptDataIndex = BusinessFullData.businessApp.scripts.findIndex((script) => script.id === ManageCurrentScriptData.id);
 					BusinessFullData.businessApp.scripts[exisitingScriptDataIndex] = structuredClone(ManageCurrentScriptData);
-					scriptsTable.find(`[script-id="${ManageCurrentScriptData.id}"]`).find(".script-name").text(ManageCurrentScriptData.general.name[BusinessDefaultLanguage]);
+
+					const scriptCard = scriptsCardListContainer.find(`.script-card[data-item-id="${ManageCurrentScriptData.id}"]`);
+
+					scriptCard.find(".iqra-card-visual span").text(ManageCurrentScriptData.general.emoji);
+					scriptCard.find(".iqra-card-title").text(ManageCurrentScriptData.general.name[BusinessDefaultLanguage]);
+					scriptCard.find(".iqra-card-description span").text(ManageCurrentScriptData.general.description[BusinessDefaultLanguage]);
 				} else if (ManageCurrentScriptType === "new") {
 					BusinessFullData.businessApp.scripts.push(structuredClone(ManageCurrentScriptData));
-					const noneScriptNotice = scriptsTable.find(".none-script-notice");
+					const noneScriptNotice = scriptsCardListContainer.find(".none-script-notice");
 					if (noneScriptNotice.length > 0) {
 						noneScriptNotice.remove();
 					}
-					scriptsTable.prepend($(createScriptTableElement(ManageCurrentScriptData)));
+					scriptsCardListContainer.prepend($(createScriptListCardElement(ManageCurrentScriptData)));
 				}
 
 				saveScriptButton.prop("disabled", true);

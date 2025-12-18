@@ -89,8 +89,7 @@ const addNewAgentButton = agentTab.find("#addNewAgentButton");
 
 // Agent - List Tab
 const agentsListTab = agentTab.find("#agentsListTab");
-
-const agentsListTable = agentsListTab.find("#agentsListTable");
+const agentsCardListContainer = agentsListTab.find("#agentsCardListContainer");
 
 // Agent - Manager Tab
 const agentsManagerHeader = agentTab.find("#agents-manager-header");
@@ -803,13 +802,13 @@ function FillAgentsListTab() {
 	const agents = BusinessFullData.businessApp.agents;
 
 	if (agents.length === 0) {
-		agentsListTable.append('<div class="col-12 none-agents-list-notice"><h6 class="text-center mt-5">No agents added yet...</h6></div>');
+		agentsCardListContainer.append('<div class="col-12 none-agents-list-notice"><h6 class="text-center mt-5">No agents added yet...</h6></div>');
 		return;
 	}
 
 	agents.forEach((agent) => {
 		const element = CreateAgentsCardElement(agent);
-		agentsListTable.append(element);
+		agentsCardListContainer.append(element);
 	});
 }
 
@@ -2306,7 +2305,7 @@ function initAgentTab() {
 			showAgentListTab();
 		});
 
-		agentsListTable.on("click", ".agent-card", (event) => {
+		agentsCardListContainer.on("click", ".agent-card", (event) => {
 			event.stopPropagation();
 			event.preventDefault();
 
@@ -2330,7 +2329,7 @@ function initAgentTab() {
 			validateAgentMultiLanguageElements();
 		});
 
-		agentsListTable.on("click", ".agent-card span[button-type='delete-agent']", async (event) => {
+		agentsCardListContainer.on("click", ".agent-card span[button-type='delete-agent']", async (event) => {
 			event.preventDefault();
 
 			const button = $(event.currentTarget);
@@ -2339,7 +2338,7 @@ function initAgentTab() {
 			if (agentIndex === -1) return;
 			const agentData = BusinessFullData.businessApp.agents[agentIndex];
 			if (!agentData) return;
-			const agentCard = agentsListTable.find(`.agent-card[data-item-id="${agentId}"]`);
+			const agentCard = agentsCardListContainer.find(`.agent-card[data-item-id="${agentId}"]`);
 
 			if (IsDeletingAgentTab) {
 				AlertManager.createAlert({
@@ -2369,10 +2368,10 @@ function initAgentTab() {
 						
 						BusinessFullData.businessApp.agents.splice(agentIndex, 1);
 
-						agentCard.remove();
+						agentCard.parent().remove();
 
 						if (BusinessFullData.businessApp.agents.length === 0) {
-                            agentsListTable.append('<div class="col-12 none-agents-list-notice"><h6 class="text-center mt-5">No agents added yet...</h6></div>');
+                            agentsCardListContainer.append('<div class="col-12 none-agents-list-notice"><h6 class="text-center mt-5">No agents added yet...</h6></div>');
                         }
 
 						AlertManager.createAlert({
@@ -3028,16 +3027,20 @@ function initAgentTab() {
 						const exisitingDataIndex = BusinessFullData.businessApp.agents.findIndex((agent) => agent.id === CurrentManageAgentData.id);
 						BusinessFullData.businessApp.agents[exisitingDataIndex] = CurrentManageAgentData;
 
-						agentsListTable.find(`.agent-card[data-item-id="${CurrentManageAgentData.id}"]`).find(".agent-name").text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
+						const agentCard = agentsCardListContainer.find(`.agent-card[data-item-id="${CurrentManageAgentData.id}"]`);
+
+						agentCard.find(".iqra-card-visual span").text(CurrentManageAgentData.general.emoji);
+						agentCard.find(".iqra-card-title").text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
+						agentCard.find(".iqra-card-description span").text(CurrentManageAgentData.general.description[BusinessDefaultLanguage]);
 					} else if (ManageAgentType === "new") {
 						BusinessFullData.businessApp.agents.push(CurrentManageAgentData);
 
-						const noneAgentNotice = agentsListTable.find(".none-agents-list-notice");
+						const noneAgentNotice = agentsCardListContainer.find(".none-agents-list-notice");
 						if (noneAgentNotice.length > 0) {
 							noneAgentNotice.remove();
 						}
 
-						agentsListTable.prepend($(CreateAgentsCardElement(CurrentManageAgentData)));
+						agentsCardListContainer.prepend($(CreateAgentsCardElement(CurrentManageAgentData)));
 					}
 
 					if (agentBackgroundAudioUploadInput[0].files.length > 0) {

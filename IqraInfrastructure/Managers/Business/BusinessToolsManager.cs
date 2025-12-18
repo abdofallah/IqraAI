@@ -684,7 +684,7 @@ namespace IqraInfrastructure.Managers.Business
             {
                 NewBusinessAppToolData.Id = exisitingToolData.Id;
 
-                var saveBusinessAppToolResult = await _businessAppRepository.UpdateBusinessAppTool(businessId, NewBusinessAppToolData);
+                var saveBusinessAppToolResult = await _businessAppRepository.UpdateBusinessAppToolExceptReferences(businessId, NewBusinessAppToolData);
                 if (!saveBusinessAppToolResult)
                 {
                     result.Code = "AddOrUpdateUserBusinessTools:FAILED_SAVE_EDIT_TOOL";

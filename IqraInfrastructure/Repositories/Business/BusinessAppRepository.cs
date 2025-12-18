@@ -67,52 +67,6 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<BusinessAppTool?> GetBusinessAppTool(long businessId, string selectedToolId)
-        {
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == selectedToolId)
-            );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-
-            if (result == null)
-            {
-                throw new Exception("Business not found");
-            }
-
-            return result.Tools.FirstOrDefault(t => t.Id == selectedToolId);
-        }
-
-        public async Task<bool> CheckBusinessAppToolExists(long businessId, string toolId)
-        {
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
-            );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
-        }
-
-        public async Task<bool> UpdateBusinessAppTool(long businessId, BusinessAppTool newBusinessAppToolData)
-        {
-            var filter = Builders<BusinessApp>.Filter.And(
-                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == newBusinessAppToolData.Id)
-            );
-                
-            var update = Builders<BusinessApp>.Update.Set(b => b.Tools.FirstMatchingElement(), newBusinessAppToolData);
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.IsAcknowledged;
-        }
-
-        public async Task<bool> AddBusinessAppTool(long businessId, BusinessAppTool newBusinessAppToolData)
-        {
-            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
-            var update = Builders<BusinessApp>.Update.Push(b => b.Tools, newBusinessAppToolData);
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result.IsAcknowledged;
-        }
-
         public async Task<bool> CheckBusinessAppBranchExists(long businessId, string branchId)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -235,6 +189,93 @@ namespace IqraInfrastructure.Repositories.Business
                 _logger.LogError(ex, "Error deleting business {BusinessId}: {Message}", businessId, ex.Message);
                 return false;
             }
+        }
+
+        /**
+         * 
+         * Tool Tab
+         * 
+        **/
+
+        public async Task<BusinessAppTool?> GetBusinessAppTool(long businessId, string selectedToolId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == selectedToolId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+
+            if (result == null)
+            {
+                throw new Exception("Business not found");
+            }
+
+            return result.Tools.FirstOrDefault(t => t.Id == selectedToolId);
+        }
+
+        public async Task<bool> CheckBusinessAppToolExists(long businessId, string toolId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        public async Task<bool> UpdateBusinessAppToolExceptReferences(long businessId, BusinessAppTool newBusinessAppToolData)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == newBusinessAppToolData.Id)
+            );
+
+            var update = Builders<BusinessApp>.Update
+                .Set(b => b.Tools.FirstMatchingElement().General, newBusinessAppToolData.General)
+                .Set(b => b.Tools.FirstMatchingElement().Configuration, newBusinessAppToolData.Configuration)
+                .Set(b => b.Tools.FirstMatchingElement().Response, newBusinessAppToolData.Response)
+                .Set(b => b.Tools.FirstMatchingElement().Audio, newBusinessAppToolData.Audio);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddBusinessAppTool(long businessId, BusinessAppTool newBusinessAppToolData)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.Tools, newBusinessAppToolData);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddScriptExecuteCustomToolNodeReferenceToCustomTool(long businessId, string toolId, BusinessAppToolScriptExecuteCustomToolNodeReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, a => a.Id == toolId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Tools.FirstMatchingElement().ScriptExecuteCustomToolNodeReferences, reference);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveScriptExecuteCustomToolNodeReferenceFromCustomTool(long businessId, string toolId, BusinessAppToolScriptExecuteCustomToolNodeReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, a => a.Id == toolId)
+            );
+
+            var update = Builders<BusinessApp>.Update.PullFilter(
+                d => d.Tools.FirstMatchingElement().ScriptExecuteCustomToolNodeReferences,
+                r => r.ScriptId == reference.ScriptId && r.NodeId == reference.NodeId
+            );
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
         }
 
         /**
@@ -1199,7 +1240,7 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> DeleteScript(long businessId, string scriptId)
+        public async Task<bool> DeleteScript(long businessId, string scriptId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -1208,7 +1249,7 @@ namespace IqraInfrastructure.Repositories.Business
 
             var update = Builders<BusinessApp>.Update.PullFilter(d => d.Scripts, s => s.Id == scriptId);
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
 
