@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using Scriban;
 
 namespace IqraInfrastructure.Repositories.Business
 {
@@ -248,6 +249,17 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
+        public async Task<bool> DeleteBusinessAppTool(long businessId, string toolId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
+            var update = Builders<BusinessApp>.Update.PullFilter(b => b.Tools, t => t.Id == toolId);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.IsAcknowledged;
+        }
+
         public async Task<bool> AddScriptExecuteCustomToolNodeReferenceToCustomTool(long businessId, string toolId, BusinessAppToolScriptExecuteCustomToolNodeReference reference, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -275,6 +287,90 @@ namespace IqraInfrastructure.Repositories.Business
 
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddToolInboundRouteReference(long businessId, string toolId, BusinessAppToolInboundRouteReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Tools.FirstMatchingElement().InboundRouteReferences, reference);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveToolInboundRouteReference(long businessId, string toolId, BusinessAppToolInboundRouteReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
+
+            var update = Builders<BusinessApp>.Update.PullFilter(
+                b => b.Tools.FirstMatchingElement().InboundRouteReferences,
+                r => r.RouteId == reference.RouteId && r.ActionType == reference.ActionType
+            );
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddToolTelephonyCampaignReference(long businessId, string toolId, BusinessAppToolTelephonyCampaignReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Tools.FirstMatchingElement().TelephonyCampaignReferences, reference);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveToolTelephonyCampaignReference(long businessId, string toolId, BusinessAppToolTelephonyCampaignReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
+
+            var update = Builders<BusinessApp>.Update.PullFilter(
+                b => b.Tools.FirstMatchingElement().TelephonyCampaignReferences,
+                r => r.CampaignId == reference.CampaignId && r.ActionType == reference.ActionType
+            );
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddToolWebCampaignReference(long businessId, string toolId, BusinessAppToolWebCampaignReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(b => b.Tools.FirstMatchingElement().WebCampaignReferences, reference);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveToolWebCampaignReference(long businessId, string toolId, BusinessAppToolWebCampaignReference reference, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
+
+            var update = Builders<BusinessApp>.Update.PullFilter(
+                b => b.Tools.FirstMatchingElement().WebCampaignReferences,
+                r => r.CampaignId == reference.CampaignId && r.ActionType == reference.ActionType
+            );
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
 
@@ -1087,7 +1183,6 @@ namespace IqraInfrastructure.Repositories.Business
 
             return result.IsAcknowledged;
         }
-
         public async Task<bool> RemoveInboundRoutingReferenceFromAgent(long businessId, string agentId, string inboundRoutingId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -1115,7 +1210,6 @@ namespace IqraInfrastructure.Repositories.Business
 
             return result.IsAcknowledged;
         }
-
         public async Task<bool> RemoveTelephonyCampaignReferenceFromAgent(long businessId, string agentId, string telephonyCampaignId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -1143,7 +1237,6 @@ namespace IqraInfrastructure.Repositories.Business
 
             return result.IsAcknowledged;
         }
-
         public async Task<bool> RemoveWebCampaignReferenceFromAgent(long businessId, string agentId, string webCampaignId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -1171,7 +1264,6 @@ namespace IqraInfrastructure.Repositories.Business
 
             return result.IsAcknowledged;
         }
-
         public async Task<bool> RemoveScriptTransferToAgentNodeReferenceFromAgent(long businessId, string agentId, BusinessAppAgentScriptTransferToAgentNodeReference reference, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -1835,15 +1927,113 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessAppPostAnalysisTemplate(long businessId, BusinessAppPostAnalysis updatedTemplate, IClientSessionHandle session)
+        public async Task<bool> UpdateBusinessAppPostAnalysisTemplateExceptReferences(long businessId, BusinessAppPostAnalysis updatedTemplate, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, t => t.Id == updatedTemplate.Id)
             );
-            var update = Builders<BusinessApp>.Update.Set(b => b.PostAnalysis.FirstMatchingElement(), updatedTemplate);
+            var update = Builders<BusinessApp>.Update
+                .Set(b => b.PostAnalysis.FirstMatchingElement().General, updatedTemplate.General)
+                .Set(b => b.PostAnalysis.FirstMatchingElement().Configuration, updatedTemplate.Configuration)
+                .Set(b => b.PostAnalysis.FirstMatchingElement().Summary, updatedTemplate.Summary)
+                .Set(b => b.PostAnalysis.FirstMatchingElement().Tagging, updatedTemplate.Tagging)
+                .Set(b => b.PostAnalysis.FirstMatchingElement().Extraction, updatedTemplate.Extraction);
 
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> DeletePostAnalysis(long businessId, string templateId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, t => t.Id == templateId)
+            );
+
+            var update = Builders<BusinessApp>.Update.PullFilter(b => b.PostAnalysis, t => t.Id == templateId);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddInboundRoutingReferenceToPostAnalysis(long businessId, string templateId, string inboundRoutingId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, a => a.Id == templateId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.PostAnalysis.FirstMatchingElement().InboundRoutingReferences, inboundRoutingId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveInboundRoutingReferenceFromPostAnalysis(long businessId, string templateId, string inboundRoutingId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, a => a.Id == templateId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(d => d.PostAnalysis.FirstMatchingElement().InboundRoutingReferences, inboundRoutingId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddTelephonyCampaignReferenceToPostAnalysis(long businessId, string templateId, string telephonyCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, a => a.Id == templateId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.PostAnalysis.FirstMatchingElement().TelephonyCampaignReferences, telephonyCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveTelephonyCampaignReferenceFromPostAnalysis(long businessId, string templateId, string telephonyCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, a => a.Id == templateId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(d => d.PostAnalysis.FirstMatchingElement().TelephonyCampaignReferences, telephonyCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> AddWebCampaignReferenceToPostAnalysis(long businessId, string templateId, string webCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, a => a.Id == templateId)
+            );
+
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.PostAnalysis.FirstMatchingElement().WebCampaignReferences, webCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveWebCampaignReferenceFromPostAnalysis(long businessId, string templateId, string webCampaignId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, a => a.Id == templateId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull(d => d.PostAnalysis.FirstMatchingElement().WebCampaignReferences, webCampaignId);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
             return result.IsAcknowledged;
         }
     }

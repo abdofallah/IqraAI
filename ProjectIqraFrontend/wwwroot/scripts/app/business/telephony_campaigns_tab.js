@@ -949,7 +949,12 @@ function resetTelephonyCampaignManager() {
     // Agent
     telephonyCampaignAgentIconSpan.text("-");
     telephonyCampaignAgentNameInput.val("");
-    telephonyCampaignAgentScriptSelect.empty().append('<option value="" disabled selected>Select Agent First</option>').prop("disabled", true);
+    telephonyCampaignAgentScriptSelect
+        .empty()
+        .append('<option value="" selected disabled>Select Script</option>');
+    BusinessFullData.businessApp.scripts.forEach(script => {
+        telephonyCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.emoji} ${script.general.name[BusinessDefaultLanguage]}</option>`);
+    });
     telephonyCampaignAgentLanguageSelect.empty().append('<option value="" disabled selected>Select Language</option>');
     BusinessFullData.businessData.languages.forEach(lang => {
         const langData = SpecificationLanguagesListData.find(l => l.id === lang);
@@ -1059,14 +1064,14 @@ function fillTelephonyCampaignManager() {
         if (agentData) {
             currentTelephonyCampaignAgentSelectedId = agentData.id;
             telephonyCampaignAgentIconSpan.text(agentData.general.emoji);
-            telephonyCampaignAgentNameInput.val(agentData.general.name[BusinessDefaultLanguage]);
-            telephonyCampaignAgentScriptSelect.prop("disabled", false).empty().append('<option value="" disabled>Select Script</option>');
-            agentData.scripts.forEach(script => {
-                telephonyCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
-            });
-            telephonyCampaignAgentScriptSelect.val(data.agent.openingScriptId);
+            telephonyCampaignAgentNameInput.val(agentData.general.name[BusinessDefaultLanguage]);   
         }
     }
+    if (data.agent.openingScriptId)
+    {
+        telephonyCampaignAgentScriptSelect.val(data.agent.openingScriptId);
+    }
+
     telephonyCampaignAgentLanguageSelect.val(data.agent.language);
     if (data.agent.timezones && data.agent.timezones.length > 0) telephonyCampaignAgentTimezoneSelect.val(data.agent.timezones[0]);
     telephonyCampaignAgentFromNumberInContextCheck.prop("checked", data.agent.fromNumberInContext);
@@ -2329,12 +2334,6 @@ function initTelephonyAgentEventHandlers() {
 
         telephonyCampaignAgentIconSpan.text(agentData.general.emoji);
         telephonyCampaignAgentNameInput.val(agentData.general.name[BusinessDefaultLanguage]);
-
-        telephonyCampaignAgentScriptSelect.prop("disabled", false).empty();
-        telephonyCampaignAgentScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
-        agentData.scripts.forEach(script => {
-            telephonyCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
-        });
 
         telephonyCampaignSelectAgentModal.hide();
         checkTelephonyCampaignChanges();

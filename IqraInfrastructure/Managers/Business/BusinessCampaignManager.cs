@@ -1324,6 +1324,7 @@ namespace IqraInfrastructure.Managers.Business
                                 );
                             }
 
+                            // Cleanup: Changed Agent
                             if (existingCampaignData.Agent.SelectedAgentId != newBusinessAppCampaignData.Agent.SelectedAgentId)
                             {
                                 var removeAgentCampaignReferenceResult = await _businessAppRepository.RemoveTelephonyCampaignReferenceFromAgent(businessId, existingCampaignData.Agent.SelectedAgentId, newBusinessAppCampaignData.Id, session);
@@ -1337,6 +1338,7 @@ namespace IqraInfrastructure.Managers.Business
                                 }
                             }
 
+                            // Cleanup: Changed Script
                             if (existingCampaignData.Agent.OpeningScriptId != newBusinessAppCampaignData.Agent.OpeningScriptId)
                             {
                                 var removeScriptCampaignReferenceResult = await _businessAppRepository.RemoveTelephonyCampaignReferenceFromScript(businessId, existingCampaignData.Agent.OpeningScriptId, newBusinessAppCampaignData.Id, session);
@@ -1349,8 +1351,26 @@ namespace IqraInfrastructure.Managers.Business
                                     );
                                 }
                             }
+
+                            // Cleanup: Changed Post Analysis
+                            if (
+                                existingCampaignData.PostAnalysis.PostAnalysisId != null &&
+                                existingCampaignData.PostAnalysis.PostAnalysisId != newBusinessAppCampaignData.PostAnalysis.PostAnalysisId
+                            )
+                            {
+                                var removePostAnalysisRouteReferenceResult = await _businessAppRepository.RemoveTelephonyCampaignReferenceFromPostAnalysis(businessId, existingCampaignData.PostAnalysis.PostAnalysisId, newBusinessAppCampaignData.Id, session);
+                                if (!removePostAnalysisRouteReferenceResult)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTelephonyCampaignAsync:DB_REMOVE_POST_ANALYSIS_REFERENCE_FAILED",
+                                        "Failed to remove post analysis reference from business app telephony campaign."
+                                    );
+                                }
+                            }
                         }
 
+                        // Update Agent References
                         var addAgentCampaignReferenceResult = await _businessAppRepository.AddTelephonyCampaignReferenceToAgent(businessId, newBusinessAppCampaignData.Agent.SelectedAgentId, newBusinessAppCampaignData.Id, session);
                         if (!addAgentCampaignReferenceResult)
                         {
@@ -1361,6 +1381,7 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
+                        // Update Script References
                         var addScriptCampaignReferenceResult = await _businessAppRepository.AddTelephonyCampaignReferenceToScript(businessId, newBusinessAppCampaignData.Agent.OpeningScriptId, newBusinessAppCampaignData.Id, session);
                         if (!addScriptCampaignReferenceResult)
                         {
@@ -1370,6 +1391,33 @@ namespace IqraInfrastructure.Managers.Business
                                 "Failed to add script reference to business app telephony campaign."
                             );
                         }
+
+                        // Update Post Analysis Reference
+                        if (newBusinessAppCampaignData.PostAnalysis.PostAnalysisId != null)
+                        {
+                            var addPostAnalysisReferenceResult = await _businessAppRepository.AddTelephonyCampaignReferenceToPostAnalysis(businessId, newBusinessAppCampaignData.PostAnalysis.PostAnalysisId, newBusinessAppCampaignData.Id, session);
+                            if (!addPostAnalysisReferenceResult) {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTelephonyCampaignAsync:DB_ADD_POST_ANALYSIS_REFERENCE_FAILED",
+                                    "Failed to add post analysis reference to business app telephony campaign."
+                                );
+                            }
+                        }
+
+                        // Update Tool References
+                        try
+                        {
+                            await UpdateTelephonyCampaignToolReferences(businessId, newBusinessAppCampaignData.Id, existingCampaignData, newBusinessAppCampaignData, session);
+                        }
+                        catch (Exception ex)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("AddOrUpdateTelephonyCampaignAsync:TOOL_REF_UPDATE_FAILED", $"Failed to update tool references: {ex.Message}");
+                        }
+
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult(newBusinessAppCampaignData);
                     }
                     catch (Exception ex) {
                         await session.AbortTransactionAsync();
@@ -1378,9 +1426,7 @@ namespace IqraInfrastructure.Managers.Business
                             $"Error adding or updating telephony campaign: {ex.Message}"
                         );
                     }
-                }
-
-                return result.SetSuccessResult(newBusinessAppCampaignData);
+                } 
             }
             catch (Exception ex)
             {
@@ -1389,6 +1435,82 @@ namespace IqraInfrastructure.Managers.Business
                     $"Error adding or updating telephony campaign: {ex.Message}"
                 );
             }
+        }
+        private async Task UpdateTelephonyCampaignToolReferences(
+            long businessId,
+            string campaignId,
+            BusinessAppTelephonyCampaign? oldCampaign,
+            BusinessAppTelephonyCampaign newCampaign,
+            IClientSessionHandle session
+        ) {
+            // Helper to diff single tool reference
+            async Task HandleToolRef(
+                string? oldToolId,
+                string? newToolId,
+                BusinessAppToolTelephonyCampaignActionType actionType)
+            {
+                // Remove Old
+                if (!string.IsNullOrEmpty(oldToolId) && oldToolId != newToolId)
+                {
+                    var refObj = new BusinessAppToolTelephonyCampaignReference { CampaignId = campaignId, ActionType = actionType };
+                    if (!await _businessAppRepository.RemoveToolTelephonyCampaignReference(businessId, oldToolId, refObj, session))
+                    {
+                        throw new Exception($"Failed to remove {actionType} tool reference from tool {oldToolId}");
+                    }
+                }
+
+                // Add New
+                if (!string.IsNullOrEmpty(newToolId))
+                {
+                    var refObj = new BusinessAppToolTelephonyCampaignReference { CampaignId = campaignId, ActionType = actionType };
+                    if (!await _businessAppRepository.AddToolTelephonyCampaignReference(businessId, newToolId, refObj, session))
+                    {
+                        throw new Exception($"Failed to add {actionType} tool reference to tool {newToolId}");
+                    }
+                }
+            }
+
+            // 1. Call Initiation Failure
+            await HandleToolRef(
+                oldCampaign?.Actions.CallInitiationFailureTool.ToolId,
+                newCampaign.Actions.CallInitiationFailureTool.ToolId,
+                BusinessAppToolTelephonyCampaignActionType.CallInitiationFailure
+            );
+
+            // 2. Call Initiated
+            await HandleToolRef(
+                oldCampaign?.Actions.CallInitiatedTool.ToolId,
+                newCampaign.Actions.CallInitiatedTool.ToolId,
+                BusinessAppToolTelephonyCampaignActionType.CallInitiated
+            );
+
+            // 3. Call Declined
+            await HandleToolRef(
+                oldCampaign?.Actions.CallDeclinedTool.ToolId,
+                newCampaign.Actions.CallDeclinedTool.ToolId,
+                BusinessAppToolTelephonyCampaignActionType.CallDeclined
+            );
+
+            // 4. Call Missed
+            await HandleToolRef(
+                oldCampaign?.Actions.CallMissedTool.ToolId,
+                newCampaign.Actions.CallMissedTool.ToolId,
+                BusinessAppToolTelephonyCampaignActionType.CallMissed
+            );
+
+            // 5. Call Answered
+            await HandleToolRef(
+                oldCampaign?.Actions.CallAnsweredTool.ToolId,
+                newCampaign.Actions.CallAnsweredTool.ToolId,
+                BusinessAppToolTelephonyCampaignActionType.CallAnswered
+            );
+
+            // 6. Call Ended
+            await HandleToolRef(
+                oldCampaign?.Actions.CallEndedTool.ToolId,
+                newCampaign.Actions.CallEndedTool.ToolId,
+                BusinessAppToolTelephonyCampaignActionType.CallEnded
+            );
         }
 
         /**
@@ -1999,6 +2121,7 @@ namespace IqraInfrastructure.Managers.Business
                                 );
                             }
 
+                            // Cleanup: Changed Agent
                             if (existingCampaignData.Agent.SelectedAgentId != newBusinessAppCampaignData.Agent.SelectedAgentId)
                             {
                                 var removeAgentCampaignReferenceResult = await _businessAppRepository.RemoveWebCampaignReferenceFromAgent(businessId, existingCampaignData.Agent.SelectedAgentId, newBusinessAppCampaignData.Id, session);
@@ -2012,6 +2135,7 @@ namespace IqraInfrastructure.Managers.Business
                                 }
                             }
 
+                            // Cleanup: Changed Script
                             if (existingCampaignData.Agent.OpeningScriptId != newBusinessAppCampaignData.Agent.OpeningScriptId)
                             {
                                 var removeScriptCampaignReferenceResult = await _businessAppRepository.RemoveWebCampaignReferenceFromScript(businessId, existingCampaignData.Agent.OpeningScriptId, newBusinessAppCampaignData.Id, session);
@@ -2024,8 +2148,26 @@ namespace IqraInfrastructure.Managers.Business
                                     );
                                 }
                             }
+
+                            // Cleanup: Changed Post Analysis
+                            if (
+                                existingCampaignData.PostAnalysis.PostAnalysisId != null &&
+                                existingCampaignData.PostAnalysis.PostAnalysisId != newBusinessAppCampaignData.PostAnalysis.PostAnalysisId
+                            )
+                            {
+                                var removePostAnalysisRouteReferenceResult = await _businessAppRepository.RemoveWebCampaignReferenceFromPostAnalysis(businessId, existingCampaignData.PostAnalysis.PostAnalysisId, newBusinessAppCampaignData.Id, session);
+                                if (!removePostAnalysisRouteReferenceResult)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateWebCampaignAsync:DB_REMOVE_POST_ANALYSIS_REFERENCE_FAILED",
+                                        "Failed to remove post analysis reference from business app web campaign."
+                                    );
+                                }
+                            }
                         }
 
+                        // Update Agent References
                         var addAgentCampaignReferenceResult = await _businessAppRepository.AddWebCampaignReferenceToAgent(businessId, newBusinessAppCampaignData.Agent.SelectedAgentId, newBusinessAppCampaignData.Id, session);
                         if (!addAgentCampaignReferenceResult)
                         {
@@ -2036,6 +2178,7 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
+                        // Update Script References
                         var addScriptCampaignReferenceResult = await _businessAppRepository.AddWebCampaignReferenceToScript(businessId, newBusinessAppCampaignData.Agent.OpeningScriptId, newBusinessAppCampaignData.Id, session);
                         if (!addScriptCampaignReferenceResult)
                         {
@@ -2045,6 +2188,33 @@ namespace IqraInfrastructure.Managers.Business
                                 "Failed to add script reference to business app web campaign."
                             );
                         }
+
+                        // Update Post Analysis Reference
+                        if (newBusinessAppCampaignData.PostAnalysis.PostAnalysisId != null)
+                        {
+                            var addPostAnalysisReferenceResult = await _businessAppRepository.AddWebCampaignReferenceToPostAnalysis(businessId, newBusinessAppCampaignData.PostAnalysis.PostAnalysisId, newBusinessAppCampaignData.Id, session);
+                            if (!addPostAnalysisReferenceResult) {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateWebCampaignAsync:DB_ADD_POST_ANALYSIS_REFERENCE_FAILED",
+                                    "Failed to add post analysis reference to business app web campaign."
+                                );
+                            }
+                        }
+
+                        // Update Tool References
+                        try
+                        {
+                            await UpdateWebCampaignToolReferences(businessId, newBusinessAppCampaignData.Id, existingCampaignData, newBusinessAppCampaignData, session);
+                        }
+                        catch (Exception ex)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("AddOrUpdateWebCampaignAsync:TOOL_REF_UPDATE_FAILED", $"Failed to update tool references: {ex.Message}");
+                        }
+
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult(newBusinessAppCampaignData);
                     }
                     catch (Exception ex)
                     {
@@ -2055,8 +2225,6 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                 }
-
-                return result.SetSuccessResult(newBusinessAppCampaignData);
             }
             catch (Exception ex)
             {
@@ -2065,6 +2233,61 @@ namespace IqraInfrastructure.Managers.Business
                     $"Error adding or updating web campaign: {ex.Message}"
                 );
             }
+        }
+        private async Task UpdateWebCampaignToolReferences(
+            long businessId,
+            string campaignId,
+            BusinessAppWebCampaign? oldCampaign,
+            BusinessAppWebCampaign newCampaign,
+            IClientSessionHandle session
+        ) {
+            // Helper to diff single tool reference
+            async Task HandleToolRef(
+                string? oldToolId,
+                string? newToolId,
+                BusinessAppToolWebCampaignActionType actionType)
+            {
+                // Remove Old
+                if (!string.IsNullOrEmpty(oldToolId) && oldToolId != newToolId)
+                {
+                    var refObj = new BusinessAppToolWebCampaignReference { CampaignId = campaignId, ActionType = actionType };
+                    if (!await _businessAppRepository.RemoveToolWebCampaignReference(businessId, oldToolId, refObj, session))
+                    {
+                        throw new Exception($"Failed to remove {actionType} tool reference from tool {oldToolId}");
+                    }
+                }
+
+                // Add New
+                if (!string.IsNullOrEmpty(newToolId))
+                {
+                    var refObj = new BusinessAppToolWebCampaignReference { CampaignId = campaignId, ActionType = actionType };
+                    if (!await _businessAppRepository.AddToolWebCampaignReference(businessId, newToolId, refObj, session))
+                    {
+                        throw new Exception($"Failed to add {actionType} tool reference to tool {newToolId}");
+                    }
+                }
+            }
+
+            // 1. Conversation Initiation Failure
+            await HandleToolRef(
+                oldCampaign?.Actions.ConversationInitiationFailureTool.ToolId,
+                newCampaign.Actions.ConversationInitiationFailureTool.ToolId,
+                BusinessAppToolWebCampaignActionType.ConversationInitiationFailure
+            );
+
+            // 2. Conversation Initiated
+            await HandleToolRef(
+                oldCampaign?.Actions.ConversationInitiatedTool.ToolId,
+                newCampaign.Actions.ConversationInitiatedTool.ToolId,
+                BusinessAppToolWebCampaignActionType.ConversationInitiated
+            );
+
+            // 3. Conversation Ended
+            await HandleToolRef(
+                oldCampaign?.Actions.ConversationEndedTool.ToolId,
+                newCampaign.Actions.ConversationEndedTool.ToolId,
+                BusinessAppToolWebCampaignActionType.ConversationEnded
+            );
         }
 
         // Common Helpers

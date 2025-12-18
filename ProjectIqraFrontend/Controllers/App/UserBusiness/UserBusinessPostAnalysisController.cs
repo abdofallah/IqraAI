@@ -119,15 +119,74 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             return result.SetSuccessResult(addOrUpdateResult.Data);
         }
 
-        [HttpPost("/app/user/business/{businessId}/postanalysis/delete")]
-        public async Task<FunctionReturnResult<bool>> DeletePostAnalysisTemplate(long businessId)
+        [HttpPost("/app/user/business/{businessId}/postanalysis/{templateId}/delete")]
+        public async Task<FunctionReturnResult> DeletePostAnalysisTemplate(long businessId, string templateId)
         {
-            var result = new FunctionReturnResult<bool>();
+            var result = new FunctionReturnResult();
 
-            return result.SetFailureResult(
-                "DeletePostAnalysisTemplate:NOT_IMPLEMENTED",
-                "Delete Post Analysis Template is not implemented yet."
-            );
+            try
+            {
+                // Validate Session & Business
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request, businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeletePostAnalysisTemplate:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Check Top-Level Permission
+                if (businessData.Permission.PostAnalysis.DisabledFullAt != null)
+                {
+                    return result.SetFailureResult(
+                        "DeletePostAnalysisTemplate:POST_ANALYSIS_DISABLED",
+                        $"Post Analysis features are disabled for this business{(string.IsNullOrEmpty(businessData.Permission.PostAnalysis.DisabledFullReason) ? "." : $": {businessData.Permission.PostAnalysis.DisabledFullReason}.")}"
+                    );
+                }
+
+                // Check deleting permission
+                if (businessData.Permission.PostAnalysis.DisabledDeletingAt != null)
+                {
+                    return result.SetFailureResult(
+                        "DeletePostAnalysisTemplate:DELETING_DISABLED",
+                        $"Permission to delete templates is disabled{(string.IsNullOrEmpty(businessData.Permission.PostAnalysis.DisabledDeletingReason) ? "." : $": {businessData.Permission.PostAnalysis.DisabledDeletingReason}.")}"
+                    );
+                }
+
+                var postAnalysisData = await _businessManager.GetPostAnalysisManager().GetTemplateById(businessId, templateId);
+                if (!postAnalysisData.Success || postAnalysisData.Data == null)
+                {
+                    return result.SetFailureResult(
+                        "DeletePostAnalysisTemplate:TEMPLATE_NOT_FOUND",
+                        "Template not found."
+                    );
+                }
+
+                var deleteResult = await _businessManager.GetPostAnalysisManager().DeleteTemplate(businessId, postAnalysisData.Data);
+                if (!deleteResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeletePostAnalysisTemplate:{deleteResult.Code}",
+                        deleteResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeletePostAnalysisTemplate:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
+            }
         }
     }
 }

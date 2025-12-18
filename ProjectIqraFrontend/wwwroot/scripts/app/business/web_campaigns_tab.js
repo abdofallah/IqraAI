@@ -541,7 +541,12 @@ function resetWebCampaignManager() {
     // Agent
     webCampaignAgentIconSpan.text("-");
     webCampaignAgentNameInput.val("");
-    webCampaignAgentScriptSelect.empty().append('<option value="" disabled selected>Select Agent First</option>').prop("disabled", true);
+    webCampaignAgentScriptSelect
+        .empty()
+        .append('<option value="" selected disabled>Select Script</option>');
+    BusinessFullData.businessApp.scripts.forEach(script => {
+        webCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.emoji} ${script.general.name[BusinessDefaultLanguage]}</option>`);
+    });
     webCampaignAgentLanguageSelect.empty().append('<option value="" disabled selected>Select Language</option>');
     BusinessFullData.businessData.languages.forEach(lang => {
         const langData = SpecificationLanguagesListData.find(l => l.id === lang);
@@ -620,13 +625,12 @@ function fillWebCampaignManager() {
             currentWebCampaignAgentSelectedId = agentData.id;
             webCampaignAgentIconSpan.text(agentData.general.emoji);
             webCampaignAgentNameInput.val(agentData.general.name[BusinessDefaultLanguage]);
-            webCampaignAgentScriptSelect.prop("disabled", false).empty().append('<option value="" disabled>Select Script</option>');
-            agentData.scripts.forEach(script => {
-                webCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
-            });
-            webCampaignAgentScriptSelect.val(data.agent.openingScriptId);
         }
     }
+    if (data.agent.openingScriptId) {
+        webCampaignAgentScriptSelect.val(data.agent.openingScriptId);
+    }
+
     webCampaignAgentLanguageSelect.val(data.agent.language);
     if (data.agent.timezones && data.agent.timezones.length > 0) webCampaignAgentTimezoneSelect.val(data.agent.timezones[0]);
 
@@ -1197,7 +1201,7 @@ function handleWebCampaignRouting(subPath) {
     }
 
     const action = subPath[0];
-    const campaignCard = webCampaignsListContainer.find(`.campaign-card[data-item-id="${action}"]`);
+    const campaignCard = webCampaignsListContainer.find(`.web-campaign-card[data-item-id="${action}"]`);
 
     if (action === 'new') {
         if (!webCampaignsManagerView.hasClass('show')) {
@@ -1258,12 +1262,6 @@ function initWebAgentEventHandlers() {
 
         webCampaignAgentIconSpan.text(agentData.general.emoji);
         webCampaignAgentNameInput.val(agentData.general.name[BusinessDefaultLanguage]);
-
-        webCampaignAgentScriptSelect.prop("disabled", false).empty();
-        webCampaignAgentScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
-        agentData.scripts.forEach(script => {
-            webCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
-        });
 
         webCampaignSelectAgentModal.hide();
         checkWebCampaignChanges();
@@ -1619,7 +1617,7 @@ function initWebCampaignsTab() {
             }
         });
 
-        webCampaignsListContainer.on("click", ".campaign-card", (e) => {
+        webCampaignsListContainer.on("click", ".web-campaign-card", (e) => {
             e.preventDefault();
             e.stopPropagation();
 

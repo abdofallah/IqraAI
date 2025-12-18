@@ -502,6 +502,7 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
+                        // Cleanup: Removed Numbers
                         foreach (var oldNumberId in existingRouteData.Numbers)
                         {
                             if (!newBusinessAppRouteData.Numbers.Contains(oldNumberId))
@@ -518,6 +519,7 @@ namespace IqraInfrastructure.Managers.Business
                             }
                         }
 
+                        // Cleanup: Changed Agent
                         if (existingRouteData.Agent.SelectedAgentId != newBusinessAppRouteData.Agent.SelectedAgentId)
                         {
                             var removeAgentRouteReferenceResult = await _businessAppRepository.RemoveInboundRoutingReferenceFromAgent(businessId, existingRouteData.Agent.SelectedAgentId, newBusinessAppRouteData.Id, session);
@@ -531,6 +533,7 @@ namespace IqraInfrastructure.Managers.Business
                             }
                         }
 
+                        // Cleanup: Changed Script
                         if (existingRouteData.Agent.OpeningScriptId != newBusinessAppRouteData.Agent.OpeningScriptId)
                         {
                             var removeScriptRouteReferenceResult = await _businessAppRepository.RemoveInboundRoutingReferenceFromScript(businessId, existingRouteData.Agent.OpeningScriptId, newBusinessAppRouteData.Id, session);
@@ -543,8 +546,25 @@ namespace IqraInfrastructure.Managers.Business
                                 );
                             }
                         }
+
+                        // Cleanup: Changed Post Analysis
+                        if (
+                            existingRouteData.PostAnalysis.PostAnalysisId != null &&
+                            existingRouteData.PostAnalysis.PostAnalysisId != newBusinessAppRouteData.PostAnalysis.PostAnalysisId
+                        ) {
+                            var removePostAnalysisRouteReferenceResult = await _businessAppRepository.RemoveInboundRoutingReferenceFromPostAnalysis(businessId, existingRouteData.PostAnalysis.PostAnalysisId, newBusinessAppRouteData.Id, session);
+                            if (!removePostAnalysisRouteReferenceResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateUserBusinessRoute:POST_ANALYSIS_ROUTE_REMOVAL_FAILED",
+                                    "Failed to remove post analysis route reference."
+                                );
+                            }
+                        }
                     }
 
+                    // Update Numbers Reference
                     foreach (var numberId in newBusinessAppRouteData.Numbers)
                     {
                         var updateNumberRouteResult = await _businessAppRepository.UpdateBusinessNumberRoute(businessId, numberId, newBusinessAppRouteData.Id, session);
@@ -558,6 +578,7 @@ namespace IqraInfrastructure.Managers.Business
                         }
                     }
 
+                    // Update Agent Reference
                     var addAgentRouteReferenceResult = await _businessAppRepository.AddInboundRoutingReferenceToAgent(businessId, newBusinessAppRouteData.Agent.SelectedAgentId, newBusinessAppRouteData.Id, session);
                     if (!addAgentRouteReferenceResult)
                     {
@@ -568,6 +589,7 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
 
+                    // Update Script Reference
                     var addScriptRouteReferenceResult = await _businessAppRepository.AddInboundRoutingReferenceToScript(businessId, newBusinessAppRouteData.Agent.OpeningScriptId, newBusinessAppRouteData.Id, session);
                     if (!addScriptRouteReferenceResult)
                     {
@@ -575,6 +597,33 @@ namespace IqraInfrastructure.Managers.Business
                         return result.SetFailureResult(
                             "AddOrUpdateUserBusinessRoute:SCRIPT_ROUTE_ADD_FAILED",
                             "Failed to add script route reference."
+                        );
+                    }
+
+                    // Update Post Analysis Reference
+                    if (newBusinessAppRouteData.PostAnalysis.PostAnalysisId != null)
+                    {
+                        var addPostAnalysisReferenceResult = await _businessAppRepository.AddInboundRoutingReferenceToPostAnalysis(businessId, newBusinessAppRouteData.PostAnalysis.PostAnalysisId, newBusinessAppRouteData.Id, session);
+                        if (!addPostAnalysisReferenceResult) {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateUserBusinessRoute:POST_ANALYSIS_ROUTE_ADD_FAILED",
+                                "Failed to add post analysis route reference."
+                            );
+                        }
+                    }
+
+                    // Update Tool References
+                    try
+                    {
+                        await UpdateRouteToolReferences(businessId, newBusinessAppRouteData.Id, existingRouteData, newBusinessAppRouteData, session);
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "AddOrUpdateUserBusinessRoute:TOOL_REF_UPDATE_FAILED",
+                            $"Failed to update tool references: {ex.Message}"
                         );
                     }
 
@@ -591,6 +640,62 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             return result.SetSuccessResult(newBusinessAppRouteData);
+        }
+
+        private async Task UpdateRouteToolReferences(
+            long businessId,
+            string routeId,
+            BusinessAppRoute? oldRoute,
+            BusinessAppRoute newRoute,
+            IClientSessionHandle session
+        ) {
+            // Helper to diff single tool reference
+            async Task HandleToolRef(
+                string? oldToolId,
+                string? newToolId,
+                BusinessAppToolInboundRouteActionType actionType)
+            {
+                // Remove Old
+                if (!string.IsNullOrEmpty(oldToolId) && oldToolId != newToolId)
+                {
+                    var refObj = new BusinessAppToolInboundRouteReference { RouteId = routeId, ActionType = actionType };
+                    if (!await _businessAppRepository.RemoveToolInboundRouteReference(businessId, oldToolId, refObj, session))
+                    {
+                        throw new Exception($"Failed to remove {actionType} tool reference from tool {oldToolId}");
+                    }
+                }
+
+                // Add New
+                if (!string.IsNullOrEmpty(newToolId))
+                {
+                    var refObj = new BusinessAppToolInboundRouteReference { RouteId = routeId, ActionType = actionType };
+                    if (!await _businessAppRepository.AddToolInboundRouteReference(businessId, newToolId, refObj, session))
+                    {
+                        throw new Exception($"Failed to add {actionType} tool reference to tool {newToolId}");
+                    }
+                }
+            }
+
+            // 1. Ringing Tool
+            await HandleToolRef(
+                oldRoute?.Actions.RingingTool.SelectedToolId,
+                newRoute.Actions.RingingTool.SelectedToolId,
+                BusinessAppToolInboundRouteActionType.Ringing
+            );
+
+            // 2. Call Picked Tool
+            await HandleToolRef(
+                oldRoute?.Actions.CallPickedTool.SelectedToolId,
+                newRoute.Actions.CallPickedTool.SelectedToolId,
+                BusinessAppToolInboundRouteActionType.CallPicked
+            );
+
+            // 3. Call Ended Tool
+            await HandleToolRef(
+                oldRoute?.Actions.CallEndedTool.SelectedToolId,
+                newRoute.Actions.CallEndedTool.SelectedToolId,
+                BusinessAppToolInboundRouteActionType.CallEnded
+            );
         }
 
         private async Task<FunctionReturnResult<BusinessAppRouteActionTool>> ValidateBusinessRouteActionData(long businessId, string businessDefaultLanguage, JsonElement actionsTabRootElement, string actionType)

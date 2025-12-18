@@ -1,168 +1,228 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessToolsController : Controller
     {
-        private readonly UserManager _userManager;
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly BusinessManager _businessManager;
 
-        public UserBusinessToolsController(UserManager userManager, BusinessManager businessManager)
-        {
-            _userManager = userManager;
+        public UserBusinessToolsController(
+            UserSessionValidationHelper userSessionValidationHelper,
+            BusinessManager businessManager
+        ) {
+            _userSessionValidationHelper = userSessionValidationHelper;
             _businessManager = businessManager;
         }
 
         [HttpPost("/app/user/business/{businessId}/tools/save")]
-        public async Task<FunctionReturnResult<BusinessAppTool?>> SaveBusinessTools(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppTool?>> SaveBusinessTool(long businessId, [FromForm] IFormCollection formData)
         {
             var result = new FunctionReturnResult<BusinessAppTool?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveBusinessTools:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessTools:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessTools:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessTools:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    return result.SetFailureResult(
+                        $"SaveBusinessTool:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                if (businessData.Permission.Tools.DisabledFullAt != null)
+                {
+                    var message = "Business does not have permission to access tools";
+                    if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledFullReason))
+                    {
+                        message += ": " + businessData.Permission.Tools.DisabledFullReason;
+                    }
+
+                    return result.SetFailureResult(
+                        "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
+                        message
+                    );
                 }
 
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType)
+                    ||
+                    postType != "new" && postType != "edit"
+                )
                 {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
+                    return result.SetFailureResult(
+                        "SaveBusinessTool:INVALID_POST_TYPE",
+                        "Invalid post type."
+                    );
                 }
 
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessTools:5";
-                result.Message = "User does not own this business.";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessTools:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessTools:6";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                BusinessAppTool? exisitingTool = null;
+                if (postType == "edit")
                 {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
+                    if (businessData.Permission.Tools.DisabledEditingAt != null)
+                    {
+                        var message = "Business does not have permission to edit tools";
+                        if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledEditingReason))
+                        {
+                            message += ": " + businessData.Permission.Tools.DisabledEditingReason;
+                        }
+
+                        return result.SetFailureResult(
+                            "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
+                            message
+                        );
+                    }
+
+                    formData.TryGetValue("exisitingToolId", out StringValues exisitingToolIdStringValue);
+                    string? exisitingToolIdValue = exisitingToolIdStringValue.ToString();
+                    if (string.IsNullOrWhiteSpace(exisitingToolIdValue))
+                    {
+                        result.Code = "SaveBusinessTool:8";
+                        result.Message = "Missing exisiting tool id.";
+                        return result;
+                    }
+
+                    exisitingTool = await _businessManager.GetToolsManager().GetBusinessAppTool(businessId, exisitingToolIdValue);
+                    if (exisitingTool == null)
+                    {
+                        result.Code = "SaveBusinessTool:9";
+                        result.Message = "Exisiting tool not found.";
+                        return result;
+                    }
+                }
+                else if (postType == "new")
+                {
+                    if (businessData.Permission.Tools.DisabledAddingAt != null)
+                    {
+                        var message = "Business does not have permission to add tools";
+                        if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledAddingReason))
+                        {
+                            message += ": " + businessData.Permission.Tools.DisabledAddingReason;
+                        }
+
+                        return result.SetFailureResult(
+                            "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
+                            message
+                        );
+                    }
                 }
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
+                FunctionReturnResult<BusinessAppTool?> updateResult = await _businessManager.GetToolsManager().AddOrUpdateBusinessTool(businessId, formData, postType, exisitingTool);
+                if (!updateResult.Success)
                 {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
+                    return result.SetFailureResult(
+                        $"SaveBusinessTool:{updateResult.Code}",
+                        updateResult.Message
+                    );
                 }
 
-                return result;
+                return result.SetSuccessResult(updateResult.Data);
             }
-
-            if (businessResult.Data.Permission.Tools.DisabledFullAt != null || businessResult.Data.Permission.Tools.DisabledEditingAt != null)
+            catch (Exception ex)
             {
-                result.Code = "SaveBusinessTools:7";
-                result.Message = "Business does not have permission to edit tools";
-
-                if (businessResult.Data.Permission.Tools.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.Tools.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Tools.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Tools.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Tools.DisabledEditingReason;
-                }
-
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessTools:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
             }
+        }
 
-            string? postType = formData["postType"].ToString();
-            if (
-                string.IsNullOrWhiteSpace(postType)
-                ||
-                postType != "new" && postType != "edit"
-            )
+        [HttpPost("/app/user/business/{businessId}/tools/{toolId}/delete")]
+        public async Task<FunctionReturnResult> DeleteBusinessTool(long businessId, string toolId)
+        {
+            var result = new FunctionReturnResult();
+
+            try
             {
-                result.Code = "SaveBusinessTools:7";
-                result.Message = "Invalid post type.";
-                return result;
-            }
-     
-            BusinessAppTool? exisitingTool = null;
-            if (postType == "edit")
-            {
-                formData.TryGetValue("exisitingToolId", out StringValues exisitingToolIdStringValue);
-                string? exisitingToolIdValue = exisitingToolIdStringValue.ToString();
-                if (string.IsNullOrWhiteSpace(exisitingToolIdValue))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Code = "SaveBusinessTools:8";
-                    result.Message = "Missing exisiting tool id.";
-                    return result;
+                    return result.SetFailureResult(
+                        $"SaveBusinessTool:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                if (businessData.Permission.Tools.DisabledFullAt != null)
+                {
+                    var message = "Business does not have permission to access tools";
+                    if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledFullReason))
+                    {
+                        message += ": " + businessData.Permission.Tools.DisabledFullReason;
+                    }
+
+                    return result.SetFailureResult(
+                        "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
+                        message
+                    );
                 }
 
-                exisitingTool = await _businessManager.GetToolsManager().GetBusinessAppTool(businessId, exisitingToolIdValue);
-                if (exisitingTool == null)
+                if (businessData.Permission.Tools.DisabledDeletingAt != null)
                 {
-                    result.Code = "SaveBusinessTools:9";
-                    result.Message = "Exisiting tool not found.";
-                    return result;
+                    var message = "Business does not have permission to delete tools";
+                    if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledDeletingReason))
+                    {
+                        message += ": " + businessData.Permission.Tools.DisabledDeletingReason;
+                    }
+
+                    return result.SetFailureResult(
+                        "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
+                        message
+                    );
                 }
-            }
 
-            FunctionReturnResult<BusinessAppTool?> updateResult = await _businessManager.GetToolsManager().AddOrUpdateUserBusinessTools(businessId, formData, postType, exisitingTool);
-            if (!updateResult.Success)
+                var businessAppToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(businessId, toolId);
+                if (businessAppToolData == null)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessTool:BUSINESS_APP_TOOL_NOT_FOUND",
+                        "Business app tool not found"
+                    );
+                }
+
+                var deleteResult = await _businessManager.GetToolsManager().DeleteBusinessTool(businessId, businessAppToolData);
+                if (!deleteResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteBusinessTool:{deleteResult.Code}",
+                        deleteResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
             {
-                result.Code = "SaveBusinessTools:" + updateResult.Code;
-                result.Message = updateResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "DeleteBusinessTool:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
             }
-
-            result.Data = updateResult.Data;
-            result.Success = true;
-            return result;
         }
     }
 }

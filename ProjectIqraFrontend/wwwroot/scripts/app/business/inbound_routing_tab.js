@@ -295,9 +295,13 @@ function resetAndEmptyRouteManagerTab() {
 	});
 	editSelectedRouteAgentName.val("");
 	editSelectedRouteAgentIcon.html("-");
+
 	editRouteAgentDefaultScriptSelect.empty();
-	editRouteAgentDefaultScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
-	editRouteAgentDefaultScriptSelect.prop("disabled", true);
+	editRouteAgentDefaultScriptSelect.append('<option value="" disabled>Select Script</option>');
+	BusinessFullData.businessApp.scripts.forEach((script) => {
+		editRouteAgentDefaultScriptSelect.append(`<option value="${script.id}">${script.general.emoji} ${script.general.name[BusinessDefaultLanguage]}</option>`);
+	});
+
 	editRouteNumberTimezoneSelect.val("").change();
 	editRouteAgentCallerNumberInContextCheck.prop("checked", true);
 	editRouteAgentRouteNumberInContextCheck.prop("checked", true);
@@ -777,7 +781,7 @@ function validateRoutingTab(onlyRemove = true) {
 			editSelectedRouteAgentName.removeClass("is-invalid");
 		}
 
-		if (!editRouteAgentDefaultScriptSelect.val() && !editRouteAgentDefaultScriptSelect.prop("disabled")) {
+		if (!editRouteAgentDefaultScriptSelect.val()) {
 			validated = false;
 			errors.push("Opening script must be selected");
 
@@ -951,17 +955,12 @@ function fillRoutingManagerTab() {
 		if (agentData) {
 			currentRouteAgentSelectedId = agentData.id;
 			editSelectedRouteAgentIcon.text(agentData.general.emoji);
-			editSelectedRouteAgentName.val(agentData.general.name[BusinessDefaultLanguage]);
-
-			// Enable and populate scripts dropdown
-			editRouteAgentDefaultScriptSelect.prop("disabled", false);
-			editRouteAgentDefaultScriptSelect.empty();
-			editRouteAgentDefaultScriptSelect.append('<option value="" disabled>Select Script</option>');
-			agentData.scripts.forEach((script) => {
-				editRouteAgentDefaultScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
-			});
-			editRouteAgentDefaultScriptSelect.val(ManageCurrentRouteData.agent.openingScriptId);
+			editSelectedRouteAgentName.val(agentData.general.name[BusinessDefaultLanguage]);	
 		}
+	}
+
+	if (ManageCurrentRouteData.agent.openingScriptId) {
+		editRouteAgentDefaultScriptSelect.val(ManageCurrentRouteData.agent.openingScriptId);
 	}
 
 	// Set timezone and context checkboxes
@@ -1521,14 +1520,6 @@ function initRoutingTab() {
 
 				editSelectedRouteAgentIcon.text(agentData.general.emoji);
 				editSelectedRouteAgentName.val(agentData.general.name[BusinessDefaultLanguage]);
-
-				editRouteAgentDefaultScriptSelect.prop("disabled", false);
-
-				editRouteAgentDefaultScriptSelect.empty();
-				editRouteAgentDefaultScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
-				agentData.scripts.forEach((script) => {
-					editRouteAgentDefaultScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
-				});
 
 				editChangeRouteAgentModal.hide();
 

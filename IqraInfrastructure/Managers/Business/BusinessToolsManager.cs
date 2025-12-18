@@ -62,7 +62,7 @@ namespace IqraInfrastructure.Managers.Business
             return result;
         }
 
-        public async Task<FunctionReturnResult<BusinessAppTool?>> AddOrUpdateUserBusinessTools(long businessId, IFormCollection formData, string postType, BusinessAppTool? exisitingToolData)
+        public async Task<FunctionReturnResult<BusinessAppTool?>> AddOrUpdateBusinessTool(long businessId, IFormCollection formData, string postType, BusinessAppTool? exisitingToolData)
         {
             var result = new FunctionReturnResult<BusinessAppTool?>();
 
@@ -695,6 +695,65 @@ namespace IqraInfrastructure.Managers.Business
 
             return result.SetSuccessResult(NewBusinessAppToolData);
         }
+        public async Task<FunctionReturnResult> DeleteBusinessTool(long businessId, BusinessAppTool businessAppTool)
+        {
+            var result = new FunctionReturnResult();
 
+            try
+            {
+                // Check References from Scripts
+                if (businessAppTool.ScriptExecuteCustomToolNodeReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessTool:USED_IN_SCRIPTS",
+                        $"Cannot delete tool because it is being used in {businessAppTool.ScriptExecuteCustomToolNodeReferences.Count} script node(s)."
+                    );
+                }
+
+                // Check References from Inbound Routes
+                if (businessAppTool.InboundRouteReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessTool:USED_IN_INBOUND_ROUTES",
+                        $"Cannot delete tool because it is being used in {businessAppTool.InboundRouteReferences.Count} inbound route action(s)."
+                    );
+                }
+
+                // Check References from Telephony Campaigns
+                if (businessAppTool.TelephonyCampaignReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessTool:USED_IN_TELEPHONY_CAMPAIGNS",
+                        $"Cannot delete tool because it is being used in {businessAppTool.TelephonyCampaignReferences.Count} telephony campaign action(s)."
+                    );
+                }
+
+                // Check References from Web Campaigns
+                if (businessAppTool.WebCampaignReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessTool:USED_IN_WEB_CAMPAIGNS",
+                        $"Cannot delete tool because it is being used in {businessAppTool.WebCampaignReferences.Count} web campaign action(s)."
+                    );
+                }
+
+                // Db Delete
+                var deleteResult = await _businessAppRepository.DeleteBusinessAppTool(businessId, businessAppTool.Id);
+                if (!deleteResult) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessTool:DB_DELETE_FAILED",
+                        "Failed to delete business tool in db."
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex) {
+                return result.SetFailureResult(
+                    "DeleteBusinessTool:EXCEPTION",
+                    $"Error deleting business tool: {ex.Message}"
+                );
+            }
+        }
     }
 }

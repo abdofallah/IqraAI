@@ -101,6 +101,7 @@ let CurrentManageToolInputSchemeaMultiLangData = {};
 let CurrentManageToolResponseStaticResponse = {};
 
 let IsSavingToolManageTab = false;
+let IsDeletingToolTab = false;
 
 let manageToolsLanguageDropdown = null;
 
@@ -175,9 +176,8 @@ const toolAudioAfterExecutionUploadInput = toolAudioAfterExecutionInputBox.find(
 const toolAudioAfterExecutionVolumeInput = toolAudioAfterExecutionBox.find("#toolAudioAfterExecutionVolumeInput");
 
 // Api Functions
-
 function SaveBusinessTool(changes, successCallback, errorCallback) {
-	$.ajax({
+	return $.ajax({
 		type: "POST",
 		url: `/app/user/business/${CurrentBusinessId}/tools/save`,
 		data: changes,
@@ -196,6 +196,24 @@ function SaveBusinessTool(changes, successCallback, errorCallback) {
 			errorCallback(error, true);
 		},
 	});
+}
+function DeleteBusinessToolFromAPI(toolId, successCallback, errorCallback) {
+    return $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/tools/${toolId}/delete`,
+        type: "POST",
+        contentType: "application/json",
+        success: (response) => {
+            if (!response.success) {
+                errorCallback(response);
+                return;
+			}
+
+            successCallback(response.data);
+        },
+        error: (error) => {
+            errorCallback(error);
+        },
+    });
 }
 
 // Functions
@@ -2205,13 +2223,74 @@ function initToolsTab() {
 				ShowToolsManageTab();
 			});
 
-			customToolsTable.on("click", 'button[button-type="remove-tool"]', (event) => {
+			customToolsTable.on("click", 'button[button-type="remove-tool"]', async (event) => {
 				event.preventDefault();
 				event.stopPropagation();
 
-				const toolId = $(event.currentTarget).attr("tool-id");
+				const button = $(event.currentTarget);
+				const toolId = button.attr("tool-id");
+				const toolIndex = BusinessFullData.businessApp.tools.findIndex((tool) => tool.id === toolId);
+				if (toolIndex === -1) return;
+				const toolData = BusinessFullData.businessApp.tools[toolIndex];
+				if (toolData == null) return;
 
-				alert("TODO delete tool");
+				if (IsDeletingToolTab) {
+					AlertManager.createAlert({
+						type: "warning",
+						message: "A delete operation for tools is already in progress. Please try again once the operation is complete.",
+						timeout: 6000,
+					});
+					return;
+				}
+
+				const confirmDialog = new BootstrapConfirmDialog({
+					title: `Delete "${toolData.general.name[BusinessDefaultLanguage]}" Tool`,
+					message: `Are you sure you want to delete this tool?<br><br><b>Note:</b> You must remove any references to this tool (script execute custom tool, inbound route, telephony/web campaigns actions) and wait or cancel any ongoing call queues or conversations.`,
+					confirmText: "Delete",
+					confirmButtonClass: "btn-danger",
+					modalClass: "modal-lg"
+				});
+
+				if (await confirmDialog.show()) {
+					showHideButtonSpinnerWithDisableEnable(button, true);
+					IsDeletingToolTab = true;
+
+					DeleteBusinessToolFromAPI(
+						toolId,
+						() => {
+
+							BusinessFullData.businessApp.tools.splice(toolIndex, 1);
+
+							customToolsTable.find("tbody").find(`tr[tool-id="${toolId}"]`).remove();
+
+							if (BusinessFullData.businessApp.tools.length === 0) {
+								customToolsTable.find("tbody").append(`<tr tr-type="none-notice"><td colspan="2">No tools added yet...</td></tr>`);
+							}
+
+							AlertManager.createAlert({
+								type: "success",
+								message: `Tool "${toolData.general.name[BusinessDefaultLanguage]}" deleted successfully.`,
+								timeout: 6000,
+							});
+						},
+						(errorResult) => {
+							var resultMessage = "Check console logs for more details.";
+							if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+							AlertManager.createAlert({
+								type: "danger",
+								message: "Error occured while deleting business tool.",
+								resultMessage: resultMessage,
+								timeout: 6000,
+							});
+
+							console.log("Error occured while deleting business tool: ", errorResult);
+						}
+					).always(() => {
+						showHideButtonSpinnerWithDisableEnable(button, false);
+						IsDeletingToolTab = false;
+					});
+				}
 			});
 
 			manageToolsLanguageDropdown.onLanguageChange((language) => {
