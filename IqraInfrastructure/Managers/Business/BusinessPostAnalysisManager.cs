@@ -60,7 +60,308 @@ namespace IqraInfrastructure.Managers.Business
             }
         }
 
-        public async Task<FunctionReturnResult<Businete eTemplate(long businessId, BusinessAppPostAnalysis templateData)
+        public async Task<FunctionReturnResult<BusinessAppPostAnalysis?>> AddOrUpdateTemplateAsync(long businessId, IFormCollection formData, string postType, BusinessAppPostAnalysis? existingTemplateData)
+        {
+            var result = new FunctionReturnResult<BusinessAppPostAnalysis?>();
+
+            try
+            {
+                if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrWhiteSpace(changesJsonString))
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTemplate:CHANGES_MISSING",
+                        "Changes data not found in form."
+                    );
+                }
+
+                JsonDocument changes;
+                try
+                {
+                    changes = JsonDocument.Parse(changesJsonString!);
+                }
+                catch (JsonException ex)
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTemplate:CHANGES_PARSE_FAILED",
+                        $"Unable to parse changes JSON: {ex.Message}"
+                    );
+                }
+
+                var newTemplate = new BusinessAppPostAnalysis();
+
+                // General Tab
+                if (!changes.RootElement.TryGetProperty("general", out var generalElement) ||
+                    generalElement.ValueKind != JsonValueKind.Object
+                ) {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTemplate:GENERAL_TAB_MISSING",
+                        "General tab data is missing."
+                    );
+                }
+                else
+                {
+                    if (!generalElement.TryGetProperty("emoji", out var emojiProp)
+                        || emojiProp.ValueKind != JsonValueKind.String
+                        || string.IsNullOrWhiteSpace(emojiProp.GetString())
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:EMOJI_MISSING",
+                            "Template emoji is required."
+                        );
+                    }
+                    newTemplate.General.Emoji = emojiProp.GetString()!;
+
+                    if (!generalElement.TryGetProperty("name", out var nameProp) ||
+                        nameProp.ValueKind != JsonValueKind.String ||
+                        string.IsNullOrWhiteSpace(nameProp.GetString())
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:NAME_MISSING",
+                            "Template name is required."
+                        );
+                    }
+                    newTemplate.General.Name = nameProp.GetString()!;
+
+                    if (!generalElement.TryGetProperty("description", out var descProp) ||
+                        descProp.ValueKind != JsonValueKind.String ||
+                        string.IsNullOrWhiteSpace(descProp.GetString())
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:DESCRIPTION_MISSING",
+                            "Template description is required."
+                        );
+                    }
+                    newTemplate.General.Description = descProp.GetString()!;
+                }
+
+                // Configuration Tab
+                if (!changes.RootElement.TryGetProperty("configuration", out var configElement) ||
+                    configElement.ValueKind != JsonValueKind.Object
+                ) {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTemplate:CONFIG_TAB_MISSING",
+                        "Configuration tab data is missing."
+                    );
+                }
+                else
+                {
+                    if (!configElement.TryGetProperty("llmIntegration", out var llmIntegrationElement)
+                        || llmIntegrationElement.ValueKind != JsonValueKind.Object
+                        || llmIntegrationElement.ValueKind == JsonValueKind.Null
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:CONFIG_LLM_INTEGRATION_MISSING",
+                            "LLM integration in configuration is required but not provided."
+                        );
+                    }
+                    var llmValidationResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(businessId, llmIntegrationElement, "LLM");
+                    if (!llmValidationResult.Success || llmValidationResult.Data == null)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:" + llmValidationResult.Code,
+                            "Configuration for LLM Integration failed: " + llmValidationResult.Message
+                        );
+                    }
+                    newTemplate.Configuration.LLMIntegration = llmValidationResult.Data;
+                }
+
+                // Summary Tab
+                if (!changes.RootElement.TryGetProperty("summary", out var summaryElement) ||
+                    summaryElement.ValueKind != JsonValueKind.Object
+                ) {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTemplate:SUMMARY_TAB_MISSING",
+                        "Summary tab data is missing."
+                    );
+                }
+                else
+                {
+                    if (!summaryElement.TryGetProperty("isActive", out var activeProp) ||
+                        (activeProp.ValueKind != JsonValueKind.True && activeProp.ValueKind != JsonValueKind.False)
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:SUMMARY_ISACTIVE_INVALID",
+                            "Summary 'isActive' flag is missing or invalid."
+                        );
+                    }
+                    newTemplate.Summary.IsActive = activeProp.GetBoolean();
+
+                    if (!summaryElement.TryGetProperty("prompt", out var promptProp) ||
+                        promptProp.ValueKind != JsonValueKind.String ||
+                        string.IsNullOrWhiteSpace(promptProp.GetString())
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:SUMMARY_PROMPT_INVALID",
+                            "Summary prompt is missing or invalid."
+                        );
+                    }
+                    newTemplate.Summary.Prompt = promptProp.GetString()!;
+                }
+
+                // Tagging Tab
+                if (!changes.RootElement.TryGetProperty("tagging", out var taggingElement) ||
+                    taggingElement.ValueKind != JsonValueKind.Object
+                ) {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTemplate:TAGS_DATA_MISSING",
+                        "Tagging tab data is missing or invalid."
+                    );
+                }
+                else
+                {
+                    if (!taggingElement.TryGetProperty("isActive", out var activeProp) ||
+                        (activeProp.ValueKind != JsonValueKind.True && activeProp.ValueKind != JsonValueKind.False)
+                    )
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:TAGGING_ISACTIVE_INVALID",
+                            "Tagging 'isActive' flag is missing or invalid."
+                        );
+                    }
+                    newTemplate.Tagging.IsActive = activeProp.GetBoolean();
+
+                    if (!taggingElement.TryGetProperty("tags", out var tagsArray) ||
+                        tagsArray.ValueKind != JsonValueKind.Array)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:TAGS_DATA_MISSING",
+                            "Tagging 'tags' array is missing or invalid."
+                        );
+                    }
+
+                    var tagsValidationResult = ValidateTagsRecursive(tagsArray, 0);
+                    if (!tagsValidationResult.Success)
+                    {
+                        return result.SetFailureResult(
+                            $"AddOrUpdateTemplate:{tagsValidationResult.Code}",
+                            tagsValidationResult.Message
+                        );
+                    }
+                    newTemplate.Tagging.Tags = tagsValidationResult.Data!;
+                }
+
+                // Extraction Tab
+                if (!changes.RootElement.TryGetProperty("extraction", out var extractionElement) ||
+                    extractionElement.ValueKind != JsonValueKind.Object
+                ) {
+                    return result.SetFailureResult(
+                        "AddOrUpdateTemplate:EXTRACTION_DATA_MISSING",
+                        "Extraction tab data is missing or invalid."
+                    );
+                }
+                else
+                {
+                    if (!extractionElement.TryGetProperty("isActive", out var activeProp) ||
+                        (activeProp.ValueKind != JsonValueKind.True && activeProp.ValueKind != JsonValueKind.False)
+                    )
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:EXTRACTION_ISACTIVE_INVALID",
+                            "Extraction 'isActive' flag is missing or invalid."
+                        );
+                    }
+                    newTemplate.Extraction.IsActive = activeProp.GetBoolean();
+
+                    if (!extractionElement.TryGetProperty("fields", out var fieldsArray) ||
+                        fieldsArray.ValueKind != JsonValueKind.Array
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:FIELDS_DATA_MISSING",
+                            "Extraction 'fields' array is missing or invalid."
+                        );
+                    }
+
+                    var uniqueKeys = new HashSet<string>();
+                    var fieldsValidationResult = ValidateFieldsRecursive(fieldsArray, uniqueKeys, 0);
+                    if (!fieldsValidationResult.Success)
+                    {
+                        return result.SetFailureResult(
+                            $"AddOrUpdateTemplate:{fieldsValidationResult.Code}",
+                            fieldsValidationResult.Message
+                        );
+                    }
+                    newTemplate.Extraction.Fields = fieldsValidationResult.Data!;
+                }
+
+                // Final DB Operation
+                using (var session = await _mongoClient.StartSessionAsync())
+                {
+                    session.StartTransaction();
+                    try
+                    {
+                        if (postType == "new")
+                        {
+                            newTemplate.Id = ObjectId.GenerateNewId().ToString();
+                            var addResult = await _businessAppRepository.AddBusinessAppPostAnalysisTemplate(businessId, newTemplate, session);
+                            if (!addResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTemplate:DB_ADD_FAILED",
+                                    "Failed to add new template to the database."
+                                );
+                            }
+                        }
+                        else // "edit"
+                        {
+                            newTemplate.Id = existingTemplateData!.Id;
+                            var updateResult = await _businessAppRepository.UpdateBusinessAppPostAnalysisTemplateExceptReferences(businessId, newTemplate, session);
+                            if (!updateResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "AddOrUpdateTemplate:DB_UPDATE_FAILED",
+                                    "Failed to update template in the database."
+                                );
+                            }
+
+                            if (existingTemplateData.Configuration.LLMIntegration.Id != newTemplate.Configuration.LLMIntegration.Id)
+                            {
+                                var removePALLMReferenceFromIntegration = await _businessAppRepository.RemovePostAnalysisLLMReferenceFromIntegration(businessId, existingTemplateData.Configuration.LLMIntegration.Id, newTemplate.Id, session);
+                                if (!removePALLMReferenceFromIntegration)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateTemplate:FAILED_TO_REMOVE_PALLM_REFERENCE_FROM_INTEGRATION",
+                                        "Failed to remove Post Analysis LLM reference from integration."
+                                    );
+                                }
+                            }
+                        }
+
+                        var addPALLMReferenceToIntegration = await _businessAppRepository.AddPostAnalysisLLMReferenceToIntegration(businessId, newTemplate.Configuration.LLMIntegration.Id, newTemplate.Id, session);
+                        if (!addPALLMReferenceToIntegration)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "AddOrUpdateTemplate:FAILED_TO_ADD_PALLM_REFERENCE_TO_INTEGRATION",
+                                "Failed to add Post Analysis LLM reference to integration."
+                            );
+                        }
+
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult(newTemplate);
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "AddOrUpdateTemplate:DB_EXCEPTION",
+                            $"An unexpected error occurred: {ex.Message}"
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log exception
+                return result.SetFailureResult(
+                    "AddOrUpdateTemplate:EXCEPTION",
+                    $"An unexpected error occurred: {ex.Message}"
+                );
+            }
+        }
+        public async Task<FunctionReturnResult> DeleteTemplate(long businessId, BusinessAppPostAnalysis templateData)
         {
             var result = new FunctionReturnResult();
 
