@@ -1541,40 +1541,71 @@ namespace IqraInfrastructure.Managers.Business
             BusinessAppTelephonyCampaign newCampaign,
             IClientSessionHandle session
         ) {
-            // A. Default Number
+            // A. Default Number (Simple List<string> reference)
             string? oldDefaultId = oldCampaign?.NumberRoute.DefaultNumberId;
             string? newDefaultId = newCampaign.NumberRoute.DefaultNumberId;
 
             if (!string.IsNullOrEmpty(oldDefaultId) && oldDefaultId != newDefaultId)
             {
+                // Remove old
                 if (!await _businessAppRepository.RemoveTelephonyCampaignDefaultNumberRouteReferenceFromBusinessNumber(businessId, oldDefaultId, campaignId, session))
                     throw new Exception($"Failed to remove default number route reference from number {oldDefaultId}");
             }
             if (!string.IsNullOrEmpty(newDefaultId))
             {
+                // Add new
                 if (!await _businessAppRepository.AddTelephonyCampaignDefaultNumberRouteReferenceToBusinessNumber(businessId, newDefaultId, campaignId, session))
                     throw new Exception($"Failed to add default number route reference to number {newDefaultId}");
             }
 
-            // B. Route Number List
-            var oldRouteNumbers = oldCampaign?.NumberRoute.RouteNumberList.Values.ToHashSet() ?? new HashSet<string>();
-            var newRouteNumbers = newCampaign.NumberRoute.RouteNumberList.Values.ToHashSet();
+            // B. Route Number List (List<Object> reference with PhoneCode)
+            // Dictionary<PhoneCode, NumberId>
+            var oldRouteMap = oldCampaign?.NumberRoute.RouteNumberList ?? new Dictionary<string, string>();
+            var newRouteMap = newCampaign.NumberRoute.RouteNumberList;
 
-            // Remove deleted
-            foreach (var oldNumId in oldRouteNumbers)
+            // 1. Handle Removals (Entry exists in Old but (not in New OR Value changed))
+            foreach (var kvp in oldRouteMap)
             {
-                if (!newRouteNumbers.Contains(oldNumId))
+                string phoneCode = kvp.Key;
+                string numberId = kvp.Value;
+
+                // If the phone code is removed, OR the number assigned to this phone code has changed
+                if (!newRouteMap.TryGetValue(phoneCode, out var newNumberId) || newNumberId != numberId)
                 {
-                    if (!await _businessAppRepository.RemoveTelephonyCampaignNumbersRouteReferenceFromBusinessNumber(businessId, oldNumId, campaignId, session))
-                        throw new Exception($"Failed to remove numbers route reference from number {oldNumId}");
+                    var refObj = new BusinessNumberTelephonyCampaignNumbersRouteReference
+                    {
+                        CampaignId = campaignId,
+                        PhoneCode = phoneCode
+                    };
+
+                    // NOTE: Ensure your Repository Remove method accepts the 'refObj' to pull the specific item
+                    if (!await _businessAppRepository.RemoveTelephonyCampaignNumbersRouteReferenceFromBusinessNumber(businessId, numberId, refObj, session))
+                    {
+                        throw new Exception($"Failed to remove route reference for phone code {phoneCode} from number {numberId}");
+                    }
                 }
             }
 
-            // Add new
-            foreach (var newNumId in newRouteNumbers)
+            // 2. Handle Additions (Entry exists in New but (not in Old OR Value changed))
+            foreach (var kvp in newRouteMap)
             {
-                if (!await _businessAppRepository.AddTelephonyCampaignNumbersRouteReferenceToBusinessNumber(businessId, newNumId, campaignId, session))
-                    throw new Exception($"Failed to add numbers route reference to number {newNumId}");
+                string phoneCode = kvp.Key;
+                string numberId = kvp.Value;
+
+                // If the phone code is new, OR the number assigned to this phone code has changed
+                if (!oldRouteMap.TryGetValue(phoneCode, out var oldNumberId) || oldNumberId != numberId)
+                {
+                    var refObj = new BusinessNumberTelephonyCampaignNumbersRouteReference
+                    {
+                        CampaignId = campaignId,
+                        PhoneCode = phoneCode
+                    };
+
+                    if (!await _businessAppRepository.AddTelephonyCampaignNumbersRouteReferenceToBusinessNumber(businessId, numberId, refObj, session))
+                    {
+                        throw new Exception($"Failed to add route reference for phone code {phoneCode} to number {numberId}");
+                    }
+                }
             }
         }
         private async Task UpdateTelephonyCampaignIntegrationReferences(
@@ -1690,12 +1721,22 @@ namespace IqraInfrastructure.Managers.Business
                             }
                         }
                         // Route Number List
-                        foreach (var numberId in campaign.NumberRoute.RouteNumberList.Values)
+                        foreach (var kvp in campaign.NumberRoute.RouteNumberList)
                         {
-                            if (!await _businessAppRepository.RemoveTelephonyCampaignNumbersRouteReferenceFromBusinessNumber(businessId, numberId, campaign.Id, session))
+                            string phoneCode = kvp.Key;
+                            string numberId = kvp.Value;
+
+                            var refObj = new BusinessNumberTelephonyCampaignNumbersRouteReference
+                            {
+                                CampaignId = campaign.Id,
+                                PhoneCode = phoneCode
+                            };
+
+                            // Note: ensure repo method takes refObj
+                            if (!await _businessAppRepository.RemoveTelephonyCampaignNumbersRouteReferenceFromBusinessNumber(businessId, numberId, refObj, session))
                             {
                                 await session.AbortTransactionAsync();
-                                return result.SetFailureResult("DeleteTelephonyCampaign:ROUTE_NUMBER_REF_FAILED", $"Failed to remove route number reference for {numberId}.");
+                                return result.SetFailureResult("DeleteTelephonyCampaign:ROUTE_NUMBER_REF_FAILED", $"Failed to remove route number reference for {numberId} (Code: {phoneCode}).");
                             }
                         }
 

@@ -324,6 +324,7 @@ let currentWebCampaignData = null;
 let currentWebCampaignAgentSelectedId = "";
 
 let isSavingWebCampaign = false;
+let isDeletingWebCampaign = false;
 
 const webCampaignsTooltipTriggerList = document.querySelectorAll('#web-campaigns-tab [data-bs-toggle="tooltip"]');
 [...webCampaignsTooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -394,12 +395,28 @@ const webCampaignSaveAgentButton = webCampaignSelectAgentModalElement.find("#web
 
 /** API FUNCTIONS **/
 function saveWebCampaign(formData, successCallback, errorCallback) {
-    $.ajax({
+    return $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/campaign/web/save`,
         type: "POST",
         data: formData,
         processData: false,
         contentType: false,
+        success: (response) => {
+            if (response.success) {
+                successCallback(response);
+            } else {
+                errorCallback(response, true);
+            }
+        },
+        error: (xhr, status, error) => {
+            errorCallback(error, false);
+        },
+    });
+}
+function deleteWebCampaign(campaignId, successCallback, errorCallback) {
+    return $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/campaign/web/${campaignId}/delete`,
+        type: "POST",
         success: (response) => {
             if (response.success) {
                 successCallback(response);
@@ -1640,6 +1657,79 @@ function initWebCampaignsTab() {
 
             showWebCampaignsManagerView();
             updateUrlForTab(`webcampaigns/${campaignId}`);
+        });
+
+        webCampaignsListContainer.on("click", ".web-campaign-card span[button-type='delete-campaign']", async (event) => {
+            event.preventDefault();
+
+            const button = $(event.currentTarget);
+            const campaignId = button.attr("data-item-id");
+            const campaignIndex = BusinessFullData.businessApp.webCampaigns.findIndex(n => n.id === campaignId);
+            if (campaignIndex === -1) return;
+            const campaignData = BusinessFullData.businessApp.webCampaigns[campaignIndex];
+            if (!campaignData) return;
+            const campaignCard = webCampaignsListContainer.find(`.web-campaign-card[data-item-id="${campaignId}"]`);
+
+            if (isDeletingWebCampaign) {
+                AlertManager.createAlert({
+                    type: "warning",
+                    message: `A delete operation for web campaigns is already in progress. Please try again once the operation is complete.`,
+                    timeout: 6000,
+                });
+                return;
+            }
+
+            const confirmDialog = new BootstrapConfirmDialog({
+                title: `Delete "${campaignData.general.name}" Web Campaign`,
+                message: `Are you sure you want to delete this web campaign?<br><br><b>Note:</b> You must wait or cancel any ongoing call queues or conversations.`,
+                confirmText: "Delete",
+                confirmButtonClass: "btn-danger",
+                modalClass: "modal-lg"
+            });
+
+            if (await confirmDialog.show()) {
+                showHideButtonSpinnerWithDisableEnable(button, true);
+                isDeletingWebCampaign = true;
+                campaignCard.addClass("disabled");
+
+                deleteWebCampaign(
+                    campaignId,
+                    () => {
+
+                        BusinessFullData.businessApp.webCampaigns.splice(campaignIndex, 1);
+
+                        campaignCard.parent().remove();
+
+                        if (BusinessFullData.businessApp.webCampaigns.length === 0) {
+                            webCampaignsListContainer.append('<div class="col-12"><h6 class="text-center mt-5">No web campaigns created yet...</h6></div>');
+                        }
+
+                        AlertManager.createAlert({
+                            type: "success",
+                            message: `Web Campaign "${campaignData.general.name}" deleted successfully.`,
+                            timeout: 6000,
+                        });
+                    },
+                    (errorResult) => {
+                        campaignCard.removeClass("disabled");
+
+                        var resultMessage = "Check console logs for more details.";
+                        if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                        AlertManager.createAlert({
+                            type: "danger",
+                            message: "Error occured while deleting business web campaign.",
+                            resultMessage: resultMessage,
+                            timeout: 6000,
+                        });
+
+                        console.log("Error occured while deleting business web campaign: ", errorResult);
+                    }
+                ).always(() => {
+                    showHideButtonSpinnerWithDisableEnable(button, false);
+                    isDeletingWebCampaign = false;
+                });
+            }
         });
 
         webCampaignsManagerView.on('input change', 'input, select, textarea', () => {

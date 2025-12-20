@@ -631,6 +631,7 @@ let currentTelephonyCampaignDefaultNumberId = "";
 let currentTelephonyCampaignAgentSelectedId = "";
 
 let isSavingTelephonyCampaign = false;
+let isDeletingTelephonyCampaign = false;
 
 var telephonyCampaignPostAnalysisContextVariablesCustomInput = {};
 
@@ -755,12 +756,28 @@ let telephonyCampaignAddRegionModal = null;
 
 /** API FUNCTIONS **/
 function saveTelephonyCampaign(formData, successCallback, errorCallback) {
-    $.ajax({
+    return $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/campaign/telephony/save`,
         type: "POST",
         data: formData,
         processData: false,
         contentType: false,
+        success: (response) => {
+            if (response.success) {
+                successCallback(response);
+            } else {
+                errorCallback(response, true);
+            }
+        },
+        error: (xhr, status, error) => {
+            errorCallback(error, false);
+        },
+    });
+}
+function deleteTelephonyCampaign(campaignId, successCallback, errorCallback) {
+    return $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/campaign/telephony/${campaignId}/delete`,
+        type: "POST",
         success: (response) => {
             if (response.success) {
                 successCallback(response);
@@ -789,7 +806,6 @@ function showTelephonyCampaignsListView() {
         }, 10);
     }, 300);
 }
-
 function showTelephonyCampaignsManagerView() {
     telephonyCampaignsListView.removeClass("show");
     setTimeout(() => {
@@ -804,7 +820,6 @@ function showTelephonyCampaignsManagerView() {
         }, 10);
     }, 300);
 }
-
 function createTelephonyCampaignListCardElement(campaignData) {
     const agentData = BusinessFullData.businessApp.agents.find((agent) => agent.id === campaignData.agent.selectedAgentId);
     const agentName = agentData ? `Agent: ${agentData.general.emoji} ${agentData.general.name[BusinessDefaultLanguage]}` : 'No Agent Assigned';
@@ -833,7 +848,6 @@ function createTelephonyCampaignListCardElement(campaignData) {
         actionDropdownHtml: actionDropdownHtml,
     });
 }
-
 function fillTelephonyCampaignsList() {
     telephonyCampaignsListContainer.empty();
     const telephonyCampaigns = BusinessFullData.businessApp.telephonyCampaigns;
@@ -845,7 +859,6 @@ function fillTelephonyCampaignsList() {
         });
     }
 }
-
 function createDefaultTelephonyCampaignObject() {
     return {
         general: {
@@ -936,7 +949,6 @@ function createDefaultTelephonyCampaignObject() {
         }
     };
 }
-
 function resetTelephonyCampaignManager() {
     telephonyCampaignsManagerView.find(".is-invalid").removeClass("is-invalid");
     telephonyCampaignsManagerView.find('.border-danger').removeClass('border-danger');
@@ -1049,7 +1061,6 @@ function resetTelephonyCampaignManager() {
     saveTelephonyCampaignButton.prop("disabled", true);
     currentTelephonyCampaignAgentSelectedId = "";
 }
-
 function fillTelephonyCampaignManager() {
     const data = currentTelephonyCampaignData;
 
@@ -1202,7 +1213,6 @@ function fillTelephonyCampaignManager() {
     fillTelephonyActionTool(data.actions.callAnsweredTool, telephonyCampaignActionToolCallAnsweredSelect, telephonyCampaignOnCallAnsweredActionArgurments, telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput);
     fillTelephonyActionTool(data.actions.callEndedTool, telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionArgurments, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput);
 }
-
 function checkTelephonyCampaignChanges(enableDisableButton = true) {
     if (manageTelephonyCampaignType === null) {
         return {
@@ -1506,7 +1516,6 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
         changes
     };
 }
-
 function validateTelephonyCampaign(onlyRemove = true) {
     if (manageTelephonyCampaignType === null) return {
         validated: true,
@@ -1790,7 +1799,6 @@ function validateTelephonyCampaign(onlyRemove = true) {
         errors
     };
 }
-
 async function canLeaveTelephonyCampaignsManager(leaveMessage = "") {
     if (isSavingTelephonyCampaign) {
         AlertManager.createAlert({
@@ -1814,7 +1822,6 @@ async function canLeaveTelephonyCampaignsManager(leaveMessage = "") {
     }
     return true;
 }
-
 function handleTelephonyCampaignRouting(subPath) {
     if (manageTelephonyCampaignType === 'new' || manageTelephonyCampaignType === 'edit') {
         let correctPath;
@@ -1837,7 +1844,7 @@ function handleTelephonyCampaignRouting(subPath) {
     }
 
     const action = subPath[0];
-    const campaignCard = telephonyCampaignsListContainer.find(`.campaign-card[data-item-id="${action}"]`);
+    const campaignCard = telephonyCampaignsListContainer.find(`.telephony-campaign-card[data-item-id="${action}"]`);
 
     if (action === 'new') {
         if (!telephonyCampaignsManagerView.hasClass('show')) {
@@ -1880,7 +1887,6 @@ function updateTelephonyDefaultNumberRowUI(numberData) {
         actionButton.removeClass('btn-secondary').addClass('btn-primary');
     }
 }
-
 function createTelephonyCampaignRegionRowElement(regionCode, numberData) {
     const countryData = CountriesList[regionCode.toUpperCase()];
     const regionName = countryData ? `${countryData.Country} (${countryData.phone_code})` : regionCode;
@@ -1896,7 +1902,6 @@ function createTelephonyCampaignRegionRowElement(regionCode, numberData) {
         </tr>
     `;
 }
-
 function populateTelephonyNumberSelectionModal() {
     const modalBody = telephonyCampaignChangeNumberModalElement.find('.modal-body');
     modalBody.empty();
@@ -1908,10 +1913,14 @@ function populateTelephonyNumberSelectionModal() {
         listGroup.append("<span>No numbers found for your business.</span>");
     } else {
         availableNumbers.forEach((number) => {
-            const countryData = CountriesList[number.countryCode.toUpperCase()];
+            const countryData = undefined;
+            if (number.provider.value !== NumberProviderEnum.SIP || number.isE164Number) {
+                countryData = CountriesList[number.countryCode.toUpperCase()]
+            }
+
             listGroup.append(`
                 <button type="button" class="list-group-item list-group-item-action" data-number-id="${number.id}">
-                    ${countryData.phone_code} ${number.number}
+                    ${countryData ? `${countryData["Alpha-2 code"]} ${countryData.phone_code}` : ''} ${number.number}
                 </button>
             `);
         });
@@ -1941,7 +1950,6 @@ function createTelephonyCampaignVariableElement(data) {
 		</div>
     `;
 }
-
 function initTelephonyCampaignVariablesEventHandlers() {
     // Dynamic Variables
     addTelephonyCampaignDynamicVariable.on('click', (event) => {
@@ -1976,7 +1984,6 @@ function initTelephonyCampaignVariablesEventHandlers() {
         validateTelephonyCampaign(true);
     }
 }
-
 function getTelephonyCampaignVariablesList(variablesList) {
     var array = [];
 
@@ -2046,7 +2053,6 @@ function createTelephonyCampaignPostAnalysisContextVariableElement(id, data = nu
         </div>
     `;
 }
-
 function initTelephonyCampaignPostAnalysisEventHandlers() {
     telephonyCampaignPostAnalysisTemplateSelect.on('change', (e) => {
         const currentElement = $(e.currentTarget);
@@ -2140,7 +2146,6 @@ function handleTelephonyCampaignActionToolChange(event) {
     checkTelephonyCampaignChanges();
     validateTelephonyCampaign(true);
 }
-
 function createTelephonyCampaignActionArgumentListElement(argumentData) {
     return `
             <div class="input-group mb-1 campaign-action-tool-argument">
@@ -2152,7 +2157,6 @@ function createTelephonyCampaignActionArgumentListElement(argumentData) {
             </div>
         `;
 }
-
 function handleTelephonyCampaignActionAddArgument(event, customInputArguments, customInputObject) {
     const selectElement = $(event.currentTarget);
     const selectedArgumentId = selectElement.val();
@@ -2191,7 +2195,6 @@ function handleTelephonyCampaignActionAddArgument(event, customInputArguments, c
     checkTelephonyCampaignChanges();
     validateTelephonyCampaign(true);
 }
-
 function handleTelephonyCampaignActionRemoveArgument(event, customInputObject) {
     event.preventDefault();
     const removeButton = $(event.currentTarget);
@@ -2217,7 +2220,6 @@ function handleTelephonyCampaignActionRemoveArgument(event, customInputObject) {
     checkTelephonyCampaignChanges();
     validateTelephonyCampaign(true);
 }
-
 function initTelephonyActionsEventHandlers() {
     // Main tool selection change handler
     telephonyCampaignActionToolCallInitiationFailureSelect.on('change', handleTelephonyCampaignActionToolChange);
@@ -2292,7 +2294,6 @@ function initTelephonyActionsEventHandlers() {
     });
 }
 
-
 /** EVENT HANDLER INITIALIZERS **/
 function initTelephonyAgentEventHandlers() {
     const selectAgentButton = telephonyCampaignsManagerView.find('button[data-bs-target="#telephony-campaign-select-agent-modal"]');
@@ -2340,7 +2341,6 @@ function initTelephonyAgentEventHandlers() {
         validateTelephonyCampaign(true);
     });
 }
-
 function initTelephonyNumbersEventHandlers() {
     const saveChangeCampaignNumberButton = telephonyCampaignChangeNumberModalElement.find("#telephony-campaign-save-number-button");
     const campaignRegionSelect = telephonyCampaignAddRegionModalElement.find('.modal-body'); // Assuming a select will be here
@@ -2437,7 +2437,6 @@ function initTelephonyNumbersEventHandlers() {
         }
     });
 }
-
 function initTelephonyConfigurationEventHandlers() {
     telephonyCampaignRetryOnDeclineCheck.on('change', function () {
         const isChecked = $(this).is(':checked');
@@ -2472,7 +2471,6 @@ function initTelephonyConfigurationEventHandlers() {
         }
     });
 }
-
 function initTelephonyVoicemailDetectionEventHandlers() {
     telephonyCampaignVoicemailIsEnabledCheck.on('change', function () {
         const isEnabled = $(this).is(':checked');
@@ -2571,7 +2569,7 @@ function initTelephonyCampaignsTab() {
             }
         });
 
-        telephonyCampaignsListContainer.on("click", ".campaign-card", (e) => {
+        telephonyCampaignsListContainer.on("click", ".telephony-campaign-card", (e) => {
             e.preventDefault();
             e.stopPropagation();
 
@@ -2594,6 +2592,79 @@ function initTelephonyCampaignsTab() {
 
             showTelephonyCampaignsManagerView();
             updateUrlForTab(`telephonycampaigns/${campaignId}`);
+        });
+
+        telephonyCampaignsListContainer.on("click", ".telephony-campaign-card span[button-type='delete-campaign']", async (event) => {
+            event.preventDefault();
+
+            const button = $(event.currentTarget);
+            const campaignId = button.attr("data-item-id");
+            const campaignIndex = BusinessFullData.businessApp.telephonyCampaigns.findIndex(n => n.id === campaignId);
+            if (campaignIndex === -1) return;
+            const campaignData = BusinessFullData.businessApp.telephonyCampaigns[campaignIndex];
+            if (!campaignData) return;
+            const campaignCard = telephonyCampaignsListContainer.find(`.telephony-campaign-card[data-item-id="${campaignId}"]`);
+
+            if (isDeletingTelephonyCampaign) {
+                AlertManager.createAlert({
+                    type: "warning",
+                    message: `A delete operation for telephony campaigns is already in progress. Please try again once the operation is complete.`,
+                    timeout: 6000,
+                });
+                return;
+            }
+
+            const confirmDialog = new BootstrapConfirmDialog({
+                title: `Delete "${campaignData.general.name}" Telephony Campaign`,
+                message: `Are you sure you want to delete this telephony campaign?<br><br><b>Note:</b> You must wait or cancel any ongoing call queues or conversations.`,
+                confirmText: "Delete",
+                confirmButtonClass: "btn-danger",
+                modalClass: "modal-lg"
+            });
+
+            if (await confirmDialog.show()) {
+                showHideButtonSpinnerWithDisableEnable(button, true);
+                isDeletingTelephonyCampaign = true;
+                campaignCard.addClass("disabled");
+
+                deleteTelephonyCampaign(
+                    campaignId,
+                    () => {
+
+                        BusinessFullData.businessApp.telephonyCampaigns.splice(campaignIndex, 1);
+
+                        campaignCard.parent().remove();
+
+                        if (BusinessFullData.businessApp.telephonyCampaigns.length === 0) {
+                            telephonyCampaignsListContainer.append('<div class="col-12"><h6 class="text-center mt-5">No telephony campaigns created yet...</h6></div>');
+                        }
+
+                        AlertManager.createAlert({
+                            type: "success",
+                            message: `Telephony Campaign "${campaignData.general.name}" deleted successfully.`,
+                            timeout: 6000,
+                        });
+                    },
+                    (errorResult) => {
+                        campaignCard.removeClass("disabled");
+
+                        var resultMessage = "Check console logs for more details.";
+                        if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                        AlertManager.createAlert({
+                            type: "danger",
+                            message: "Error occured while deleting business telephony campaign.",
+                            resultMessage: resultMessage,
+                            timeout: 6000,
+                        });
+
+                        console.log("Error occured while deleting business telephony campaign: ", errorResult);
+                    }
+                ).always(() => {
+                    showHideButtonSpinnerWithDisableEnable(button, false);
+                    isDeletingTelephonyCampaign = false;
+                });
+            }
         });
 
         telephonyCampaignsManagerView.on('input change', 'input:not(.form-range), select, textarea', () => {

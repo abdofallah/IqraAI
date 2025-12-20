@@ -1643,24 +1643,27 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> AddTelephonyCampaignNumbersRouteReferenceToBusinessNumber(long businessId, string phoneNumberId, string campaignId, IClientSessionHandle? session = null)
+        public async Task<bool> AddTelephonyCampaignNumbersRouteReferenceToBusinessNumber(long businessId, string phoneNumberId, BusinessNumberTelephonyCampaignNumbersRouteReference reference, IClientSessionHandle? session = null)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == phoneNumberId)
             );
-            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Numbers.FirstMatchingElement().TelephonyCampaignNumbersRouteReferences, campaignId);
+            var update = Builders<BusinessApp>.Update.AddToSet(d => d.Numbers.FirstMatchingElement().TelephonyCampaignNumbersRouteReferences, reference);
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
-        public async Task<bool> RemoveTelephonyCampaignNumbersRouteReferenceFromBusinessNumber(long businessId, string phoneNumberId, string campaignId, IClientSessionHandle? session = null)
+        public async Task<bool> RemoveTelephonyCampaignNumbersRouteReferenceFromBusinessNumber(long businessId, string phoneNumberId, BusinessNumberTelephonyCampaignNumbersRouteReference reference, IClientSessionHandle? session = null)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == phoneNumberId)
             );
-            var update = Builders<BusinessApp>.Update.Pull(d => d.Numbers.FirstMatchingElement().TelephonyCampaignNumbersRouteReferences, campaignId);
+            var update = Builders<BusinessApp>.Update.PullFilter(
+                d => d.Numbers.FirstMatchingElement().TelephonyCampaignNumbersRouteReferences,
+                r => r.CampaignId == reference.CampaignId && r.PhoneCode == reference.PhoneCode
+            );
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;
         }
