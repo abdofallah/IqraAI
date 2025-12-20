@@ -156,6 +156,14 @@ namespace IqraInfrastructure.Repositories.RAG
             await _keywordCollection.UpdateManyAsync(session, filter, update);
         }
 
+        public async Task<bool> RemoveKeywordsForKnowledgeBaseAsync(string knowledgeBaseId, IClientSessionHandle session)
+        {
+            var filter = Builders<KeywordIndex>.Filter.Eq(i => i.KnowledgeBaseId, knowledgeBaseId);
+            var result = await _keywordCollection.DeleteManyAsync(session, filter);
+
+            return result.IsAcknowledged;
+        }
+
         public async Task<List<string>> SearchAsync(string knowledgeBaseId, string query, int topK)
         {
             var queryKeywords = _keywordExtractor.Extract(query);

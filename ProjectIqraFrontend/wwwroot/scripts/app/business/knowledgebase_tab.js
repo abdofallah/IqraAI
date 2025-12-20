@@ -186,7 +186,7 @@ const retrievalResultsContainer = testRetrievalModalElement.find('#retrievalResu
 
 /** API FUNCTIONS **/
 function SaveBusinessKnowledgeBase(formData, successCallback, errorCallback) {
-    $.ajax({
+    return $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/knowledgebase/save`,
         method: "POST",
         data: formData,
@@ -1445,9 +1445,14 @@ function initKnowledgeBaseTab() {
                     saveAndProcessDocumentButton.prop('disabled', false);
                     IsProcessingDocument = false;
 
+                    var resultMessage = "Check console logs for more details.";
+                    if (error && error.message) resultMessage = error.message;
+
                     AlertManager.createAlert({
                         type: 'danger',
                         message: 'Failed to add document for processing. Check console logs for more details.',
+                        resultMessage: resultMessage,
+                        timeout: 6000
                     });
 
                     console.log("Failed to add document for processing.", error);
@@ -1885,9 +1890,13 @@ function initKnowledgeBaseTab() {
                     IsSavingChunks = false;
                     updateSaveChangesButtonState();
 
+                    var resultMessage = "Check console logs for more details.";
+                    if (error && error.message) resultMessage = error.message;
+
                     AlertManager.createAlert({
                         type: 'danger',
                         message: 'Failed to save chunks and submit for processing. Check console logs for more details.',
+                        resultMessage: resultMessage,
                         timeout: 6000
                     });
 
@@ -1962,9 +1971,14 @@ function initKnowledgeBaseTab() {
                     spinner.addClass('d-none');
                     IsSavingKnowledgeBase = false;
                     saveKnowledgeBaseButton.removeClass('disabled').prop('disabled', false);
+
+                    var resultMessage = "Check console logs for more details.";
+                    if (error && error.message) resultMessage = error.message;
+
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Error occured while saving knowledgebase data. Check browser console for logs.",
+                        message: "Error occured while saving knowledgebase data.",
+                        resultMessage: resultMessage,
                         timeout: 6000,
                     });
 

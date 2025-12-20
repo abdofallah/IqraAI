@@ -9,6 +9,8 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase.Document
         [BsonId]
         public long Id { get; set; } = 0;
         public string Name { get; set; } = string.Empty;
+        public long BusinessId { get; set; }
+        public string KnowledgeBaseId { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
 
         public KnowledgeBaseDocumentStatus Status { get; set; } = KnowledgeBaseDocumentStatus.Processing;

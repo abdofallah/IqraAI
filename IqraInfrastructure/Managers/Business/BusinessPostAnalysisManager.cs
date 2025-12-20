@@ -416,6 +416,7 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
 
+                        await session.CommitTransactionAsync();
                         return result.SetSuccessResult();
                     }
                     catch (Exception e)

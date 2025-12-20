@@ -31,30 +31,46 @@ namespace IqraInfrastructure.Repositories.Business
             return await _counterRepository.GetNextSequenceValueAsync("documentId");
         }
 
-        public async Task<BusinessAppKnowledgeBaseDocument?> GetDocumentByIdAsync(long documentId)
+        public async Task<BusinessAppKnowledgeBaseDocument?> GetDocumentByIdAsync(long businessId, string knowledgeBaseId, long documentId)
         {
-            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId);
+            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.And(
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId),
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.KnowledgeBaseId, knowledgeBaseId)
+            );
             return await _documentsCollection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public async Task<List<BusinessAppKnowledgeBaseDocument>?> GetDocumentsByIdsAsync(List<long> documentIds)
+        public async Task<List<BusinessAppKnowledgeBaseDocument>?> GetDocumentsForKnowledgeBase(long businessId, string knowledgeBaseId)
+        {
+            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.And(
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.BusinessId, businessId),
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.KnowledgeBaseId, knowledgeBaseId)
+            );
+            return await _documentsCollection.Find(filter).ToListAsync();
+        }
+
+        public async Task<long> GetProcessingDocumentsCountsForKnowledegeBaseAsync(long businessId, string knowledgeBaseId)
+        {
+            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.And(
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.BusinessId, businessId),
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.KnowledgeBaseId, knowledgeBaseId),
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Status, KnowledgeBaseDocumentStatus.Processing)
+            );
+
+            return await _documentsCollection.CountDocumentsAsync(filter);
+        }
+
+        public async Task<List<BusinessAppKnowledgeBaseDocument>> GetDocumentsByIdsAsync(List<long> documentIds)
         {
             var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.In(d => d.Id, documentIds);
             return await _documentsCollection.Find(filter).ToListAsync();
         }
 
-        public async Task<bool> CreateDocumentAsync(BusinessAppKnowledgeBaseDocument document, IClientSessionHandle? session = null)
+        public async Task<bool> CreateDocumentAsync(BusinessAppKnowledgeBaseDocument document, IClientSessionHandle session)
         {
             try
             {
-                if (session != null)
-                {
-                    await _documentsCollection.InsertOneAsync(session, document);
-                }
-                else
-                {
-                    await _documentsCollection.InsertOneAsync(document);
-                }
+                await _documentsCollection.InsertOneAsync(session, document);
                 return true;
             }
             catch (Exception ex)
@@ -64,17 +80,7 @@ namespace IqraInfrastructure.Repositories.Business
             }
         }
 
-        public async Task<bool> DeleteDocumentAsync(long documentId, IClientSessionHandle? session = null)
-        {
-            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId);
-            var result = session != null
-                ? await _documentsCollection.DeleteOneAsync(session, filter)
-                : await _documentsCollection.DeleteOneAsync(filter);
-
-            return result.IsAcknowledged;
-        }
-
-        public async Task<bool> UpdateDocumentStatusAsync(long documentId, KnowledgeBaseDocumentStatus status, string? failedReason = null, IClientSessionHandle? session = null)
+        public async Task<bool> UpdateDocumentStatusAsync(long businessId, string knowledgeBaseId, long documentId, KnowledgeBaseDocumentStatus status, string? failedReason = null, IClientSessionHandle? session = null)
         {
             var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId);
             var update = Builders<BusinessAppKnowledgeBaseDocument>.Update.Set(d => d.Status, status).Set(d => d.FailedReason, failedReason);
@@ -84,11 +90,21 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateDocumentWithUpdateDefinition(long documentId, UpdateDefinition<BusinessAppKnowledgeBaseDocument> update, IClientSessionHandle session)
+        public async Task<bool> UpdateDocumentWithUpdateDefinition(long businessId, string knowledgeBaseId, long documentId, UpdateDefinition<BusinessAppKnowledgeBaseDocument> update, IClientSessionHandle session)
         {
             var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId);
             var result = await _documentsCollection.UpdateOneAsync(session, filter, update);
-            return result.IsAcknowledged && result.ModifiedCount > 0;
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> RemoveDocumentsForKnowledgeBase(long businessId, string knowledgeBaseId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.And(
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.BusinessId, businessId),
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.KnowledgeBaseId, knowledgeBaseId)    
+            );
+            var result = await _documentsCollection.DeleteManyAsync(session, filter);
+            return result.IsAcknowledged;
         }
 
         /**

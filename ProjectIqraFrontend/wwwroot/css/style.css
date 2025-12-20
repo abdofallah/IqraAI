@@ -1413,7 +1413,6 @@ table.table > thead > * > * {
 	padding-bottom: 0px !important;
 	max-height: 60vh;
 	overflow-y: scroll;
-	min-height: 400px;
 }
 
 #integrationLogoPreview {

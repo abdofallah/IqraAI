@@ -70,6 +70,7 @@ namespace IqraInfrastructure.Managers.Business
             _ragKeywordStore = ragKeywordStore;
         }
 
+        // CURD
         public async Task<FunctionReturnResult<BusinessAppKnowledgeBase?>> GetKnowledgeBaseById(long businessId, string existingKbId)
         {
             var result = new FunctionReturnResult<BusinessAppKnowledgeBase?>();
@@ -83,7 +84,52 @@ namespace IqraInfrastructure.Managers.Business
             
             return result.SetSuccessResult(knowledgeBase);
         }
+        public async Task<bool> CheckKnowledgeBaseGroupExistsById(long businessId, string linkedGroupId)
+        {
+            return await _businessAppRepository.CheckKnowledgeBaseGroupExistsById(businessId, linkedGroupId);
+        }
+        public async Task<FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>> GetKnowledgeBaseDocuments(long businessId, string kbId)
+        {
+            var result = new FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>();
 
+            try
+            {
+                var knowledgeBaseData = await _businessAppRepository.GetBusinessAppKnowledgeBaseAsync(businessId, kbId);
+                if (knowledgeBaseData == null)
+                {
+                    return result.SetFailureResult(
+                        "GetKnowledgeBaseDocuments:KNOWLEDGE_BASE_NOT_FOUND",
+                        "Knowledge base not found."
+                    );
+                }
+
+                var documents = await _knowledgeBaseDocumentRepository.GetDocumentsForKnowledgeBase(businessId, knowledgeBaseData.Id);
+                if (documents == null)
+                {
+                    return result.SetFailureResult(
+                        "GetKnowledgeBaseDocuments:DOCUMENTS_NOT_FOUND",
+                        "Documents not found."
+                    );
+                }
+
+                if (documents.Count != knowledgeBaseData.Documents.Count)
+                {
+                    return result.SetFailureResult(
+                        "GetKnowledgeBaseDocuments:DOCUMENTS_INCOMPLETE_COUNT",
+                        "Incomplete document count."
+                    );
+                }
+
+                return result.SetSuccessResult(documents);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetKnowledgeBaseDocuments:EXCEPTION",
+                    ex.Message
+                );
+            }
+        }
         public async Task<FunctionReturnResult<BusinessAppKnowledgeBase?>> AddOrUpdateKnowledgeBaseAsync(long businessId, IFormCollection formData, string postType, BusinessAppKnowledgeBase? existingKbData)
         {
             var result = new FunctionReturnResult<BusinessAppKnowledgeBase?>();
@@ -934,7 +980,7 @@ namespace IqraInfrastructure.Managers.Business
                         }
 
                         // Add the KB to the business app
-                        bool dbResult = await _businessAppRepository.AddKnowledgeBaseToArrayAsync(businessId, newKnowledgeBaseData, session);
+                        bool dbResult = await _businessAppRepository.AddKnowledgeBase(businessId, newKnowledgeBaseData, session);
                         if (!dbResult)
                         {
                             // may want to delete vectorCollectionCreated
@@ -958,9 +1004,8 @@ namespace IqraInfrastructure.Managers.Business
                     else if (postType == "edit")
                     {
                         newKnowledgeBaseData.Id = existingKbData!.Id;
-                        newKnowledgeBaseData.Documents = existingKbData.Documents;
 
-                        bool dbResult = await _businessAppRepository.UpdateKnowledgeBaseInArrayAsync(businessId, newKnowledgeBaseData, session);
+                        bool dbResult = await _businessAppRepository.UpdateKnowledgeBaseExceptDocumentsAndReferences(businessId, newKnowledgeBaseData, session);
                         if (!dbResult)
                         {
                             await session.AbortTransactionAsync();
@@ -1072,7 +1117,161 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
         }
+        public async Task<FunctionReturnResult> DeleteKnowledgeBase(long businessId, BusinessAppKnowledgeBase knowledgeBaseData)
+        {
+            var result = new FunctionReturnResult();
 
+            try
+            {
+                if (knowledgeBaseData.AgentReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteKnowlegeBase:AGENT_REFERENCE_EXISTS",
+                        "Cannot delete knowledge base with agent references."
+                    );
+                }
+
+                var documentsInProgressCount = await _knowledgeBaseDocumentRepository.GetProcessingDocumentsCountsForKnowledegeBaseAsync(businessId, knowledgeBaseData.Id);
+                if (documentsInProgressCount > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteKnowlegeBase:DOCUMENTS_IN_PROGRESS",
+                        "Cannot delete knowledge base with documents in progress."
+                    );
+                }
+
+                using (var session = await _mongoClient.StartSessionAsync())
+                {
+                    session.StartTransaction();
+
+                    try
+                    {
+                        // REMOVE RERANK INTEGRATION REFERENCE
+                        if (knowledgeBaseData.Configuration.Retrieval is BusinessAppKnowledgeBaseConfigurationVectorRetrieval vectorRetrieval)
+                        {
+                            if (vectorRetrieval.Rerank.Enabled)
+                            {
+                                var removeRerankReference = await _businessAppRepository.RemoveKBRerankReferenceFromIntegration(businessId, vectorRetrieval.Rerank.Integration!.Id, knowledgeBaseData.Id, session);
+                                if (!removeRerankReference)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "DeleteKnowlegeBase:FAILED_TO_REMOVE_RERANK_INTEGRATION_REFERENCE",
+                                        "Failed to remove rerank integration reference."
+                                    );
+                                }
+                            }
+                        }
+                        else if (knowledgeBaseData.Configuration.Retrieval is BusinessAppKnowledgeBaseConfigurationFullTextRetrieval fullTextSearchData)
+                        {
+                            if (fullTextSearchData.Rerank.Enabled)
+                            {
+                                var removeRerankReference = await _businessAppRepository.RemoveKBRerankReferenceFromIntegration(businessId, fullTextSearchData.Rerank.Integration!.Id, knowledgeBaseData.Id, session);
+                                if (!removeRerankReference)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "DeleteKnowlegeBase:FAILED_TO_REMOVE_RERANK_INTEGRATION_REFERENCE",
+                                        "Failed to remove rerank integration reference."
+                                    );
+                                }
+                            }
+                        }
+                        else if (knowledgeBaseData.Configuration.Retrieval is BusinessAppKnowledgeBaseConfigurationHybridRetrieval hybirdSearchData)
+                        {
+                            if (hybirdSearchData.Mode == KnowledgeBaseHybridRetrievalMode.RerankModel)
+                            {
+                                var removeRerankReference = await _businessAppRepository.RemoveKBRerankReferenceFromIntegration(businessId, hybirdSearchData.RerankIntegration!.Id, knowledgeBaseData.Id, session);
+                                if (!removeRerankReference)
+                                {
+                                    await session.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "DeleteKnowlegeBase:FAILED_TO_REMOVE_RERANK_INTEGRATION_REFERENCE",
+                                        "Failed to remove rerank integration reference."
+                                    );
+                                }
+                            }
+                        }
+
+                        // REMOVE EMBEDDING MODEL REFERENCE
+                        var removeLLMIntegrationReference = await _businessAppRepository.RemoveKBEmbeddingModelReferenceFromIntegration(businessId, knowledgeBaseData.Configuration.Embedding.Id, knowledgeBaseData.Id, session);
+                        if (!removeLLMIntegrationReference)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteKnowlegeBase:FAILED_TO_REMOVE_EMBEDDING_MODEL_REFERENCE_TO_INTEGRATION",
+                                "Failed to remove embedding model reference to integration."
+                            );
+                        }
+
+                        // REMOVE KNOWLEDGE BASE
+                        var removeKb = await _businessAppRepository.RemoveKnowledgeBase(businessId, knowledgeBaseData.Id, session);
+                        if (!removeKb)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteKnowlegeBase:FAILED_TO_REMOVE_KNOWLEDGE_BASE",
+                                "Failed to remove knowledge base."
+                            );
+                        }
+
+                        // REMOVE KNOWLEDGE BASE DOCUMENTS
+                        var removeKbDocuments = await _knowledgeBaseDocumentRepository.RemoveDocumentsForKnowledgeBase(businessId, knowledgeBaseData.Id, session);
+                        if (!removeKbDocuments)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteKnowlegeBase:FAILED_TO_REMOVE_KNOWLEDGE_BASE_DOCUMENTS",
+                                "Failed to remove knowledge base documents."
+                            );
+                        }
+
+                        // REMOVE RAG KEYWORDS FOR KNOWLEDGE BASE
+                        var removeRagKeywords = await _ragKeywordStore.RemoveKeywordsForKnowledgeBaseAsync(knowledgeBaseData.Id, session);
+                        if (!removeRagKeywords)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteKnowlegeBase:FAILED_TO_REMOVE_RAG_KEYWORDS",
+                                "Failed to remove rag keywords."
+                            );
+                        }
+
+                        // DELETE VECTOR DB
+                        string collectionName = $"b{businessId}_kb{knowledgeBaseData.Id}";
+                        var deleteVectorDBCollection = await _documentVectorRepository.DeleteKnowledgeBaseAsync(collectionName);
+                        if (!deleteVectorDBCollection)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteKnowlegeBase:FAILED_TO_DELETE_VECTOR_DB_COLLECTION",
+                                "Failed to delete vector db collection."
+                            );
+                        }
+
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "DeleteKnowlegeBase:DB_EXCEPTION",
+                            $"An error occurred in the database: {ex.Message}"
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeleteKnowlegeBase:DB_EXCEPTION",
+                    $"An error occurred in the database: {ex.Message}"
+                );
+            }
+        }
+
+        // PROCESSING MANAGEMENT
         public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> ProcessAndAddDocumentAsync(long businessId, string knowledgeBaseId, IFormCollection formData, IFormFile file)
         {
             var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
@@ -1101,6 +1300,8 @@ namespace IqraInfrastructure.Managers.Business
             {
                 Id = await _knowledgeBaseDocumentRepository.GetNextDocumentId(),
                 Name = file.FileName,
+                BusinessId = businessId,
+                KnowledgeBaseId = knowledgeBaseId,
                 Enabled = true,
                 Status = KnowledgeBaseDocumentStatus.Processing,
                 Chunks = new List<BusinessAppKnowledgeBaseDocumentChunk>()
@@ -1108,21 +1309,41 @@ namespace IqraInfrastructure.Managers.Business
 
 
             // TURN BELOW INTO MONGO SESSION
-            bool docCreated = await _knowledgeBaseDocumentRepository.CreateDocumentAsync(newDocument);
-            if (!docCreated)
+            using (var session = await _mongoClient.StartSessionAsync())
             {
-                return result.SetFailureResult(
-                    "ProcessAndAddDocumentAsync:DOCUMENT_CREATION_FAILED",
-                    "Failed to save document metadata."
-                );
-            }
-            bool docAddedToKb = await _businessAppRepository.AddDocumentIdToKnowledgeBaseAsync(businessId, knowledgeBaseId, newDocument.Id);
-            if (!docAddedToKb)
-            {
-                return result.SetFailureResult(
-                    "ProcessAndAddDocumentAsync:DOCUMENT_ADDITION_FAILED",
-                    "Failed to add document to knowledge base."
-                );
+                session.StartTransaction();
+
+                try
+                {
+                    bool docCreated = await _knowledgeBaseDocumentRepository.CreateDocumentAsync(newDocument, session);
+                    if (!docCreated)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "ProcessAndAddDocumentAsync:DOCUMENT_CREATION_FAILED",
+                            "Failed to save document metadata."
+                        );
+                    }
+
+                    bool docAddedToKb = await _businessAppRepository.AddDocumentIdToKnowledgeBaseAsync(businessId, knowledgeBaseId, newDocument.Id, session);
+                    if (!docAddedToKb)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "ProcessAndAddDocumentAsync:DOCUMENT_ADDITION_FAILED",
+                            "Failed to add document to knowledge base."
+                        );
+                    }
+
+                    await session.CommitTransactionAsync();
+                }
+                catch (Exception ex) {
+                    await session.AbortTransactionAsync();
+                    return result.SetFailureResult(
+                        "ProcessAndAddDocumentAsync:DB_EXCEPTION",
+                        $"An error occurred in the database: {ex.Message}"
+                    );
+                }
             }
 
             // Run Background Processing Task
@@ -1130,7 +1351,6 @@ namespace IqraInfrastructure.Managers.Business
 
             return result.SetSuccessResult(newDocument);
         }
-
         private async Task ProcessDocumentBackgroundAsync(IFormFile file, long businessId, BusinessAppKnowledgeBase kb, BusinessAppKnowledgeBaseDocument knowledgeBaseDocument, BusinessApp businessApp)
         {
             string? tempFilePath = null;
@@ -1140,10 +1360,10 @@ namespace IqraInfrastructure.Managers.Business
                 var embeddingIntegrationData = businessApp.Integrations.Find(integration => integration.Id == kb.Configuration.Embedding.Id);
                 if (embeddingIntegrationData == null)
                 {
-                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "No embedding integration found in business app.");
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(businessId, kb.Id, knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "No embedding integration found in business app.");
                     return;
                 }
-           
+
                 tempFilePath = Path.Combine(Path.GetTempPath(), ObjectId.GenerateNewId().ToString() + Path.GetExtension(file.FileName));
                 using (var stream = new FileStream(tempFilePath, FileMode.Create))
                 {
@@ -1154,7 +1374,7 @@ namespace IqraInfrastructure.Managers.Business
                 List<ExtractorDocumentModel> extractedDocuments = await extractor.ExtractAsync();
                 if (extractedDocuments == null || !extractedDocuments.Any())
                 {
-                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "Extraction resulted in no content.");
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(businessId, kb.Id, knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "Extraction resulted in no content.");
                     return;
                 }
 
@@ -1163,22 +1383,22 @@ namespace IqraInfrastructure.Managers.Business
                 List<ProcessedDocumentChunkModel> processedChunks = await indexProcessor.TransformAsync(extractedDocuments, kb, knowledgeBaseDocument.Id);
                 if (processedChunks == null || !processedChunks.Any())
                 {
-                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "Transformation resulted in no processable chunks.");
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(businessId, kb.Id, knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "Transformation resulted in no processable chunks.");
                     return;
                 }
 
                 var result = await indexProcessor.LoadAsync(processedChunks, kb, knowledgeBaseDocument, embeddingIntegrationData, businessId);
                 if (!result.Success)
                 {
-                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, $"[{result.Code}]: {result.Message}");
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(businessId, kb.Id, knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, $"[{result.Code}]: {result.Message}");
                     return;
                 }
 
-                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Ready);
+                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(businessId, kb.Id, knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Ready);
             }
             catch (Exception ex)
             {
-                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, $"Processing failed: {ex.Message}");
+                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(businessId, kb.Id, knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, $"Processing failed: {ex.Message}");
             }
             finally
             {
@@ -1188,51 +1408,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
         }
-
-        public async Task<FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>> GetKnowledgeBaseDocuments(long businessId, string kbId)
-        {
-            var result = new FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>();
-
-            try
-            {
-                var knowledgeBaseData = await _businessAppRepository.GetBusinessAppKnowledgeBaseAsync(businessId, kbId);
-                if (knowledgeBaseData == null)
-                {
-                    return result.SetFailureResult(
-                        "GetKnowledgeBaseDocuments:KNOWLEDGE_BASE_NOT_FOUND",
-                        "Knowledge base not found."
-                    );
-                }
-
-                var documents = await _knowledgeBaseDocumentRepository.GetDocumentsByIdsAsync(knowledgeBaseData.Documents);
-                if (documents == null)
-                {
-                    return result.SetFailureResult(
-                        "GetKnowledgeBaseDocuments:DOCUMENTS_NOT_FOUND",
-                        "Documents not found."
-                    );
-                }
-
-                if (documents.Count != knowledgeBaseData.Documents.Count)
-                {
-                    return result.SetFailureResult(
-                        "GetKnowledgeBaseDocuments:DOCUMENTS_INCOMPLETE_COUNT",
-                        "Incomplete document count."
-                    );
-                }
-
-                return result.SetSuccessResult(documents);
-            }
-            catch (Exception ex)
-            {
-                return result.SetFailureResult(
-                    "GetKnowledgeBaseDocuments:EXCEPTION",
-                    ex.Message
-                );
-            }
-        }
-
-        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> UpdateKnowledgeBaseDocumentChunksAsync(long businessId, string knowledgeBaseId, long documentId, IFormCollection formData, IClientSessionHandle mongoSessionHandle)
+        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> UpdateKnowledgeBaseDocumentChunksAsync(long businessId, string knowledgeBaseId, long documentId, IFormCollection formData)
         {
             var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
 
@@ -1284,7 +1460,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                var knowledgeBaseDocumentData = await _knowledgeBaseDocumentRepository.GetDocumentByIdAsync(documentId);
+                var knowledgeBaseDocumentData = await _knowledgeBaseDocumentRepository.GetDocumentByIdAsync(businessId, knowledgeBaseId, documentId);
                 if (knowledgeBaseDocumentData == null)
                 {
                     return result.SetFailureResult(
@@ -1427,14 +1603,16 @@ namespace IqraInfrastructure.Managers.Business
 
                     if (addedChunk.Type == KnowledgeBaseDocumentType.General)
                     {
-                        newMongoChunk = new BusinessAppKnowledgeBaseDocumentGeneralChunk {
+                        newMongoChunk = new BusinessAppKnowledgeBaseDocumentGeneralChunk
+                        {
                             Id = newChunkId,
                             Text = addedChunk.Text
                         };
                     }
                     else // Parent
                     {
-                        newMongoChunk = new BusinessAppKnowledgeBaseDocumentParentChunk {
+                        newMongoChunk = new BusinessAppKnowledgeBaseDocumentParentChunk
+                        {
                             Id = newChunkId,
                             Text = addedChunk.Text,
                             ChildrenIds = new List<string>()
@@ -1469,7 +1647,8 @@ namespace IqraInfrastructure.Managers.Business
                         backendParentId = addedChunk.ParentId; // It must be an existing parent
                     }
 
-                    var newChildChunk = new BusinessAppKnowledgeBaseDocumentChildChunk {
+                    var newChildChunk = new BusinessAppKnowledgeBaseDocumentChildChunk
+                    {
                         Id = newChunkId,
                         Text = addedChunk.Text,
                         ParentId = backendParentId
@@ -1538,71 +1717,85 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 // EXECUTE THE TRANSACTION WITH COMPENSATION LOGIC (THE SAGA)
-                try
+                using (var session = await _mongoClient.StartSessionAsync())
                 {
-                    // Execute MongoDB Operation (Single atomic update)
-                    var mongoFilter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId);
-                    var mongoUpdate = Builders<BusinessAppKnowledgeBaseDocument>.Update.Set(d => d.Chunks, finalMongoChunks);
-                    var updateResult = await _knowledgeBaseDocumentRepository.UpdateDocumentWithUpdateDefinition(documentId, mongoUpdate, mongoSessionHandle);
-                    if (!updateResult)
+                    session.StartTransaction();
+
+                    try
                     {
+                        // Execute MongoDB Operation (Single atomic update)
+                        var mongoFilter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.And(
+                            Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.BusinessId, businessId),
+                            Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.KnowledgeBaseId, knowledgeBaseId),
+                            Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId)
+                        );
+                        var mongoUpdate = Builders<BusinessAppKnowledgeBaseDocument>.Update.Set(d => d.Chunks, finalMongoChunks);
+                        var updateResult = await _knowledgeBaseDocumentRepository.UpdateDocumentWithUpdateDefinition(businessId, knowledgeBaseId, documentId, mongoUpdate, session);
+                        if (!updateResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "UpdateKnowledgeBaseDocumentChunksAsync:MONGODB_FAILED",
+                                "Failed to update document in MongoDB. The transaction will be aborted, reverting vector database changes."
+                            );
+                        }
+
+                        // Update Keyword Store
+                        if (chunkIdsToDeleteFromVectorDB.Any())
+                        {
+                            await _ragKeywordStore.RemoveChunkReferencesAsync(knowledgeBaseId, chunkIdsToDeleteFromVectorDB.ToList(), session);
+                        }
+                        foreach (var edited in keywordsForEditedChunks)
+                        {
+                            await _ragKeywordStore.UpdateChunkKeywordsAsync(knowledgeBaseId, edited.chunkId, edited.oldKeywords, edited.newKeywords, session);
+                        }
+                        if (keywordsForAddedChunks.Any())
+                        {
+                            await _ragKeywordStore.AddChunksKeywordsAsync(knowledgeBaseId, keywordsForAddedChunks, session);
+                        }
+
+                        // Execute Vector DB Operations
+                        string collectionName = $"b{businessId}_kb{knowledgeBaseId}";
+                        if (chunkIdsToDeleteFromVectorDB.Any())
+                        {
+                            var deleteSuccess = await _documentVectorRepository.DeleteChunksAsync(collectionName, chunkIdsToDeleteFromVectorDB.ToList());
+                            if (!deleteSuccess)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "UpdateKnowledgeBaseDocumentChunksAsync:VECTORDB_FAILED",
+                                    "Failed to delete chunks from vector database. The transaction will be aborted, reverting MongoDB changes."
+                                );
+                            }
+                        }
+                        if (chunksToUpsertInVectorDB.Any())
+                        {
+                            var addSuccess = await _documentVectorRepository.AddChunksAsync(collectionName, chunksToUpsertInVectorDB);
+                            if (!addSuccess)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "UpdateKnowledgeBaseDocumentChunksAsync:VECTORDB_FAILED",
+                                    "Failed to add chunks to vector database. The transaction will be aborted, reverting MongoDB changes."
+                                );
+                            }
+                        }
+
+                        // Commit Mongo Changes
+                        await session.CommitTransactionAsync();
+
+                        // If all operations succeed, we're done.
+                        var finalDocument = await _knowledgeBaseDocumentRepository.GetDocumentByIdAsync(businessId, knowledgeBaseId, documentId);
+                        return result.SetSuccessResult(finalDocument);
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
                         return result.SetFailureResult(
-                            "UpdateKnowledgeBaseDocumentChunksAsync:MONGODB_FAILED",
-                            "Failed to update document in MongoDB. The transaction will be aborted, reverting vector database changes."
+                            "UpdateKnowledgeBaseDocumentChunksAsync:SAGA_FAILED",
+                            $"An error occurred: {ex.Message}. The transaction will be aborted, reverting MongoDB changes. The vector database may be inconsistent."
                         );
                     }
-
-                    // Update Keyword Store
-                    if (chunkIdsToDeleteFromVectorDB.Any())
-                    {
-                        await _ragKeywordStore.RemoveChunkReferencesAsync(knowledgeBaseId, chunkIdsToDeleteFromVectorDB.ToList(), mongoSessionHandle);
-                    }
-                    foreach (var edited in keywordsForEditedChunks)
-                    {
-                        await _ragKeywordStore.UpdateChunkKeywordsAsync(knowledgeBaseId, edited.chunkId, edited.oldKeywords, edited.newKeywords, mongoSessionHandle);
-                    }
-                    if (keywordsForAddedChunks.Any())
-                    {
-                        await _ragKeywordStore.AddChunksKeywordsAsync(knowledgeBaseId, keywordsForAddedChunks, mongoSessionHandle);
-                    }
-
-                    // Execute Vector DB Operations
-                    string collectionName = $"b{businessId}_kb{knowledgeBaseId}";
-                    if (chunkIdsToDeleteFromVectorDB.Any())
-                    {
-                        var deleteSuccess = await _documentVectorRepository.DeleteChunksAsync(collectionName, chunkIdsToDeleteFromVectorDB.ToList());
-                        if (!deleteSuccess)
-                        {
-                            return result.SetFailureResult(
-                                "UpdateKnowledgeBaseDocumentChunksAsync:VECTORDB_FAILED",
-                                "Failed to delete chunks from vector database. The transaction will be aborted, reverting MongoDB changes."
-                            );
-                        }
-                    }
-                    if (chunksToUpsertInVectorDB.Any())
-                    {
-                        var addSuccess = await _documentVectorRepository.AddChunksAsync(collectionName, chunksToUpsertInVectorDB);
-                        if (!addSuccess)
-                        {
-                            return result.SetFailureResult(
-                                "UpdateKnowledgeBaseDocumentChunksAsync:VECTORDB_FAILED",
-                                "Failed to add chunks to vector database. The transaction will be aborted, reverting MongoDB changes."
-                            );
-                        }
-                    }
-
-                    // Commit Mongo Changes
-                    await mongoSessionHandle.CommitTransactionAsync();
-                    // If all operations succeed, we're done.
-                    var finalDocument = await _knowledgeBaseDocumentRepository.GetDocumentByIdAsync(documentId);
-                    return result.SetSuccessResult(finalDocument);
-                }
-                catch (Exception ex)
-                {
-                    return result.SetFailureResult(
-                        "UpdateKnowledgeBaseDocumentChunksAsync:SAGA_FAILED",
-                        $"An error occurred: {ex.Message}. The transaction will be aborted, reverting MongoDB changes. The vector database may be inconsistent."
-                    );
                 }
             }
             catch (Exception ex)
@@ -1612,11 +1805,6 @@ namespace IqraInfrastructure.Managers.Business
                     ex.Message
                 );
             }
-        }
-
-        public async Task<bool> CheckKnowledgeBaseGroupExistsById(long businessId, string linkedGroupId)
-        {
-            return await _businessAppRepository.CheckKnowledgeBaseGroupExistsById(businessId, linkedGroupId);
         }
     }
 }

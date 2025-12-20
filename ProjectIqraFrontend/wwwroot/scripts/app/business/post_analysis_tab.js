@@ -26,6 +26,7 @@ const MAX_PCA_RULES_PER_FIELD = 5;
 let managePCAType = null; // 'new' or 'edit'
 let currentPCATemplateData = null; // Stores the original data of the template being edited
 let isSavingPCATemplate = false;
+let isDeletingPCATemplate = false;
 
 // Integration Managers
 let pcaConfigurationLLMIntegrationManager = null;
@@ -80,7 +81,7 @@ const pcaExtractionFieldsList = pcaManagerView.find("#pca-extraction-fields-list
 
 // API FUNCTIONS
 function savePCATemplate(formData, successCallback, errorCallback) {
-    $.ajax({
+    return $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/postanalysis/save`,
         type: "POST",
         data: formData,
@@ -99,11 +100,20 @@ function savePCATemplate(formData, successCallback, errorCallback) {
     });
 }
 function deletePCATemplate(templateId, successCallback, errorCallback) {
-    $.ajax({
-        url: `/app/user/business/${CurrentBusinessId}/postanalysis/delete`,
-        type: "POST", data: JSON.stringify({ templateId: templateId }), contentType: "application/json",
-        success: (response) => { response.success ? successCallback(response) : errorCallback(response, true); },
-        error: (xhr, status, error) => { errorCallback(error, false); },
+    return $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/postanalysis/${templateId}/delete`,
+        type: "POST",
+        contentType: "application/json",
+        success: (response) => {
+            if (response.success) {
+                successCallback(response);
+            } else {
+                errorCallback(response, true);
+            }
+        },
+        error: (xhr, status, error) => {
+            errorCallback(error, false);
+        },
     });
 }
 
@@ -1347,6 +1357,13 @@ function initPostAnalysisTab() {
 
     pcaListContainer.on('click', '.post-analysis-card', (e) => {
         e.preventDefault();
+        e.stopPropagation();
+
+        // check if target was button or its icon
+        if ($(event.target).closest(".dropdown").length != 0) {
+            return;
+        }
+
         const templateId = $(e.currentTarget).attr('data-item-id');
         const templateData = BusinessFullData.businessApp.postAnalysis.find(t => t.id === templateId);
         if (!templateData) return;
@@ -1364,8 +1381,82 @@ function initPostAnalysisTab() {
         updateUrlForTab(`postanalysis/${templateId}`);
     });
 
+    pcaListContainer.on("click", ".post-analysis-card span[button-type='delete-template']", async (event) => {
+        event.preventDefault();
+
+        const button = $(event.currentTarget);
+        const templateId = button.attr("data-item-id");
+        const templateIndex = BusinessFullData.businessApp.postAnalysis.findIndex(n => n.id === templateId);
+        if (templateIndex === -1) return;
+        const templateData = BusinessFullData.businessApp.postAnalysis[templateIndex];
+        if (!templateData) return;
+        const templateCard = pcaListContainer.find(`.post-analysis-card[data-item-id="${templateId}"]`);
+
+        if (isDeletingPCATemplate) {
+            AlertManager.createAlert({
+                type: "warning",
+                message: `A delete operation for post analysis templates is already in progress. Please try again once the operation is complete.`,
+                timeout: 6000,
+            });
+            return;
+        }
+
+        const confirmDialog = new BootstrapConfirmDialog({
+            title: `Delete "${templateData.general.name}" Post Analysis Template`,
+            message: `Are you sure you want to delete this post analysis template?<br><br><b>Note:</b> You must remove any references to this template (inbound route, telephony/web campaigns) and wait or cancel any ongoing call queues or conversations.`,
+            confirmText: "Delete",
+            confirmButtonClass: "btn-danger",
+            modalClass: "modal-lg"
+        });
+
+        if (await confirmDialog.show()) {
+            showHideButtonSpinnerWithDisableEnable(button, true);
+            isDeletingPCATemplate = true;
+            templateCard.addClass("disabled");
+
+            deletePCATemplate(
+                templateId,
+                () => {
+
+                    BusinessFullData.businessApp.postAnalysis.splice(templateIndex, 1);
+
+                    templateCard.parent().remove();
+
+                    if (BusinessFullData.businessApp.postAnalysis.length === 0) {
+                        pcaListContainer.append('<div class="col-12"><h6 class="text-center mt-5">No analysis templates created yet...</h6></div>');
+                    }
+
+                    AlertManager.createAlert({
+                        type: "success",
+                        message: `Post Analysis Template "${templateData.general.name}" deleted successfully.`,
+                        timeout: 6000,
+                    });
+                },
+                (errorResult) => {
+                    templateCard.removeClass("disabled");
+
+                    var resultMessage = "Check console logs for more details.";
+                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: "Error occured while deleting business post analysis template.",
+                        resultMessage: resultMessage,
+                        timeout: 6000,
+                    });
+
+                    console.log("Error occured while deleting business post analysis template: ", errorResult);
+                }
+            ).always(() => {
+                showHideButtonSpinnerWithDisableEnable(button, false);
+                isDeletingPCATemplate = false;
+            });
+        }
+    });
+
     savePCATemplateButton.on('click', (e) => {
         e.preventDefault();
+
         if (isSavingPCATemplate) return;
 
         const validation = validatePCATemplate(false);

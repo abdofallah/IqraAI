@@ -48,12 +48,13 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             );
             if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = $"SaveKnowledgeBase:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    $"SaveKnowledgeBase:{userSessionAndBusinessValidationResult.Code}",
+                    userSessionAndBusinessValidationResult.Message
+                );
             }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
             // Knowledge Base Permission
             if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
@@ -142,6 +143,76 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             }
 
             return result.SetSuccessResult(addOrUpdateResult.Data);
+        }
+
+        [HttpPost("/app/user/business/{businessId}/knowledgebase/{knowledgeBaseId}/delete")]
+        public async Task<FunctionReturnResult> DeleteKnowledgeBase(long businessId, string knowledgeBaseId)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteKnowledgeBase:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Knowledge Base Permission
+                if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
+                {
+                    return result.SetFailureResult(
+                        "DeleteKnowledgeBase:KNOWLEDGE_BASES_DISABLED",
+                        $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
+                    );
+                }
+                if (businessData.Permission.KnowledgeBases.DisabledDeletingAt != null)
+                {
+                    return result.SetFailureResult(
+                        "DeleteKnowledgeBase:DELETING_KNOWLEDGE_BASES_DISABLED",
+                        $"Permission to delete knowledge bases is disabled for this business: {businessData.Permission.KnowledgeBases.DisabledDeletingReason}"
+                    );
+                }
+
+                var knowledgeBaseData = await _businessManager.GetKnowledgeBaseManager().GetKnowledgeBaseById(businessId, knowledgeBaseId);
+                if (!knowledgeBaseData.Success || knowledgeBaseData.Data == null)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteKnowledgeBase:{knowledgeBaseData.Code}",
+                        knowledgeBaseData.Message
+                    );
+                }
+
+                var deleteResult = await _businessManager.GetKnowledgeBaseManager().DeleteKnowledgeBase(businessId, knowledgeBaseData.Data);
+                if (!deleteResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteKnowledgeBase:{deleteResult.Code}",
+                        deleteResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeleteKnowledgeBase:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
+            }
         }
 
         [HttpPost("/app/user/business/{businessId}/knowledgebase/{knowledgeBaseId}/documents/upload")]
@@ -429,33 +500,16 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 }
 
                 // Delegate to Manager
-                try
-                {
-                    using (var mongoSession = _mongoClient.StartSession())
-                    {
-                        mongoSession.StartTransaction();
-
-                        var forwardResult = await _businessManager.GetKnowledgeBaseManager()
-                            .UpdateKnowledgeBaseDocumentChunksAsync(businessId, knowledgeBaseId, documentId, formData, mongoSession);
-                        if (!forwardResult.Success)
-                        {
-                            await mongoSession.AbortTransactionAsync();
-                            return result.SetFailureResult(
-                                $"SaveDocumentChunks:{forwardResult.Code}",
-                                forwardResult.Message
-                            );
-                        }
-
-                        return result.SetSuccessResult(forwardResult.Data);                  
-                    }
-                }
-                catch (Exception ex)
+                var forwardResult = await _businessManager.GetKnowledgeBaseManager().UpdateKnowledgeBaseDocumentChunksAsync(businessId, knowledgeBaseId, documentId, formData);
+                if (!forwardResult.Success)
                 {
                     return result.SetFailureResult(
-                        "SaveDocumentChunks:MONGO_SESSION_EXCEPTION",
-                        "Exception occured during mongo session."
+                        $"SaveDocumentChunks:{forwardResult.Code}",
+                        forwardResult.Message
                     );
                 }
+
+                return result.SetSuccessResult(forwardResult.Data);
             }
             catch (Exception ex) {
                 return result.SetFailureResult(

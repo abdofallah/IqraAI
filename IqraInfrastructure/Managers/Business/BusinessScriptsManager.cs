@@ -643,6 +643,7 @@ namespace IqraInfrastructure.Managers.Business
                         }
 
                         await session.CommitTransactionAsync();
+                        return result.SetSuccessResult(newScriptData);
                     }
                     catch (Exception ex)
                     {
@@ -653,8 +654,6 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                 }
-
-                return result.SetSuccessResult(newScriptData);
             }
             catch (Exception ex)
             {

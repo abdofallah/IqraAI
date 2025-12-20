@@ -3061,9 +3061,13 @@ function initAgentTab() {
 					ManageAgentType = "edit";
 				},
 				(saveError, isUnsuccessful) => {
+					var resultMessage = "Check console logs for more details.";
+					if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occured while saving business agent data. Check browser console for logs.",
+						message: "Error occured while saving business agent data.",
+						resultMessage: resultMessage,
 						timeout: 6000,
 					});
 

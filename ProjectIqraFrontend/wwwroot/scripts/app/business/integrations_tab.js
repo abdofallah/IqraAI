@@ -44,16 +44,28 @@ function SaveBusinessIntegration(formData, onSuccess, onError) {
 
 /** Core Functions **/
 function createIntegrationCardElement(integration) {
-	return `
-        <div class="col-lg-4 col-md-6 col-12">
-            <div class="business-card d-flex flex-column align-items-start justify-content-center" data-integration-id="${integration.id}">
-                <div class="d-flex flex-row align-items-center justify-content-start">
-                    <img src="${integration.logoUrl}">
-                    <h4 class="mb-1">${integration.friendlyName}</h4>
-                </div>
-            </div>
+	const actionDropdownHtml = `
+        <div class="dropdown action-dropdown dropdown-menu-end">
+            <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <span class="dropdown-item text-danger" data-item-id="${integration.id}" button-type="delete-integration">
+                        <i class="fa-solid fa-trash me-2"></i>Delete
+                    </span>
+                </li>
+            </ul>
         </div>
     `;
+
+	return createIqraCardElement({
+		id: integration.id,
+		type: 'integration',
+		visualHtml: `<img src="${integration.logoUrl}" alt="${integration.friendlyName} logo">`,
+		titleHtml: integration.friendlyName,
+		actionDropdownHtml: actionDropdownHtml,
+	});
 }
 
 function createAvailableIntegrationCardElement(integration) {
@@ -66,14 +78,14 @@ function createAvailableIntegrationCardElement(integration) {
 					<h5 class="card-title">${integration.name}${(integration.disabledAt == null ? "" : " | <span class='text-danger'>Disabled</span>") }</h5>
 
 					<img class="px-2 my-3" src="${integration.logoUrl}">
-                    
+
                     <div class="mt-2">
                         ${typesBadges}
                     </div>
                 </div>
             </div>
         </div>
-    `;
+	   `;
 }
 
 function createIntegrationFieldElement(field) {
@@ -380,10 +392,10 @@ function initIntegrationsTab() {
 	});
 
 	// Handle edit integration
-	integrationsListContainer.on("click", ".business-card", (event) => {
+	integrationsListContainer.on("click", ".integration-card", (event) => {
 		event.preventDefault();
 		const card = $(event.currentTarget);
-		const integrationId = card.data("integration-id");
+		const integrationId = card.attr("data-item-id");
 
 		ManageIntegrationType = "edit";
 		CurrentIntegrationData = BusinessFullData.businessApp.integrations.find((integration) => integration.id === integrationId);

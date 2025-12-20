@@ -13,6 +13,7 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase
         public BusinessAppKnowledgeBaseConfiguration Configuration { get; set; } = new BusinessAppKnowledgeBaseConfiguration();
         public List<long> Documents { get; set; } = new List<long>();
 
+        // References
         public List<string> AgentReferences { get; set; } = new List<string>();
     }
 }

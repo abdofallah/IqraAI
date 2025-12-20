@@ -1663,8 +1663,21 @@ namespace IqraInfrastructure.Repositories.Business
         * Knowledge Base
         * 
         **/
+        public async Task<bool> CheckKnowledgeBaseGroupExistsById(long businessId, string linkedGroupId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == linkedGroupId)
+            );
 
-        public async Task<bool> AddKnowledgeBaseToArrayAsync(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle session)
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.KnowledgeBases.FirstMatchingElement());
+
+            var result = await _businessAppCollection.Find(filter).Project(projection).FirstOrDefaultAsync();
+            return result != null;
+        }
+        public async Task<bool> AddKnowledgeBase(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var update = Builders<BusinessApp>.Update.Push(b => b.KnowledgeBases, kb);
@@ -1673,34 +1686,42 @@ namespace IqraInfrastructure.Repositories.Business
 
             return result.IsAcknowledged;
         }
+        public async Task<BusinessAppKnowledgeBase?> GetBusinessAppKnowledgeBaseAsync(long businessId, string existingKbId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == existingKbId)
+            );
 
-        public async Task<bool> UpdateKnowledgeBaseInArrayAsync(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle session)
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result?.KnowledgeBases.FirstOrDefault(kb => kb.Id == existingKbId);
+        }
+        public async Task<bool> UpdateKnowledgeBaseExceptDocumentsAndReferences(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == kb.Id)
             );
 
-            var update = Builders<BusinessApp>.Update.Set(b => b.KnowledgeBases.FirstMatchingElement(), kb);
+            var update = Builders<BusinessApp>.Update
+                .Set(b => b.KnowledgeBases.FirstMatchingElement().General, kb.General)
+                .Set(b => b.KnowledgeBases.FirstMatchingElement().Configuration, kb.Configuration);
+
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
+
+            return result.IsAcknowledged;
+        }
+        public async Task<bool> RemoveKnowledgeBase(long businessId, string kbId, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.PullFilter(b => b.KnowledgeBases, k => k.Id == kbId);
 
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> RemoveKnowledgeBaseFromArrayAsync(long businessId, string kbId, IClientSessionHandle? session = null)
-        {
-            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
-            var update = Builders<BusinessApp>.Update.PullFilter(b => b.KnowledgeBases, k => k.Id == kbId);
-
-            var result = session != null
-                ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
-                : await _businessAppCollection.UpdateOneAsync(filter, update);
-
-            return result.IsAcknowledged;
-        }
-
-        public async Task<bool> AddDocumentIdToKnowledgeBaseAsync(long businessId, string kbId, long documentId, IClientSessionHandle? session = null)
+        public async Task<bool> AddDocumentIdToKnowledgeBaseAsync(long businessId, string kbId, long documentId, IClientSessionHandle session)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -1709,13 +1730,10 @@ namespace IqraInfrastructure.Repositories.Business
 
             var update = Builders<BusinessApp>.Update.AddToSet(b => b.KnowledgeBases.FirstMatchingElement().Documents, documentId);
 
-            var result = session != null
-                ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
-                : await _businessAppCollection.UpdateOneAsync(filter, update);
+            var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
 
             return result.IsAcknowledged;
         }
-
         public async Task<bool> RemoveDocumentIdFromKnowledgeBaseAsync(long businessId, string kbId, long documentId, IClientSessionHandle? session = null)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -1730,32 +1748,6 @@ namespace IqraInfrastructure.Repositories.Business
                 : await _businessAppCollection.UpdateOneAsync(filter, update);
 
             return result.IsAcknowledged;
-        }
-
-        public async Task<BusinessAppKnowledgeBase?> GetBusinessAppKnowledgeBaseAsync(long businessId, string existingKbId)
-        {
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == existingKbId)
-            );
-
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result?.KnowledgeBases.FirstOrDefault(kb => kb.Id == existingKbId);
-        }
-
-        public async Task<bool> CheckKnowledgeBaseGroupExistsById(long businessId, string linkedGroupId)
-        {
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == linkedGroupId)
-            );
-
-            var projection = Builders<BusinessApp>.Projection
-                .Include(b => b.Id)
-                .Include(b => b.KnowledgeBases.FirstMatchingElement());
-                
-            var result = await _businessAppCollection.Find(filter).Project(projection).FirstOrDefaultAsync();
-            return result != null;
         }
 
         public async Task<bool> AddAgentReferenceToKB(long businessId, string kbId, string agentId, IClientSessionHandle session)
