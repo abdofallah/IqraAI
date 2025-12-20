@@ -53,7 +53,7 @@ let editingChunkInfo = null;
 let IsSavingKnowledgeBase = false;
 let IsProcessingDocument = false;
 let IsSavingChunks = false;
-
+let IsDeletingKnowledgeBase = false;
 
 // Integration Managers
 let knowledgeBaseEmbeddingIntegrationManager = null;
@@ -72,7 +72,7 @@ const knowledgeBaseManagerTab = knowledgeBaseTab.find("#knowledgeBaseManagerTab"
 
 // -- List View Elements --
 const addNewKnowledgeBaseButton = knowledgeBaseListTab.find("#addNewKnowledgeBaseButton");
-const knowledgeBaseListTable = knowledgeBaseListTab.find("#knowledgeBaseListTable");
+const knowledgeBaseListContainer = knowledgeBaseListTab.find("#knowledgeBaseListTable");
 
 // -- KB Manager Elements --
 const knowledgeBaseManagerInnerHeader = knowledgeBaseHeader.find("#knowledge-base-manager-header-inner");
@@ -204,7 +204,22 @@ function SaveBusinessKnowledgeBase(formData, successCallback, errorCallback) {
         },
     });
 }
-
+function DeleteBusinessKnowledgeBase(kbId, successCallback, errorCallback) {
+    return $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${kbId}/delete`,
+        method: "POST",
+        success: (response) => {
+            if (response.success) {
+                successCallback(response);
+            } else {
+                errorCallback(response, true);
+            }
+        },
+        error: (error) => {
+            errorCallback(error, false);
+        },
+    });
+}
 function SaveAndProcessDocument(kbId, formData, successCallback, errorCallback) {
     $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${kbId}/documents/upload`,
@@ -224,7 +239,6 @@ function SaveAndProcessDocument(kbId, formData, successCallback, errorCallback) 
         },
     });
 }
-
 function SaveDocumentChunks(kbId, docId, formData, successCallback, errorCallback) {
     $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${kbId}/documents/${docId}/chunks/save`,
@@ -244,7 +258,6 @@ function SaveDocumentChunks(kbId, docId, formData, successCallback, errorCallbac
         },
     });
 }
-
 function TestRetrievalQuery(kbId, formData, successCallback, errorCallback) {
     $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${kbId}/retrieve`,
@@ -264,7 +277,6 @@ function TestRetrievalQuery(kbId, formData, successCallback, errorCallback) {
         },
     });
 }
-
 function GetBusinessKnowledgeBaseDocuments(kbId, successCallback, errorCallback) {
     $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${kbId}/documents`,
@@ -299,7 +311,6 @@ function showKnowledgeBaseListTab() {
         }, 10);
     }, 300);
 }
-
 function showKnowledgeBaseManagerTab() {
     knowledgeBaseListTab.removeClass("show");
     documentChunkManagerInnerHeader.removeClass('show');
@@ -320,7 +331,6 @@ function showKnowledgeBaseManagerTab() {
         }, 10);
     }, 300);
 }
-
 function showDocumentChunkManagerTab() {
     knowledgeBaseManagerInnerHeader.removeClass("show");
     knowledgeBaseManagerTab.removeClass("show");
@@ -338,42 +348,47 @@ function showDocumentChunkManagerTab() {
     }, 300);
 }
 
-
 // -- List Management --
 function createKnowledgeBaseListElement(kbData) {
     const documents = kbData.documents;
     const retrievalModeName = RetrievalTypeDisplayMap[kbData.configuration.retrieval.type.value];
 
-    return `
-        <div class="col-lg-4 col-md-6 col-12">
-            <div class="routing-card d-flex flex-column align-items-start justify-content-center" kb-id="${kbData.id}">
-                <div class="d-flex flex-row align-items-center justify-content-start mb-4">
-                    <span class="route-icon">${kbData.general.emoji}</span>
-                    <div class="card-data">
-                        <h4>${kbData.general.name}</h4>
-                        <h6>${documents.length} Document${documents.length === 1 ? "" : "s"}</h6>
-						<h6>Mode: ${retrievalModeName}</h6>
-                    </div>
-                </div>
-                <div>
-                    <h5 class="h5-info agent-description">
-                        <span>${kbData.general.description}</span>
-                    </h5>
-                </div>
-            </div>
+    const actionDropdownHtml = `
+        <div class="dropdown action-dropdown dropdown-menu-end">
+            <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <span class="dropdown-item text-danger" data-item-id="${kbData.id}" button-type="delete-knowledgebase">
+                        <i class="fa-solid fa-trash me-2"></i>Delete
+                    </span>
+                </li>
+            </ul>
         </div>
     `;
-}
 
+    // <h6>${documents.length} Document${documents.length === 1 ? "" : "s"}</h6>
+    // <h6>Mode: ${retrievalModeName}</h6>
+
+    return createIqraCardElement({
+        id: kbData.id,
+        type: 'knowledgebase',
+        visualHtml: `<span>${kbData.general.emoji}</span>`,
+        titleHtml: kbData.general.name,
+        descriptionHtml: kbData.general.description,
+        actionDropdownHtml: actionDropdownHtml,
+    });
+}
 function fillKnowledgeBaseList() {
     const knowledgeBases = BusinessFullData.businessApp.knowledgeBases;
 
-    knowledgeBaseListTable.empty();
+    knowledgeBaseListContainer.empty();
     if (knowledgeBases.length === 0) {
-        knowledgeBaseListTable.append('<div class="col-12"><h6 class="text-center mt-5">No knowledge bases added yet...</h6></div>');
+        knowledgeBaseListContainer.append('<div class="col-12"><h6 class="text-center mt-5">No knowledge bases added yet...</h6></div>');
     } else {
         knowledgeBases.forEach(kb => {
-            knowledgeBaseListTable.append($(createKnowledgeBaseListElement(kb)));
+            knowledgeBaseListContainer.append($(createKnowledgeBaseListElement(kb)));
         });
     }
 }
@@ -415,7 +430,6 @@ function createDocumentTableRow(docData) {
         </tr>
     `;
 }
-
 function fillDocumentsTable() {
     const docsTableBody = documentsTable.find("tbody");
     docsTableBody.empty();
@@ -428,7 +442,6 @@ function fillDocumentsTable() {
         });
     }
 }
-
 function populateDocumentModalSettings() {
     const chunkingConfig = ManageCurrentKnowledgeBaseData.configuration.chunking;
     let settingsHtml = '';
@@ -523,7 +536,6 @@ function createParentChunkCard(parentChunk) {
         </div>
     `;
 }
-
 function createGeneralChunkCard(chunk) {
     const cardId = `chunk-card-${chunk.id}`;
     return `
@@ -541,7 +553,6 @@ function createGeneralChunkCard(chunk) {
         </div>
     `;
 }
-
 function createRetrievalResultCard(result, index) {
     return `
         <div class="card mb-3">
@@ -555,7 +566,6 @@ function createRetrievalResultCard(result, index) {
         </div>
     `;
 }
-
 function fillChunksList() {
     chunksListContainer.empty();
     const chunks = ManageCurrentDocumentData.chunks || [];
@@ -577,7 +587,6 @@ function fillChunksList() {
         });
     }
 }
-
 function updateSaveChangesButtonState() {
     const hasChanges = currentAddedChunks.length > 0 || currentEditedChunks.length > 0 || currentDeletedChunks.length > 0;
     saveChunksButton.prop('disabled', !hasChanges);
@@ -623,7 +632,6 @@ function createDefaultKnowledgeBaseObject() {
         documents: []
     };
 }
-
 function resetAndEmptyKnowledgeBaseManagerTab() {
     // Data Reset
     ManageKnowledgeBaseType = null;
@@ -674,7 +682,6 @@ function resetAndEmptyKnowledgeBaseManagerTab() {
     knowledgeBaseManagerDocumentsTabButton.addClass('disabled').prop('disabled', true);
     saveKnowledgeBaseButton.addClass('disabled').prop("disabled", true);
 }
-
 function fillKnowledgeBaseManagerTab() {
     const kbData = ManageCurrentKnowledgeBaseData;
 
@@ -800,7 +807,7 @@ function fillKnowledgeBaseManagerTab() {
     saveKnowledgeBaseButton.addClass('disabled').prop("disabled", true);
 }
 
-// FIX CHANGES FUNCTION
+// CHANGES FUNCTION
 function checkKnowledgeBaseTabHasChanges(enableDisableButton = true) {
     if (ManageKnowledgeBaseType === null) return { hasChanges: false };
 
@@ -901,7 +908,6 @@ function checkKnowledgeBaseTabHasChanges(enableDisableButton = true) {
         changes: currentData,
     };
 }
-
 function validateKnowledgeBaseTab(onlyRemove = false) {
     if (ManageKnowledgeBaseType === null) return { validated: true, errors: [] };
 
@@ -1166,7 +1172,6 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
         errors: errors,
     };
 }
-
 async function canLeaveKnowledgeBaseTab(leaveMessage = "") {
     if (IsSavingKnowledgeBase) {
         AlertManager.createAlert({
@@ -1190,7 +1195,6 @@ async function canLeaveKnowledgeBaseTab(leaveMessage = "") {
     }
     return true;
 }
-
 async function canLeaveChunkManager() {
     const hasChanges = currentAddedChunks.length > 0 || currentEditedChunks.length > 0 || currentDeletedChunks.length > 0;
     if (hasChanges) {
@@ -1274,12 +1278,18 @@ function initKnowledgeBaseTab() {
             }
         });
 
-        knowledgeBaseListTable.on('click', '.routing-card', (event) => {
+        knowledgeBaseListContainer.on('click', '.knowledgebase-card', (event) => {
             event.preventDefault();
+            event.stopPropagation();
+
+            // check if target was button or its icon
+            if ($(event.target).closest(".dropdown").length != 0) {
+                return;
+            }
 
             resetAndEmptyKnowledgeBaseManagerTab();
 
-            const kbId = $(event.currentTarget).attr('kb-id');
+            const kbId = $(event.currentTarget).attr('data-item-id');
 
             ManageCurrentKnowledgeBaseData = BusinessFullData.businessApp.knowledgeBases.find(kb => kb.id === kbId);
 
@@ -1290,6 +1300,79 @@ function initKnowledgeBaseTab() {
             showKnowledgeBaseManagerTab();
 
             ManageKnowledgeBaseType = "edit";
+        });
+
+        knowledgeBaseListContainer.on("click", ".knowledgebase-card span[button-type='delete-knowledgebase']", async (event) => {
+            event.preventDefault();
+
+            const button = $(event.currentTarget);
+            const knowledgeBaseId = button.attr("data-item-id");
+            const knowledgeBaseIndex = BusinessFullData.businessApp.knowledgeBases.findIndex(n => n.id === knowledgeBaseId);
+            if (knowledgeBaseIndex === -1) return;
+            const knowledgeBaseData = BusinessFullData.businessApp.knowledgeBases[knowledgeBaseIndex];
+            if (!knowledgeBaseData) return;
+            const knowledgeBaseCard = knowledgeBaseListContainer.find(`.knowledgebase-card[data-item-id="${knowledgeBaseId}"]`);
+
+            if (IsDeletingKnowledgeBase) {
+                AlertManager.createAlert({
+                    type: "warning",
+                    message: `A delete operation for knowledgebases is already in progress. Please try again once the operation is complete.`,
+                    timeout: 6000,
+                });
+                return;
+            }
+
+            const confirmDialog = new BootstrapConfirmDialog({
+                title: `Delete "${knowledgeBaseData.general.name}" Knowledgebase`,
+                message: `Are you sure you want to delete this knowledgebase?<br><br><b>Note:</b> You must remove any references to this knowledgebase (agent knowledgebase group) and wait or cancel any ongoing call queues or conversations.`,
+                confirmText: "Delete",
+                confirmButtonClass: "btn-danger",
+                modalClass: "modal-lg"
+            });
+
+            if (await confirmDialog.show()) {
+                showHideButtonSpinnerWithDisableEnable(button, true);
+                IsDeletingKnowledgeBase = true;
+                knowledgeBaseCard.addClass("disabled");
+
+                DeleteBusinessKnowledgeBase(
+                    knowledgeBaseId,
+                    () => {
+
+                        BusinessFullData.businessApp.knowledgeBases.splice(knowledgeBaseIndex, 1);
+
+                        knowledgeBaseCard.parent().remove();
+
+                        if (BusinessFullData.businessApp.knowledgeBases.length === 0) {
+                            knowledgeBaseListContainer.append('<div class="col-12 none-knowledgebases-list-notice"><h6 class="text-center mt-5">No knowledgebases added yet...</h6></div>');
+                        }
+
+                        AlertManager.createAlert({
+                            type: "success",
+                            message: `Knowledgebase "${knowledgeBaseData.general.name[BusinessDefaultLanguage]}" deleted successfully.`,
+                            timeout: 6000,
+                        });
+                    },
+                    (errorResult) => {
+                        knowledgeBaseCard.removeClass("disabled");
+
+                        var resultMessage = "Check console logs for more details.";
+                        if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                        AlertManager.createAlert({
+                            type: "danger",
+                            message: "Error occured while deleting business knowledgebase.",
+                            resultMessage: resultMessage,
+                            timeout: 6000,
+                        });
+
+                        console.log("Error occured while deleting business knowledgebase: ", errorResult);
+                    }
+                ).always(() => {
+                    showHideButtonSpinnerWithDisableEnable(button, false);
+                    IsDeletingKnowledgeBase = false;
+                });
+            }
         });
 
         knowledgeBaseManagerNavTab.on('show.bs.tab', 'button', function (e) {
