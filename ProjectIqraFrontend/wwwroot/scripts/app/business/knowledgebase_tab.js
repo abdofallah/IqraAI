@@ -1344,7 +1344,7 @@ function initKnowledgeBaseTab() {
                         knowledgeBaseCard.parent().remove();
 
                         if (BusinessFullData.businessApp.knowledgeBases.length === 0) {
-                            knowledgeBaseListContainer.append('<div class="col-12 none-knowledgebases-list-notice"><h6 class="text-center mt-5">No knowledgebases added yet...</h6></div>');
+                            knowledgeBaseListContainer.append('<div class="col-12"><h6 class="text-center mt-5">No knowledge bases added yet...</h6></div>');
                         }
 
                         AlertManager.createAlert({

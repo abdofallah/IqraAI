@@ -3,6 +3,7 @@ let CurrentIntegrationData = null;
 let ManageIntegrationType = null; // new or edit
 let SelectedIntegrationType = null;
 let IsSavingIntegrationTab = false;
+let IsDeletingIntegrationTab = false;
 
 /** Elements Variables **/
 
@@ -23,7 +24,7 @@ const editIntegrationModalLabel = addNewIntegrationModal.find("#editIntegrationM
 
 /** API Functions **/
 function SaveBusinessIntegration(formData, onSuccess, onError) {
-	$.ajax({
+	return $.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/integrations/save`,
 		method: "POST",
 		data: formData,
@@ -40,6 +41,22 @@ function SaveBusinessIntegration(formData, onSuccess, onError) {
 			onError(error, false);
 		},
 	});
+}
+function DeleteBusinessIntegration(integrationId, onSuccess, onError) {
+    return $.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/integrations/${integrationId}/delete`,
+        method: "POST",
+        success: (response) => {
+            if (response.success) {
+                onSuccess(response);
+            } else {
+                onError(response, true);
+            }
+        },
+        error: (error) => {
+            onError(error, false);
+        },
+    });
 }
 
 /** Core Functions **/
@@ -394,6 +411,13 @@ function initIntegrationsTab() {
 	// Handle edit integration
 	integrationsListContainer.on("click", ".integration-card", (event) => {
 		event.preventDefault();
+		event.stopPropagation();
+
+		// check if target was button or its icon
+		if ($(event.target).closest(".dropdown").length != 0) {
+			return;
+		}
+
 		const card = $(event.currentTarget);
 		const integrationId = card.attr("data-item-id");
 
@@ -426,6 +450,79 @@ function initIntegrationsTab() {
 		setTimeout(() => {
 			addNewIntegrationModal.modal("show");
 		}, 150);
+	});
+
+	integrationsListContainer.on("click", ".integration-card span[button-type='delete-integration']", async (event) => {
+		event.preventDefault();
+
+		const button = $(event.currentTarget);
+		const integrationId = button.attr("data-item-id");
+		const integrationIndex = BusinessFullData.businessApp.integrations.findIndex(n => n.id === integrationId);
+		if (integrationIndex === -1) return;
+		const integrationData = BusinessFullData.businessApp.integrations[integrationIndex];
+		if (!integrationData) return;
+		const integrationCard = integrationsListContainer.find(`.integration-card[data-item-id="${integrationId}"]`);
+
+		if (IsDeletingIntegrationTab) {
+			AlertManager.createAlert({
+				type: "warning",
+				message: `A delete operation for integrations is already in progress. Please try again once the operation is complete.`,
+				timeout: 6000,
+			});
+			return;
+		}
+
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: `Delete "${integrationData.friendlyName}" Integration`,
+			message: `Are you sure you want to delete this integration?<br><br><b>Note:</b> You must remove any references to this integration (agent, knowledgebase, numbers, etc) and wait or cancel any ongoing call queues or conversations.`,
+			confirmText: "Delete",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg"
+		});
+
+		if (await confirmDialog.show()) {
+			showHideButtonSpinnerWithDisableEnable(button, true);
+			IsDeletingIntegrationTab = true;
+			integrationCard.addClass("disabled");
+
+			DeleteBusinessIntegration(
+				integrationId,
+				() => {
+
+					BusinessFullData.businessApp.integrations.splice(integrationIndex, 1);
+
+					integrationCard.parent().remove();
+
+					if (BusinessFullData.businessApp.integrations.length === 0) {
+						integrationsListContainer.append('<div class="col-12 text-center p-5"><p class="text-muted mb-0">No integrations found</p></div>');
+					}
+
+					AlertManager.createAlert({
+						type: "success",
+						message: `Integration "${integrationData.friendlyName}" deleted successfully.`,
+						timeout: 6000,
+					});
+				},
+				(errorResult) => {
+					integrationCard.removeClass("disabled");
+
+					var resultMessage = "Check console logs for more details.";
+					if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occured while deleting business integration.",
+						resultMessage: resultMessage,
+						timeout: 6000,
+					});
+
+					console.log("Error occured while deleting business integration: ", errorResult);
+				}
+			).always(() => {
+				showHideButtonSpinnerWithDisableEnable(button, false);
+				IsDeletingIntegrationTab = false;
+			});
+		}
 	});
 
 	// Handle form input changes
