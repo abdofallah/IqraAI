@@ -38,5 +38,9 @@ namespace IqraCore.Entities.Business
 
         public List<string> AgentKnowledgeBaseQueryAIRefinementLLMReferences { get; set; } = new List<string>();
         public List<string> AgentKnowledgeBaseSearchStrategyLLMReferences { get; set; } = new List<string>();
+
+        // Telephony Campaign
+        public List<string> TelephonyCampaignVoicemailAdvanceVerificationSTT { get; set; } = new List<string>();
+        public List<string> TelephonyCampaignVoicemailAdvanceVerificationLLM { get; set; } = new List<string>();
     }
 }

@@ -6,6 +6,7 @@ let currentRouteNumbersList = [];
 let currentRouteAgentSelectedId = "";
 
 let IsSavingRouteManageTab = false;
+let IsDeletingRoute = false;
 
 /** Element Variables  **/
 const tooltipTriggerList = document.querySelectorAll('#routing-tab [data-bs-toggle="tooltip"]');
@@ -19,7 +20,7 @@ const routingHeader = routingTab.find("#routing-header");
 const routingListTab = routingTab.find("#routingListTab");
 
 const addNewRoutingButton = routingListTab.find("#addNewRouteButton");
-const routingListTable = routingListTab.find("#routingListTable");
+const routingListContainer = routingListTab.find("#routingListTable");
 
 // Manager Tab
 const currentRouteName = routingHeader.find("#currentRouteName");
@@ -109,7 +110,7 @@ const editRouteActionToolEndedInputArgumentsList = routingTab.find("#editRouteAc
 
 /** API FUNCTIONS **/
 function SaveBusinessRoute(formData, successCallback, errorCallback) {
-	$.ajax({
+	return $.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/routes/save`,
 		type: "POST",
 		data: formData,
@@ -126,6 +127,22 @@ function SaveBusinessRoute(formData, successCallback, errorCallback) {
 			errorCallback(error, false);
 		},
 	});
+}
+function DeleteBusinessRoute(routeId, successCallback, errorCallback) {
+    return $.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/routes/${routeId}/delete`,
+        type: "POST",
+        success: (response) => {
+            if (response.success) {
+                successCallback(response);
+            } else {
+                errorCallback(response, true);
+            }
+        },
+        error: (xhr, status, error) => {
+            errorCallback(error, false);
+        },
+    });
 }
 
 /** Functions **/
@@ -146,7 +163,6 @@ function showRoutingListTab() {
 		}, 10);
 	}, 300);
 }
-
 function createRouteListCardElement(routeData) {
 	const agentData = BusinessFullData.businessApp.agents.find((agent) => agent.id === routeData.agent.selectedAgentId);
 	const actionDropdownHtml = `
@@ -177,17 +193,16 @@ function createRouteListCardElement(routeData) {
 		actionDropdownHtml: actionDropdownHtml,
 	});
 }
-
 function fillRouteList() {
 	const routes = BusinessFullData.businessApp.routings;
 
-	routingListTable.empty();
+	routingListContainer.empty();
 	if (routes.length === 0) {
-		routingListTable.append('<div class="col-12 none-routes-list-notice"><h6 class="text-center mt-5">No routes added yet...</h6></div>');
+		routingListContainer.append('<div class="col-12 none-routes-list-notice"><h6 class="text-center mt-5">No routes added yet...</h6></div>');
 	} else {
 		routes.forEach((route) => {
 			const element = createRouteListCardElement(route);
-			routingListTable.append($(element));
+			routingListContainer.append($(element));
 		});
 	}
 }
@@ -208,7 +223,6 @@ function showRoutingManagerTab() {
 		}, 10);
 	}, 300);
 }
-
 function createDefaultRouteObject() {
 	const object = {
 		general: {
@@ -253,7 +267,6 @@ function createDefaultRouteObject() {
 
 	return object;
 }
-
 function resetAndEmptyRouteManagerTab() {
 	// General Tab
 	editRouteNameInput.val("");
@@ -339,7 +352,6 @@ function resetAndEmptyRouteManagerTab() {
 	// Dynamic Variables
 	currentRouteAgentSelectedId = "";
 }
-
 function checkRoutingTabHasChanges(enableDisableButton = true) {
 	if (ManageRouteType === null) return;
 
@@ -606,7 +618,6 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 		changes: changes,
 	};
 }
-
 function validateRoutingTab(onlyRemove = true) {
 	if (ManageRouteType === null) return;
 
@@ -900,7 +911,6 @@ function validateRoutingTab(onlyRemove = true) {
 		errors: errors,
 	};
 }
-
 function fillRoutingManagerTab() {
 	// General Tab
 	editRouteIconInput.text(ManageCurrentRouteData.general.emoji);
@@ -1041,7 +1051,6 @@ function fillRoutingManagerTab() {
 		editRouteActionToolEndedInputArgumentsList,
 	);
 }
-
 async function canLeaveRoutingTab(leaveMessage = "") {
 	if (IsSavingRouteManageTab) {
 		AlertManager.createAlert({
@@ -1071,7 +1080,6 @@ async function canLeaveRoutingTab(leaveMessage = "") {
 
 	return true;
 }
-
 function handleInboundRoutingURLRouting(subPath) {
 	if (ManageRouteType === 'new' || ManageRouteType === 'edit') {
 		let correctPath;
@@ -1110,7 +1118,6 @@ function handleInboundRoutingURLRouting(subPath) {
 	}
 }
 
-
 /** Language Tab **/
 function ResortMultiLanugageEnabledListNumbers() {
 	const tbodyChild = $(routeMultiLanguagesEnabledList.find("tbody")[0]).children();
@@ -1121,7 +1128,6 @@ function ResortMultiLanugageEnabledListNumbers() {
 			.text(index + 1);
 	});
 }
-
 function createRouteLanguageMultiTableElement(langaugeCode, languageName, index) {
 	const element = `
         <tr code="${langaugeCode}" name="${languageName}">
@@ -1179,7 +1185,6 @@ function createAddedRouteNumberListElement(numberData) {
 
 	return element;
 }
-
 function createRouteNumberModalListElement(numberData) {
 	var countryData = undefined;
 	if (numberData.provider.value !== NumberProviderEnum.SIP || numberData.isE164Number) {
@@ -1198,7 +1203,6 @@ function createRouteNumberModalListElement(numberData) {
 
 	return element;
 }
-
 function fillRouteNumberModalNumbersList() {
 	Object.keys(NumberProviderEnum).forEach((providerType) => {
 		const providerKey = NumberProviderEnum[providerType];
@@ -1256,7 +1260,7 @@ function initRoutingTab() {
 			updateUrlForTab("routings");
 		});
 
-		routingListTable.on("click", ".routing-card", (event) => {
+		routingListContainer.on("click", ".routing-card", (event) => {
 			event.preventDefault();
 			event.stopPropagation();
 
@@ -1279,6 +1283,79 @@ function initRoutingTab() {
 
 			ManageRouteType = "edit";
 			updateUrlForTab(`routings/${routeId}`);
+		});
+
+		routingListContainer.on("click", ".routing-card span[button-type='delete-route']", async (event) => {
+			event.preventDefault();
+
+			const button = $(event.currentTarget);
+			const routeId = button.attr("data-item-id");
+			const routeIndex = BusinessFullData.businessApp.routings.findIndex(n => n.id === routeId);
+			if (routeIndex === -1) return;
+			const routeData = BusinessFullData.businessApp.routings[routeIndex];
+			if (!routeData) return;
+			const routeCard = routingListContainer.find(`.routing-card[data-item-id="${routeId}"]`);
+
+			if (IsDeletingRoute) {
+				AlertManager.createAlert({
+					type: "warning",
+					message: `A delete operation for inbound routes is already in progress. Please try again once the operation is complete.`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			const confirmDialog = new BootstrapConfirmDialog({
+				title: `Delete "${routeData.general.name}" Inbound Route`,
+				message: `Are you sure you want to delete this inbound route?<br><br><b>Note:</b> You must wait or cancel any ongoing call queues or conversations.`,
+				confirmText: "Delete",
+				confirmButtonClass: "btn-danger",
+				modalClass: "modal-lg"
+			});
+
+			if (await confirmDialog.show()) {
+				showHideButtonSpinnerWithDisableEnable(button, true);
+				IsDeletingRoute = true;
+				routeCard.addClass("disabled");
+
+				DeleteBusinessRoute(
+					routeId,
+					() => {
+
+						BusinessFullData.businessApp.routings.splice(routeIndex, 1);
+
+						routeCard.parent().remove();
+
+						if (BusinessFullData.businessApp.routings.length === 0) {
+							routingListContainer.append('<div class="col-12 none-routes-list-notice"><h6 class="text-center mt-5">No routes added yet...</h6></div>');
+						}
+
+						AlertManager.createAlert({
+							type: "success",
+							message: `Inbound Route "${routeData.general.name}" deleted successfully.`,
+							timeout: 6000,
+						});
+					},
+					(errorResult) => {
+						routeCard.removeClass("disabled");
+
+						var resultMessage = "Check console logs for more details.";
+						if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+						AlertManager.createAlert({
+							type: "danger",
+							message: "Error occured while deleting business inbound route.",
+							resultMessage: resultMessage,
+							timeout: 6000,
+						});
+
+						console.log("Error occured while deleting business inbound route: ", errorResult);
+					}
+				).always(() => {
+					showHideButtonSpinnerWithDisableEnable(button, false);
+					IsDeletingRoute = false;
+				});
+			}
 		});
 
 		$(document).on("tabShowing", function (event, data) {
@@ -1836,7 +1913,7 @@ function initRoutingTab() {
 						BusinessFullData.businessApp.routings[existingDataIndex] = ManageCurrentRouteData;
 
 						// Update route in list
-						const routeListElement = routingListTable.find(`[data-item-id="${ManageCurrentRouteData.id}"]`);
+						const routeListElement = routingListContainer.find(`[data-item-id="${ManageCurrentRouteData.id}"]`);
 						routeListElement.parent().replaceWith(createRouteListCardElement(ManageCurrentRouteData));
 					} else if (ManageRouteType === "new") {
 						// Add new route to business data
@@ -1844,7 +1921,7 @@ function initRoutingTab() {
 
 						// Add new route to list
 						const newRouteElement = $(createRouteListCardElement(ManageCurrentRouteData));
-						routingListTable.append(newRouteElement);
+						routingListContainer.append(newRouteElement);
 					}
 
 					$(".none-routes-list-notice").remove();
@@ -1867,10 +1944,14 @@ function initRoutingTab() {
 					updateUrlForTab(`routings/${ManageCurrentRouteData.id}`);
 				},
 				(saveError, isUnsuccessful) => {
+					var resultMessage = "Check console logs for more details.";
+					if (saveError && saveError.message) resultMessage = saveError.message;
+
 					// Show error message
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occurred while saving route data. Check browser console for logs.",
+						message: "Error occurred while saving route data.",
+						resultMessage: resultMessage,
 						timeout: 6000,
 					});
 

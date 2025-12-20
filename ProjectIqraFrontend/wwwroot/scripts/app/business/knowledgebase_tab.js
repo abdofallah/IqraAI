@@ -368,14 +368,15 @@ function createKnowledgeBaseListElement(kbData) {
         </div>
     `;
 
-    // <h6>${documents.length} Document${documents.length === 1 ? "" : "s"}</h6>
-    // <h6>Mode: ${retrievalModeName}</h6>
-
     return createIqraCardElement({
         id: kbData.id,
         type: 'knowledgebase',
         visualHtml: `<span>${kbData.general.emoji}</span>`,
         titleHtml: kbData.general.name,
+        subTitleHtml: `
+            <h6>${documents.length} Document${documents.length === 1 ? "" : "s"}</h6>
+            <h6>Mode: ${retrievalModeName}</h6>
+        `,
         descriptionHtml: kbData.general.description,
         actionDropdownHtml: actionDropdownHtml,
     });

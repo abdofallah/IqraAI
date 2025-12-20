@@ -3,6 +3,7 @@ using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WebSession;
 using IqraCore.Models.Business.Conversations;
 using IqraCore.Models.Business.Queues;
 using IqraCore.Models.Business.Queues.Inbound;
@@ -101,7 +102,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                var conversationsCount = await _conversationStateRepository.GetOngoingConversationsCountByBusinessNumberIds(
+                var conversationsCount = await _conversationStateRepository.GetOngoingConversationsCountByBusinessNumberId(
                     businessId,
                     businessNumberId
                 );
@@ -121,6 +122,168 @@ namespace IqraInfrastructure.Managers.Business
             {
                 result.SetFailureResult(
                     "CheckHasOngoingQueuesOrConversationsForBusinessNumber:EXCEPTION",
+                    $"An error occurred while fetching conversation state: {ex.Message}"
+                );
+                return result;
+            }
+        }
+        public async Task<FunctionReturnResult<bool?>> CheckHasOngoingQueuesOrConversationsForInboundRoute(long businessId, string inboundRouteId)
+        {
+            var result = new FunctionReturnResult<bool?>();
+
+            try
+            {
+                var inboundCallQueuesCount = await _inboundCallQueueRepository.GetInboundCallQueuesCountAsync(
+                    businessId,
+                    new () { 
+                        RouteIds = new() {
+                            inboundRouteId
+                        },
+                        QueueStatusTypes = new()
+                        {
+                            CallQueueStatusEnum.Queued,
+                            CallQueueStatusEnum.ProcessingProxy,
+                            CallQueueStatusEnum.ProcessedProxy,
+                            CallQueueStatusEnum.ProcessingBackend
+                        }
+                    }
+                );
+                if (inboundCallQueuesCount == null)
+                {
+                    return result.SetFailureResult(
+                        "CheckHasOngoingQueuesOrConversationsForInboundRoute:DATABASE_COUNT_ERROR",
+                        "Unable to fetch inbound queues count from database."
+                    );
+                }
+
+                var conversationsCount = await _conversationStateRepository.GetOngoingConversationsCountByInboundRouteId(
+                    businessId,
+                    inboundRouteId
+                );
+                if (conversationsCount == null)
+                {
+                    return result.SetFailureResult(
+                        "CheckHasOngoingQueuesOrConversationsForInboundRoute:DATABASE_COUNT_ERROR",
+                        "Unable to fetch conversation count from database."
+                    );
+                }
+
+                var totalCount = inboundCallQueuesCount.Value + conversationsCount.Value;
+
+                return result.SetSuccessResult(totalCount > 0);
+            }
+            catch (Exception ex)
+            {
+                result.SetFailureResult(
+                    "CheckHasOngoingQueuesOrConversationsForInboundRoute:EXCEPTION",
+                    $"An error occurred while fetching conversation state: {ex.Message}"
+                );
+                return result;
+            }
+        }
+        public async Task<FunctionReturnResult<bool?>> CheckHasOngoingQueuesOrConversationsForTelephonyCampaign(long businessId, string telephonyCampaignId)
+        {
+            var result = new FunctionReturnResult<bool?>();
+
+            try
+            {
+                var outboundCallQueueCount = await _outboundCallQueueRepository.GetOutboundCallQueuesCountAsync(
+                    businessId,
+                    new()
+                    {
+                        CampaignIds = new() {
+                            telephonyCampaignId
+                        },
+                        QueueStatusTypes = new()
+                        {
+                            CallQueueStatusEnum.Queued,
+                            CallQueueStatusEnum.ProcessingProxy,
+                            CallQueueStatusEnum.ProcessedProxy,
+                            CallQueueStatusEnum.ProcessingBackend
+                        }
+                    }
+                );
+                if (outboundCallQueueCount == null)
+                {
+                    return result.SetFailureResult(
+                        "CheckHasOngoingQueuesOrConversationsForTelephonyCampaign:DATABASE_COUNT_ERROR",
+                        "Unable to fetch inbound queues count from database."
+                    );
+                }
+
+                var conversationsCount = await _conversationStateRepository.GetOngoingConversationsCountByTelephonyCampaignId(
+                    businessId,
+                    telephonyCampaignId
+                );
+                if (conversationsCount == null)
+                {
+                    return result.SetFailureResult(
+                        "CheckHasOngoingQueuesOrConversationsForTelephonyCampaign:DATABASE_COUNT_ERROR",
+                        "Unable to fetch conversation count from database."
+                    );
+                }
+
+                var totalCount = outboundCallQueueCount.Value + conversationsCount.Value;
+
+                return result.SetSuccessResult(totalCount > 0);
+            }
+            catch (Exception ex)
+            {
+                result.SetFailureResult(
+                    "CheckHasOngoingQueuesOrConversationsForTelephonyCampaign:EXCEPTION",
+                    $"An error occurred while fetching conversation state: {ex.Message}"
+                );
+                return result;
+            }
+        }
+
+        public async Task<FunctionReturnResult<bool?>> CheckHasOngoingQueuesOrConversationsForWebCampaign(long businessId, string webCampaignId)
+        {
+            var result = new FunctionReturnResult<bool?>();
+
+            try
+            {
+                var webSessionCount = await _webSessionRepository.GetWebSessionsCountAsync(
+                    businessId,
+                    new()
+                    {
+                        WebCampaignIds = new() {
+                            webCampaignId
+                        },
+                        QueueStatusTypes = new()
+                        {
+                            WebSessionStatusEnum.Queued,
+                            WebSessionStatusEnum.ProcessingQueue,
+                            WebSessionStatusEnum.ProcessingBackend
+                        }
+                    }
+                );
+                if (webSessionCount == null)
+                {
+                    return result.SetFailureResult(
+                        "CheckHasOngoingQueuesOrConversationsForWebCampaign:DATABASE_COUNT_ERROR",
+                        "Unable to fetch web session queues count from database."
+                    );
+                }
+
+                var conversationsCount = await _conversationStateRepository.GetOngoingConversationsCountByWebCampaignId(
+                    businessId,
+                    webCampaignId
+                );
+                if (conversationsCount == null)
+                {
+                    return result.SetFailureResult(
+                        "CheckHasOngoingQueuesOrConversationsForWebCampaign:DATABASE_COUNT_ERROR",
+                        "Unable to fetch conversation count from database."
+                    );
+                }
+
+                return result.SetSuccessResult(conversationsCount.Value > 0);
+            }
+            catch (Exception ex)
+            {
+                result.SetFailureResult(
+                    "CheckHasOngoingQueuesOrConversationsForWebCampaign:EXCEPTION",
                     $"An error occurred while fetching conversation state: {ex.Message}"
                 );
                 return result;
@@ -668,7 +831,7 @@ namespace IqraInfrastructure.Managers.Business
 
             try
             {
-                var count = await _webSessionRepository.GetWebSessionsCountAsync(businessId, modelData);
+                var count = await _webSessionRepository.GetWebSessionsCountAsync(businessId, modelData.Filter);
 
                 if (count == null)
                 {

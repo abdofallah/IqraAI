@@ -207,7 +207,7 @@ namespace IqraInfrastructure.Managers.Business
 
             try
             {
-                //// Business Number References
+                // Business Number References
                 if (integrationData.BusinessNumberReferences.Count > 0) {
                     return result.SetFailureResult(
                         "DeleteBusinessIntegration:BUSINESS_NUMBER_REFERENCES",
@@ -215,7 +215,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                //// Knowledge Base References
+                // Knowledge Base References
                 if (integrationData.KnowledgeBaseEmbeddingModelReferences.Count > 0) {
                     return result.SetFailureResult(
                         "DeleteBusinessIntegration:KNOWLEDGE_BASE_EMBEDDING_MODEL_REFERENCES",
@@ -229,7 +229,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                //// Post Analysis References
+                // Post Analysis References
                 if (integrationData.PostAnalysisLLMReferences.Count > 0) {
                     return result.SetFailureResult(
                         "DeleteBusinessIntegration:POST_ANALYSIS_LLM_REFERENCES",
@@ -237,7 +237,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                //// Agent References
+                // Agent References
                 if (integrationData.AgentInterruptionTurnEndViaAILLMReferences.Count > 0) {
                     return result.SetFailureResult(
                         "DeleteBusinessIntegration:AGENT_INTERUPTION_TURN_END_VIA_AI_LLM_REFERENCES",
@@ -281,6 +281,21 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
+                // Telephony Campaigns References
+                if (integrationData.TelephonyCampaignVoicemailAdvanceVerificationSTT.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:TELEPHONY_CAMPAIGN_VOICEMAIL_ADVANCE_VERIFICATION_STT",
+                        "Cannot delete integration with telephony campaign voicemail advance verification STT."
+                    );
+                }
+                if (integrationData.TelephonyCampaignVoicemailAdvanceVerificationLLM.Count > 0) {
+                    return result.SetFailureResult(
+                        "DeleteBusinessIntegration:TELEPHONY_CAMPAIGN_VOICEMAIL_ADVANCE_VERIFICATION_LLM",
+                        "Cannot delete integration with telephony campaign voicemail advance verification LLM."
+                    );
+                }
+
+                // Delete From DB
                 var deleteResult = await _businessAppRepository.DeleteBusinessIntegration(businessId, integrationData.Id);
                 if (!deleteResult)
                 {

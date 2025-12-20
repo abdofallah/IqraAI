@@ -576,7 +576,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<long?> GetOngoingConversationsCountByBusinessNumberIds(long businessId, string businessNumberId)
+        public async Task<long?> GetOngoingConversationsCountByBusinessNumberId(long businessId, string businessNumberId)
         {
             try
             {
@@ -601,6 +601,90 @@ namespace IqraInfrastructure.Repositories.Conversation
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting ongoing conversations count for business {BusinessId} and business number id {BusinessNumberId}", businessId, businessNumberId);
+                return null;
+            }
+        }
+        public async Task<long?> GetOngoingConversationsCountByInboundRouteId(long businessId, string inboundRouteId)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.BusinessId, businessId),
+                    Builders<ConversationState>.Filter.In(c => c.Status, new List<ConversationSessionState>()
+                    {
+                        ConversationSessionState.Created,
+                        ConversationSessionState.WaitingForPrimaryClient,
+                        ConversationSessionState.Starting,
+                        ConversationSessionState.Active,
+                        ConversationSessionState.Paused,
+                        ConversationSessionState.Ending,
+                    }),
+                    Builders<ConversationState>.Filter.Eq(c => c.QueueInboundRouteId, inboundRouteId)
+                );
+
+                var count = await _conversationStateCollection.CountDocumentsAsync(filter);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting ongoing conversations count for business {BusinessId} and business inbound route {InboundRouteId}", businessId, inboundRouteId);
+                return null;
+            }
+        }
+        public async Task<long?> GetOngoingConversationsCountByTelephonyCampaignId(long businessId, string telephonyCampaignId)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.BusinessId, businessId),
+                    Builders<ConversationState>.Filter.In(c => c.Status, new List<ConversationSessionState>()
+                    {
+                        ConversationSessionState.Created,
+                        ConversationSessionState.WaitingForPrimaryClient,
+                        ConversationSessionState.Starting,
+                        ConversationSessionState.Active,
+                        ConversationSessionState.Paused,
+                        ConversationSessionState.Ending,
+                    }),
+                    Builders<ConversationState>.Filter.Eq(c => c.QueueTelephonyCampaignId, telephonyCampaignId)
+                );
+
+                var count = await _conversationStateCollection.CountDocumentsAsync(filter);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting ongoing conversations count for business {BusinessId} and business telephony campaign {TelephonyCampaignId}", businessId, telephonyCampaignId);
+                return null;
+            }
+        }
+        public async Task<long?> GetOngoingConversationsCountByWebCampaignId(long businessId, string webCampaignId)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.BusinessId, businessId),
+                    Builders<ConversationState>.Filter.In(c => c.Status, new List<ConversationSessionState>()
+                    {
+                        ConversationSessionState.Created,
+                        ConversationSessionState.WaitingForPrimaryClient,
+                        ConversationSessionState.Starting,
+                        ConversationSessionState.Active,
+                        ConversationSessionState.Paused,
+                        ConversationSessionState.Ending,
+                    }),
+                    Builders<ConversationState>.Filter.Eq(c => c.WebSessionWebCampaignId, webCampaignId)
+                );
+
+                var count = await _conversationStateCollection.CountDocumentsAsync(filter);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting ongoing conversations count for business {BusinessId} and business web campaign {WebCampaignId}", businessId, webCampaignId);
                 return null;
             }
         }

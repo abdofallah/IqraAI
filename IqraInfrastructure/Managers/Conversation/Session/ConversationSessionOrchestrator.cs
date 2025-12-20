@@ -210,6 +210,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
                     if (IsOutboundCall)
                     {
+                        conversationState.QueueTelephonyCampaignId = _sessionCallQueueTelephonyCampaignData!.Id;
+
                         if (!string.IsNullOrWhiteSpace(_sessionCallQueueTelephonyCampaignData!.PostAnalysis.PostAnalysisId))
                         {
                             conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.Waiting;
@@ -217,6 +219,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     }
                     else if (IsInboundCall)
                     {
+                        conversationState.QueueInboundRouteId = _sessionCallQueueRouteData!.Id;
+
                         if (!string.IsNullOrWhiteSpace(_sessionCallQueueRouteData!.PostAnalysis.PostAnalysisId))
                         {
                             conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.Waiting;
@@ -226,6 +230,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 else if (IsWebInitiated)
                 {
                     conversationState.WebSessionId = _sessionWebSessionData!.Id;
+                    conversationState.WebSessionWebCampaignId = _sessionWebSessionCampaignData!.Id;
 
                     if (!string.IsNullOrWhiteSpace(_sessionWebSessionCampaignData!.PostAnalysis.PostAnalysisId))
                     {

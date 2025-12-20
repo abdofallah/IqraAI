@@ -12,7 +12,7 @@ using PhoneNumbers;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Business
-{
+{ 
     public class BusinessNumberManager
     {
         private readonly BusinessManager _parentBusinessManager;
@@ -437,6 +437,7 @@ namespace IqraInfrastructure.Managers.Business
 
             try
             {
+                // SCRIPT SMS NODE REFERENCES
                 if (numberData.ScriptSMSNodeReferences.Count > 0)
                 {
                     return result.SetFailureResult(
@@ -444,7 +445,17 @@ namespace IqraInfrastructure.Managers.Business
                         "Script sms node references found. Delete or change the sms references in script first."
                     );
                 }
+    
+                // TELEPHONY CAMPAIGN NUMBERS ROUTE REFERENCES
+                if (numberData.TelephonyCampaignDefaultNumberRouteReferences.Count > 0 || numberData.TelephonyCampaignNumbersRouteReferences.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessNumber:TELEPHONY_CAMPAIGN_ROUTE_REFERENCES_FOUND",
+                        "Telephony campaign route references found. Delete or change the route references in telephony campaign first."
+                    );
+                }
 
+                // INBOUND ROUTE REFERENCE
                 if (!string.IsNullOrEmpty(numberData.RouteId))
                 {
                     return result.SetFailureResult(
@@ -453,6 +464,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
+                // CHECK IF THERE ARE ONGOING QUEUES OR CONVERSATIONS
                 var hasOngoingQueuesOrConversations = await _parentBusinessManager.GetConversationsManager().CheckHasOngoingQueuesOrConversationsForBusinessNumber(businessId, numberData.Id);
                 if (!hasOngoingQueuesOrConversations.Success)
                 {
@@ -461,7 +473,6 @@ namespace IqraInfrastructure.Managers.Business
                         hasOngoingQueuesOrConversations.Message
                     );
                 }
-
                 if (hasOngoingQueuesOrConversations.Data!.Value == true)
                 {
                     return result.SetFailureResult(
@@ -470,16 +481,45 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                var deleteResult = await _businessAppRepository.DeleteBusinessNumber(businessId, numberData.Id);
-                if (!deleteResult)
+                using (var session = await _mongoClient.StartSessionAsync())
                 {
-                    return result.SetFailureResult(
-                        "DeleteBusinessNumber:FAILED_TO_DELETE_NUMBER_FROM_BUSINESS",
-                        "Failed to delete number from business."
-                    );
-                }
+                    session.StartTransaction();
+                    try
+                    {
+                        // 1. Remove references from Numbers
+                        var removeIntegrationReference = await _businessAppRepository.RemoveBusinessNumberReferenceFromIntegration(businessId, numberData.IntegrationId, numberData.Id, session);
+                        if (!removeIntegrationReference)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteBusinessNumber:FAILED_TO_REMOVE_NUMBER_REFERENCE_FROM_INTEGRATION",
+                                "Failed to remove number reference from integration."
+                            );
+                        }
+                        
+                        // 2. Remove from business
+                        var deleteResult = await _businessAppRepository.DeleteBusinessNumber(businessId, numberData.Id);
+                        if (!deleteResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteBusinessNumber:FAILED_TO_DELETE_NUMBER_FROM_BUSINESS",
+                                "Failed to delete number from business."
+                            );
+                        }
 
-                return result.SetSuccessResult();
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "DeleteBusinessNumber:DB_EXCEPTION",
+                            $"An error occurred while deleting business number: {ex.Message}"
+                        );
+                    }
+                }
             }
             catch (Exception ex)
             {

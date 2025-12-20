@@ -1416,6 +1416,28 @@ namespace IqraInfrastructure.Managers.Business
                             return result.SetFailureResult("AddOrUpdateTelephonyCampaignAsync:TOOL_REF_UPDATE_FAILED", $"Failed to update tool references: {ex.Message}");
                         }
 
+                        // Update Number References (Default & Route List)
+                        try
+                        {
+                            await UpdateTelephonyCampaignNumberReferences(businessId, newBusinessAppCampaignData.Id, existingCampaignData, newBusinessAppCampaignData, session);
+                        }
+                        catch (Exception ex)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("AddOrUpdateTelephonyCampaignAsync:NUMBER_REF_UPDATE_FAILED", $"Failed to update number references: {ex.Message}");
+                        }
+
+                        // Update Integration References (Voicemail LLM)
+                        try
+                        {
+                            await UpdateTelephonyCampaignIntegrationReferences(businessId, newBusinessAppCampaignData.Id, existingCampaignData, newBusinessAppCampaignData, session);
+                        }
+                        catch (Exception ex)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("AddOrUpdateTelephonyCampaignAsync:INTEGRATION_REF_UPDATE_FAILED", $"Failed to update integration references: {ex.Message}");
+                        }
+
                         await session.CommitTransactionAsync();
                         return result.SetSuccessResult(newBusinessAppCampaignData);
                     }
@@ -1511,6 +1533,204 @@ namespace IqraInfrastructure.Managers.Business
                 newCampaign.Actions.CallEndedTool.ToolId,
                 BusinessAppToolTelephonyCampaignActionType.CallEnded
             );
+        }
+        private async Task UpdateTelephonyCampaignNumberReferences(
+            long businessId,
+            string campaignId,
+            BusinessAppTelephonyCampaign? oldCampaign,
+            BusinessAppTelephonyCampaign newCampaign,
+            IClientSessionHandle session
+        ) {
+            // A. Default Number
+            string? oldDefaultId = oldCampaign?.NumberRoute.DefaultNumberId;
+            string? newDefaultId = newCampaign.NumberRoute.DefaultNumberId;
+
+            if (!string.IsNullOrEmpty(oldDefaultId) && oldDefaultId != newDefaultId)
+            {
+                if (!await _businessAppRepository.RemoveTelephonyCampaignDefaultNumberRouteReferenceFromBusinessNumber(businessId, oldDefaultId, campaignId, session))
+                    throw new Exception($"Failed to remove default number route reference from number {oldDefaultId}");
+            }
+            if (!string.IsNullOrEmpty(newDefaultId))
+            {
+                if (!await _businessAppRepository.AddTelephonyCampaignDefaultNumberRouteReferenceToBusinessNumber(businessId, newDefaultId, campaignId, session))
+                    throw new Exception($"Failed to add default number route reference to number {newDefaultId}");
+            }
+
+            // B. Route Number List
+            var oldRouteNumbers = oldCampaign?.NumberRoute.RouteNumberList.Values.ToHashSet() ?? new HashSet<string>();
+            var newRouteNumbers = newCampaign.NumberRoute.RouteNumberList.Values.ToHashSet();
+
+            // Remove deleted
+            foreach (var oldNumId in oldRouteNumbers)
+            {
+                if (!newRouteNumbers.Contains(oldNumId))
+                {
+                    if (!await _businessAppRepository.RemoveTelephonyCampaignNumbersRouteReferenceFromBusinessNumber(businessId, oldNumId, campaignId, session))
+                        throw new Exception($"Failed to remove numbers route reference from number {oldNumId}");
+                }
+            }
+
+            // Add new
+            foreach (var newNumId in newRouteNumbers)
+            {
+                if (!await _businessAppRepository.AddTelephonyCampaignNumbersRouteReferenceToBusinessNumber(businessId, newNumId, campaignId, session))
+                    throw new Exception($"Failed to add numbers route reference to number {newNumId}");
+            }
+        }
+        private async Task UpdateTelephonyCampaignIntegrationReferences(
+            long businessId,
+            string campaignId,
+            BusinessAppTelephonyCampaign? oldCampaign,
+            BusinessAppTelephonyCampaign newCampaign,
+            IClientSessionHandle session
+        ) {
+            // Voicemail Advanced Verification LLM
+            string? oldLlmId = null;
+            if (oldCampaign?.VoicemailDetection.OnVoiceMailMessageDetectVerifySTTAndLLM == true)
+            {
+                oldLlmId = oldCampaign.VoicemailDetection.VerifyVoiceMessageLLM?.Id;
+            }
+
+            string? newLlmId = null;
+            if (newCampaign.VoicemailDetection.OnVoiceMailMessageDetectVerifySTTAndLLM)
+            {
+                newLlmId = newCampaign.VoicemailDetection.VerifyVoiceMessageLLM?.Id;
+            }
+
+            if (!string.IsNullOrEmpty(oldLlmId) && oldLlmId != newLlmId)
+            {
+                if (!await _businessAppRepository.RemoveTelephonyCampaignVoicemailAdvanceVerificationLLMRefFromIntegration(businessId, oldLlmId, campaignId, session))
+                    throw new Exception($"Failed to remove voicemail verification LLM reference from integration {oldLlmId}");
+            }
+
+            if (!string.IsNullOrEmpty(newLlmId))
+            {
+                if (!await _businessAppRepository.AddTelephonyCampaignVoicemailAdvanceVerificationLLMRefToIntegration(businessId, newLlmId, campaignId, session))
+                    throw new Exception($"Failed to add voicemail verification LLM reference to integration {newLlmId}");
+            }
+        }
+
+        public async Task<FunctionReturnResult> DeleteTelephonyCampaign(long businessId, BusinessAppTelephonyCampaign campaign)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                // CHECK IF THERE ARE ONGOING QUEUES OR CONVERSATIONS
+                var hasAnyOngoingQueuesOrConvos = await _parentBusinessManager.GetConversationsManager().CheckHasOngoingQueuesOrConversationsForTelephonyCampaign(businessId, campaign.Id);
+                if (!hasAnyOngoingQueuesOrConvos.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteTelephonyCampaign:{hasAnyOngoingQueuesOrConvos.Code}",
+                        hasAnyOngoingQueuesOrConvos.Message
+                    );
+                }
+                if (hasAnyOngoingQueuesOrConvos.Data!.Value == true)
+                {
+                    return result.SetFailureResult(
+                        "DeleteTelephonyCampaign:HAS_ONGOING_QUEUES_OR_CONVOS",
+                        "Cannot delete campaign while there are ongoing queues or conversations."
+                    );
+                }
+
+                using (var session = await _mongoClient.StartSessionAsync())
+                {
+                    session.StartTransaction();
+                    try
+                    {
+                        // 1. Remove Agent Reference
+                        if (!await _businessAppRepository.RemoveTelephonyCampaignReferenceFromAgent(businessId, campaign.Agent.SelectedAgentId, campaign.Id, session))
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("DeleteTelephonyCampaign:AGENT_REF_FAILED", "Failed to remove agent reference.");
+                        }
+
+                        // 2. Remove Script Reference
+                        if (!await _businessAppRepository.RemoveTelephonyCampaignReferenceFromScript(businessId, campaign.Agent.OpeningScriptId, campaign.Id, session))
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("DeleteTelephonyCampaign:SCRIPT_REF_FAILED", "Failed to remove script reference.");
+                        }
+
+                        // 3. Remove Post Analysis Reference
+                        if (!string.IsNullOrEmpty(campaign.PostAnalysis.PostAnalysisId))
+                        {
+                            if (!await _businessAppRepository.RemoveTelephonyCampaignReferenceFromPostAnalysis(businessId, campaign.PostAnalysis.PostAnalysisId, campaign.Id, session))
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteTelephonyCampaign:POST_ANALYSIS_REF_FAILED", "Failed to remove post analysis reference.");
+                            }
+                        }
+
+                        // 4. Remove Tool References
+                        async Task RemoveToolRef(string? toolId, BusinessAppToolTelephonyCampaignActionType type)
+                        {
+                            if (!string.IsNullOrEmpty(toolId))
+                            {
+                                var refObj = new BusinessAppToolTelephonyCampaignReference { CampaignId = campaign.Id, ActionType = type };
+                                if (!await _businessAppRepository.RemoveToolTelephonyCampaignReference(businessId, toolId, refObj, session))
+                                    throw new Exception($"Failed to remove {type} tool reference.");
+                            }
+                        }
+                        await RemoveToolRef(campaign.Actions.CallInitiationFailureTool.ToolId, BusinessAppToolTelephonyCampaignActionType.CallInitiationFailure);
+                        await RemoveToolRef(campaign.Actions.CallInitiatedTool.ToolId, BusinessAppToolTelephonyCampaignActionType.CallInitiated);
+                        await RemoveToolRef(campaign.Actions.CallDeclinedTool.ToolId, BusinessAppToolTelephonyCampaignActionType.CallDeclined);
+                        await RemoveToolRef(campaign.Actions.CallMissedTool.ToolId, BusinessAppToolTelephonyCampaignActionType.CallMissed);
+                        await RemoveToolRef(campaign.Actions.CallAnsweredTool.ToolId, BusinessAppToolTelephonyCampaignActionType.CallAnswered);
+                        await RemoveToolRef(campaign.Actions.CallEndedTool.ToolId, BusinessAppToolTelephonyCampaignActionType.CallEnded);
+
+                        // 5. Remove Number References
+                        // Default Number
+                        if (!string.IsNullOrEmpty(campaign.NumberRoute.DefaultNumberId))
+                        {
+                            if (!await _businessAppRepository.RemoveTelephonyCampaignDefaultNumberRouteReferenceFromBusinessNumber(businessId, campaign.NumberRoute.DefaultNumberId, campaign.Id, session))
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteTelephonyCampaign:DEFAULT_NUMBER_REF_FAILED", "Failed to remove default number reference.");
+                            }
+                        }
+                        // Route Number List
+                        foreach (var numberId in campaign.NumberRoute.RouteNumberList.Values)
+                        {
+                            if (!await _businessAppRepository.RemoveTelephonyCampaignNumbersRouteReferenceFromBusinessNumber(businessId, numberId, campaign.Id, session))
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteTelephonyCampaign:ROUTE_NUMBER_REF_FAILED", $"Failed to remove route number reference for {numberId}.");
+                            }
+                        }
+
+                        // 6. Remove Integration References (Voicemail LLM)
+                        if (campaign.VoicemailDetection.OnVoiceMailMessageDetectVerifySTTAndLLM &&
+                            !string.IsNullOrEmpty(campaign.VoicemailDetection.VerifyVoiceMessageLLM?.Id))
+                        {
+                            if (!await _businessAppRepository.RemoveTelephonyCampaignVoicemailAdvanceVerificationLLMRefFromIntegration(businessId, campaign.VoicemailDetection.VerifyVoiceMessageLLM.Id, campaign.Id, session))
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteTelephonyCampaign:INTEGRATION_LLM_REF_FAILED", "Failed to remove voicemail LLM integration reference.");
+                            }
+                        }
+
+                        // 7. Delete Campaign Document
+                        if (!await _businessAppRepository.DeleteBusinessAppTelephonyCampaign(businessId, campaign.Id, session))
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("DeleteTelephonyCampaign:DB_DELETE_FAILED", "Failed to delete campaign document.");
+                        }
+
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult("DeleteTelephonyCampaign:EXCEPTION", $"An error occurred during deletion: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult("DeleteTelephonyCampaign:EXCEPTION", $"An error occurred: {ex.Message}");
+            }
         }
 
         /**
@@ -2288,6 +2508,95 @@ namespace IqraInfrastructure.Managers.Business
                 newCampaign.Actions.ConversationEndedTool.ToolId,
                 BusinessAppToolWebCampaignActionType.ConversationEnded
             );
+        }
+
+        public async Task<FunctionReturnResult> DeleteWebCampaign(long businessId, BusinessAppWebCampaign campaign)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                // CHECK IF THERE ARE ONGOING QUEUES OR CONVERSATIONS
+                var hasAnyOngoingQueuesOrConvos = await _parentBusinessManager.GetConversationsManager().CheckHasOngoingQueuesOrConversationsForWebCampaign(businessId, campaign.Id);
+                if (!hasAnyOngoingQueuesOrConvos.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteWebCampaign:{hasAnyOngoingQueuesOrConvos.Code}",
+                        hasAnyOngoingQueuesOrConvos.Message
+                    );
+                }
+                if (hasAnyOngoingQueuesOrConvos.Data!.Value == true)
+                {
+                    return result.SetFailureResult(
+                        "DeleteWebCampaign:HAS_ONGOING_QUEUES_OR_CONVOS",
+                        "Cannot delete campaign while there are ongoing queues or conversations."
+                    );
+                }
+
+                using (var session = await _mongoClient.StartSessionAsync())
+                {
+                    session.StartTransaction();
+                    try
+                    {
+                        // 1. Remove Agent Reference
+                        if (!await _businessAppRepository.RemoveWebCampaignReferenceFromAgent(businessId, campaign.Agent.SelectedAgentId, campaign.Id, session))
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("DeleteWebCampaign:AGENT_REF_FAILED", "Failed to remove agent reference.");
+                        }
+
+                        // 2. Remove Script Reference
+                        if (!await _businessAppRepository.RemoveWebCampaignReferenceFromScript(businessId, campaign.Agent.OpeningScriptId, campaign.Id, session))
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("DeleteWebCampaign:SCRIPT_REF_FAILED", "Failed to remove script reference.");
+                        }
+
+                        // 3. Remove Post Analysis Reference
+                        if (!string.IsNullOrEmpty(campaign.PostAnalysis.PostAnalysisId))
+                        {
+                            if (!await _businessAppRepository.RemoveWebCampaignReferenceFromPostAnalysis(businessId, campaign.PostAnalysis.PostAnalysisId, campaign.Id, session))
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteWebCampaign:POST_ANALYSIS_REF_FAILED", "Failed to remove post analysis reference.");
+                            }
+                        }
+
+                        // 4. Remove Tool References
+                        async Task RemoveToolRef(string? toolId, BusinessAppToolWebCampaignActionType type)
+                        {
+                            if (!string.IsNullOrEmpty(toolId))
+                            {
+                                var refObj = new BusinessAppToolWebCampaignReference { CampaignId = campaign.Id, ActionType = type };
+                                if (!await _businessAppRepository.RemoveToolWebCampaignReference(businessId, toolId, refObj, session))
+                                    throw new Exception($"Failed to remove {type} tool reference.");
+                            }
+                        }
+                        await RemoveToolRef(campaign.Actions.ConversationInitiationFailureTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationInitiationFailure);
+                        await RemoveToolRef(campaign.Actions.ConversationInitiatedTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationInitiated);
+                        await RemoveToolRef(campaign.Actions.ConversationEndedTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationEnded);
+
+                        // 5. Delete Campaign Document
+                        if (!await _businessAppRepository.DeleteBusinessAppWebCampaign(businessId, campaign.Id, session))
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("DeleteWebCampaign:DB_DELETE_FAILED", "Failed to delete campaign document.");
+                        }
+
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult("DeleteWebCampaign:EXCEPTION", $"An error occurred during deletion: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult("DeleteWebCampaign:EXCEPTION", $"An error occurred: {ex.Message}");
+            }
         }
 
         // Common Helpers

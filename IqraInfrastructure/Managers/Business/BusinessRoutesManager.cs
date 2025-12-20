@@ -34,7 +34,6 @@ namespace IqraInfrastructure.Managers.Business
         {
             return await _businessAppRepository.CheckBusinessRouteExists(businessId, existingRouteId);
         }
-
         public async Task<BusinessAppRoute?> GetBusinessRoute(long businessId, string existingRouteId)
         {
             return await _businessAppRepository.GetBusinessRoute(businessId, existingRouteId);
@@ -641,7 +640,6 @@ namespace IqraInfrastructure.Managers.Business
 
             return result.SetSuccessResult(newBusinessAppRouteData);
         }
-
         private async Task UpdateRouteToolReferences(
             long businessId,
             string routeId,
@@ -697,7 +695,6 @@ namespace IqraInfrastructure.Managers.Business
                 BusinessAppToolInboundRouteActionType.CallEnded
             );
         }
-
         private async Task<FunctionReturnResult<BusinessAppRouteActionTool>> ValidateBusinessRouteActionData(long businessId, string businessDefaultLanguage, JsonElement actionsTabRootElement, string actionType)
         {
             var result = new FunctionReturnResult<BusinessAppRouteActionTool>();
@@ -792,6 +789,155 @@ namespace IqraInfrastructure.Managers.Business
 
             result.Success = true;
             return result;
+        }
+
+        public async Task<FunctionReturnResult> DeleteBusinessRoute(long businessId, BusinessAppRoute businessAppRoute)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                // CHECK IF THERE ARE ONGOING QUEUES OR CONVERSATIONS
+                var hasAnyOngoingQueuesOrConvos = await _parentBusinessManager.GetConversationsManager().CheckHasOngoingQueuesOrConversationsForInboundRoute(businessId, businessAppRoute.Id);
+                if (!hasAnyOngoingQueuesOrConvos.Success)
+                {
+                    return result.SetFailureResult(
+                        $"DeleteBusinessRoute:{hasAnyOngoingQueuesOrConvos.Code}",
+                        hasAnyOngoingQueuesOrConvos.Message
+                    );
+                }
+                if (hasAnyOngoingQueuesOrConvos.Data!.Value == true)
+                {
+                    return result.SetFailureResult(
+                        "DeleteBusinessRoute:HAS_ONGOING_QUEUES_OR_CONVOS",
+                        "Cannot delete route while there are ongoing queues or conversations."
+                    );
+                }
+
+                using (var session = await _mongoClient.StartSessionAsync())
+                {
+                    session.StartTransaction();
+                    try
+                    {
+                        // 1. Remove references from Numbers
+                        foreach (var numberId in businessAppRoute.Numbers)
+                        {
+                            var removeNumberRouteResult = await _businessAppRepository.UpdateBusinessNumberRoute(businessId, numberId, null, session);
+                            if (!removeNumberRouteResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteBusinessRoute:NUMBER_ROUTE_REMOVAL_FAILED",
+                                    $"Failed to remove route reference from number {numberId}."
+                                );
+                            }
+                        }
+
+                        // 2. Remove reference from Agent
+                        var removeAgentRefResult = await _businessAppRepository.RemoveInboundRoutingReferenceFromAgent(businessId, businessAppRoute.Agent.SelectedAgentId, businessAppRoute.Id, session);
+                        if (!removeAgentRefResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteBusinessRoute:AGENT_REF_REMOVAL_FAILED",
+                                "Failed to remove route reference from agent."
+                            );
+                        }
+
+                        // 3. Remove reference from Script
+                        var removeScriptRefResult = await _businessAppRepository.RemoveInboundRoutingReferenceFromScript(businessId, businessAppRoute.Agent.OpeningScriptId, businessAppRoute.Id, session);
+                        if (!removeScriptRefResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteBusinessRoute:SCRIPT_REF_REMOVAL_FAILED",
+                                "Failed to remove route reference from script."
+                            );
+                        }
+
+                        // 4. Remove reference from Post Analysis
+                        if (!string.IsNullOrEmpty(businessAppRoute.PostAnalysis.PostAnalysisId))
+                        {
+                            var removePostAnalysisRefResult = await _businessAppRepository.RemoveInboundRoutingReferenceFromPostAnalysis(businessId, businessAppRoute.PostAnalysis.PostAnalysisId, businessAppRoute.Id, session);
+                            if (!removePostAnalysisRefResult)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "DeleteBusinessRoute:POST_ANALYSIS_REF_REMOVAL_FAILED",
+                                    "Failed to remove route reference from post analysis template."
+                                );
+                            }
+                        }
+
+                        // 5. Remove references from Tools
+
+                        // Ringing Tool
+                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.RingingTool.SelectedToolId))
+                        {
+                            var refObj = new BusinessAppToolInboundRouteReference { RouteId = businessAppRoute.Id, ActionType = BusinessAppToolInboundRouteActionType.Ringing };
+                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.RingingTool.SelectedToolId, refObj, session);
+                            if (!removeToolRef)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteBusinessRoute:RINGING_TOOL_REF_REMOVAL_FAILED", "Failed to remove ringing tool reference.");
+                            }
+                        }
+
+                        // Call Picked Tool
+                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.CallPickedTool.SelectedToolId))
+                        {
+                            var refObj = new BusinessAppToolInboundRouteReference { RouteId = businessAppRoute.Id, ActionType = BusinessAppToolInboundRouteActionType.CallPicked };
+                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.CallPickedTool.SelectedToolId, refObj, session);
+                            if (!removeToolRef)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteBusinessRoute:PICKED_TOOL_REF_REMOVAL_FAILED", "Failed to remove picked tool reference.");
+                            }
+                        }
+
+                        // Call Ended Tool
+                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.CallEndedTool.SelectedToolId))
+                        {
+                            var refObj = new BusinessAppToolInboundRouteReference { RouteId = businessAppRoute.Id, ActionType = BusinessAppToolInboundRouteActionType.CallEnded };
+                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.CallEndedTool.SelectedToolId, refObj, session);
+                            if (!removeToolRef)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteBusinessRoute:ENDED_TOOL_REF_REMOVAL_FAILED", "Failed to remove ended tool reference.");
+                            }
+                        }
+
+                        // 6. Delete Route Document
+                        var deleteResult = await _businessAppRepository.DeleteBusinessAppRoute(businessId, businessAppRoute.Id, session);
+                        if (!deleteResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                "DeleteBusinessRoute:DB_DELETE_FAILED",
+                                "Failed to delete business route from database."
+                            );
+                        }
+
+                        await session.CommitTransactionAsync();
+                        return result.SetSuccessResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        await session.AbortTransactionAsync();
+                        return result.SetFailureResult(
+                            "DeleteBusinessRoute:EXCEPTION",
+                            $"An error occurred while deleting business route: {ex.Message}"
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeleteBusinessRoute:EXCEPTION",
+                    $"An error occurred: {ex.Message}"
+                );
+            }
         }
     }
 }

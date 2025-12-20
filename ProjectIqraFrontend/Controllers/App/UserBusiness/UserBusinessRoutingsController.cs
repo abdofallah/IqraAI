@@ -1,21 +1,20 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessRoutingsController : Controller
     {
-        private readonly UserManager _userManager;
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly BusinessManager _businessManager;
 
-        public UserBusinessRoutingsController(UserManager userManager, BusinessManager businessManager)
+        public UserBusinessRoutingsController(UserSessionValidationHelper userSessionValidationHelper, BusinessManager businessManager)
         {
-            _userManager = userManager;
+            _userSessionValidationHelper = userSessionValidationHelper;
             _businessManager = businessManager;
         }
 
@@ -24,161 +23,189 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppRoute?>();
 
-            // Validate session
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveBusinessRoute:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessRoute:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            // Get and validate user
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessRoute:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            // Check user permissions
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessRoute:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    return result.SetFailureResult(
+                        $"SaveBusinessRoute:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Business Inbound Routings Permission
+                if (businessData.Permission.Routings.DisabledFullAt != null)
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_FULL",
+                        $"Business does not have permission to access inbound routings{(string.IsNullOrEmpty(businessData.Permission.Routings.DisabledFullReason) ? "." : ": " + businessData.Permission.Routings.DisabledFullReason)}"
+                    );
                 }
 
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
+                // Validate post type
+                string? postType = formData["postType"].ToString();
+                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
                 {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
+                    return result.SetFailureResult(
+                        "SaveBusinessRoute:INVALID_POST_TYPE",
+                        "Invalid post type."
+                    );
                 }
 
-                return result;
-            }
+                // Validate existing route for edit
+                formData.TryGetValue("existingRouteId", out StringValues existingRouteIdStringValue);
+                string? existingRouteId = existingRouteIdStringValue.ToString();
 
-            // Validate business ownership
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessRoute:5";
-                result.Message = "User does not own this business.";
-                return result;
-            }
-
-            // Get and validate business
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessRoute:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            // Check business permissions
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessRoute:6";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                BusinessAppRoute? existingRouteData = null;
+                if (postType == "new")
                 {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            // Validate post type
-            string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
-            {
-                result.Code = "SaveBusinessRoute:7";
-                result.Message = "Invalid post type.";
-                return result;
-            }
-
-            // Validate existing route for edit
-            formData.TryGetValue("existingRouteId", out StringValues existingRouteIdStringValue);
-            string? existingRouteId = existingRouteIdStringValue.ToString();
-            
-            BusinessAppRoute? existingRouteData = null;
-            if (postType == "new")
-            {
-                if (businessResult.Data.Permission.Routings.DisabledAddingAt != null)
-                {
-                    result.Code = "SaveBusinessRoute:8";
-                    result.Message = "Business does not have permission to add new routes";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Routings.DisabledAddingReason))
+                    if (businessData.Permission.Routings.DisabledAddingAt != null)
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Routings.DisabledAddingReason;
+                        var message = "Business does not have permission to add new routes";
+                        if (!string.IsNullOrEmpty(businessData.Permission.Routings.DisabledAddingReason))
+                        {
+                            message += ": " + businessData.Permission.Routings.DisabledAddingReason;
+                        }
+
+                        return result.SetFailureResult(
+                            "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_ADDING",
+                            message
+                        );
+                    }
+                }
+                else
+                {
+                    if (businessData.Permission.Routings.DisabledEditingAt != null)
+                    {
+                        var message = "Business does not have permission to edit routes";
+                        if (!string.IsNullOrEmpty(businessData.Permission.Routings.DisabledEditingReason))
+                        {
+                            message += ": " + businessData.Permission.Routings.DisabledEditingReason;
+                        }
+
+                        return result.SetFailureResult(
+                            "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_EDITING",
+                            message
+                        );
                     }
 
-                    return result;
-                }
-            }
-            else
-            {
-                if (businessResult.Data.Permission.Routings.DisabledEditingAt != null)
-                {
-                    result.Code = "SaveBusinessRoute:9";
-                    result.Message = "Business does not have permission to edit routes";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Routings.DisabledEditingReason))
+                    if (string.IsNullOrWhiteSpace(existingRouteId))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Routings.DisabledEditingReason;
+                        return result.SetFailureResult(
+                            $"SaveBusinessRoute:MISSING_EXISTING_ROUTE_ID",
+                            "Missing existing route id."
+                        );
                     }
 
-                    return result;
+                    existingRouteData = await _businessManager.GetRoutesManager().GetBusinessRoute(businessId, existingRouteId);
+                    if (existingRouteData == null)
+                    {
+                        return result.SetFailureResult(
+                            $"SaveBusinessRoute:NOT_FOUND",
+                            "Existing route not found."
+                        );
+                    }
                 }
 
-                if (string.IsNullOrWhiteSpace(existingRouteId))
+                // Process the save/update
+                FunctionReturnResult<BusinessAppRoute?> updateResult = await _businessManager.GetRoutesManager().AddOrUpdateUserBusinessRoute(businessId, formData, postType, existingRouteData);
+                if (!updateResult.Success)
                 {
-                    result.Code = "SaveBusinessRoute:10";
-                    result.Message = "Missing existing route id.";
-                    return result;
+                    return result.SetFailureResult(
+                        $"SaveBusinessRoute:{updateResult.Code}",
+                        updateResult.Message
+                    );
                 }
 
-                existingRouteData = await _businessManager.GetRoutesManager().GetBusinessRoute(businessId, existingRouteId);
-                if (existingRouteData == null)
-                {
-                    result.Code = "SaveBusinessRoute:11";
-                    result.Message = "Existing route not found.";
-                    return result;
-                }
+                return result.SetSuccessResult(updateResult.Data);
             }
-
-            // Process the save/update
-            FunctionReturnResult<BusinessAppRoute?> updateResult = await _businessManager.GetRoutesManager().AddOrUpdateUserBusinessRoute(businessId, formData, postType, existingRouteData);
-            if (!updateResult.Success)
+            catch (Exception ex)
             {
-                result.Code = "SaveBusinessRoute:" + updateResult.Code;
-                result.Message = updateResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessRoute:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
             }
+        }
 
-            result.Data = updateResult.Data;
-            result.Success = true;
-            return result;
+        [HttpPost("/app/user/business/{businessId}/routes/{routeId}/delete")]
+        public async Task<FunctionReturnResult> DeleteBusinessRoute(long businessId, string routeId)
+        {
+            var result = new FunctionReturnResult<BusinessAppRoute?>();
+
+            try
+            {
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveBusinessRoute:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Business Inbound Routings Permission
+                if (businessData.Permission.Routings.DisabledFullAt != null)
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_FULL",
+                        $"Business does not have permission to access inbound routings{(string.IsNullOrEmpty(businessData.Permission.Routings.DisabledFullReason) ? "." : ": " + businessData.Permission.Routings.DisabledFullReason)}"
+                    );
+                }
+                if (businessData.Permission.Routings.DisabledDeletingAt != null)
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_DELETING",
+                        $"Business does not have permission to delete inbound routings{(string.IsNullOrEmpty(businessData.Permission.Routings.DisabledDeletingReason) ? "." : ": " + businessData.Permission.Routings.DisabledDeletingReason)}"
+                    );
+                }
+
+                var routeData = await _businessManager.GetRoutesManager().GetBusinessRoute(businessId, routeId);
+                if (routeData == null)
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_ROUTE_NOT_FOUND",
+                        $"Route not found."
+                    );
+                }
+
+                var deleteResult = await _businessManager.GetRoutesManager().DeleteBusinessRoute(businessId, routeData);
+                if (!deleteResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveBusinessRoute:{deleteResult.Code}",
+                        deleteResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "DeleteBusinessRoute:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
+            }
         }
     }
 }

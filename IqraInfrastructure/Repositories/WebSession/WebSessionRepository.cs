@@ -154,7 +154,7 @@ namespace IqraInfrastructure.Repositories.WebSession
             }
         }
 
-        public async Task<long?> GetWebSessionsCountAsync(long businessId, GetBusinessWebSessionsRequestModel modelData)
+        public async Task<long?> GetWebSessionsCountAsync(long businessId, GetBusinessWebSessionsRequestFilterModel? filter)
         {
             try
             {
@@ -164,20 +164,28 @@ namespace IqraInfrastructure.Repositories.WebSession
                     filterBuilder.Eq(c => c.BusinessId, businessId)
                 };
 
-                // Replicate filtering logic exactly as above
-                if (modelData.Filter != null)
+                if (filter != null)
                 {
-                    var filter = modelData.Filter;
                     if (filter.StartCreatedDate.HasValue)
+                    {
                         filterDefinitions.Add(filterBuilder.Gte(c => c.CreatedAt, filter.StartCreatedDate.Value.ToUniversalTime()));
+                    }
                     if (filter.EndCreatedDate.HasValue)
+                    {
                         filterDefinitions.Add(filterBuilder.Lte(c => c.CreatedAt, filter.EndCreatedDate.Value.ToUniversalTime()));
+                    }
                     if (filter.QueueStatusTypes?.Any() == true)
+                    {
                         filterDefinitions.Add(filterBuilder.In(c => c.Status, filter.QueueStatusTypes));
+                    }
                     if (filter.WebCampaignIds?.Any() == true)
+                    {
                         filterDefinitions.Add(filterBuilder.In(c => c.WebCampaignId, filter.WebCampaignIds));
+                    }
                     if (filter.ClientIdentifiers?.Any() == true)
+                    {
                         filterDefinitions.Add(filterBuilder.In(c => c.ClientIdentifier, filter.ClientIdentifiers));
+                    }
                 }
 
                 var finalFilter = filterBuilder.And(filterDefinitions);

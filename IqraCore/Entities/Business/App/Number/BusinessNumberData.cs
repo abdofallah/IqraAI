@@ -33,6 +33,8 @@ namespace IqraCore.Entities.Business
         public virtual TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Unknown;
 
         public List<BusinessNumberScriptSMSNodeReference> ScriptSMSNodeReferences { get; set; } = new List<BusinessNumberScriptSMSNodeReference>();
+        public List<string> TelephonyCampaignDefaultNumberRouteReferences { get; set; } = new List<string>();
+        public List<string> TelephonyCampaignNumbersRouteReferences { get; set; } = new List<string>();
     }
 
     public class BusinessNumberScriptSMSNodeReference
