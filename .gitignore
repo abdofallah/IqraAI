@@ -9,6 +9,7 @@
 *.user
 *.userosscache
 *.sln.docstates
+filter-config.py
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
