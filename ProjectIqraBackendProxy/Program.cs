@@ -1,7 +1,6 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server.Configuration;
 using IqraCore.Utilities;
-using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Call.Inbound;
@@ -14,7 +13,6 @@ using IqraInfrastructure.Managers.SIP;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.App;
-using IqraInfrastructure.Repositories.Billing;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
@@ -25,7 +23,6 @@ using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using System.Reflection;
 
