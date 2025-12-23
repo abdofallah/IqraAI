@@ -25,7 +25,6 @@ namespace IqraInfrastructure.Repositories.App
         private const string AppPermissionConfigField = "AppPermissionConfig";
         private const string VestaCPProxyTemplatesHashField = "VestaCPProxyTemplatesHash";
         private const string EmailTemplatesField = "EmailTemplates";
-        private const string BillingPlanConfigField = "BillingPlanConfig";
 
         /**
          * 
@@ -111,30 +110,6 @@ namespace IqraInfrastructure.Repositories.App
                 _logger.LogError(ex, "Error getting email templates");
                 return null;
             }
-        }
-    
-/**
-         * 
-         * Billing Plan Config
-         * 
-        **/
-        public async Task<bool> AddUpdateBillingPlanConfig(BillingPlanConfig billingPlanConfig)
-        {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", BillingPlanConfigField);
-            var update = Builders<BsonDocument>.Update.Set(BillingPlanConfigField,
-                BsonDocument.Create(billingPlanConfig)
-            );
-
-            var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
-            return result.IsAcknowledged;
-        }
-
-        public async Task<BillingPlanConfig?> GetBillingPlanConfig()
-        {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", BillingPlanConfigField);
-            var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
-            if (result == null) return null;
-            return BsonSerializer.Deserialize<BillingPlanConfig>(result);
         }
     }
 }

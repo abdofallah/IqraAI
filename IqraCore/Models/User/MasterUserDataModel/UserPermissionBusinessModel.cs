@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.User;
 
-namespace IqraCore.Models.User.GetMasterUserDataModel
+namespace IqraCore.Models.User.MasterUserDataModel
 {
     public class UserPermissionBusinessModel
     {
@@ -8,16 +8,16 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
         public UserPermissionBusinessModel(UserPermissionBusiness userPermissionBusiness)
         {
             DisableBusinesses = userPermissionBusiness.DisableBusinessesAt.HasValue;
-            DisableBusinessesReason = userPermissionBusiness.DisableBusinessesReason;
+            DisableBusinessesReason = userPermissionBusiness.DisableBusinessesPublicReason;
 
             AddBusinessDisabled = userPermissionBusiness.AddBusinessDisabledAt.HasValue;
-            AddBusinessDisableReason = userPermissionBusiness.AddBusinessDisableReason;
+            AddBusinessDisableReason = userPermissionBusiness.AddBusinessDisablePublicReason;
 
             EditBusinessDisabled = userPermissionBusiness.EditBusinessDisabledAt.HasValue;
-            EditBusinessDisableReason = userPermissionBusiness.EditBusinessDisableReason;
+            EditBusinessDisableReason = userPermissionBusiness.EditBusinessDisablePublicReason;
 
             DeleteBusinessDisable = userPermissionBusiness.DeleteBusinessDisableAt.HasValue;
-            DeleteBusinessDisableReason = userPermissionBusiness.DeleteBusinessDisableReason;
+            DeleteBusinessDisableReason = userPermissionBusiness.DeleteBusinessDisablePublicReason;
         }
 
         public bool DisableBusinesses { get; set; } = false;

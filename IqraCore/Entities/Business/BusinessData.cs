@@ -17,7 +17,7 @@ namespace IqraCore.Entities.Business
 
         public Dictionary<string, object> Tutorials { get; set; } = new Dictionary<string, object>();
 
-        public BusinessPermission Permission { get; set; } = new BusinessPermission();
+        public BusinessModulePermission Permission { get; set; } = new BusinessModulePermission();
 
         // WhiteLabel Assignment
         public string? WhiteLabelAssignedCustomerEmail { get; set; } = null;

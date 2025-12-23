@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -28,5 +28,8 @@
     <ProjectReference Include="..\IqraInfrastructure\IqraInfrastructure.csproj" />
     <ProjectReference Include="..\IqraStatic\IqraStatic.csproj" />
   </ItemGroup>
+
+	<!-- ================================================================== -->
+	<!-- ================================================================== -->
 
 </Project>

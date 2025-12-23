@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.User.Notifcation;
 using IqraCore.Entities.User.Notifcation.Enum;
 
-namespace IqraCore.Models.User.GetMasterUserDataModel
+namespace IqraCore.Models.User.MasterUserDataModel
 {
     public class UserNotificationDataModel
     {

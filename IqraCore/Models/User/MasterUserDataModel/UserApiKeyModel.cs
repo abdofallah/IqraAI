@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.User;
 
-namespace IqraCore.Models.User.GetMasterUserDataModel
+namespace IqraCore.Models.User.MasterUserDataModel
 {
     public class UserApiKeyModel
     {

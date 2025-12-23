@@ -3,5 +3,6 @@
     public class FrontendAppConfig
     {
         public string DefaultS3StorageRegionId { get; set; } = null!;
+        public bool IsCloudVersion { get; set; }
     }
 }

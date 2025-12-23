@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿@using IqraCore.Entities.Server.Configuration
+@inject FrontendAppConfig FrontendAppConfig
+<!DOCTYPE html>
 <html data-bs-theme="dark">
 
 <head>
@@ -84,14 +86,19 @@
                         <i class='fa-regular fa-key nav_icon'></i>
                         <span class="nav_name">API Keys</span>
                     </a>
-                    <a class="nav_link" for="billing-tab" nav-url-path="billing">
-                        <i class='fa-regular fa-credit-card nav_icon'></i>
-                        <span class="nav_name">Billing</span>
-                    </a>
-                    <a class="nav_link" for="white-label-tab" nav-url-path="whitelabel">
-                        <i class='fa-regular fa-tags nav_icon'></i>
-                        <span class="nav_name">White Label</span>
-                    </a>
+                    @{
+                        if (FrontendAppConfig.IsCloudVersion)
+                        {
+                            <a class="nav_link" for="billing-tab" nav-url-path="billing">
+                                <i class='fa-regular fa-credit-card nav_icon'></i>
+                                <span class="nav_name">Billing</span>
+                            </a>
+                            <a class="nav_link" for="white-label-tab" nav-url-path="whitelabel">
+                                <i class='fa-regular fa-tags nav_icon'></i>
+                                <span class="nav_name">White Label</span>
+                            </a>
+                        }
+                    }
                 </div>
             </div>
             <div class="bottom-navigation w-100">
@@ -113,342 +120,442 @@
         <!-- Bussiness Container -->
         <partial name="_BusinessesTab.cshtml" />
 
-        <!-- Billing Container -->
-        <partial name="_BillingTab.cshtml" />
-
         <!-- Usage Container -->
         <partial name="_UsageTab.cshtml" />
 
         <!-- API Keys Container -->
         <partial name="_APIKeysTab.cshtml" />
 
-        <!-- White Label Container -->
-        <partial name="_WhiteLabelTab.cshtml" />
+        @{
+            if (FrontendAppConfig.IsCloudVersion)
+            {
+                <!-- Billing Container -->
+                <partial name="_BillingTab.cshtml" />
+                
+                <!-- White Label Container -->
+                <partial name="_WhiteLabelTab.cshtml" />
+            }
+        }
 
-        <!-- libs -->
-        <script defer src="https://umscriptami.badal.om/script.js" data-website-id="8f350117-f10d-4bdb-a6d6-63d4117a21c3"></script>
-        <script src="~/js/jquery-3.7.1.min.js"></script>
-        <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="~/js/moment-with-locales.js"></script>
-        <script src="~/js/moment-timezone-with-data.js"></script>
-        <script src="~/libs/daterangepicker-dist/daterangepicker.js"></script>
+    </div>
 
-        <!-- Custom Scripts -->
-        <script src="~/js/ui_helpers.js"></script>
-        <script src="~/js/countries_list.js"></script>
-        <script src="~/js/alert_manager.js"></script>
-        <script src="~/js/notifications_manager.js"></script>
-        <script src="~/js/confirm_dialog.js"></script>
-        <script src="~/js/script.js"></script>
+    <!-- libs -->
+    <script defer src="https://umscriptami.badal.om/script.js" data-website-id="8f350117-f10d-4bdb-a6d6-63d4117a21c3"></script>
+    <script src="~/js/jquery-3.7.1.min.js"></script>
+    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/js/moment-with-locales.js"></script>
+    <script src="~/js/moment-timezone-with-data.js"></script>
+    <script src="~/libs/daterangepicker-dist/daterangepicker.js"></script>
 
-        <!-- Variables -->
-        <script>
-            var isBusinessAnimationEnabled = true;
-        </script>
+    <!-- Custom Scripts -->
+    <script src="~/js/ui_helpers.js"></script>
+    <script src="~/js/countries_list.js"></script>
+    <script src="~/js/alert_manager.js"></script>
+    <script src="~/js/notifications_manager.js"></script>
+    <script src="~/js/confirm_dialog.js"></script>
+    <script src="~/js/script.js"></script>
 
-        <!-- Global -->
-        <script>
-            const AlertManager = new BootstrapAlertManager();
-            window.AlertManager = AlertManager; // needed for iframes
+    <!-- Variables -->
+    <script>
+        var isBusinessAnimationEnabled = true;
+    </script>
 
-            const notificationManager = new NotificationsManager();
+    <!-- Global -->
+    <script>
+        const AlertManager = new BootstrapAlertManager();
+        window.AlertManager = AlertManager; // needed for iframes
 
-            var MasterUserData = null;
-            var UserPlanData = null;
-            var SpecificationLanguagesListData = null;
-            var CurrentBusinessesList = null;
+        const notificationManager = new NotificationsManager();
 
-            // API Related Calls
-            function FetchMasterUserDataFromAPI(successCallback, errorCallback) {
-                $.ajax({
-                    url: '/app/user',
-                    type: 'GET',
-                    success: (response) => {
-                        if (!response.success) {
-                            errorCallback(response);
-                            return;
-                        }
+        var MasterUserData = null;
+        @{
+            if (FrontendAppConfig.IsCloudVersion)
+            {
+                <text>var UserPlanData = null;</text>
+            }
+            else
+            {
+                <text>var UserPlanData = {};</text>
+            }
+        }  
+        var SpecificationLanguagesListData = null;
+        var CurrentBusinessesList = null;
 
-                        successCallback(response.data);
-                    },
-                    error: (error) => {
-                        errorCallback(error);
+        // API Related Calls
+        function FetchMasterUserDataFromAPI(successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/user',
+                type: 'GET',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
                     }
-                });
-            }
 
-            function FetchUserBillingPlanDataFromAPI(successCallback, errorCallback) {
-                $.ajax({
-                    url: '/app/user/billing/plan',
-                    type: 'GET',
-                    success: (response) => {
-                        if (!response.success) {
-                            errorCallback(response);
-                            return;
-                        }
-                        successCallback(response.data);
-                    },
-                    error: (error) => {
-                        errorCallback(error);
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        @{
+            if (FrontendAppConfig.IsCloudVersion)
+            {
+                <text>
+                    function FetchUserBillingPlanDataFromAPI(successCallback, errorCallback) {
+                        $.ajax({
+                            url: '/app/user/billing/plan',
+                            type: 'GET',
+                            success: (response) => {
+                                if (!response.success) {
+                                    errorCallback(response);
+                                    return;
+                                }
+                                successCallback(response.data);
+                            },
+                            error: (error) => {
+                                errorCallback(error);
+                            }
+                        });
                     }
-                });
+                </text>
             }
+        }
 
-            function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback) {
-                $.ajax({
-                    url: '/app/specification/languages/',
-                    type: 'GET',
-                    success: (response) => {
-                        if (!response.success) {
-                            errorCallback(response);
-                            return;
-                        }
-
-                        successCallback(response.data);
-                    },
-                    error: (error) => {
-                        errorCallback(error);
+        function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/specification/languages/',
+                type: 'GET',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
                     }
-                });
-            }
 
-            function FetchUserBusinessesFromAPI(successCallback, errorCallback) {
-                $.ajax({
-                    url: '/app/user/businesses',
-                    type: 'GET',
-                    success: (response) => {
-                        if (!response.success) {
-                            errorCallback(response);
-                            return;
-                        }
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
 
-                        successCallback(response.data);
-                    },
-                    error: (error) => {
-                        errorCallback(error);
+        function FetchUserBusinessesFromAPI(successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/user/businesses',
+                type: 'GET',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
                     }
-                });
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function MarkNotificationAsReadAPI(notificationId, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/user/notification/read',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ notificationId: notificationId }),
+                success: successCallback,
+                error: errorCallback
+            });
+        }
+
+        function MarkNotificationActionClickedAPI(notificationId, actionId, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/user/notification/action/click',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ notificationId: notificationId, actionId: actionId }),
+                success: successCallback,
+                error: errorCallback
+            });
+        }
+
+        function MarkAllNotificationsAsReadAPI(successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/user/notification/read-all',
+                type: 'POST',
+                success: successCallback,
+                error: errorCallback
+            });
+        }
+    </script>
+
+    <!-- PageLoader -->
+    <script>
+        const pageLoader = $("#page-loader");
+
+        var PageLoaderInterval = setInterval(
+            () => {
+                if (
+                    MasterUserData != null
+                    &&
+                    UserPlanData != null
+                    &&
+                    CurrentBusinessesList != null
+                    &&
+                    SpecificationLanguagesListData != null
+                ) {
+                    clearInterval(PageLoaderInterval);
+
+                    pageLoader.css("opacity", "0");
+                    setTimeout(() => {
+                        pageLoader.addClass("d-none");
+                    }, 300);
+                }
             }
+            , 100);
 
-            function MarkNotificationAsReadAPI(notificationId, successCallback, errorCallback) {
-                $.ajax({
-                    url: '/app/user/notification/read',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ notificationId: notificationId }),
-                    success: successCallback,
-                    error: errorCallback
-                });
-            }
-
-            function MarkNotificationActionClickedAPI(notificationId, actionId, successCallback, errorCallback) {
-                $.ajax({
-                    url: '/app/user/notification/action/click',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ notificationId: notificationId, actionId: actionId }),
-                    success: successCallback,
-                    error: errorCallback
-                });
-            }
-
-            function MarkAllNotificationsAsReadAPI(successCallback, errorCallback) {
-                $.ajax({
-                    url: '/app/user/notification/read-all',
-                    type: 'POST',
-                    success: successCallback,
-                    error: errorCallback
-                });
-            }
-        </script>
-
-        <!-- PageLoader -->
-        <script>
-            const pageLoader = $("#page-loader");
-
-            var PageLoaderInterval = setInterval(
+        function RunActionAfterBusinessesDataLoad(action) {
+            var businessDataCheckInterval = setInterval(
                 () => {
-                    if (
-                        MasterUserData != null
-                        &&
-                        UserPlanData != null
-                        &&
-                        CurrentBusinessesList != null
-                        &&
-                        SpecificationLanguagesListData != null
-                    ) {
-                        clearInterval(PageLoaderInterval);
-
-                        pageLoader.css("opacity", "0");
-                        setTimeout(() => {
-                            pageLoader.addClass("d-none");
-                        }, 300);
+                    if (CurrentBusinessesList != null) {
+                        clearInterval(businessDataCheckInterval);
+                        action();
                     }
                 }
                 , 100);
+        }
+    </script>
 
-            function RunActionAfterBusinessesDataLoad(action) {
-                var businessDataCheckInterval = setInterval(
-                    () => {
-                        if (CurrentBusinessesList != null) {
-                            clearInterval(businessDataCheckInterval);
-                            action();
-                        }
-                    }
-                    , 100);
-            }
-        </script>
+    <!-- Scripts -->
+    <script src="~/scripts/app/home/businesses_tab.js"></script>
+    <script src="~/scripts/app/home/usage_tab.js"></script>
+    <script src="~/scripts/app/home/api_keys_tab.js"></script>
+    @{
+        if (FrontendAppConfig.IsCloudVersion)
+        {
+            <script src="~/scripts/app/home/billing_tab.js"></script>
+            <script src="~/scripts/app/home/white_label_tab.js"></script>
+        }
+    }
 
-        <!-- Scripts -->
-        <script src="~/scripts/app/home/businesses_tab.js"></script>
-        <script src="~/scripts/app/home/billing_tab.js"></script>
-        <script src="~/scripts/app/home/usage_tab.js"></script>
-        <script src="~/scripts/app/home/api_keys_tab.js"></script>
-        <script src="~/scripts/app/home/white_label_tab.js"></script>
+    <!-- Init -->
+    <script>
+        $(document).ready(() => {
 
-        <!-- Init -->
-        <script>
-            $(document).ready(() => {
+            FetchSpecificationLanguagesDataFromAPI(
+                (specLanguagesDataResult) => {
+                    SpecificationLanguagesListData = specLanguagesDataResult;
 
-                FetchSpecificationLanguagesDataFromAPI(
-                    (specLanguagesDataResult) => {
-                        SpecificationLanguagesListData = specLanguagesDataResult;
+                    FetchMasterUserDataFromAPI(
+                        (masterUserData) => {
+                            MasterUserData = masterUserData;
 
-                        FetchMasterUserDataFromAPI(
-                            (masterUserData) => {
-                                MasterUserData = masterUserData;
-
-                                // Add Notifications
-                                masterUserData.notifications.forEach((backendNotification) => {
-                                    function getIconForNotificationType(typeEnum) {
-                                        switch (typeEnum) {
-                                            case 0: // General / Info
-                                                return 'fa-regular fa-circle-info';
-                                            case 1: // Success
-                                                return 'fa-regular fa-circle-check text-success';
-                                            case 2: // Warning
-                                                return 'fa-regular fa-triangle-exclamation text-warning';
-                                            case 3: // Error
-                                                return 'fa-regular fa-circle-xmark text-danger';
-                                            default:
-                                                return 'fa-regular fa-bell';
-                                        }
+                            // Add Notifications
+                            masterUserData.notifications.forEach((backendNotification) => {
+                                function getIconForNotificationType(typeEnum) {
+                                    switch (typeEnum) {
+                                        case 0: // General / Info
+                                            return 'fa-regular fa-circle-info';
+                                        case 1: // Success
+                                            return 'fa-regular fa-circle-check text-success';
+                                        case 2: // Warning
+                                            return 'fa-regular fa-triangle-exclamation text-warning';
+                                        case 3: // Error
+                                            return 'fa-regular fa-circle-xmark text-danger';
+                                        default:
+                                            return 'fa-regular fa-bell';
                                     }
+                                }
 
-                                    const frontendNotification = {
-                                        id: backendNotification.id,
-                                        icon: getIconForNotificationType(backendNotification.type.value),
-                                        title: backendNotification.title,
-                                        description: backendNotification.body,
-                                        timestamp: new Date(backendNotification.createdAt),
-                                        isRead: backendNotification.isRead,
-                                        isFixed: backendNotification.isFixed,
-                                        source: 'backend'
-                                    };
+                                const frontendNotification = {
+                                    id: backendNotification.id,
+                                    icon: getIconForNotificationType(backendNotification.type.value),
+                                    title: backendNotification.title,
+                                    description: backendNotification.body,
+                                    timestamp: new Date(backendNotification.createdAt),
+                                    isRead: backendNotification.isRead,
+                                    isFixed: backendNotification.isFixed,
+                                    source: 'backend'
+                                };
 
-                                    frontendNotification.onRead = (notificationId) => {
-                                        MarkNotificationAsReadAPI(notificationId,
-                                            (response) => {
-                                                if (!response.success) console.error(`Failed to mark notification ${notificationId} as read on server.`);
-                                            },
-                                            (error) => console.error(`API error marking notification ${notificationId} as read:`, error)
-                                        );
-                                    };
+                                frontendNotification.onRead = (notificationId) => {
+                                    MarkNotificationAsReadAPI(notificationId,
+                                        (response) => {
+                                            if (!response.success) console.error(`Failed to mark notification ${notificationId} as read on server.`);
+                                        },
+                                        (error) => console.error(`API error marking notification ${notificationId} as read:`, error)
+                                    );
+                                };
 
-                                    if (backendNotification.actions && backendNotification.actions.length > 0) {
-                                        const firstAction = backendNotification.actions[0];
+                                if (backendNotification.actions && backendNotification.actions.length > 0) {
+                                    const firstAction = backendNotification.actions[0];
 
-                                        frontendNotification.action = {
-                                            text: firstAction.title,
-                                            class: 'btn-outline-primary',
-                                            callback: () => {
-                                                MarkNotificationActionClickedAPI(backendNotification.id, firstAction.id,
-                                                    (response) => {
-                                                        if (response.success) {
-                                                            try {
-                                                                new Function(firstAction.callbackJavascript)();
-                                                            } catch (e) {
-                                                                console.error("Error executing callback javascript:", e);
-                                                            }
-                                                        } else {
-                                                            console.error("Server failed to acknowledge action click.");
+                                    frontendNotification.action = {
+                                        text: firstAction.title,
+                                        class: 'btn-outline-primary',
+                                        callback: () => {
+                                            MarkNotificationActionClickedAPI(backendNotification.id, firstAction.id,
+                                                (response) => {
+                                                    if (response.success) {
+                                                        try {
+                                                            new Function(firstAction.callbackJavascript)();
+                                                        } catch (e) {
+                                                            console.error("Error executing callback javascript:", e);
                                                         }
-                                                    },
-                                                    (error) => console.error("API error clicking action:", error)
-                                                );
-                                            }
-                                        };
-                                    }
+                                                    } else {
+                                                        console.error("Server failed to acknowledge action click.");
+                                                    }
+                                                },
+                                                (error) => console.error("API error clicking action:", error)
+                                            );
+                                        }
+                                    };
+                                }
 
-                                    // 4. Add the fully constructed notification to the manager
-                                    notificationManager.addNotification(frontendNotification);
+                                // 4. Add the fully constructed notification to the manager
+                                notificationManager.addNotification(frontendNotification);
+                            });
+
+                            if (!MasterUserData.businessPermission.disableBusinesses) {
+                                // Fetch and Init Businesses Tab
+                                FetchUserBusinessesFromAPI(
+                                    (userBusinesses) => {
+                                        CurrentBusinessesList = userBusinesses;
+
+                                        // Init The business Tab
+                                        InitBusinessesTab();
+
+                                        // Init Usage table
+                                        InitUsageTab();
+
+                                        // Init API Keys Tab
+                                        InitApiKeysTab();
+
+                                        @{
+                                            if (FrontendAppConfig.IsCloudVersion)
+                                            {
+                                                <text>
+                                                    // Init White Label Tab
+                                                    InitWhiteLabelTab();
+                                                </text>
+                                            }
+                                        }
+                                    },
+                                    (userBusinessesError) => {
+                                        AlertManager.createAlert({
+                                            type: "danger",
+                                            message: "Error occured while fetching user businesses.<br>Check browser console for logs.<br>Refresh page to try again.",
+                                            enableDismiss: false,
+                                        });
+
+                                        console.error("Error occured while fetching user businesses: ", userBusinessesError);
+                                    },
+                                );
+
+                                @{
+                                    if (FrontendAppConfig.IsCloudVersion)
+                                    {
+                                        <text>
+                                            // Fetch and init Billing Tab
+                                            FetchUserBillingPlanDataFromAPI(
+                                                (userPlanData) => {
+                                                    UserPlanData = userPlanData;
+
+                                                    // Init Billing Tab
+                                                    InitBillingTab();
+                                                },
+                                                (userPlanDataError) => {
+                                                    AlertManager.createAlert({
+                                                        type: "danger",
+                                                        message: "Error occured while fetching user plan data.<br>Check browser console for logs.<br>Refresh page to try again.",
+                                                        enableDismiss: false,
+                                                    });
+                                                    console.error("Error occured while fetching user plan data: ", userPlanDataError);
+                                                },
+                                            );
+                                        </text>
+                                    }
+                                }
+                                    
+                            } else {
+                                CurrentBusinessesList = [];
+
+                                let alertMessage = "Bussiness Viewing, Adding, Editing and Deleting are disabled for your account.";
+                                if (MasterUserData.businessPermission.disableBusinessesReason != null) {
+                                    alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.disableBusinessesReason}`;
+                                } else {
+                                    alertMessage = `${alertMessage}<br>Please contact support for more information.`;
+                                }
+
+                                notificationManager.addNotification({
+                                    icon: 'fa-regular fa-circle-xmark text-danger',
+                                    title: "Bussinesses Disabled",
+                                    description: alertMessage,
+                                    timestamp: new Date(MasterUserData.businessPermission.disableBusinesses),
+                                    isFixed: true,
+                                    source: "backend",
                                 });
 
-                                if (!MasterUserData.businessPermission.disableBusinesses) {
-                                    // Fetch and Init Businesses Tab
-                                    FetchUserBusinessesFromAPI(
-                                        (userBusinesses) => {
-                                            CurrentBusinessesList = userBusinesses;
+                                AlertManager.createAlert({
+                                    type: "danger",
+                                    message: alertMessage,
+                                    enableDismiss: true,
+                                });
+                            }
 
-                                            // Init The business Tab
-                                            InitBusinessesTab();
+                            // Check sub business permissions
+                            if (!MasterUserData.businessPermission.disableBusinesses)
+                            {
+                                // check business add allowed
+                                if (MasterUserData.businessPermission.addBusinessDisabled) {
+                                    let alertMessage = "Bussiness Adding is disabled for your account.";
 
-                                            // Init Usage table
-                                            InitUsageTab();
-
-                                            // Init API Keys Tab
-                                            InitApiKeysTab();
-
-                                            // Init White Label Tab
-                                            InitWhiteLabelTab();
-                                        },
-                                        (userBusinessesError) => {
-                                            AlertManager.createAlert({
-                                                type: "danger",
-                                                message: "Error occured while fetching user businesses.<br>Check browser console for logs.<br>Refresh page to try again.",
-                                                enableDismiss: false,
-                                            });
-
-                                            console.error("Error occured while fetching user businesses: ", userBusinessesError);
-                                        },
-                                    );
-
-                                    // Fetch and init Billing Tab
-                                    FetchUserBillingPlanDataFromAPI(
-                                        (userPlanData) => {
-                                            UserPlanData = userPlanData;
-
-                                            // Init Billing Tab
-                                            InitBillingTab();
-                                        },
-                                        (userPlanDataError) => {
-                                            AlertManager.createAlert({
-                                                type: "danger",
-                                                message: "Error occured while fetching user plan data.<br>Check browser console for logs.<br>Refresh page to try again.",
-                                                enableDismiss: false,
-                                            });
-                                            console.error("Error occured while fetching user plan data: ", userPlanDataError);
-                                        },
-                                    );
-                                } else {
-                                    CurrentBusinessesList = [];
-
-                                    let alertMessage = "Bussiness Viewing, Adding, Editing and Deleting are disabled for your account.";
-                                    if (MasterUserData.businessPermission.disableBusinessesReason != null) {
-                                        alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.disableBusinessesReason}`;
+                                    if (MasterUserData.businessPermission.addBusinessDisableReason != null) {
+                                        alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.addBusinessDisableReason}`;
                                     } else {
                                         alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                     }
 
                                     notificationManager.addNotification({
                                         icon: 'fa-regular fa-circle-xmark text-danger',
-                                        title: "Bussinesses Disabled",
+                                        title: "Bussiness Adding Disabled",
                                         description: alertMessage,
-                                        timestamp: new Date(MasterUserData.businessPermission.disableBusinesses),
+                                        timestamp: new Date(MasterUserData.businessPermission.addBusinessDisabled),
                                         isFixed: true,
-                                        source: "backend",
+                                        source: 'backend'
+                                    })
+
+                                    AlertManager.createAlert({
+                                        type: "danger",
+                                        message: alertMessage,
+                                        enableDismiss: true,
                                     });
+                                } else {
+                                    AddNewBusinessButton.prop("disabled", false);
+                                }
+
+                                // check business edit allowed
+                                if (MasterUserData.businessPermission.editBusinessDisabled) {
+                                    let alertMessage = "Bussiness Editing is disabled for your account.";
+
+                                    if (MasterUserData.businessPermission.editBusinessDisableReason != null) {
+                                        alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.editBusinessDisableReason}`;
+                                    } else {
+                                        alertMessage = `${alertMessage}<br>Please contact support for more information.`;
+                                    }
+
+                                    notificationManager.addNotification({
+                                        icon: 'fa-regular fa-circle-xmark text-danger',
+                                        title: "Bussiness Editing Disabled",
+                                        description: alertMessage,
+                                        timestamp: new Date(MasterUserData.businessPermission.editBusinessDisabled),
+                                        isFixed: true,
+                                        source: 'backend'
+                                    })
 
                                     AlertManager.createAlert({
                                         type: "danger",
@@ -457,114 +564,57 @@
                                     });
                                 }
 
-                                // Check sub business permissions
-                                if (!MasterUserData.businessPermission.disableBusinesses)
-                                {
-                                    // check business add allowed
-                                    if (MasterUserData.businessPermission.addBusinessDisabled) {
-                                        let alertMessage = "Bussiness Adding is disabled for your account.";
+                                // check business delete allowed
+                                if (MasterUserData.businessPermission.deleteBusinessDisable) {
+                                    let alertMessage = "Bussiness Deleting is disabled for your account.";
 
-                                        if (MasterUserData.businessPermission.addBusinessDisableReason != null) {
-                                            alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.addBusinessDisableReason}`;
-                                        } else {
-                                            alertMessage = `${alertMessage}<br>Please contact support for more information.`;
-                                        }
-
-                                        notificationManager.addNotification({
-                                            icon: 'fa-regular fa-circle-xmark text-danger',
-                                            title: "Bussiness Adding Disabled",
-                                            description: alertMessage,
-                                            timestamp: new Date(MasterUserData.businessPermission.addBusinessDisabled),
-                                            isFixed: true,
-                                            source: 'backend'
-                                        })
-
-                                        AlertManager.createAlert({
-                                            type: "danger",
-                                            message: alertMessage,
-                                            enableDismiss: true,
-                                        });
+                                    if (MasterUserData.businessPermission.deleteBusinessDisableReason != null) {
+                                        alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.deleteBusinessDisableReason}`;
                                     } else {
-                                        AddNewBusinessButton.prop("disabled", false);
+                                        alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                     }
 
-                                    // check business edit allowed
-                                    if (MasterUserData.businessPermission.editBusinessDisabled) {
-                                        let alertMessage = "Bussiness Editing is disabled for your account.";
+                                    notificationManager.addNotification({
+                                        icon: 'fa-regular fa-circle-xmark text-danger',
+                                        title: "Bussiness Deleting Disabled",
+                                        description: alertMessage,
+                                        timestamp: new Date(MasterUserData.businessPermission.deleteBusinessDisable),
+                                        isFixed: true,
+                                        source: 'backend'
+                                    })
 
-                                        if (MasterUserData.businessPermission.editBusinessDisableReason != null) {
-                                            alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.editBusinessDisableReason}`;
-                                        } else {
-                                            alertMessage = `${alertMessage}<br>Please contact support for more information.`;
-                                        }
-
-                                        notificationManager.addNotification({
-                                            icon: 'fa-regular fa-circle-xmark text-danger',
-                                            title: "Bussiness Editing Disabled",
-                                            description: alertMessage,
-                                            timestamp: new Date(MasterUserData.businessPermission.editBusinessDisabled),
-                                            isFixed: true,
-                                            source: 'backend'
-                                        })
-
-                                        AlertManager.createAlert({
-                                            type: "danger",
-                                            message: alertMessage,
-                                            enableDismiss: true,
-                                        });
-                                    }
-
-                                    // check business delete allowed
-                                    if (MasterUserData.businessPermission.deleteBusinessDisable) {
-                                        let alertMessage = "Bussiness Deleting is disabled for your account.";
-
-                                        if (MasterUserData.businessPermission.deleteBusinessDisableReason != null) {
-                                            alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.deleteBusinessDisableReason}`;
-                                        } else {
-                                            alertMessage = `${alertMessage}<br>Please contact support for more information.`;
-                                        }
-
-                                        notificationManager.addNotification({
-                                            icon: 'fa-regular fa-circle-xmark text-danger',
-                                            title: "Bussiness Deleting Disabled",
-                                            description: alertMessage,
-                                            timestamp: new Date(MasterUserData.businessPermission.deleteBusinessDisable),
-                                            isFixed: true,
-                                            source: 'backend'
-                                        })
-
-                                        AlertManager.createAlert({
-                                            type: "danger",
-                                            message: alertMessage,
-                                            enableDismiss: true,
-                                        });
-                                    }
+                                    AlertManager.createAlert({
+                                        type: "danger",
+                                        message: alertMessage,
+                                        enableDismiss: true,
+                                    });
                                 }
+                            }
 
-                            },
-                            (masterUserDataError) => {
-                                AlertManager.createAlert({
-                                    type: "danger",
-                                    message: "Error occured while fetching user data. Check browser console for logs.",
-                                    enableDismiss: false,
-                                });
+                        },
+                        (masterUserDataError) => {
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: "Error occured while fetching user data. Check browser console for logs.",
+                                enableDismiss: false,
+                            });
 
-                                console.error("Error occured while fetching user data: ", masterUserDataError);
-                            },
-                        );
-                    },
-                    (specLanguagesListError) => {
-                        AlertManager.createAlert({
-                            type: "danger",
-                            message: "Error occured while fetching specification languages. Check browser console for logs.",
-                            enableDismiss: false,
-                        });
+                            console.error("Error occured while fetching user data: ", masterUserDataError);
+                        },
+                    );
+                },
+                (specLanguagesListError) => {
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: "Error occured while fetching specification languages. Check browser console for logs.",
+                        enableDismiss: false,
+                    });
 
-                        console.error("Error occured while fetching specification languages: ", specLanguagesListError);
-                    }
-                );
-            });
-        </script>
+                    console.error("Error occured while fetching specification languages: ", specLanguagesListError);
+                }
+            );
+        });
+    </script>
 </body>
 
 </html>

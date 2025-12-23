@@ -13,6 +13,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.Server;
 using IqraCore.Interfaces.Conversation;
+using IqraCore.Interfaces.User;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session;
@@ -64,9 +65,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
-        private readonly UserBillingUsageManager _billingProcessingManager;
+        private readonly IUserBillingUsageManager _billingProcessingManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
-        private readonly UserUsageValidationManager _userUsageValidationManager;
+        private readonly IUserUsageValidationManager _userUsageValidationManager;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
@@ -89,9 +90,9 @@ namespace IqraInfrastructure.Managers.Call.Backend
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            UserBillingUsageManager billingProcessingManager,
+            IUserBillingUsageManager billingProcessingManager,
             CampaignActionExecutorService campaignActionExecutorService,
-            UserUsageValidationManager userUsageValidationManager
+            IUserUsageValidationManager userUsageValidationManager
         )
         {
             _logger = logger;

@@ -1,26 +1,29 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.UserBusiness
 {
     public class UserBusinessScriptsController : Controller
     {
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
 
         public UserBusinessScriptsController(
-            BusinessManager businessManager,
-            IntegrationsManager integrationsManager,
-            UserSessionValidationHelper userSessionValidationHelper
-        )
-        {
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            WhiteLabelContext? whiteLabelContext,
+            BusinessManager businessManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
+            _whiteLabelContext = whiteLabelContext;
             _businessManager = businessManager;
-            _userSessionValidationHelper = userSessionValidationHelper;
         }
 
         [HttpPost("/app/user/business/{businessId}/scripts/save")]
@@ -30,13 +33,46 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
 
             try
             {
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessScript:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
+                }
+
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Scripts",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Scripts",
+                            Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
@@ -45,36 +81,7 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
                         userSessionAndBusinessValidationResult.Message
                     );
                 }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Scripts Permission
-                if (businessData.Permission.Scripts.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessScript:BUSINESS_SCRIPTS_DISABLED_FULL",
-                        $"Business does not have permission to access scripts{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledFullReason) ? "." : ": " + businessData.Permission.Scripts.DisabledFullReason)}"
-                    );
-                }
-                if (businessData.Permission.Scripts.DisabledEditingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessScript:BUSINESS_SCRIPTS_DISABLED_EDITING",
-                        $"Business does not have permission to edit scripts{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledEditingReason) ? "." : ": " + businessData.Permission.Scripts.DisabledEditingReason)}"
-                    );
-                }
-
-                // Post type validation
-                string? postType = formData["postType"].ToString();
-                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessScript:INVALID_POST_TYPE",
-                        "Invalid post type specified. Can only be 'new' or 'edit'."
-                    );
-                }
-
-                // Script validation for edit mode
+                
                 BusinessAppScript? existingScriptData = null;
                 if (postType == "edit")
                 {
@@ -136,12 +143,32 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Scripts",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Scripts",
+                            Type = BusinessModulePermissionType.Deleting,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
@@ -150,25 +177,7 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
                         userSessionAndBusinessValidationResult.Message
                     );
                 }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Scripts Permission
-                if (businessData.Permission.Scripts.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "DeleteBusinessScript:BUSINESS_SCRIPTS_DISABLED_FULL",
-                        $"Business does not have permission to access scripts{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledFullReason) ? "." : ": " + businessData.Permission.Scripts.DisabledFullReason)}"
-                    );
-                }
-                if (businessData.Permission.Scripts.DisabledDeletingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "DeleteBusinessScript:BUSINESS_SCRIPTS_DISABLED_DELETING",
-                        $"Business does not have permission to edit scripts{(string.IsNullOrEmpty(businessData.Permission.Scripts.DisabledDeletingReason) ? "." : ": " + businessData.Permission.Scripts.DisabledDeletingReason)}"
-                    );
-                }
-
+                
                 var scriptData = await _businessManager.GetScriptsManager().GetScriptById(businessId, scriptId);
                 if (scriptData == null)
                 {

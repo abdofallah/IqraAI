@@ -1,25 +1,37 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessCampaignsController : Controller
     {
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
 
         public UserBusinessCampaignsController(
-            UserSessionValidationHelper userSessionValidationHelper,
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            WhiteLabelContext? whiteLabelContext,
             BusinessManager businessManager
         )
         {
-            _userSessionValidationHelper = userSessionValidationHelper;
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
+            _whiteLabelContext = whiteLabelContext;
             _businessManager = businessManager;
         }
+
+        /*
+         * 
+         * Telephony Campaigns
+         * 
+        **/
 
         [HttpPost("/app/user/business/{businessId}/campaign/telephony/save")]
         public async Task<FunctionReturnResult<BusinessAppTelephonyCampaign?>> SaveBusinessTelephonyCampaign(long businessId, [FromForm] IFormCollection formData)
@@ -28,35 +40,12 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 
             try
             {
-                // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
-                    checkUserDisabled: true,
-                    checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
-                );
-                if (!userSessionAndBusinessValidationResult.Success)
-                {
-                    result.Code = $"SaveBusinessTelephonyCampaign:{userSessionAndBusinessValidationResult.Code}";
-                    result.Message = userSessionAndBusinessValidationResult.Message;
-                    return result;
-                }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Campaigns Permission
-                if (businessData.Permission.Campaigns.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessTelephonyCampaign:CAMPAIGNS_DISABLED",
-                        $"Campaigns are disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledFullReason) ? "." : $": {businessData.Permission.Campaigns.DisabledFullReason}.")}"
-                    );
-                }
-
                 // Check New or Edit
                 string? postType = formData["postType"].ToString();
-                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
                 {
                     return result.SetFailureResult(
                         "SaveBusinessTelephonyCampaign:INVALID_POST_TYPE",
@@ -64,44 +53,53 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                string? existingTelephonyCampaignId = null;
-                bool exisitingCampaignIdResult = formData.TryGetValue("existingTelephonyCampaignId", out StringValues existingTelephonyCampaignIdValue);
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "TelephonyCampaigns",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "TelephonyCampaigns",
+                            Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                        },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveBusinessTelephonyCampaign:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+
+                BusinessAppTelephonyCampaign? existingTelephonyCampaignData = null;
                 if (postType == "edit")
                 {
-                    if (!exisitingCampaignIdResult || string.IsNullOrWhiteSpace(existingTelephonyCampaignIdValue.ToString()))
+                    if (!formData.TryGetValue("existingTelephonyCampaignId", out StringValues existingTelephonyCampaignIdValue))
                     {
                         return result.SetFailureResult(
                             "SaveBusinessTelephonyCampaign:MISSING_EXISTING_TELEPHONY_CAMPAIGN_ID",
                             "Existing Telephony Campaign ID is required for edit mode."
                         );
                     }
-                    else
-                    {
-                        existingTelephonyCampaignId = existingTelephonyCampaignIdValue.ToString();
-                    }
-                }
-
-                BusinessAppTelephonyCampaign? existingTelephonyCampaignData = null;
-                if (postType == "new")
-                {
-                    if (businessData.Permission.Campaigns.DisabledAddingAt != null)
-                    {
-                        return result.SetFailureResult(
-                            "SaveBusinessTelephonyCampaign:ADDING_CAMPAIGNS_DISABLED",
-                            $"Permission to add campaign is disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledAddingReason) ? "." : $": {businessData.Permission.Campaigns.DisabledAddingReason}.")}"
-                        );
-                    }
-                }
-                else if (postType == "edit")
-                {
-                    if (businessData.Permission.Campaigns.DisabledEditingAt != null)
-                    {
-                        return result.SetFailureResult(
-                            "SaveBusinessTelephonyCampaign:EDITING_CAMPAIGNS_DISABLED",
-                            $"Permission to edit campaign is disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledEditingReason) ? "." : $": {businessData.Permission.Campaigns.DisabledEditingReason}.")}"
-                        );
-                    }
-
+                    string? existingTelephonyCampaignId = existingTelephonyCampaignIdValue.ToString();
                     if (string.IsNullOrWhiteSpace(existingTelephonyCampaignId))
                     {
                         return result.SetFailureResult(
@@ -150,35 +148,38 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "TelephonyCampaigns",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "TelephonyCampaigns",
+                            Type = BusinessModulePermissionType.Deleting,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Code = $"DeleteBusinessTelephonyCampaign:{userSessionAndBusinessValidationResult.Code}";
-                    result.Message = userSessionAndBusinessValidationResult.Message;
-                    return result;
-                }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Campaigns Permission
-                if (businessData.Permission.Campaigns.DisabledFullAt != null)
-                {
                     return result.SetFailureResult(
-                        "DeleteBusinessTelephonyCampaign:CAMPAIGNS_DISABLED",
-                        $"Campaigns are disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledFullReason) ? "." : $": {businessData.Permission.Campaigns.DisabledFullReason}.")}"
-                    );
-                }
-                if (businessData.Permission.Campaigns.DisabledDeletingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "DeleteBusinessTelephonyCampaign:CAMPAIGNS_DELETING_DISABLED",
-                        $"Campaigns deleting are disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledDeletingReason) ? "." : $": {businessData.Permission.Campaigns.DisabledDeletingReason}.")}"
+                        $"DeleteBusinessTelephonyCampaign:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
                     );
                 }
 
@@ -224,35 +225,12 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 
             try
             {
-                // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
-                    checkUserDisabled: true,
-                    checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
-                );
-                if (!userSessionAndBusinessValidationResult.Success)
-                {
-                    result.Code = $"SaveBusinessWebCampaign:{userSessionAndBusinessValidationResult.Code}";
-                    result.Message = userSessionAndBusinessValidationResult.Message;
-                    return result;
-                }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Campaigns Permission
-                if (businessData.Permission.Campaigns.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessWebCampaign:CAMPAIGNS_DISABLED",
-                        $"Campaigns are disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledFullReason) ? "." : $": {businessData.Permission.Campaigns.DisabledFullReason}.")}"
-                    );
-                }
-
                 // Check New or Edit
                 string? postType = formData["postType"].ToString();
-                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
                 {
                     return result.SetFailureResult(
                         "SaveBusinessWebCampaign:INVALID_POST_TYPE",
@@ -260,44 +238,53 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                string? existingWebCampaignId = null;
-                bool exisitingCampaignIdResult = formData.TryGetValue("existingWebCampaignId", out StringValues existingWebCampaignIdValue);
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "WebCampaigns",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "WebCampaigns",
+                            Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                        },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveBusinessWebCampaign:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+
+                BusinessAppWebCampaign? existingWebCampaignData = null;
                 if (postType == "edit")
                 {
-                    if (!exisitingCampaignIdResult || string.IsNullOrWhiteSpace(existingWebCampaignIdValue.ToString()))
+                    if (!formData.TryGetValue("existingWebCampaignId", out StringValues existingWebCampaignIdValue))
                     {
                         return result.SetFailureResult(
                             "SaveBusinessWebCampaign:MISSING_EXISTING_Web_CAMPAIGN_ID",
                             "Existing Web Campaign ID is required for edit mode."
                         );
                     }
-                    else
-                    {
-                        existingWebCampaignId = existingWebCampaignIdValue.ToString();
-                    }
-                }
-
-                BusinessAppWebCampaign? existingWebCampaignData = null;
-                if (postType == "new")
-                {
-                    if (businessData.Permission.Campaigns.DisabledAddingAt != null)
-                    {
-                        return result.SetFailureResult(
-                            "SaveBusinessWebCampaign:ADDING_CAMPAIGNS_DISABLED",
-                            $"Permission to add campaign is disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledAddingReason) ? "." : $": {businessData.Permission.Campaigns.DisabledAddingReason}.")}"
-                        );
-                    }
-                }
-                else if (postType == "edit")
-                {
-                    if (businessData.Permission.Campaigns.DisabledEditingAt != null)
-                    {
-                        return result.SetFailureResult(
-                            "SaveBusinessWebCampaign:EDITING_CAMPAIGNS_DISABLED",
-                            $"Permission to edit campaign is disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledEditingReason) ? "." : $": {businessData.Permission.Campaigns.DisabledEditingReason}.")}"
-                        );
-                    }
-
+                    string? existingWebCampaignId = existingWebCampaignIdValue.ToString();
                     if (string.IsNullOrWhiteSpace(existingWebCampaignId))
                     {
                         return result.SetFailureResult(
@@ -346,35 +333,38 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "WebCampaigns",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "WebCampaigns",
+                            Type = BusinessModulePermissionType.Deleting,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Code = $"DeleteBusinessWebCampaign:{userSessionAndBusinessValidationResult.Code}";
-                    result.Message = userSessionAndBusinessValidationResult.Message;
-                    return result;
-                }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Campaigns Permission
-                if (businessData.Permission.Campaigns.DisabledFullAt != null)
-                {
                     return result.SetFailureResult(
-                        "DeleteBusinessWebCampaign:CAMPAIGNS_DISABLED",
-                        $"Campaigns are disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledFullReason) ? "." : $": {businessData.Permission.Campaigns.DisabledFullReason}.")}"
-                    );
-                }
-                if (businessData.Permission.Campaigns.DisabledDeletingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "DeleteBusinessWebCampaign:DELETING_CAMPAIGNS_DISABLED",
-                        $"Campaigns deleting are disabled for this business{(string.IsNullOrEmpty(businessData.Permission.Campaigns.DisabledDeletingReason) ? "." : $": {businessData.Permission.Campaigns.DisabledDeletingReason}.")}"
+                        $"DeleteBusinessWebCampaign:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
                     );
                 }
 

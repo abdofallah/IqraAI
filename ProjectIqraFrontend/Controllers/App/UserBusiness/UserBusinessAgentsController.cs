@@ -1,38 +1,31 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Integrations;
-using IqraInfrastructure.Managers.LLM;
-using IqraInfrastructure.Managers.STT;
-using IqraInfrastructure.Managers.TTS;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessAgentsController : Controller
     {
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
-        private readonly LLMProviderManager _llmProviderManager;
-        private readonly STTProviderManager _sttProviderManager;
-        private readonly TTSProviderManager _ttsProviderManager;
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
 
         public UserBusinessAgentsController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            WhiteLabelContext? whiteLabelContext,
             BusinessManager businessManager,
-            IntegrationsManager integrationsManager,
-            LLMProviderManager llmProviderManager,
-            STTProviderManager sttProviderManager,
-            TTSProviderManager ttsProviderManager,
-            UserSessionValidationHelper userSessionValidationHelper
-        )
-        {
+            IntegrationsManager integrationsManager
+        ) {
             _businessManager = businessManager;
-            _llmProviderManager = llmProviderManager;
-            _sttProviderManager = sttProviderManager;
-            _ttsProviderManager = ttsProviderManager;
-            _userSessionValidationHelper = userSessionValidationHelper;
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
+            _whiteLabelContext = whiteLabelContext;
         }
 
         [HttpPost("/app/user/business/{businessId}/agents/save")]
@@ -42,13 +35,45 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 
             try
             {
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                ) {
+                    return result.SetFailureResult(
+                        "SaveBusinessAgent:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
+                }
+
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Agents",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Agents",
+                            Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
@@ -57,49 +82,10 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                         userSessionAndBusinessValidationResult.Message
                     );
                 }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Business Agents Permission
-                if (businessData.Permission.Agents.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessAgent:BUSINESS_AGENTS_DISABLED_FULL",
-                        $"Business does not have permission to access agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledFullReason) ? "." : ": " + businessData.Permission.Agents.DisabledFullReason)}"
-                    );
-                }
-
-                // Check New or Edit
-                string? postType = formData["postType"].ToString();
-                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessAgent:INVALID_POST_TYPE",
-                        "Invalid post type specified. Can only be 'new' or 'edit'."
-                    );
-                }
 
                 BusinessAppAgent? exisitingAgentData = null;
-                if (postType == "new")
+                if (postType == "edit")
                 {
-                    if (businessData.Permission.Agents.DisabledAddingAt != null)
-                    {
-                        return result.SetFailureResult(
-                            "SaveBusinessAgent:BUSINESS_AGENTS_DISABLED_ADDING",
-                            $"Business does not have permission to add new agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledAddingReason) ? "." : ": " + businessData.Permission.Agents.DisabledAddingReason)}"
-                        );
-                    }
-                }
-                else if (postType == "edit")
-                {
-                    if (businessData.Permission.Agents.DisabledEditingAt != null)
-                    {
-                        return result.SetFailureResult(
-                            "SaveBusinessAgent:BUSINESS_AGENTS_DISABLED_EDITING",
-                            $"Business does not have permission to edit agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledEditingReason) ? "." : ": " + businessData.Permission.Agents.DisabledEditingReason)}"
-                        );
-                    }
-
                     if (!formData.TryGetValue("agentId", out StringValues existingAgentIdValue))
                     {
                         return result.SetFailureResult(
@@ -127,7 +113,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 }
 
                 // Forward Result
-                var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, exisitingAgentData, _llmProviderManager, _sttProviderManager, _ttsProviderManager);
+                var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, exisitingAgentData);
                 if (!addOrUpdateResult.Success)
                 {
                     return result.SetFailureResult(
@@ -156,37 +142,38 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Agents",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Agents",
+                            Type = BusinessModulePermissionType.Deleting,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
                     return result.SetFailureResult(
                         $"DeleteBusinessAgent:{userSessionAndBusinessValidationResult.Code}",
                         userSessionAndBusinessValidationResult.Message
-                    );
-                }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Business Agents Permission
-                if (businessData.Permission.Agents.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "DeleteBusinessAgent:BUSINESS_AGENTS_DISABLED_FULL",
-                        $"Business does not have permission to access agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledFullReason) ? "." : ": " + businessData.Permission.Agents.DisabledFullReason)}"
-                    );
-                }
-
-                if (businessData.Permission.Agents.DisabledDeletingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "DeleteBusinessAgent:BUSINESS_AGENTS_DISABLED_FULL",
-                        $"Business does not have permission to access agents{(string.IsNullOrEmpty(businessData.Permission.Agents.DisabledDeletingReason) ? "." : ": " + businessData.Permission.Agents.DisabledDeletingReason)}"
                     );
                 }
 

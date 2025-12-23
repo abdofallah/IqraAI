@@ -1,48 +1,45 @@
-﻿using IqraCore.Entities.Business;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
 using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraCore.Models.User.Business;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
-using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App.User
 {
     public class UserBusinessController : Controller
     {
         private readonly ILogger<UserBusinessController> _logger;
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
-        private readonly UserWhiteLabelManager _userWhiteLabelManager;
         private readonly IMongoClient _mongoClient;
-        private readonly WhiteLabelContext _whiteLabelContext;
         private readonly BusinessLogoRepository _businessLogoRepository;
         private readonly BusinessAgentAudioRepository _businessAgentAudioRepository;
 
         public UserBusinessController(
             ILogger<UserBusinessController> logger,
-            UserSessionValidationHelper userSessionValidationHelper,
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            WhiteLabelContext? whiteLabelContext,
             UserManager userManager,
             BusinessManager businessManager,
-            UserWhiteLabelManager userWhiteLabelManager,
             IMongoClient mongoClient,
-            WhiteLabelContext whiteLabelContext,
             BusinessLogoRepository businessLogoRepository,
             BusinessAgentAudioRepository businessAgentAudioRepository
         )
         {
             _logger = logger;
-            _userSessionValidationHelper = userSessionValidationHelper;
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
+            _whiteLabelContext = whiteLabelContext;
             _userManager = userManager;
             _businessManager = businessManager;
-            _userWhiteLabelManager = userWhiteLabelManager;
             _mongoClient = mongoClient;
-            _whiteLabelContext = whiteLabelContext;
             _businessLogoRepository = businessLogoRepository;
             _businessAgentAudioRepository = businessAgentAudioRepository;
         }
@@ -55,7 +52,11 @@ namespace ProjectIqraFrontend.Controllers.App.User
 
             try
             {
-                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request, checkUserDisabled: true);
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true
+                );
                 if (!validationResult.Success)
                 {
                     return result.SetFailureResult(
@@ -64,15 +65,6 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
                 var userData = validationResult.Data!.userData!;
-
-                UserPermission userPermission = userData.Permission;
-                if (userPermission.Business.DisableBusinessesAt != null)
-                {
-                    return result.SetFailureResult(
-                        $"GetUserBusinesses:USER_BUSINESSES_DISABLED",
-                        "User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason)
-                    );
-                }
 
                 FunctionReturnResult<List<BusinessData>?> businessesResult = await _businessManager.GetUserBusinessesByIds(userData.Businesses, userData.Email);
                 if (!businessesResult.Success)
@@ -113,13 +105,16 @@ namespace ProjectIqraFrontend.Controllers.App.User
 
             try
             {
-                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permissions
                     checkUserDisabled: true,
+                    // User Business Permissions
                     checkUserBusinessesDisabled: true,
-                    checkBusinessIsDisabled: true,
-                    whiteLabelContext: _whiteLabelContext
+                    // Business Permissions
+                    checkBusinessIsDisabled: true
                 );
                 if (!validationResult.Success)
                 {
@@ -182,9 +177,11 @@ namespace ProjectIqraFrontend.Controllers.App.User
 
             try
             {
-                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(
-                    Request,
-                    checkUserDisabled: true
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesAddingEnabled: true
                 );
                 if (!validationResult.Success)
                 {
@@ -194,22 +191,6 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
                 var userData = validationResult.Data!.userData!;
-
-                // Check User Business Permissions
-                if (userData.Permission.Business.DisableBusinessesAt != null)
-                {
-                    return result.SetFailureResult(
-                        "AddUserBusiness:BUSINESSES_DISABLED",
-                        $"Bussinesses are disabled for the user{(string.IsNullOrWhiteSpace(userData.Permission.Business.DisableBusinessesReason) ? "" : ": " + userData.Permission.Business.DisableBusinessesReason)}"
-                    );
-                }
-                if (userData.Permission.Business.AddBusinessDisabledAt != null)
-                {
-                    return result.SetFailureResult(
-                        "AddUserBusiness:BUSINESSES_ADDING_DISABLED",
-                        $"Bussinesses adding is disabled for the user{(string.IsNullOrWhiteSpace(userData.Permission.Business.AddBusinessDisableReason) ? "" : ": " + userData.Permission.Business.AddBusinessDisableReason)}"
-                    );
-                }
 
                 using (var mongoSession = _mongoClient.StartSession())
                 {
@@ -263,6 +244,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
             }
         }
 
+        [OpenSourceOnly]
         [HttpPost("/app/user/business/{businessId}/delete")]
         public async Task<FunctionReturnResult> DeleteUserBusiness(long businessId)
         {
@@ -270,12 +252,15 @@ namespace ProjectIqraFrontend.Controllers.App.User
 
             try
             {
-                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    // User Permissions
                     checkUserDisabled: true,
+                    // User Business Permissions
                     checkUserBusinessesDisabled: true,
                     checkUserBusinessesDeletingEnabled: true,
+                    // Business Permissions
                     checkBusinessIsDisabled: true,
                     checkBusinessCanBeDeleted: true
                 );
@@ -287,8 +272,8 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     );
                 }
                 var userData = validationResult.Data!.userData!;
-                var businessData = validationResult.Data!.businessData!;
 
+                // Move to the business manager
                 using (var mongoSession = _mongoClient.StartSession())
                 {
                     try
@@ -313,19 +298,6 @@ namespace ProjectIqraFrontend.Controllers.App.User
                                 "DeleteUserBusiness:" + removeUserBusinessResult.Code,
                                 removeUserBusinessResult.Message
                             );
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(businessData.WhiteLabelAssignedCustomerEmail))
-                        {
-                            var removeWhiteLabelCustomerResult = await _userWhiteLabelManager.RemoveWhiteLabelCustomerBusiness(userData.Email, businessData.WhiteLabelAssignedCustomerEmail, businessId, mongoSession);
-                            if (!removeWhiteLabelCustomerResult)
-                            {
-                                mongoSession.AbortTransaction();
-                                return result.SetFailureResult(
-                                    "DeleteUserBusiness:USER_WHITELABEL_CUSTOMER_BUSINESS_REMOVAL_FAILED",
-                                    "Failed to remove white label customer business."
-                                );
-                            }
                         }
 
                         var cancelOutboundCallQueuesResult = await _businessManager.CancelBusinessOutboundCallQueues(businessId, mongoSession);

@@ -1,10 +1,12 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Business.ModulePermission.ENUM;
+using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.User;
+using IqraCore.Interfaces.Validation;
 using IqraCore.Models.Business.WebSession;
 using IqraCore.Models.WebSession;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.API.v1.Business
 {
@@ -12,13 +14,16 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
     [Route("api/v1/business/{businessId}/websession")]
     public class APIv1BusinessWebSessionController : Controller
     {
-        private readonly UserAPIValidationHelper _userAPIValidationHelper;
-        private readonly UserUsageValidationManager _billingValidationManager;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly IUserUsageValidationManager _billingValidationManager;
         private readonly BusinessManager _businessManager;
 
-        public APIv1BusinessWebSessionController(UserAPIValidationHelper userAPIValidationHelper, UserUsageValidationManager billingValidationManager, BusinessManager businessManager)
-        {
-            _userAPIValidationHelper = userAPIValidationHelper;
+        public APIv1BusinessWebSessionController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            IUserUsageValidationManager billingValidationManager,
+            BusinessManager businessManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _billingValidationManager = billingValidationManager;
             _businessManager = businessManager;
         }
@@ -31,7 +36,27 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateAPIUserAndBusinessSessionAsync(Request, businessId);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "WebSessionCall",
+                            Type = BusinessModulePermissionType.Full,
+                        }
+                    }
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult(
@@ -41,15 +66,6 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                 }
                 var userData = apiKeyValidaiton.Data!.userData!;
                 var businessData = apiKeyValidaiton.Data!.businessData!;
-
-                // Check WebSession Permissions
-                if (businessData.Permission.WebSession.DisabledInitiatingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "InitiateWebSession:BUSINESS_WEBSESSION_INITIATING_DISABLED",
-                        "WebSession initiating is disabled for this business" + (string.IsNullOrWhiteSpace(businessData.Permission.WebSession.DisabledInitiatingReason) ? "" : ": " + businessData.Permission.WebSession.DisabledInitiatingReason)
-                    );
-                }
 
                 // Check Balance/Package
                 var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
@@ -99,21 +115,45 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateAPIUserAndBusinessSessionAsync(Request, businessId);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.WebSession",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.WebSession",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                    }
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult($"GetWebSessionsCount:{apiKeyValidaiton.Code}", apiKeyValidaiton.Message);
-                }
-                var businessData = apiKeyValidaiton.Data!.businessData!;
-
-                // Permissions
-                if (businessData.Permission.Conversations.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult("GetWebSessionsCount:CONVERSATIONS_DISABLED", "Business conversations are disabled.");
-                }
-                if (businessData.Permission.Conversations.Websocket.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult("GetWebSessionHistory:WEBSESSION_CONVERSATIONS_DISABLED", "Business Web sessions conversations are disabled.");
                 }
 
                 // Model Validation
@@ -146,21 +186,45 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateAPIUserAndBusinessSessionAsync(Request, businessId);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.WebSession",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.WebSession",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                    }
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult($"GetWebSessionHistory:{apiKeyValidaiton.Code}", apiKeyValidaiton.Message);
-                }
-                var businessData = apiKeyValidaiton.Data!.businessData!;
-
-                // Permissions
-                if (businessData.Permission.Conversations.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult("GetWebSessionHistory:CONVERSATIONS_DISABLED", "Business conversations are disabled.");
-                }
-                if (businessData.Permission.Conversations.Websocket.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult("GetWebSessionHistory:WEBSESSION_CONVERSATIONS_DISABLED", "Business Web sessions conversations are disabled.");
                 }
 
                 // Model Validation
@@ -193,21 +257,45 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateAPIUserAndBusinessSessionAsync(Request, businessId);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.WebSession",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.WebSession",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                    }
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult($"GetWebSessionDetail:{apiKeyValidaiton.Code}", apiKeyValidaiton.Message);
-                }
-                var businessData = apiKeyValidaiton.Data!.businessData!;
-
-                // Permissions
-                if (businessData.Permission.Conversations.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult("GetWebSessionDetail:DISABLED", "Conversations disabled.");
-                }
-                if (businessData.Permission.Conversations.Websocket.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult("GetWebSessionDetail:WEBSESSION_CONVERSATIONS_DISABLED", "Business Web sessions conversations are disabled.");
                 }
 
                 // Manager Call

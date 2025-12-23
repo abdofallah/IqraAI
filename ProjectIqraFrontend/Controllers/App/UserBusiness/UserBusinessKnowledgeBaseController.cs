@@ -1,6 +1,9 @@
 ﻿using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document;
+using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraCore.Models.RAG.Retrieval;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
@@ -8,29 +11,28 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessKnowledgeBaseController : Controller
     {
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
         private readonly KnowledgeBaseRetrievalManagerFactory _knowledgeBaseRetrievalManagerFactory;
 
-        private readonly IMongoClient _mongoClient;
-
         public UserBusinessKnowledgeBaseController(
-            UserSessionValidationHelper userSessionValidationHelper,
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            WhiteLabelContext? whiteLabelContext,
             BusinessManager businessManager,
-            KnowledgeBaseRetrievalManagerFactory knowledgeBaseRetrievalManagerFactory,
-            IMongoClient mongoClient
+            KnowledgeBaseRetrievalManagerFactory knowledgeBaseRetrievalManagerFactory
         )
         {
-            _userSessionValidationHelper = userSessionValidationHelper;
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
+            _whiteLabelContext = whiteLabelContext;
             _businessManager = businessManager;
             _knowledgeBaseRetrievalManagerFactory = knowledgeBaseRetrievalManagerFactory;
-            _mongoClient = mongoClient;
         }
 
         [HttpPost("/app/user/business/{businessId}/knowledgebase/save")]
@@ -38,111 +40,106 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppKnowledgeBase?>();
 
-            // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                Request,
-                businessId,
-                checkUserDisabled: true,
-                checkUserBusinessesDisabled: true,
-                checkUserBusinessesEditingEnabled: true
-            );
-            if (!userSessionAndBusinessValidationResult.Success)
+            try
+            {
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
+                {
+                    return result.SetFailureResult(
+                        "SaveKnowledgeBase:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
+                }
+
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                        },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveKnowledgeBase:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+
+                BusinessAppKnowledgeBase? existingKbData = null;
+                if (postType == "edit")
+                {
+                    if (!formData.TryGetValue("existingKnowledgeBaseId", out StringValues existingKbIdValue))
+                    {
+                        return result.SetFailureResult(
+                            "SaveKnowledgeBase:MISSING_EXISTING_KKNOWLEDGEBASE_ID",
+                            "Existing Knowledge Base ID is required for edit mode."
+                        );
+                    }
+                    string? existingKbId = existingKbIdValue.ToString();
+                    if (string.IsNullOrWhiteSpace(existingKbId))
+                    {
+                        return result.SetFailureResult(
+                            "SaveKnowledgeBase:INVALID_EXISTING_KKNOWLEDGEBASE_ID",
+                            "Existing Knowledge Base ID is required for edit mode but is invalid."
+                        );
+                    }
+
+                    var getKnowledgeBaseResult = await _businessManager.GetKnowledgeBaseManager().GetKnowledgeBaseById(businessId, existingKbId);
+                    if (!getKnowledgeBaseResult.Success)
+                    {
+                        return result.SetFailureResult(
+                            "SaveKnowledgeBase:GET_KNOWLEDGE_BASE_FAILED",
+                            $"Failed to get existing knowledge base: {getKnowledgeBaseResult.Message}"
+                        );
+                    }
+                    existingKbData = getKnowledgeBaseResult.Data;
+                }
+
+                // Delegate to Manager
+                var addOrUpdateResult = await _businessManager.GetKnowledgeBaseManager().AddOrUpdateKnowledgeBaseAsync(businessId, formData, postType, existingKbData);
+                if (!addOrUpdateResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveKnowledgeBase:{addOrUpdateResult.Code}",
+                        addOrUpdateResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(addOrUpdateResult.Data);
+            }
+            catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    $"SaveKnowledgeBase:{userSessionAndBusinessValidationResult.Code}",
-                    userSessionAndBusinessValidationResult.Message
+                    "SaveKnowledgeBase:EXCEPTION",
+                    $"Exception saving knowledge base: {ex.Message}"
                 );
             }
-            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-            // Knowledge Base Permission
-            if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
-            {
-                return result.SetFailureResult(
-                    "SaveKnowledgeBase:KNOWLEDGE_BASES_DISABLED",
-                    $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
-                );
-            }
-
-            // Check New or Edit
-            string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
-            {
-                return result.SetFailureResult(
-                    "SaveKnowledgeBase:INVALID_POST_TYPE",
-                    "Invalid post type specified. Can only be 'new' or 'edit'."
-                );
-            }
-
-            string? existingKbId = null;
-            bool exisitingKbResult = formData.TryGetValue("existingKnowledgeBaseId", out StringValues existingKbIdValue);
-            if (postType == "edit")
-            {
-                if (!exisitingKbResult || string.IsNullOrWhiteSpace(existingKbIdValue.ToString()))
-                {
-                    return result.SetFailureResult(
-                        "SaveKnowledgeBase:MISSING_EXISTING_KKNOWLEDGEBASE_ID",
-                        "Existing Knowledge Base ID is required for edit mode."
-                    );
-                }
-                else
-                {
-                    existingKbId = existingKbIdValue.ToString();
-                }
-            }
-
-            BusinessAppKnowledgeBase? existingKbData = null;
-            if (postType == "new")
-            {
-                if (businessData.Permission.KnowledgeBases.DisabledAddingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveKnowledgeBase:ADDING_KNOWLEDGE_BASES_DISABLED",
-                        $"Permission to add knowledge bases is disabled for this business: {businessData.Permission.KnowledgeBases.DisabledAddingReason}"
-                    );
-                }
-            }
-            else if (postType == "edit")
-            {
-                if (businessData.Permission.KnowledgeBases.DisabledEditingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveKnowledgeBase:EDITING_KNOWLEDGE_BASES_DISABLED",
-                        $"Permission to edit knowledge bases is disabled for this business: {businessData.Permission.KnowledgeBases.DisabledEditingReason}"
-                    );
-                }
-
-                if (string.IsNullOrWhiteSpace(existingKbId))
-                {
-                    return result.SetFailureResult(
-                        "SaveKnowledgeBase:INVALID_EXISTING_KKNOWLEDGEBASE_ID",
-                        "Existing Knowledge Base ID is required for edit mode but is invalid."
-                    );
-                }
-
-                var getKnowledgeBaseResult = await _businessManager.GetKnowledgeBaseManager().GetKnowledgeBaseById(businessId, existingKbId);
-                if (!getKnowledgeBaseResult.Success)
-                {
-                    return result.SetFailureResult(
-                        "SaveKnowledgeBase:GET_KNOWLEDGE_BASE_FAILED",
-                        $"Failed to get existing knowledge base: {getKnowledgeBaseResult.Message}"
-                    );
-                }
-                existingKbData = getKnowledgeBaseResult.Data;
-            }
-
-            // Delegate to Manager
-            var addOrUpdateResult = await _businessManager.GetKnowledgeBaseManager().AddOrUpdateKnowledgeBaseAsync(businessId, formData, postType, existingKbData);
-            if (!addOrUpdateResult.Success)
-            {
-                return result.SetFailureResult(
-                    $"SaveKnowledgeBase:{addOrUpdateResult.Code}",
-                    addOrUpdateResult.Message
-                );
-            }
-
-            return result.SetSuccessResult(addOrUpdateResult.Data);
         }
 
         [HttpPost("/app/user/business/{businessId}/knowledgebase/{knowledgeBaseId}/delete")]
@@ -153,36 +150,38 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = BusinessModulePermissionType.Deleting,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
                     return result.SetFailureResult(
                         $"DeleteKnowledgeBase:{userSessionAndBusinessValidationResult.Code}",
                         userSessionAndBusinessValidationResult.Message
-                    );
-                }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Knowledge Base Permission
-                if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "DeleteKnowledgeBase:KNOWLEDGE_BASES_DISABLED",
-                        $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
-                    );
-                }
-                if (businessData.Permission.KnowledgeBases.DisabledDeletingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "DeleteKnowledgeBase:DELETING_KNOWLEDGE_BASES_DISABLED",
-                        $"Permission to delete knowledge bases is disabled for this business: {businessData.Permission.KnowledgeBases.DisabledDeletingReason}"
                     );
                 }
 
@@ -220,84 +219,90 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
 
-            // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                Request,
-                businessId,
-                checkUserDisabled: true,
-                checkUserBusinessesDisabled: true,
-                checkUserBusinessesEditingEnabled: true
-            );
-            if (!userSessionAndBusinessValidationResult.Success)
+            try
             {
-                result.Code = $"UploadKnowledgeBaseDocument:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
-            }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = BusinessModulePermissionType.Editing,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.Documents",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.Documents",
+                            Type = BusinessModulePermissionType.Adding,
+                        },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"UploadKnowledgeBaseDocument:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
 
-            // Knowledge Base Permission
-            if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
+                // Logic
+                var file = formData.Files.FirstOrDefault();
+                if (file == null || file.Length == 0)
+                {
+                    return result.SetFailureResult(
+                        "UploadKnowledgeBaseDocument:NO_FILE",
+                        "No file was provided for upload."
+                    );
+                }
+                if (file.Length > 15 * 1024 * 1024) // 15 MB
+                {
+                    return result.SetFailureResult(
+                        "UploadKnowledgeBaseDocument:FILE_TOO_LARGE",
+                        "File is too large. Maximum file size is 15 MB."
+                    );
+                }
+
+                // Delegate to Manager
+                var addAndProcessResult = await _businessManager.GetKnowledgeBaseManager().ProcessAndAddDocumentAsync(businessId, knowledgeBaseId, formData, file);
+                if (!addAndProcessResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"UploadKnowledgeBaseDocument:{addAndProcessResult.Code}",
+                        addAndProcessResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(addAndProcessResult.Data);
+            }
+            catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "UploadKnowledgeBaseDocument:KNOWLEDGE_BASES_DISABLED",
-                    $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
+                    "UploadKnowledgeBaseDocument:EXCEPTION",
+                    $"Exception: {ex.Message}"
                 );
             }
-
-            if (businessData.Permission.KnowledgeBases.DisabledEditingAt != null)
-            {
-                return result.SetFailureResult(
-                    "UploadKnowledgeBaseDocument:EDITING_KNOWLEDGE_BASES_DISABLED",
-                    $"Permission to edit knowledge bases is disabled for this business: {businessData.Permission.KnowledgeBases.DisabledEditingReason}"
-                );
-            }
-
-            if (businessData.Permission.KnowledgeBases.Documents.DisabledFullReason != null)
-            {
-                return result.SetFailureResult(
-                    "UploadKnowledgeBaseDocument:KNOWLEDGE_BASES_DOCUMENTS_DISABLED",
-                    $"Documents are disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledFullReason}"
-                );
-            }
-
-            if (businessData.Permission.KnowledgeBases.Documents.DisabledAddingAt != null)
-            {
-                return result.SetFailureResult(
-                    "UploadKnowledgeBaseDocument:ADDING_KNOWLEDGE_BASES_DOCUMENTS_DISABLED",
-                    $"Permission to add documents is disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledAddingReason}"
-                );
-            }
-
-            // Logic
-            var file = formData.Files.FirstOrDefault();
-            if (file == null || file.Length == 0)
-            {
-                return result.SetFailureResult(
-                    "UploadKnowledgeBaseDocument:NO_FILE",
-                    "No file was provided for upload."
-                );
-            }
-            if (file.Length > 15 * 1024 * 1024) // 15 MB
-            {
-                return result.SetFailureResult(
-                    "UploadKnowledgeBaseDocument:FILE_TOO_LARGE",
-                    "File is too large. Maximum file size is 15 MB."
-                );
-            }
-
-            // Delegate to Manager
-            var addAndProcessResult = await _businessManager.GetKnowledgeBaseManager().ProcessAndAddDocumentAsync(businessId, knowledgeBaseId, formData, file);
-            if (!addAndProcessResult.Success)
-            {
-                return result.SetFailureResult(
-                    $"UploadKnowledgeBaseDocument:{addAndProcessResult.Code}",
-                    addAndProcessResult.Message
-                );
-            }
-
-            return result.SetSuccessResult(addAndProcessResult.Data);
         }
 
         [HttpGet("/app/user/business/{businessId}/knowledgebase/{kbId}/documents")]
@@ -305,51 +310,73 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>();
 
-            // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                Request,
-                businessId,
-                checkUserDisabled: true,
-                checkUserBusinessesDisabled: true,
-                checkUserBusinessesEditingEnabled: true
-            );
-            if (!userSessionAndBusinessValidationResult.Success)
+            try
             {
-                result.Code = $"GetKnowledgebaseDocuments:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
-            }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                        Type = BusinessModulePermissionType.Retrieving,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "KnowledgeBases.Documents",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "KnowledgeBases.Documents",
+                        Type = BusinessModulePermissionType.Retrieving,
+                    },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetKnowledgebaseDocuments:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
 
-            // Knowledge Base Permission
-            if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
+                // Delegate to Manager
+                var addOrUpdateResult = await _businessManager.GetKnowledgeBaseManager().GetKnowledgeBaseDocuments(businessId, kbId);
+                if (!addOrUpdateResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetKnowledgebaseDocuments:{addOrUpdateResult.Code}",
+                        addOrUpdateResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(addOrUpdateResult.Data);
+            }
+            catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "GetKnowledgebaseDocuments:KNOWLEDGE_BASES_DISABLED",
-                    $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
+                    "GetKnowledgebaseDocuments:EXCEPTION",
+                    $"Exception: {ex.Message}"
                 );
             }
-
-            if (businessData.Permission.KnowledgeBases.Documents.DisabledFullReason != null)
-            {
-                return result.SetFailureResult(
-                    "GetKnowledgebaseDocuments:KNOWLEDGE_BASES_DOCUMENTS_DISABLED",
-                    $"Documents are disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledFullReason}"
-                );
-            }
-  
-            // Delegate to Manager
-            var addOrUpdateResult = await _businessManager.GetKnowledgeBaseManager().GetKnowledgeBaseDocuments(businessId, kbId);
-            if (!addOrUpdateResult.Success)
-            {
-                return result.SetFailureResult(
-                    $"GetKnowledgebaseDocuments:{addOrUpdateResult.Code}",
-                    addOrUpdateResult.Message
-                );
-            }
-
-            return result.SetSuccessResult(addOrUpdateResult.Data);
         }
 
         [HttpPost("/app/user/business/{businessId}/knowledgebase/{knowledgeBaseId}/retrieve")]
@@ -361,35 +388,51 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
-                    checkUserBusinessesDisabled: true
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.Documents",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.Documents",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                    }
                 );
-
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
                     return result.SetFailureResult(
                         $"RetrieveFromKnowledgeBase:{userSessionAndBusinessValidationResult.Code}",
-                        userSessionAndBusinessValidationResult.Message);
-                }
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Knowledge Base Permission
-                if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "RetrieveFromKnowledgeBase:KNOWLEDGE_BASES_DISABLED",
-                        $"Knowledge Bases are disabled for this business: {(string.IsNullOrEmpty(businessData.Permission.KnowledgeBases.DisabledFullReason) ? "." : businessData.Permission.KnowledgeBases.DisabledFullReason)}");
-                }
-                if (businessData.Permission.KnowledgeBases.DisabledRetrievingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "RetrieveFromKnowledgeBase:RETRIEVING_KNOWLEDGE_BASES_DISABLED",
-                        $"Permission to retrieve knowledge bases results is disabled for this business{(string.IsNullOrEmpty(businessData.Permission.KnowledgeBases.DisabledRetrievingReason) ? "." : ": " + businessData.Permission.KnowledgeBases.DisabledRetrievingReason)}"
+                        userSessionAndBusinessValidationResult.Message
                     );
                 }
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
                 string? retrievalQuery = null;
                 if (!formData.TryGetValue("query", out var queryValues))
@@ -460,42 +503,48 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.KnowledgeBasePermissions",
+                            Type = BusinessModulePermissionType.Editing,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.Documents",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "KnowledgeBases.Documents",
+                            Type = BusinessModulePermissionType.Editing,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Code = $"SaveDocumentChunks:{userSessionAndBusinessValidationResult.Code}";
-                    result.Message = userSessionAndBusinessValidationResult.Message;
-                    return result;
-                }
-                var userData = userSessionAndBusinessValidationResult.Data.userData;
-                var businessData = userSessionAndBusinessValidationResult.Data.businessData;
-
-                // Knowledge Base Permission
-                if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
-                {
                     return result.SetFailureResult(
-                        "SaveDocumentChunks:KNOWLEDGE_BASES_DISABLED",
-                        $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
-                    );
-                }
-                if (businessData.Permission.KnowledgeBases.Documents.DisabledFullReason != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveDocumentChunks:KNOWLEDGE_BASES_DOCUMENTS_DISABLED",
-                        $"Documents are disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledFullReason}"
-                    );
-                }
-                if (businessData.Permission.KnowledgeBases.Documents.DisabledEditingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveDocumentChunks:KNOWLEDGE_BASES_DOCUMENTS_DISABLED_EDITING",
-                        $"Documents editing is disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledEditingReason}"
+                        $"SaveDocumentChunks:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
                     );
                 }
 

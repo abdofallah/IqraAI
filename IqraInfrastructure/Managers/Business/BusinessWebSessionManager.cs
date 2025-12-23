@@ -5,6 +5,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.WebSession;
 using IqraCore.Entities.WebSession.Enum;
+using IqraCore.Interfaces.User;
 using IqraCore.Models.Server;
 using IqraCore.Models.WebSession;
 using IqraInfrastructure.Managers.Region;
@@ -15,7 +16,7 @@ using MongoDB.Bson;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-
+ 
 namespace IqraInfrastructure.Managers.Business
 {
     public class BusinessWebSessionManager
@@ -23,7 +24,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessManager _parentBusinessManager;
 
         private readonly WebSessionRepository _webSessionRepoistory;
-        private readonly UserUsageValidationManager _billingValidationManager;
+        private readonly IUserUsageValidationManager _billingValidationManager;
         private readonly ServerSelectionManager _serverSelectionManager;
         private readonly RegionManager _regionManager;
         private readonly IHttpClientFactory _httpClientFactory;
@@ -33,7 +34,7 @@ namespace IqraInfrastructure.Managers.Business
         public BusinessWebSessionManager(
             BusinessManager parentManager,
             WebSessionRepository webSessionRepoistory,
-            UserUsageValidationManager billingValidationManager,
+            IUserUsageValidationManager billingValidationManager,
             ServerSelectionManager serverSelectionManager,
             RegionManager regionManager,
             IHttpClientFactory httpClientFactory

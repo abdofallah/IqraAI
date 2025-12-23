@@ -1,4 +1,4 @@
-﻿using IqraCore.Models.User.GetMasterUserDataModel;
+﻿using IqraCore.Models.User.MasterUserDataModel;
 
 namespace IqraCore.Models.User
 {

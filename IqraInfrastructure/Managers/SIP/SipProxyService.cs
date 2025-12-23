@@ -4,6 +4,7 @@ using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Configuration;
+using IqraCore.Interfaces.User;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
@@ -24,7 +25,7 @@ namespace IqraInfrastructure.Managers.SIP
         private readonly ServerSelectionManager _serverSelectionManager;
         private readonly RegionManager _regionManager;
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
-        private readonly UserUsageValidationManager _userUsageValidationManager;
+        private readonly IUserUsageValidationManager _userUsageValidationManager;
         private readonly UserManager _userManager;
         private readonly ProxyAppConfig _proxyAppConfig;
         private SIPTransport _sipTransport;
@@ -37,7 +38,7 @@ namespace IqraInfrastructure.Managers.SIP
             ServerSelectionManager serverSelectionManager,
             RegionManager regionManager,
             InboundCallQueueRepository inboundCallQueueRepository,
-            UserUsageValidationManager userUsageValidationManager,
+            IUserUsageValidationManager userUsageValidationManager,
             UserManager userManager
         )
         {

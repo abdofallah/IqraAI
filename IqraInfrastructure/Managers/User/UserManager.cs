@@ -1,17 +1,10 @@
-﻿using IqraCore.Entities.App.Configuration;
-using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Payment.Transaction;
-using IqraCore.Entities.Payment.Transaction.Enums;
+﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
-using IqraCore.Entities.User.Billing;
-using IqraCore.Entities.User.Billing.Enums;
+using IqraCore.Interfaces.User;
 using IqraCore.Models.Authentication;
-using IqraCore.Models.User.Billing;
 using IqraInfrastructure.Helpers.User;
-using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Mail;
 using IqraInfrastructure.Repositories.App;
-using IqraInfrastructure.Repositories.Payment;
 using IqraInfrastructure.Repositories.User;
 using Konscious.Security.Cryptography;
 using Microsoft.Extensions.Logging;
@@ -33,8 +26,7 @@ namespace IqraInfrastructure.Managers.User
         private readonly UserRepository _userDatabase;
         private readonly EmailManager _emailManager;
         private readonly UserApiKeyProcessor _apiKeyProcessor;
-        private readonly PlanManager _planManager;
-        private readonly PaymentTransactionRepository _paymentTransactionRepository;
+        private readonly IUserRegistrationManager _userRegistrationManager;
 
         private readonly int _sessionDurationHours = 24;
 
@@ -44,9 +36,7 @@ namespace IqraInfrastructure.Managers.User
             UserSessionRepository userSessionRepository,
             UserRepository userRepository,
             EmailManager emailManager,
-            UserApiKeyProcessor apiKeyProcessor,
-            PlanManager planManager,
-            PaymentTransactionRepository paymentTransactionRepository
+            UserApiKeyProcessor apiKeyProcessor
         )
         {
             _logger = logger;
@@ -56,8 +46,6 @@ namespace IqraInfrastructure.Managers.User
             _userSessionDatabase = userSessionRepository;
             _emailManager = emailManager;
             _apiKeyProcessor = apiKeyProcessor;
-            _planManager = planManager;
-            _paymentTransactionRepository = paymentTransactionRepository;
         }
 
         // CURD
@@ -102,54 +90,7 @@ namespace IqraInfrastructure.Managers.User
         // Management
         public async Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model)
         {
-            var result = new FunctionReturnResult<UserData?>();
-
-            BillingPlanConfig? planConfig = await _appRepository.GetBillingPlanConfig();
-            if (planConfig == null || planConfig.NewUserCredit < 0 || string.IsNullOrEmpty(planConfig.NewUserPlanId))
-            {
-                return result.SetFailureResult(
-                    "RegisterUser:PLAN_CONFIG_NOT_FOUND",
-                    "Plan congfiguration not found or invalid"
-                );
-            }
-
-            var planDataResult = await _planManager.GetPlanByIdAsync(planConfig.NewUserPlanId);
-            if (!planDataResult.Success)
-            {
-                return result.SetFailureResult(
-                    "RegisterUser:PLAN_NOT_FOUND",
-                    "Plan not found"
-                );
-            }
-
-            UserData newUser = new UserData
-            {
-                Email = model.Email,
-                EmailHash = _apiKeyProcessor.ComputeEmailHash(model.Email),
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                PasswordSHA = HashPassword(model.Email, model.Password),
-                Billing = new UserBillingData()
-                {
-                    CreditBalance = planConfig.NewUserCredit,
-                    Subscription = new UserBillingSubscriptionDetails()
-                    {
-                        PlanId = planConfig.NewUserPlanId,
-                        Status = UserBillingSubscriptionStatusEnum.Active
-                    }
-                }
-            };
-
-            var addResult = await _userDatabase.AddUserAsync(newUser);
-            if (!addResult)
-            {
-                return result.SetFailureResult(
-                    "RegisterUser:USER_CREATION_FAILED",
-                    "User creation failed in db."
-                );
-            }
-
-            return result.SetSuccessResult(newUser);
+            return await _userRegistrationManager.RegisterUser(model, HashPassword);
         }
 
         public async Task<bool> ResetPassword(string userEmail, string newPassword)
@@ -482,174 +423,6 @@ namespace IqraInfrastructure.Managers.User
             await _userDatabase.UpdateUser(userEmail, updateDefinition, mongoSession);
 
             return result.SetSuccessResult();
-        }
-
-        public async Task<FunctionReturnResult<UserBillingAutoRefillSettings?>> UpdateAutoRefillSettingsAsync(UserData user, UpdateAutoRefillSettingsRequestModel settings)
-        {
-            var result = new FunctionReturnResult<UserBillingAutoRefillSettings?>();
-
-            try
-            {
-                if (settings == null)
-                {
-                    return result.SetFailureResult(
-                        "UpdateAutoRefillSettings:INVALID_REQUEST",
-                        "Invalid request body."
-                    );
-                }
-
-                var newAutoRefillSettings = new UserBillingAutoRefillSettings();
-                if (settings.Status == UserBillingAutoRefillStatusEnum.Enabled)
-                {
-                    var planResult = await _planManager.GetPlanByIdAsync(user.Billing.Subscription.PlanId);
-                    if (!planResult.Success || planResult.Data == null)
-                    {
-                        _logger.LogWarning("Could not find plan {PlanId} for user {Email} while updating auto-refill.", user.Billing.Subscription.PlanId, user.Email);
-                        return result.SetFailureResult(
-                            "UpdateAutoRefillSettings:PLAN_NOT_FOUND",
-                            "Your current billing plan could not be found."
-                        );
-                    }
-                    var planData = planResult.Data;
-
-                    if (settings.RefillWhenBalanceBelow == null || settings.RefillWhenBalanceBelow <= 0)
-                    {
-                        return result.SetFailureResult(
-                            "UpdateAutoRefillSettings:INVALID_THRESHOLD",
-                            "Threshold amount must be a positive number."
-                        );
-                    }
-                    if (settings.RefillAmount == null || settings.RefillAmount < planData.MinimumTopUpAmount || settings.RefillAmount <= 0)
-                    {
-                        return result.SetFailureResult(
-                            "UpdateAutoRefillSettings:MINIMUM_REFILL_ERROR",
-                            $"Refill amount must be at least ${planData.MinimumTopUpAmount}."
-                        );
-                    }
-                    if (string.IsNullOrWhiteSpace(settings.DefaultPaymentMethodId))
-                    {
-                        return result.SetFailureResult(
-                            "UpdateAutoRefillSettings:PAYMENT_METHOD_REQUIRED",
-                            "A payment method is required to enable auto-refill."
-                        );
-                    }
-
-                    var paymentMethodExists = user.PaymentMethods.Any(pm => pm.Id == settings.DefaultPaymentMethodId);
-                    if (!paymentMethodExists)
-                    {
-                        return result.SetFailureResult(
-                            "UpdateAutoRefillSettings:PAYMENT_METHOD_NOT_FOUND",
-                            "The selected payment method was not found on your account."
-                        );
-                    }
-
-                    newAutoRefillSettings.Status = UserBillingAutoRefillStatusEnum.Enabled;
-                    newAutoRefillSettings.RefillWhenBalanceBelow = settings.RefillWhenBalanceBelow;
-                    newAutoRefillSettings.RefillAmount = settings.RefillAmount;
-                    newAutoRefillSettings.DefaultPaymentMethodId = settings.DefaultPaymentMethodId;
-                }
-                else
-                {
-                    newAutoRefillSettings.Status = UserBillingAutoRefillStatusEnum.Disabled;
-                    newAutoRefillSettings.RefillWhenBalanceBelow = null;
-                    newAutoRefillSettings.RefillAmount = null;
-                    newAutoRefillSettings.DefaultPaymentMethodId = null;
-                    newAutoRefillSettings.LastAttemptStatusMessage = null;
-                }
-
-                var updateDefinition = Builders<UserData>.Update
-                    .Set(u => u.Billing.AutoRefill, newAutoRefillSettings);
-                var updateSuccess = await _userDatabase.UpdateUser(user.Email, updateDefinition);
-                if (!updateSuccess)
-                {
-                    _logger.LogError("Failed to update auto-refill settings in database for user {email}", user.Email);
-                    return result.SetFailureResult(
-                        "UpdateAutoRefillSettings:DB_UPDATE_FAILED",
-                        "Could not save settings to the database."
-                    );
-                }
-
-                return result.SetSuccessResult(newAutoRefillSettings);
-            }
-            catch (Exception ex) {
-                _logger.LogError(ex, "Exception occurred while updating auto-refill settings for user {email}", user.Email);
-                return result.SetFailureResult(
-                    "UpdateAutoRefillSettings:EXCEPTION",
-                    "An unexpected error occurred."
-                );
-            }
-        }
-
-        public async Task<FunctionReturnResult<PaginatedResult<UserBillingHistoryModel>?>> GetBillingHistoryAsync(string userEmail, int limit, string? nextCursor, string? previousCursor)
-        {
-            var result = new FunctionReturnResult<PaginatedResult<UserBillingHistoryModel>?>();
-            var paginatedResult = new PaginatedResult<UserBillingHistoryModel> { PageSize = limit };
-
-            bool fetchNext = string.IsNullOrWhiteSpace(previousCursor);
-            string? currentCursor = fetchNext ? nextCursor : previousCursor;
-            var decodedCursor = PaginationCursor<PaginationCursorNoFilterHelper>.Decode(currentCursor);
-
-            try
-            {
-                var (transactions, hasMore) = await _paymentTransactionRepository.GetUserTransactionsPaginatedAsync(userEmail, limit, decodedCursor, fetchNext);
-                if (!transactions.Any())
-                {
-                    return result.SetSuccessResult(new PaginatedResult<UserBillingHistoryModel>());
-                }
-
-                paginatedResult.Items = transactions.Select(t => new UserBillingHistoryModel
-                {
-                    Id = t.Id,
-                    CreatedAt = t.CreatedAt,
-                    Description = GenerateTransactionDescription(t), // Helper function to generate description
-                    USDAmount = t.USDAmount,
-                    Status = t.Status,
-                    Type = t.Type,
-                    FailureReason = t.FailureReason,
-                    CardDisplay = t.CardNumber, // Already masked "Visa **** 1234" from payment provider
-                    UserPaymentMethodId = t.UserPaymentMethodId,
-                    CardHolderName = t.CardHolderName,
-                    AddonQuantity = t.FeatureAddonQuantity,
-                    AddonUnitPrice = t.FeatureAddonUnitPrice,
-                    AddonFeatureKey = t.FeatureAddonKey,
-                    AddonId = t.FeatureAddonId
-                }).ToList();
-
-                // Cursor logic
-                if (fetchNext)
-                {
-                    paginatedResult.HasNextPage = hasMore;
-                    paginatedResult.NextCursor = hasMore ? new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = transactions.Last().CreatedAt, Id = transactions.Last().Id }.Encode() : null;
-                    paginatedResult.PreviousCursor = decodedCursor != null ? new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = transactions.First().CreatedAt, Id = transactions.First().Id }.Encode() : null;
-                    paginatedResult.HasPreviousPage = decodedCursor != null;
-                }
-                else // previous
-                {
-                    paginatedResult.HasPreviousPage = hasMore;
-                    paginatedResult.PreviousCursor = hasMore ? new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = transactions.First().CreatedAt, Id = transactions.First().Id }.Encode() : null;
-                    paginatedResult.NextCursor = new PaginationCursor<PaginationCursorNoFilterHelper> { Timestamp = transactions.Last().CreatedAt, Id = transactions.Last().Id }.Encode();
-                    paginatedResult.HasNextPage = true;
-                }
-
-                return result.SetSuccessResult(paginatedResult);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get billing history for user {Email}", userEmail);
-                return result.SetFailureResult("BILLING_HISTORY_FAILED", "An error occurred while fetching billing history.");
-            }
-        }
-        private string GenerateTransactionDescription(PaymentTransaction transaction)
-        {
-            return transaction.Type switch
-            {
-                PaymentTransactionTypeEnum.TopUp => "Credit Top-up",
-                PaymentTransactionTypeEnum.Subscription => "Monthly Subscription",
-                PaymentTransactionTypeEnum.AddCard => "New Card Added (Verification)",
-                PaymentTransactionTypeEnum.FeatureAddonPurchase => $"Add-on Purchase",
-                PaymentTransactionTypeEnum.FeatureAddonRenewal => $"Add-on Renewal",
-                _ => "General Transaction",
-            };
         }
     }
 }

@@ -1,224 +1,266 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Business.ModulePermission.ENUM;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraCore.Models.Business.Conversations;
 using IqraCore.Models.Business.Queues;
 using IqraCore.Models.Business.Queues.Inbound;
 using IqraCore.Models.Business.Queues.Outbound;
 using IqraCore.Models.Business.WebSession;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessConversationsController : Controller
     {
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
-        private readonly UserManager _userManager;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
-        private readonly WhiteLabelContext _whiteLabelContext;
 
         public UserBusinessConversationsController(
-            UserSessionValidationHelper userSessionValidationHelper,
-            UserManager userManager,
-            BusinessManager businessManager,
-            WhiteLabelContext whiteLabelContext
-        )
-        {
-            _userSessionValidationHelper = userSessionValidationHelper;
-            _userManager = userManager;
-            _businessManager = businessManager;
+            ISessionValidationAndPermissionHelper userSessionValidationHelper,
+            WhiteLabelContext? whiteLabelContext,
+            BusinessManager businessManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationHelper;
             _whiteLabelContext = whiteLabelContext;
+            _businessManager = businessManager;
         }
 
         [HttpPost("/app/user/business/{businessId}/conversations/inbound/metadata")]
         public async Task<FunctionReturnResult<PaginatedResult<InboundConversationMetadataModel>?>> GetBusinessInboundConversationsMetaData(
             long businessId,
             [FromBody] GetBusinessInboundCallQueuesRequestModel requestModel
-        )
-        {
+        ) {
             var result = new FunctionReturnResult<PaginatedResult<InboundConversationMetadataModel>?>();
 
-            // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                Request,
-                businessId,
-                checkUserDisabled: true,
-                checkUserBusinessesDisabled: true,
-                checkBusinessIsDisabled: true,
-                whiteLabelContext: _whiteLabelContext
-            );
-            if (!userSessionAndBusinessValidationResult.Success)
+            try
             {
-                result.Code = $"GetBusinessInboundConversationsMetaData:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
-            }
-            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-            if (businessData.Permission.Conversations.DisabledFullAt != null)
-            {
-                result.Code = "GetBusinessInboundConversationsMetaData:7";
-                result.Message = "Business conversations are currently disabled";
-
-                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.DisabledFullReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.Inbound",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.Inbound",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Message += ": " + businessData.Permission.DisabledFullReason;
+                    return result.SetFailureResult(
+                        $"GetBusinessInboundConversationsMetaData:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
                 }
 
-                return result;
-            }
-
-            if (businessData.Permission.Conversations.Inbound.DisabledFullAt != null)
-            {
-                result.Code = "GetBusinessInboundConversationsMetaData:8";
-                result.Message = "Business inbound conversations are currently disabled";
-
-                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.Inbound.DisabledFullReason))
+                var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetInboundConversationsMetaDataListAsync(
+                    businessId,
+                    requestModel
+                );
+                if (!conversationMetaDataListResult.Success)
                 {
-                    result.Message += ": " + businessData.Permission.Conversations.Inbound.DisabledFullReason;
+                    return result.SetFailureResult(
+                        $"GetBusinessInboundConversationsMetaData:{conversationMetaDataListResult.Code}",
+                        conversationMetaDataListResult.Message
+                    );
                 }
 
-                return result;
+                return result.SetSuccessResult(conversationMetaDataListResult.Data);
             }
-
-            var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetInboundConversationsMetaDataListAsync(
-                businessId,
-                requestModel
-            );
-            if (!conversationMetaDataListResult.Success)
+            catch (Exception ex)
             {
-                result.Code = "GetBusinessInboundConversationsMetaData:" + conversationMetaDataListResult.Code;
-                result.Message = conversationMetaDataListResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "GetBusinessInboundConversationsMetaData:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
             }
-
-            return conversationMetaDataListResult;
         }
 
         [HttpPost("/app/user/business/{businessId}/conversations/outbound/metadata")]
         public async Task<FunctionReturnResult<PaginatedResult<OutboundConversationMetadataModel>?>> GetBusinessOutboundConversationsMetaData(
             long businessId,
             [FromBody] GetBusinessOutboundCallQueuesRequestModel requestModel
-        )
-        {
+        ) {
             var result = new FunctionReturnResult<PaginatedResult<OutboundConversationMetadataModel>?>();
 
-            // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                Request,
-                businessId,
-                checkUserDisabled: true,
-                checkUserBusinessesDisabled: true,
-                checkBusinessIsDisabled: true,
-                whiteLabelContext: _whiteLabelContext
-            );
-            if (!userSessionAndBusinessValidationResult.Success)
+            try
             {
-                result.Code = $"GetBusinessOutboundConversationsMetaData:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
-            }
-            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-            if (businessData.Permission.Conversations.DisabledFullAt != null)
-            {
-                result.Code = "GetBusinessOutboundConversationsMetaData:7";
-                result.Message = "Business conversations are currently disabled";
-
-                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.DisabledFullReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Conversations.ConversationPermissions",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Conversations.ConversationPermissions",
+                        Type = BusinessModulePermissionType.Retrieving,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Conversations.Outbound",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Conversations.Outbound",
+                        Type = BusinessModulePermissionType.Retrieving,
+                    },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Message += ": " + businessData.Permission.DisabledFullReason;
+                    return result.SetFailureResult(
+                        $"GetBusinessOutboundConversationsMetaData:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
                 }
 
-                return result;
-            }
-
-            if (businessData.Permission.Conversations.Outbound.DisabledFullAt != null)
-            {
-                result.Code = "GetBusinessOutboundConversationsMetaData:8";
-                result.Message = "Business outbound conversations are currently disabled";
-
-                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.Outbound.DisabledFullReason))
+                var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetOutboundConversationsMetaDataListAsync(
+                    businessId,
+                    requestModel
+                );
+                if (!conversationMetaDataListResult.Success)
                 {
-                    result.Message += ": " + businessData.Permission.Conversations.Outbound.DisabledFullReason;
+                    return result.SetFailureResult(
+                        $"GetBusinessOutboundConversationsMetaData:{conversationMetaDataListResult.Code}",
+                        conversationMetaDataListResult.Message
+                    );
                 }
 
-                return result;
+                return result.SetSuccessResult(conversationMetaDataListResult.Data);
             }
-
-            var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetOutboundConversationsMetaDataListAsync(
-                businessId,
-                requestModel
-            );
-            if (!conversationMetaDataListResult.Success)
+            catch (Exception ex)
             {
-                result.Code = "GetBusinessOutboundConversationsMetaData:" + conversationMetaDataListResult.Code;
-                result.Message = conversationMetaDataListResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "GetBusinessOutboundConversationsMetaData:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
             }
-
-            return conversationMetaDataListResult;
         }
 
         [HttpPost("/app/user/business/{businessId}/conversations/websession/metadata")]
         public async Task<FunctionReturnResult<PaginatedResult<WebSessionConversationMetadataModel>?>> GetBusinessWebSessionConversationsMetaData(
             long businessId,
             [FromBody] GetBusinessWebSessionsRequestModel requestModel
-        )
-        {
+        ) {
             var result = new FunctionReturnResult<PaginatedResult<WebSessionConversationMetadataModel>?>();
 
-            // 1. Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                Request,
-                businessId,
-                checkUserDisabled: true,
-                checkUserBusinessesDisabled: true,
-                checkBusinessIsDisabled: true,
-                whiteLabelContext: _whiteLabelContext
-            );
-
-            if (!userSessionAndBusinessValidationResult.Success)
+            try
             {
-                result.Code = $"GetBusinessWebSessionConversationsMetaData:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
-            }
-            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Conversations.ConversationPermissions",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Conversations.ConversationPermissions",
+                        Type = BusinessModulePermissionType.Retrieving,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Conversations.WebSession",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Conversations.WebSession",
+                        Type = BusinessModulePermissionType.Retrieving,
+                    },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetBusinessWebSessionConversationsMetaData:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
 
-            // 2. Permission Checks
-            if (businessData.Permission.Conversations.DisabledFullAt != null)
+                var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetWebSessionsMetaDataListAsync(
+                    businessId,
+                    requestModel
+                );
+                if (!conversationMetaDataListResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetBusinessWebSessionConversationsMetaData:{conversationMetaDataListResult.Code}",
+                        conversationMetaDataListResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(conversationMetaDataListResult.Data);
+            }
+            catch (Exception ex)
             {
-                result.Code = "GetBusinessWebSessionConversationsMetaData:CONVERSATIONS_DISABLED";
-                result.Message = "Business conversations are currently disabled: " + businessData.Permission.Conversations.DisabledFullReason;
-                return result;
+                return result.SetFailureResult(
+                    "GetBusinessWebSessionConversationsMetaData:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
             }
-
-            if (businessData.Permission.Conversations.Websocket.DisabledFullAt != null)
-            {
-                result.Code = "GetBusinessWebSessionConversationsMetaData:BUSINESS_WEBSESSION_CONVERSATIONS_DISABLED";
-                result.Message = "Business Web Sessions conversations are currently disabled: " + businessData.Permission.Conversations.Websocket.DisabledFullReason;
-                return result;
-            }
-
-            // 3. Manager Call
-            var conversationMetaDataListResult = await _businessManager.GetConversationsManager().GetWebSessionsMetaDataListAsync(
-                businessId,
-                requestModel
-            );
-
-            if (!conversationMetaDataListResult.Success)
-            {
-                result.Code = "GetBusinessWebSessionConversationsMetaData:" + conversationMetaDataListResult.Code;
-                result.Message = conversationMetaDataListResult.Message;
-                return result;
-            }
-
-            return conversationMetaDataListResult;
         }
 
         [HttpGet("/app/user/business/{businessId}/conversations/state/{conversationSessionId}")]
@@ -226,46 +268,62 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<ConversationStateViewModel?>();
 
-            // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                Request,
-                businessId,
-                checkUserDisabled: true,
-                checkUserBusinessesDisabled: true,
-                checkBusinessIsDisabled: true,
-                whiteLabelContext: _whiteLabelContext
-            );
-            if (!userSessionAndBusinessValidationResult.Success)
+            try
             {
-                result.Code = $"GetConversationState:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
-            }
-            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-            if (businessData.Permission.Conversations.DisabledFullAt != null)
-            {
-                result.Code = "GetConversationState:7";
-                result.Message = "Business conversations are currently disabled";
-
-                if (!string.IsNullOrEmpty(businessData.Permission.Conversations.DisabledFullReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        }
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Message += ": " + businessData.Permission.DisabledFullReason;
+                    return result.SetFailureResult(
+                        $"GetConversationState:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
                 }
 
-                return result;
-            }
+                var stateResult = await _businessManager.GetConversationsManager().GetConversationState(businessId, conversationSessionId);
+                if (!stateResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetConversationState:{stateResult.Code}",
+                        stateResult.Message
+                    );
+                }
 
-            var stateResult = await _businessManager.GetConversationsManager().GetConversationState(businessId, conversationSessionId);
-            if (!stateResult.Success)
+                return result.SetSuccessResult(stateResult.Data);
+            }
+            catch (Exception ex)
             {
-                result.Code = "GetConversationState:" + stateResult.Code;
-                result.Message = stateResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "GetConversationState:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
             }
-
-            return stateResult;
         }
     }
 }

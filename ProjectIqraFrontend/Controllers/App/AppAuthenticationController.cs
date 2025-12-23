@@ -214,7 +214,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 UserPermission userPermission = user.Permission;
                 if (userPermission.DisableUserAt != null)
                 {
-                    var message = "User is disabled" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason);
+                    var message = "User is disabled" + (string.IsNullOrEmpty(userPermission.UserDisabledPublicReason) ? "" : ": " + userPermission.UserDisabledPublicReason);
                     return result.SetFailureResult(
                         "Login:USER_DISABLED",
                         message
@@ -287,7 +287,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 UserPermission userPermission = user.Permission;
                 if (userPermission.DisableUserAt != null)
                 {
-                    var message = "User is disabled" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason);
+                    var message = "User is disabled" + (string.IsNullOrEmpty(userPermission.UserDisabledPublicReason) ? "" : ": " + userPermission.UserDisabledPublicReason);
                     return result.SetFailureResult(
                         "RequestResetPassword:USER_DISABLED",
                         message
@@ -348,7 +348,7 @@ namespace ProjectIqraFrontend.Controllers.App
                 UserPermission userPermission = user.Permission;
                 if (userPermission.DisableUserAt != null)
                 {
-                    var message = "User is disabled" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason);
+                    var message = "User is disabled" + (string.IsNullOrEmpty(userPermission.UserDisabledPublicReason) ? "" : ": " + userPermission.UserDisabledPublicReason);
                     return result.SetFailureResult(
                         "ResetPassword:USER_DISABLED",
                         message

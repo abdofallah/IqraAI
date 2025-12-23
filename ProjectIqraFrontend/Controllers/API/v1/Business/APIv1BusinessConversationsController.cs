@@ -1,8 +1,10 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Business.ModulePermission.ENUM;
+using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.Validation;
 using IqraCore.Models.Business.Conversations;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.API.v1.Business
 {
@@ -10,12 +12,14 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
     [Route("api/v1/business/{businessId}/conversations")]
     public class APIv1BusinessConversationsController : Controller
     {
-        private readonly UserAPIValidationHelper _userAPIValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly BusinessManager _businessManager;
 
-        public APIv1BusinessConversationsController(UserAPIValidationHelper userAPIValidationHelper, BusinessManager businessManager)
-        {
-            _userAPIValidationHelper = userAPIValidationHelper;
+        public APIv1BusinessConversationsController(
+            ISessionValidationAndPermissionHelper sessionValidationAndPermissionHelper,
+            BusinessManager businessManager
+        ) {
+            _userSessionValidationAndPermissionHelper = sessionValidationAndPermissionHelper;
             _businessManager = businessManager;
         }
 
@@ -27,22 +31,37 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateAPIUserAndBusinessSessionAsync(Request, businessId);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        }
+                    }
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult(
                         $"GetConversations:{apiKeyValidaiton.Code}",
                         apiKeyValidaiton.Message
-                    );
-                }
-                var businessData = apiKeyValidaiton.Data!.businessData!;
-
-                // Check Business Conversations Permissions
-                if (businessData.Permission.Conversations.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "GetConversations:BUSINESS_CONVERSATIONS_DISABLED",
-                        "Business conversations are disabled" + (string.IsNullOrWhiteSpace(businessData.Permission.Conversations.DisabledFullReason) ? "" : ": " + businessData.Permission.Conversations.DisabledFullReason)
                     );
                 }
 
@@ -84,22 +103,37 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateAPIUserAndBusinessSessionAsync(Request, businessId);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        }
+                    }
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult(
                         $"GetConversation:{apiKeyValidaiton.Code}",
                         apiKeyValidaiton.Message
-                    );
-                }
-                var businessData = apiKeyValidaiton.Data!.businessData!;
-
-                // Check Business Conversations Permissions
-                if (businessData.Permission.Conversations.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "GetConversation:BUSINESS_CONVERSATIONS_DISABLED",
-                        "Business conversations are disabled" + (string.IsNullOrWhiteSpace(businessData.Permission.Conversations.DisabledFullReason) ? "" : ": " + businessData.Permission.Conversations.DisabledFullReason)
                     );
                 }
 

@@ -15,6 +15,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User.Usage.Enums;
 using IqraCore.Entities.WebSession;
 using IqraCore.Interfaces.Conversation;
+using IqraCore.Interfaces.User;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
@@ -29,6 +30,7 @@ using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
+using static IqraCore.Interfaces.User.IUserBillingUsageManager;
 
 namespace IqraInfrastructure.Managers.Conversation.Session
 {
@@ -41,7 +43,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationStateLogsRepository _conversationStateLogsRepository;
         private readonly BusinessConversationAudioRepository _audioStorageManager;
-        private readonly UserBillingUsageManager _userBillingUsageManager;
+        private readonly IUserBillingUsageManager _userBillingUsageManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
         private readonly ConversationSessionPostAnalysisService _conversationSessionPostAnalysisService;
 
@@ -129,7 +131,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             ConversationStateRepository conversationStateRepository,
             ConversationStateLogsRepository conversationStateLogsRepository,
             BusinessConversationAudioRepository audioStorageManager,
-            UserBillingUsageManager billingProcessingManager,
+            IUserBillingUsageManager billingProcessingManager,
             ILoggerFactory loggerFactory,
             CampaignActionExecutorService campaignActionExecutorService,
             LLMProviderManager llmProviderManager,

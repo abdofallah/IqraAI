@@ -2,6 +2,7 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.S3Storage;
+using IqraCore.Interfaces.User;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
@@ -93,7 +94,7 @@ namespace IqraInfrastructure.Managers.Business
             KeywordExtractor? keywordExtractor,
             RAGKeywordStore? ragKeywordStore,
             WebSessionRepository? webSessionRepoistory,
-            UserUsageValidationManager? billingValidationManager,
+            IUserUsageValidationManager? billingValidationManager,
             ServerSelectionManager? serverSelectionManager,
             IHttpClientFactory? httpClientFactory,
             S3StorageClientFactory? s3StorageClientFactory

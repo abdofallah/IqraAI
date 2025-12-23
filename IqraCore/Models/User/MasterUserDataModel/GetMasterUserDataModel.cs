@@ -1,8 +1,6 @@
 ﻿using IqraCore.Entities.User;
-using IqraCore.Models.User.GetMasterUserDataModel.Billing;
-using IqraCore.Models.User.GetMasterUserDataModel.WhiteLabel;
 
-namespace IqraCore.Models.User.GetMasterUserDataModel
+namespace IqraCore.Models.User.MasterUserDataModel
 {
     public class GetMasterUserDataModel
     {
@@ -16,10 +14,6 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
             Bussiness = userData.Businesses;
 
             BusinessPermission = new UserPermissionBusinessModel(userData.Permission.Business);
-
-            PaymentMethods = userData.PaymentMethods.Select(x => new UserPaymentMethodModel(x)).ToList();
-
-            Billing = new UserBillingDataModel(userData.Billing);
 
             ApiKeys = userData.UserApiKeys.Select(x => new UserApiKeyModel(x)).ToList();
 
@@ -46,8 +40,6 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
             )
             .Select(x => new UserNotificationDataModel(x))
             .ToList();
-
-            WhiteLabel = new UserWhiteLabelDataModel(userData.WhiteLabel);
         }
 
         public string Email { get; set; } = string.Empty;
@@ -58,14 +50,9 @@ namespace IqraCore.Models.User.GetMasterUserDataModel
 
         public UserPermissionBusinessModel BusinessPermission { get; set; } = new UserPermissionBusinessModel();
 
-        public List<UserPaymentMethodModel> PaymentMethods { get; set; } = new List<UserPaymentMethodModel>();
-
-        public UserBillingDataModel Billing { get; set; } = new UserBillingDataModel();
-
         public List<UserApiKeyModel> ApiKeys { get; set; } = new List<UserApiKeyModel>();
 
         public List<UserNotificationDataModel> Notifications { get; set; } = new List<UserNotificationDataModel>();
     
-        public UserWhiteLabelDataModel WhiteLabel { get; set; } = new UserWhiteLabelDataModel();
     }
 }

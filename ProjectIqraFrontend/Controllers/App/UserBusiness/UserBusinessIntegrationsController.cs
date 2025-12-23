@@ -1,28 +1,33 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Integrations;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessIntegrationsController : Controller
     {
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
 
         public UserBusinessIntegrationsController(
+            ISessionValidationAndPermissionHelper userSessionValidationHelper,
+            WhiteLabelContext? whiteLabelContext,
             BusinessManager businessManager,
-            IntegrationsManager integrationsManager,
-            UserSessionValidationHelper userSessionValidationHelper
+            IntegrationsManager integrationsManager
         ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationHelper;
+            _whiteLabelContext = whiteLabelContext;
             _businessManager = businessManager;
             _integrationsManager = integrationsManager;
-            _userSessionValidationHelper = userSessionValidationHelper;
         }
 
         [HttpPost("/app/user/business/{businessId}/integrations/save")]
@@ -32,13 +37,46 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 
             try
             {
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessIntegration:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
+                }
+
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Integrations",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Integrations",
+                            Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
@@ -47,39 +85,14 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                         userSessionAndBusinessValidationResult.Message
                     );
                 }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
-                // Integration permission validation
-                if (businessData.Permission.Integrations.DisabledFullAt != null)
-                {
-                    var message = "Business does not have permission to access integrations";
-                    if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledFullReason))
-                    {
-                        message += ": " + businessData.Permission.Integrations.DisabledFullReason;
-                    }
-
-                    return result.SetFailureResult(
-                        "SaveBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_FULL",
-                        message
-                    );
-                }
-
-                // Post type validation
-                string? postType = formData["postType"].ToString();
-                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
+                if (!formData.TryGetValue("currentIntegrationType", out StringValues currentIntegrationTypeValue))
                 {
                     return result.SetFailureResult(
-                        "SaveBusinessIntegration:INVALID_POST_TYPE",
-                        "Invalid post type"
+                        "SaveBusinessIntegration:MISSING_INTEGRATION_TYPE",
+                        "Missing integration type"
                     );
                 }
-
-                // Check operation-specific permissions and validate existing integration
-                formData.TryGetValue("currentIntegrationId", out StringValues currentIntegrationIdValue);
-                string? currentIntegrationId = currentIntegrationIdValue.ToString();
-
-                formData.TryGetValue("currentIntegrationType", out StringValues currentIntegrationTypeValue);
                 string? currentIntegrationType = currentIntegrationTypeValue.ToString();
                 if (string.IsNullOrWhiteSpace(currentIntegrationType))
                 {
@@ -109,25 +122,19 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 BusinessAppIntegration? businessIntegrationData = null;
                 if (postType == "edit")
                 {
-                    if (businessData.Permission.Integrations.DisabledEditingAt != null)
-                    {
-                        var message = "Business does not have permission to edit integrations";
-                        if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledEditingReason))
-                        {
-                            message += ": " + businessData.Permission.Integrations.DisabledEditingReason;
-                        }
-
-                        return result.SetFailureResult(
-                            "SaveBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_EDITING",
-                            message
-                        );
-                    }
-
-                    if (string.IsNullOrWhiteSpace(currentIntegrationId))
+                    if (!formData.TryGetValue("currentIntegrationId", out StringValues currentIntegrationIdValue))
                     {
                         return result.SetFailureResult(
                             "SaveBusinessIntegration:MISSING_EXISTING_INTEGRATION_ID",
                             "Missing existing integration id"
+                        );
+                    }
+                    string? currentIntegrationId = currentIntegrationIdValue.ToString();
+                    if (string.IsNullOrWhiteSpace(currentIntegrationId))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessIntegration:EMPTY_EXISTING_INTEGRATION_ID",
+                            "Empty existing integration id"
                         );
                     }
 
@@ -141,22 +148,6 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     }
 
                     businessIntegrationData = businessIntegrationResult.Data;
-                }
-                else if (postType == "new")
-                {
-                    if (businessData.Permission.Integrations.DisabledAddingAt != null)
-                    {
-                        var message = "Business does not have permission to add integrations";
-                        if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledAddingReason))
-                        {
-                            message += ": " + businessData.Permission.Integrations.DisabledAddingReason;
-                        }
-
-                        return result.SetFailureResult(
-                            "SaveBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_ADDING",
-                            message
-                        );
-                    }
                 }
 
                 // Process the integration
@@ -196,49 +187,38 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Integrations",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Integrations",
+                            Type = BusinessModulePermissionType.Deleting,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
                     return result.SetFailureResult(
                         $"DeleteBusinessIntegration:{userSessionAndBusinessValidationResult.Code}",
                         userSessionAndBusinessValidationResult.Message
-                    );
-                }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Integration permission validation
-                if (businessData.Permission.Integrations.DisabledFullAt != null)
-                {
-                    var message = "Business does not have permission to access integrations";
-                    if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledFullReason))
-                    {
-                        message += ": " + businessData.Permission.Integrations.DisabledFullReason;
-                    }
-
-                    return result.SetFailureResult(
-                        "DeleteBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_FULL",
-                        message
-                    );
-                }
-
-                if (businessData.Permission.Integrations.DisabledDeletingAt != null)
-                {
-                    var message = "Business does not have permission to delete integrations";
-                    if (!string.IsNullOrEmpty(businessData.Permission.Integrations.DisabledDeletingReason))
-                    {
-                        message += ": " + businessData.Permission.Integrations.DisabledDeletingReason;
-                    }
-
-                    return result.SetFailureResult(
-                        "DeleteBusinessIntegration:BUSINESS_INTEGRATIONS_DISABLED_DELETING",
-                        message
                     );
                 }
 

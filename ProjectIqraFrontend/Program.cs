@@ -1,12 +1,16 @@
 using HarmonyLib;
 using IqraCore.Entities.Configuration;
-using IqraCore.Entities.Payment.Providers.AmwalPay;
 using IqraCore.Entities.Server.Configuration;
 using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Modules;
+using IqraCore.Interfaces.User;
+using IqraCore.Interfaces.Validation;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
+using IqraInfrastructure.Helpers.Conventions;
+using IqraInfrastructure.Helpers.Providers;
 using IqraInfrastructure.Helpers.User;
-using IqraInfrastructure.Managers.Billing;
+using IqraInfrastructure.Helpers.Validation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
@@ -15,7 +19,6 @@ using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Mail;
-using IqraInfrastructure.Managers.Payment.Providers;
 using IqraInfrastructure.Managers.RAG.Extractors;
 using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.RAG.Processors;
@@ -27,10 +30,8 @@ using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.User;
-using IqraInfrastructure.Managers.WhiteLabel;
 using IqraInfrastructure.Patches;
 using IqraInfrastructure.Repositories.App;
-using IqraInfrastructure.Repositories.Billing;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
@@ -40,7 +41,6 @@ using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
-using IqraInfrastructure.Repositories.Payment;
 using IqraInfrastructure.Repositories.RAG;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
@@ -51,8 +51,10 @@ using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
-using IqraInfrastructure.Repositories.WhiteLabel;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
 using ProjectIqraFrontend.Transformer;
@@ -64,36 +66,47 @@ namespace ProjectIqraFrontend
 {
     public class Program
     {
+        private static Assembly? _cloudAssembly;
+        private static ICloudFrontendAppInitalizer? _cloudModule;
+
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
             // Configuration
             var appConfig = builder.Configuration;
-            builder.Services.AddSingleton<AmwalPaySettings>((sp) =>
-            {
-                return new AmwalPaySettings()
-                {
-                    MerchantId = appConfig["AmwalPay:MerchantId"],
-                    TerminalId = appConfig["AmwalPay:TerminalId"],
-                    ApiBaseUrl = appConfig["AmwalPay:ApiBaseUrl"],
-                    SecureHashKey = appConfig["AmwalPay:SecureHashKey"],
-                    ClientScriptAPIUrl = appConfig["AmwalPay:ClientScriptAPIUrl"],
-                    ClientScriptURL = appConfig["AmwalPay:ClientScriptURL"]
-                };
-            });
-            builder.Services.AddScoped<WhiteLabelContext>();
             var frontendAppConfig = new FrontendAppConfig()
             {
                 DefaultS3StorageRegionId = appConfig["S3Storage:DefaultStorageRegionId"],
+                IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
             };
             builder.Services.AddSingleton<FrontendAppConfig>(frontendAppConfig);
+            builder.Services.AddScoped<WhiteLabelContext>();
+
+            // Load Cloud Asembly
+            if (frontendAppConfig.IsCloudVersion)
+            {
+                LoadCloudAssembly();
+            }
+            // Load Cloud Configuration
+            if (frontendAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.SetupConfiguration(builder.Services, appConfig);
+            }
 
             // Repositories
             await SetupRepositories(builder, appConfig, frontendAppConfig);
+            if (frontendAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.SetupRepositories(builder.Services, appConfig);
+            }
 
             // Managers
-            SetupManagers(builder, appConfig);
+            SetupManagers(builder, appConfig, frontendAppConfig);
+            if (frontendAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.SetupManagers(builder.Services, appConfig);
+            }
 
             // Patches
             IronPatcher.Apply();
@@ -126,16 +139,9 @@ namespace ProjectIqraFrontend
                 client.DefaultRequestHeaders.Add("unstructured-api-key", appConfig["Unstructured:ApiKey"]);
             });
 
-            // JSON Middleware
+            // Controllers with custom Middleware
             var customJSONMiddleware = new EndpointAwareJsonConverter();
-            builder.Services
-                .AddControllersWithViews()
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.Converters.Add(
-                        customJSONMiddleware
-                    );
-                });
+            LoadCloudVsOpensourceControllers(builder, customJSONMiddleware, frontendAppConfig);
 
             // Configure CORS
             builder.Services.AddCors(options =>
@@ -177,7 +183,7 @@ namespace ProjectIqraFrontend
             {
                 options.AddDocumentTransformer<OpenApiDocumentTransformer>();
                 options.AddSchemaTransformer<OpenApiEnumSchemaTransformer>();
-            });
+            });   
 
             var app = builder.Build();
 
@@ -195,10 +201,18 @@ namespace ProjectIqraFrontend
             var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
             customJSONMiddleware.SetHttpContextAccessor(httpContextAccessor);
 
+            if (frontendAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.ConfigureStaticFiles(app.Environment);
+            }
+
             app.UseForwardedHeaders();
             app.UseRouting();
 
-            app.UseWhiteLabelResolver();
+            if (frontendAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.UseWhiteLabelResolver(app);
+            }
 
             app.UseCors();
 
@@ -210,8 +224,8 @@ namespace ProjectIqraFrontend
             {
                 options.WithTitle("Iqra AI API");
                 options.WithTheme(ScalarTheme.Saturn);
-                options.WithDarkMode();
-            });       
+                options.EnableDarkMode();
+            });
 
             app.MapStaticAssets();
             app.MapControllerRoute(
@@ -413,15 +427,6 @@ namespace ProjectIqraFrontend
                 );
             });
 
-            builder.Services.AddSingleton<BillingPlanRepository>((sp) =>
-            {
-                return new BillingPlanRepository(
-                    sp.GetRequiredService<ILogger<BillingPlanRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:PlanRepositoryDatabaseName"]
-                );
-            });
-
             builder.Services.AddSingleton<UserSessionRepository>((sp) =>
             {
                 return new UserSessionRepository(
@@ -470,23 +475,6 @@ namespace ProjectIqraFrontend
                 return new BusinessConversationAudioRepository(
                     sp.GetRequiredService<ILogger<BusinessConversationAudioRepository>>(),
                     sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
-
-
-            builder.Services.AddSingleton<WhiteLabelDomainVestaCPRepository>((sp) =>
-            {
-                return new WhiteLabelDomainVestaCPRepository(
-                    sp.GetRequiredService<ILogger<WhiteLabelDomainVestaCPRepository>>(),
-                    appConfig["BusinessDomainHostingRepository:Hostname"],
-                    appConfig["BusinessDomainHostingRepository:AdminUsername"],
-                    appConfig["BusinessDomainHostingRepository:BusinessesUsername"],
-                    appConfig["BusinessDomainHostingRepository:AdminPassword"],
-                    appConfig["BusinessDomainHostingRepository:DomainIP"],
-                    appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Endpoint"],
-                    appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Username"],
-                    appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Password"],
-                    sp.GetRequiredService<AppRepository>()
                 );
             });
 
@@ -566,55 +554,40 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<DistributedLockRepository>>()
                 );
             });
-
-            builder.Services.AddSingleton<PaymentTransactionRepository>((sp) =>
-            {
-                return new PaymentTransactionRepository(
-                    sp.GetRequiredService<ILogger<PaymentTransactionRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:PaymentTransactionRepositoryDatabaseName"]
-                );
-            });
-
-            builder.Services.AddSingleton<WhiteLabelDomainRepository>((sp) =>
-            {
-                return new WhiteLabelDomainRepository(
-                    sp.GetRequiredService<ILogger<WhiteLabelDomainRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:WhiteLabelDomainRepositoryDatabaseName"]
-                );
-            });
-
-            builder.Services.AddSingleton<WhiteLabelCustomerSessionRepository>((sp) =>
-            {
-                return new WhiteLabelCustomerSessionRepository(
-                    sp.GetRequiredService<ILogger<WhiteLabelCustomerSessionRepository>>(),
-                    new RedisConnectionFactory(
-                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:WhiteLabelCustomerSessionDatabaseIndex"]}",
-                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
-                    )
-                );
-            });
         }
 
-        private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
+        private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, FrontendAppConfig frontendAppConfig)
         {
-            builder.Services.AddSingleton<UserSessionValidationHelper>((sp) =>
+            builder.Services.AddSingleton<IUserBusinessPermissionHelper, UserBusinessPermissionHelper>((sp) =>
             {
-                return new UserSessionValidationHelper(
-                    sp.GetRequiredService<UserManager>(),
-                    sp.GetRequiredService<BusinessManager>(),
-                    sp.GetRequiredService<WhiteLabelCustomerSessionRepository>(),
-                    sp.GetRequiredService<UserRepository>()
-                );
+                return new UserBusinessPermissionHelper();
             });
-            builder.Services.AddSingleton<UserAPIValidationHelper>((sp) =>
+            if (!frontendAppConfig.IsCloudVersion)
             {
-                return new UserAPIValidationHelper(
-                    sp.GetRequiredService<UserApiKeyManager>(),
-                    sp.GetRequiredService<BusinessManager>()
-                );
-            });
+                builder.Services.AddScoped<IUserRegistrationManager, UserRegistrationManager>((sp) =>
+                {
+                    return new UserRegistrationManager(
+                        sp.GetRequiredService<UserApiKeyProcessor>(),
+                        sp.GetRequiredService<UserRepository>()
+                    );
+                });
+
+                builder.Services.AddSingleton<ISessionValidationAndPermissionHelper, SessionValidationAndPermissionHelper>((sp) =>
+                {
+                    return new SessionValidationAndPermissionHelper(
+                        sp.GetRequiredService<UserApiKeyManager>(),
+                        sp.GetRequiredService<UserManager>(),
+                        sp.GetRequiredService<BusinessManager>(),
+                        sp.GetRequiredService<UserRepository>(),
+                        sp.GetRequiredService<IUserBusinessPermissionHelper>()
+                    );
+                });
+
+                builder.Services.AddSingleton<IUserUsageValidationManager, UserUsageValidationManager>((sp) =>
+                {
+                    return new UserUsageValidationManager();
+                });
+            }
             builder.Services.AddSingleton<EmailManager>((sp) =>
             {
                 return new EmailManager(
@@ -705,9 +678,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<UserSessionRepository>(),
                     sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<EmailManager>(),
-                    sp.GetRequiredService<UserApiKeyProcessor>(),
-                    sp.GetRequiredService<PlanManager>(),
-                    sp.GetRequiredService<PaymentTransactionRepository>()
+                    sp.GetRequiredService<UserApiKeyProcessor>()
                 );
             });
             builder.Services.AddSingleton<IntegrationConfigurationManager>((sp) =>
@@ -741,7 +712,7 @@ namespace ProjectIqraFrontend
                         InitalizeKnowledgeBaseManager = true,
                         InitalizeCampaignManager = true,
                         InitalizeWebSessionManager = true,
-                        InitalizePostAnalysisManager = true
+                        InitalizePostAnalysisManager = true,
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
@@ -768,7 +739,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<KeywordExtractor>(),
                     sp.GetRequiredService<RAGKeywordStore>(),
                     sp.GetRequiredService<WebSessionRepository>(),
-                    sp.GetRequiredService<UserUsageValidationManager>(),
+                    sp.GetRequiredService<IUserUsageValidationManager>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
                     sp.GetRequiredService<IHttpClientFactory>(),
                     sp.GetRequiredService<S3StorageClientFactory>()
@@ -815,13 +786,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<IntegrationsManager>()
                 );
             });
-            builder.Services.AddSingleton<PlanManager>((sp) =>
-            {
-                return new PlanManager(
-                    sp.GetRequiredService<ILogger<PlanManager>>(),
-                    sp.GetRequiredService<BillingPlanRepository>()
-                );
-            });
+            
             builder.Services.AddSingleton<UserUsageManager>((sp) =>
             {
                 return new UserUsageManager(
@@ -829,16 +794,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<UserUsageRepository>()
                 );
             });
-            builder.Services.AddSingleton<UserUsageValidationManager>((sp) =>
-            {
-                return new UserUsageValidationManager(
-                    sp.GetRequiredService<ILogger<UserUsageValidationManager>>(),
-                    sp.GetRequiredService<AppRepository>(),
-                    sp.GetRequiredService<BusinessRepository>(),
-                    sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<PlanManager>()
-                );
-            });
+            
             builder.Services.AddSingleton<UserApiKeyManager>((sp) =>
             {
                 return new UserApiKeyManager(
@@ -912,64 +868,6 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<DistributedLockRepository>()
                 );
             });
-
-            builder.Services.AddScoped<AmwalPayPaymentService>((sp) =>
-            {
-                return new AmwalPayPaymentService(
-                    sp.GetRequiredService<IHttpClientFactory>().CreateClient("AmwalPay"),
-                    sp.GetRequiredService<AmwalPaySettings>(),
-                    sp.GetRequiredService<ILogger<AmwalPayPaymentService>>()
-                );
-            });
-
-            builder.Services.AddScoped<UserPaymentManager>((sp) =>
-            {
-                return new UserPaymentManager(
-                    sp.GetRequiredService<ILogger<UserPaymentManager>>(),
-                    sp.GetRequiredService<AmwalPayPaymentService>(),
-                    sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<PlanManager>(),
-                    sp.GetRequiredService<PaymentTransactionRepository>(),
-                    sp.GetRequiredService<IMongoClient>()
-                );
-            });
-
-            builder.Services.AddScoped<UserSubscriptionManager>((sp) =>
-            {
-                return new UserSubscriptionManager(
-                    sp.GetRequiredService<ILogger<UserSubscriptionManager>>(),
-                    sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<PlanManager>(),
-                    sp.GetRequiredService<UserPaymentManager>()
-                );
-            });
-
-            builder.Services.AddSingleton<UserWhiteLabelManager>((sp) =>
-            {
-                return new UserWhiteLabelManager(
-                    sp.GetRequiredService<ILogger<UserWhiteLabelManager>>(),
-                    sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<BusinessRepository>(),
-                    sp.GetRequiredService<BusinessLogoRepository>(),
-                    sp.GetRequiredService<WhiteLabelDomainRepository>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    sp.GetRequiredService<WhiteLabelDomainVestaCPRepository>(),
-                    sp.GetRequiredService<WhiteLabelDomainService>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
-            builder.Services.AddSingleton<WhiteLabelDomainService>((sp) =>
-            {
-                return new WhiteLabelDomainService(
-                    new RedisConnectionFactory(
-                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:WhiteLabelDomainContextCache"]}",
-                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
-                    ),
-                    sp.GetRequiredService<WhiteLabelDomainRepository>(),
-                    sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<ILogger<WhiteLabelDomainService>>()
-                );
-            });
         }
 
         private static void SetupDependencies(IServiceProvider serviceProvider)
@@ -1000,6 +898,61 @@ namespace ProjectIqraFrontend
             }
 
             logger.LogInformation("All IqraInfrastructure singleton services initialized successfully");
+        }
+
+        private static void LoadCloudAssembly()
+        {
+            string folder = AppDomain.CurrentDomain.BaseDirectory;
+            string cloudDllPath = Path.Combine(folder, "ProjectIqraFrontend.Cloud.dll");
+            if (!File.Exists(cloudDllPath)) throw new Exception("Cloud DLL missing");
+
+            _cloudAssembly = Assembly.LoadFrom(cloudDllPath);
+            var type = _cloudAssembly.GetTypes().FirstOrDefault(t => typeof(ICloudFrontendAppInitalizer).IsAssignableFrom(t) && !t.IsInterface);
+            if (type != null)
+            {
+                _cloudModule = (ICloudFrontendAppInitalizer)Activator.CreateInstance(type);
+            }
+            if (_cloudModule == null) throw new Exception("Cloud module not found");
+        }
+
+        private static void LoadCloudVsOpensourceControllers(WebApplicationBuilder builder, EndpointAwareJsonConverter customJSONMiddleware, FrontendAppConfig appConfig)
+        {
+            Action<MvcOptions> configureMvc = options =>
+            {
+                options.Conventions.Add(new CloudAwareActionConvention(appConfig.IsCloudVersion));
+            };
+
+            var mvcBuilder = builder.Services
+                .AddControllersWithViews(configureMvc)
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.Converters.Add(customJSONMiddleware);
+                })
+                .ConfigureApplicationPartManager(manager =>
+                {
+                    var defaultProvider = manager.FeatureProviders.OfType<ControllerFeatureProvider>().FirstOrDefault();
+                    if (defaultProvider != null)
+                    {
+                        manager.FeatureProviders.Remove(defaultProvider);
+                    }
+
+                    manager.FeatureProviders.Add(new CloudAwareControllerFeatureProvider(appConfig.IsCloudVersion));
+                });
+
+            if (!appConfig.IsCloudVersion) return;
+
+            try
+            {
+                mvcBuilder.PartManager.ApplicationParts.Add(new AssemblyPart(_cloudAssembly!));
+                Console.WriteLine("Successfully loaded Cloud Controllers.");
+
+                mvcBuilder.PartManager.ApplicationParts.Add(new CompiledRazorAssemblyPart(_cloudAssembly!));
+                Console.WriteLine("Successfully loaded Cloud Views.");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to load Cloud Controllers: {ex.Message}", ex);
+            }
         }
 
         private static List<ServiceDescriptor> GetTypes(IServiceProvider provider)

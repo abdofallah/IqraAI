@@ -1,9 +1,9 @@
 ﻿using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.Validation;
 using IqraCore.Models.Usage;
 using IqraCore.Models.User.Usage;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
-using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.API.v1.User
 {
@@ -11,12 +11,14 @@ namespace ProjectIqraFrontend.Controllers.API.v1.User
     [Route("api/v1/user/usage")]
     public class APIv1UserUsageController : Controller
     {
-        private readonly UserAPIValidationHelper _userAPIValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly UserUsageManager _userUsageManager;
 
-        public APIv1UserUsageController(UserAPIValidationHelper userAPIValidationHelper, UserUsageManager userUsageManager)
-        {
-            _userAPIValidationHelper = userAPIValidationHelper;
+        public APIv1UserUsageController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            UserUsageManager userUsageManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _userUsageManager = userUsageManager;
         }
 
@@ -28,7 +30,10 @@ namespace ProjectIqraFrontend.Controllers.API.v1.User
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateUserAPIAsync(Request);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIWithPermissions(
+                    Request,
+                    checkUserDisabled: true
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult(
@@ -76,7 +81,10 @@ namespace ProjectIqraFrontend.Controllers.API.v1.User
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateUserAPIAsync(Request);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIWithPermissions(
+                    Request,
+                    checkUserDisabled: true
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult(

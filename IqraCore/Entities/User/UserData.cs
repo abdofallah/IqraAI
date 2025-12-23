@@ -1,12 +1,10 @@
 ﻿using IqraCore.Attributes;
-using IqraCore.Entities.User.Billing;
 using IqraCore.Entities.User.Notifcation;
-using IqraCore.Entities.User.PaymentMethod;
-using IqraCore.Entities.User.WhiteLabel;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.User
 {
+    [BsonIgnoreExtraElements]
     public class UserData
     {
         [BsonId]
@@ -19,12 +17,8 @@ namespace IqraCore.Entities.User
         public List<UserApiKey> UserApiKeys { get; set; } = new List<UserApiKey>();
 
         public UserPermission Permission { get; set; } = new UserPermission();
-        public List<UserPaymentMethod> PaymentMethods { get; set; } = new List<UserPaymentMethod>();
-        public UserBillingData Billing { get; set; } = new UserBillingData();
 
         public List<UserNotificationData> Notifications { get; set; } = new List<UserNotificationData>();
-
-        public UserWhiteLabelData WhiteLabel { get; set; } = new UserWhiteLabelData();
 
         [ExcludeInAllEndpoints]
         public string PasswordSHA { get; set; } = string.Empty;

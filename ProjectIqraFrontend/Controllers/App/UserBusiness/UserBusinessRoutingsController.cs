@@ -1,20 +1,28 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessRoutingsController : Controller
     {
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
 
-        public UserBusinessRoutingsController(UserSessionValidationHelper userSessionValidationHelper, BusinessManager businessManager)
-        {
-            _userSessionValidationHelper = userSessionValidationHelper;
+        public UserBusinessRoutingsController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            WhiteLabelContext? whiteLabelContext,
+            BusinessManager businessManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
+            _whiteLabelContext = whiteLabelContext;
             _businessManager = businessManager;
         }
 
@@ -25,13 +33,46 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 
             try
             {
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessRoute:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
+                }
+
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "InboundRoutings",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "InboundRoutings",
+                            Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
@@ -40,65 +81,18 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                         userSessionAndBusinessValidationResult.Message
                     );
                 }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Business Inbound Routings Permission
-                if (businessData.Permission.Routings.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_FULL",
-                        $"Business does not have permission to access inbound routings{(string.IsNullOrEmpty(businessData.Permission.Routings.DisabledFullReason) ? "." : ": " + businessData.Permission.Routings.DisabledFullReason)}"
-                    );
-                }
-
-                // Validate post type
-                string? postType = formData["postType"].ToString();
-                if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessRoute:INVALID_POST_TYPE",
-                        "Invalid post type."
-                    );
-                }
-
-                // Validate existing route for edit
-                formData.TryGetValue("existingRouteId", out StringValues existingRouteIdStringValue);
-                string? existingRouteId = existingRouteIdStringValue.ToString();
 
                 BusinessAppRoute? existingRouteData = null;
-                if (postType == "new")
+                if (postType == "edit")  
                 {
-                    if (businessData.Permission.Routings.DisabledAddingAt != null)
+                    if (!formData.TryGetValue("existingRouteId", out StringValues existingRouteIdStringValue))
                     {
-                        var message = "Business does not have permission to add new routes";
-                        if (!string.IsNullOrEmpty(businessData.Permission.Routings.DisabledAddingReason))
-                        {
-                            message += ": " + businessData.Permission.Routings.DisabledAddingReason;
-                        }
-
                         return result.SetFailureResult(
-                            "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_ADDING",
-                            message
+                            $"SaveBusinessRoute:MISSING_EXISTING_ROUTE_ID",
+                            "Missing existing route id."
                         );
                     }
-                }
-                else
-                {
-                    if (businessData.Permission.Routings.DisabledEditingAt != null)
-                    {
-                        var message = "Business does not have permission to edit routes";
-                        if (!string.IsNullOrEmpty(businessData.Permission.Routings.DisabledEditingReason))
-                        {
-                            message += ": " + businessData.Permission.Routings.DisabledEditingReason;
-                        }
-
-                        return result.SetFailureResult(
-                            "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_EDITING",
-                            message
-                        );
-                    }
-
+                    string? existingRouteId = existingRouteIdStringValue.ToString();
                     if (string.IsNullOrWhiteSpace(existingRouteId))
                     {
                         return result.SetFailureResult(
@@ -146,36 +140,38 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "InboundRoutings",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "InboundRoutings",
+                            Type = BusinessModulePermissionType.Deleting,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
                     return result.SetFailureResult(
                         $"SaveBusinessRoute:{userSessionAndBusinessValidationResult.Code}",
                         userSessionAndBusinessValidationResult.Message
-                    );
-                }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                // Business Inbound Routings Permission
-                if (businessData.Permission.Routings.DisabledFullAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_FULL",
-                        $"Business does not have permission to access inbound routings{(string.IsNullOrEmpty(businessData.Permission.Routings.DisabledFullReason) ? "." : ": " + businessData.Permission.Routings.DisabledFullReason)}"
-                    );
-                }
-                if (businessData.Permission.Routings.DisabledDeletingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessRoute:BUSINESS_INBOUND_ROUTINGS_DISABLED_DELETING",
-                        $"Business does not have permission to delete inbound routings{(string.IsNullOrEmpty(businessData.Permission.Routings.DisabledDeletingReason) ? "." : ": " + businessData.Permission.Routings.DisabledDeletingReason)}"
                     );
                 }
 

@@ -1,20 +1,21 @@
-﻿using IqraCore.Entities.Helper.Telephony;
-using IqraInfrastructure.Managers.Business;
-using System.Text.Json;
-using System.Net.Http.Headers;
-using Microsoft.Extensions.Logging;
-using IqraCore.Models.Telephony;
-using IqraCore.Models.Server;
-using IqraInfrastructure.Managers.Integrations;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Call.Queue;
+using IqraCore.Entities.Helper.Call.Queue;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.User;
+using IqraCore.Models.Server;
+using IqraCore.Models.Telephony;
+using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
-using IqraCore.Entities.Business;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
-using IqraInfrastructure.Repositories.Call;
-using IqraCore.Entities.Helper.Call.Queue;
-using IqraCore.Entities.Call.Queue;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Repositories.Call;
+using Microsoft.Extensions.Logging;
+using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Call.Inbound
 {
@@ -30,7 +31,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
         private readonly TwilioManager _twilioManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
-        private readonly UserUsageValidationManager _billingValidationManager;
+        private readonly IUserUsageValidationManager _billingValidationManager;
         private readonly UserManager _userManager;
 
         private JsonSerializerOptions _seralizationOptionCamelCase = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
@@ -46,7 +47,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
             TwilioManager twilioManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            UserUsageValidationManager billingValidationManager,
+            IUserUsageValidationManager billingValidationManager,
             UserManager userManager
         )
         {

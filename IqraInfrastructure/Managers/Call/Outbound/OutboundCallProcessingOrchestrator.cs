@@ -6,6 +6,7 @@ using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
+using IqraCore.Interfaces.User;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Integrations;
@@ -25,7 +26,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
     {
         private readonly ILogger<OutboundCallProcessingOrchestrator> _logger;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepo;
-        private readonly UserUsageValidationManager _billingValidationManager;
+        private readonly IUserUsageValidationManager _billingValidationManager;
         private readonly ServerSelectionManager _serverSelectionManager;
         private readonly BusinessManager _businessManager;
         private readonly RegionManager _regionManager;
@@ -41,7 +42,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
         public OutboundCallProcessingOrchestrator(
             ILogger<OutboundCallProcessingOrchestrator> logger,
             OutboundCallQueueRepository outboundCallQueueRepo,
-            UserUsageValidationManager billingValidationManager,
+            IUserUsageValidationManager billingValidationManager,
             ServerSelectionManager serverSelectionManager,
             BusinessManager businessManager,
             RegionManager regionManager,

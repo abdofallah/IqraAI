@@ -70,10 +70,7 @@ namespace IqraInfrastructure.Managers.Business
             long businessId,
             string postType,
             IFormCollection formData,
-            BusinessAppAgent? exisitingAgentData,
-            LLMProviderManager llmProviderManager,
-            STTProviderManager sttProviderManager,
-            TTSProviderManager ttsProviderManager
+            BusinessAppAgent? exisitingAgentData
         ) {
             var result = new FunctionReturnResult<BusinessAppAgent?>();
 

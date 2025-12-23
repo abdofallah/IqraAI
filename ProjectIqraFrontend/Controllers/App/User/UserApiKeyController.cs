@@ -1,19 +1,21 @@
 ﻿using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.Validation;
 using IqraCore.Models.User;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
-using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.App.User
 {
     public class UserApiKeyController : ControllerBase
     {
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly UserApiKeyManager _userApiKeyManager;
 
-        public UserApiKeyController(UserSessionValidationHelper userSessionValidationHelper, UserApiKeyManager userApiKeyManager)
-        {
-            _userSessionValidationHelper = userSessionValidationHelper;
+        public UserApiKeyController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            UserApiKeyManager userApiKeyManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _userApiKeyManager = userApiKeyManager;
         }
 
@@ -24,7 +26,10 @@ namespace ProjectIqraFrontend.Controllers.App.User
 
             try
             {
-                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request, checkUserDisabled: true);
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserDisabled: true
+                );
                 if (!validationResult.Success)
                 {
                     return result.SetFailureResult(
@@ -92,7 +97,10 @@ namespace ProjectIqraFrontend.Controllers.App.User
 
             try
             {
-                var validationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAsync(Request, checkUserDisabled: true);
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserDisabled: true
+                );
                 if (!validationResult.Success)
                 {
                     return result.SetFailureResult(

@@ -1,21 +1,28 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.User;
+using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessContextController : Controller
     {
-        private readonly UserManager _userManager;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
 
-        public UserBusinessContextController(UserManager userManager, BusinessManager businessManager)
-        {
-            _userManager = userManager;
+        public UserBusinessContextController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            WhiteLabelContext? whiteLabelContext,
+            BusinessManager businessManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
+            _whiteLabelContext = whiteLabelContext;
             _businessManager = businessManager;
         }
 
@@ -24,120 +31,72 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppContextBranding?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveBusinessContextBranding:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessContextBranding:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessContextBranding:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessContextBranding:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.ContextPermissions",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.ContextPermissions",
+                        Type = BusinessModulePermissionType.Editing,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.Branding",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.Branding",
+                        Type = BusinessModulePermissionType.Editing,
+                    },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    return result.SetFailureResult(
+                        $"SaveBusinessTelephonyCampaign:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
                 }
 
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
+                FunctionReturnResult<BusinessAppContextBranding?> updateResult = await _businessManager.GetContextManager().UpdateUserBusinessContextBranding(businessId, formData);
+                if (!updateResult.Success)
                 {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
+                    return result.SetFailureResult(
+                        $"SaveBusinessContextBranding:{updateResult.Code}",
+                        updateResult.Message
+                    );
                 }
 
-                return result;
+                return result.SetSuccessResult(updateResult.Data);
             }
-
-            if (!user.Businesses.Contains(businessId))
+            catch (Exception ex)
             {
-                result.Code = "SaveBusinessContextBranding:5";
-                result.Message = "User does not own this business.";
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessContextBranding:EXCEPTION",
+                    $"Error: {ex.Message}"
+                );
             }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessContextBranding:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessContextBranding:6";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Context.DisabledFullAt != null)
-            {
-                result.Code = "SaveBusinessContextBranding:7";
-                result.Message = "Business does not have permission to edit context";
-
-                if (businessResult.Data.Permission.Context.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.Context.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Context.DisabledFullReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Context.Branding.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessContextBranding:8";
-                result.Message = "Business does not have permission to edit context branding";
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Context.Branding.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Context.Branding.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            FunctionReturnResult<BusinessAppContextBranding?> updateResult = await _businessManager.GetContextManager().UpdateUserBusinessContextBranding(businessId, formData);
-            if (!updateResult.Success)
-            {
-                result.Code = "SaveBusinessContextBranding:" + updateResult.Code;
-                result.Message = updateResult.Message;
-                return result;
-            }
-
-            result.Data = updateResult.Data;
-            result.Success = true;
-            return result;
         }
 
         [HttpPost("/app/user/business/{businessId}/context/branches/save")]
@@ -145,170 +104,114 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppContextBranch?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveBusinessContextBranch:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessContextBranch:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessContextBranch:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessContextBranch:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    return result.SetFailureResult(
+                        "SaveBusinessContextBranch:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
                 }
 
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
-                {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessContextBranch:5";
-                result.Message = "User does not own this business.";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessContextBranch:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessContextBranch:6";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Context.DisabledFullAt != null)
-            {
-                result.Code = "SaveBusinessContextBranch:7";
-                result.Message = "Business does not have permission to edit context";
-
-                if (businessResult.Data.Permission.Context.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.Context.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Context.DisabledFullReason;
-                }
-
-                return result;
-            }
-
-            string? postType = formData["postType"].ToString();
-            if (
-                string.IsNullOrWhiteSpace(postType)
-                ||
-                postType != "new" && postType != "edit"
-            )
-            {
-                result.Code = "SaveBusinessContextBranch:9";
-                result.Message = "Invalid post type.";
-                return result;
-            }
-
-            if (postType == "new")
-            {
-                if (businessResult.Data.Permission.Context.Branches.DisabledAddingAt != null)
-                {
-                    result.Code = "SaveBusinessContextBranch:8";
-                    result.Message = "Business does not have permission to add context branding";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Context.Branches.DisabledAddingReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Context.Branches.DisabledAddingReason;
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.ContextPermissions",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.ContextPermissions",
+                        Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.Branches",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.Branches",
+                        Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                    },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveBusinessContextBranch:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+
+                string? exisitingBranchIdValue = null;
+                if (postType == "edit")
+                {
+                    if (!formData.TryGetValue("exisitingBranchId", out StringValues exisitingToolIdStringValue))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessContextBranch:MISSING_BRANCH_ID",
+                            "Exisiting branch id is missing."
+                        );
+                    }
+                    exisitingBranchIdValue = exisitingToolIdStringValue.ToString();
+                    if (string.IsNullOrWhiteSpace(exisitingBranchIdValue))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessContextBranch:EMPTY_BRANCH_ID",
+                            "Exisiting branch id is empty."
+                        );
                     }
 
-                    return result;
-                }
-            }
-            else if (postType == "edit")
-            {
-                if (businessResult.Data.Permission.Context.Branches.DisabledEditingAt != null)
-                {
-                    result.Code = "SaveBusinessContextBranch:8";
-                    result.Message = "Business does not have permission to edit context branding";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Context.Branches.DisabledEditingReason))
+                    bool branchExistsResult = await _businessManager.GetContextManager().CheckBusinessBranchExists(businessId, exisitingBranchIdValue);
+                    if (!branchExistsResult)
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Context.Branches.DisabledEditingReason;
+                        return result.SetFailureResult(
+                            $"SaveBusinessContextBranch:{result.Code}",
+                            result.Message
+                        );
                     }
-
-                    return result;
                 }
-            }
 
-            formData.TryGetValue("exisitingBranchId", out StringValues exisitingToolIdStringValue);
-            string? exisitingBranchIdValue = exisitingToolIdStringValue.ToString();
-            if (postType == "edit")
-            {
-                if (string.IsNullOrWhiteSpace(exisitingBranchIdValue))
+                FunctionReturnResult<BusinessAppContextBranch?> updateResult = await _businessManager.GetContextManager().AddOrUpdateUserBusinessContextBranch(businessId, formData, postType, exisitingBranchIdValue);
+                if (!updateResult.Success)
                 {
-                    result.Code = "SaveBusinessContextBranch:8";
-                    result.Message = "Missing exisiting branch id.";
-                    return result;
+                    return result.SetFailureResult(
+                        $"SaveBusinessContextBranch:{updateResult.Code}",
+                        updateResult.Message
+                    );
                 }
 
-                bool branchExistsResult = await _businessManager.GetContextManager().CheckBusinessBranchExists(businessId, exisitingBranchIdValue);
-                if (!branchExistsResult)
-                {
-                    result.Code = "SaveBusinessContextBranch:9";
-                    result.Message = "Exisiting branch not found.";
-                    return result;
-                }
+                return result.SetSuccessResult(updateResult.Data);
             }
-
-            FunctionReturnResult<BusinessAppContextBranch?> updateResult = await _businessManager.GetContextManager().AddOrUpdateUserBusinessContextBranch(businessId, formData, postType, exisitingBranchIdValue);
-            if (!updateResult.Success)
+            catch (Exception ex)
             {
-                result.Code = "SaveBusinessContextBranch:" + updateResult.Code;
-                result.Message = updateResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessContextBranch:EXCEPTION",
+                    $"Error: {ex.Message}"
+                );
             }
-
-            result.Data = updateResult.Data;
-            result.Success = true;
-            return result;
         }
 
         [HttpPost("/app/user/business/{businessId}/context/services/save")]
@@ -316,176 +219,120 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppContextService?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveBusinessContextService:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessContextService:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessContextService:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessContextService:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    return result.SetFailureResult(
+                        "SaveBusinessContextService:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
                 }
 
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
-                {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessContextService:5";
-                result.Message = "User does not own this business.";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessContextService:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessContextService:6";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Context.DisabledFullAt != null)
-            {
-                result.Code = "SaveBusinessContextService:7";
-                result.Message = "Business does not have permission to edit context";
-
-                if (businessResult.Data.Permission.Context.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.Context.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Context.DisabledFullReason;
-                }
-
-                return result;
-            }
-
-            string? postType = formData["postType"].ToString();
-            if (
-                string.IsNullOrWhiteSpace(postType) ||
-                postType != "new" && postType != "edit"
-            )
-            {
-                result.Code = "SaveBusinessContextService:8";
-                result.Message = "Invalid post type.";
-                return result;
-            }
-
-            if (postType == "new")
-            {
-                if (businessResult.Data.Permission.Context.Services.DisabledAddingAt != null)
-                {
-                    result.Code = "SaveBusinessContextService:9";
-                    result.Message = "Business does not have permission to add services";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Context.Services.DisabledAddingReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Context.Services.DisabledAddingReason;
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.ContextPermissions",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.ContextPermissions",
+                        Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.Branches",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.Branches",
+                        Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                    },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveBusinessContextService:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+
+                string? exisitingServiceId = null;
+                if (postType == "edit")
+                {
+                    if (!formData.TryGetValue("exisitingServiceId", out StringValues exisitingServiceIdStringValue))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessContextService:MISSING_SERVICE_ID",
+                            "Exisiting service id is missing."
+                        );
+                    }
+                    exisitingServiceId = exisitingServiceIdStringValue.ToString();
+                    if (string.IsNullOrWhiteSpace(exisitingServiceId))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessContextService:EMPTY_SERVICE_ID",
+                            "Exisiting service id is empty."
+                        );
                     }
 
-                    return result;
-                }
-            }
-            else if (postType == "edit")
-            {
-                if (businessResult.Data.Permission.Context.Services.DisabledEditingAt != null)
-                {
-                    result.Code = "SaveBusinessContextService:10";
-                    result.Message = "Business does not have permission to edit services";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Context.Services.DisabledEditingReason))
+                    bool serviceExistsResult = await _businessManager.GetContextManager().CheckBusinessServiceExists(businessId, exisitingServiceId);
+                    if (!serviceExistsResult)
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Context.Services.DisabledEditingReason;
+                        return result.SetFailureResult(
+                            "SaveBusinessContextService:SERVICE_NOT_FOUND",
+                            "Service not found."
+                        );
                     }
-
-                    return result;
                 }
-            }
 
-            formData.TryGetValue("exisitingServiceId", out StringValues exisitingServiceIdStringValue);
-            string? exisitingServiceId = exisitingServiceIdStringValue.ToString();
+                FunctionReturnResult<BusinessAppContextService?> updateResult = await _businessManager.GetContextManager().AddOrUpdateUserBusinessContextService(
+                    businessId,
+                    formData,
+                    postType,
+                    exisitingServiceId
+                );
 
-            if (postType == "edit")
-            {
-                if (string.IsNullOrWhiteSpace(exisitingServiceId))
+                if (!updateResult.Success)
                 {
-                    result.Code = "SaveBusinessContextService:11";
-                    result.Message = "Missing existing service id.";
-                    return result;
+                    return result.SetFailureResult(
+                        $"SaveBusinessContextService:{updateResult.Code}",
+                        updateResult.Message
+                    );
                 }
 
-                bool serviceExistsResult = await _businessManager.GetContextManager().CheckBusinessServiceExists(businessId, exisitingServiceId);
-                if (!serviceExistsResult)
-                {
-                    result.Code = "SaveBusinessContextService:12";
-                    result.Message = "Existing service not found.";
-                    return result;
-                }
+                return result.SetSuccessResult(updateResult.Data);
             }
-
-            FunctionReturnResult<BusinessAppContextService?> updateResult = await _businessManager.GetContextManager().AddOrUpdateUserBusinessContextService(
-                businessId,
-                formData,
-                postType,
-                exisitingServiceId
-            );
-
-            if (!updateResult.Success)
+            catch (Exception ex)
             {
-                result.Code = "SaveBusinessContextService:" + updateResult.Code;
-                result.Message = updateResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessContextService:EXCEPTION",
+                    $"Error: {ex.Message}"
+                );
             }
-
-            result.Data = updateResult.Data;
-            result.Success = true;
-            return result;
         }
 
         [HttpPost("/app/user/business/{businessId}/context/products/save")]
@@ -493,176 +340,120 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         {
             var result = new FunctionReturnResult<BusinessAppContextProduct?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveBusinessContextProduct:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessContextProduct:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessContextProduct:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessContextProduct:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
                 {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                    return result.SetFailureResult(
+                        "SaveBusinessContextProduct:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
                 }
 
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
-                {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessContextProduct:5";
-                result.Message = "User does not own this business.";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessContextProduct:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessContextProduct:6";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Context.DisabledFullAt != null)
-            {
-                result.Code = "SaveBusinessContextProduct:7";
-                result.Message = "Business does not have permission to edit context";
-
-                if (businessResult.Data.Permission.Context.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.Context.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.Context.DisabledFullReason;
-                }
-
-                return result;
-            }
-
-            string? postType = formData["postType"].ToString();
-            if (
-                string.IsNullOrWhiteSpace(postType) ||
-                postType != "new" && postType != "edit"
-            )
-            {
-                result.Code = "SaveBusinessContextProduct:8";
-                result.Message = "Invalid post type.";
-                return result;
-            }
-
-            if (postType == "new")
-            {
-                if (businessResult.Data.Permission.Context.Products.DisabledAddingAt != null)
-                {
-                    result.Code = "SaveBusinessContextProduct:9";
-                    result.Message = "Business does not have permission to add products";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Context.Products.DisabledAddingReason))
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Context.Products.DisabledAddingReason;
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.ContextPermissions",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.ContextPermissions",
+                        Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.Products",
+                        Type = BusinessModulePermissionType.Full,
+                    },
+                    new ModulePermissionCheckData()
+                    {
+                        ModulePath = "Context.Products",
+                        Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                    },
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveBusinessContextProduct:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+
+                string? exisitingProductId = null;
+                if (postType == "edit")
+                {
+                    if (!formData.TryGetValue("exisitingProductId", out StringValues exisitingProductIdStringValue))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessContextProduct:MISSING_PRODUCT_ID",
+                            "Exisiting product id is missing."
+                        );
+                    }
+                    exisitingProductId = exisitingProductIdStringValue.ToString();
+                    if (string.IsNullOrWhiteSpace(exisitingProductId))
+                    {
+                        return result.SetFailureResult(
+                            "SaveBusinessContextProduct:EMPTY_PRODUCT_ID",
+                            "Exisiting product id is empty."
+                        );
                     }
 
-                    return result;
-                }
-            }
-            else if (postType == "edit")
-            {
-                if (businessResult.Data.Permission.Context.Products.DisabledEditingAt != null)
-                {
-                    result.Code = "SaveBusinessContextProduct:10";
-                    result.Message = "Business does not have permission to edit products";
-
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Context.Products.DisabledEditingReason))
+                    bool productExistsResult = await _businessManager.GetContextManager().CheckBusinessProductExists(businessId, exisitingProductId);
+                    if (!productExistsResult)
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Context.Products.DisabledEditingReason;
+                        return result.SetFailureResult(
+                            "SaveBusinessContextProduct:PRODUCT_NOT_FOUND",
+                            "Product not found."
+                        );
                     }
-
-                    return result;
                 }
-            }
 
-            formData.TryGetValue("exisitingProductId", out StringValues exisitingProductIdStringValue);
-            string? exisitingProductId = exisitingProductIdStringValue.ToString();
+                FunctionReturnResult<BusinessAppContextProduct?> updateResult = await _businessManager.GetContextManager().AddOrUpdateUserBusinessContextProduct(
+                    businessId,
+                    formData,
+                    postType,
+                    exisitingProductId
+                );
 
-            if (postType == "edit")
-            {
-                if (string.IsNullOrWhiteSpace(exisitingProductId))
+                if (!updateResult.Success)
                 {
-                    result.Code = "SaveBusinessContextProduct:11";
-                    result.Message = "Missing existing product id.";
-                    return result;
+                    return result.SetFailureResult(
+                        $"SaveBusinessContextProduct:{updateResult.Code}",
+                        updateResult.Message
+                    );
                 }
 
-                bool productExistsResult = await _businessManager.GetContextManager().CheckBusinessProductExists(businessId, exisitingProductId);
-                if (!productExistsResult)
-                {
-                    result.Code = "SaveBusinessContextProduct:12";
-                    result.Message = "Existing product not found.";
-                    return result;
-                }
+                return result.SetSuccessResult(updateResult.Data);
             }
-
-            FunctionReturnResult<BusinessAppContextProduct?> updateResult = await _businessManager.GetContextManager().AddOrUpdateUserBusinessContextProduct(
-                businessId,
-                formData,
-                postType,
-                exisitingProductId
-            );
-
-            if (!updateResult.Success)
+            catch (Exception ex)
             {
-                result.Code = "SaveBusinessContextProduct:" + updateResult.Code;
-                result.Message = updateResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "SaveBusinessContextProduct:EXCEPTION",
+                    $"Error: {ex.Message}"
+                );
             }
-
-            result.Data = updateResult.Data;
-            result.Success = true;
-            return result;
         }
     }
 }

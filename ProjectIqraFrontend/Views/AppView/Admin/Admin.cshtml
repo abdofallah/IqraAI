@@ -1,4 +1,7 @@
-﻿<html data-bs-theme="dark">
+﻿@using IqraCore.Entities.Server.Configuration
+@inject FrontendAppConfig FrontendAppConfig
+
+<html data-bs-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -48,10 +51,15 @@
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
-                    <a class="nav_link" for="billing-tab">
-                        <i class='fa-regular fa-file-invoice-dollar nav_icon'></i>
-                        <span class="nav_name">Billing</span>
-                    </a>
+                    @{
+                        if (FrontendAppConfig.IsCloudVersion)
+                        {
+                            <a class="nav_link" for="billing-tab">
+                                <i class='fa-regular fa-file-invoice-dollar nav_icon'></i>
+                                <span class="nav_name">Billing</span>
+                            </a>
+                        }
+                    }
                     <a class="nav_link" for="region-tab">
                         <i class='fa-regular fa-server nav_icon'></i>
                         <span class="nav_name">Region</span>
@@ -2885,7 +2893,16 @@
 
         var CurrentUsersList = null;
         var CurrentBusinessesList = null;
-        var CurrentPlansList = null;
+        @{
+            if (FrontendAppConfig.IsCloudVersion)
+            {
+                <text>var CurrentPlansList = null;</text>
+            }
+            else
+            {
+                <text>var CurrentPlansList = {};</text>
+            }
+        }
         var CurrentRegionsList = null;
         var CurrentLLMProvidersList = null;
         var CurrentSTTProvidersList = null;
@@ -3001,15 +3018,22 @@
                 , 100);
         }
 
-        function RunActionAfterPlansLoad(action) {
-            var plansCheckInterval = setInterval(
-                () => {
-                    if (CurrentPlansList != null) {
-                        clearInterval(plansCheckInterval);
-                        action();
+        @{
+            if (FrontendAppConfig.IsCloudVersion)
+            {
+                <text>
+                    function RunActionAfterPlansLoad(action) {
+                        var plansCheckInterval = setInterval(
+                            () => {
+                                if (CurrentPlansList != null) {
+                                    clearInterval(plansCheckInterval);
+                                    action();
+                                }
+                            }
+                        , 100);
                     }
-                }
-                , 100);
+                </text>
+            }
         }
 
         function RunActionAfterRegionsLoad(action) {
@@ -3104,7 +3128,12 @@
     <!-- Scripts -->
     <script src="~/scripts/app/admin/users_tab.js"></script>
     <script src="~/scripts/app/admin/businesses_tab.js"></script>
-    <script src="~/scripts/app/admin/billing_tab.js"></script>
+    @{
+        if (FrontendAppConfig.IsCloudVersion)
+        {
+            <script src="~/scripts/app/admin/billing_tab.js"></script>
+        }
+    }
     <script src="~/scripts/app/admin/regions_tab.js"></script>
     <script src="~/scripts/app/admin/llm_provider_tab.js"></script>
     <script src="~/scripts/app/admin/stt_provider_tab.js"></script>
@@ -3131,33 +3160,57 @@
                 console.log("Error occured while fetching users: ", usersError);
             },
         );
-        FetchPlansFromAPI(
-            PlansListTablePage, PlansListTablePageSize,
-            (plans) => {
-                CurrentPlansList = plans;
-            },
-            (error) => {
-                AlertManager.createAlert({
-                    type: "danger",
-                    message: "Error occured while fetching plans. Check browser console for logs.",
-                    timeout: 5000
-                });
 
-                console.error("Error occured while fetching plans:", error);
+        @{
+            if (FrontendAppConfig.IsCloudVersion)
+            {
+                <text>
+                    FetchPlansFromAPI(
+                        PlansListTablePage, PlansListTablePageSize,
+                        (plans) => {
+                            CurrentPlansList = plans;
+                        },
+                        (error) => {
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: "Error occured while fetching plans. Check browser console for logs.",
+                                timeout: 5000
+                            });
+
+                            console.error("Error occured while fetching plans:", error);
+                        }
+                    );
+                </text>
             }
-        );
+        }
+ 
+        @{
+            if (FrontendAppConfig.IsCloudVersion)
+            {
+                <text>
+                    // Users Tab
+                    RunActionAfterUsersLoad(() => {
+                        RunActionAfterPlansLoad(() => {
+                            initUsersTab();
+                        });
+                    });
 
-        // Users Tab
-        RunActionAfterUsersLoad(() => {
-            RunActionAfterPlansLoad(() => {
-                initUsersTab();
-            });
-        });
-
-        // Billing/Plan Tab
-        RunActionAfterPlansLoad(() => {
-            InitBillingPlansTab();
-        });
+                    // Billing/Plan Tab
+                    RunActionAfterPlansLoad(() => {
+                        InitBillingPlansTab();
+                    });
+                </text>
+            }
+            else
+            {
+                <text>
+                    // Users Tab
+                    RunActionAfterUsersLoad(() => {
+                        initUsersTab();
+                    });
+                </text>
+            }
+        }
     </script>
 </body>
 

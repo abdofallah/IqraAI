@@ -10,6 +10,7 @@ using IqraCore.Entities.Server;
 using IqraCore.Entities.WebSession;
 using IqraCore.Entities.WebSession.Enum;
 using IqraCore.Interfaces.Conversation;
+using IqraCore.Interfaces.User;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
@@ -52,9 +53,9 @@ namespace IqraInfrastructure.Managers.WebSession
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
-        private readonly UserBillingUsageManager _billingProcessingManager;
+        private readonly IUserBillingUsageManager _billingProcessingManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
-        private readonly UserUsageValidationManager _userUsageValidationManager;
+        private readonly IUserUsageValidationManager _userUsageValidationManager;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
@@ -75,9 +76,9 @@ namespace IqraInfrastructure.Managers.WebSession
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            UserBillingUsageManager billingProcessingManager,
+            IUserBillingUsageManager billingProcessingManager,
             CampaignActionExecutorService campaignActionExecutorService,
-            UserUsageValidationManager userUsageValidationManager
+            IUserUsageValidationManager userUsageValidationManager
         )
         {
             _logger = logger;
@@ -87,7 +88,6 @@ namespace IqraInfrastructure.Managers.WebSession
             _webSessionRepoistory = webSessionRepoistory;
             _conversationStateRepository = conversationStateRepository;
             _conversationStateLogsRepository = conversationStateLogsRepository;
-            _billingProcessingManager = billingProcessingManager;
             _businessManager = businessManager;
             _integrationsManager = integrationsManager;
             _regionManager = regionManager;

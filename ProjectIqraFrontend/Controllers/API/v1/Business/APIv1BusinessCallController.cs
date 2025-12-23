@@ -1,8 +1,10 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Business.ModulePermission.ENUM;
+using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.User;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.API.v1.Business
 {
@@ -10,13 +12,16 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
     [Route("api/v1/business/{businessId}/call")]
     public class APIv1BusinessCallController : Controller
     {
-        private readonly UserAPIValidationHelper _userAPIValidationHelper;
-        private readonly UserUsageValidationManager _billingValidationManager;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly IUserUsageValidationManager _billingValidationManager;
         private readonly BusinessManager _businessManager;
 
-        public APIv1BusinessCallController(UserAPIValidationHelper userAPIValidationHelper, UserUsageValidationManager billingValidationManager, BusinessManager businessManager)
-        {
-            _userAPIValidationHelper = userAPIValidationHelper;
+        public APIv1BusinessCallController(
+            ISessionValidationAndPermissionHelper sessionValidationAndPermissionHelper,
+            IUserUsageValidationManager billingValidationManager,
+            BusinessManager businessManager
+        ) {
+            _userSessionValidationAndPermissionHelper = sessionValidationAndPermissionHelper;
             _billingValidationManager = billingValidationManager;
             _businessManager = businessManager;
         }
@@ -31,7 +36,27 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateAPIUserAndBusinessSessionAsync(Request, businessId);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "MakeCall",
+                            Type = BusinessModulePermissionType.Full,
+                        }
+                    }
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult(
@@ -40,15 +65,6 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                     );
                 }
                 var businessData = apiKeyValidaiton.Data!.businessData!;
-
-                // Check Make Call Permissions
-                if (businessData.Permission.MakeCall.DisabledCallingAt != null)
-                {
-                    return result.SetFailureResult(
-                        "InitiateCall:BUSINESS_CALLING_DISABLED",
-                        "Outbound calling is disabled for this business" + (string.IsNullOrWhiteSpace(businessData.Permission.MakeCall.DisabledCallingReason) ? "" : ": " + businessData.Permission.MakeCall.DisabledCallingReason)
-                    );
-                }
 
                 // Check Balance/Package
                 var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId);

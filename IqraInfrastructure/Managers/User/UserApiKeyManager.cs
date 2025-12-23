@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Models.User;
-using IqraCore.Models.User.GetMasterUserDataModel;
+using IqraCore.Models.User.MasterUserDataModel;
 using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Repositories.User;
 using Microsoft.Extensions.Logging;
@@ -107,17 +107,19 @@ namespace IqraInfrastructure.Managers.User
             }
         }
 
-        public async Task<(bool IsValid, UserData? User, UserApiKey? ApiKey)> ValidateUserApiKeyAsync(string rawApiKey)
+        public async Task<FunctionReturnResult<(UserData? User, UserApiKey? ApiKey)>> ValidateUserApiKeyAsync(string rawApiKey)
         {
+            var result = new FunctionReturnResult<(UserData? User, UserApiKey? ApiKey)>();
+
             if (string.IsNullOrEmpty(rawApiKey) || !rawApiKey.StartsWith("iu_"))
             {
-                return (false, null, null);
+                return result.SetFailureResult("VALIDATE_API_KEY:INVALID_FORMAT", "Invalid API key format.");
             }
 
             var keyParts = rawApiKey.Split('_');
             if (keyParts.Length != 3)
             {
-                return (false, null, null);
+                return result.SetFailureResult("VALIDATE_API_KEY:INVALID_FORMAT_LENGTH", "Invalid API key format length.");
             }
 
             var emailHash = keyParts[1];
@@ -127,7 +129,7 @@ namespace IqraInfrastructure.Managers.User
             var user = await _userRepository.GetUserByEmailHashAsync(emailHash);
             if (user == null)
             {
-                return (false, null, null); // User not found
+                return result.SetFailureResult("VALIDATE_API_KEY:USER_NOT_FOUND", "User not found.");
             }
 
             // Decrypt Payload to get the Key ID (kid)
@@ -138,20 +140,20 @@ namespace IqraInfrastructure.Managers.User
                 var payload = JsonSerializer.Deserialize<ApiKeyPayload>(payloadJson);
                 if (payload == null || string.IsNullOrEmpty(payload.kid))
                 {
-                    return (false, null, null); // Invalid payload
+                    return result.SetFailureResult("VALIDATE_API_KEY:INVALID_PAYLOAD", "Invalid API key payload.");
                 }
                 kid = payload.kid;
             }
             catch
             {
-                return (false, null, null); // Decryption or deserialization failed
+                return result.SetFailureResult("VALIDATE_API_KEY:DECRYPTION_FAILED", "Decryption or deserialization failed.");
             }
 
             // Find the specific key metadata in the user's list
             var keyMetadata = user.UserApiKeys.FirstOrDefault(k => k.Id == kid);
             if (keyMetadata == null)
             {
-                return (false, user, null); // Key has been revoked
+                return result.SetFailureResult("VALIDATE_API_KEY:KEY_NOT_FOUND", "API key not found.");
             }
 
             // VERIFY: Decrypt the stored key and compare it to the incoming key
@@ -164,7 +166,7 @@ namespace IqraInfrastructure.Managers.User
                         Encoding.UTF8.GetBytes(storedFullKey),
                         Encoding.UTF8.GetBytes(rawApiKey)))
                 {
-                    return (true, user, keyMetadata);
+                    return result.SetSuccessResult((user, keyMetadata));
                 }
             }
             catch (Exception ex)
@@ -173,7 +175,7 @@ namespace IqraInfrastructure.Managers.User
             }
 
             // If comparison fails or decryption throws an error
-            return (false, user, keyMetadata);
+            return result.SetFailureResult("VALIDATE_API_KEY:API_KEY_INVALID", "API key is invalid or match failed.");
         }
 
         public string HashUserEmail(string userEmail) => _apiKeyProcessor.ComputeEmailHash(userEmail);

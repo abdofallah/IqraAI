@@ -1,22 +1,28 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessToolsController : Controller
     {
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
 
         public UserBusinessToolsController(
-            UserSessionValidationHelper userSessionValidationHelper,
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            WhiteLabelContext? whiteLabelContext,
             BusinessManager businessManager
         ) {
-            _userSessionValidationHelper = userSessionValidationHelper;
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
+            _whiteLabelContext = whiteLabelContext;
             _businessManager = businessManager;
         }
 
@@ -27,13 +33,46 @@ namespace ProjectIqraFrontend.Controllers.App.Business
 
             try
             {
+                // Check New or Edit
+                string? postType = formData["postType"].ToString();
+                if (
+                    string.IsNullOrWhiteSpace(postType) ||
+                    (postType != "new" && postType != "edit")
+                )
+                {
+                    return result.SetFailureResult(
+                        "SaveBusinessTool:INVALID_POST_TYPE",
+                        "Invalid post type specified. Can only be 'new' or 'edit'."
+                    );
+                }
+
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Tools",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Tools",
+                            Type = postType == "new" ? BusinessModulePermissionType.Adding : BusinessModulePermissionType.Editing,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
@@ -42,88 +81,37 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                         userSessionAndBusinessValidationResult.Message
                     );
                 }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                if (businessData.Permission.Tools.DisabledFullAt != null)
-                {
-                    var message = "Business does not have permission to access tools";
-                    if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledFullReason))
-                    {
-                        message += ": " + businessData.Permission.Tools.DisabledFullReason;
-                    }
-
-                    return result.SetFailureResult(
-                        "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
-                        message
-                    );
-                }
-
-                string? postType = formData["postType"].ToString();
-                if (
-                    string.IsNullOrWhiteSpace(postType)
-                    ||
-                    postType != "new" && postType != "edit"
-                )
-                {
-                    return result.SetFailureResult(
-                        "SaveBusinessTool:INVALID_POST_TYPE",
-                        "Invalid post type."
-                    );
-                }
-
+                
                 BusinessAppTool? exisitingTool = null;
                 if (postType == "edit")
                 {
-                    if (businessData.Permission.Tools.DisabledEditingAt != null)
+                    if (!formData.TryGetValue("exisitingToolId", out StringValues exisitingToolIdStringValue))
                     {
-                        var message = "Business does not have permission to edit tools";
-                        if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledEditingReason))
-                        {
-                            message += ": " + businessData.Permission.Tools.DisabledEditingReason;
-                        }
-
                         return result.SetFailureResult(
-                            "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
-                            message
+                            "SaveBusinessTool:MISSING_EXISTING_TOOL_ID",
+                            "Missing exisiting tool id."
                         );
                     }
-
-                    formData.TryGetValue("exisitingToolId", out StringValues exisitingToolIdStringValue);
                     string? exisitingToolIdValue = exisitingToolIdStringValue.ToString();
                     if (string.IsNullOrWhiteSpace(exisitingToolIdValue))
                     {
-                        result.Code = "SaveBusinessTool:8";
-                        result.Message = "Missing exisiting tool id.";
-                        return result;
+                        return result.SetFailureResult(
+                            "SaveBusinessTool:INVALID_EXISTING_TOOL_ID",
+                            "Invalid exisiting tool id."
+                        );
                     }
 
                     exisitingTool = await _businessManager.GetToolsManager().GetBusinessAppTool(businessId, exisitingToolIdValue);
                     if (exisitingTool == null)
                     {
-                        result.Code = "SaveBusinessTool:9";
-                        result.Message = "Exisiting tool not found.";
-                        return result;
-                    }
-                }
-                else if (postType == "new")
-                {
-                    if (businessData.Permission.Tools.DisabledAddingAt != null)
-                    {
-                        var message = "Business does not have permission to add tools";
-                        if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledAddingReason))
-                        {
-                            message += ": " + businessData.Permission.Tools.DisabledAddingReason;
-                        }
-
                         return result.SetFailureResult(
-                            "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
-                            message
+                            "SaveBusinessTool:EXISTING_TOOL_NOT_FOUND",
+                            "Existing tool not found."
                         );
                     }
                 }
 
-                FunctionReturnResult<BusinessAppTool?> updateResult = await _businessManager.GetToolsManager().AddOrUpdateBusinessTool(businessId, formData, postType, exisitingTool);
+                var updateResult = await _businessManager.GetToolsManager().AddOrUpdateBusinessTool(businessId, formData, postType, exisitingTool);
                 if (!updateResult.Success)
                 {
                     return result.SetFailureResult(
@@ -151,12 +139,32 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
-                    checkUserBusinessesEditingEnabled: true
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Tools",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Tools",
+                            Type = BusinessModulePermissionType.Deleting,
+                        },
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
@@ -165,37 +173,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                         userSessionAndBusinessValidationResult.Message
                     );
                 }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                if (businessData.Permission.Tools.DisabledFullAt != null)
-                {
-                    var message = "Business does not have permission to access tools";
-                    if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledFullReason))
-                    {
-                        message += ": " + businessData.Permission.Tools.DisabledFullReason;
-                    }
-
-                    return result.SetFailureResult(
-                        "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
-                        message
-                    );
-                }
-
-                if (businessData.Permission.Tools.DisabledDeletingAt != null)
-                {
-                    var message = "Business does not have permission to delete tools";
-                    if (!string.IsNullOrEmpty(businessData.Permission.Tools.DisabledDeletingReason))
-                    {
-                        message += ": " + businessData.Permission.Tools.DisabledDeletingReason;
-                    }
-
-                    return result.SetFailureResult(
-                        "SaveBusinessTool:BUSINESS_TOOLS_DISABLED",
-                        message
-                    );
-                }
-
+                
                 var businessAppToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(businessId, toolId);
                 if (businessAppToolData == null)
                 {

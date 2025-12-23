@@ -1,66 +1,73 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Business.ModulePermission.ENUM;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.User;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
-using ProjectIqraFrontend.Middlewares;
+using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
     public class UserBusinessMakeCallController : Controller
     {
-        private readonly UserSessionValidationHelper _userSessionValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
+        private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
-        private readonly UserUsageValidationManager _billingValidationManager;
-        private readonly WhiteLabelContext _whiteLabelContext;
+        private readonly IUserUsageValidationManager _billingValidationManager;
 
         public UserBusinessMakeCallController(
-            UserSessionValidationHelper userSessionValidationHelper,
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            WhiteLabelContext? whiteLabelContext,
             BusinessManager businessManager,
-            UserUsageValidationManager billingValidationManager,
-            WhiteLabelContext whiteLabelContext
-        )
-        {
-            _userSessionValidationHelper = userSessionValidationHelper;
+            IUserUsageValidationManager billingValidationManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
+            _whiteLabelContext = whiteLabelContext;
             _businessManager = businessManager;
             _billingValidationManager = billingValidationManager;
-            _whiteLabelContext = whiteLabelContext;
         }
 
         [HttpPost("/app/user/business/{businessId}/calls/initiate")]
         [RequestSizeLimit(10 * 1024 * 1024)]
         [RequestFormLimits(MultipartBodyLengthLimit = 10 * 1024 * 1024)]
-        public async Task<FunctionReturnResult<List<string>?>> InitiateCalls(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<List<string?>?>> InitiateCalls(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<List<string>?>();
+            var result = new FunctionReturnResult<List<string?>?>();
 
             try
             {
                 // Validation
-                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserSessionAndGetUserAndBusinessAsync(
-                    Request,
-                    businessId,
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permission
                     checkUserDisabled: true,
+                    // User Business Permission
                     checkUserBusinessesDisabled: true,
                     checkUserBusinessesEditingEnabled: true,
-                    whiteLabelContext: _whiteLabelContext
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "MakeCall",
+                            Type = BusinessModulePermissionType.Full,
+                        }
+                    }
                 );
                 if (!userSessionAndBusinessValidationResult.Success)
                 {
-                    result.Code = $"SaveBusinessCampaign:{userSessionAndBusinessValidationResult.Code}";
-                    result.Message = userSessionAndBusinessValidationResult.Message;
-                    return result;
-                }
-                var userData = userSessionAndBusinessValidationResult.Data!.userData!;
-                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
-
-                if (businessData.Permission.MakeCall.DisabledCallingAt != null)
-                {
                     return result.SetFailureResult(
-                        "InitiateCalls:8",
-                        "Outbound calling is disabled for this business" + (string.IsNullOrWhiteSpace(businessData.Permission.MakeCall.DisabledCallingReason) ? "" : ": " + businessData.Permission.MakeCall.DisabledCallingReason)
+                        $"InitiateCalls:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
                     );
                 }
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
                 var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
                 if (!checkBalanceOrMinutes.Success)

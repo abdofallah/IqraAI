@@ -1,10 +1,10 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.Validation;
 using IqraCore.Models.User.Business;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Mvc;
-using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.API.v1.Business
 {
@@ -12,19 +12,18 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
     [Route("api/v1/business/{businessId}")]
     public class APIv1BusinessController : Controller
     {
-        private readonly UserAPIValidationHelper _userAPIValidationHelper;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly BusinessManager _businessManager;
         private readonly BusinessLogoRepository _businessLogoRepository;
         private readonly BusinessAgentAudioRepository _businessAgentAudioRepository;
 
         public APIv1BusinessController(
-            UserAPIValidationHelper userAPIValidationHelper,
+            ISessionValidationAndPermissionHelper sessionValidationAndPermissionHelper,
             BusinessManager businessManager,
             BusinessLogoRepository businessLogoRepository,
             BusinessAgentAudioRepository businessAgentAudioRepository
-        )
-        {
-            _userAPIValidationHelper = userAPIValidationHelper;
+        ) {
+            _userSessionValidationAndPermissionHelper = sessionValidationAndPermissionHelper;
             _businessManager = businessManager;
             _businessLogoRepository = businessLogoRepository;
             _businessAgentAudioRepository = businessAgentAudioRepository;
@@ -38,7 +37,16 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
             try
             {
                 // API Key Validation
-                var apiKeyValidaiton = await _userAPIValidationHelper.ValidateAPIUserAndBusinessSessionAsync(Request, businessId);
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    // User Permissions
+                    checkUserDisabled: true,
+                    // User Business Permissions
+                    checkUserBusinessesDisabled: true,
+                    // Business Permissions
+                    checkBusinessIsDisabled: true
+                );
                 if (!apiKeyValidaiton.Success)
                 {
                     return result.SetFailureResult(

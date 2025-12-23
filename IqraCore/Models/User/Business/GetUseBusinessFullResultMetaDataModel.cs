@@ -28,7 +28,7 @@ namespace IqraCore.Models.User.Business
 
         public Dictionary<string, object> Tutorials { get; set; }
 
-        public BusinessPermission Permission { get; set; }
+        public BusinessModulePermission Permission { get; set; }
 
         public string? WhiteLabelAssignedCustomerEmail { get; set; }
     }
