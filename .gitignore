@@ -363,3 +363,13 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 appsettings*.json
+
+IqraCore.Cloud
+IqraInfrastructure.Cloud
+ProjectIqraFrontend.Cloud
+testApp
+FrontendLibs
+PythonVoicemailDetection
+Tools
+EmailTemplates
+IqraStatic/VestaCP
