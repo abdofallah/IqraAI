@@ -237,6 +237,7 @@ namespace ProjectIqraBackendProxy
                 );
             });
 
+            // move to module
             builder.Services.AddSingleton<BillingPlanRepository>((sp) =>
             {
                 return new BillingPlanRepository(
