@@ -9,7 +9,6 @@
 *.user
 *.userosscache
 *.sln.docstates
-filter-config.py
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -367,6 +366,9 @@ appsettings*.json
 IqraCore.Cloud
 IqraInfrastructure.Cloud
 ProjectIqraFrontend.Cloud
+ProjectIqraBackendProxy.Cloud
+ProjectIqraBackendApp.Cloud
+IqraBackgroundProcessor.Cloud
 testApp
 FrontendLibs
 PythonVoicemailDetection
