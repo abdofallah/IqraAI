@@ -1,0 +1,62 @@
+{
+  "Proxy": {
+    // The Unique UUID for this specific Proxy Server instance. 
+    // You obtain this ID when you register this server in the Admin Dashboard -> Infrastructure -> Servers.
+    "Id": "<server_id_from_admin_dashboard>",
+    // The Region Identifier (e.g., "us-east-1", "eu-central") this proxy acts as the Gateway for. 
+    // Incoming calls to numbers associated with this region are routed here.
+    "RegionId": "<region_identifier>", 
+    "OutboundProcessing": {
+      // How frequently (in seconds) the Proxy checks the Redis/Mongo queue for pending outbound calls.
+      "PollingIntervalSeconds": 5,
+      // The maximum number of queued calls to retrieve from the database in a single polling cycle.
+      "DbFetchBatchSize": 1000,
+      // The number of calls to process and dispatch to Backend servers concurrently within one batch.
+      "ProcessingBatchSize": 70,
+      // The lookahead window (in minutes). The proxy will pick up calls scheduled to launch within this many minutes from now.
+      "ScheduleWindowMinutes": 1
+    }
+  },
+  "Cors": {
+    // A list of allowed origins (URLs) that can make browser-based requests to this Proxy. 
+    // This should include your Frontend Admin Dashboard URL.
+    "AllowedOrigins": [
+      "<admin_dashboard_url>"
+    ]
+  },
+  
+  // SHARED CONFIGURATION: This block must match the Frontend/Backend/Processor configuration.
+  "RedisDatabase": {
+    // The connection string to your Redis instance (e.g., "localhost:6379,password=...").
+    "ConnectionString": "<redis_connection_string>",
+    "ServerLiveStatusChannelDatabaseIndex": 7,
+    "DistributedLockDatabaseIndex": 8
+  },
+
+  // SHARED CONFIGURATION: This block must match the Frontend/Backend/Processor configuration.
+  "MongoDatabase": {
+    // The connection string to your MongoDB instance.
+    "ConnectionString": "<mongodb_connection_string>"
+  },
+
+  // SHARED CONFIGURATION: This block must match the Frontend/Backend/Processor configuration.
+  "Integrations": {
+    // The 32-character AES Key used to decrypt third-party API Keys (e.g. Twilio) needed to validate incoming webhooks.
+    "EncryptionKey": "<integration_encryption_key>"
+  },
+
+  "Security": {
+    // The Cluster Handshake Token. 
+    // This string MUST match the 'API Secret' you entered in the Admin Dashboard when registering this Proxy Server.
+    // It is used to authenticate internal HTTP requests between the Proxy and the Backend/Frontend.
+    "ApiKey": "<cluster_api_secret_token>" 
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}

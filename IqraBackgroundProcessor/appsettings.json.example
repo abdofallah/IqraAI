@@ -1,0 +1,22 @@
+{
+  // SHARED CONFIGURATION: The ID of the default Region (e.g., "us-east-1") used for S3 operations.
+  "S3Storage": {
+    // This must match the DefaultStorageRegionId used in the Frontend App to ensure both apps look in the same bucket for assets.
+    "DefaultStorageRegionId": "<default_region_id>" 
+  },
+
+  // SHARED CONFIGURATION: This block must be identical across Frontend, Proxy, Backend, and Processor apps.
+  "MongoDatabase": {
+    // The connection string to your MongoDB instance.
+    // The processor needs Read/Write access to update conversation statuses and usage logs.
+    "ConnectionString": "<mongodb_connection_string>"
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}

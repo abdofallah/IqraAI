@@ -1,0 +1,95 @@
+{
+  "S3Storage": {
+    // The ID of the Region (created in Admin Dashboard) where default assets (logos, recordings) are stored.
+    "DefaultStorageRegionId": "<default_region_id>" 
+  },
+
+  // SHARED CONFIGURATION: This block must be identical across Frontend, Proxy, Backend, and Processor apps.
+  "RedisDatabase": { 
+    // The connection string to your Redis instance (e.g., "localhost:6379,password=...").
+    "ConnectionString": "localhost:6379", 
+    "UserSessionDatabaseIndex": 5,
+    "RAGCollectionsLoadedDatabaseIndex": 10,
+    "ServerLiveStatusChannelDatabaseIndex": 7,
+    "DistributedLockDatabaseIndex": 8,
+    "WhiteLabelDomainContextCache": 6,
+    "WhiteLabelCustomerSessionDatabaseIndex": 65
+  },
+
+  // SHARED CONFIGURATION: This block must be identical across Frontend, Proxy, Backend, and Processor apps.
+  "MongoDatabase": { 
+    // The connection string to your MongoDB Replica Set or Standalone instance.
+    "ConnectionString": "mongodb://localhost:27017" 
+  },
+
+  "Milvus": {
+    // The HTTP URL for the Milvus Vector Database (usually port 19530 or 9091 depending on config).
+    "Endpoint": "http://localhost:9091", 
+    // The specific database name inside Milvus to store embeddings.
+    "Database": "<milvus_database_name>", 
+    // Milvus authentication username (if enabled).
+    "Username": "<milvus_db_username>", 
+    // Milvus authentication password (if enabled).
+    "Password": "<milvus_db_user_password>", 
+    // How often (in seconds) the system checks for expired collections in memory.
+    "ExpiryCheckIntervalSeconds": 300, 
+    // Time (in minutes) before an unused vector collection is unloaded from memory.
+    "CollectionStaleTimeoutMinutes": 30 
+  },
+
+  "Unstructured": {
+    // The URL for the Unstructured.io ETL service (or self-hosted Docker container) used for parsing documents.
+    "EndPoint": "http://localhost:8741", 
+    // The API Key for the Unstructured service (if using the SaaS version or secured container).
+    "ApiKey": "<unstructured_api_key>"
+  },
+
+  "MailSMTP": {
+    // The hostname of your SMTP provider (e.g., smtp.sendgrid.net).
+    "Host": "<smtp_endpoint>", 
+    // The SMTP port (usually 587 for TLS, 465 for SSL).
+    "Port": 587,
+    // Your SMTP Username.
+    "Username": "<smtp_username>", 
+    // Your SMTP Password.
+    "Password": "<smtp_password>", 
+    // The email address that appears in the 'From' field for system emails (Invites, Password Resets).
+    "FromEmail": "<smtp_from_email>", 
+    // The display name for system emails.
+    "FromName": "Iqra AI"
+  },
+
+  // SHARED CONFIGURATION: This block must be identical across all apps to ensure data can be decrypted.
+  "Integrations": { 
+    // A 32-character AES Key used to encrypt/decrypt third-party API Keys/encrypted fields (e.g. OpenAI, Twilio) stored in MongoDB.
+    "EncryptionKey": "<integration_encryption_key>" 
+  },
+
+  // SHARED CONFIGURATION: This block must be identical across all apps.
+  "UserApiKeys": { 
+    // A secure key used to encrypt the generated Platform API Keys issued to users.
+    "ApiKeyEncryptionKey": "<api_key_encryption_key>", 
+    // A secure key used to encrypt the payload/claims within the API tokens.
+    "PayloadEncryptionKey": "<api_key_payload_encryption_key>" 
+  },
+
+  "User": {
+    // A secret string appended to user email addresses before hashing for secure lookups.
+    "EmailHashPepper": "<user_email_pepper_hash>"
+  },
+
+  "ForwardedHeaders": {
+    // A list of trusted IP addresses (e.g., Nginx, Cloudflare) that define X-Forwarded-For headers.
+    "KnownProxies": [
+      "127.0.0.1" 
+    ]
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}

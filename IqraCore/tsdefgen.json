@@ -1,8 +1,0 @@
-{
-  "outputPath": "../ProjectIqraFrontend/Scripts/@types/IqraCore",
-  "useCSharpNamespace": true,
-  "camelCasePropertyNames": true,
-  "webEssentials2015": false,
-  "useNamespaceInsteadofModule": true,
-  "classInsteadOfInterface":  true
-}
