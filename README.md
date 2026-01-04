@@ -36,8 +36,6 @@
   <img src="https://img.shields.io/github/commit-activity/m/abdofallah/IqraAI?color=black" alt="Activity">
 </p>
 
-<br />
-
 # Iqra AI
 
 [Iqra AI](https://iqra.bot) is a low-code orchestration platform for building high-fidelity Voice AI Agents, created by [Badal Technologies](https://www.badal.om). Designed for agencies and enterprises that require precision, it bridges the gap between Large Language Models and real-time channels (telephony, web). We prioritize architecture over magic—giving you deep control over latency via multi-region routing, native multi-language support for cultural accuracy, and a deterministic yet dynamic AI-first graph-based script builder.
