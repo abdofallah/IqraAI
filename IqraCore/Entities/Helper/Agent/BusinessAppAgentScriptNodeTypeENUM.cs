@@ -7,6 +7,7 @@
         UserQuery = 2,
         AIResponse = 3,
         ExecuteSystemTool = 4,
-        ExecuteCustomTool = 5
+        ExecuteCustomTool = 5,
+        ExecuteFlowApp = 6
     }
 }

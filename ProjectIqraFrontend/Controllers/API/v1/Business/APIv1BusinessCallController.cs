@@ -4,7 +4,7 @@ using IqraCore.Interfaces.User;
 using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
-using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
+using IqraCore.Entities.Validation;
 
 namespace ProjectIqraFrontend.Controllers.API.v1.Business
 {

@@ -9,12 +9,15 @@ namespace IqraInfrastructure.Repositories.Conversation
         private readonly IMongoCollection<ConversationStateLogsData> _conversationStateLogsCollection;
         private readonly ILogger<ConversationStateLogsRepository> _logger;
 
-        public ConversationStateLogsRepository(IMongoClient client, string databaseName, ILogger<ConversationStateLogsRepository> logger)
+        private readonly string DatabaseName = "IqraConversationState";
+        private readonly string CollectionName = "ConversationStatesLogs";
+
+        public ConversationStateLogsRepository(IMongoClient client, ILogger<ConversationStateLogsRepository> logger)
         {
             _logger = logger;
 
-            var database = client.GetDatabase(databaseName);
-            _conversationStateLogsCollection = database.GetCollection<ConversationStateLogsData>("ConversationStatesLogs");
+            var database = client.GetDatabase(DatabaseName);
+            _conversationStateLogsCollection = database.GetCollection<ConversationStateLogsData>(CollectionName);
 
             var indexKeysDefinition = Builders<ConversationStateLogsData>.IndexKeys.Ascending(c => c.Id);
             _conversationStateLogsCollection.Indexes.CreateOne(new CreateIndexModel<ConversationStateLogsData>(indexKeysDefinition));

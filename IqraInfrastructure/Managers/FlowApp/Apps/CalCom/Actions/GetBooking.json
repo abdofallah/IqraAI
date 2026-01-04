@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "title": "Get Booking Details",
+  "required": [ "bookingUid" ],
+  "properties": {
+    "bookingUid": {
+      "type": "string",
+      "title": "Booking UID",
+      "description": "The unique identifier of the booking."
+    }
+  }
+}

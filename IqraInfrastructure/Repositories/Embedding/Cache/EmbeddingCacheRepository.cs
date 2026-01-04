@@ -9,12 +9,14 @@ namespace IqraInfrastructure.Repositories.Embedding.Cache
     {
         private readonly ILogger<EmbeddingCacheRepository> _logger;
         private readonly IMongoCollection<EmbeddingCacheEntry> _collection;
+
+        private readonly string DatabaseName = "IqraEmbeddingCache";
         private const string CollectionName = "EmbeddingCache";
 
-        public EmbeddingCacheRepository(ILogger<EmbeddingCacheRepository> logger, IMongoClient client, string databaseName)
+        public EmbeddingCacheRepository(ILogger<EmbeddingCacheRepository> logger, IMongoClient client)
         {
             _logger = logger;
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _collection = database.GetCollection<EmbeddingCacheEntry>(CollectionName);
             EnsureIndexes();
         }

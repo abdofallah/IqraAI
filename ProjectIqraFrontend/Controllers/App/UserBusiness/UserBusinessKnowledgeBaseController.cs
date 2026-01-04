@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
+using IqraCore.Entities.Validation;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {

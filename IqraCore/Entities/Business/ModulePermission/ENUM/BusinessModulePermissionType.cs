@@ -7,6 +7,7 @@
         Editing = 2,
         Deleting = 3,
         Exporting = 4,
-        Retrieving = 5
+        Retrieving = 5,
+        Executing = 6
     }
 }

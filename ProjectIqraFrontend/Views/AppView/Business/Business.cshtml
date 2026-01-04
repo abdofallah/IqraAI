@@ -540,6 +540,7 @@
         var SpecificationLanguagesListData = null;
         var SpecificationRegionsListData = null;
         var SpecificationIntegrationsListData = null;
+        var SpecificationFlowAppsListData = null;
 
         var BusinessLLMProvidersForIntegrations = null;
         var BusinessSTTProvidersForIntegrations = null;
@@ -729,6 +730,24 @@
                 }
             });
         }
+
+        function FetchSpecificationFlowAppsFromAPI(successCallback, errorCallback) {
+            return $.ajax({
+                url: `/app/specification/flowapps`,
+                type: 'GET',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
     </script>
 
     <!-- New Business Tutorial -->
@@ -842,6 +861,8 @@
                     &&
                     SpecificationLanguagesListData != null
                     &&
+                    SpecificationFlowAppsListData != null
+                    &&
                     BusinessFullData != null
                     &&
                     BusinessLLMProvidersForIntegrations != null
@@ -935,210 +956,225 @@
                             (regionsListData) => {
                                 SpecificationRegionsListData = regionsListData;
 
-                                FetchSpecificationIntegrationsDataFromAPI(
-                                    (integrationsListData) => {
-                                        SpecificationIntegrationsListData = integrationsListData;
+                                FetchSpecificationFlowAppsFromAPI(
+                                    (flowAppsListData) => {
+                                        SpecificationFlowAppsListData = flowAppsListData;
 
-                                        const temporaryLLMProvidersForIntegrations = [];
-                                        const temporarySTTProvidersForIntegrations = [];
-                                        const temporaryTTSProvidersForIntegrations = [];
-                                        const temporaryEmbeddingProvidersForIntegrations = [];
-                                        const temporaryRerankProvidersForIntegrations = [];
-                                        let LLMProviderFail = false;
-                                        let STTProviderFail = false;
-                                        let TTSProviderFail = false;
-                                        let EmbeddingProviderFail = false;
-                                        let RerankProviderFail = false;
+                                        FetchSpecificationIntegrationsDataFromAPI(
+                                            (integrationsListData) => {
+                                                SpecificationIntegrationsListData = integrationsListData;
 
-                                        SpecificationIntegrationsListData.forEach((integration) => {
-                                            if (integration.type.includes("LLM")) {
-                                                FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(
-                                                    integration.id,
-                                                    (LLMProviderResult) => {
-                                                        temporaryLLMProvidersForIntegrations.push(LLMProviderResult);
-                                                    },
-                                                    (LLMProviderError) => {
-                                                        AlertManager.createAlert({
-                                                            type: 'danger',
-                                                            message: 'Error occured while fetching LLM Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
-                                                            enableDismiss: false
-                                                        });
+                                                const temporaryLLMProvidersForIntegrations = [];
+                                                const temporarySTTProvidersForIntegrations = [];
+                                                const temporaryTTSProvidersForIntegrations = [];
+                                                const temporaryEmbeddingProvidersForIntegrations = [];
+                                                const temporaryRerankProvidersForIntegrations = [];
+                                                let LLMProviderFail = false;
+                                                let STTProviderFail = false;
+                                                let TTSProviderFail = false;
+                                                let EmbeddingProviderFail = false;
+                                                let RerankProviderFail = false;
 
-                                                        console.log('Error occured while fetching LLM Provider data for integration with id ' + integration.id + ': ', LLMProviderError);
+                                                SpecificationIntegrationsListData.forEach((integration) => {
+                                                    if (integration.type.includes("LLM")) {
+                                                        FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(
+                                                            integration.id,
+                                                            (LLMProviderResult) => {
+                                                                temporaryLLMProvidersForIntegrations.push(LLMProviderResult);
+                                                            },
+                                                            (LLMProviderError) => {
+                                                                AlertManager.createAlert({
+                                                                    type: 'danger',
+                                                                    message: 'Error occured while fetching LLM Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                                    enableDismiss: false
+                                                                });
 
-                                                        LLMProviderFail = true;
-                                                    }
-                                                );
-                                            }
+                                                                console.log('Error occured while fetching LLM Provider data for integration with id ' + integration.id + ': ', LLMProviderError);
 
-                                            if (integration.type.includes("STT") || integration.type.includes("SPEECH2TEXT")) {
-                                                FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(
-                                                    integration.id,
-                                                    (STTProviderResult) => {
-                                                        temporarySTTProvidersForIntegrations.push(STTProviderResult);
-                                                    },
-                                                    (STTProviderError) => {
-                                                        AlertManager.createAlert({
-                                                            type: 'danger',
-                                                            message: 'Error occured while fetching STT Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
-                                                            enableDismiss: false
-                                                        });
-
-                                                        console.log('Error occured while fetching STT Provider data for integration with id ' + integration.id + ': ', STTProviderError);
-
-                                                        STTProviderFail = true;
-                                                    }
-                                                );
-                                            }
-
-                                            if (integration.type.includes("TTS") || integration.type.includes("TEXT2SPEECH")) {
-                                                FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(
-                                                    integration.id,
-                                                    (TTSProviderResult) => {
-                                                        temporaryTTSProvidersForIntegrations.push(TTSProviderResult);
-                                                    },
-                                                    (TTSProviderError) => {
-                                                        AlertManager.createAlert({
-                                                            type: 'danger',
-                                                            message: 'Error occured while fetching TTS Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
-                                                            enableDismiss: false
-                                                        });
-
-                                                        console.log('Error occured while fetching TTS Provider data for integration with id ' + integration.id + ': ', TTSProviderError);
-
-                                                        TTSProviderFail = true;
-                                                    }
-                                                );
-                                            }
-
-                                            if (integration.type.includes("Embedding"))
-                                            {
-                                                FetchSpecificationEmbeddingProviderDataByIntegrationTypeFromAPI(
-                                                    integration.id,
-                                                    (EmbeddingProviderResult) => {
-                                                        temporaryEmbeddingProvidersForIntegrations.push(EmbeddingProviderResult);
-                                                    },
-                                                    (EmbeddingProviderError) => {
-                                                        AlertManager.createAlert({
-                                                            type: 'danger',
-                                                            message: 'Error occured while fetching Embedding Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
-                                                            enableDismiss: false
-                                                        });
-
-                                                        console.log('Error occured while fetching Embedding Provider data for integration with id ' + integration.id + ': ', EmbeddingProviderError);
-
-                                                        EmbeddingProviderFail = true;
-                                                    }
-                                                );
-                                            }
-
-                                            if (integration.type.includes("Rerank"))
-                                            {
-                                                FetchSpecificationRerankProviderDataByIntegrationTypeFromAPI(
-                                                    integration.id,
-                                                    (RerankProviderResult) => {
-                                                        temporaryRerankProvidersForIntegrations.push(RerankProviderResult);
-                                                    },
-                                                    (RerankProviderError) => {
-                                                        AlertManager.createAlert({
-                                                            type: 'danger',
-                                                            message: 'Error occured while fetching Rerank Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
-                                                            enableDismiss: false
-                                                        });
-
-                                                        console.log('Error occured while fetching Rerank Provider data for integration with id ' + integration.id + ': ', RerankProviderError);
-
-                                                        RerankProviderFail = true;
-                                                    }
-                                                );
-                                            }
-                                        });
-
-                                        if (!LLMProviderFail) {
-                                            BusinessLLMProvidersForIntegrations = temporaryLLMProvidersForIntegrations;
-                                        }
-
-                                        if (!STTProviderFail) {
-                                            BusinessSTTProvidersForIntegrations = temporarySTTProvidersForIntegrations;
-                                        }
-
-                                        if (!TTSProviderFail) {
-                                            BusinessTTSProvidersForIntegrations = temporaryTTSProvidersForIntegrations;
-                                        }
-
-                                        if (!EmbeddingProviderFail)
-                                        {
-                                            BusinessEmbeddingProvidersForIntegrations = temporaryEmbeddingProvidersForIntegrations;
-                                        }
-
-                                        if (!RerankProviderFail)
-                                        {
-                                            BusinessRerankProvidersForIntegrations = temporaryRerankProvidersForIntegrations;
-                                        }
-
-                                        if (!LLMProviderFail && !STTProviderFail && !TTSProviderFail && !EmbeddingProviderFail && !RerankProviderFail) {
-                                            FetchBusinessDataFromAPI(CurrentBusinessId,
-                                                (businessData) => {
-                                                    BusinessFullData = businessData;
-
-                                                    BusinessFullLanguagesData = [];
-                                                    BusinessFullData.businessData.languages.forEach((value, index) => {
-                                                        const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
-                                                            return data.id === value;
-                                                        });
-
-                                                        if (countryCodeLanguage) {
-                                                            BusinessFullLanguagesData.push(countryCodeLanguage);
-                                                        }
-                                                    });
-                                                    BusinessDefaultLanguage = BusinessFullData.businessData.defaultLanguage;
-
-                                                    initSettingsTab();
-                                                    initToolsTab();
-                                                    initContextTab();
-                                                    initCacheTab();
-                                                    initIntegrationsTab();
-                                                    initAgentTab();
-                                                    initScriptsTab();
-                                                    initRoutingTab();
-                                                    initNumbersTab();
-                                                    initConversationsTab();
-                                                    initTelephonyCampaignsTab();
-                                                    initWebCampaignsTab();
-                                                    initMakeCallsTab();
-                                                    initKnowledgeBaseTab();
-                                                    initPostAnalysisTab();
-
-                                                    let businessTutorials = BusinessFullData.businessData.tutorials;
-                                                    if (businessTutorials) {
-                                                        if (businessTutorials.newBusinessTutorial) {
-                                                            // todo enable again
-                                                            //InitalizeNewBusinessTutorial();
-                                                        }
+                                                                LLMProviderFail = true;
+                                                            }
+                                                        );
                                                     }
 
-                                                    EverythingInitalized = true;
-                                                },
-                                                (businessDataError) => {
-                                                    AlertManager.createAlert({
-                                                        type: 'danger',
-                                                        message: 'Error occured while fetching business data. Check browser console for logs.',
-                                                        enableDismiss: false
-                                                    });
+                                                    if (integration.type.includes("STT") || integration.type.includes("SPEECH2TEXT")) {
+                                                        FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(
+                                                            integration.id,
+                                                            (STTProviderResult) => {
+                                                                temporarySTTProvidersForIntegrations.push(STTProviderResult);
+                                                            },
+                                                            (STTProviderError) => {
+                                                                AlertManager.createAlert({
+                                                                    type: 'danger',
+                                                                    message: 'Error occured while fetching STT Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                                    enableDismiss: false
+                                                                });
 
-                                                    console.log('Error occured while fetching business data: ', businessDataError);
+                                                                console.log('Error occured while fetching STT Provider data for integration with id ' + integration.id + ': ', STTProviderError);
+
+                                                                STTProviderFail = true;
+                                                            }
+                                                        );
+                                                    }
+
+                                                    if (integration.type.includes("TTS") || integration.type.includes("TEXT2SPEECH")) {
+                                                        FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(
+                                                            integration.id,
+                                                            (TTSProviderResult) => {
+                                                                temporaryTTSProvidersForIntegrations.push(TTSProviderResult);
+                                                            },
+                                                            (TTSProviderError) => {
+                                                                AlertManager.createAlert({
+                                                                    type: 'danger',
+                                                                    message: 'Error occured while fetching TTS Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                                    enableDismiss: false
+                                                                });
+
+                                                                console.log('Error occured while fetching TTS Provider data for integration with id ' + integration.id + ': ', TTSProviderError);
+
+                                                                TTSProviderFail = true;
+                                                            }
+                                                        );
+                                                    }
+
+                                                    if (integration.type.includes("Embedding"))
+                                                    {
+                                                        FetchSpecificationEmbeddingProviderDataByIntegrationTypeFromAPI(
+                                                            integration.id,
+                                                            (EmbeddingProviderResult) => {
+                                                                temporaryEmbeddingProvidersForIntegrations.push(EmbeddingProviderResult);
+                                                            },
+                                                            (EmbeddingProviderError) => {
+                                                                AlertManager.createAlert({
+                                                                    type: 'danger',
+                                                                    message: 'Error occured while fetching Embedding Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                                    enableDismiss: false
+                                                                });
+
+                                                                console.log('Error occured while fetching Embedding Provider data for integration with id ' + integration.id + ': ', EmbeddingProviderError);
+
+                                                                EmbeddingProviderFail = true;
+                                                            }
+                                                        );
+                                                    }
+
+                                                    if (integration.type.includes("Rerank"))
+                                                    {
+                                                        FetchSpecificationRerankProviderDataByIntegrationTypeFromAPI(
+                                                            integration.id,
+                                                            (RerankProviderResult) => {
+                                                                temporaryRerankProvidersForIntegrations.push(RerankProviderResult);
+                                                            },
+                                                            (RerankProviderError) => {
+                                                                AlertManager.createAlert({
+                                                                    type: 'danger',
+                                                                    message: 'Error occured while fetching Rerank Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                                    enableDismiss: false
+                                                                });
+
+                                                                console.log('Error occured while fetching Rerank Provider data for integration with id ' + integration.id + ': ', RerankProviderError);
+
+                                                                RerankProviderFail = true;
+                                                            }
+                                                        );
+                                                    }
+                                                });
+
+                                                if (!LLMProviderFail) {
+                                                    BusinessLLMProvidersForIntegrations = temporaryLLMProvidersForIntegrations;
                                                 }
-                                            );
-                                        }
+
+                                                if (!STTProviderFail) {
+                                                    BusinessSTTProvidersForIntegrations = temporarySTTProvidersForIntegrations;
+                                                }
+
+                                                if (!TTSProviderFail) {
+                                                    BusinessTTSProvidersForIntegrations = temporaryTTSProvidersForIntegrations;
+                                                }
+
+                                                if (!EmbeddingProviderFail)
+                                                {
+                                                    BusinessEmbeddingProvidersForIntegrations = temporaryEmbeddingProvidersForIntegrations;
+                                                }
+
+                                                if (!RerankProviderFail)
+                                                {
+                                                    BusinessRerankProvidersForIntegrations = temporaryRerankProvidersForIntegrations;
+                                                }
+
+                                                if (!LLMProviderFail && !STTProviderFail && !TTSProviderFail && !EmbeddingProviderFail && !RerankProviderFail) {
+                                                    FetchBusinessDataFromAPI(CurrentBusinessId,
+                                                        (businessData) => {
+                                                            BusinessFullData = businessData;
+
+                                                            BusinessFullLanguagesData = [];
+                                                            BusinessFullData.businessData.languages.forEach((value, index) => {
+                                                                const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
+                                                                    return data.id === value;
+                                                                });
+
+                                                                if (countryCodeLanguage) {
+                                                                    BusinessFullLanguagesData.push(countryCodeLanguage);
+                                                                }
+                                                            });
+                                                            BusinessDefaultLanguage = BusinessFullData.businessData.defaultLanguage;
+
+                                                            initSettingsTab();
+                                                            initToolsTab();
+                                                            initContextTab();
+                                                            initCacheTab();
+                                                            initIntegrationsTab();
+                                                            initAgentTab();
+                                                            initScriptsTab();
+                                                            initRoutingTab();
+                                                            initNumbersTab();
+                                                            initConversationsTab();
+                                                            initTelephonyCampaignsTab();
+                                                            initWebCampaignsTab();
+                                                            initMakeCallsTab();
+                                                            initKnowledgeBaseTab();
+                                                            initPostAnalysisTab();
+
+                                                            let businessTutorials = BusinessFullData.businessData.tutorials;
+                                                            if (businessTutorials) {
+                                                                if (businessTutorials.newBusinessTutorial) {
+                                                                    // todo enable again
+                                                                    //InitalizeNewBusinessTutorial();
+                                                                }
+                                                            }
+
+                                                            EverythingInitalized = true;
+                                                        },
+                                                        (businessDataError) => {
+                                                            AlertManager.createAlert({
+                                                                type: 'danger',
+                                                                message: 'Error occured while fetching business data. Check browser console for logs.',
+                                                                enableDismiss: false
+                                                            });
+
+                                                            console.log('Error occured while fetching business data: ', businessDataError);
+                                                        }
+                                                    );
+                                                }
+                                            },
+                                            (integrationsListError) => {
+                                                AlertManager.createAlert({
+                                                    type: 'danger',
+                                                    message: 'Error occured while fetching specification integrations data. Check browser console for logs.',
+                                                    enableDismiss: false
+                                                });
+
+                                                console.log('Error occured while fetching specification integrations data: ', integrationsListError);
+                                            }
+                                        );
                                     },
-                                    (integrationsListError) => {
+                                    (flowAppsListError) => {
                                         AlertManager.createAlert({
                                             type: 'danger',
-                                            message: 'Error occured while fetching specification integrations data. Check browser console for logs.',
+                                            message: 'Error occured while fetching specification flow apps data. Check browser console for logs.',
                                             enableDismiss: false
                                         });
 
-                                        console.log('Error occured while fetching specification integrations data: ', integrationsListError);
+                                        console.log('Error occured while fetching specification flow apps data: ', flowAppsListError);
                                     }
                                 );
                             },

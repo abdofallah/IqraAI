@@ -9,7 +9,7 @@ using IqraCore.Models.Business.Queues.Outbound;
 using IqraCore.Models.Business.WebSession;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
-using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
+using IqraCore.Entities.Validation;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {

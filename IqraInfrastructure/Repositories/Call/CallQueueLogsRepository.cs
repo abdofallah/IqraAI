@@ -6,13 +6,16 @@ namespace IqraInfrastructure.Repositories.Call
 {
     public class CallQueueLogsRepository
     {
+        private readonly string DatabaseName = "IqraCallQueue";
+        private readonly string CollectionName = "CallQueueLogs";
+
         private readonly IMongoCollection<CallQueueLogsData> _callQueueLogsCollection;
         private readonly ILogger<CallQueueLogsRepository> _logger;
 
-        public CallQueueLogsRepository(IMongoClient client, string databaseName, ILogger<CallQueueLogsRepository> logger)
+        public CallQueueLogsRepository(IMongoClient client, ILogger<CallQueueLogsRepository> logger)
         {
-            var database = client.GetDatabase(databaseName);
-            _callQueueLogsCollection = database.GetCollection<CallQueueLogsData>("CallQueueLogs");
+            var database = client.GetDatabase(DatabaseName);
+            _callQueueLogsCollection = database.GetCollection<CallQueueLogsData>(CollectionName);
             _logger = logger;
         }
 

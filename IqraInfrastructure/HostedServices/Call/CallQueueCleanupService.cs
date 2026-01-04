@@ -9,19 +9,16 @@ namespace IqraInfrastructure.HostedServices.Call
     {
         private readonly ILogger<CallQueueCleanupService> _logger;
         private readonly InboundCallQueueRepository _callQueueRepository;
-        private readonly BackendAppConfig _serverConfig;
 
         private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
 
         public CallQueueCleanupService(
             ILogger<CallQueueCleanupService> logger,
-            InboundCallQueueRepository callQueueRepository,
-            BackendAppConfig serverConfig
+            InboundCallQueueRepository callQueueRepository
         )
         {
             _logger = logger;
             _callQueueRepository = callQueueRepository;
-            _serverConfig = serverConfig;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -33,10 +30,10 @@ namespace IqraInfrastructure.HostedServices.Call
                 try
                 {
                     // Check for expired queued calls
-                    int expiredQueues = await _callQueueRepository.CleanupExpiredInboundCallQueues(_serverConfig.RegionId);
+                    int expiredQueues = await _callQueueRepository.CleanupExpiredInboundCallQueues();
 
                     // Check for orphaned queued calls (processing but no session even after enough time?)
-                    int orphanedQueues = await _callQueueRepository.CleanupInboundOrphanedCallQueues(_serverConfig.RegionId, DateTime.UtcNow.Subtract(TimeSpan.FromMinutes(5)));
+                    int orphanedQueues = await _callQueueRepository.CleanupInboundOrphanedCallQueues(DateTime.UtcNow.Subtract(TimeSpan.FromMinutes(5)));
 
                     // TODO we should log these 3 if they are not 0 for analytics as this should only happen when there seems to be a major error
                     // for now just log

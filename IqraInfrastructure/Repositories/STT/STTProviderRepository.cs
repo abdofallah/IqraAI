@@ -10,15 +10,16 @@ namespace IqraInfrastructure.Repositories.STT
     public class STTProviderRepository
     {
         private readonly ILogger<STTProviderRepository> _logger;
-
-        private readonly string CollectionName = "STTProvider";
         private readonly IMongoCollection<STTProviderData> _sttProviderCollection;
 
-        public STTProviderRepository(ILogger<STTProviderRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraSTTProvider";
+        private readonly string CollectionName = "STTProvider";
+
+        public STTProviderRepository(ILogger<STTProviderRepository> logger, IMongoClient client)
         {
             _logger = logger;
 
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _sttProviderCollection = database.GetCollection<STTProviderData>(CollectionName);
         }
 

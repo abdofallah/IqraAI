@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using IqraCore.Entities.Business.App.Script;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
@@ -11,6 +12,7 @@ namespace IqraCore.Entities.Business
         public BusinessAppScriptGeneral General { get; set; } = new BusinessAppScriptGeneral();
         public List<BusinessAppScriptNode> Nodes { get; set; } = new List<BusinessAppScriptNode>();
         public List<BusinessAppScriptEdge> Edges { get; set; } = new List<BusinessAppScriptEdge>();
+        public List<BusinessAppScriptVariable> Variables { get; set; } = new List<BusinessAppScriptVariable>();
 
         // Route/Campaigns References
         public List<string> InboundRoutingReferences { get; set; } = new List<string>();

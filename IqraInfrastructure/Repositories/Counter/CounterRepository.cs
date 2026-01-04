@@ -13,10 +13,12 @@ namespace IqraInfrastructure.Repositories.Counter
     {
         private readonly IMongoCollection<Counter> _countersCollection;
 
+        private readonly string CollectionName = "Counters";
+
         public CounterRepository(IMongoClient client, string databaseName)
         {
             var database = client.GetDatabase(databaseName);
-            _countersCollection = database.GetCollection<Counter>("Counters");
+            _countersCollection = database.GetCollection<Counter>(CollectionName);
         }
 
         public async Task<long> GetNextSequenceValueAsync(string counterName)

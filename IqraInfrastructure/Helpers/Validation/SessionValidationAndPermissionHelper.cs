@@ -7,7 +7,7 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.User;
 using Microsoft.AspNetCore.Http;
-using static IqraCore.Interfaces.Validation.IUserBusinessPermissionHelper;
+using IqraCore.Entities.Validation;
 
 namespace IqraInfrastructure.Helpers.Validation
 {

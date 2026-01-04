@@ -7,6 +7,7 @@ using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.Embedding;
+using IqraInfrastructure.Managers.FlowApp;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.RAG.Extractors;
@@ -97,7 +98,8 @@ namespace IqraInfrastructure.Managers.Business
             IUserUsageValidationManager? billingValidationManager,
             ServerSelectionManager? serverSelectionManager,
             IHttpClientFactory? httpClientFactory,
-            S3StorageClientFactory? s3StorageClientFactory
+            S3StorageClientFactory? s3StorageClientFactory,
+            FlowAppManager? flowAppManager
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -161,11 +163,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeScriptsManager)
             {
-                if (businessAppRepository == null || businessRepository == null)
+                if (businessAppRepository == null || businessRepository == null || flowAppManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessScriptsManager");
                 }
-                _businessScriptsManager = new BusinessScriptsManager(this, mongoClient, businessAppRepository, businessRepository);
+                _businessScriptsManager = new BusinessScriptsManager(this, mongoClient, businessAppRepository, businessRepository, flowAppManager);
             }
             if (_settings.InitalizeNumberManager)
             {

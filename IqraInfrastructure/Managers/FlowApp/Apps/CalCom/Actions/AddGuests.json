@@ -1,0 +1,28 @@
+{
+  "type": "object",
+  "title": "Add Guest to Booking",
+  "required": [ "bookingUid", "guestEmail" ],
+  "properties": {
+    "bookingUid": {
+      "type": "string",
+      "title": "Booking UID",
+      "description": "The unique identifier of the booking."
+    },
+    "guestEmail": {
+      "type": "string",
+      "title": "Guest Email",
+      "description": "The email address of the new guest."
+    },
+    "guestName": {
+      "type": "string",
+      "title": "Guest Name",
+      "description": "The full name of the guest (optional)."
+    },
+    "guestTimeZone": {
+      "type": "string",
+      "title": "Guest TimeZone",
+      "description": "Timezone for the guest (e.g. Europe/London)",
+      "default": "UTC"
+    }
+  }
+}

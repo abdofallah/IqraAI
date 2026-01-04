@@ -13,14 +13,15 @@ namespace IqraInfrastructure.Repositories.Call
         private readonly ILogger<OutboundCallQueueRepository> _logger;
         private readonly CallQueueLogsRepository _callQueueLogsRepository;
 
-        private const string CollectionName = "OutboundCallQueue";
+        private readonly string DatabaseName = "IqraCallQueue";
+        private readonly string CollectionName = "OutboundCallQueue";
 
-        public OutboundCallQueueRepository(IMongoClient client, string databaseName, ILogger<OutboundCallQueueRepository> logger, CallQueueLogsRepository callQueueLogsRepository)
+        public OutboundCallQueueRepository(IMongoClient client, ILogger<OutboundCallQueueRepository> logger, CallQueueLogsRepository callQueueLogsRepository)
         {
             _logger = logger;
             try
             {
-                var database = client.GetDatabase(databaseName);
+                var database = client.GetDatabase(DatabaseName);
                 _outboundQueueCollection = database.GetCollection<OutboundCallQueueData>(CollectionName);
                 CreateIndexes();
             }

@@ -13,17 +13,18 @@ namespace IqraInfrastructure.Repositories.Business
     {
         private readonly ILogger<BusinessKnowledgeBaseDocumentRepository> _logger;
 
+        private readonly string DatabaseName = "IqraBusinessKnowledgeBaseDocument";
         private readonly string CollectionName = "BusinessKnowledgeBaseDocuments";
         private readonly IMongoCollection<BusinessAppKnowledgeBaseDocument> _documentsCollection;
 
         private readonly CounterRepository _counterRepository;
 
-        public BusinessKnowledgeBaseDocumentRepository(ILogger<BusinessKnowledgeBaseDocumentRepository> logger, IMongoClient client, string databaseName)
+        public BusinessKnowledgeBaseDocumentRepository(ILogger<BusinessKnowledgeBaseDocumentRepository> logger, IMongoClient client)
         {
             _logger = logger;
-            var database = client.GetDatabase(databaseName);
+            var database = client.GetDatabase(DatabaseName);
             _documentsCollection = database.GetCollection<BusinessAppKnowledgeBaseDocument>(CollectionName);
-            _counterRepository = new CounterRepository(client, databaseName);
+            _counterRepository = new CounterRepository(client, DatabaseName);
         }
 
         public async Task<long> GetNextDocumentId()

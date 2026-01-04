@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "required": [ "startTime", "endTime" ],
+  "properties": {
+    "startTime": {
+      "type": "string",
+      "title": "Start Time (ISO 8601)",
+      "description": "Start of the range to check (e.g. {{ date.now }})"
+    },
+    "endTime": {
+      "type": "string",
+      "title": "End Time (ISO 8601)",
+      "description": "End of the range to check"
+    },
+    "timeZone": {
+      "type": "string",
+      "title": "Timezone",
+      "default": "UTC"
+    }
+  },
+  "oneOf": [
+    {
+      "title": "By Event ID",
+      "required": [ "eventTypeId" ],
+      "properties": {
+        "eventTypeId": {
+          "type": "integer",
+          "title": "Event Type ID",
+          "x-fetcher": "GetEventTypesById"
+        }
+      }
+    },
+    {
+      "title": "By Username & Slug",
+      "required": [ "username", "eventTypeSlug" ],
+      "properties": {
+        "username": {
+          "type": "string",
+          "title": "Username"
+        },
+        "eventTypeSlug": {
+          "type": "string",
+          "title": "Event Type Slug"
+        }
+      }
+    }
+  ]
+}

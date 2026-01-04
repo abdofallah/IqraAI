@@ -11,13 +11,14 @@ namespace IqraInfrastructure.Repositories.WebSession
         private readonly IMongoCollection<WebSessionData> _webSessionCollection;
         private readonly ILogger<WebSessionRepository> _logger;
 
+        private readonly string DatabaseName = "IqraUserUsage";
         private const string WebSessionCollectionName = "WebSession";
 
-        public WebSessionRepository(ILogger<WebSessionRepository> logger, IMongoClient client, string databaseName)
+        public WebSessionRepository(ILogger<WebSessionRepository> logger, IMongoClient client)
         {
             _logger = logger;
 
-            var database = client.GetDatabase(databaseName);
+            var database = client.GetDatabase(DatabaseName);
             _webSessionCollection = database.GetCollection<WebSessionData>(WebSessionCollectionName);
 
             CreateIndexes();

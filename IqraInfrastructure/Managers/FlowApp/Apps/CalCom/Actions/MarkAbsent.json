@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "title": "Mark Absent",
+  "required": [ "bookingUid" ],
+  "properties": {
+    "bookingUid": {
+      "type": "string",
+      "title": "Booking UID",
+      "description": "The unique identifier of the booking."
+    },
+    "markHostAbsent": {
+      "type": "boolean",
+      "title": "Mark Host Absent?",
+      "default": false,
+      "description": "If true, marks the meeting host as absent."
+    },
+    "attendeeEmail": {
+      "type": "string",
+      "title": "Attendee Email",
+      "description": "The email of the attendee to mark absent (ignored if Mark Host is true)."
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "type": "object",
+  "title": "Book a Meeting",
+  "required": [ "start", "attendeeName", "attendeeEmail" ],
+  "properties": {
+    "start": {
+      "type": "string",
+      "title": "Start Time",
+      "description": "ISO 8601 Date string (e.g. 2024-01-01T10:00:00Z)"
+    },
+    "attendeeName": {
+      "type": "string",
+      "title": "Attendee Name"
+    },
+    "attendeeEmail": {
+      "type": "string",
+      "title": "Attendee Email"
+    },
+    "attendeeTimeZone": {
+      "type": "string",
+      "title": "Attendee TimeZone",
+      "default": "UTC"
+    },
+    "attendeePhone": {
+      "type": "string",
+      "title": "Attendee Phone",
+      "description": "Required for SMS reminders"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Additional Notes"
+    }
+  },
+  "oneOf": [
+    {
+      "title": "By Event ID",
+      "required": [ "eventTypeId" ],
+      "properties": {
+        "eventTypeId": {
+          "type": "integer",
+          "title": "Event Type ID",
+          "x-fetcher": "GetEventTypes"
+        }
+      }
+    },
+    {
+      "title": "By User & Slug",
+      "required": [ "username", "eventTypeSlug" ],
+      "properties": {
+        "username": {
+          "type": "string",
+          "title": "Username"
+        },
+        "eventTypeSlug": {
+          "type": "string",
+          "title": "Event Type Slug"
+        }
+      }
+    },
+    {
+      "title": "By Team & Slug",
+      "required": [ "teamSlug", "eventTypeSlug" ],
+      "properties": {
+        "teamSlug": {
+          "type": "string",
+          "title": "Team Slug"
+        },
+        "eventTypeSlug": {
+          "type": "string",
+          "title": "Event Type Slug"
+        }
+      }
+    }
+  ]
+}

@@ -81,26 +81,96 @@
                     <div class="script-graph-container">
                         <!-- Left Sidebar -->
                         <div class="script-graph-sidebar-left bg-dark border-dark text-bg-dark">
-                            <div class=" sidebar-header">
-                                <h6>Add Nodes</h6>
+                            <!-- Search Bar -->
+                            <div class="sidebar-search-container">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-transparent border-end-0 text-muted">
+                                        <i class="fa-regular fa-magnifying-glass"></i>
+                                    </span>
+                                    <input type="text" class="form-control border-start-0 ps-0" id="sidebarNodeSearch" placeholder="Search nodes...">
+                                </div>
                             </div>
-                            <div class="sidebar-content">
-                                <button class="btn btn-primary sidebar-node-button" data-node-type="user-query">
-                                    <i class="fa-regular fa-message"></i>
-                                    <span>User Query</span>
-                                </button>
-                                <button class="btn btn-primary sidebar-node-button" data-node-type="ai-response">
-                                    <i class="fa-regular fa-robot"></i>
-                                    <span>AI Response</span>
-                                </button>
-                                <button class="btn btn-primary sidebar-node-button" data-node-type="system-tool">
-                                    <i class="fa-regular fa-toolbox"></i>
-                                    <span>System Tool</span>
-                                </button>
-                                <button class="btn btn-primary sidebar-node-button" data-node-type="custom-tool">
-                                    <i class="fa-regular fa-wrench"></i>
-                                    <span>Custom Tool</span>
-                                </button>
+
+                            <!-- Scrollable Content -->
+                            <div class="sidebar-scrollable-content">
+
+                                <!-- Conversation Category -->
+                                <div class="sidebar-category">
+                                    <div class="sidebar-category-title">Conversation</div>
+                                    <div class="sidebar-nodes-grid">
+                                        <div class="sidebar-node-item" data-preset-id="user-query">
+                                            <i class="fa-regular fa-message"></i>
+                                            <span>User Query</span>
+                                        </div>
+                                        <div class="sidebar-node-item" data-preset-id="ai-response">
+                                            <i class="fa-regular fa-robot"></i>
+                                            <span>AI Response</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Logic Category -->
+                                <div class="sidebar-category category-logic">
+                                    <div class="sidebar-category-title">Logic & Flow</div>
+                                    <div class="sidebar-nodes-grid">
+                                        <div class="sidebar-node-item" data-preset-id="go-to-node">
+                                            <i class="fa-regular fa-arrow-turn-down-right"></i>
+                                            <span>Go To Node</span>
+                                        </div>
+                                        <div class="sidebar-node-item" data-preset-id="add-script-context">
+                                            <i class="fa-regular fa-file-circle-plus"></i>
+                                            <span>Add Script</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Telephony Category -->
+                                <div class="sidebar-category category-telephony">
+                                    <div class="sidebar-category-title">Telephony</div>
+                                    <div class="sidebar-nodes-grid">
+                                        <div class="sidebar-node-item" data-preset-id="end-call">
+                                            <i class="fa-regular fa-phone-slash"></i>
+                                            <span>End Call</span>
+                                        </div>
+                                        <div class="sidebar-node-item" data-preset-id="transfer-agent">
+                                            <i class="fa-regular fa-headset"></i>
+                                            <span>Transfer Agent</span>
+                                        </div>
+                                        <div class="sidebar-node-item" data-preset-id="transfer-human">
+                                            <i class="fa-regular fa-user-headset"></i>
+                                            <span>Transfer Human</span>
+                                        </div>
+                                        <div class="sidebar-node-item" data-preset-id="send-sms">
+                                            <i class="fa-regular fa-comment-sms"></i>
+                                            <span>Send SMS</span>
+                                        </div>
+                                        <div class="sidebar-node-item" data-preset-id="get-dtmf">
+                                            <i class="fa-regular fa-hashtag"></i>
+                                            <span>Get Keypad</span>
+                                        </div>
+                                        <div class="sidebar-node-item" data-preset-id="press-dtmf">
+                                            <i class="fa-regular fa-mobile-button"></i>
+                                            <span>Press Keypad</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Integrations Category -->
+                                <div class="sidebar-category category-integrations">
+                                    <div class="sidebar-category-title">Integrations</div>
+                                    <div class="sidebar-nodes-grid" id="sidebarIntegrationsGrid">
+                                        <div class="sidebar-node-item" data-preset-id="custom-tool">
+                                            <i class="fa-regular fa-wrench"></i>
+                                            <span>Custom Tool</span>
+                                        </div>
+                                        <div class="sidebar-node-item" data-preset-id="retrieve-kb">
+                                            <i class="fa-regular fa-book-open"></i>
+                                            <span>Retrieve KB</span>
+                                        </div>
+                                        <!-- Dynamic FlowApps will be injected here via JS -->
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
 
@@ -139,6 +209,12 @@
                                         <i class="fa-regular fa-rotate-right"></i>
                                     </button>
                                 </div>
+
+                                <div class="btn-group d-flex mb-2">
+                                    <button id="script-graph-variables" class="btn btn-primary btn-sm flex-fill" title="Manage Script Variables">
+                                        <i class="fa-regular fa-brackets-curly"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -152,9 +228,65 @@
                                 <!-- Configuration content will be loaded here -->
                             </div>
                         </div>
+
+                            
+                        <!-- Variables Manager Offcanvas -->
+                        <div class="offcanvas offcanvas-end text-bg-dark" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="variablesOffcanvas" aria-labelledby="variablesOffcanvasLabel">
+                            <div class="offcanvas-header border-bottom border-secondary">
+                                <h5 class="offcanvas-title" id="variablesOffcanvasLabel">Script Variables</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                            </div>
+                            <div class="offcanvas-body d-flex flex-column p-0">
+        
+                                <!-- List Container -->
+                                <div class="flex-grow-1 overflow-auto p-3" id="variablesListContainer">
+                                    <!-- Dynamic Variable Items will go here -->
+                                    <div class="text-center text-muted mt-5 empty-vars-notice">
+                                        <i class="fa-regular fa-brackets-curly fa-2x mb-2"></i>
+                                        <p>No variables defined.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Add New Section (Fixed Bottom) -->
+                                <div class="border-top border-secondary p-3 bg-dark">
+                                    <h6 class="mb-3">Add New Variable</h6>
+                                    <div class="mb-2">
+                                        <input type="text" class="form-control form-control-sm mb-2" id="newVarKey" placeholder="Key (e.g. discount_code)">
+                                        <select class="form-select form-select-sm mb-2" id="newVarType">
+                                            <option value="1">String</option>
+                                            <option value="2">Number</option>
+                                            <option value="3">Boolean</option>
+                                        </select>
+                                        <input type="text" class="form-control form-control-sm mb-2" id="newVarDefault" placeholder="Value (Required for Static Variables)">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small btn-ic-span-align mb-1">
+                                            <span>Description</span> <i class="fa-regular fa-language"></i> <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control form-control-sm" id="newVarDescription" placeholder="Explain what this variable is for...">
+                                    </div>
+                                    <div class="d-flex gap-3 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="newVarVisible" checked>
+                                            <label class="form-check-label small text-muted" for="newVarVisible" title="Injected into System Prompt">
+                                                Visible to AI
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="newVarEditable">
+                                            <label class="form-check-label small text-muted" for="newVarEditable" title="AI can modify this value">
+                                                Editable by AI
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-success btn-sm w-100" id="addVariableBtn">
+                                        <i class="fa-solid fa-plus me-1"></i> Add Variable
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
                 
             </div>
         </div>

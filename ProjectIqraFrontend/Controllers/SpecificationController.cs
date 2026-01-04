@@ -5,8 +5,10 @@ using IqraCore.Entities.LLM;
 using IqraCore.Entities.Rerank;
 using IqraCore.Entities.STT;
 using IqraCore.Entities.TTS;
+using IqraCore.Models.FlowApp;
 using IqraCore.Models.Specification;
 using IqraInfrastructure.Managers.Embedding;
+using IqraInfrastructure.Managers.FlowApp;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -30,6 +32,7 @@ namespace ProjectIqraFrontend.Controllers
         private readonly EmbeddingProviderManager _embeddingProviderManager;
         private readonly RerankProviderManager _rerankProviderManager;
         private readonly IntegrationsLogoRepository _integrationsLogoRepository;
+        private readonly FlowAppManager _flowAppManager;
 
         public SpecificationController(
             LanguagesManager languagesManager,
@@ -40,9 +43,9 @@ namespace ProjectIqraFrontend.Controllers
             TTSProviderManager ttsProviderManager,
             EmbeddingProviderManager embeddingProviderManager,
             RerankProviderManager rerankProviderManager,
-            IntegrationsLogoRepository integrationsLogoRepository
-        )
-        {
+            IntegrationsLogoRepository integrationsLogoRepository,
+            FlowAppManager flowAppManager
+        ) {
             _languagesManager = languagesManager;
             _regionManager = regionManager;
             _integrationsManager = integrationsManager;
@@ -52,6 +55,7 @@ namespace ProjectIqraFrontend.Controllers
             _embeddingProviderManager = embeddingProviderManager;
             _rerankProviderManager = rerankProviderManager;
             _integrationsLogoRepository = integrationsLogoRepository;
+            _flowAppManager = flowAppManager;
         }
 
         [HttpGet("/app/specification/languages")]
@@ -209,6 +213,27 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             return result.SetSuccessResult(getRerankProviderByIntegrationResult.Data);
+        }
+
+        /// <summary>
+        /// Returns all Flow Apps, Actions, and Fetchers with their current permission status.
+        /// Used by the Script Builder to populate the node selection menu.
+        /// </summary>
+        [HttpGet("/app/specification/flowapps")]
+        public async Task<FunctionReturnResult<List<FlowAppDefWithPermissionModel>>> GetFlowApps()
+        {
+            var result = new FunctionReturnResult<List<FlowAppDefWithPermissionModel>>();
+
+            try
+            {
+                var apps = await _flowAppManager.GetAllAppDefinitionsWithPermissions();
+                return result.SetSuccessResult(apps);
+            }
+            catch (Exception ex)
+            {
+                // Log error
+                return result.SetFailureResult("GetFlowApps:EXCEPTION", ex.Message);
+            }
         }
     }
 }

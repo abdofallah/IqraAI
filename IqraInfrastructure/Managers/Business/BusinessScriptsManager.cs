@@ -1,8 +1,11 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.App.Agent.Script.Node.FlowAppNode;
 using IqraCore.Entities.Business.App.Agent.Script.Node.StartNode;
+using IqraCore.Entities.Business.App.Script;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
+using IqraInfrastructure.Managers.FlowApp;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
@@ -19,19 +22,21 @@ namespace IqraInfrastructure.Managers.Business
 
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
+        private readonly FlowAppManager _flowAppManager;
 
         public BusinessScriptsManager(
             BusinessManager businessManager,
             IMongoClient mongoClient,
             BusinessAppRepository businessAppRepository,
-            BusinessRepository businessRepository
-        )
-        {
+            BusinessRepository businessRepository,
+            FlowAppManager flowAppManager
+        ) {
             _mongoClient = mongoClient;
             _parentBusinessManager = businessManager;
 
             _businessAppRepository = businessAppRepository;
             _businessRepository = businessRepository;
+            _flowAppManager = flowAppManager;
         }
 
         public async Task<bool> CheckScriptExists(long businessId, string scriptId)
@@ -244,8 +249,10 @@ namespace IqraInfrastructure.Managers.Business
             };
 
             // General Section
-            if (!changesRootElement.TryGetProperty("general", out var generalTabElement))
-            {
+            if (
+                !changesRootElement.TryGetProperty("general", out var generalTabElement) ||
+                generalTabElement.ValueKind != JsonValueKind.Object
+            ) {
                 result.Code = "AddOrUpdateScript:3";
                 result.Message = "General section not found.";
                 return result;
@@ -276,6 +283,102 @@ namespace IqraInfrastructure.Managers.Business
                     result.Code = "AddOrUpdateScript:" + descriptionValidationResult.Code;
                     result.Message = descriptionValidationResult.Message;
                     return result;
+                }
+            }
+
+            // Variables Section
+            if (!changesRootElement.TryGetProperty("variables", out var variablesElement)
+                || variablesElement.ValueKind != JsonValueKind.Array
+            ) {
+                result.Code = "AddOrUpdateScript:4";
+                result.Message = "Variables section not found.";
+                return result;
+            }
+            else
+            {
+                var variableKeys = new HashSet<string>();
+
+                foreach (var varElem in variablesElement.EnumerateArray())
+                {
+                    var newVar = new BusinessAppScriptVariable();
+
+                    // Key (Validation Critical)
+                    if (!varElem.TryGetProperty("key", out var keyProp) || string.IsNullOrWhiteSpace(keyProp.GetString()))
+                    {
+                        return result.SetFailureResult("AddOrUpdateScript:VAR_KEY_MISSING", "Variable key is required.");
+                    }
+                    newVar.Key = keyProp.GetString()!.Trim();
+
+                    // Key Regex Check (Alphanumeric + Underscore only)
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(newVar.Key, "^[a-zA-Z0-9_]+$"))
+                    {
+                        return result.SetFailureResult("AddOrUpdateScript:VAR_KEY_INVALID", $"Variable key '{newVar.Key}' contains invalid characters. Use only letters, numbers, and underscores.");
+                    }
+
+                    // Duplicate Key Check
+                    if (variableKeys.Contains(newVar.Key))
+                    {
+                        return result.SetFailureResult("AddOrUpdateScript:VAR_KEY_DUPLICATE", $"Variable key '{newVar.Key}' must be unique.");
+                    }
+                    variableKeys.Add(newVar.Key);
+
+                    // Type
+                    if (varElem.TryGetProperty("type", out var typeProp) && typeProp.TryGetInt32(out int typeInt))
+                    {
+                        if (!Enum.IsDefined(typeof(BusinessAppScriptVariableTypeENUM), typeInt))
+                            return result.SetFailureResult("AddOrUpdateScript:VAR_TYPE_INVALID", "Invalid variable type.");
+
+                        newVar.Type = (BusinessAppScriptVariableTypeENUM)typeInt;
+                    }
+
+                    // Default Value & Type Validation
+                    if (varElem.TryGetProperty("defaultValue", out var valProp))
+                    {
+                        var rawVal = valProp.GetString();
+                        newVar.DefaultValue = rawVal;
+
+                        // Validate Default Value matches Type
+                        if (!string.IsNullOrEmpty(rawVal))
+                        {
+                            if (newVar.Type == BusinessAppScriptVariableTypeENUM.Number && !double.TryParse(rawVal, out _))
+                                return result.SetFailureResult("AddOrUpdateScript:VAR_VAL_INVALID_NUMBER", $"Default value for '{newVar.Key}' must be a number.");
+
+                            if (newVar.Type == BusinessAppScriptVariableTypeENUM.Boolean && !bool.TryParse(rawVal, out _))
+                                return result.SetFailureResult("AddOrUpdateScript:VAR_VAL_INVALID_BOOL", $"Default value for '{newVar.Key}' must be 'true' or 'false'.");
+                        }
+                    }
+
+                    // Visibility
+                    if (varElem.TryGetProperty("isVisibleToAgent", out var visProp))
+                        newVar.IsVisibleToAgent = visProp.GetBoolean();
+
+                    // Is Editable By AI
+                    if (varElem.TryGetProperty("isEditableByAI", out var editProp))
+                        newVar.IsEditableByAI = editProp.GetBoolean();
+
+                    // Validation: Static variables must have a value
+                    if (!newVar.IsEditableByAI && string.IsNullOrWhiteSpace(newVar.DefaultValue))
+                    {
+                        return result.SetFailureResult("AddOrUpdateScript:VAR_DEFAULT_REQUIRED",
+                            $"Variable '{newVar.Key}' is marked as Read-Only (not editable by AI), so a Default Value is required.");
+                    }
+
+                    // Multi-Language Description (Mandatory)
+                    var descValidation = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                        businessLanguages,
+                        varElem, // The variable object
+                        "description", // Property name to look for
+                        newVar.Description
+                    );
+                    if (!descValidation.Success)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateScript:VAR_DESC_INVALID",
+                            $"Variable '{newVar.Key}' description error: {descValidation.Message}"
+                        );
+                    }
+
+                    newScriptData.Variables.Add(newVar);
                 }
             }
 
@@ -1293,6 +1396,121 @@ namespace IqraInfrastructure.Managers.Business
                     }
 
                     nodes.Add(customToolNode);
+                }
+                else if (nodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteFlowApp)
+                {
+                    var flowAppNode = new BusinessAppScriptFlowAppNode
+                    {
+                        Id = nodeId,
+                        Position = position
+                    };
+
+                    // 1. App Key & Validation
+                    if (!nodeElement.TryGetProperty("appKey", out var appKeyElem))
+                    {
+                        return result.SetFailureResult("FLOWAPP_MISSING_KEY", "App Key missing.");
+                    }
+                    flowAppNode.AppKey = appKeyElem.GetString() ?? "";
+
+                    // Check App Exists
+                    var appDef = await _flowAppManager.GetAppDefinitionWithPermissionsAsync(flowAppNode.AppKey); // Need to expose a lightweight GetApp method
+                    if (appDef == null)
+                    {
+                        return result.SetFailureResult("FLOWAPP_NOT_FOUND", $"FlowApp '{flowAppNode.AppKey}' not found.");
+                    }
+                    if (appDef.IsDisabled)
+                    {
+                        return result.SetFailureResult(
+                            "ValidateNodes:FLOWAPP_DISABLED",
+                            $"The App '{appDef.Name}' is currently disabled: {appDef.DisabledReason ?? "Maintenance"}"
+                        );
+                    }
+
+                    // 2. Action Key & Validation
+                    if (!nodeElement.TryGetProperty("actionKey", out var actionKeyElem))
+                    {
+                        return result.SetFailureResult("FLOWAPP_MISSING_ACTION", "Action Key missing.");
+                    }
+                    flowAppNode.ActionKey = actionKeyElem.GetString() ?? "";
+
+                    // Check Action Exists
+                    var actionDef = appDef.Actions.FirstOrDefault(a => a.ActionKey == flowAppNode.ActionKey);
+                    if (actionDef == null)
+                        return result.SetFailureResult(
+                            "FLOWAPP_ACTION_NOT_FOUND",
+                            $"Action '{flowAppNode.ActionKey}' not found."
+                        );
+                    if (actionDef.IsDisabled)
+                    {
+                        return result.SetFailureResult(
+                            "ValidateNodes:FLOWAPP_ACTION_DISABLED",
+                            $"The Action '{actionDef.Name}' is currently disabled: {actionDef.DisabledReason ?? "Maintenance"}"
+                        );
+                    }
+
+                    // 3. Integration Validation
+                    if (nodeElement.TryGetProperty("integrationId", out var integIdElem))
+                    {
+                        flowAppNode.IntegrationId = integIdElem.GetString();
+                    }
+
+                    if (actionDef.RequiresIntegration)
+                    {
+                        if (string.IsNullOrWhiteSpace(flowAppNode.IntegrationId))
+                            return result.SetFailureResult("FLOWAPP_INTEGRATION_REQUIRED", "Integration ID is required for this action.");
+
+                        var integrationResult = await _parentBusinessManager.GetIntegrationsManager()
+                            .getBusinessIntegrationById(businessId, flowAppNode.IntegrationId);
+
+                        if (!integrationResult.Success)
+                            return result.SetFailureResult("FLOWAPP_INTEGRATION_NOT_FOUND", "Integration not found.");
+
+                        if (integrationResult.Data!.Type != appDef.IntegrationType)
+                            return result.SetFailureResult("FLOWAPP_INTEGRATION_MISMATCH", $"Integration type mismatch. Expected {appDef.IntegrationType}, got {integrationResult.Data!.Type}.");
+                    }
+
+                    // 4. Speaking Before Execution (Multi-language)
+                    flowAppNode.SpeakingBeforeExecution = new Dictionary<string, string>();
+                    if (nodeElement.TryGetProperty("speakingBeforeExecution", out var speakingElem))
+                    {
+                        var speakingValidation = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                            businessLanguages,
+                            nodeElement, // Pass parent, helper looks for prop name
+                            "speakingBeforeExecution",
+                            flowAppNode.SpeakingBeforeExecution
+                        );
+                        if (!speakingValidation.Success) return result.SetFailureResult(speakingValidation.Code, speakingValidation.Message);
+                    }
+
+                    // 5. Inputs Parsing
+                    if (nodeElement.TryGetProperty("inputs", out var inputsElem) && inputsElem.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var inputItem in inputsElem.EnumerateArray())
+                        {
+                            var newInput = new FlowAppNodeInput();
+
+                            if (inputItem.TryGetProperty("key", out var keyProp)) newInput.Key = keyProp.GetString() ?? "";
+
+                            if (inputItem.TryGetProperty("isAiGenerated", out var aiProp)) newInput.IsAiGenerated = aiProp.GetBoolean();
+                            if (inputItem.TryGetProperty("isRedacted", out var redProp)) newInput.IsRedacted = redProp.GetBoolean();
+
+                            if (inputItem.TryGetProperty("value", out var valProp))
+                            {
+                                switch (valProp.ValueKind)
+                                {
+                                    case JsonValueKind.String: newInput.Value = valProp.GetString(); break;
+                                    case JsonValueKind.Number: newInput.Value = valProp.GetDouble(); break;
+                                    case JsonValueKind.True: newInput.Value = true; break;
+                                    case JsonValueKind.False: newInput.Value = false; break;
+                                    case JsonValueKind.Null: newInput.Value = null; break;
+                                }
+                            }
+
+                            flowAppNode.Inputs.Add(newInput);
+                        }
+                    }
+
+                    nodes.Add(flowAppNode);
                 }
                 else
                 {

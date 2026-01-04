@@ -3,6 +3,7 @@
     public class ProxyAppConfig
     {
         // Static Config
+        public bool IsCloudVersion { get; set; }
         public string ServerId { get; set; } = null!;
         public string RegionId { get; set; } = null!;
         public ProxyAppOutboundProcessingConfig OutboundProcessing { get; set; } = new();

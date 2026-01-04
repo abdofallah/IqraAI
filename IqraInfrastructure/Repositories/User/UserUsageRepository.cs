@@ -13,12 +13,15 @@ namespace IqraInfrastructure.Repositories.User
         private readonly ILogger<UserUsageRepository> _logger;
         private readonly IMongoCollection<UserUsageRecordData> _userUsageCollection;
 
-        public UserUsageRepository(ILogger<UserUsageRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraWebSession";
+        private readonly string CollectionName = "UserUsageRecords";
+
+        public UserUsageRepository(ILogger<UserUsageRepository> logger, IMongoClient client)
         {
             _logger = logger;
 
-            var database = client.GetDatabase(databaseName);
-            _userUsageCollection = database.GetCollection<UserUsageRecordData>("UserUsageRecords");
+            var database = client.GetDatabase(DatabaseName);
+            _userUsageCollection = database.GetCollection<UserUsageRecordData>(CollectionName);
 
             var indexKeysDefinition = Builders<UserUsageRecordData>.IndexKeys
                 .Ascending(r => r.BusinessId)

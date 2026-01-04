@@ -8,15 +8,15 @@ namespace IqraInfrastructure.Repositories.Languages
     public class LanguagesRepository
     {
         private readonly ILogger<LanguagesRepository> _logger;
-
-        private readonly string CollectionName = "Languages";
-
         private readonly IMongoCollection<LanguagesData> _languagesCollection;
 
-        public LanguagesRepository(ILogger<LanguagesRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraLanguages";
+        private readonly string CollectionName = "Languages";
+
+        public LanguagesRepository(ILogger<LanguagesRepository> logger, IMongoClient client)
         {
             _logger = logger;
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _languagesCollection = database.GetCollection<LanguagesData>(CollectionName);
         }
 

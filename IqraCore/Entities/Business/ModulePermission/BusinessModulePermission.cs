@@ -21,6 +21,7 @@ namespace IqraCore.Entities.Business
         public Dictionary<BusinessModulePermissionType, BusinessModulePermissionItem> TelephonyCampaigns { get; set; } = new Dictionary<BusinessModulePermissionType, BusinessModulePermissionItem>();
         public Dictionary<BusinessModulePermissionType, BusinessModulePermissionItem> WebCampaigns { get; set; } = new Dictionary<BusinessModulePermissionType, BusinessModulePermissionItem>();
         public Dictionary<BusinessModulePermissionType, BusinessModulePermissionItem> PostAnalysis { get; set; } = new Dictionary<BusinessModulePermissionType, BusinessModulePermissionItem>();
+        public BusinessModuleFlowAppsPermission FlowApps { get; set; } = new BusinessModuleFlowAppsPermission();
 
         // Non-Client Facing Permissions
         public Dictionary<BusinessModulePermissionType, BusinessModulePermissionItem> RecieveCall { get; set; } = new Dictionary<BusinessModulePermissionType, BusinessModulePermissionItem>();

@@ -9,16 +9,16 @@ namespace IqraInfrastructure.Repositories.LLM
     public class LLMProviderRepository
     {
         private readonly ILogger<LLMProviderRepository> _logger;
-
-        private readonly string CollectionName = "LLMProvider";
-
         private readonly IMongoCollection<LLMProviderData> _llmProviderCollection;
 
-        public LLMProviderRepository(ILogger<LLMProviderRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraLLMProvider";
+        private readonly string CollectionName = "LLMProvider";
+
+        public LLMProviderRepository(ILogger<LLMProviderRepository> logger, IMongoClient client)
         {
             _logger = logger;
 
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _llmProviderCollection = database.GetCollection<LLMProviderData>(CollectionName);
         }
 

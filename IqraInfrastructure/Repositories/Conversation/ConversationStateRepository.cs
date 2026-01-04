@@ -15,12 +15,15 @@ namespace IqraInfrastructure.Repositories.Conversation
         private readonly IMongoCollection<ConversationState> _conversationStateCollection;
         private readonly ILogger<ConversationStateRepository> _logger;
 
-        public ConversationStateRepository(IMongoClient client, string databaseName, ILogger<ConversationStateRepository> logger)
+        private readonly string DatabaseName = "IqraConversationState";
+        private readonly string CollectionName = "ConversationStates";
+
+        public ConversationStateRepository(IMongoClient client, ILogger<ConversationStateRepository> logger)
         {
             _logger = logger;
 
-            var database = client.GetDatabase(databaseName);
-            _conversationStateCollection = database.GetCollection<ConversationState>("ConversationStates");
+            var database = client.GetDatabase(DatabaseName);
+            _conversationStateCollection = database.GetCollection<ConversationState>(CollectionName);
 
             CreateIndexes();
         }
@@ -423,13 +426,11 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<int> CleanupMaxDurationReachedConversationsAsync(string serverId, string regionId, DateTime thresholdTime)
+        public async Task<int> CleanupMaxDurationReachedConversationsAsync(DateTime thresholdTime)
         {
             try
             {
                 var filter = Builders<ConversationState>.Filter.And(
-                    Builders<ConversationState>.Filter.Eq(c => c.ProcessingServerId, serverId),
-                    Builders<ConversationState>.Filter.Eq(c => c.RegionId, regionId),
                     Builders<ConversationState>.Filter.Lt(c => c.ExpectedEndTimeAt, thresholdTime)
                 );
 
@@ -443,7 +444,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error cleaning up max duration reached conversations for server {ServerId} in region {RegionId}", serverId, regionId);
+                _logger.LogError(ex, "Error cleaning up max duration reached conversations");
                 throw;
             }
         }

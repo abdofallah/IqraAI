@@ -6,6 +6,7 @@ const SCRIPT_GRAPH_PLUGINS = {
 	History: X6.History,
 	Snapline: X6.Snapline,
 	Selection: X6.Selection,
+	Dnd: X6.Dnd,
 };
 
 const SCRIPT_NODE_TYPES = {
@@ -14,6 +15,7 @@ const SCRIPT_NODE_TYPES = {
 	AI_RESPONSE: 3,
 	SYSTEM_TOOL: 4,
 	CUSTOM_TOOL: 5,
+	FLOW_APP: 6
 };
 
 const SCRIPT_SYSTEM_TOOLS = {
@@ -35,7 +37,85 @@ const SCRIPT_END_CALL_SYSTEM_TOOL_TYPE = {
 };
 
 const SCRIPT_NODE_WIDTH = 520; // todo make dynamic
-const SCRIPT_NODE_MIN_HEIGHT = 300;
+const SCRIPT_NODE_MIN_HEIGHT = 185;
+
+const NODE_PRESETS = {
+	// --- Conversation ---
+	'user-query': {
+		shape: SCRIPT_NODE_TYPES.USER_QUERY,
+		defaultPorts: [{ group: 'input' }, { group: 'output' }]
+	},
+	'ai-response': {
+		shape: SCRIPT_NODE_TYPES.AI_RESPONSE,
+		defaultPorts: [{ group: 'input' }, { group: 'output' }]
+	},
+
+	// --- Logic ---
+	'go-to-node': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.GOTONODE,
+		config: { goToNodeId: null },
+		defaultPorts: [{ group: 'input' }] // No output
+	},
+	'add-script-context': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT,
+		config: { scriptId: null },
+		defaultPorts: [{ group: 'input' }, { group: 'output' }]
+	},
+
+	// --- Telephony ---
+	'end-call': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.END_CALL,
+		config: { type: SCRIPT_END_CALL_SYSTEM_TOOL_TYPE.IMMEDIATE },
+		defaultPorts: [{ group: 'input' }] // No output
+	},
+	'transfer-agent': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT,
+		config: { agentId: null, transferContext: false, summarizeContext: false },
+		defaultPorts: [{ group: 'input' }] // No output
+	},
+	'transfer-human': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN,
+		config: { phoneNumber: "" },
+		defaultPorts: [{ group: 'input' }] // No output
+	},
+	'send-sms': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.SEND_SMS,
+		config: { phoneNumberId: null, messages: {} },
+		// Ports added dynamically, but we add defaults for ghosting
+		defaultPorts: [{ group: 'input' }, { group: 'output', id: 'success' }, { group: 'output', id: 'error' }]
+	},
+	'get-dtmf': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT,
+		config: { timeout: 5000, requireStartAsterisk: false, requireEndHash: false, maxLength: 1, encryptInput: false, outcomes: [] },
+		defaultPorts: [{ group: 'input' }, { group: 'output', id: 'timeout' }]
+	},
+	'press-dtmf': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.PRESS_DTMF,
+		config: { digits: "" },
+		defaultPorts: [{ group: 'input' }, { group: 'output' }]
+	},
+
+	// --- Integrations ---
+	'retrieve-kb': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE,
+		config: { responseBeforeExecution: {} },
+		defaultPorts: [{ group: 'input' }, { group: 'output' }]
+	},
+	'custom-tool': {
+		shape: SCRIPT_NODE_TYPES.CUSTOM_TOOL,
+		data: { toolId: null, config: {} },
+		defaultPorts: [{ group: 'input' }, { group: 'output', id: 'outcome-default' }]
+	}
+};
 
 /** Dynamic Variables **/
 let scriptsManagerLanguageDropdown = null;
@@ -48,6 +128,7 @@ let ManageCurrentScriptType = null; // new or edit
 let CurrentScriptGraph = null;
 let CurrentScriptGraphHistory = null;
 let CurrentScriptGraphSelection = null;
+let CurrentScriptGraphDnd = null;
 
 let scriptDMTFNextOutcomeId = null;
 
@@ -57,7 +138,12 @@ let nodeConfigOffcanvas = null;
 let CurrentScriptNameMultiLangData = {};
 let CurrentScriptDescriptionMultiLangData = {};
 
+let CurrentScriptVariablesData = [];
+let NewVariableDescriptionMultiLangData = {};
+
 let CheckScriptMultiLangInterval = null;
+
+let variablesOffcanvas = null;
 
 let IsSavingScriptTab = false;
 let IsDeletingScriptTab = false;
@@ -82,6 +168,11 @@ const saveScriptButtonSpinner = scriptsManagerHeader.find(".save-button-spinner"
 
 const inputScriptName = scriptsManagerTab.find("#inputScriptName");
 const inputScriptDescription = scriptsManagerTab.find("#inputScriptDescription");
+
+const variableOffcanvasElement = scriptsManagerTab.find("#variablesOffcanvas");
+const variableOffcanvasDescriptionInput = variableOffcanvasElement.find("#newVarDescription");
+const variableOffcanvasDefaultInput = variableOffcanvasElement.find("#newVarDefault");
+const variableOffcanvasEditableInput = variableOffcanvasElement.find("#newVarEditable");
 
 /** API FUNCTIONS **/
 function SaveBusinessScript(formData, onSuccess, onError) {
@@ -161,6 +252,8 @@ function ResetAndEmptyScriptsManageTab() {
 		CurrentScriptGraphHistory = null;
 		CurrentScriptGraphSelection.dispose();
 		CurrentScriptGraphSelection = null;
+		CurrentScriptGraphDnd.dispose();
+        CurrentScriptGraphDnd = null;
 	}
 
 	CurrentScriptNameMultiLangData = {};
@@ -172,6 +265,19 @@ function ResetAndEmptyScriptsManageTab() {
 	});
 
 	scriptsManagerTab.find("input, textarea").val("");
+
+	// Variables Reset
+	CurrentScriptVariablesData = [];
+	NewVariableDescriptionMultiLangData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		NewVariableDescriptionMultiLangData[language] = "";
+	});
+
+	// Clear Variable Inputs
+	$("#newVarKey, #newVarDefault, #newVarDescription").val("");
+	$("#newVarType").val("1");
+	$("#newVarVisible").prop("checked", true);
+	$("#newVarEditable").prop("checked", false);
 
 	saveScriptButton.prop("disabled", true);
 	$("#scripts-manager-general-tab").click();
@@ -687,6 +793,53 @@ function checkScriptTabHasChanges(enableDisableButton = true, compileConversatio
 		}
 	}
 
+	// Variables
+	changes.variables = [];
+	if (compileConversationChanges) {
+		changes.variables = structuredClone(CurrentScriptVariablesData);
+	}
+
+	const savedVariables = ManageCurrentScriptData.variables || [];
+	if (CurrentScriptVariablesData.length !== savedVariables.length) {
+		hasChanges = true;
+	}
+
+	if (!hasChanges) {
+		// We iterate current to see if anything changed or was added
+		for (let i = 0; i < CurrentScriptVariablesData.length; i++) {
+			const currVar = CurrentScriptVariablesData[i];
+			const oldVar = savedVariables.find(v => v.key === currVar.key);
+
+			if (!oldVar) {
+				hasChanges = true; // New variable found
+				break;
+			}
+
+			// Primitive Fields
+			if (
+				(currVar.type.value ?? currVar.type) !== oldVar.type.value ||
+				currVar.defaultValue !== oldVar.defaultValue ||
+				currVar.isVisibleToAgent !== oldVar.isVisibleToAgent ||
+				currVar.isEditableByAI !== oldVar.isEditableByAI
+			) {
+				hasChanges = true;
+				break;
+			}
+
+			// Description (Multi-lang Dictionary)
+			let descChanged = false;
+			BusinessFullData.businessData.languages.forEach(lang => {
+				if (currVar.description[lang.id] !== oldVar.description[lang.id]) {
+					descChanged = true;
+				}
+			});
+			if (descChanged) {
+				hasChanges = true;
+				break;
+			}
+		}
+	}
+
 	if (enableDisableButton) {
 		saveScriptButton.prop("disabled", !hasChanges);
 	}
@@ -936,6 +1089,8 @@ function fillScriptManagerTab() {
 		}
 		// System Tool Data
 		else if (nodeBase.shape === SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+			nodeBase.size.height = 135;
+
 			nodeBase.data.toolType = node.toolType.value;
 
 			nodeBase.data.config = {};
@@ -980,6 +1135,8 @@ function fillScriptManagerTab() {
 		}
 		// Custom Tool Data
 		else if (nodeBase.shape === SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+			nodeBase.size.height = 135;
+
 			nodeBase.data.config = {};
 			nodeBase.data.toolId = node.toolId;
 		}
@@ -1255,16 +1412,10 @@ function fillScriptManagerTab() {
 		};
 
 		const currentEdge = CurrentScriptGraph.addEdge(edgeBase);
-
-		// Remove the circle from line
-		currentEdge.setAttrs({ line: { targetMarker: "" } });
-
-		// Add Remove Button Tool
-		currentEdge.addTools({
-			name: "button-remove",
-			args: { distance: "50%" },
-		});
 	});
+
+	// Load Variables (Deep Copy)
+	CurrentScriptVariablesData = structuredClone(ManageCurrentScriptData.variables || []);
 }
 
 // Script Graph
@@ -1379,8 +1530,6 @@ function registerScriptNodes() {
                 </div>
             `;
 
-			updateScriptGraphNodeSize(cell, div);
-
 			return div;
 		},
 	});
@@ -1456,8 +1605,6 @@ function registerScriptNodes() {
                 </div>
             `;
 
-			updateScriptGraphNodeSize(cell, div);
-
 			return div;
 		},
 	});
@@ -1466,7 +1613,7 @@ function registerScriptNodes() {
 	X6.Shape.HTML.register({
 		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
 		width: SCRIPT_NODE_WIDTH,
-		height: SCRIPT_NODE_MIN_HEIGHT,
+		height: 135,
 		effect: [],
 		ports: {
 			groups: {
@@ -1548,8 +1695,6 @@ function registerScriptNodes() {
                 </div>
             `;
 
-			updateScriptGraphNodeSize(cell, div);
-
 			return div;
 		},
 	});
@@ -1558,7 +1703,7 @@ function registerScriptNodes() {
 	X6.Shape.HTML.register({
 		shape: SCRIPT_NODE_TYPES.CUSTOM_TOOL,
 		width: SCRIPT_NODE_WIDTH,
-		height: SCRIPT_NODE_MIN_HEIGHT,
+		height: 135,
 		effect: [],
 		ports: {
 			groups: {
@@ -1640,7 +1785,104 @@ function registerScriptNodes() {
                 </div>
             `;
 
-			updateScriptGraphNodeSize(cell, div);
+			return div;
+		},
+	});
+
+	// FlowApp Node
+	X6.Shape.HTML.register({
+		shape: SCRIPT_NODE_TYPES.FLOW_APP,
+		width: SCRIPT_NODE_WIDTH,
+		height: 135,
+		effect: [],
+		ports: {
+			groups: {
+				input: {
+					position: "top",
+					attrs: {
+						circle: {
+							r: 10,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+				output: {
+					position: "bottom",
+					attrs: {
+						circle: {
+							r: 8,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+						text: {
+							fill: "#fff",
+						},
+					},
+					label: {
+						position: "bottom",
+					},
+				},
+			},
+		},
+		html(cell) {
+			const div = document.createElement("div");
+			div.className = "script-node script-flowapp-node"; // Add specific class for styling
+
+			const data = cell.getData() || {};
+			const appDef = SpecificationFlowAppsListData.find(a => a.appKey === data.appKey);
+
+			// Fallback visuals if app def is missing (e.g. app deleted/disabled)
+			const appName = appDef ? appDef.name : (data.appKey || "Unknown App");
+			const appIcon = appDef && appDef.iconUrl
+				? `<img src="${appDef.iconUrl}" style="width: 20px; height: 20px; margin-right: 8px;">`
+				: `<i class="fa-regular fa-plug me-2"></i>`;
+
+			// Determine Action Label
+			let actionLabel = '<span class="text-muted fst-italic" data-input="flow-app-action-label">Select Action...</span>';
+			if (data.actionKey && appDef) {
+				const actionDef = appDef.actions.find(a => a.actionKey === data.actionKey);
+				if (actionDef) {
+					actionLabel = `<span class="fw-bold text-white" data-input="flow-app-action-label">${actionDef.name}</span>`;
+				} else {
+					actionLabel = `<span class="text-danger" data-input="flow-app-action-label">Invalid Action</span>`;
+				}
+			}
+
+			// Styling for the specific node type (inline or class)
+			// We reuse the header structure but inject the App Icon
+			div.innerHTML = `
+                <div class="script-node-header">
+                    <div>
+						<div class="d-flex align-items-center btn-ic-span-align node-title">
+							${appIcon}
+							<span>${appName}</span>
+						</div>
+						<span class="node-id">${cell.id}</span>
+					</div>
+                    <div class="node-actions html-shape-immovable">
+                        <button class="btn btn-light btn-sm me-2" data-action="configure-flow-app">
+                            <i class="fa-regular fa-gear"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" data-action="delete-node">
+                            <i class="fa-regular fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="script-node-content">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-body p-2 d-flex align-items-center justify-content-between">
+                            <span class="small text-muted">Action:</span>
+                            ${actionLabel}
+                        </div>
+                    </div>
+                    ${data.integrationId ? `<div class="mt-1 text-end"><span class="badge bg-success bg-opacity-10 text-success" style="font-size: 0.65rem;"><i class="fa-solid fa-link me-1"></i>Connected</span></div>` : ''}
+                </div>
+            `;
 
 			return div;
 		},
@@ -1653,7 +1895,8 @@ function initializeScriptGraph(isNew = true) {
 	return resizeScriptGraphCSS((graphSize) => {
 		// Set Default Shape Attributes
 		X6.Shape.Edge.defaults.attrs.line.stroke = "#fff";
-		X6.Shape.Edge.defaults.attrs.line.targetMarker = "circle";
+		X6.Shape.Edge.defaults.attrs.line.sourceMarker = "classic";
+		X6.Shape.Edge.defaults.attrs.line.targetMarker = "classic";
 
 		// Create the graph instance
 		const graph = new X6.Graph({
@@ -1692,12 +1935,12 @@ function initializeScriptGraph(isNew = true) {
 				modifiers: [],
 			},
 			connecting: {
-				anchor: "center",
 				connector: {
 					name: "rounded",
-					args: {},
+					args: {
+						radius: 20,
+					},
 				},
-				connectionPoint: "boundary",
 				allowBlank: false,
 				allowLoop: false,
 				allowNode: false,
@@ -1705,9 +1948,9 @@ function initializeScriptGraph(isNew = true) {
 				allowMulti: false,
 				highlight: true,
 				router: {
-					name: "manhattan",
+					name: "orth",
 					args: {
-						padding: 10,
+						padding: 4,
 					},
 				},
 				validateConnection({ sourceView, targetView, sourceMagnet, targetMagnet }) {
@@ -1789,7 +2032,6 @@ function initializeScriptGraph(isNew = true) {
 					return true;
 				},
 			},
-			interacting: true,
 			// Prevent node text selection
 			preventDefaultContextMenu: ({ view, event }) => {
 				if (!view || view == null) {
@@ -1802,8 +2044,7 @@ function initializeScriptGraph(isNew = true) {
 				}
 
 				return true;
-			},
-			preventDefaultBlankAction: true,
+			}
 		});
 
 		// Add minimap plugin
@@ -1886,6 +2127,21 @@ function initializeScriptGraph(isNew = true) {
 			graph.use(CurrentScriptGraphSelection);
 		}
 
+		// DND Plugin
+		if (SCRIPT_GRAPH_PLUGINS.Dnd) {
+			CurrentScriptGraphDnd = new SCRIPT_GRAPH_PLUGINS.Dnd({
+				target: graph,
+				scaled: false, // Don't scale the node based on zoom while dragging (keeps it readable)
+				dndContainer: document.querySelector('.script-graph-sidebar-left'),
+				getDragNode: (node) => {
+					return node.clone({ keepId: true }) // Ghost node
+				}, 
+				getDropNode: (node) => {
+					return node.clone({ keepId: true }) // Final node
+				}, 
+			});
+		}
+
 		// Add start node if new graph
 		if (isNew) {
 			const CurrentScriptGraphStartNode = graph.addNode({
@@ -1933,17 +2189,6 @@ function initializeScriptGraph(isNew = true) {
 			}
 		});
 
-		graph.on("edge:connected", (event) => {
-			// Remove the circle from line
-			event.edge.setAttrs({ line: { targetMarker: "" } });
-
-			// Add Remove Button Tool
-			event.edge.addTools({
-				name: "button-remove",
-				args: { distance: "50%" },
-			});
-		});
-
 		graph.on("edge:mouseenter", (event) => {
 			event.edge.setAttrs({ line: { strokeDasharray: 5, style: "animation: ant-line 30s infinite linear" } });
 		});
@@ -1965,6 +2210,22 @@ function initializeScriptGraph(isNew = true) {
 			}
 
 			CurrentScriptGraphSelection.clean();
+
+			console.log(cell);
+		});
+
+		graph.on("edge:added", (event) => {
+			console.log("edge:added", event);
+
+			// Add Remove Button Tool
+			event.edge.addTools({
+				name: "button-remove",
+				args: { distance: "50%" },
+			});
+		});
+
+		graph.on("edge:connected", (event) => {
+			console.log("edge:connected", event);
 		});
 
 		graph.on("blank:click", () => {
@@ -1973,24 +2234,6 @@ function initializeScriptGraph(isNew = true) {
 
 		CurrentScriptGraph = graph;
 	});
-}
-
-function updateScriptGraphNodeSize(cell, div) {
-	if (!div || (div === null && cell)) {
-		setTimeout(() => updateScriptGraphNodeSize(cell, div), 100);
-		return;
-	}
-
-	const contentHeight = div.offsetHeight;
-
-	if (contentHeight === 0) {
-		setTimeout(() => updateScriptGraphNodeSize(cell, div), 100);
-		return;
-	}
-
-	if (contentHeight !== cell.getSize().height) {
-		cell.resize(SCRIPT_NODE_WIDTH, contentHeight);
-	}
 }
 
 function resizeScriptGraphCSS(callback, isFullscreen = false) {
@@ -2018,6 +2261,116 @@ function adjustScriptGraphMultilanguageDropdownForFullscreen(isFullscreen) {
 	} else {
 		languageDropdown.appendTo("#scriptsManagerMultiLanguageParentContainer");
 	}
+}
+
+// Nodes
+function createNodeFromPreset(presetId, graph) {
+	// Handle Dynamic FlowApps
+	if (presetId.startsWith("flowapp-")) {
+		const appKey = presetId.replace("flowapp-", "");
+		const appDef = SpecificationFlowAppsListData.find(a => a.appKey === appKey);
+
+		if (!appDef) {
+			console.error("FlowApp definition not found:", appKey);
+			return null;
+		}
+
+		// Initialize Multi-Language Speaking Field
+		const speakingBeforeExecution = {};
+		BusinessFullData.businessData.languages.forEach(l => speakingBeforeExecution[l.id] = "");
+
+		const nodeData = {
+			type: SCRIPT_NODE_TYPES.FLOW_APP,
+			appKey: appKey,
+			actionKey: null, // User must select this later
+			integrationId: null,
+			speakingBeforeExecution: speakingBeforeExecution,
+			inputs: [] // List of { key, value, isAiGenerated, isRedacted }
+		};
+
+		return graph.createNode({
+			shape: SCRIPT_NODE_TYPES.FLOW_APP,
+			width: SCRIPT_NODE_WIDTH,
+			height: 135, // Slightly taller to show Action Name
+			data: nodeData,
+			ports: {} // Ports will be added later when action is selected
+		});
+	}
+
+	const preset = NODE_PRESETS[presetId];
+	if (!preset) {
+		console.error("Unknown node preset:", presetId);
+		return null;
+	}
+
+	// Base Data Structure
+	const nodeData = {
+		type: preset.shape
+	};
+
+	// 1. Initialize Multi-Language Fields
+	if (preset.shape === SCRIPT_NODE_TYPES.USER_QUERY) {
+		nodeData.query = {};
+		nodeData.examples = {};
+		BusinessFullData.businessData.languages.forEach(l => {
+			nodeData.query[l.id] = "";
+			nodeData.examples[l.id] = [];
+		});
+	}
+	else if (preset.shape === SCRIPT_NODE_TYPES.AI_RESPONSE) {
+		nodeData.response = {};
+		nodeData.examples = {};
+		BusinessFullData.businessData.languages.forEach(l => {
+			nodeData.response[l.id] = "";
+			nodeData.examples[l.id] = [];
+		});
+	}
+	else if (preset.shape === SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+		nodeData.toolType = preset.toolType;
+		nodeData.config = JSON.parse(JSON.stringify(preset.config)); // Deep copy
+
+		// Specific multi-lang inits for System Tools
+		if (preset.toolType === SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+			nodeData.config.messages = {};
+			BusinessFullData.businessData.languages.forEach(l => nodeData.config.messages[l.id] = "");
+		}
+		else if (preset.toolType === SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
+			nodeData.config.responseBeforeExecution = {};
+			BusinessFullData.businessData.languages.forEach(l => nodeData.config.responseBeforeExecution[l.id] = "");
+		}
+		else if (preset.toolType === SCRIPT_SYSTEM_TOOLS.END_CALL) {
+			// If type is with message (not default but possible in future presets)
+			if (nodeData.config.type === SCRIPT_END_CALL_SYSTEM_TOOL_TYPE.WITH_MESSAGE) {
+				nodeData.config.messages = {};
+				BusinessFullData.businessData.languages.forEach(l => nodeData.config.messages[l.id] = "");
+			}
+		}
+	}
+	else if (preset.shape === SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+		nodeData.toolId = null;
+		nodeData.config = {};
+	}
+
+	// 2. Create the Node Definition
+	// We use the same size constants as the HTML shapes
+	let width = SCRIPT_NODE_WIDTH;
+	let height = SCRIPT_NODE_MIN_HEIGHT;
+
+	if (preset.shape === SCRIPT_NODE_TYPES.SYSTEM_TOOL || preset.shape === SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+		height = 135;
+	}
+
+	const node = graph.createNode({
+		shape: preset.shape, // e.g. 2, 3, 4
+		width: width,
+		height: height,
+		data: nodeData,
+		ports: {
+			items: preset.defaultPorts || []
+		}
+	});
+
+	return node;
 }
 
 // Script User Query Node
@@ -2650,8 +3003,649 @@ function UpdateCustomToolNodePorts(cell, toolId) {
 	});
 }
 
+// Script FlowApps
+function renderFlowAppsSidebar() {
+	const container = $("#sidebarIntegrationsGrid");
+
+	// Remove existing dynamic items (if any re-init happens) to prevent duplicates
+	container.find('.sidebar-node-item[data-preset-id^="flowapp-"]').remove();
+
+	if (!SpecificationFlowAppsListData || SpecificationFlowAppsListData.length === 0) return;
+
+	SpecificationFlowAppsListData.forEach(app => {
+		if (app.isDisabled) return; // Skip disabled apps if we want to hide them, or show with lock icon
+
+		// Use a generic icon if URL is missing/broken, otherwise use the provided URL
+		const iconHtml = app.iconUrl
+			? `<img src="${app.iconUrl}">`
+			: `<i class="fa-regular fa-plug"></i>`;
+
+		const itemHtml = `
+            <div class="sidebar-node-item" data-preset-id="flowapp-${app.appKey}">
+                ${iconHtml}
+                <span>${app.name}</span>
+            </div>
+        `;
+
+		container.append(itemHtml);
+	});
+}
+
+function generateFlowAppConfig(cell) {
+	const data = cell.getData() || {};
+	const appKey = data.appKey;
+	const currentLanguage = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
+
+	// 1. Find Definition
+	const appDef = SpecificationFlowAppsListData.find(a => a.appKey === appKey);
+	if (!appDef) return `<div class="alert alert-danger">App Definition not found for ${appKey}</div>`;
+
+	// 2. Action Selector
+	const actionsOptions = appDef.actions
+		.filter(a => !a.isDisabled) // Filter out disabled actions
+		.map(action => `
+            <option value="${action.actionKey}" ${data.actionKey === action.actionKey ? "selected" : ""}>
+                ${action.name}
+            </option>
+        `).join("");
+
+	let actionSection = `
+        <div class="tool-config-group mb-4">
+            <label class="form-label fw-bold">Select Action</label>
+            <select class="form-select" data-input="flow-app-action">
+                <option value="" disabled ${!data.actionKey ? "selected" : ""}>Choose an action...</option>
+                ${actionsOptions}
+            </select>
+            ${data.actionKey ? `<div class="form-text text-muted small mt-1">${appDef.actions.find(a => a.actionKey === data.actionKey)?.description || ""}</div>` : ""}
+        </div>
+    `;
+
+	// If no action selected, stop here
+	if (!data.actionKey) {
+		return actionSection + `<div class="text-center text-muted fst-italic mt-5">Please select an action to configure.</div>`;
+	}
+
+	const selectedActionDef = appDef.actions.find(a => a.actionKey === data.actionKey);
+
+	// 3. Integration Selector (If required)
+	let integrationSection = "";
+	if (selectedActionDef.requiresIntegration && appDef.integrationType) {
+		// Filter business integrations that match the App's type (e.g. "CalCom")
+		const validIntegrations = BusinessFullData.businessApp.integrations.filter(
+			i => i.type === appDef.integrationType
+		);
+
+		const integrationOptions = validIntegrations.map(integ => `
+            <option value="${integ.id}" ${data.integrationId === integ.id ? "selected" : ""}>
+                ${integ.friendlyName}
+            </option>
+        `).join("");
+
+		integrationSection = `
+            <div class="tool-config-group mb-4">
+                <label class="form-label fw-bold">Integration Connection <span class="text-danger">*</span></label>
+                <select class="form-select" data-input="flow-app-integration">
+                    <option value="" disabled ${!data.integrationId ? "selected" : ""}>Select Account...</option>
+                    ${integrationOptions}
+                </select>
+                ${validIntegrations.length === 0 ? `<div class="alert alert-warning mt-2 small">No ${appDef.name} integrations found. Please add one in the Integrations tab.</div>` : ""}
+            </div>
+        `;
+	}
+
+	// 4. Speaking Before Execution
+	const speakingSection = `
+        <div class="tool-config-group mb-4">
+            <label class="form-label fw-bold btn-ic-span-align">
+                <span>Speak Before Execution</span> <i class="fa-regular fa-language"></i>
+            </label>
+            <textarea 
+                class="form-control" 
+                data-input="flow-app-speaking"
+                placeholder="e.g., Let me check that for you..."
+                rows="2"
+            >${data.speakingBeforeExecution?.[currentLanguage] || ""}</textarea>
+            <div class="form-text text-muted small">Optional audio filler while the tool runs.</div>
+        </div>
+    `;
+
+	// 5. Inputs Container (Schema Renderer)
+	const inputsSection = `
+        <div class="tool-config-group">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold mb-0">Inputs</label>
+                <!-- Optional: Test Button could go here later -->
+            </div>
+            <div id="flowAppSchemaContainer" class="border rounded p-3 bg-darker">
+                <!-- Schema Renderer will inject form here -->
+                <div class="text-center"><i class="fa-solid fa-spinner fa-spin text-muted"></i></div>
+            </div>
+        </div>
+    `;
+
+	return actionSection + integrationSection + speakingSection + inputsSection;
+}
+
+function updateFlowAppConfig(partialData) {
+	if (CurrentCanvasConfigCell) {
+		const currentData = CurrentCanvasConfigCell.getData();
+		CurrentCanvasConfigCell.replaceData({ ...currentData, ...partialData });
+	}
+}
+
+function UpdateFlowAppNodePorts(cell, actionDef) {
+	if (!actionDef) return;
+
+	const portsToAdd = actionDef.outputPorts || [];
+
+	// 1. Remove existing OUTPUT ports
+	const currentPorts = cell.getPorts();
+	const outputPorts = currentPorts.filter(p => p.group === 'output');
+	outputPorts.forEach(p => cell.removePort(p.id));
+
+	// 2. Add New Ports
+	portsToAdd.forEach(portDef => {
+		// Style specific ports (Success/Error)
+		let attrs = { circle: { fill: "#fff" }, text: { text: portDef.label } };
+
+		if (portDef.key === 'error') attrs.circle.fill = '#dc3545'; // Red
+		if (portDef.key === 'success') attrs.circle.fill = '#198754'; // Green
+		if (portDef.key === 'timeout' || portDef.key === 'not_found') attrs.circle.fill = '#ffc107'; // Yellow
+
+		cell.addPort({
+			group: 'output',
+			id: portDef.key, // Use Key as ID (e.g. "success")
+			attrs: attrs,
+			label: { position: "bottom" }
+		});
+	});
+}
+
+function renderFlowAppSchemaInputs() {
+	const container = $("#flowAppSchemaContainer");
+
+	if (!CurrentCanvasConfigCell) {
+		container.html('<div class="text-muted small">Select a node first.</div>');
+		return;
+	}
+
+	const data = CurrentCanvasConfigCell.getData();
+	if (!data.actionKey) {
+		container.html('<div class="text-muted small text-center">Select an action above to configure inputs.</div>');
+		return;
+	}
+
+	const appDef = SpecificationFlowAppsListData.find(a => a.appKey === data.appKey);
+	const actionDef = appDef.actions.find(a => a.actionKey === data.actionKey);
+
+	let schema;
+	try {
+		schema = JSON.parse(actionDef.inputSchemaJson);
+	} catch (e) {
+		container.html('<div class="alert alert-danger small">Invalid Schema JSON</div>');
+		return;
+	}
+
+	let html = "";
+
+	// --- 1. Handle Polymorphism (oneOf) ---
+	let activeProperties = schema.properties || {};
+	let requiredFields = schema.required || [];
+
+	if (schema.oneOf && schema.oneOf.length > 0) {
+		// Get saved selection or default to 0
+		const selectedIndex = data.uiState?.oneOfSelection || 0;
+
+		// Render Selector
+		const options = schema.oneOf.map((opt, idx) =>
+			`<option value="${idx}" ${idx === selectedIndex ? "selected" : ""}>${opt.title || `Option ${idx + 1}`}</option>`
+		).join("");
+
+		html += `
+            <div class="mb-3 border-bottom border-secondary pb-3">
+                <label class="form-label small text-info">Input Mode</label>
+                <select class="form-select form-select-sm" data-action="flowapp-oneof-change">
+                    ${options}
+                </select>
+            </div>
+        `;
+
+		// Merge Sub-Schema Properties
+		const subSchema = schema.oneOf[selectedIndex];
+		activeProperties = { ...activeProperties, ...subSchema.properties };
+		if (subSchema.required) {
+			requiredFields = [...requiredFields, ...subSchema.required];
+		}
+	}
+
+	// --- 2. Render Fields ---
+	const inputsMap = convertInputsArrayToMap(data.inputs); // Helper to find current values
+
+	if (Object.keys(activeProperties).length === 0) {
+		html += '<div class="text-muted small fst-italic">No inputs required for this action.</div>';
+	} else {
+		Object.keys(activeProperties).forEach(key => {
+			const propSchema = activeProperties[key];
+			const isRequired = requiredFields.includes(key);
+			const currentValue = inputsMap[key]; // { value, isAiGenerated, isRedacted } or undefined
+
+			html += renderSchemaField(key, propSchema, currentValue, isRequired, data.appKey);
+		});
+	}
+
+	container.html(html);
+
+	// Trigger Fetchers for dropdowns
+	triggerFlowAppFetchers(activeProperties, data);
+}
+
+function renderSchemaField(key, schema, currentInput, isRequired, appKey) {
+	const label = schema.title || key;
+	const description = schema.description || "";
+
+	// Defaults
+	const val = currentInput?.value ?? (schema.default || "");
+	const isAi = currentInput?.isAiGenerated || false;
+	const isRedacted = currentInput?.isRedacted || false;
+
+	// --- Control Type Logic ---
+	let inputControl = "";
+
+	// A. Fetcher (Dynamic Dropdown)
+	if (schema["x-fetcher"]) {
+		inputControl = `
+            <select class="form-select form-select-sm" 
+                data-input-key="${key}" 
+                data-fetcher="${schema["x-fetcher"]}"
+                data-dependent-on='${JSON.stringify(schema["x-fetcher-dependent-on"] || [])}'
+                ${isAi ? "disabled style='display:none'" : ""}
+            >
+                <option value="${val}" selected>${val || "Loading..."}</option>
+            </select>
+        `;
+	}
+	// B. Static Enum
+	else if (schema.enum) {
+		const opts = schema.enum.map(opt => `<option value="${opt}" ${val === opt ? "selected" : ""}>${opt}</option>`).join("");
+		inputControl = `<select class="form-select form-select-sm" data-input-key="${key}" ${isAi ? "disabled style='display:none'" : ""}>${opts}</select>`;
+	}
+	// C. Boolean
+	else if (schema.type === "boolean") {
+		inputControl = `
+            <div class="form-check form-switch" ${isAi ? "style='display:none'" : ""}>
+                <input class="form-check-input" type="checkbox" data-input-key="${key}" ${val === true ? "checked" : ""}>
+            </div>
+        `;
+	}
+	// D. Standard Text/Number (Default)
+	else {
+		inputControl = `
+            <input type="${schema.type === 'integer' || schema.type === 'number' ? 'text' : 'text'}" 
+                class="form-control form-control-sm" 
+                data-input-key="${key}" 
+                value="${val}" 
+                placeholder="${schema.placeholder || ''}"
+                ${isAi ? "style='display:none'" : ""} 
+            />
+        `;
+	}
+
+	// --- AI Generated Overlay ---
+	const aiOverlay = `
+        <div class="ai-generated-placeholder ${isAi ? "" : "d-none"} border border-info rounded p-2 bg-dark d-flex justify-content-between align-items-center">
+            <span class="small text-info"><i class="fa-regular fa-sparkles me-1"></i>AI Generated</span>
+            <div class="form-check form-check-inline m-0">
+                <input class="form-check-input" type="checkbox" data-redact-key="${key}" ${isRedacted ? "checked" : ""}>
+                <label class="form-check-label small text-muted">Redact</label>
+            </div>
+        </div>
+    `;
+
+	return `
+        <div class="mb-3 input-field-group" data-field-key="${key}">
+            <div class="d-flex justify-content-between mb-1">
+                <label class="form-label small mb-0">${label} ${isRequired ? '<span class="text-danger">*</span>' : ''}</label>
+                <div class="form-check form-switch min-h-0 mb-0">
+                    <input class="form-check-input" type="checkbox" data-ai-toggle="${key}" ${isAi ? "checked" : ""} title="Generated by AI">
+                </div>
+            </div>
+            ${inputControl}
+            ${aiOverlay}
+            ${description ? `<div class="form-text small mt-0">${description}</div>` : ""}
+        </div>
+    `;
+}
+
+function initFlowAppSchemaHandlers() {
+
+	// 1. OneOf Mode Change
+	$("#nodeConfigOffcanvas").on("change", '[data-action="flowapp-oneof-change"]', (e) => {
+		const idx = parseInt(e.target.value);
+
+		// Save UI State
+		const data = CurrentCanvasConfigCell.getData();
+		const uiState = data.uiState || {};
+		uiState.oneOfSelection = idx;
+
+		// Reset Inputs (Schema changed, old inputs might be invalid)
+		// Optionally logic could try to keep overlapping keys
+		// For now, let's keep inputs but they might just be hidden
+
+		updateFlowAppConfig({ uiState });
+		renderFlowAppSchemaInputs(); // Re-render form
+	});
+
+	// 2. Input Change (Text, Select, Boolean)
+	$("#nodeConfigOffcanvas").on("input change", '[data-input-key]', (e) => {
+		const key = $(e.target).data("input-key");
+		let value;
+
+		if ($(e.target).attr("type") === "checkbox") {
+			value = $(e.target).is(":checked");
+		} else {
+			value = $(e.target).val();
+		}
+
+		saveFlowAppInput(key, { value });
+
+		// Trigger dependencies update if this field drives others
+		checkFetcherDependencies(key);
+	});
+
+	// 3. AI Toggle Change
+	$("#nodeConfigOffcanvas").on("change", '[data-ai-toggle]', (e) => {
+		const key = $(e.target).data("ai-toggle");
+		const isAi = $(e.target).is(":checked");
+
+		saveFlowAppInput(key, { isAiGenerated: isAi });
+		renderFlowAppSchemaInputs(); // Re-render to show/hide overlay
+	});
+
+	// 4. Redact Change
+	$("#nodeConfigOffcanvas").on("change", '[data-redact-key]', (e) => {
+		const key = $(e.target).data("redact-key");
+		const isRedacted = $(e.target).is(":checked");
+
+		saveFlowAppInput(key, { isRedacted: isRedacted });
+	});
+}
+
+// Helper to save partial input updates to the Node Data List
+function saveFlowAppInput(key, updates) {
+	if (!CurrentCanvasConfigCell) return;
+	const data = CurrentCanvasConfigCell.getData();
+	let inputs = data.inputs || [];
+
+	let inputObj = inputs.find(i => i.key === key);
+	if (!inputObj) {
+		inputObj = { key: key, value: "", isAiGenerated: false, isRedacted: false };
+		inputs.push(inputObj);
+	}
+
+	// Merge updates
+	if (updates.value !== undefined) inputObj.value = updates.value;
+	if (updates.isAiGenerated !== undefined) inputObj.isAiGenerated = updates.isAiGenerated;
+	if (updates.isRedacted !== undefined) inputObj.isRedacted = updates.isRedacted;
+
+	CurrentCanvasConfigCell.replaceData({ ...data, inputs });
+}
+
+function convertInputsArrayToMap(inputsArr) {
+	const map = {};
+	if (inputsArr) {
+		inputsArr.forEach(i => map[i.key] = i);
+	}
+	return map;
+}
+
+async function triggerFlowAppFetchers(activeProperties, nodeData) {
+	// Loop through all rendered fetcher selects
+	$('[data-fetcher]').each(async function () {
+		const selectEl = $(this);
+		const key = selectEl.data("input-key");
+		const fetcherKey = selectEl.data("fetcher");
+		const dependencies = selectEl.data("dependent-on"); // Array
+
+		// 1. Check Dependencies
+		// We construct a context object from current inputs
+		const context = {};
+		const inputsMap = convertInputsArrayToMap(nodeData.inputs);
+
+		// If dependencies are missing, show default option and disable
+		let dependenciesMet = true;
+		if (dependencies && dependencies.length > 0) {
+			dependencies.forEach(depKey => {
+				const depVal = inputsMap[depKey]?.value;
+				if (!depVal || depVal === "") dependenciesMet = false;
+				context[depKey] = depVal;
+			});
+		}
+
+		if (!dependenciesMet && dependencies.length > 0) {
+			selectEl.html('<option disabled selected>Select parent first...</option>');
+			selectEl.prop("disabled", true);
+			return;
+		} else {
+			selectEl.prop("disabled", false);
+		}
+
+		// 2. Loading State
+		// Only fetch if we haven't already populated it OR if it's dependent (might need refresh)
+		// For simplicity, we fetch when dependencies are met.
+		selectEl.prop("disabled", true);
+		const originalVal = selectEl.val(); // Keep selected value if possible
+		selectEl.html('<option disabled selected>Loading...</option>');
+
+		try {
+			// 3. Call API
+			// POST /app/user/business/{id}/flowapps/{appKey}/fetchers/{fetcherKey}
+			const response = await $.ajax({
+				url: `/app/user/business/${CurrentBusinessId}/flowapps/${nodeData.appKey}/fetchers/${fetcherKey}`,
+				method: "POST",
+				contentType: "application/json",
+				data: JSON.stringify({
+					integrationId: nodeData.integrationId,
+					context: context // Pass current form state
+				})
+			});
+
+			if (response.success) {
+				let optionsHtml = `<option value="" disabled selected>Select...</option>`;
+				response.data.forEach(opt => {
+					const isSelected = String(opt.value) === String(originalVal) ? "selected" : "";
+					optionsHtml += `<option value="${opt.value}" ${isSelected}>${opt.label}</option>`;
+				});
+				selectEl.html(optionsHtml);
+			} else {
+				selectEl.html(`<option disabled>Error: ${response.message}</option>`);
+			}
+		} catch (err) {
+			console.error(err);
+			selectEl.html('<option disabled>Fetch Error</option>');
+		} finally {
+			selectEl.prop("disabled", false);
+		}
+	});
+}
+
+function checkFetcherDependencies(changedKey) {
+	// Re-trigger fetchers if the changed key is a dependency
+	const nodeData = CurrentCanvasConfigCell.getData();
+	// Re-render essentially triggers the fetchers logic
+	// Optimization: Only trigger specific fetchers that have changedKey in their 'data-dependent-on'
+	// But re-rendering logic is safer to keep state consistent
+	renderFlowAppSchemaInputs();
+}
+
+// Scripts Variables List
+function renderVariablesList() {
+	const container = $("#variablesListContainer");
+	container.empty();
+
+	if (!CurrentScriptVariablesData || CurrentScriptVariablesData.length === 0) {
+		container.html(`
+            <div class="text-center text-muted mt-5 empty-vars-notice">
+                <i class="fa-regular fa-brackets-curly fa-2x mb-2"></i>
+                <p>No variables defined.</p>
+            </div>
+        `);
+		return;
+	}
+
+	const currentLang = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
+
+	CurrentScriptVariablesData.forEach((v, index) => {
+		const typeLabel = v.type === 1 ? "String" : v.type === 2 ? "Number" : "Boolean";
+
+		let badges = "";
+		if (v.isVisibleToAgent) badges += '<i class="fa-regular fa-eye text-success me-2" title="Visible to Agent"></i>';
+		else badges += '<i class="fa-regular fa-eye-slash text-warning me-2" title="Hidden from Agent"></i>';
+
+		if (v.isEditableByAI) badges += '<i class="fa-regular fa-pen-to-square text-info" title="Editable by AI"></i>';
+		else badges += '<i class="fa-regular fa-lock text-secondary" title="Static/Read-only"></i>';
+
+		const itemHtml = `
+            <div class="card bg-dark border-secondary mb-2 variable-item" data-index="${index}">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold text-info font-monospace" style="word-break: break-all;max-width: 75%;">{{scriptVariable.${v.key}}}</span>
+                        <div>
+                            ${badges}
+                            <button class="btn btn-link btn-sm text-danger p-0 ms-2 delete-var-btn" style="text-decoration:none;">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="small text-white mb-1 text-truncate">${v.description[currentLang] || v.description[BusinessDefaultLanguage]}</div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>${typeLabel}</span>
+                        <span>Def: ${v.defaultValue || "<em>null</em>"}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+		container.append(itemHtml);
+	});
+}
+
+function initVariablesHandlers() {
+	variableOffcanvasEditableInput.on("change", function () {
+		const isEditable = $(this).is(":checked");
+		if (!isEditable) {
+			variableOffcanvasDefaultInput.attr("placeholder", "Value (Required for Static Variables)");
+			variableOffcanvasDefaultInput.addClass("border-warning"); // Visual cue
+		} else {
+			variableOffcanvasDefaultInput.attr("placeholder", "Default Value (Optional)");
+			variableOffcanvasDefaultInput.removeClass("border-warning");
+		}
+	});
+
+	variableOffcanvasDescriptionInput.on("input", (e) => {
+		const currentLanguage = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
+		NewVariableDescriptionMultiLangData[currentLanguage] = $(e.target).val();
+	});
+
+	scriptsManagerLanguageDropdown.onLanguageChange((language) => {
+		// Only update if the offcanvas is open
+		if (variableOffcanvasElement.hasClass("show")) {
+			variableOffcanvasDescriptionInput.val(NewVariableDescriptionMultiLangData[language.id] || "");
+		}
+	});
+
+	// Open Offcanvas
+	$("#script-graph-variables").on("click", () => {
+		// Render current list
+		renderVariablesList();
+
+		// Reset inputs for new entry
+		const currentLanguage = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
+		variableOffcanvasDescriptionInput.val(NewVariableDescriptionMultiLangData[currentLanguage] || "");
+
+		variablesOffcanvas.show();
+	});
+
+	$("#addVariableBtn").on("click", () => {
+		const keyInput = variableOffcanvasElement.find("#newVarKey");
+		const typeInput = variableOffcanvasElement.find("#newVarType");
+		const visibleInput = variableOffcanvasElement.find("#newVarVisible");
+
+		const key = keyInput.val().trim();
+		const type = parseInt(typeInput.val());
+		const defaultValue = variableOffcanvasDefaultInput.val().trim();
+		const isVisible = visibleInput.is(":checked");
+		const isEditable = variableOffcanvasEditableInput.is(":checked");
+
+		// A. Validation: Key
+		if (!key) return AlertManager.createAlert({ type: "danger", message: "Variable Key is required.", timeout: 6000 });
+		if (!/^[a-zA-Z0-9_]+$/.test(key)) return AlertManager.createAlert({ type: "danger", message: "Key must contain only letters, numbers, and underscores.", timeout: 6000 });
+
+		// B. Validation: Uniqueness
+		if (CurrentScriptVariablesData.some(v => v.key === key)) {
+			return AlertManager.createAlert({ type: "danger", message: "A variable with this Key already exists.", timeout: 6000 });
+		}
+
+		// C. Validation: Description (All Languages)
+		let missingLang = null;
+		BusinessFullData.businessData.languages.forEach(lang => {
+			if (!NewVariableDescriptionMultiLangData[lang.id] || NewVariableDescriptionMultiLangData[lang.id].trim() === "") {
+				missingLang = lang.name;
+			}
+		});
+
+		if (missingLang) {
+			return AlertManager.createAlert({ type: "danger", message: `Description is missing for language: ${missingLang}`, timeout: 6000 });
+		}
+
+		// D. Validation: Static Variables
+		if (!isEditable && (defaultValue === "" || !defaultValue)) {
+			return AlertManager.createAlert({
+				type: "danger",
+				message: "This variable is Read-Only (not editable by AI), so you must provide a Default Value."
+			});
+		}
+
+		// E. Construct Object
+		const newVariable = {
+			key: key,
+			type: type,
+			defaultValue: defaultValue,
+			isVisibleToAgent: isVisible,
+			isEditableByAI: isEditable,
+			description: structuredClone(NewVariableDescriptionMultiLangData)
+		};
+
+		// F. Add & Reset
+		CurrentScriptVariablesData.push(newVariable);
+		renderVariablesList();
+
+		// Reset Form
+		keyInput.val("");
+		variableOffcanvasDefaultInput.val("");
+		visibleInput.prop("checked", true);
+		variableOffcanvasEditableInput.prop("checked", false);
+
+		// Reset Description Data & Input
+		BusinessFullData.businessData.languages.forEach(l => NewVariableDescriptionMultiLangData[l.id] = "");
+		variableOffcanvasDescriptionInput.val("");
+
+		// Trigger UI refresh if needed
+		checkScriptTabHasChanges();
+	});
+
+	// 5. Delete Variable
+	$("#variablesListContainer").on("click", ".delete-var-btn", function () {
+		const index = $(this).closest(".variable-item").data("index");
+		CurrentScriptVariablesData.splice(index, 1);
+		renderVariablesList();
+		checkScriptTabHasChanges();
+	});
+}
+
 // Event Handlers
 function initScriptsTabHandlers() {
+	initVariablesHandlers();
+	initFlowAppSchemaHandlers();
+
 	$(document).on("containerResizeProgress", (e) => {
 		if (CurrentScriptGraph == null) return;
 
@@ -2897,6 +3891,11 @@ function initScriptsTabHandlers() {
 				break;
 			case "Custom Tool":
 				configContent.html(generateCustomToolConfig(cell));
+				break;
+			case "Flow App":
+				configContent.html(generateFlowAppConfig(cell));
+				// Trigger Schema Render immediately after opening
+				setTimeout(() => renderFlowAppSchemaInputs(), 50);
 				break;
 		}
 
@@ -3621,29 +4620,119 @@ function initScriptsTabHandlers() {
 	}
 	initializeCustomToolHandlers();
 
-	// Graph Add Node Buttons
-	// Add new event handlers
-	$(".sidebar-node-button").on("click", function () {
-		const nodeType = $(this).data("node-type");
-		const currentGraphArea = CurrentScriptGraph.getGraphArea();
-		const x = currentGraphArea.x + currentGraphArea.width / 2 - SCRIPT_NODE_WIDTH / 2;
-		const y = currentGraphArea.y + currentGraphArea.height / 2 - SCRIPT_NODE_MIN_HEIGHT / 2;
+	// FlowApp Node
+	function initFlowAppConfigHandlers() {
 
-		switch (nodeType) {
-			case "user-query":
-				addUserQueryNode(CurrentScriptGraph, x, y);
-				break;
-			case "ai-response":
-				addAIResponseNode(CurrentScriptGraph, x, y);
-				break;
-			case "system-tool":
-				addSystemToolNode(CurrentScriptGraph, x, y);
-				break;
-			case "custom-tool":
-				addCustomToolNode(CurrentScriptGraph, x, y);
-				break;
-		}
-	});
+		// 1. Action Change
+		$("#nodeConfigOffcanvas").on("change", '[data-input="flow-app-action"]', (e) => {
+			if (!CurrentCanvasConfigCell) return;
+
+			const newActionKey = e.target.value;
+			const data = CurrentCanvasConfigCell.getData();
+			const appDef = SpecificationFlowAppsListData.find(a => a.appKey === data.appKey);
+			const actionDef = appDef.actions.find(a => a.actionKey === newActionKey);
+
+			// Reset Inputs when action changes (schema changes)
+			const newData = {
+				...data,
+				actionKey: newActionKey,
+				inputs: [] // Clear previous inputs
+			};
+
+			// Update Node Data
+			CurrentCanvasConfigCell.replaceData(newData);
+
+			// Update Node Label
+			let actionLabel = '<span class="text-muted fst-italic">Select Action...</span>';
+			if (actionDef) {
+				actionLabel = `<span class="fw-bold text-white">${actionDef.name}</span>`;
+			} else {
+				actionLabel = `<span class="text-danger">Invalid Action</span>`;
+			}
+
+			$(`.x6-node[data-cell-id="${CurrentCanvasConfigCell.id}"] .script-node.script-flowapp-node [data-input="flow-app-action-label"]`).html(actionLabel);
+
+			// Update Output Ports based on Action Definition
+			UpdateFlowAppNodePorts(CurrentCanvasConfigCell, actionDef);
+
+			// Re-render the offcanvas to show new fields
+			$("#nodeConfigContent").html(generateFlowAppConfig(CurrentCanvasConfigCell));
+
+			// Trigger Schema Render (Phase 3 function placeholder)
+			renderFlowAppSchemaInputs();
+		});
+
+		// 2. Integration Change
+		$("#nodeConfigOffcanvas").on("change", '[data-input="flow-app-integration"]', (e) => {
+			updateFlowAppConfig({ integrationId: e.target.value });
+		});
+
+		// 3. Speaking Text Change
+		$("#nodeConfigOffcanvas").on("input", '[data-input="flow-app-speaking"]', (e) => {
+			const data = CurrentCanvasConfigCell.getData();
+			const currentLanguage = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
+
+			const speakingMap = data.speakingBeforeExecution || {};
+			speakingMap[currentLanguage] = e.target.value;
+
+			updateFlowAppConfig({ speakingBeforeExecution: speakingMap });
+		});
+
+		// 4. Language Change Listener (Sync Speaking Field)
+		scriptsManagerLanguageDropdown.onLanguageChange((language) => {
+			if (!CurrentCanvasConfigCell || !nodeConfigOffcanvas._element.classList.contains("show")) return;
+
+			const data = CurrentCanvasConfigCell.getData();
+			if (data.type !== SCRIPT_NODE_TYPES.FLOW_APP) return;
+
+			// Update Speaking Textarea
+			const speakingVal = data.speakingBeforeExecution?.[language.id] || "";
+			$('[data-input="flow-app-speaking"]').val(speakingVal);
+
+			// Re-render Schema (if schema has multi-lang labels/descriptions?)
+			// Usually schema structure doesn't change by lang, but existing values might if we support multi-lang inputs later.
+			// For now, inputs are typically logic-based (English keys).
+			renderFlowAppSchemaInputs();
+		});
+	}
+    initFlowAppConfigHandlers();
+
+	// Sidebar
+	function setupSidebarHandlers() {
+		// 1. Drag Start Listener
+		// Using delegated event to handle dynamic elements (like FlowApps later)
+		$('.script-graph-sidebar-left').on('mousedown', '.sidebar-node-item', function (e) {
+			const presetId = $(this).data('preset-id');
+
+			// Factory create
+			const node = createNodeFromPreset(presetId, CurrentScriptGraph);
+
+			if (node) {
+				// Start Dragging
+				CurrentScriptGraphDnd.start(node, e);
+			}
+		});
+
+		// 2. Search Filter
+		$('#sidebarNodeSearch').on('input', function () {
+			const term = $(this).val().toLowerCase().trim();
+
+			// Filter Items
+			$('.sidebar-node-item').each(function () {
+				const text = $(this).find('span').text().toLowerCase();
+				const isMatch = text.includes(term);
+				$(this).toggleClass('hidden', !isMatch);
+			});
+
+			// Hide Empty Categories
+			$('.sidebar-category').each(function () {
+				// Check if any visible items exist in this category
+				const visibleItems = $(this).find('.sidebar-node-item:not(.hidden)').length;
+				$(this).toggleClass('hidden', visibleItems === 0);
+			});
+		});
+	}
+	setupSidebarHandlers();
 
 	// Graph Toolbar Bottom
 	$("#script-graph-zoom-in").on("click", () => {
@@ -3845,10 +4934,12 @@ function UniqueIdGenerator(compareId) {
 function initScriptsTab() {
 	$(document).ready(() => {
 		nodeConfigOffcanvas = new bootstrap.Offcanvas("#nodeConfigOffcanvas");
+		variablesOffcanvas = new bootstrap.Offcanvas(variableOffcanvasElement);
 		scriptsManagerLanguageDropdown = new MultiLanguageDropdown("scriptsManagerMultiLanguageContainer", BusinessFullLanguagesData);
 
 		registerScriptNodes();
 		initScriptsTabHandlers();
 		fillScriptsListTab();
+		renderFlowAppsSidebar();
 	});
 }

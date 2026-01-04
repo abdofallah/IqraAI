@@ -1,6 +1,4 @@
-﻿using Catalyst;
-using GenerativeAI.Types;
-using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Chunking;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Retrival;

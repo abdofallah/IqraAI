@@ -10,12 +10,15 @@ namespace IqraInfrastructure.Repositories.Server
         private readonly IMongoCollection<ServerHistoricalStatusData> _historicalStatusCollection;
         private readonly ILogger<ServerStatusRepository> _logger;
 
-        public ServerStatusRepository(ILogger<ServerStatusRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraServerStatus";
+        private readonly string CollectionName = "ServerHistoricalStatus";
+
+        public ServerStatusRepository(ILogger<ServerStatusRepository> logger, IMongoClient client)
         {
             _logger = logger;
 
-            var database = client.GetDatabase(databaseName);
-            _historicalStatusCollection = database.GetCollection<ServerHistoricalStatusData>("ServerHistoricalStatus");        
+            var database = client.GetDatabase(DatabaseName);
+            _historicalStatusCollection = database.GetCollection<ServerHistoricalStatusData>(CollectionName);        
 
             CreateIndexes();
         }

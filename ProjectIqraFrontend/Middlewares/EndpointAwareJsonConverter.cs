@@ -58,6 +58,12 @@ namespace ProjectIqraFrontend.Middlewares
             {
                 var propertyValue = property.GetValue(value);
 
+                var ignoreAttribute = property.GetCustomAttribute<JsonIgnoreAttribute>();
+                if (ignoreAttribute != null && ignoreAttribute.Condition == JsonIgnoreCondition.WhenWritingNull && propertyValue == null)
+                {
+                    continue;
+                }
+
                 var propertyNameAttribute = property.GetCustomAttribute<JsonPropertyNameAttribute>();
                 if (propertyNameAttribute != null)
                 {

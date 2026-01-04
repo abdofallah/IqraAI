@@ -15,14 +15,15 @@ namespace IqraInfrastructure.Repositories.Call
         private readonly ILogger<InboundCallQueueRepository> _logger;
         private readonly CallQueueLogsRepository _callQueueLogsRepository;
 
-        private const string InboundCollectionName = "InboundCallQueue";
+        private readonly string DatabaseName = "IqraCallQueue";
+        private const string CollectionName = "InboundCallQueue";
 
-        public InboundCallQueueRepository(ILogger<InboundCallQueueRepository> logger, IMongoClient client, string databaseName, CallQueueLogsRepository callQueueLogsRepository)
+        public InboundCallQueueRepository(ILogger<InboundCallQueueRepository> logger, IMongoClient client, CallQueueLogsRepository callQueueLogsRepository)
         {
             _logger = logger;
 
-            var database = client.GetDatabase(databaseName);
-            _inboundCallQueueCollection = database.GetCollection<InboundCallQueueData>(InboundCollectionName);
+            var database = client.GetDatabase(DatabaseName);
+            _inboundCallQueueCollection = database.GetCollection<InboundCallQueueData>(CollectionName);
 
             CreateIndexes();
 
@@ -298,14 +299,13 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task<int> CleanupExpiredInboundCallQueues(string regionId)
+        public async Task<int> CleanupExpiredInboundCallQueues()
         {
             try
             {
                 var filter = Builders<InboundCallQueueData>.Filter.And(
                     Builders<InboundCallQueueData>.Filter.Eq(c => c.Status, CallQueueStatusEnum.Queued), // maybe we can add processing and 
-                    Builders<InboundCallQueueData>.Filter.Gt(c => c.CreatedAt, DateTime.UtcNow.Subtract(TimeSpan.FromMinutes(5))), // check if 5minutes is good
-                    Builders<InboundCallQueueData>.Filter.Ne(c => c.RegionId, regionId)
+                    Builders<InboundCallQueueData>.Filter.Gt(c => c.CreatedAt, DateTime.UtcNow.Subtract(TimeSpan.FromMinutes(5))) // check if 5minutes is good
                 );
 
                 var update = Builders<InboundCallQueueData>.Update
@@ -323,14 +323,13 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task<int> CleanupInboundOrphanedCallQueues(string regionId, DateTime thresholdToCheck)
+        public async Task<int> CleanupInboundOrphanedCallQueues(DateTime thresholdToCheck)
         {
             try
             {
                 var filter = Builders<InboundCallQueueData>.Filter.And(
                     Builders<InboundCallQueueData>.Filter.In(c => c.Status, new CallQueueStatusEnum[] { CallQueueStatusEnum.ProcessingProxy, CallQueueStatusEnum.ProcessedProxy, CallQueueStatusEnum.ProcessingBackend, CallQueueStatusEnum.ProcessedBackend }),
-                    Builders<InboundCallQueueData>.Filter.Lt(c => c.ProcessingStartedAt, thresholdToCheck),
-                    Builders<InboundCallQueueData>.Filter.Ne(c => c.RegionId, regionId)
+                    Builders<InboundCallQueueData>.Filter.Lt(c => c.ProcessingStartedAt, thresholdToCheck)
                 );
 
                 var update = Builders<InboundCallQueueData>.Update

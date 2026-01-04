@@ -10,14 +10,15 @@ namespace IqraInfrastructure.Repositories.App
     {
         private readonly ILogger<AppRepository> _logger;
 
+        private readonly string DatabaseName = "IqraApp";
         private readonly string CollectionName = "AppConfiguration";
 
         private readonly IMongoCollection<BsonDocument> _applicationConfigurationCollection;
 
-        public AppRepository(ILogger<AppRepository> logger, IMongoClient client, string databaseName)
+        public AppRepository(ILogger<AppRepository> logger, IMongoClient client)
         {
             _logger = logger;
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _applicationConfigurationCollection = database.GetCollection<BsonDocument>(CollectionName);
         }
 

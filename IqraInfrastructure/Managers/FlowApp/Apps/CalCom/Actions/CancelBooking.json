@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "title": "Cancel Booking",
+  "required": [ "bookingUid" ],
+  "properties": {
+    "bookingUid": {
+      "type": "string",
+      "title": "Booking UID",
+      "description": "The unique identifier of the booking (e.g. from metadata or lookup)."
+    },
+    "cancellationReason": {
+      "type": "string",
+      "title": "Cancellation Reason",
+      "description": "Reason for the cancellation.",
+      "default": "User requested cancellation via AI Agent"
+    }
+  }
+}

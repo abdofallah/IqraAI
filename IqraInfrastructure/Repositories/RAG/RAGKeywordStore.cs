@@ -26,11 +26,13 @@ namespace IqraInfrastructure.Repositories.RAG
         private readonly IMongoCollection<KeywordIndex> _keywordCollection;
         private readonly KeywordExtractor _keywordExtractor;
         private readonly ILogger<RAGKeywordStore> _logger;
+
+        private readonly string DatabaseName = "IqraRAGKeywordStore";
         private const string CollectionName = "KnowledgeBaseKeywordIndex";
 
-        public RAGKeywordStore(IMongoClient client, string databaseName, KeywordExtractor keywordExtractor, ILogger<RAGKeywordStore> logger)
+        public RAGKeywordStore(IMongoClient client, KeywordExtractor keywordExtractor, ILogger<RAGKeywordStore> logger)
         {
-            var database = client.GetDatabase(databaseName);
+            var database = client.GetDatabase(DatabaseName);
             _keywordCollection = database.GetCollection<KeywordIndex>(CollectionName);
             _keywordExtractor = keywordExtractor;
             _logger = logger;

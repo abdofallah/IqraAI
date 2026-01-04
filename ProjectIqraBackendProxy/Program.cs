@@ -1,5 +1,7 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server.Configuration;
+using IqraCore.Interfaces.Modules;
+using IqraCore.Interfaces.User;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
@@ -30,6 +32,9 @@ namespace ProjectIqraBackendProxy
 {
     public class Program
     {
+        private static Assembly? _cloudAssembly;
+        private static ICloudProxyAppInitalizer? _cloudModule;
+
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -46,17 +51,32 @@ namespace ProjectIqraBackendProxy
                     PollingIntervalSeconds = int.Parse(appConfig["Proxy:OutboundProcessing:PollingIntervalSeconds"]),
                     ProcessingBatchSize = int.Parse(appConfig["Proxy:OutboundProcessing:ProcessingBatchSize"]),
                     ScheduleWindowMinutes = int.Parse(appConfig["Proxy:OutboundProcessing:ScheduleWindowMinutes"])
-                }
+                },
+                IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
             };
+
+            // Load Cloud Asembly
+            if (proxyAppConfig.IsCloudVersion)
+            {
+                LoadCloudAssembly();
+            }
 
             // Preflight
             await SetupPreflight(builder, appConfig, proxyAppConfig);
 
             // Repositories
             SetupRepositories(builder, appConfig);
+            if (proxyAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.SetupRepositories(builder.Services, appConfig);
+            }
 
             // Managers
             SetupManagers(builder, appConfig, proxyAppConfig);
+            if (proxyAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.SetupManagers(builder.Services, appConfig);
+            }
 
             // HTTP Client
             builder.Services.AddHttpClient("CallManagerServerForward");
@@ -109,16 +129,28 @@ namespace ProjectIqraBackendProxy
             app.Run();
         }
 
+        private static void LoadCloudAssembly()
+        {
+            string folder = AppDomain.CurrentDomain.BaseDirectory;
+            string cloudDllPath = Path.Combine(folder, "ProjectIqraBackendProxy.Cloud.dll");
+            if (!File.Exists(cloudDllPath)) throw new Exception("Cloud DLL missing");
+
+            _cloudAssembly = Assembly.LoadFrom(cloudDllPath);
+            var type = _cloudAssembly.GetTypes().FirstOrDefault(t => typeof(ICloudProxyAppInitalizer).IsAssignableFrom(t) && !t.IsInterface);
+            if (type != null)
+            {
+                _cloudModule = (ICloudProxyAppInitalizer)Activator.CreateInstance(type);
+            }
+            if (_cloudModule == null) throw new Exception("Cloud module not found");
+        }
+
         private static async Task SetupPreflight(WebApplicationBuilder builder, IConfiguration appConfig, ProxyAppConfig proxyAppConfig)
         {
             // Basic Dependencies required for Preflight
             var mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
             builder.Services.AddSingleton<IMongoClient>(mongoClient);
 
-            var regionRepoistory = new RegionRepository(
-                mongoClient,
-                appConfig["MongoDatabase:AppRepositoryDatabaseName"]
-            );
+            var regionRepoistory = new RegionRepository(mongoClient);
             builder.Services.AddSingleton<RegionRepository>(regionRepoistory);
 
             var regionManager = new RegionManager(regionRepoistory);
@@ -146,8 +178,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new AppRepository(
                     sp.GetRequiredService<ILogger<AppRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:AppRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -155,7 +186,6 @@ namespace ProjectIqraBackendProxy
             {
                 return new CallQueueLogsRepository(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<CallQueueLogsRepository>>()
                 );
             });
@@ -165,7 +195,6 @@ namespace ProjectIqraBackendProxy
                 return new InboundCallQueueRepository(
                     sp.GetRequiredService<ILogger<InboundCallQueueRepository>>(),
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
                     sp.GetRequiredService<CallQueueLogsRepository>()
                 );
             });
@@ -174,8 +203,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new ServerStatusRepository(
                     sp.GetRequiredService<ILogger<ServerStatusRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:ServerStatusRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -205,8 +233,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new IntegrationsRepository(
                     sp.GetRequiredService<ILogger<IntegrationsRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:IntegrationsRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -214,8 +241,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new BusinessRepository(
                     sp.GetRequiredService<ILogger<BusinessRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:BusinessRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -223,8 +249,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new BusinessAppRepository(
                     sp.GetRequiredService<ILogger<BusinessAppRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:BusinessAppRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -232,18 +257,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new UserRepository(
                     sp.GetRequiredService<ILogger<UserRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:UserRepositoryDatabaseName"]
-                );
-            });
-
-            // move to module
-            builder.Services.AddSingleton<BillingPlanRepository>((sp) =>
-            {
-                return new BillingPlanRepository(
-                    sp.GetRequiredService<ILogger<BillingPlanRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:PlanRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -251,7 +265,6 @@ namespace ProjectIqraBackendProxy
             {
                 return new ConversationStateRepository(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:ConversationStateRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<ConversationStateRepository>>()
                 );
             });
@@ -260,7 +273,6 @@ namespace ProjectIqraBackendProxy
             {
                 return new ConversationStateLogsRepository(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:ConversationStateRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<ConversationStateLogsRepository>>()
                 );
             });
@@ -269,7 +281,6 @@ namespace ProjectIqraBackendProxy
             {
                 return new OutboundCallQueueRepository(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>(),
                     sp.GetRequiredService<CallQueueLogsRepository>()
                 );
@@ -279,14 +290,21 @@ namespace ProjectIqraBackendProxy
             {
                 return new WebSessionRepository(
                     sp.GetRequiredService<ILogger<WebSessionRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:WebSessionRepoistoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, ProxyAppConfig proxyAppConfig)
         {
+            if (!proxyAppConfig.IsCloudVersion)
+            {
+                builder.Services.AddSingleton<IUserUsageValidationManager, UserUsageValidationManager>((sp) =>
+                {
+                    return new UserUsageValidationManager();
+                });
+            }
+
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>
             {
                 AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(
@@ -338,7 +356,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     null,
-                    null,
+                    sp.GetRequiredService<RegionManager>(),
                     null,
                     null,
                     null,
@@ -379,7 +397,7 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<TwilioManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<UserUsageValidationManager>(),
+                    sp.GetRequiredService<IUserUsageValidationManager>(),
                     sp.GetRequiredService<UserManager>()
                 );
             });
@@ -391,26 +409,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     sp.GetRequiredService<UserRepository>(),
                     null,
-                    null,
-                    null,
                     null
-                );
-            });
-            builder.Services.AddSingleton<PlanManager>((sp) =>
-            {
-                return new PlanManager(
-                    sp.GetRequiredService<ILogger<PlanManager>>(),
-                    sp.GetRequiredService<BillingPlanRepository>()
-                );
-            });
-            builder.Services.AddSingleton<UserUsageValidationManager>((sp) =>
-            {
-                return new UserUsageValidationManager(
-                    sp.GetRequiredService<ILogger<UserUsageValidationManager>>(),
-                    sp.GetRequiredService<AppRepository>(),
-                    sp.GetRequiredService<BusinessRepository>(),
-                    sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<PlanManager>()
                 );
             });
             builder.Services.AddSingleton<OutboundCallProcessingOrchestrator>((sp) =>
@@ -418,7 +417,7 @@ namespace ProjectIqraBackendProxy
                 return new OutboundCallProcessingOrchestrator(
                     sp.GetRequiredService<ILogger<OutboundCallProcessingOrchestrator>>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
-                    sp.GetRequiredService<UserUsageValidationManager>(),
+                    sp.GetRequiredService<IUserUsageValidationManager>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<RegionManager>(),
@@ -473,7 +472,7 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<ServerSelectionManager>(),
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<InboundCallQueueRepository>(),
-                    sp.GetRequiredService<UserUsageValidationManager>(),
+                    sp.GetRequiredService<IUserUsageValidationManager>(),
                     sp.GetRequiredService<UserManager>()
                 );
             });

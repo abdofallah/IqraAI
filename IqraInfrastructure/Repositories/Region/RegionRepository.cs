@@ -7,14 +7,14 @@ namespace IqraInfrastructure.Repositories.Region
     public class RegionRepository
     {
         private ILogger<RegionRepository>? _logger;
-
-        private readonly string CollectionName = "Regions";
-
         private readonly IMongoCollection<RegionData> _regionCollection;
 
-        public RegionRepository(IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraApp";
+        private readonly string CollectionName = "Regions";
+
+        public RegionRepository(IMongoClient client)
         {
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _regionCollection = database.GetCollection<RegionData>(CollectionName);
         }
 

@@ -9,15 +9,16 @@ namespace IqraInfrastructure.Repositories.Integrations
     public class IntegrationsRepository
     {
         private readonly ILogger<IntegrationsRepository> _logger;
-
-        private readonly string CollectionName = "Integrations";
         private readonly IMongoCollection<IntegrationData> _integrationsCollection;
 
-        public IntegrationsRepository(ILogger<IntegrationsRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraIntegrations";
+        private readonly string CollectionName = "Integrations";
+
+        public IntegrationsRepository(ILogger<IntegrationsRepository> logger, IMongoClient client)
         {
             _logger = logger;
 
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _integrationsCollection = database.GetCollection<IntegrationData>(CollectionName);
         }
 

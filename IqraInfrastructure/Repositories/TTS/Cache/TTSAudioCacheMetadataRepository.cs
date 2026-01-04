@@ -15,12 +15,14 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
     {
         private readonly ILogger<TTSAudioCacheMetadataRepository> _logger;
         private readonly IMongoCollection<TTSAudioCacheEntry> _collection;
+
+        private readonly string DatabaseName = "IqraTTSCache";
         private const string CollectionName = "TTSAudioCache";
 
-        public TTSAudioCacheMetadataRepository(ILogger<TTSAudioCacheMetadataRepository> logger, IMongoClient client, string databaseName)
+        public TTSAudioCacheMetadataRepository(ILogger<TTSAudioCacheMetadataRepository> logger, IMongoClient client)
         {
             _logger = logger;
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _collection = database.GetCollection<TTSAudioCacheEntry>(CollectionName);
 
             // Ensure all necessary indexes are created on application startup.

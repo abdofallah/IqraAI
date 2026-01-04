@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "title": "Reschedule Booking",
+  "required": [ "bookingUid", "newStartTime" ],
+  "properties": {
+    "bookingUid": {
+      "type": "string",
+      "title": "Booking UID",
+      "description": "The unique identifier of the existing booking."
+    },
+    "newStartTime": {
+      "type": "string",
+      "title": "New Start Time",
+      "description": "ISO 8601 Date string for the new slot (e.g. 2024-01-01T14:00:00Z)."
+    },
+    "reason": {
+      "type": "string",
+      "title": "Rescheduling Reason",
+      "default": "User requested reschedule via AI Agent"
+    }
+  }
+}

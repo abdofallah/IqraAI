@@ -10,7 +10,6 @@ using IqraInfrastructure.Managers.LLM;
 using Microsoft.Extensions.Logging;
 using Scriban;
 using Scriban.Runtime;
-using System.Globalization;
 using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers

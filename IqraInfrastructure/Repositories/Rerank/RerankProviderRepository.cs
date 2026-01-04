@@ -9,13 +9,15 @@ namespace IqraInfrastructure.Repositories.Rerank
     public class RerankProviderRepository
     {
         private readonly ILogger<RerankProviderRepository> _logger;
-        private readonly string CollectionName = "RerankProvider";
         private readonly IMongoCollection<RerankProviderData> _rerankProviderCollection;
 
-        public RerankProviderRepository(ILogger<RerankProviderRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraRerankProvider";
+        private readonly string CollectionName = "RerankProvider";
+
+        public RerankProviderRepository(ILogger<RerankProviderRepository> logger, IMongoClient client)
         {
             _logger = logger;
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _rerankProviderCollection = database.GetCollection<RerankProviderData>(CollectionName);
         }
 

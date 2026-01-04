@@ -9,13 +9,15 @@ namespace IqraInfrastructure.Repositories.Embedding
     public class EmbeddingProviderRepository
     {
         private readonly ILogger<EmbeddingProviderRepository> _logger;
-        private readonly string CollectionName = "EmbeddingProvider";
         private readonly IMongoCollection<EmbeddingProviderData> _embeddingProviderCollection;
 
-        public EmbeddingProviderRepository(ILogger<EmbeddingProviderRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraEmbeddingProvider";
+        private readonly string CollectionName = "EmbeddingProvider";
+
+        public EmbeddingProviderRepository(ILogger<EmbeddingProviderRepository> logger, IMongoClient client)
         {
             _logger = logger;
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _embeddingProviderCollection = database.GetCollection<EmbeddingProviderData>(CollectionName);
         }
 

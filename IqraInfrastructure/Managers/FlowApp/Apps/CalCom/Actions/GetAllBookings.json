@@ -1,0 +1,34 @@
+{
+  "type": "object",
+  "title": "Get All Bookings",
+  "properties": {
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "description": "Filter by status (comma separated for multiple).",
+      "enum": [ "upcoming", "past", "cancelled", "unconfirmed", "recurring" ],
+      "default": "upcoming"
+    },
+    "attendeeEmail": {
+      "type": "string",
+      "title": "Attendee Email",
+      "description": "Filter bookings by specific attendee."
+    },
+    "afterStart": {
+      "type": "string",
+      "title": "Start Date (From)",
+      "description": "Fetch bookings starting after this date (ISO 8601)."
+    },
+    "beforeEnd": {
+      "type": "string",
+      "title": "End Date (To)",
+      "description": "Fetch bookings ending before this date (ISO 8601)."
+    },
+    "limit": {
+      "type": "integer",
+      "title": "Limit",
+      "default": 5,
+      "description": "Max number of bookings to retrieve."
+    }
+  }
+}

@@ -1,10 +1,11 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Configuration;
+using IqraCore.Interfaces.Modules;
 using IqraCore.Interfaces.Server;
+using IqraCore.Interfaces.User;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
-using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Call.Backend;
@@ -25,7 +26,6 @@ using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Managers.WebSession;
 using IqraInfrastructure.Repositories.App;
-using IqraInfrastructure.Repositories.Billing;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
@@ -49,7 +49,6 @@ using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
-using Mosaik.Core;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -58,6 +57,9 @@ namespace ProjectIqraBackendApp
 {
     public class Program
     {
+        private static Assembly? _cloudAssembly;
+        private static ICloudBackendAppInitalizer? _cloudModule;
+
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -74,20 +76,32 @@ namespace ProjectIqraBackendApp
                 MaxNetworkUploadMbps = int.Parse(appConfig["Server:MaxNetworkUploadMbps"]),
                 ApiKey = appConfig["Server:ApiKey"],
                 WebhookTokenSecret = appConfig["Server:WebhookTokenSecret"],
+                IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
             };
             builder.Services.AddSingleton<BackendAppConfig>(backendAppConfig);
 
-            // Dependencies
-            //RegisterCatalystLanguages();
+            // Load Cloud Asembly
+            if (backendAppConfig.IsCloudVersion)
+            {
+                LoadCloudAssembly();
+            }
 
             // Preflight
             await SetupPreflight(builder, appConfig, backendAppConfig);
 
             // Repositories
             await SetupRepositories(builder, appConfig, backendAppConfig);
+            if (backendAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.SetupRepositories(builder.Services, appConfig);
+            }
 
             // Managers
             SetupManagers(builder, appConfig, backendAppConfig);
+            if (backendAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.SetupManagers(builder.Services, appConfig);
+            }
 
             // HTTP Client
             builder.Services.AddHttpClient();
@@ -237,16 +251,28 @@ namespace ProjectIqraBackendApp
             app.Run();
         }
 
+        private static void LoadCloudAssembly()
+        {
+            string folder = AppDomain.CurrentDomain.BaseDirectory;
+            string cloudDllPath = Path.Combine(folder, "ProjectIqraBackendApp.Cloud.dll");
+            if (!File.Exists(cloudDllPath)) throw new Exception("Cloud DLL missing");
+
+            _cloudAssembly = Assembly.LoadFrom(cloudDllPath);
+            var type = _cloudAssembly.GetTypes().FirstOrDefault(t => typeof(ICloudBackendAppInitalizer).IsAssignableFrom(t) && !t.IsInterface);
+            if (type != null)
+            {
+                _cloudModule = (ICloudBackendAppInitalizer)Activator.CreateInstance(type);
+            }
+            if (_cloudModule == null) throw new Exception("Cloud module not found");
+        }
+
         private static async Task SetupPreflight(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
         {
             // Basic Dependencies required for Preflight
             var mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
             builder.Services.AddSingleton<IMongoClient>(mongoClient);
 
-            var regionRepoistory = new RegionRepository(
-                mongoClient,
-                appConfig["MongoDatabase:AppRepositoryDatabaseName"]
-            );
+            var regionRepoistory = new RegionRepository(mongoClient);
             builder.Services.AddSingleton<RegionRepository>(regionRepoistory);
 
             var regionManager = new RegionManager(regionRepoistory);
@@ -304,8 +330,7 @@ namespace ProjectIqraBackendApp
             {
                 return new AppRepository(
                     sp.GetRequiredService<ILogger<AppRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:AppRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -313,8 +338,7 @@ namespace ProjectIqraBackendApp
             {
                 return new LanguagesRepository(
                     sp.GetRequiredService<ILogger<LanguagesRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:LanguagesRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -322,7 +346,6 @@ namespace ProjectIqraBackendApp
             {
                 return new CallQueueLogsRepository(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<CallQueueLogsRepository>>()
                 );
             });
@@ -332,7 +355,6 @@ namespace ProjectIqraBackendApp
                 return new InboundCallQueueRepository(
                     sp.GetRequiredService<ILogger<InboundCallQueueRepository>>(),
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
                     sp.GetRequiredService<CallQueueLogsRepository>()
                 );
             });
@@ -341,7 +363,6 @@ namespace ProjectIqraBackendApp
             {
                 return new OutboundCallQueueRepository(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>(),
                     sp.GetRequiredService<CallQueueLogsRepository>()
                 );
@@ -351,7 +372,6 @@ namespace ProjectIqraBackendApp
             {
                 return new OutboundCallQueueGroupRepository(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:OutboundCallCampaignRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<OutboundCallQueueGroupRepository>>()
                 );
             });
@@ -360,8 +380,7 @@ namespace ProjectIqraBackendApp
             {
                 return new ServerStatusRepository(
                     sp.GetRequiredService<ILogger<ServerStatusRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:ServerStatusRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -391,7 +410,6 @@ namespace ProjectIqraBackendApp
             {
                 return new ConversationStateRepository(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:ConversationStateRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<ConversationStateRepository>>()
                 );
             });
@@ -400,7 +418,6 @@ namespace ProjectIqraBackendApp
             {
                 return new ConversationStateLogsRepository(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:ConversationStateRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<ConversationStateLogsRepository>>()
                 );
             });
@@ -417,8 +434,7 @@ namespace ProjectIqraBackendApp
             {
                 return new IntegrationsRepository(
                     sp.GetRequiredService<ILogger<IntegrationsRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:IntegrationsRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -426,8 +442,7 @@ namespace ProjectIqraBackendApp
             {
                 return new BusinessRepository(
                     sp.GetRequiredService<ILogger<BusinessRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:BusinessRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -435,8 +450,7 @@ namespace ProjectIqraBackendApp
             {
                 return new BusinessAppRepository(
                     sp.GetRequiredService<ILogger<BusinessAppRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:BusinessAppRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -460,8 +474,7 @@ namespace ProjectIqraBackendApp
             {
                 return new LLMProviderRepository(
                     sp.GetRequiredService<ILogger<LLMProviderRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:LLMProviderRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -469,8 +482,7 @@ namespace ProjectIqraBackendApp
             {
                 return new STTProviderRepository(
                     sp.GetRequiredService<ILogger<STTProviderRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:STTProviderRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -478,8 +490,7 @@ namespace ProjectIqraBackendApp
             {
                 return new TTSProviderRepository(
                     sp.GetRequiredService<ILogger<TTSProviderRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:TTSProviderRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -487,8 +498,7 @@ namespace ProjectIqraBackendApp
             {
                 return new UserUsageRepository(
                     sp.GetRequiredService<ILogger<UserUsageRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:ConversationUsageRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -496,17 +506,7 @@ namespace ProjectIqraBackendApp
             {
                 return new UserRepository(
                     sp.GetRequiredService<ILogger<UserRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:UserRepositoryDatabaseName"]
-                );
-            });
-
-            builder.Services.AddSingleton<BillingPlanRepository>((sp) =>
-            {
-                return new BillingPlanRepository(
-                    sp.GetRequiredService<ILogger<BillingPlanRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:PlanRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -525,8 +525,7 @@ namespace ProjectIqraBackendApp
             {
                 return new TTSAudioCacheMetadataRepository(
                     sp.GetRequiredService<ILogger<TTSAudioCacheMetadataRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:TTSAudioCacheMetadataRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -542,8 +541,7 @@ namespace ProjectIqraBackendApp
             {
                 return new WebSessionRepository(
                     sp.GetRequiredService<ILogger<WebSessionRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:WebSessionRepoistoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -551,8 +549,7 @@ namespace ProjectIqraBackendApp
             {
                 return new EmbeddingProviderRepository(
                     sp.GetRequiredService<ILogger<EmbeddingProviderRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:EmbeddingProviderRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -560,8 +557,7 @@ namespace ProjectIqraBackendApp
             {
                 return new RerankProviderRepository(
                     sp.GetRequiredService<ILogger<RerankProviderRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:RerankProviderRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -569,8 +565,7 @@ namespace ProjectIqraBackendApp
             {
                 return new EmbeddingCacheRepository(
                     sp.GetRequiredService<ILogger<EmbeddingCacheRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:EmbeddingCacheRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -578,8 +573,7 @@ namespace ProjectIqraBackendApp
             {
                 return new BusinessKnowledgeBaseDocumentRepository(
                     sp.GetRequiredService<ILogger<BusinessKnowledgeBaseDocumentRepository>>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:BusinessKnowledgeBaseDocumentRepositoryDatabaseName"]
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
 
@@ -596,7 +590,6 @@ namespace ProjectIqraBackendApp
             {
                 return new RAGKeywordStore(
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:RAGKeywordStoreDatabaseName"],
                     sp.GetRequiredService<KeywordExtractor>(),
                     sp.GetRequiredService<ILogger<RAGKeywordStore>>()
                 );
@@ -605,6 +598,19 @@ namespace ProjectIqraBackendApp
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
         {
+            if (!backendAppConfig.IsCloudVersion)
+            {
+                builder.Services.AddSingleton<IUserUsageValidationManager, UserUsageValidationManager>((sp) =>
+                {
+                    return new UserUsageValidationManager();
+                });
+
+                builder.Services.AddSingleton<IUserBillingUsageManager, UserBillingUsageManager>((sp) =>
+                {
+                    return new UserBillingUsageManager();
+                });
+            }
+
             builder.Services.AddSingleton<LanguagesManager>((sp) =>
             {
                 return new LanguagesManager(
@@ -654,7 +660,7 @@ namespace ProjectIqraBackendApp
                     null,
                     null,
                     null,
-                    null,
+                    sp.GetRequiredService<RegionManager>(),
                     null,
                     null,
                     null,
@@ -822,19 +828,9 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<UserBillingUsageManager>(),
+                    sp.GetRequiredService<IUserBillingUsageManager>(),
                     sp.GetRequiredService<CampaignActionExecutorService>(),
-                    sp.GetRequiredService<UserUsageValidationManager>()
-                );
-            });
-            builder.Services.AddSingleton<UserUsageValidationManager>((sp) =>
-            {
-                return new UserUsageValidationManager(
-                    sp.GetRequiredService<ILogger<UserUsageValidationManager>>(),
-                    sp.GetRequiredService<AppRepository>(),
-                    sp.GetRequiredService<BusinessRepository>(),
-                    sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<PlanManager>()
+                    sp.GetRequiredService<IUserUsageValidationManager>()
                 );
             });
             builder.Services.AddSingleton<BackendWebSessionProcessorManager>((sp) =>
@@ -850,28 +846,9 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<UserBillingUsageManager>(),
+                    sp.GetRequiredService<IUserBillingUsageManager>(),
                     sp.GetRequiredService<CampaignActionExecutorService>(),
-                    sp.GetRequiredService<UserUsageValidationManager>()
-                );
-            });
-            builder.Services.AddSingleton<UserBillingUsageManager>((sp) =>
-            {
-                return new UserBillingUsageManager(
-                    sp.GetRequiredService<ILogger<UserBillingUsageManager>>(),
-                    sp.GetRequiredService<AppRepository>(),
-                    sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<BusinessRepository>(),
-                    sp.GetRequiredService<UserUsageRepository>(),
-                    sp.GetRequiredService<PlanManager>(),
-                    sp.GetRequiredService<IMongoClient>()
-                );
-            });
-            builder.Services.AddSingleton<PlanManager>((sp) =>
-            {
-                return new PlanManager(
-                    sp.GetRequiredService<ILogger<PlanManager>>(),
-                    sp.GetRequiredService<BillingPlanRepository>()
+                    sp.GetRequiredService<IUserUsageValidationManager>()
                 );
             });
 
@@ -961,56 +938,6 @@ namespace ProjectIqraBackendApp
             var callSiteFactory = serviceProvider.GetType().GetProperty("CallSiteFactory", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(serviceProvider);
             var serviceDescriptors = callSiteFactory.GetType().GetProperty("Descriptors", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(callSiteFactory) as ServiceDescriptor[];
             return serviceDescriptors.ToList();
-        }
-
-        private static void RegisterCatalystLanguages()
-        {
-            Catalyst.Models.English.Register(); // Load initial assembly
-
-            foreach (var langauge in Enum.GetNames(typeof(Language)))
-            {
-                var langName = langauge.ToString(); // "English", "Arabic", etc.
-                var typeName = $"Catalyst.Models.{langName}";
-
-                try
-                {
-                    // Step 1: Load the assembly manually if it's not already loaded
-                    var assembly = AppDomain.CurrentDomain
-                        .GetAssemblies()
-                        .FirstOrDefault(a => a.GetName().Name == typeName)
-                        ?? Assembly.Load(typeName); // Load from name (e.g., "Catalyst.Models.English")
-
-                    if (assembly == null)
-                    {
-                        Console.WriteLine($"Failed to load assembly: {typeName}. Skipping!");
-                        continue;
-                    }
-
-                    // Step 2: Try to find the type
-                    var langType = assembly.ExportedTypes.FirstOrDefault(t => t?.FullName != null && t.FullName.Equals(typeName));
-
-                    if (langType == null)
-                    {
-                        throw new Exception($"Type {typeName} not found in assembly {typeName}");
-                    }
-                    // Step 3: Call Register()
-                    var registerMethod = langType.GetMethod("Register", BindingFlags.Public | BindingFlags.Static);
-
-                    if (registerMethod != null)
-                    {
-                        registerMethod.Invoke(null, null);
-                    }
-                    else
-                    {
-                        throw new Exception($"Register() method not found for type {typeName}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to register language {langName}. Skipping!");
-                    continue;
-                }
-            }
         }
     }
 }

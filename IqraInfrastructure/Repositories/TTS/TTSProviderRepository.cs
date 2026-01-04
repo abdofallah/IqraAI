@@ -10,15 +10,16 @@ namespace IqraInfrastructure.Repositories.TTS
     public class TTSProviderRepository
     {
         private readonly ILogger<TTSProviderRepository> _logger;
-
-        private readonly string CollectionName = "TTSProvider";
         private readonly IMongoCollection<TTSProviderData> _ttsProviderCollection;
 
-        public TTSProviderRepository(ILogger<TTSProviderRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraTTSProvider";
+        private readonly string CollectionName = "TTSProvider";
+
+        public TTSProviderRepository(ILogger<TTSProviderRepository> logger, IMongoClient client)
         {
             _logger = logger;
 
-            var database = client.GetDatabase(databaseName);
+            var database = client.GetDatabase(DatabaseName);
             _ttsProviderCollection = database.GetCollection<TTSProviderData>(CollectionName);
         }
 

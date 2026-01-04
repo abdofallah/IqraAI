@@ -48,7 +48,7 @@ namespace IqraInfrastructure.Repositories.Server
                 if (json.IsNullOrEmpty)
                     return null;
 
-                return JsonSerializer.Deserialize<ServerStatusData>(json);
+                return JsonSerializer.Deserialize<ServerStatusData>(json.ToString());
             }
             catch (Exception ex)
             {
@@ -72,7 +72,7 @@ namespace IqraInfrastructure.Repositories.Server
                     var json = await db.StringGetAsync(key);
                     if (!json.IsNullOrEmpty)
                     {
-                        var status = JsonSerializer.Deserialize<ServerStatusData>(json);
+                        var status = JsonSerializer.Deserialize<ServerStatusData>(json.ToString());
                         if (status != null)
                             results.Add(status);
                     }

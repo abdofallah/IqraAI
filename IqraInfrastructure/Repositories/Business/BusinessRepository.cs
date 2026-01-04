@@ -13,6 +13,7 @@ namespace IqraInfrastructure.Repositories.Business
     {
         private readonly ILogger<BusinessRepository> _logger;
 
+        private readonly string DatabaseName = "IqraBusiness";
         private static readonly string CollectionName = "Business";
         private static readonly string ArchivedCollectionName = "Business_archived";
 
@@ -25,11 +26,11 @@ namespace IqraInfrastructure.Repositories.Business
 
         private readonly IMongoCollection<BsonDocument> _businessCounterCollection;
 
-        public BusinessRepository(ILogger<BusinessRepository> logger, IMongoClient client, string databaseName)
+        public BusinessRepository(ILogger<BusinessRepository> logger, IMongoClient client)
         {
             _logger = logger;
 
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _businessCollection = database.GetCollection<BusinessData>(CollectionName);
             _businessArchivedCollection = database.GetCollection<ArchivedRepoObject<BusinessData>>(ArchivedCollectionName);
             _businessCounterCollection = database.GetCollection<BsonDocument>(CounterCollectionName);

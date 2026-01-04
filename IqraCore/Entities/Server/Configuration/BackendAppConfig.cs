@@ -3,6 +3,7 @@
     public class BackendAppConfig
     {
         // Static Config
+        public bool IsCloudVersion { get; set; }
         // General
         public string Id { get; set; } = string.Empty;
         public string RegionId { get; set; } = string.Empty;

@@ -1,27 +1,23 @@
-﻿using IqraCore.Entities.Server;
-using IqraInfrastructure.Repositories.Conversation;
+﻿using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.HostedServices.Conversation
 {
-    internal class ConversationTimeoutCleanupService : BackgroundService
+    public class ConversationTimeoutCleanupService : BackgroundService
     {
         private readonly ILogger<ConversationTimeoutCleanupService> _logger;
         private readonly ConversationStateRepository _conversationStateRepository;
-        private readonly BackendAppConfig _serverConfig;
 
         private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
 
         public ConversationTimeoutCleanupService(
             ILogger<ConversationTimeoutCleanupService> logger,
-            ConversationStateRepository conversationStateRepository,
-            BackendAppConfig serverConfig
+            ConversationStateRepository conversationStateRepository
         )
         {
             _logger = logger;
             _conversationStateRepository = conversationStateRepository;
-            _serverConfig = serverConfig;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -33,7 +29,7 @@ namespace IqraInfrastructure.HostedServices.Conversation
                 try
                 {
                     // Check for expired conversations
-                    int expiredConversations = await _conversationStateRepository.CleanupMaxDurationReachedConversationsAsync(_serverConfig.Id, _serverConfig.RegionId, DateTime.UtcNow.AddMinutes(5));
+                    int expiredConversations = await _conversationStateRepository.CleanupMaxDurationReachedConversationsAsync(DateTime.UtcNow.AddMinutes(5));
 
                     // todo log to conversation logs repo
                     //.Push(c => c.Logs, new ConversationStateLogEntry() { Level = ConversationStateLogLevelEnum.Critical, Message = "Expected endtime reached for conversation but it wasnt ended, so manually cleaned up" });

@@ -10,15 +10,16 @@ namespace IqraInfrastructure.Repositories.User
     public class UserRepository
     {
         private readonly ILogger<UserRepository> _logger;
-
-        private readonly string CollectionName = "Users";
         private readonly IMongoCollection<UserData> _usersCollection;
 
-        public UserRepository(ILogger<UserRepository> logger, IMongoClient client, string databaseName)
+        private readonly string DatabaseName = "IqraUser";
+        private readonly string CollectionName = "Users";
+
+        public UserRepository(ILogger<UserRepository> logger, IMongoClient client)
         {
             _logger = logger;
 
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _usersCollection = database.GetCollection<UserData>(CollectionName);
         }
 

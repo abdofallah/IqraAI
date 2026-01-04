@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.OpenApi;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace ProjectIqraFrontend.Transformer
 {
@@ -16,13 +16,13 @@ namespace ProjectIqraFrontend.Transformer
                 return;
             }
 
-            schema.Type = "integer";
+            schema.Type = JsonSchemaType.Integer;
             schema.Format = "int32";
+            schema.Enum = new List<JsonNode>();
 
-            schema.Enum.Clear();
             foreach (var value in Enum.GetValues(enumType))
             {
-                schema.Enum.Add(new OpenApiInteger((int)value));
+                schema.Enum.Add((int)value);
             }
 
             var description = new StringBuilder("<h6>Enum Members:</h6><ul>");

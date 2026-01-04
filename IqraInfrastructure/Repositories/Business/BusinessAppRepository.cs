@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
-using Scriban;
 
 namespace IqraInfrastructure.Repositories.Business
 {
@@ -14,6 +13,7 @@ namespace IqraInfrastructure.Repositories.Business
     {
         private readonly ILogger<BusinessAppRepository> _logger;
 
+        private readonly string DatabaseName = "IqraBusinessApp";
         private readonly string CollectionName = "BusinessApp";
         private readonly string ArchivedCollectionName = "BusinessApp_archived";
 
@@ -21,12 +21,12 @@ namespace IqraInfrastructure.Repositories.Business
         private readonly IMongoCollection<BusinessApp> _businessAppCollection;
         private readonly IMongoCollection<ArchivedRepoObject<BusinessApp>> _businessAppArchivedCollection;
 
-        public BusinessAppRepository(ILogger<BusinessAppRepository> logger, IMongoClient client, string databaseName)
+        public BusinessAppRepository(ILogger<BusinessAppRepository> logger, IMongoClient client)
         {
             _logger = logger;
             _client = client;
 
-            IMongoDatabase database = client.GetDatabase(databaseName);
+            IMongoDatabase database = client.GetDatabase(DatabaseName);
             _businessAppCollection = database.GetCollection<BusinessApp>(CollectionName);
             _businessAppArchivedCollection = database.GetCollection<ArchivedRepoObject<BusinessApp>>(ArchivedCollectionName);
         }
@@ -1364,7 +1364,8 @@ namespace IqraInfrastructure.Repositories.Business
             var update = Builders<BusinessApp>.Update
                 .Set(d => d.Scripts.FirstMatchingElement().General, updatedScriptData.General)
                 .Set(d => d.Scripts.FirstMatchingElement().Nodes, updatedScriptData.Nodes)
-                .Set(d => d.Scripts.FirstMatchingElement().Edges, updatedScriptData.Edges);
+                .Set(d => d.Scripts.FirstMatchingElement().Edges, updatedScriptData.Edges)
+                .Set(d => d.Scripts.FirstMatchingElement().Variables, updatedScriptData.Variables);
 
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
             return result.IsAcknowledged;

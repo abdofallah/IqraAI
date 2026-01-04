@@ -2,6 +2,7 @@
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
+using IqraCore.Entities.Validation;
 using IqraCore.Entities.WhiteLabel;
 using Microsoft.AspNetCore.Http;
 
@@ -61,7 +62,7 @@ namespace IqraCore.Interfaces.Validation
             bool checkBusinessCanBeEdited = false,
             bool checkBusinessCanBeDeleted = false,
             // Business Module Permissions
-            List<IUserBusinessPermissionHelper.ModulePermissionCheckData>? ModulePermissionsToCheck = null
+            List<ModulePermissionCheckData>? ModulePermissionsToCheck = null
         );
 
         Task<FunctionReturnResult<ValidateUserResult?>> ValidateUserAPIWithPermissions(
@@ -93,7 +94,7 @@ namespace IqraCore.Interfaces.Validation
             bool checkBusinessCanBeEdited = false,
             bool checkBusinessCanBeDeleted = false,
             // Business Module Permissions
-            List<IUserBusinessPermissionHelper.ModulePermissionCheckData>? ModulePermissionsToCheck = null
+            List<ModulePermissionCheckData>? ModulePermissionsToCheck = null
         );
     }
 }
