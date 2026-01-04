@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/abdofallah/Iqra-SaaS-Master/blob/master/LICENSE">
+  <a href="https://github.com/abdofallah/IqraAI/blob/master/LICENSE.md">
     <img src="https://img.shields.io/badge/license-Source_Available-000000" alt="License">
   </a>
   <a href="https://discord.gg/UkKHtmqmMH">
@@ -79,7 +79,7 @@ Iqra AI is licensed under a custom **Source-Available License**.
 *   **Prohibited:** You may **not** use this codebase to create a competing public SaaS platform.
 *   **Ethical Clause:** Strict usage restrictions apply regarding political and ethical alignment.
 
-Please review the full [LICENSE](./LICENSE) before using or distributing this software.
+Please review the full [LICENSE](./LICENSE.md) before using or distributing this software.
 
 ## Acknowledgments
 
