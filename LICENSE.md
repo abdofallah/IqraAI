@@ -1,5 +1,7 @@
 # IQRA AI SOFTWARE LICENSE AGREEMENT
 
+**In the name of Allah, the Most Gracious, the Most Merciful.**
+
 **Version 1.1**
 **Copyright © 2024-2026 Abdullah bin Amir Trading SPC (trading as Badal Technologies). All Rights Reserved.**
 

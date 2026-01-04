@@ -1,4 +1,9 @@
 <p align="center">
+  In the name of Allah, the Most Gracious, the Most Merciful.<br/>
+  To Whom belongs all thanks.
+</p>
+
+<p align="center">
   <a href="https://iqra.bot">
     <img src="./.github/images/banner.png" alt="Iqra AI Banner" width="100%">
   </a>
@@ -31,9 +36,11 @@
   <img src="https://img.shields.io/github/commit-activity/m/abdofallah/IqraAI?color=black" alt="Activity">
 </p>
 
+<br />
+
 # Iqra AI
 
-[Iqra AI](https://iqra.bot) is a low-code orchestration platform for building high-fidelity Voice AI Agents, created by [Badal Technologies](https://www.badal.om). Designed for agencies and enterprises that require precision, it bridges the gap between Large Language Models and real-time channels(telephony, web). We prioritize architecture over magic—giving you deep control over latency via multi-region routing, native multi-language support for cultural accuracy, and a deterministic but dynamic AI first graph-based script builder.
+[Iqra AI](https://iqra.bot) is a low-code orchestration platform for building high-fidelity Voice AI Agents, created by [Badal Technologies](https://www.badal.om). Designed for agencies and enterprises that require precision, it bridges the gap between Large Language Models and real-time channels (telephony, web). We prioritize architecture over magic—giving you deep control over latency via multi-region routing, native multi-language support for cultural accuracy, and a deterministic yet dynamic AI-first graph-based script builder.
 
 ## Deployment Options
 
@@ -57,18 +64,19 @@ For large-scale organizations requiring dedicated infrastructure, custom SLAs, o
 *   **Deep Integrations:** Native support for industry-leading providers (OpenAI, Azure, Google, ElevenLabs, Deepgram) with a modular architecture that allows plugging in custom LLM, TTS, STT, and Embedding models.
 *   [**FlowApps System:**](https://docs.iqra.bot/developers/flowapp) A plugin architecture to integrate third-party tools (Cal.com, HubSpot) with native UI configuration and schema validation.
 *   **Advanced Interruption:** A dedicated engine for handling barge-ins, allowing the agent to pause, listen, and determine if the user is interrupting or just backchanneling.
-*   **Multi-Region Routing:** Assign specific phone numbers/session to specific processing servers (e.g., US East vs. EU Central) to optimize audio latency.
+*   **Multi-Region Routing:** Assign specific phone numbers/sessions to specific processing servers (e.g., US East vs. EU Central) to optimize audio latency.
 *   **Whitelabeling (Cloud Only):** A comprehensive system for agencies to resell the platform under their own brand, domain, and pricing structure.
 
 ## Contributing
 
 We welcome contributions to the core engine and the FlowApp ecosystem.
-Please read our [Contribution Guidelines](https://docs.iqra.bot/developers/contributing) before submitting a Pull Request.
+Please read our [Contribution Guidelines](./CONTRIBUTING.md) before submitting a Pull Request.
 
 ## Security
 
 We take the security of our platform and our users seriously.
 If you discover a vulnerability, please do not report it via GitHub Issues.
+Please read our [Security Policy](./SECURITY.md) for full disclosure guidelines.
 Email us directly at: **security@iqra.bot**
 
 ## License & Terms
