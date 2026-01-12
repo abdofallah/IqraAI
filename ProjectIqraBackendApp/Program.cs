@@ -1,24 +1,34 @@
+using IqraCore.Entities.App.Enum;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Configuration;
 using IqraCore.Interfaces.Modules;
+using IqraCore.Interfaces.Node;
 using IqraCore.Interfaces.Server;
 using IqraCore.Interfaces.User;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
+using IqraInfrastructure.HostedServices.Lifecycle;
+using IqraInfrastructure.HostedServices.Metrics;
+using IqraInfrastructure.Managers.App;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Call.Backend;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Embedding;
+using IqraInfrastructure.Managers.FlowApp;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.KnowledgeBase;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.Node;
+using IqraInfrastructure.Managers.Node.Monitors;
 using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.Server.Metrics;
+using IqraInfrastructure.Managers.Server.Metrics.Monitor;
+using IqraInfrastructure.Managers.Server.Metrics.Monitor.Hardware;
 using IqraInfrastructure.Managers.SIP;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
@@ -31,6 +41,7 @@ using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Embedding;
 using IqraInfrastructure.Repositories.Embedding.Cache;
+using IqraInfrastructure.Repositories.FlowApp;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
@@ -46,9 +57,15 @@ using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.TTS.Cache;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using IqraInfrastructure.Utilities.App;
+using IqraInfrastructure.Utilities.Templating;
+using IqraInfrastructure.Utilities.Validation;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting.Systemd;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using MongoDB.Driver;
+using System;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -63,6 +80,21 @@ namespace ProjectIqraBackendApp
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && WindowsServiceHelpers.IsWindowsService())
+            {
+                builder.Services.AddWindowsService(options =>
+                {
+                    options.ServiceName = "IqraAI.Backend";
+                });
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && SystemdHelpers.IsSystemdService())
+            {
+                builder.Services.AddSystemd();
+            }
+            builder.Services.Configure<HostOptions>(options =>
+            {
+                options.ShutdownTimeout = TimeSpan.FromMinutes(10);
+            });
 
             // Configuration
             var appConfig = builder.Configuration;
@@ -103,6 +135,9 @@ namespace ProjectIqraBackendApp
                 _cloudModule!.SetupManagers(builder.Services, appConfig);
             }
 
+            // Hosted Services
+            SetupHostedServices(builder, backendAppConfig);
+
             // HTTP Client
             builder.Services.AddHttpClient();
             builder.Services.AddHttpClient("ModemTelClient", client =>
@@ -115,11 +150,11 @@ namespace ProjectIqraBackendApp
                 client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
             });
 
+            // Memory Cache
+            builder.Services.AddMemoryCache();
+
             // Add services to the container
             builder.Services.AddControllers();
-
-            // Health checks
-            builder.Services.AddHealthChecks();
 
             // Configure CORS
             builder.Services.AddCors(options =>
@@ -131,12 +166,13 @@ namespace ProjectIqraBackendApp
             });
 
             var app = builder.Build();
+            var appLogger = app.Services.GetRequiredService<ILogger<Program>>();
 
             // Postflight: Inject dependecies where needed
             SetupPostflight(app);
 
             // Initalize All Singleton Services
-            InitializeAllSingletonServices(app.Services);
+            SingletonWarmupHelper.InitializeAllSingletonServices<Program>(app.Services);
 
             app.UseWebSockets(new WebSocketOptions
                 {
@@ -243,10 +279,42 @@ namespace ProjectIqraBackendApp
             app.UseAuthorization();
 
             app.MapControllers();
-            app.MapHealthChecks("/health", new HealthCheckOptions
+
+            // BOOTSTRAP: Initial Check
+            using (var scope = app.Services.CreateScope())
             {
-                ResponseWriter = HealthCheckResponseWriter.WriteResponse
-            });
+                appLogger.LogInformation("Iqra Backend Bootstrapping...");
+
+                var regionManager = scope.ServiceProvider.GetRequiredService<RegionManager>();
+                var regionData = await regionManager.GetRegionById(backendAppConfig.RegionId);
+                if (regionData == null)
+                {
+                    throw new Exception($"Region with id {backendAppConfig.RegionId} not found.");
+                }
+                var serverData = regionData.Servers.FirstOrDefault(s => s.Id == backendAppConfig.Id);
+                if (serverData == null)
+                {
+                    throw new Exception($"Server with id {backendAppConfig.Id} in region {backendAppConfig.RegionId} not found.");
+                }
+                if (serverData.APIKey != backendAppConfig.ApiKey)
+                {
+                    throw new Exception($"Mismatch between ApiKey in config and ApiKey in database.");
+                }
+
+                // Make sure no other backend node with same config is running
+                var metricsManager = scope.ServiceProvider.GetRequiredService<ServerMetricsManager>();
+                var frontendAlreadyRunning = await metricsManager.CheckBackendNodeRunning(backendAppConfig.RegionId, backendAppConfig.Id);
+                if (frontendAlreadyRunning)
+                {
+                    throw new Exception("Server Metrics Manager found that a backend node (with same node id in current region) is already running.\nThis could be a false positive too, but it's better to be safe than sorry.\n\nGiven the redis database takes 30seconds to clear previous running backend status, if the issue presits for more than a minute, there must be another backend node (with same node id in current region) running.");
+                }
+
+                // Perform Initial Startup Integrity Check
+                var startupIntregity = scope.ServiceProvider.GetRequiredService<StartupIntegrityCheckService>();
+                await startupIntregity.CheckAsync();
+
+                appLogger.LogInformation("Iqra Backend Bootstrapping Completed.");
+            }
 
             app.Run();
         }
@@ -309,6 +377,13 @@ namespace ProjectIqraBackendApp
 
         private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
         {
+            string redisConnectionString = appConfig["RedisDatabase:Endpoint"]!;
+            string redisConfigPassword = appConfig["RedisDatabase:Password"]!;
+            if (!string.IsNullOrEmpty(redisConfigPassword))
+            {
+                redisConnectionString += $",password={redisConfigPassword}";
+            }
+
             builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
             {
                 return new MilvusKnowledgeBaseClient(
@@ -317,9 +392,7 @@ namespace ProjectIqraBackendApp
                     {
                         Endpoint = appConfig["Milvus:Endpoint"],
                         Username = appConfig["Milvus:Username"],
-                        Password = appConfig["Milvus:Password"],
-                        ExpiryCheckIntervalSeconds = int.Parse(appConfig["Milvus:ExpiryCheckIntervalSeconds"]),
-                        CollectionStaleTimeoutMinutes = int.Parse(appConfig["Milvus:CollectionStaleTimeoutMinutes"])
+                        Password = appConfig["Milvus:Password"]
                     },
                     sp.GetRequiredService<ILogger<MilvusKnowledgeBaseClient>>()
                 );
@@ -388,7 +461,7 @@ namespace ProjectIqraBackendApp
             {
                 return new ServerLiveStatusChannelRepository(
                     new RedisConnectionFactory(
-                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:ServerLiveStatusChannelDatabaseIndex"]}",
+                        $"{redisConnectionString},defaultDatabase={ServerLiveStatusChannelRepository.DATABASE_INDEX}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     ),
                     sp.GetRequiredService<ILogger<ServerLiveStatusChannelRepository>>()
@@ -399,7 +472,7 @@ namespace ProjectIqraBackendApp
             {
                 return new DistributedLockRepository(
                     new RedisConnectionFactory(
-                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:DistributedLockDatabaseIndex"]}",
+                        $"{redisConnectionString},defaultDatabase={DistributedLockRepository.DATABASE_INDEX}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     ),
                     sp.GetRequiredService<ILogger<DistributedLockRepository>>()
@@ -512,10 +585,17 @@ namespace ProjectIqraBackendApp
 
             builder.Services.AddSingleton<TTSAudioCacheIndexRepository>((sp) =>
             {
+                string localRedisConnectionString = appConfig["LocalRedisDatabase:Endpoint"]!;
+                string localRedisConfigPassword = appConfig["LocalRedisDatabase:Password"]!;
+                if (!string.IsNullOrEmpty(localRedisConfigPassword))
+                {
+                    localRedisConnectionString += $",password={localRedisConfigPassword}";
+                }
+
                 return new TTSAudioCacheIndexRepository(
                     sp.GetRequiredService<ILogger<TTSAudioCacheIndexRepository>>(),
                     new RedisConnectionFactory(
-                        $"{appConfig["LocalRedisDatabase:ConnectionString"]},defaultDatabase={appConfig["LocalRedisDatabase:TTSAudioCacheIndex"]}",
+                        $"{localRedisConnectionString},defaultDatabase={TTSAudioCacheIndexRepository.DATABASE_INDEX}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     )
                 );
@@ -594,10 +674,25 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<RAGKeywordStore>>()
                 );
             });
+
+            builder.Services.AddSingleton<FlowAppRepository>((sp) =>
+            {
+                return new FlowAppRepository(
+                    sp.GetRequiredService<IMongoClient>(),
+                    sp.GetRequiredService<ILogger<FlowAppRepository>>()
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
         {
+            string redisConnectionString = appConfig["RedisDatabase:Endpoint"]!;
+            string redisConfigPassword = appConfig["RedisDatabase:Password"]!;
+            if (!string.IsNullOrEmpty(redisConfigPassword))
+            {
+                redisConnectionString += $",password={redisConfigPassword}";
+            }
+
             if (!backendAppConfig.IsCloudVersion)
             {
                 builder.Services.AddSingleton<IUserUsageValidationManager, UserUsageValidationManager>((sp) =>
@@ -677,7 +772,8 @@ namespace ProjectIqraBackendApp
                     null,
                     null,
                     null,
-                    sp.GetRequiredService<S3StorageClientFactory>()
+                    sp.GetRequiredService<S3StorageClientFactory>(),
+                    sp.GetRequiredService<FlowAppManager>()
                 );
             });
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>
@@ -758,7 +854,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<MilvusKnowledgeBaseClient>(),
                     appConfig["Milvus:Database"],
                     new RedisConnectionFactory(
-                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:RAGCollectionsLoadedDatabaseIndex"]}",
+                        $"{redisConnectionString},defaultDatabase={KnowledgeBaseCollectionsLoadManager.DATABASE_INDEX}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     )
                 );
@@ -779,14 +875,14 @@ namespace ProjectIqraBackendApp
                 {
                     return new WindowsHardwareMonitor(
                         sp.GetRequiredService<ILogger<WindowsHardwareMonitor>>(),
-                        sp.GetRequiredService<BackendAppConfig>()
+                        sp.GetRequiredService<BackendAppConfig>().NetworkInterfaceName
                     );
                 }
                 else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
                     return new LinuxHardwareMonitor(
                         sp.GetRequiredService<ILogger<LinuxHardwareMonitor>>(),
-                        sp.GetRequiredService<BackendAppConfig>()
+                        sp.GetRequiredService<BackendAppConfig>().NetworkInterfaceName
                     );
                 }
                 else
@@ -795,16 +891,6 @@ namespace ProjectIqraBackendApp
                 }
             });
 
-            builder.Services.AddSingleton<ServerMetricsMonitor>((sp) =>
-            {
-                return new ServerMetricsMonitor(
-                    sp.GetRequiredService<ILogger<ServerMetricsMonitor>>(),
-                    sp.GetRequiredService<BackendAppConfig>(),
-                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
-                    sp.GetRequiredService<ServerStatusRepository>(),
-                    sp.GetRequiredService<IHardwareMonitor>()
-                );
-            });
             builder.Services.AddSingleton<SystemPromptGenerator>((sp) =>
             {
                 return new SystemPromptGenerator(
@@ -830,7 +916,8 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<IUserBillingUsageManager>(),
                     sp.GetRequiredService<CampaignActionExecutorService>(),
-                    sp.GetRequiredService<IUserUsageValidationManager>()
+                    sp.GetRequiredService<IUserUsageValidationManager>(),
+                    sp.GetRequiredService<NodeLifecycleManager>()
                 );
             });
             builder.Services.AddSingleton<BackendWebSessionProcessorManager>((sp) =>
@@ -848,7 +935,8 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<IUserBillingUsageManager>(),
                     sp.GetRequiredService<CampaignActionExecutorService>(),
-                    sp.GetRequiredService<IUserUsageValidationManager>()
+                    sp.GetRequiredService<IUserUsageValidationManager>(),
+                    sp.GetRequiredService<NodeLifecycleManager>()
                 );
             });
 
@@ -877,18 +965,101 @@ namespace ProjectIqraBackendApp
                 );
             });
 
-            // Background services
-            builder.Services.AddHostedService<ServerMetricsManager>((sp) =>
+            builder.Services.AddSingleton<StartupIntegrityCheckService>((sp) =>
             {
-                return new ServerMetricsManager(
-                    sp.GetRequiredService<ILogger<ServerMetricsManager>>(),
-                    sp.GetRequiredService<ServerMetricsMonitor>(),
-                    sp.GetRequiredService<InboundCallQueueRepository>(),
-                    sp.GetRequiredService<ConversationStateRepository>(),
-                    sp.GetRequiredService<BackendAppConfig>()
+                return new StartupIntegrityCheckService(
+                    sp,
+                    sp.GetRequiredService<ILogger<StartupIntegrityCheckService>>(),
+                    AppNodeTypeEnum.Backend
                 );
             });
 
+            builder.Services.AddSingleton<ServerMetricsManager>((sp) =>
+            {
+                return new ServerMetricsManager(
+                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<ServerStatusRepository>()
+                );
+            });
+
+            builder.Services.AddSingleton<ScribanRenderService>((sp) =>
+            {
+                return new ScribanRenderService(
+                    sp.GetRequiredService<IMemoryCache>(),
+                    sp.GetRequiredService<ILogger<ScribanRenderService>>()
+                );
+            });
+
+            builder.Services.AddSingleton<NJsonSchemaValidator>((sp) =>
+            {
+                return new NJsonSchemaValidator(
+                    sp.GetRequiredService<IMemoryCache>(),
+                    sp.GetRequiredService<ILogger<NJsonSchemaValidator>>()
+                );
+            });
+
+            builder.Services.AddSingleton<FlowAppManager>((sp) =>
+            {
+                AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(
+                    sp.GetRequiredService<ILogger<AES256EncryptionService>>(),
+                    appConfig["Integrations:EncryptionKey"]
+                );
+                return new FlowAppManager(
+                    sp,
+                    sp.GetRequiredService<ScribanRenderService>(),
+                    sp.GetRequiredService<NJsonSchemaValidator>(),
+                    integrationFieldsEncryptionService,
+                    sp.GetRequiredService<FlowAppRepository>(),
+                    sp.GetRequiredService<IMemoryCache>(),
+                    sp.GetRequiredService<ILogger<FlowAppManager>>()
+                );
+            });
+
+            builder.Services.AddSingleton<IqraAppManager>((sp) =>
+            {
+                return new IqraAppManager(
+                    sp,
+                    null,
+                    sp.GetRequiredService<ILogger<IqraAppManager>>()
+                );
+            });
+
+            builder.Services.AddSingleton<ServerMetricsMonitor>((sp) =>
+            {
+                return new BackendMetricsMonitor(
+                    sp.GetRequiredService<ILogger<BackendMetricsMonitor>>(),
+                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<ServerStatusRepository>(),
+                    sp.GetRequiredService<IHardwareMonitor>(),
+                    backendAppConfig
+                );
+            });
+
+            builder.Services.AddSingleton<BackendWorkloadMonitor>((sp) =>
+            {
+                return new BackendWorkloadMonitor();
+            });
+
+            builder.Services.AddSingleton<NodeLifecycleManager>((sp) =>
+            {
+                var nodeLifecycleManager = new NodeLifecycleManager(
+                    AppNodeTypeEnum.Proxy,
+                    sp.GetRequiredService<IHostApplicationLifetime>(),
+                    sp.GetRequiredService<IqraAppManager>(),
+                    sp.GetRequiredService<AppRepository>(),
+                    sp.GetRequiredService<RegionRepository>(),
+                    sp.GetRequiredService<BackendWorkloadMonitor>(),
+                    sp.GetRequiredService<ILogger<NodeLifecycleManager>>()
+                );
+
+                nodeLifecycleManager.SetIdentity(backendAppConfig.RegionId, backendAppConfig.Id);
+
+                return nodeLifecycleManager;
+            });
+        }
+
+        private static void SetupHostedServices(WebApplicationBuilder builder, BackendAppConfig backendAppConfig)
+        {
             builder.Services.AddHostedService<SipBackendListenerService>((sp) =>
             {
                 return new SipBackendListenerService(
@@ -896,6 +1067,27 @@ namespace ProjectIqraBackendApp
                     backendAppConfig,
                     sp.GetRequiredService<BackendCallProcessorManager>(),
                     sp.GetRequiredService<InboundCallQueueRepository>()
+                );
+            });
+
+            builder.Services.AddHostedService<NodeStateOrchestratorService>((sp) =>
+            {
+                return new NodeStateOrchestratorService(
+                    AppNodeTypeEnum.Backend,
+                    sp.GetRequiredService<NodeLifecycleManager>(),
+                    sp.GetRequiredService<IqraAppManager>(),
+                    sp.GetRequiredService<ILogger<NodeStateOrchestratorService>>()
+                );
+            });
+
+            builder.Services.AddHostedService<ServerMetricsMonitorService>((sp) =>
+            {
+                return new ServerMetricsMonitorService(
+                    sp,
+                    sp.GetRequiredService<ILogger<ServerMetricsMonitorService>>(),
+                    AppNodeTypeEnum.Backend,
+                    sp.GetRequiredService<ServerMetricsMonitor>(),
+                    sp.GetRequiredService<NodeLifecycleManager>()
                 );
             });
         }
@@ -907,37 +1099,12 @@ namespace ProjectIqraBackendApp
 
             var regionManager = app.Services.GetRequiredService<RegionManager>();
             regionManager.SetLogger(app.Services.GetRequiredService<ILogger<RegionManager>>());
-        }
 
-        private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)
-        {
-            var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-            logger.LogInformation("Initializing all singleton services from IqraInfrastructure namespace...");
-
-            // Get service descriptors from the service collection
-            var services = GetTypes(serviceProvider)
-                .Where(descriptor => descriptor.Lifetime == ServiceLifetime.Singleton &&
-                       descriptor.ServiceType.Namespace != null &&
-                       descriptor.ServiceType.Namespace.StartsWith("IqraInfrastructure"))
-                .ToList();
-
-            logger.LogInformation($"Found {services.Count} singleton services to initialize");
-
-            foreach (var service in services)
-            {
-                logger.LogInformation($"Initializing service: {service.ServiceType.Name}");
-                serviceProvider.GetService(service.ServiceType);
-            }
-
-            logger.LogInformation("All IqraInfrastructure singleton services initialized successfully");
-        }
-
-        private static List<ServiceDescriptor> GetTypes(IServiceProvider provider)
-        {
-            ServiceProvider serviceProvider = provider as ServiceProvider;
-            var callSiteFactory = serviceProvider.GetType().GetProperty("CallSiteFactory", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(serviceProvider);
-            var serviceDescriptors = callSiteFactory.GetType().GetProperty("Descriptors", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(callSiteFactory) as ServiceDescriptor[];
-            return serviceDescriptors.ToList();
+            var backendWorkloadMonitor = app.Services.GetRequiredService<BackendWorkloadMonitor>();
+            backendWorkloadMonitor.SetupDependencies(
+                app.Services.GetRequiredService<BackendCallProcessorManager>(),
+                app.Services.GetRequiredService<BackendWebSessionProcessorManager>()
+            );
         }
     }
 }

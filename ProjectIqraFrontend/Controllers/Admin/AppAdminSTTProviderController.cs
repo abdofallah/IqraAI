@@ -1,26 +1,26 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.STT;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.STT;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers.Admin
 {
     public class AppAdminSTTProviderController : Controller
     {
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly STTProviderManager _sttProviderManager;
-        private readonly UserManager _userManager;
         private readonly IntegrationsManager _integrationsManager;
 
         public AppAdminSTTProviderController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
             STTProviderManager sttProviderManager,
-            UserManager userManager,
             IntegrationsManager integrationsManager)
         {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _sttProviderManager = sttProviderManager;
-            _userManager = userManager;
             _integrationsManager = integrationsManager;
         }
 
@@ -29,51 +29,39 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<List<STTProviderData>?>();
 
-            // Validate session
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "GetSTTProviders:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetSTTProviders:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+                var providersResult = await _sttProviderManager.GetProviderList(page, pageSize);
+                if (!providersResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "GetSTTProviders:" + providersResult.Code,
+                        providersResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(providersResult.Data);
+            }
+            catch (Exception ex)
             {
-                result.Code = "GetSTTProviders:2";
-                result.Message = "Session validation failed";
-                return result;
+                return result.SetFailureResult(
+                    "GetSTTProviders:Exception",
+                    $"An error occurred: {ex.Message}"
+                );
             }
-
-            var user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetSTTProviders:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "GetSTTProviders:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
-
-            var providersResult = await _sttProviderManager.GetProviderList(page, pageSize);
-            if (!providersResult.Success)
-            {
-                result.Code = "GetSTTProviders:" + providersResult.Code;
-                result.Message = providersResult.Message;
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = providersResult.Data;
-            return result;
         }
 
         [HttpPost("/app/admin/sttproviders/save")]
@@ -81,74 +69,65 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<STTProviderData?>();
 
-            // Validate session
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveSTTProvider:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveSTTProvider:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+                string? providerId = formData["providerId"];
+                if (string.IsNullOrEmpty(providerId))
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProvider:EMPTY_PROVIDER_ID",
+                        "Provider id is required"
+                    );
+                }
+
+                if (!Enum.TryParse(typeof(InterfaceSTTProviderEnum), providerId, true, out object? providerIdEnum))
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProvider:INVALID_PROVIDER_ID",
+                        "Invalid provider id enum"
+                    );
+                }
+
+                var provider = await _sttProviderManager.GetProviderData((InterfaceSTTProviderEnum)providerIdEnum);
+                if (provider == null)
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProvider:NOT_FOUND",
+                        "Provider not found"
+                    );
+                }
+
+                var saveResult = await _sttProviderManager.UpdateProvider(provider, formData, _integrationsManager);
+                if (!saveResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProvider:" + saveResult.Code,
+                        saveResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(saveResult.Data);
+            }
+            catch (Exception ex)
             {
-                result.Code = "SaveSTTProvider:2";
-                result.Message = "Session validation failed";
-                return result;
+                return result.SetFailureResult(
+                    "SaveSTTProvider:Exception",
+                    $"An error occurred: {ex.Message}"
+                );
             }
-
-            var user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveSTTProvider:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "SaveSTTProvider:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
-
-            string? providerId = formData["providerId"];
-            if (string.IsNullOrEmpty(providerId))
-            {
-                result.Code = "SaveSTTProvider:5";
-                result.Message = "Provider id is required";
-                return result;
-            }
-
-            if (!Enum.TryParse(typeof(InterfaceSTTProviderEnum), providerId, true, out object? providerIdEnum))
-            {
-                result.Code = "SaveSTTProvider:6";
-                result.Message = "Invalid provider id enum";
-                return result;
-            }
-
-            var provider = await _sttProviderManager.GetProviderData((InterfaceSTTProviderEnum)providerIdEnum);
-            if (provider == null)
-            {
-                result.Code = "SaveSTTProvider:7";
-                result.Message = "Provider not found";
-                return result;
-            }
-
-            var saveResult = await _sttProviderManager.UpdateProvider(provider, formData, _integrationsManager);
-            if (!saveResult.Success)
-            {
-                result.Code = "SaveSTTProvider:" + saveResult.Code;
-                result.Message = saveResult.Message;
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = saveResult.Data;
-            return result;
         }
 
         [HttpPost("/app/admin/sttproviders/model/save")]
@@ -156,104 +135,99 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<STTProviderModelData?>();
 
-            // Validate session
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveSTTProviderModel:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveSTTProviderModel:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
-            {
-                result.Code = "SaveSTTProviderModel:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
+                string? providerId = formData["providerId"];
+                if (string.IsNullOrEmpty(providerId))
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProviderModel:EMPTY_PROVIDER_ID",
+                        "Provider id is required"
+                    );
+                }
 
-            var user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveSTTProviderModel:3";
-                result.Message = "User not found";
-                return result;
-            }
+                if (!Enum.TryParse(typeof(InterfaceSTTProviderEnum), providerId, true, out object? providerIdEnum))
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProviderModel:INVALID_PROVIDER_ID",
+                        "Invalid provider id enum"
+                    );
+                }
 
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "SaveSTTProviderModel:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
+                var provider = await _sttProviderManager.GetProviderData((InterfaceSTTProviderEnum)providerIdEnum);
+                if (provider == null)
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProviderModel:NOT_FOUND",
+                        "Provider not found"
+                    );
+                }
 
-            string? providerId = formData["providerId"];
-            if (string.IsNullOrEmpty(providerId))
-            {
-                result.Code = "SaveSTTProviderModel:5";
-                result.Message = "Provider id is required";
-                return result;
-            }
+                string? postType = formData["postType"];
+                if (string.IsNullOrEmpty(postType) || (postType != "edit" && postType != "new"))
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProviderModel:INVALID_POST_TYPE",
+                        "Post type is required and must be either 'edit' or 'new'"
+                    );
+                }
 
-            if (!Enum.TryParse(typeof(InterfaceSTTProviderEnum), providerId, true, out object? providerIdEnum))
-            {
-                result.Code = "SaveSTTProviderModel:6";
-                result.Message = "Invalid provider id enum";
-                return result;
-            }
+                string? modelId = formData["modelId"];
+                if (string.IsNullOrEmpty(modelId))
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProviderModel:EMPTY_MODEL_ID",
+                        "Model id is required"
+                    );
+                }
 
-            var provider = await _sttProviderManager.GetProviderData((InterfaceSTTProviderEnum)providerIdEnum);
-            if (provider == null)
-            {
-                result.Code = "SaveSTTProviderModel:7";
-                result.Message = "Provider not found";
-                return result;
-            }
+                var oldModelData = provider.Models.Find(m => m.Id == modelId);
+                if (postType == "edit" && oldModelData == null)
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProviderModel:MODEL_NOT_FOUND",
+                        "Model not found"
+                    );
+                }
+                else if (postType == "new" && oldModelData != null)
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProviderModel:MODEL_ALREADY_EXISTS",
+                        "Model already exists with id"
+                    );
+                }
 
-            string? postType = formData["postType"];
-            if (string.IsNullOrEmpty(postType) || (postType != "edit" && postType != "new"))
-            {
-                result.Code = "SaveSTTProviderModel:8";
-                result.Message = "Post type is required and must be either 'edit' or 'new'";
-                return result;
-            }
+                var saveResult = await _sttProviderManager.AddUpdateProviderModel(provider, modelId, postType, oldModelData, formData);
+                if (!saveResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "SaveSTTProviderModel:" + saveResult.Code,
+                        saveResult.Message
+                    );
+                }
 
-            string? modelId = formData["modelId"];
-            if (string.IsNullOrEmpty(modelId))
-            {
-                result.Code = "SaveSTTProviderModel:9";
-                result.Message = "Model id is required";
-                return result;
+                return result.SetSuccessResult(saveResult.Data);
             }
-
-            var oldModelData = provider.Models.Find(m => m.Id == modelId);
-            if (postType == "edit" && oldModelData == null)
+            catch (Exception ex)
             {
-                result.Code = "SaveSTTProviderModel:10";
-                result.Message = "Model not found";
-                return result;
+                return result.SetFailureResult(
+                    "SaveSTTProviderModel:Exception",
+                    $"An error occurred: {ex.Message}"
+                );
             }
-            else if (postType == "new" && oldModelData != null)
-            {
-                result.Code = "SaveSTTProviderModel:11";
-                result.Message = "Model already exists";
-                return result;
-            }
-
-            var saveResult = await _sttProviderManager.AddUpdateProviderModel(provider, modelId, postType, oldModelData, formData);
-            if (!saveResult.Success)
-            {
-                result.Code = "SaveSTTProviderModel:" + saveResult.Code;
-                result.Message = saveResult.Message;
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = saveResult.Data;
-            return result;
         }
     }
 }

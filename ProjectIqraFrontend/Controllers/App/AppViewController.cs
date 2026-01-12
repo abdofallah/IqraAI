@@ -1,5 +1,7 @@
 ﻿using IqraCore.Attributes;
+using IqraCore.Entities.App.Lifecycle;
 using IqraCore.Interfaces.Validation;
+using IqraInfrastructure.Managers.App;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,6 +12,7 @@ namespace ProjectIqraFrontend.Controllers.App
     {
         private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly UserManager _userManager;
+        private readonly IqraAppManager _appManager;
 
         public AppViewController(
             ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
@@ -17,6 +20,18 @@ namespace ProjectIqraFrontend.Controllers.App
         ) {
             _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _userManager = userManager;
+        }
+
+        [HttpGet("/install")]
+        public async Task<IActionResult> Install()
+        {
+            var status = _appManager.CurrentStatus;
+            if (status == AppLifecycleStatus.Running)
+            {
+                return Redirect("/");
+            }
+
+            return View("Installation");
         }
 
 
@@ -116,6 +131,7 @@ namespace ProjectIqraFrontend.Controllers.App
         }
 
         [HttpGet("/admin")]
+        [HttpGet("/admin/{*tabPath}")]
         public async Task<IActionResult> Admin()
         {
             var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAsync(Request);

@@ -6,6 +6,8 @@ namespace IqraInfrastructure.Repositories.Server
 {
     public class DistributedLockRepository
     {
+        public static int DATABASE_INDEX = 8;
+
         private readonly RedisConnectionFactory _redisFactory;
         private readonly ILogger<DistributedLockRepository> _logger;
 

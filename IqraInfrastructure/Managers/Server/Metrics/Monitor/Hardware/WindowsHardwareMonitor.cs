@@ -1,16 +1,15 @@
-﻿using IqraCore.Entities.Server.Metrics;
-using IqraCore.Entities.Server;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using IqraCore.Interfaces.Server;
+using IqraCore.Entities.Server.Metrics.Hardware;
 
-namespace IqraInfrastructure.Managers.Server.Metrics
+namespace IqraInfrastructure.Managers.Server.Metrics.Monitor.Hardware
 {
     public class WindowsHardwareMonitor : IHardwareMonitor
     {
         private readonly ILogger<WindowsHardwareMonitor> _logger;
-        private readonly BackendAppConfig _serverConfig;
+        private readonly string _networkInterfaceName;
 
         private PerformanceCounter? _cpuCounter;
         private PerformanceCounter? _memCounter;
@@ -23,10 +22,12 @@ namespace IqraInfrastructure.Managers.Server.Metrics
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetPhysicallyInstalledSystemMemory(out long TotalMemoryInKilobytes);
 
-        public WindowsHardwareMonitor(ILogger<WindowsHardwareMonitor> logger, BackendAppConfig serverConfig)
-        {
+        public WindowsHardwareMonitor(
+            ILogger<WindowsHardwareMonitor> logger,
+            string networkInterfaceName
+        ) {
             _logger = logger;
-            _serverConfig = serverConfig ?? throw new ArgumentNullException(nameof(serverConfig));
+            _networkInterfaceName = networkInterfaceName;
 
             if (!OperatingSystem.IsWindows())
             {
@@ -55,26 +56,17 @@ namespace IqraInfrastructure.Managers.Server.Metrics
                 _cpuCounter.NextValue(); // Prime
 
                 // Network
-                if (string.IsNullOrWhiteSpace(_serverConfig.NetworkInterfaceName))
+                // Verify the instance exists
+                if (PerformanceCounterCategory.InstanceExists(_networkInterfaceName, "Network Interface"))
                 {
-                    _logger.LogWarning("ServerConfig.NetworkInterfaceName is not set. Network monitoring will be disabled.");
+                    _networkRecvCounter = new PerformanceCounter("Network Interface", "Bytes Received/sec", _networkInterfaceName);
+                    _networkSentCounter = new PerformanceCounter("Network Interface", "Bytes Sent/sec", _networkInterfaceName);
+                    _networkRecvCounter.NextValue(); // Prime
+                    _networkSentCounter.NextValue(); // Prime
                 }
                 else
                 {
-                    // Verify the instance exists
-                    if (PerformanceCounterCategory.InstanceExists(_serverConfig.NetworkInterfaceName, "Network Interface"))
-                    {
-                        _networkRecvCounter = new PerformanceCounter("Network Interface", "Bytes Received/sec", _serverConfig.NetworkInterfaceName);
-                        _networkSentCounter = new PerformanceCounter("Network Interface", "Bytes Sent/sec", _serverConfig.NetworkInterfaceName);
-                        _networkRecvCounter.NextValue(); // Prime
-                        _networkSentCounter.NextValue(); // Prime
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"Network interface instance '{_serverConfig.NetworkInterfaceName}' not found. Network monitoring disabled.");
-                        _networkRecvCounter = null;
-                        _networkSentCounter = null;
-                    }
+                    throw new InvalidOperationException($"Network interface instance '{_networkInterfaceName}' not found. Network monitoring is required.");
                 }
 
                 // Allow counters time to stabilize after priming
@@ -82,17 +74,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to initialize Windows performance counters.");
-                // Ensure counters are nullified if initialization failed partially
-                _cpuCounter?.Dispose();
-                _memCounter?.Dispose();
-                _networkRecvCounter?.Dispose();
-                _networkSentCounter?.Dispose();
-                _cpuCounter = null;
-                _memCounter = null;
-                _networkRecvCounter = null;
-                _networkSentCounter = null;
-                _totalMemoryBytes = 0;
+                throw new Exception("Failed to initialize Windows performance counters.", ex);      
             }
         }
 

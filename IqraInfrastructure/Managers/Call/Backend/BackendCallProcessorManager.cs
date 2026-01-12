@@ -25,12 +25,12 @@ using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.Node;
 using IqraInfrastructure.Managers.Region;
-using IqraInfrastructure.Managers.Server.Metrics;
+using IqraInfrastructure.Managers.Server.Metrics.Monitor;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
-using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
@@ -56,7 +56,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
 
         private readonly ILogger<BackendCallProcessorManager> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ServerMetricsMonitor _serverMetricsMonitor;
+        private readonly BackendMetricsMonitor _serverMetricsMonitor;
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
         private readonly OutboundCallQueueGroupRepository _outboundCallCampaignRepository;
@@ -68,6 +68,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
         private readonly IUserBillingUsageManager _billingProcessingManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
         private readonly IUserUsageValidationManager _userUsageValidationManager;
+        private readonly NodeLifecycleManager _nodeLifecycleManager;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
@@ -92,13 +93,21 @@ namespace IqraInfrastructure.Managers.Call.Backend
             RegionManager regionManager,
             IUserBillingUsageManager billingProcessingManager,
             CampaignActionExecutorService campaignActionExecutorService,
-            IUserUsageValidationManager userUsageValidationManager
+            IUserUsageValidationManager userUsageValidationManager,
+            NodeLifecycleManager nodeLifecycleManager
         )
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _backendAppConfig = backendAppConfig;
-            _serverMetricsMonitor = serverMetricsMonitor;
+            if (serverMetricsMonitor is BackendMetricsMonitor backendMetricsMonitor)
+            {
+                _serverMetricsMonitor = backendMetricsMonitor;
+            }
+            else
+            {
+                throw new ArgumentException("serverMetricsMonitor must be of type BackendMetricsMonitor");
+            }
             _inboundCallQueueRepository = inboundCallQueueRepository;
             _outboundCallQueueRepository = outboundCallQueueRepository;
             _outboundCallCampaignRepository = outboundCallCampaignRepository;
@@ -110,11 +119,22 @@ namespace IqraInfrastructure.Managers.Call.Backend
             _billingProcessingManager = billingProcessingManager;
             _campaignActionExecutorService = campaignActionExecutorService;
             _userUsageValidationManager = userUsageValidationManager;
+            _nodeLifecycleManager = nodeLifecycleManager;
         }
+
+        public int ActiveSessionCount => _activeSessions.Count;
 
         public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> ProcessInboundCallAsync(string queueId, InboundCallQueueData? inboundQueueData = null, SIPUserAgent? userAgent = null, SIPServerUserAgent? uas = null)
         {
             var result = new FunctionReturnResult<ProcessedInboundCallResponse?>();
+
+            if (!_nodeLifecycleManager.IsAcceptingNewWork)
+            {
+                return result.SetFailureResult(
+                    "ProcessInboundCallAsync:NOT_ACCEPTING_NEW_WORK",
+                    _nodeLifecycleManager.StatusReason
+                );
+            }
 
             // Session State
             string sessionId = ObjectId.GenerateNewId().ToString();
@@ -184,7 +204,15 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         sessionResult.Message
                     );
                 }
-                var session = sessionResult.Data;
+                var session = sessionResult.Data!;
+
+                if (!_nodeLifecycleManager.IsAcceptingNewWork)
+                {
+                    return result.SetFailureResult(
+                        "ProcessInboundCallAsync:NOT_ACCEPTING_NEW_WORK",
+                        _nodeLifecycleManager.StatusReason
+                    );
+                }
 
                 var startSessionResult = await session.InitializeAsync();
                 if (!startSessionResult.Success)
@@ -262,6 +290,16 @@ namespace IqraInfrastructure.Managers.Call.Backend
             {
                 ShouldRequeue = false
             };
+
+            if (!_nodeLifecycleManager.IsAcceptingNewWork)
+            {
+                resultData.ShouldRequeue = true;
+                return result.SetFailureResult(
+                    "InitiateOutboundCallAsync:NOT_ACCEPTING_NEW_WORK",
+                    _nodeLifecycleManager.StatusReason,
+                    resultData
+                );
+            }
 
             // Session State
             string sessionId = ObjectId.GenerateNewId().ToString();     
@@ -384,7 +422,17 @@ namespace IqraInfrastructure.Managers.Call.Backend
                         resultData
                     );
                 }
-                var session = sessionResult.Data;
+                var session = sessionResult.Data!;
+
+                if (!_nodeLifecycleManager.IsAcceptingNewWork)
+                {
+                    resultData.ShouldRequeue = true;
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:SERVER_NOT_ACCEPTING_WORK",
+                        _nodeLifecycleManager.StatusReason,
+                        resultData
+                    );
+                }
 
                 var startSessionResult = await session.InitializeAsync();
                 if (!startSessionResult.Success)

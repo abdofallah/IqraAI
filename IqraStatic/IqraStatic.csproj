@@ -55,5 +55,6 @@
 	  <Folder Include="Models\BlandAIVM\" />
 	  <Folder Include="Models\Silero\" />
 	  <Folder Include="Models\SmartTurn\" />
+	  <Folder Include="Seeding\Languages\" />
 	</ItemGroup>
 </Project>

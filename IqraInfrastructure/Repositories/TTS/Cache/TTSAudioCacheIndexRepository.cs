@@ -6,6 +6,8 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
 {
     public class TTSAudioCacheIndexRepository
     {
+        public static int DATABASE_INDEX = 3;
+
         private readonly ILogger<TTSAudioCacheIndexRepository> _logger;
         private readonly RedisConnectionFactory _redisFactory; // Using your existing factory
         private const string RedisKeyPrefix = "tts-cache:";

@@ -2,42 +2,55 @@
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Server.Configuration;
+using IqraInfrastructure.Managers.Call.Outbound;
+using IqraInfrastructure.Managers.Node;
 using IqraInfrastructure.Repositories.Call;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace IqraInfrastructure.Managers.Call.Outbound
+namespace IqraInfrastructure.HostedServices.Call.Outbound
 {
     public class OutboundCallProcessorService : IHostedService, IDisposable
     {
         private readonly ILogger<OutboundCallProcessorService> _logger;
         private readonly OutboundCallProcessingOrchestrator _outboundCallProcessingOrchestrator;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepo;
-        private Task _pollTask;
-        private PaginationCursor<PaginationCursorNoFilterHelper>? _currentRegionQueueCursor;
         private readonly CancellationTokenSource _stoppingCts = new CancellationTokenSource();
-
         private readonly ProxyAppConfig _proxyAppConfig;
+        private readonly NodeLifecycleManager _nodeLifecycleManager;
 
         private readonly SemaphoreSlim _parallelProcessingSemaphore;
+
+        private Task _pollTask;
+        private PaginationCursor<PaginationCursorNoFilterHelper>? _currentRegionQueueCursor;
+
+        private int _currentMarkedCount = 0;
+        private int _currentProcessingMarkedCount = 0;
+        private int _currentProcessedMarkedCount = 0;
 
         public OutboundCallProcessorService(
             ILogger<OutboundCallProcessorService> logger,
             ProxyAppConfig proxyAppConfig,
             OutboundCallProcessingOrchestrator callProcessingOrchestrator,
-            OutboundCallQueueRepository outboundCallQueueRepo
+            OutboundCallQueueRepository outboundCallQueueRepo,
+            NodeLifecycleManager nodeLifecycleManager
         )
         {
             _logger = logger;
             _outboundCallProcessingOrchestrator = callProcessingOrchestrator;
             _proxyAppConfig = proxyAppConfig;
             _outboundCallQueueRepo = outboundCallQueueRepo;
+            _nodeLifecycleManager = nodeLifecycleManager;
 
             _parallelProcessingSemaphore = new SemaphoreSlim(
                 _proxyAppConfig.OutboundProcessing.ProcessingBatchSize, // initialCount
                 _proxyAppConfig.OutboundProcessing.ProcessingBatchSize  // maxCount
             );
         }
+
+        public int CurrentMarkedCount => _currentMarkedCount;
+        public int CurrentProcessingMarkedCount => _currentProcessingMarkedCount;
+        public int CurrentProcessedMarkedCount => _currentProcessedMarkedCount;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
@@ -55,6 +68,16 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             {
                 while (!token.IsCancellationRequested)
                 {
+                    _currentMarkedCount = 0;
+                    _currentProcessingMarkedCount = 0;
+                    _currentProcessedMarkedCount = 0;
+
+                    if (!_nodeLifecycleManager.IsAcceptingNewWork)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(_proxyAppConfig.OutboundProcessing.PollingIntervalSeconds > 0 ? _proxyAppConfig.OutboundProcessing.PollingIntervalSeconds : 1), token);
+                        continue;
+                    }
+
                     var scheduleThreshold = DateTime.UtcNow.AddMinutes(_proxyAppConfig.OutboundProcessing.ScheduleWindowMinutes);
 
                     var (callsSuccessfullyMarked, nextCursor) = await _outboundCallQueueRepo.GetProcessableOutboundCallsAndMarkAsync(
@@ -63,13 +86,23 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                         scheduleThreshold,
                         _currentRegionQueueCursor
                     );
+                    _currentMarkedCount = callsSuccessfullyMarked.Count;
 
-                    if (token.IsCancellationRequested) return;
+                    if (token.IsCancellationRequested)
+                    {
+                        if (callsSuccessfullyMarked.Any())
+                        {
+                            var queueIdToUnmark = callsSuccessfullyMarked.Select(x => x.Id).ToList();
+
+                            await _outboundCallQueueRepo.UnmarkProcessableOutboundCallsAsync(queueIdToUnmark);
+                        }
+                        return;
+                    }
 
                     if (callsSuccessfullyMarked.Any())
                     {
                         var processingTasks = new List<Task>();
-
+                        var processedCallIds = new List<string>();
                         foreach (var call in callsSuccessfullyMarked)
                         {
                             if (token.IsCancellationRequested) break;
@@ -82,9 +115,20 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                             }
 
                             processingTasks.Add(ProcessSingleCallAsync(call, token));
+                            processedCallIds.Add(call.Id);
+                            _currentProcessingMarkedCount++;
                         }
 
-                        if (processingTasks.Any()) await Task.WhenAll(processingTasks);
+                        if (processingTasks.Any())
+                        {
+                            await Task.WhenAll(processingTasks);
+                        }
+
+                        var unprocessedCallQueueIds = callsSuccessfullyMarked.Where(x => !processedCallIds.Contains(x.Id)).Select(x => x.Id).ToList();
+                        if (unprocessedCallQueueIds.Any())
+                        {
+                            await _outboundCallQueueRepo.UnmarkProcessableOutboundCallsAsync(unprocessedCallQueueIds);
+                        }
                     }
 
                     if (nextCursor != null)
@@ -123,12 +167,12 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             {
                 if (token.IsCancellationRequested)
                 {
+                    await _outboundCallQueueRepo.UnmarkProcessableOutboundCallsAsync(new List<string> { call.Id });
                     return;
                 }
 
                 await _outboundCallProcessingOrchestrator.ProcessCallAsync(call);
             }
-            catch (OperationCanceledException) when (token.IsCancellationRequested) { /** Ignore **/ }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unhandled error during ProcessSingleCallAsync for call {QueueId}.", call.Id);
@@ -154,16 +198,16 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             finally
             {
                 _parallelProcessingSemaphore.Release();
+                Interlocked.Increment(ref _currentProcessedMarkedCount);
             }
         }
 
-
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("OutboundCallProcessorService is stopping for region {Region}.", _proxyAppConfig.RegionId);
             _stoppingCts.Cancel();
             _pollTask?.Wait();
-            return Task.CompletedTask;
+            _logger.LogInformation("OutboundCallProcessorService is stopped for region {Region}.", _proxyAppConfig.RegionId);
         }
 
         public void Dispose()
@@ -171,6 +215,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             _logger.LogInformation("OutboundCallProcessorService is disposing for region {Region}.", _proxyAppConfig.RegionId);
             _stoppingCts.Dispose();
             _pollTask?.Dispose();
+            _logger.LogInformation("OutboundCallProcessorService is disposed for region {Region}.", _proxyAppConfig.RegionId);
         }
     }
 }

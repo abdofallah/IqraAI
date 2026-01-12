@@ -5,8 +5,9 @@ namespace IqraInfrastructure.Repositories.User
 {
     public class UserSessionRepository
     {
-        private readonly ILogger<UserSessionRepository> _logger;
+        public static int DATABASE_INDEX = 5;
 
+        private readonly ILogger<UserSessionRepository> _logger;
         private readonly RedisConnectionFactory _redisFactory;     
 
         public UserSessionRepository(ILogger<UserSessionRepository> logger, RedisConnectionFactory redisFactory)

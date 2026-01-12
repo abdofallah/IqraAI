@@ -1,0 +1,208 @@
+﻿<div class="main-container fade w-100 d-none" id="stt-provider-tab">
+    <h3 class="fw-bold tab-title">
+        <i class='fa-regular fa-microphone nav_icon'></i>
+        <span>STT Provider</span>
+    </h3>
+    <div class="inner-container">
+        <!-- Manager Inner Tabs -->
+        <div class="mb-3">
+            <ul class="nav w-100 fade show" id="stt-provider-inner-tab" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="stt-provider-list-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-list" type="button" role="tab" aria-controls="stt-provider-list" aria-selected="true">List</button>
+                </li>
+            </ul>
+            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="stt-provider-manage-breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="#" id="switchBackToSTTProviderListTabFromManageTab">Providers</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <span id="currentManageSTTProviderName">Provider</span>
+                    </li>
+                </ol>
+            </nav>
+            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="stt-provider-model-manager-breadcrumb">
+                <div class="d-flex flex-row align-items-center justify-content-between">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item" aria-current="page">
+                            <span id="currentManageModelSTTProviderName">Provider</span>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a href="#" id="switchBackToSTTProviderManagerModelsListTabFromModelTab">Models</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">
+                            <span id="currentManageSTTProviderModelName">Model</span>
+                        </li>
+                    </ol>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageSTTProviderModelButton">
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="stt-provider-tab-content">
+            <!-- List -->
+            <div class="tab-pane fade w-100 show active" id="stt-provider-list" role="tabpanel" aria-labelledby="stt-provider-list-tab" tabindex="0">
+
+                <!-- Table Tab -->
+                <div class="fade w-100 show" id="sttProviderListTableTab">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="STT Provider Name or Id" aria-label="STT Provider Name or Id" aria-describedby="searchSTTProviderButton">
+                            <button class="input-group-button btn btn-primary" id="searchSTTProviderButton">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <table id="sttProviderListTable" class="table w-100">
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Disabled</th>
+                                <th scope="col">Models</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamically Generated -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Provider Manage Tab -->
+                <div class="fade w-100 d-none" id="sttProviderManageTab">
+                    <!-- Manager Inner Tabs -->
+                    <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="stt-provider-manager-inner-tab-container">
+                        <ul class="nav fade show" id="stt-provider-manager-inner-tab" role="tablist">
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link active" id="stt-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-general" type="button" role="tab" aria-controls="stt-provider-manager-general" aria-selected="true">General</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="stt-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-models" type="button" role="tab" aria-controls="stt-provider-manager-models" aria-selected="true">Models</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="stt-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-integrations" type="button" role="tab" aria-controls="stt-provider-manager-integrations" aria-selected="false">Integrations</button>
+                            </li>
+                        </ul>
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageSTTProviderButton" disabled>
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="stt-provider-manager-manage-tab-content">
+                        <!-- General Tab -->
+                        <div class="tab-pane fade w-100 show active" id="stt-provider-manager-general" role="tabpanel" aria-labelledby="stt-provider-manager-general-tab" tabindex="0">
+                            <div class="mb-3">
+                                <label class="form-label" for="manageSTTProviderIdInput">Identifier</label>
+                                <input type="text" class="form-control" id="manageSTTProviderIdInput" placeholder="Identifier" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="manageSTTProviderIntegrationSelect">Integration</label>
+                                <select class="form-select" id="manageSTTProviderIntegrationSelect">
+                                    <option value="">Select Integration</option>
+                                    <!-- Available integrations will be populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="manageSTTProviderDisabledInput">
+                                <label class="form-check-label" for="manageSTTProviderDisabledInput">Disabled</label>
+                            </div>
+                        </div>
+
+                        <!-- Models Tab -->
+                        <div class="tab-pane fade w-100" id="stt-provider-manager-models" role="tabpanel" aria-labelledby="stt-provider-manager-models-tab" tabindex="0">
+
+                            <!-- Models List Tab -->
+                            <div class="fade w-100 show" id="sttProviderManagerModelsListTab">
+                                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                    <div style="min-width: 200px" class="me-4">
+                                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewSTTProviderModelButton">
+                                            <span>+ Add New Model</span>
+                                        </button>
+                                    </div>
+                                    <div class="input-group w-100">
+                                        <input type="text" class="form-control" placeholder="Model Name or Id" aria-label="Model Name or Id" aria-describedby="searchSTTProviderModelButton">
+                                        <button class="input-group-button btn btn-primary" id="searchSTTProviderModelButton">
+                                            <i class='fa-regular fa-magnifying-glass'></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <table id="sttProviderModelListTable" class="table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">#</th>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Disabled</th>
+                                            <th scope="col">Languages</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamically Generated -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Model Manage Tab -->
+                            <div class="fade w-100 d-none" id="sttProviderManagerModelManageTab">
+                                <div class="mb-3">
+                                    <label class="form-label" for="manageSTTProviderModelIdInput">Identifier</label>
+                                    <input type="text" class="form-control" id="manageSTTProviderModelIdInput" placeholder="Model Identifier">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="manageSTTProviderModelNameInput">Name</label>
+                                    <input type="text" class="form-control" id="manageSTTProviderModelNameInput" placeholder="Model Name">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Price Per Unit</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" placeholder="Price" id="manageSTTProviderModelPriceInput">
+                                        <input type="text" class="form-control" style="max-width: 200px" placeholder="Unit (e.g., per minute)" id="manageSTTProviderModelPriceUnitInput">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Supported Languages</label>
+                                    <div id="manageSTTProviderModelLanguagesContainer">
+                                        <!-- Will be populated with checkboxes dynamically -->
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="manageSTTProviderModelDisabledInput">
+                                    <label class="form-check-label" for="manageSTTProviderModelDisabledInput">
+                                        Disabled
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Integrations Tab -->
+                        <div class="tab-pane fade w-100" id="stt-provider-manager-integrations" role="tabpanel" aria-labelledby="stt-provider-manager-integrations-tab" tabindex="0">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewSTTProviderIntegrationFieldButton">
+                                        <span>+ Add New Field</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Search Field" aria-label="Search Field" aria-describedby="searchSTTProviderIntegrationFieldButton">
+                                    <button class="input-group-button btn btn-primary" id="searchSTTProviderIntegrationFieldButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="sttProviderIntegrationFieldsList">
+                                <!-- Fields will be dynamically added here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

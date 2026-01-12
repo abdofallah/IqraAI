@@ -19,6 +19,10 @@ namespace IqraInfrastructure.Repositories.Redis
 
             // Init connection
             GetConnection();
+
+            // Initial Test
+            GetServer();
+            GetDatabase();
         }
 
         private ConnectionMultiplexer GetConnection()
@@ -68,8 +72,7 @@ namespace IqraInfrastructure.Repositories.Redis
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error establishing Redis connection");
-                    _isConnected = false;
+                    throw new Exception("Error establishing Redis connection", ex);
                 }
 
                 return _connection;
@@ -84,8 +87,7 @@ namespace IqraInfrastructure.Repositories.Redis
             var endpoint = connection.GetEndPoints().FirstOrDefault();
             if (endpoint == null)
             {
-                _logger.LogWarning("No endpoints found for Redis connection.");
-                return null;
+                throw new Exception("No endpoints found for Redis connection.");
             }
 
             return connection.GetServer(endpoint);
@@ -94,6 +96,11 @@ namespace IqraInfrastructure.Repositories.Redis
         public IDatabase GetDatabase()
         {
             return GetConnection().GetDatabase(_defaultDatabase);
+        }
+
+        public ConnectionMultiplexer GetConnectionMultiplexer()
+        {
+            return _connection;
         }
 
         private void OnConnectionFailed(object sender, ConnectionFailedEventArgs args)

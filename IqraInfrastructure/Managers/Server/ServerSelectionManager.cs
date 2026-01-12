@@ -1,8 +1,10 @@
 ﻿using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Server;
+using IqraCore.Entities.Node.Enum;
+using IqraCore.Entities.Server.Metrics;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Region;
+using IqraInfrastructure.Managers.Server.Metrics;
 using IqraInfrastructure.Repositories.Server;
 using Microsoft.Extensions.Logging;
 
@@ -12,19 +14,19 @@ namespace IqraInfrastructure.Managers.Server
     {
         private readonly ILogger<ServerSelectionManager> _logger;
         private readonly RegionManager _regionManager;
-        private readonly ServerLiveStatusChannelRepository _serverStatusChannel;
+        private readonly ServerMetricsManager _serverMetricsManager;
         private readonly DistributedLockRepository _serverLock;
 
         public ServerSelectionManager(
             ILogger<ServerSelectionManager> logger,
             RegionManager regionManager,
-            ServerLiveStatusChannelRepository serverStatusChannel,
+            ServerMetricsManager serverMetricsManager,
             DistributedLockRepository lockFactory
         )
         {
             _logger = logger;
             _regionManager = regionManager;
-            _serverStatusChannel = serverStatusChannel;
+            _serverMetricsManager = serverMetricsManager;
             _serverLock = lockFactory;
         }
 
@@ -63,16 +65,18 @@ namespace IqraInfrastructure.Managers.Server
                     return result;
                 }
 
-                // Get current status for all servers
-                var serverStatuses = new List<ServerStatusData>();
+                // Get current status for all region backend servers              
+                var serverStatusesTask = new List<Task<BackendServerStatusData?>>();
                 foreach (var serverId in backendServers)
                 {
-                    var status = await _serverStatusChannel.GetServerStatusAsync(serverId);
-                    if (status != null)
-                    {
-                        serverStatuses.Add(status);
-                    }
+                    serverStatusesTask.Add(_serverMetricsManager.GetLiveBackendServerStatusData(regionId, serverId));
                 }
+                await Task.WhenAll(serverStatusesTask);
+
+                List<BackendServerStatusData> serverStatuses = serverStatusesTask
+                    .Where(tr => tr.Result != null)
+                    .Select(t => t.Result!)
+                    .ToList();
 
                 if (!serverStatuses.Any())
                 {
@@ -82,12 +86,12 @@ namespace IqraInfrastructure.Managers.Server
                     return result;
                 }
 
-                // Filter out servers in maintenance mode
-                serverStatuses = serverStatuses.Where(s => !s.MaintenanceMode).ToList();
+                // Filter out servers only in running mode
+                serverStatuses = serverStatuses.Where(s => s.RuntimeStatus == NodeRuntimeStatus.Running).ToList();
                 if (!serverStatuses.Any())
                 {
                     result.Code = "SelectOptimalServerAsync:4";
-                    result.Message = "All servers are in maintenance mode";
+                    result.Message = "No running servers available";
                     _logger.LogWarning("All servers in region {RegionId} are in maintenance mode", regionId);
                     return result;
                 }
@@ -113,11 +117,11 @@ namespace IqraInfrastructure.Managers.Server
                     .Select(
                         s =>
                         {
-                            var serverData = regionData.Servers.First(b => b.Id == s.Server.ServerId);
+                            var serverData = regionData.Servers.First(b => b.Id == s.Server.NodeId);
 
                             return new ServerSelectionResultModel()
                             {
-                                ServerId = s.Server.ServerId,
+                                ServerId = s.Server.NodeId,
                                 Score = s.Score
                             };
                         }
@@ -136,20 +140,17 @@ namespace IqraInfrastructure.Managers.Server
             return result;
         }
 
-        private double CalculateServerScore(ServerStatusData server)
+        private double CalculateServerScore(BackendServerStatusData server)
         {
             // Base capacity
             double score = server.MaxConcurrentCallsCount;
 
             // Penalize by active calls (weighted higher)
-            score -= (server.CurrentActiveCallsCount * 1.5);
-
-            // Penalize by queued calls (weighted lower)
-            score -= (server.QueuedCallsCount * 0.7);
+            score -= ((server.CurrentActiveTelephonySessionCount + server.CurrentActiveWebSessionCount) * 1.5);
 
             // Penalize high CPU usage
-            if (server.CpuUsagePercent > 80)
-                score *= (1 - ((server.CpuUsagePercent - 80) / 100));
+            if (server.CpuUsagePercent > 85)
+                score *= (1 - ((server.CpuUsagePercent - 85) / 100));
 
             // Penalize high memory usage
             if (server.MemoryUsagePercent > 85)

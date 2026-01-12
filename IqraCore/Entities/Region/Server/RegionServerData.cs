@@ -16,7 +16,16 @@ namespace IqraCore.Entities.Region
 
         public virtual ServerTypeEnum Type { get; set; } = ServerTypeEnum.Unknown;
 
-        public DateTime? DisabledAt { get; set; } = null;
         public bool IsDevelopmentServer { get; set; } = false;
+
+        // Maintenance
+        public DateTime? MaintenanceEnabledAt { get; set; } = null;
+        public string? PrivateMaintenanceEnabledReason { get; set; } = null;
+        public string? PublicMaintenanceEnabledReason { get; set; } = null;
+
+        // Disabled
+        public DateTime? DisabledAt { get; set; } = null;
+        public string? PrivateDisabledReason { get; set; } = null;
+        public string? PublicDisabledReason { get; set; } = null;
     }
 }

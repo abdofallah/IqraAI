@@ -1388,8 +1388,9 @@ table.table > thead > * > * {
 
 .available-integration-card img {
 	height: 64px;
-	max-width: -webkit-fill-available;
 	object-fit: contain;
+		
+	max-width: -webkit-fill-available;
 	max-width: -moz-available;
 }
 
@@ -1467,6 +1468,7 @@ table.table > thead > * > * {
 .x6-widget-selection-box {
 	border: none;
 	box-shadow: none;
+	transform: scale(78%, 37%) translate(-11.5%, -78%);
 }
 
 .script-graph-container .offcanvas
@@ -1586,13 +1588,20 @@ table.table > thead > * > * {
 	line-height: 24px;
 }
 
-.sidebar-node-item:hover {
+.sidebar-node-item.disabled {
+	background-color: #1f1f1f;
+	border: 1px solid #5e5e5e;
+	cursor: not-allowed;
+	opacity: 0.8;
+}
+
+.sidebar-node-item:hover:not(.disabled) {
 	background-color: #252525;
 	border-color: var(--tcolor-light-green);
 	box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
 
-.sidebar-node-item:active {
+.sidebar-node-item:active:not(.disabled) {
 	cursor: grabbing;
 }
 
@@ -1624,6 +1633,9 @@ table.table > thead > * > * {
 	color: #dc3545;
 }
 .category-logic .sidebar-node-item i {
+	color: #d1bfae;
+}
+.category-action-flow .sidebar-node-item i {
 	color: #fd7e14;
 }
 .category-integrations .sidebar-node-item i {
@@ -1723,7 +1735,7 @@ table.table > thead > * > * {
 	margin-top: -27px !important;
 }
 
-.x6-node-selected .script-node, .x6-node-selected .script-node:hover
+.x6-node-selected .script-node, .x6-node-selected .script-node:hover, .x6-node.node-moving .script-node
 {
 	border: 1px solid var(--tcolor-lighter-green) !important;
 	box-shadow: -2px 3px 2px 0px rgb(236 254 143 / 80%);
@@ -1883,14 +1895,11 @@ table.table > thead > * > * {
 /* System Tool Node Specific */
 .script-system-tool-node .script-node-header {
 	padding: 8px 12px;
-	border-radius: 6px 6px 0 0;
+	border-radius: 6px !important;
+	border-bottom: none !important;
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.script-system-tool-node .script-node-content {
-	padding: 12px;
 }
 
 .script-system-tool-node .node-actions {
@@ -1923,6 +1932,53 @@ table.table > thead > * > * {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+/* FlowApp Fetcher Dropdown */
+.fetcher-dropdown-menu {
+    width: 300px;
+    padding: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.fetcher-search-container {
+    position: sticky;
+    top: 0;
+    background: #2a2a2a; /* Match dropdown bg */
+    padding: 8px;
+    border-bottom: 1px solid #4e4e4e;
+    z-index: 10;
+}
+
+.fetcher-results-container {
+    padding: 0;
+}
+
+.fetcher-result-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #333;
+    transition: background 0.1s;
+}
+
+.fetcher-result-item:hover {
+    background-color: #3d3d3d;
+}
+
+.fetcher-result-item:last-child {
+    border-bottom: none;
+}
+
+.fetcher-result-label {
+    font-weight: 500;
+    color: #fff;
+    font-size: 0.85rem;
+}
+
+.fetcher-result-desc {
+    font-size: 0.75rem;
+    color: #aaa;
 }
 
 .daterangepicker {

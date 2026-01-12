@@ -1,0 +1,104 @@
+﻿<div class="main-container fade w-100 d-none" id="languages-tab">
+    <h3 class="fw-bold tab-title"><i class='fa-regular fa-language nav_icon'></i> <span>Languages</span></h3>
+    <div class="inner-container">
+        <!-- Manager Inner Tabs -->
+        <div class="mb-3">
+            <ul class="nav w-100 fade show" id="languages-inner-tab" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="languages-list-tab" data-bs-toggle="pill" data-bs-target="#languages-list" type="button" role="tab" aria-controls="languages-list" aria-selected="true">List</button>
+                </li>
+            </ul>
+            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="languages-manage-breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="#" id="switchBackToLanguagesListTabFromManageTab">Languages</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page"><span id="currentManageLanguageName">Language</span></li>
+                </ol>
+            </nav>
+        </div>
+        <!-- Tab Content -->
+        <div class="tab-content" id="languages-tab-content">
+
+            <!-- List -->
+            <div class="tab-pane fade w-100 show active" id="languages-list" role="tabpanel" aria-labelledby="languages-list-tab" tabindex="0">
+
+                <!-- Table Tab -->
+                <div class="fade w-100 show" id="languagesListTableTab">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewLanguageButton">
+                                <span>+ Add New Language</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Language Name or Id" aria-label="Language Name or Id" aria-describedby="searchlanguagesButton">
+                            <button class="input-group-button btn btn-primary" id="searchlanguagesButton">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <table id="languagesListTable" class="table w-100">
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Disabled</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamically Generated -->
+                            <tr class="none-notice">
+                                <td colspan="4">No Languages Found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Manage Tab -->
+                <div class="fade w-100 d-none" id="languagesManageTab">
+
+                    <!-- Manager Inner Tabs -->
+                    <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                        <ul class="nav fade show" id="languages-manager-inner-tab" role="tablist">
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link active" id="languages-manager-general-tab" data-bs-toggle="pill" data-bs-target="#languages-manager-general" type="button" role="tab" aria-controls="languages-manager-general" aria-selected="true">General</button>
+                            </li>
+                        </ul>
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLanguagesButton">
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="languages-manager-manage-tab-content">
+                        <!-- General -->
+                        <div class="tab-pane fade w-100 show active" id="languages-manager-general" role="tabpanel" aria-labelledby="languages-manager-general-tab" tabindex="0">
+                            <div class="mb-3">
+                                <label class="form-label" for="manageLanguagesIdInput">Identifer</label>
+                                <input type="text" class="form-control" id="manageLanguagesIdInput" placeholder="Language Code">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="manageLanguagesLocaleNameInput">Locale Name</label>
+                                <input type="text" class="form-control" id="manageLanguagesLocaleNameInput" placeholder="Language Name in Locale">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="manageLanguagesNameInput">Name</label>
+                                <input type="text" class="form-control" id="manageLanguagesNameInput" placeholder="Language Name">
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="manageLanguagesDisabledInput" checked>
+                                <label class="form-check-label" for="manageLanguagesDisabledInput">Disabled</label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>

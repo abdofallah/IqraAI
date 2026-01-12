@@ -3,7 +3,6 @@ using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Logs;
 using IqraCore.Entities.Conversation.Logs.Enums;
-using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.Server;
@@ -12,6 +11,7 @@ using IqraCore.Entities.WebSession.Enum;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Interfaces.User;
 using IqraCore.Models.Server;
+using IqraInfrastructure.HostedServices.Metrics;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Call.Backend;
@@ -23,12 +23,12 @@ using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.Node;
 using IqraInfrastructure.Managers.Region;
-using IqraInfrastructure.Managers.Server.Metrics;
+using IqraInfrastructure.Managers.Server.Metrics.Monitor;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
-using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.WebSession;
@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.WebSession
 
         private readonly ILogger<BackendWebSessionProcessorManager> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ServerMetricsMonitor _serverMetricsMonitor;
+        private readonly BackendMetricsMonitor _serverMetricsMonitor;
         private readonly WebSessionRepository _webSessionRepoistory;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationStateLogsRepository _conversationStateLogsRepository;
@@ -56,6 +56,7 @@ namespace IqraInfrastructure.Managers.WebSession
         private readonly IUserBillingUsageManager _billingProcessingManager;
         private readonly CampaignActionExecutorService _campaignActionExecutorService;
         private readonly IUserUsageValidationManager _userUsageValidationManager;
+        private readonly NodeLifecycleManager _nodeLifecycleManager;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
@@ -78,13 +79,21 @@ namespace IqraInfrastructure.Managers.WebSession
             RegionManager regionManager,
             IUserBillingUsageManager billingProcessingManager,
             CampaignActionExecutorService campaignActionExecutorService,
-            IUserUsageValidationManager userUsageValidationManager
+            IUserUsageValidationManager userUsageValidationManager,
+            NodeLifecycleManager nodeLifecycleManager
         )
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _backendAppConfig = backendAppConfig;
-            _serverMetricsMonitor = serverMetricsMonitor;
+            if (serverMetricsMonitor is BackendMetricsMonitor backendMetricsMonitor)
+            {
+                _serverMetricsMonitor = backendMetricsMonitor;
+            }
+            else
+            {
+                throw new ArgumentException("serverMetricsMonitor must be of type BackendMetricsMonitor");
+            }
             _webSessionRepoistory = webSessionRepoistory;
             _conversationStateRepository = conversationStateRepository;
             _conversationStateLogsRepository = conversationStateLogsRepository;
@@ -94,11 +103,22 @@ namespace IqraInfrastructure.Managers.WebSession
             _billingProcessingManager = billingProcessingManager;
             _campaignActionExecutorService = campaignActionExecutorService;
             _userUsageValidationManager = userUsageValidationManager; 
+            _nodeLifecycleManager = nodeLifecycleManager;
         }
+
+        public int ActiveSessionCount => _activeSessions.Count;
 
         public async Task<FunctionReturnResult<BackendInitiateWebSessionResultModel?>> InitiateWebSessionConversationAsync(string webSessionId)
         {
             var result = new FunctionReturnResult<BackendInitiateWebSessionResultModel?>();
+
+            if (!_nodeLifecycleManager.IsAcceptingNewWork)
+            {
+                return result.SetFailureResult(
+                    "InitiateWebSessionConversationAsync:SERVER_NOT_ACCEPTING_NEW_WORK",
+                    _nodeLifecycleManager.StatusReason
+                );
+            }
 
             // Session State
             string sessionId = ObjectId.GenerateNewId().ToString();
@@ -156,7 +176,15 @@ namespace IqraInfrastructure.Managers.WebSession
                         $"[{sessionResult.Code}] {sessionResult.Message}"
                     );
                 }
-                var session = sessionResult.Data;
+                var session = sessionResult.Data!;
+
+                if (!_nodeLifecycleManager.IsAcceptingNewWork)
+                {
+                    return result.SetFailureResult(
+                        "InitiateWebSessionConversationAsync:SERVER_NOT_ACCEPTING_NEW_WORK",
+                        _nodeLifecycleManager.StatusReason
+                    );
+                }
 
                 var startSessionResult = await session.InitializeAsync();
                 if (!startSessionResult.Success)

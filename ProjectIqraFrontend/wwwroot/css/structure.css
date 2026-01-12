@@ -194,7 +194,7 @@ body {
 }
 
 .l-navbar.show .nav .nav_logo img:hover {
-     transform: scale(3.2);
+     transform: scale(3.2) translateX(-1px);
      filter: drop-shadow(0px 0px 5px #93b44791);
 }
 
@@ -290,8 +290,10 @@ body {
      position: absolute;
      left: 0;
      width: 2px;
+     background-color: var(--white-color);
+  
      height: -webkit-fill-available;
-     background-color: var(--white-color)
+     height: -moz-available;
 }
 
 .main-container-wrapper {
@@ -304,7 +306,9 @@ body {
      border: 1px solid rgb(78, 78, 78);
      border-radius: 12px;
      background-color: #2a2a2a;
+     
      height: -webkit-fill-available;
+     height: -moz-available;
 }
 
 .inner-header-container {
@@ -312,22 +316,22 @@ body {
      border: 1px solid rgb(78, 78, 78);
      border-radius: 12px;
      background-color: #2a2a2a;
+
      height: -webkit-fill-available;
+     height: -moz-available;
 }
 
 .nav_name,
 .nav_logo-name {
-     padding-left: 1rem;
-     transition: padding-left 250ms, opacity 250ms;
-     transition-delay: padding-left 300ms, opacity 100ms !;
+     transition: opacity 250ms;
+     transition-delay: opacity 100ms;
      opacity: 0;
 }
 
 .l-navbar.show .nav_name,
 .l-navbar.show .nav_logo-name {
-     padding-left: 0;
-     transition: padding-left 10ms, opacity 300ms;
-     transition-delay: padding-left 10ms, opacity 10ms;
+     transition: opacity 300ms;
+     transition-delay: opacity 10ms;
      opacity: 1;
 }
 
@@ -336,6 +340,8 @@ body {
      opacity: 0;
      transition: all 250ms, font-size 500ms, padding 1000ms;
      font-size: 0px;
+     margin-top: 0px !important;
+     display: block;
 }
 
 .l-navbar.show .nav-category-label {

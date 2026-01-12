@@ -1,24 +1,26 @@
 ﻿using IqraCore.Entities.Embedding;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
-using IqraCore.Entities.User;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers.Admin
 {
     public class AppAdminEmbeddingProviderController : Controller
     {
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly EmbeddingProviderManager _embeddingProviderManager;
-        private readonly UserManager _userManager;
         private readonly IntegrationsManager _integrationsManager;
 
-        public AppAdminEmbeddingProviderController(EmbeddingProviderManager embeddingProviderManager, UserManager userManager, IntegrationsManager integrationsManager)
-        {
+        public AppAdminEmbeddingProviderController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            EmbeddingProviderManager embeddingProviderManager,
+            IntegrationsManager integrationsManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _embeddingProviderManager = embeddingProviderManager;
-            _userManager = userManager;
             _integrationsManager = integrationsManager;
         }
 
@@ -27,38 +29,39 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<List<EmbeddingProviderData>?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                return result.SetFailureResult("GetEmbeddingProviders:1", "Invalid session data");
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetEmbeddingProviders:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+                var providersResult = await _embeddingProviderManager.GetProviderList(page, pageSize);
+                if (!providersResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "GetEmbeddingProviders:" + providersResult.Code,
+                        providersResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(providersResult.Data);
+            }
+            catch (Exception ex)
             {
-                return result.SetFailureResult("GetEmbeddingProviders:2", "Session validation failed");
+                return result.SetFailureResult(
+                    "GetEmbeddingProviders:EXCEPTION",
+                    $"Failed to get embedding providers. Exception: {ex.Message}"
+                );
             }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                return result.SetFailureResult("GetEmbeddingProviders:3", "User not found");
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                return result.SetFailureResult("GetEmbeddingProviders:4", "User is not an admin");
-            }
-
-            var providersResult = await _embeddingProviderManager.GetProviderList(page, pageSize);
-            if (!providersResult.Success)
-            {
-                return result.SetFailureResult("GetEmbeddingProviders:" + providersResult.Code, providersResult.Message);
-            }
-
-            return result.SetSuccessResult(providersResult.Data);
         }
 
         [HttpPost("/app/admin/embeddingproviders/save")]
@@ -66,133 +69,165 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<EmbeddingProviderData?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                return result.SetFailureResult("SaveEmbeddingProvider:1", "Invalid session data");
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveEmbeddingProvider:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+                string? providerId = formData["providerId"];
+                if (string.IsNullOrEmpty(providerId))
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProvider:EMPTY_PROVIDER_ID",
+                        "Provider id is required"
+                    );
+                }
+
+                if (!Enum.TryParse(typeof(InterfaceEmbeddingProviderEnum), providerId, true, out object? providerIdEnum))
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProvider:INVALID_PROVIDER_ID_ENUM",
+                        "Invalid provider id enum"
+                    );
+                }
+
+                EmbeddingProviderData? provider = await _embeddingProviderManager.GetProviderData(((InterfaceEmbeddingProviderEnum)providerIdEnum));
+                if (provider == null)
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProvider:NOT_FOUND",
+                        "Provider not found"
+                    );
+                }
+
+                var saveResult = await _embeddingProviderManager.UpdateProvider(provider, formData, _integrationsManager);
+                if (!saveResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProvider:" + saveResult.Code,
+                        saveResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(saveResult.Data);
+            }
+            catch (Exception ex)
             {
-                return result.SetFailureResult("SaveEmbeddingProvider:2", "Session validation failed");
+                return result.SetFailureResult(
+                    "SaveEmbeddingProvider:EXCEPTION",
+                    $"Failed to save embedding provider. Exception: {ex.Message}"
+                );
             }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                return result.SetFailureResult("SaveEmbeddingProvider:3", "User not found");
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                return result.SetFailureResult("SaveEmbeddingProvider:4", "User is not an admin");
-            }
-
-            string? providerId = formData["providerId"];
-            if (string.IsNullOrEmpty(providerId))
-            {
-                return result.SetFailureResult("SaveEmbeddingProvider:5", "Provider id is required");
-            }
-
-            if (!Enum.TryParse(typeof(InterfaceEmbeddingProviderEnum), providerId, true, out object? providerIdEnum))
-            {
-                return result.SetFailureResult("SaveEmbeddingProvider:6", "Invalid provider id enum");
-            }
-
-            EmbeddingProviderData? provider = await _embeddingProviderManager.GetProviderData(((InterfaceEmbeddingProviderEnum)providerIdEnum));
-            if (provider == null)
-            {
-                return result.SetFailureResult("SaveEmbeddingProvider:7", "Provider not found");
-            }
-
-            var saveResult = await _embeddingProviderManager.UpdateProvider(provider, formData, _integrationsManager);
-            if (!saveResult.Success)
-            {
-                return result.SetFailureResult("SaveEmbeddingProvider:" + saveResult.Code, saveResult.Message);
-            }
-
-            return result.SetSuccessResult(saveResult.Data);
         }
 
-        [HttpPost("/app/admin/embeddingproviders/model/save")] // Changed Route
+        [HttpPost("/app/admin/embeddingproviders/model/save")]
         public async Task<FunctionReturnResult<EmbeddingProviderModelData?>> SaveEmbeddingProviderModel(IFormCollection formData)
         {
             var result = new FunctionReturnResult<EmbeddingProviderModelData?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:1", "Invalid session data");
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveEmbeddingProviderModel:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:2", "Session validation failed");
-            }
+                string? providerId = formData["providerId"];
+                if (string.IsNullOrEmpty(providerId))
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProviderModel:EMPTY_PROVIDER_ID",
+                        "Provider id is required"
+                    );
+                }
 
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:3", "User not found");
-            }
+                if (!Enum.TryParse(typeof(InterfaceEmbeddingProviderEnum), providerId, true, out object? providerIdEnum))
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProviderModel:INVALID_PROVIDER_ID_ENUM",
+                        "Invalid provider id enum"
+                    );
+                }
 
-            if (!user.Permission.IsAdmin)
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:4", "User is not an admin");
-            }
+                EmbeddingProviderData? provider = await _embeddingProviderManager.GetProviderData(((InterfaceEmbeddingProviderEnum)providerIdEnum));
+                if (provider == null)
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProviderModel:NOT_FOUND",
+                        "Provider not found"
+                    );
+                }
 
-            string? providerId = formData["providerId"];
-            if (string.IsNullOrEmpty(providerId))
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:5", "Provider id is required");
-            }
+                string? postType = formData["postType"];
+                if (string.IsNullOrEmpty(postType) || (postType != "edit" && postType != "new"))
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProviderModel:INVALID_POST_TYPE",
+                        "Post type is required or is not 'edit' or 'new'"
+                    );
+                }
 
-            if (!Enum.TryParse(typeof(InterfaceEmbeddingProviderEnum), providerId, true, out object? providerIdEnum))
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:6", "Invalid provider id enum");
-            }
+                string? modelId = formData["modelId"];
+                if (string.IsNullOrEmpty(modelId))
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProviderModel:EMPTY_MODEL_ID",
+                        "Model id is required"
+                    );
+                }
 
-            EmbeddingProviderData? provider = await _embeddingProviderManager.GetProviderData(((InterfaceEmbeddingProviderEnum)providerIdEnum));
-            if (provider == null)
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:7", "Provider not found");
-            }
+                EmbeddingProviderModelData? oldModelData = provider.Models.Find(m => m.Id == modelId);
+                if (postType == "edit" && oldModelData == null)
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProviderModel:MODEL_NOT_FOUND",
+                        "Model not found for editing"
+                    );
+                }
+                else if (postType == "new" && oldModelData != null)
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProviderModel:MODEL_ALREADY_EXISTS",
+                        "A model with this ID already exists"
+                    );
+                }
 
-            string? postType = formData["postType"];
-            if (string.IsNullOrEmpty(postType) || (postType != "edit" && postType != "new"))
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:8", "Post type is required or is not 'edit' or 'new'");
-            }
+                var saveResult = await _embeddingProviderManager.AddUpdateProviderModel(provider, modelId, postType, oldModelData, formData);
+                if (!saveResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "SaveEmbeddingProviderModel:" + saveResult.Code,
+                        saveResult.Message
+                    );
+                }
 
-            string? modelId = formData["modelId"];
-            if (string.IsNullOrEmpty(modelId))
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:9", "Model id is required");
+                return result.SetSuccessResult(saveResult.Data);
             }
-
-            EmbeddingProviderModelData? oldModelData = provider.Models.Find(m => m.Id == modelId);
-            if (postType == "edit" && oldModelData == null)
+            catch (Exception ex)
             {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:10", "Model not found for editing");
+                return result.SetFailureResult(
+                    "SaveEmbeddingProviderModel:EXCEPTION",
+                    $"Failed to save embedding provider model. Exception: {ex.Message}"
+                );
             }
-            else if (postType == "new" && oldModelData != null)
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:11", "A model with this ID already exists");
-            }
-
-            var saveResult = await _embeddingProviderManager.AddUpdateProviderModel(provider, modelId, postType, oldModelData, formData);
-            if (!saveResult.Success)
-            {
-                return result.SetFailureResult("SaveEmbeddingProviderModel:" + saveResult.Code, saveResult.Message);
-            }
-
-            return result.SetSuccessResult(saveResult.Data);
         }
     }
 }

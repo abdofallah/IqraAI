@@ -30,6 +30,30 @@ const SCRIPT_SYSTEM_TOOLS = {
 	GOTONODE: 9,
 	RETRIEVE_KNOWLEDGEBASE: 10
 };
+const SCRIPT_SYSTEM_TOOLS_NAME_MAP = {
+	[SCRIPT_SYSTEM_TOOLS.END_CALL]: 'End Call',
+    [SCRIPT_SYSTEM_TOOLS.CHANGE_LANGUAGE]: 'Change Language',
+    [SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT]: 'Get Numerical Input',
+    [SCRIPT_SYSTEM_TOOLS.PRESS_DTMF]: 'Press Keypad',
+    [SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT]: 'Transfer to Agent',
+    [SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN]: 'Transfer to Human',
+    [SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT]: 'Add Script',
+    [SCRIPT_SYSTEM_TOOLS.SEND_SMS]: 'Send SMS',
+    [SCRIPT_SYSTEM_TOOLS.GOTONODE]: 'Go to Node',
+    [SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE]: 'Retrieve Knowledgebase'
+}
+const SCRIPT_SYSTEM_TOOLS_ICON_MAP = {
+    [SCRIPT_SYSTEM_TOOLS.END_CALL]: 'fa-phone-slash',
+    [SCRIPT_SYSTEM_TOOLS.CHANGE_LANGUAGE]: 'fa-language',
+	[SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT]: 'fa-hashtag',
+	[SCRIPT_SYSTEM_TOOLS.PRESS_DTMF]: 'fa-mobile-button',
+    [SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT]: 'fa-user-secret',
+    [SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN]: 'fa-user-secret',
+    [SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT]: 'fa-user-secret',
+    [SCRIPT_SYSTEM_TOOLS.SEND_SMS]: 'fa-sms',
+    [SCRIPT_SYSTEM_TOOLS.GOTONODE]: 'fa-arrow-right',
+    [SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE]: 'fa-arrow-right'
+}
 
 const SCRIPT_END_CALL_SYSTEM_TOOL_TYPE = {
 	IMMEDIATE: 1,
@@ -50,6 +74,9 @@ const NODE_PRESETS = {
 		defaultPorts: [{ group: 'input' }, { group: 'output' }]
 	},
 
+	// -- Action Flow --
+	// TODO
+
 	// --- Logic ---
 	'go-to-node': {
 		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
@@ -57,14 +84,6 @@ const NODE_PRESETS = {
 		config: { goToNodeId: null },
 		defaultPorts: [{ group: 'input' }] // No output
 	},
-	'add-script-context': {
-		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
-		toolType: SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT,
-		config: { scriptId: null },
-		defaultPorts: [{ group: 'input' }, { group: 'output' }]
-	},
-
-	// --- Telephony ---
 	'end-call': {
 		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
 		toolType: SCRIPT_SYSTEM_TOOLS.END_CALL,
@@ -83,19 +102,40 @@ const NODE_PRESETS = {
 		config: { phoneNumber: "" },
 		defaultPorts: [{ group: 'input' }] // No output
 	},
-	'send-sms': {
-		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
-		toolType: SCRIPT_SYSTEM_TOOLS.SEND_SMS,
-		config: { phoneNumberId: null, messages: {} },
-		// Ports added dynamically, but we add defaults for ghosting
-		defaultPorts: [{ group: 'input' }, { group: 'output', id: 'success' }, { group: 'output', id: 'error' }]
-	},
 	'get-dtmf': {
 		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
 		toolType: SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT,
 		config: { timeout: 5000, requireStartAsterisk: false, requireEndHash: false, maxLength: 1, encryptInput: false, outcomes: [] },
-		defaultPorts: [{ group: 'input' }, { group: 'output', id: 'timeout' }]
+		defaultPorts: [
+			{ group: 'input' },
+			{
+				id: "timeout",
+				group: "output",
+				attrs: {
+					circle: {
+						fill: "#ffc107",
+					},
+					text: {
+						text: "Timeout",
+					},
+				},
+			}
+		]
 	},
+	'change-language': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.CHANGE_LANGUAGE,
+		config: { },
+		defaultPorts: [{ group: 'input' }, { group: 'output'}]
+	},
+	'add-script-context': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT,
+		config: { scriptId: null },
+		defaultPorts: [{ group: 'input' }, { group: 'output' }]
+	},
+
+	// --- Telephony ---	
 	'press-dtmf': {
 		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
 		toolType: SCRIPT_SYSTEM_TOOLS.PRESS_DTMF,
@@ -113,8 +153,55 @@ const NODE_PRESETS = {
 	'custom-tool': {
 		shape: SCRIPT_NODE_TYPES.CUSTOM_TOOL,
 		data: { toolId: null, config: {} },
-		defaultPorts: [{ group: 'input' }, { group: 'output', id: 'outcome-default' }]
-	}
+		defaultPorts: [
+			{ group: 'input' },
+			{
+				id: "outcome-default",
+				group: "output",
+				attrs: {
+					circle: {
+						fill: "#ffc107",
+					},
+					text: {
+						text: "Default",
+					},
+				},
+			}
+		]
+	},
+	'send-sms': {
+		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		toolType: SCRIPT_SYSTEM_TOOLS.SEND_SMS,
+		config: { phoneNumberId: null, messages: {} },
+		// Ports added dynamically, but we add defaults for ghosting
+		defaultPorts: [
+			{ group: 'input' },
+			{
+				group: 'output',
+				id: 'success',
+				attrs: {
+					circle: {
+						fill: "#fff",
+					},
+					text: {
+						text: "Success",
+					},
+				}
+			},
+			{
+				group: 'output',
+				id: 'error',
+				attrs: {
+					circle: {
+						fill: "#ffc107",
+					},
+					text: {
+						text: "Error",
+					}
+				}
+			}
+		]
+	},
 };
 
 /** Dynamic Variables **/
@@ -736,6 +823,31 @@ function checkScriptTabHasChanges(enableDisableButton = true, compileConversatio
 				}
 			}
 
+			// FlowApp Node (Type 6)
+			if (newNode.shape === SCRIPT_NODE_TYPES.FLOW_APP) {
+				pushNewNode.appKey = newScriptNodeData.appKey;
+				pushNewNode.actionKey = newScriptNodeData.actionKey;
+				pushNewNode.integrationId = newScriptNodeData.integrationId;
+				pushNewNode.speakingBeforeExecution = newScriptNodeData.speakingBeforeExecution;
+
+				// Ensure inputs array exists
+				pushNewNode.inputs = newScriptNodeData.inputs || [];
+
+				if (oldNodeIndex !== -1) {
+					// Compare fields to detect changes
+					if (
+						oldNode.appKey !== newScriptNodeData.appKey ||
+						oldNode.actionKey !== newScriptNodeData.actionKey ||
+						oldNode.integrationId !== newScriptNodeData.integrationId ||
+						JSON.stringify(oldNode.speakingBeforeExecution) !== JSON.stringify(newScriptNodeData.speakingBeforeExecution) ||
+						JSON.stringify(oldNode.inputs) !== JSON.stringify(pushNewNode.inputs)
+					) {
+						hasChanges = true;
+						if (!compileConversationChanges) break;
+					}
+				}
+			}
+
 			if (compileConversationChanges) {
 				changes.nodes.push(pushNewNode);
 			}
@@ -795,20 +907,31 @@ function checkScriptTabHasChanges(enableDisableButton = true, compileConversatio
 
 	// Variables
 	changes.variables = [];
-	if (compileConversationChanges) {
-		changes.variables = structuredClone(CurrentScriptVariablesData);
-	}
+	if (!hasChanges || (hasChanges && compileConversationChanges)) {
+		const savedVariables = ManageCurrentScriptData.variables || [];
+		if (CurrentScriptVariablesData.length !== savedVariables.length) {
+			hasChanges = true;
+		}
 
-	const savedVariables = ManageCurrentScriptData.variables || [];
-	if (CurrentScriptVariablesData.length !== savedVariables.length) {
-		hasChanges = true;
-	}
-
-	if (!hasChanges) {
 		// We iterate current to see if anything changed or was added
 		for (let i = 0; i < CurrentScriptVariablesData.length; i++) {
 			const currVar = CurrentScriptVariablesData[i];
 			const oldVar = savedVariables.find(v => v.key === currVar.key);
+
+			if (compileConversationChanges) {
+				var variable = {
+					key: currVar.key,
+					type: currVar.type.value,
+					defaultValue: currVar.defaultValue,
+					isVisibleToAgent: currVar.isVisibleToAgent,
+					isEditableByAI: currVar.isEditableByAI,
+					description: currVar.description
+				}
+
+				changes.variables.push(variable);
+			}
+
+			if (hasChanges) continue;
 
 			if (!oldVar) {
 				hasChanges = true; // New variable found
@@ -816,26 +939,30 @@ function checkScriptTabHasChanges(enableDisableButton = true, compileConversatio
 			}
 
 			// Primitive Fields
-			if (
-				(currVar.type.value ?? currVar.type) !== oldVar.type.value ||
-				currVar.defaultValue !== oldVar.defaultValue ||
-				currVar.isVisibleToAgent !== oldVar.isVisibleToAgent ||
-				currVar.isEditableByAI !== oldVar.isEditableByAI
-			) {
-				hasChanges = true;
-				break;
+			if (!hasChanges) {
+				if (
+					currVar.type.value !== oldVar.type.value ||
+					currVar.defaultValue !== oldVar.defaultValue ||
+					currVar.isVisibleToAgent !== oldVar.isVisibleToAgent ||
+					currVar.isEditableByAI !== oldVar.isEditableByAI
+				) {
+					hasChanges = true;
+					break;
+				}
 			}
 
-			// Description (Multi-lang Dictionary)
-			let descChanged = false;
-			BusinessFullData.businessData.languages.forEach(lang => {
-				if (currVar.description[lang.id] !== oldVar.description[lang.id]) {
-					descChanged = true;
+			// Description (Multi-lang Dictionary)		
+			if (!hasChanges) {
+				let descChanged = false;
+				BusinessFullData.businessData.languages.forEach(lang => {
+					if (currVar.description[lang.id] !== oldVar.description[lang.id]) {
+						descChanged = true;
+					}
+				});
+				if (descChanged) {
+					hasChanges = true;
+					break;
 				}
-			});
-			if (descChanged) {
-				hasChanges = true;
-				break;
 			}
 		}
 	}
@@ -1089,7 +1216,7 @@ function fillScriptManagerTab() {
 		}
 		// System Tool Data
 		else if (nodeBase.shape === SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
-			nodeBase.size.height = 135;
+			nodeBase.size.height = 70;
 
 			nodeBase.data.toolType = node.toolType.value;
 
@@ -1613,7 +1740,7 @@ function registerScriptNodes() {
 	X6.Shape.HTML.register({
 		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
 		width: SCRIPT_NODE_WIDTH,
-		height: 135,
+		height: 70,
 		effect: [],
 		ports: {
 			groups: {
@@ -1660,37 +1787,18 @@ function registerScriptNodes() {
                 <div class="script-node-header">
                     <div>
 						<div class="d-flex align-items-center btn-ic-span-align node-title">
-							<i class="fa-regular fa-toolbox me-2"></i>
-							<span>System Tool</span>
+							<i class="fa-regular ${SCRIPT_SYSTEM_TOOLS_ICON_MAP[data.toolType] || "fa-toolbox"} me-2"></i>
+							<span>${SCRIPT_SYSTEM_TOOLS_NAME_MAP[data.toolType] || "System Tool"}</span>
 						</div>
 						<span class="node-id">${cell.id}</span>
 					</div>
                     <div class="node-actions html-shape-immovable">
-						<button class="btn btn-light btn-sm me-2" data-action="configure-system-tool" ${doesScriptSystemToolRequireConfig(data.toolType) ? "" : "disabled"}>
+						<button class="btn btn-light btn-sm me-2 ${doesScriptSystemToolRequireConfig(data.toolType) ? "" : "d-none"}" data-action="configure-system-tool" ${doesScriptSystemToolRequireConfig(data.toolType) ? "" : "disabled"}>
 							<i class="fa-regular fa-gear"></i>
 						</button>
                         <button class="btn btn-danger btn-sm" data-action="delete-node">
                             <i class="fa-regular fa-trash"></i>
                         </button>
-                    </div>
-                </div>
-                <div class="script-node-content">
-                    <div class="script-node-input-group html-shape-immovable">
-                        <div class="d-flex gap-2">
-                            <select class="form-select" data-input="system-tool-type">
-                                <option value="" disabled ${!data.toolType ? "selected" : ""}>Select Tool</option>
-                                <option value="${SCRIPT_SYSTEM_TOOLS.END_CALL}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.END_CALL ? "selected" : ""}>End Call</option>
-                                <option value="${SCRIPT_SYSTEM_TOOLS.CHANGE_LANGUAGE}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.CHANGE_LANGUAGE ? "selected" : ""}>Change Language</option>
-                                <option value="${SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT ? "selected" : ""}>Get DTMF Keypad Input</option>
-                                <option value="${SCRIPT_SYSTEM_TOOLS.PRESS_DTMF}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.PRESS_DTMF ? "selected" : ""}>Press DTMF Keypad</option>
-                                <option value="${SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT ? "selected" : ""}>Transfer to Agent</option>
-                                <option value="${SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN ? "selected" : ""}>Transfer to Human</option>
-                                <option value="${SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT ? "selected" : ""}>Add Script to Context</option>
-                                <option value="${SCRIPT_SYSTEM_TOOLS.SEND_SMS}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.SEND_SMS ? "selected" : ""}>Send SMS</option>
-                                <option value="${SCRIPT_SYSTEM_TOOLS.GOTONODE}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.GOTONODE ? "selected" : ""}>Go To Node</option>
-								<option value="${SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE}" ${data.toolType === SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE ? "selected" : ""}>Retrieve KnowledgeBase</option>
-                            </select>
-                        </div>
                     </div>
                 </div>
             `;
@@ -1941,6 +2049,7 @@ function initializeScriptGraph(isNew = true) {
 						radius: 20,
 					},
 				},
+				snap: true,
 				allowBlank: false,
 				allowLoop: false,
 				allowNode: false,
@@ -2293,7 +2402,9 @@ function createNodeFromPreset(presetId, graph) {
 			width: SCRIPT_NODE_WIDTH,
 			height: 135, // Slightly taller to show Action Name
 			data: nodeData,
-			ports: {} // Ports will be added later when action is selected
+			ports: {
+				items: [{ group: 'input' }]
+			} // Output Ports will be added later when action is selected
 		});
 	}
 
@@ -2356,7 +2467,10 @@ function createNodeFromPreset(presetId, graph) {
 	let width = SCRIPT_NODE_WIDTH;
 	let height = SCRIPT_NODE_MIN_HEIGHT;
 
-	if (preset.shape === SCRIPT_NODE_TYPES.SYSTEM_TOOL || preset.shape === SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+	if (preset.shape === SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+		height = 70;
+	}
+	else if (preset.shape === SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
 		height = 135;
 	}
 
@@ -2374,29 +2488,6 @@ function createNodeFromPreset(presetId, graph) {
 }
 
 // Script User Query Node
-function addUserQueryNode(graph, x = 100, y = 200) {
-	const queryData = {};
-	const examplesData = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
-		queryData[language] = "";
-		examplesData[language] = [];
-	});
-
-	return graph.addNode({
-		shape: SCRIPT_NODE_TYPES.USER_QUERY,
-		data: {
-			type: SCRIPT_NODE_TYPES.USER_QUERY,
-			query: queryData,
-			examples: examplesData,
-		},
-		x,
-		y,
-		ports: {
-			items: [{ group: "input" }, { group: "output" }],
-		},
-	});
-}
-
 function generateUserQueryConfig(cell) {
 	const data = cell.getData() || {};
 	const currentLanguage = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
@@ -2429,29 +2520,6 @@ function generateUserQueryConfig(cell) {
 }
 
 // Script AI Response Node
-function addAIResponseNode(graph, x = 100, y = 200) {
-	const responseData = {};
-	const examplesData = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
-		responseData[language] = "";
-		examplesData[language] = [];
-	});
-
-	return graph.addNode({
-		shape: SCRIPT_NODE_TYPES.AI_RESPONSE,
-		data: {
-			type: SCRIPT_NODE_TYPES.AI_RESPONSE,
-			response: responseData,
-			examples: examplesData,
-		},
-		x,
-		y,
-		ports: {
-			items: [{ group: "input" }, { group: "output" }],
-		},
-	});
-}
-
 function generateAIResponseConfig(cell) {
 	const data = cell.getData() || {};
 	const currentLanguage = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
@@ -2484,25 +2552,6 @@ function generateAIResponseConfig(cell) {
 }
 
 // Script System Tool Node
-function addSystemToolNode(graph, x = 100, y = 200) {
-	return graph.addNode({
-		shape: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
-		data: {
-			type: SCRIPT_NODE_TYPES.SYSTEM_TOOL,
-			toolType: null,
-			config: {},
-		},
-		x,
-		y,
-		ports: {
-			items: [
-				{ group: "input" },
-				// Output ports will be added based on tool type
-			],
-		},
-	});
-}
-
 function generateSystemToolConfig(cell) {
 	const data = cell.getData() || {};
 	const currentLanguage = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
@@ -2900,25 +2949,6 @@ function doesScriptSystemToolRequireConfig(toolType) {
 }
 
 // Script Custom Tool Node
-function addCustomToolNode(graph, x = 100, y = 200) {
-	return graph.addNode({
-		shape: SCRIPT_NODE_TYPES.CUSTOM_TOOL,
-		data: {
-			type: SCRIPT_NODE_TYPES.CUSTOM_TOOL,
-			toolId: null,
-			config: {},
-		},
-		x,
-		y,
-		ports: {
-			items: [
-				{ group: "input" },
-				// Output ports will be added based on tool configuration
-			],
-		},
-	});
-}
-
 function generateCustomToolConfig(cell) {
 	const data = cell.getData() || {};
 	const currentLanguage = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
@@ -3229,17 +3259,14 @@ function renderFlowAppSchemaInputs() {
 			const isRequired = requiredFields.includes(key);
 			const currentValue = inputsMap[key]; // { value, isAiGenerated, isRedacted } or undefined
 
-			html += renderSchemaField(key, propSchema, currentValue, isRequired, data.appKey);
+			html += renderSchemaField(key, propSchema, currentValue, isRequired, data.appKey, appDef);
 		});
 	}
 
 	container.html(html);
-
-	// Trigger Fetchers for dropdowns
-	triggerFlowAppFetchers(activeProperties, data);
 }
 
-function renderSchemaField(key, schema, currentInput, isRequired, appKey) {
+function renderSchemaField(key, schema, currentInput, isRequired, appKey, appDef) {
 	const label = schema.title || key;
 	const description = schema.description || "";
 
@@ -3251,17 +3278,45 @@ function renderSchemaField(key, schema, currentInput, isRequired, appKey) {
 	// --- Control Type Logic ---
 	let inputControl = "";
 
-	// A. Fetcher (Dynamic Dropdown)
+	// A. Fetcher (Hybrid Input + Dropdown)
 	if (schema["x-fetcher"]) {
+		// Find if fetcher requires auth from the App Definition
+		const fetcherDef = appDef.fetchers.find(f => f.fetcherKey === schema["x-fetcher"]);
+		const requiresAuth = fetcherDef ? fetcherDef.requiresIntegration : true;
+
 		inputControl = `
-            <select class="form-select form-select-sm" 
-                data-input-key="${key}" 
-                data-fetcher="${schema["x-fetcher"]}"
-                data-dependent-on='${JSON.stringify(schema["x-fetcher-dependent-on"] || [])}'
-                ${isAi ? "disabled style='display:none'" : ""}
-            >
-                <option value="${val}" selected>${val || "Loading..."}</option>
-            </select>
+            <div class="input-group input-group-sm">
+                <input type="text" 
+                    class="form-control" 
+                    data-input-key="${key}" 
+                    value="${val}" 
+                    placeholder="${schema.placeholder || 'Enter value or {{ variable }}'}"
+                    ${isAi ? "style='display:none'" : ""} 
+                />
+                <button class="btn btn-outline-secondary dropdown-toggle" 
+                    type="button" 
+                    data-bs-toggle="dropdown" 
+                    data-bs-auto-close="outside"
+                    aria-expanded="false"
+                    data-action="open-fetcher"
+                    data-target-input="${key}"
+                    data-fetcher="${schema["x-fetcher"]}"
+                    data-requires-auth="${requiresAuth}"
+                    data-dependent-on='${JSON.stringify(schema["x-fetcher-dependent-on"] || [])}'
+                    ${isAi ? "disabled style='display:none'" : ""}
+                >
+                    <i class="fa-regular fa-search"></i>
+                </button>
+                <ul class="dropdown-menu fetcher-dropdown-menu dropdown-menu-end bg-dark border-secondary">
+                    <div class="fetcher-search-container">
+                        <input type="text" class="form-control form-control-sm" placeholder="Search..." disabled>
+                    </div>
+                    <div class="fetcher-results-container">
+                        <!-- Results injected here via JS -->
+                        <div class="p-3 text-center text-muted small"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+                    </div>
+                </ul>
+            </div>
         `;
 	}
 	// B. Static Enum
@@ -3277,7 +3332,7 @@ function renderSchemaField(key, schema, currentInput, isRequired, appKey) {
             </div>
         `;
 	}
-	// D. Standard Text/Number (Default)
+	// D. Standard Text/Number
 	else {
 		inputControl = `
             <input type="${schema.type === 'integer' || schema.type === 'number' ? 'text' : 'text'}" 
@@ -3290,7 +3345,7 @@ function renderSchemaField(key, schema, currentInput, isRequired, appKey) {
         `;
 	}
 
-	// --- AI Generated Overlay ---
+	// AI Overlay Logic
 	const aiOverlay = `
         <div class="ai-generated-placeholder ${isAi ? "" : "d-none"} border border-info rounded p-2 bg-dark d-flex justify-content-between align-items-center">
             <span class="small text-info"><i class="fa-regular fa-sparkles me-1"></i>AI Generated</span>
@@ -3327,41 +3382,45 @@ function initFlowAppSchemaHandlers() {
 		const uiState = data.uiState || {};
 		uiState.oneOfSelection = idx;
 
-		// Reset Inputs (Schema changed, old inputs might be invalid)
-		// Optionally logic could try to keep overlapping keys
-		// For now, let's keep inputs but they might just be hidden
-
 		updateFlowAppConfig({ uiState });
 		renderFlowAppSchemaInputs(); // Re-render form
 	});
 
-	// 2. Input Change (Text, Select, Boolean)
-	$("#nodeConfigOffcanvas").on("input change", '[data-input-key]', (e) => {
-		const key = $(e.target).data("input-key");
-		let value;
+	// 2. INPUT Event (Real-time typing) - DATA ONLY, NO RENDER
+	$("#nodeConfigOffcanvas").on("input", '[data-input-key]', (e) => {
+		// Skip checkboxes (they use change event)
+		if ($(e.target).attr("type") === "checkbox") return;
 
+		const key = $(e.target).data("input-key");
+		const value = $(e.target).val();
+
+		// Just save to memory/node data. Do NOT trigger re-render.
+		saveFlowAppInput(key, { value });
+	});
+
+	// 3. CHANGE Event (Blur/Enter / Checkbox) - HANDLES DEPENDENCIES & RENDER
+	$("#nodeConfigOffcanvas").on("change", '[data-input-key]', (e) => {
+		const key = $(e.target).data("input-key");
+
+		// Handle Checkboxes (since they didn't trigger 'input')
 		if ($(e.target).attr("type") === "checkbox") {
-			value = $(e.target).is(":checked");
-		} else {
-			value = $(e.target).val();
+			const value = $(e.target).is(":checked");
+			saveFlowAppInput(key, { value });
 		}
 
-		saveFlowAppInput(key, { value });
-
-		// Trigger dependencies update if this field drives others
 		checkFetcherDependencies(key);
 	});
 
-	// 3. AI Toggle Change
+	// 4. AI Toggle Change
 	$("#nodeConfigOffcanvas").on("change", '[data-ai-toggle]', (e) => {
 		const key = $(e.target).data("ai-toggle");
 		const isAi = $(e.target).is(":checked");
 
 		saveFlowAppInput(key, { isAiGenerated: isAi });
-		renderFlowAppSchemaInputs(); // Re-render to show/hide overlay
+		renderFlowAppSchemaInputs(); // Re-render required to show/hide overlay
 	});
 
-	// 4. Redact Change
+	// 5. Redact Change
 	$("#nodeConfigOffcanvas").on("change", '[data-redact-key]', (e) => {
 		const key = $(e.target).data("redact-key");
 		const isRedacted = $(e.target).is(":checked");
@@ -3398,76 +3457,6 @@ function convertInputsArrayToMap(inputsArr) {
 	return map;
 }
 
-async function triggerFlowAppFetchers(activeProperties, nodeData) {
-	// Loop through all rendered fetcher selects
-	$('[data-fetcher]').each(async function () {
-		const selectEl = $(this);
-		const key = selectEl.data("input-key");
-		const fetcherKey = selectEl.data("fetcher");
-		const dependencies = selectEl.data("dependent-on"); // Array
-
-		// 1. Check Dependencies
-		// We construct a context object from current inputs
-		const context = {};
-		const inputsMap = convertInputsArrayToMap(nodeData.inputs);
-
-		// If dependencies are missing, show default option and disable
-		let dependenciesMet = true;
-		if (dependencies && dependencies.length > 0) {
-			dependencies.forEach(depKey => {
-				const depVal = inputsMap[depKey]?.value;
-				if (!depVal || depVal === "") dependenciesMet = false;
-				context[depKey] = depVal;
-			});
-		}
-
-		if (!dependenciesMet && dependencies.length > 0) {
-			selectEl.html('<option disabled selected>Select parent first...</option>');
-			selectEl.prop("disabled", true);
-			return;
-		} else {
-			selectEl.prop("disabled", false);
-		}
-
-		// 2. Loading State
-		// Only fetch if we haven't already populated it OR if it's dependent (might need refresh)
-		// For simplicity, we fetch when dependencies are met.
-		selectEl.prop("disabled", true);
-		const originalVal = selectEl.val(); // Keep selected value if possible
-		selectEl.html('<option disabled selected>Loading...</option>');
-
-		try {
-			// 3. Call API
-			// POST /app/user/business/{id}/flowapps/{appKey}/fetchers/{fetcherKey}
-			const response = await $.ajax({
-				url: `/app/user/business/${CurrentBusinessId}/flowapps/${nodeData.appKey}/fetchers/${fetcherKey}`,
-				method: "POST",
-				contentType: "application/json",
-				data: JSON.stringify({
-					integrationId: nodeData.integrationId,
-					context: context // Pass current form state
-				})
-			});
-
-			if (response.success) {
-				let optionsHtml = `<option value="" disabled selected>Select...</option>`;
-				response.data.forEach(opt => {
-					const isSelected = String(opt.value) === String(originalVal) ? "selected" : "";
-					optionsHtml += `<option value="${opt.value}" ${isSelected}>${opt.label}</option>`;
-				});
-				selectEl.html(optionsHtml);
-			} else {
-				selectEl.html(`<option disabled>Error: ${response.message}</option>`);
-			}
-		} catch (err) {
-			console.error(err);
-			selectEl.html('<option disabled>Fetch Error</option>');
-		} finally {
-			selectEl.prop("disabled", false);
-		}
-	});
-}
-
 function checkFetcherDependencies(changedKey) {
 	// Re-trigger fetchers if the changed key is a dependency
 	const nodeData = CurrentCanvasConfigCell.getData();
@@ -3495,7 +3484,7 @@ function renderVariablesList() {
 	const currentLang = scriptsManagerLanguageDropdown.getSelectedLanguage().id;
 
 	CurrentScriptVariablesData.forEach((v, index) => {
-		const typeLabel = v.type === 1 ? "String" : v.type === 2 ? "Number" : "Boolean";
+		const typeLabel = v.type.value === 1 ? "String" : v.type.value === 2 ? "Number" : "Boolean";
 
 		let badges = "";
 		if (v.isVisibleToAgent) badges += '<i class="fa-regular fa-eye text-success me-2" title="Visible to Agent"></i>';
@@ -3607,7 +3596,9 @@ function initVariablesHandlers() {
 		// E. Construct Object
 		const newVariable = {
 			key: key,
-			type: type,
+			type: {
+				value: type
+			},
 			defaultValue: defaultValue,
 			isVisibleToAgent: isVisible,
 			isEditableByAI: isEditable,
@@ -4694,6 +4685,114 @@ function initScriptsTabHandlers() {
 			// For now, inputs are typically logic-based (English keys).
 			renderFlowAppSchemaInputs();
 		});
+
+		// --- Fetcher Dropdown Open ---
+		// Use 'show.bs.dropdown' event which triggers immediately when button is clicked
+		$("#nodeConfigOffcanvas").on("show.bs.dropdown", '.input-group:has([data-action="open-fetcher"])', async (e) => {
+			const button = $(e.relatedTarget); // The button that was clicked
+			const menu = button.next(".dropdown-menu");
+			const resultsContainer = menu.find(".fetcher-results-container");
+
+			// 1. Reset UI to Loading
+			resultsContainer.html('<div class="p-3 text-center text-muted small"><i class="fa-solid fa-spinner fa-spin"></i> Fetching options...</div>');
+
+			// 2. Extract Data
+			const fetcherKey = button.data("fetcher");
+			const requiresAuth = button.data("requires-auth"); // Boolean
+			const dependencies = button.data("dependent-on") || [];
+			const targetInputKey = button.data("target-input");
+
+			const nodeData = CurrentCanvasConfigCell.getData();
+			const appKey = nodeData.appKey;
+			const integrationId = nodeData.integrationId;
+
+			// 3. Validation: Integration
+			if (requiresAuth && !integrationId) {
+				resultsContainer.html(`
+                <div class="p-3 text-center text-warning small">
+                    <i class="fa-solid fa-triangle-exclamation mb-1"></i><br>
+                    Please select an Integration Connection above first.
+                </div>
+            `);
+				return;
+			}
+
+			// 4. Validation: Dependencies & Context Build
+			const inputsMap = convertInputsArrayToMap(nodeData.inputs);
+			const context = {};
+			let missingDependency = null;
+
+			if (dependencies.length > 0) {
+				dependencies.forEach(depKey => {
+					const depVal = inputsMap[depKey]?.value;
+					// Check if value exists and is not empty
+					if (!depVal || String(depVal).trim() === "") {
+						missingDependency = depKey;
+					}
+					context[depKey] = depVal;
+				});
+			}
+
+			if (missingDependency) {
+				// Find readable label if possible, else use key
+				// We'd need to parse schema again or pass labels, for now use Key
+				resultsContainer.html(`
+                <div class="p-3 text-center text-warning small">
+                    <i class="fa-solid fa-link-slash mb-1"></i><br>
+                    Please fill the <b>${missingDependency}</b> field first.
+                </div>
+            `);
+				return;
+			}
+
+			// 5. Execute API Call
+			try {
+				const response = await $.ajax({
+					url: `/app/user/business/${CurrentBusinessId}/flowapps/${appKey}/fetchers/${fetcherKey}`,
+					method: "POST",
+					contentType: "application/json",
+					data: JSON.stringify({
+						integrationId: integrationId,
+						context: context
+					})
+				});
+
+				if (response.success) {
+					if (response.data.length === 0) {
+						resultsContainer.html('<div class="p-3 text-center text-muted small">No options found.</div>');
+						return;
+					}
+
+					const listHtml = response.data.map(opt => `
+                    <div class="fetcher-result-item" data-value="${opt.value}" data-target-key="${targetInputKey}">
+                        <div class="fetcher-result-label">${opt.label}</div>
+                        ${opt.description ? `<div class="fetcher-result-desc">${opt.description}</div>` : ""}
+                    </div>
+                `).join("");
+
+					resultsContainer.html(listHtml);
+				} else {
+					resultsContainer.html(`<div class="p-3 text-center text-danger small">Error: ${response.message}</div>`);
+				}
+			} catch (err) {
+				console.error(err);
+				resultsContainer.html('<div class="p-3 text-center text-danger small">Network Error</div>');
+			}
+		});
+
+		// --- Select Option ---
+		$("#nodeConfigOffcanvas").on("click", ".fetcher-result-item", function () {
+			const val = $(this).data("value");
+			const targetKey = $(this).data("target-key");
+
+			// Find the input and set value
+			const inputEl = $(`input[data-input-key="${targetKey}"]`);
+			inputEl.val(val);
+
+			// Trigger change to save data
+			inputEl.trigger("input");
+			inputEl.trigger("change");
+		});
 	}
     initFlowAppConfigHandlers();
 
@@ -4702,6 +4801,8 @@ function initScriptsTabHandlers() {
 		// 1. Drag Start Listener
 		// Using delegated event to handle dynamic elements (like FlowApps later)
 		$('.script-graph-sidebar-left').on('mousedown', '.sidebar-node-item', function (e) {
+            if ($(this).hasClass('disabled')) return;
+
 			const presetId = $(this).data('preset-id');
 
 			// Factory create

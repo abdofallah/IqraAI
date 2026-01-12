@@ -6,17 +6,17 @@ namespace IqraCore.Entities.App.Configuration
     public class AppPermissionConfig
     {
         // Maintenance
-        public DateTime? MaintenanceEnabledAt { get; set; } = DateTime.UtcNow;
-        public string? PrivateMaintenanceEnabledReason { get; set; } = "Did I just get reinitalized?";
-        public string? PublicMaintenanceEnabledReason { get; set; } = "Uh! We seem to be under maintenance.";
+        public DateTime? MaintenanceEnabledAt { get; set; } = null;
+        public string? PrivateMaintenanceEnabledReason { get; set; } = null;
+        public string? PublicMaintenanceEnabledReason { get; set; } = null;
 
         // Authentication
-        public DateTime? RegisterationDisabledAt { get; set; } = DateTime.UtcNow;
-        public string? PrivateRegisterationDisabledReason { get; set; } = "Did I just get reinitalized?";
-        public string? PublicRegisterationDisabledReason { get; set; } = "Ah! We seem to be under maintenance.";
+        public DateTime? RegisterationDisabledAt { get; set; } = null;
+        public string? PrivateRegisterationDisabledReason { get; set; } = null;
+        public string? PublicRegisterationDisabledReason { get; set; } = null;
 
-        public DateTime? LoginDisabledAt { get; set; } = DateTime.UtcNow;
-        public string? PrivateLoginDisabledReason { get; set; } = "Did I just get reinitalized?";
-        public string? PublicLoginDisabledReason { get; set; } = "Oh! We seem to be under maintenance.";
+        public DateTime? LoginDisabledAt { get; set; } = null;
+        public string? PrivateLoginDisabledReason { get; set; } = null;
+        public string? PublicLoginDisabledReason { get; set; } = null;
     }
 }

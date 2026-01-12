@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
@@ -9,11 +10,16 @@ namespace ProjectIqraFrontend.Controllers.Admin
 {
     public class AppAdminUsersController : Controller
     {
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
 
-        public AppAdminUsersController(UserManager userManager, BusinessManager businessManager)
-        {
+        public AppAdminUsersController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            UserManager userManager,
+            BusinessManager businessManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _userManager = userManager;
             _businessManager = businessManager;
         }
@@ -23,51 +29,39 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<List<UserData>?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "GetUsers:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetUsers:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+                var usersResult = await _userManager.GetUsersAsync(page, pageSize);
+                if (!usersResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "GetUsers:" + usersResult.Code,
+                        usersResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(usersResult.Data);
+            }
+            catch (Exception ex)
             {
-                result.Code = "GetUsers:2";
-                result.Message = "Session validation failed";
-                return result;
+                return result.SetFailureResult(
+                    "GetUsers:EXCEPTION", 
+                    $"Error getting users: {ex.Message}"
+                );
             }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetUsers:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "GetUsers:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
-
-            var usersResult = await _userManager.GetUsersAsync(page, pageSize);
-            if (!usersResult.Success)
-            {
-                result.Code = "GetUsers:" + usersResult.Code;
-                result.Message = usersResult.Message;
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = usersResult.Data;
-
-            return result;
         }
 
         [HttpPost("/app/admin/user")]
@@ -75,51 +69,39 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<UserData?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "GetUser:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetUser:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+                var resultUser = await _userManager.GetFullUserByEmail(email);
+                if (resultUser == null)
+                {
+                    return result.SetFailureResult(
+                        "GetUser:USER_NOT_FOUND",
+                        "User not found"
+                    );
+                }
+
+                return result.SetSuccessResult(resultUser);
+            }
+            catch (Exception ex)
             {
-                result.Code = "GetUser:2";
-                result.Message = "Session validation failed";
-                return result;
+                return result.SetFailureResult(
+                    "GetUser:EXCEPTION",
+                    $"Error getting user: {ex.Message}"
+                );
             }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetUser:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "GetUser:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
-
-            var resultUser = await _userManager.GetFullUserByEmail(email);
-            if (resultUser == null)
-            {
-                result.Code = "GetUser:5";
-                result.Message = "User not found";
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = resultUser;
-
-            return result;
         }
 
         [HttpPost("/app/admin/user/businesses")]
@@ -127,52 +109,39 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<List<BusinessData>?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "GetUserBusinesses:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetUserBusinesses:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+                var businessesResult = await _businessManager.GetUserBusinessesByIds(businessIds, inputUserEmail);
+                if (!businessesResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "GetUserBusinesses:" + businessesResult.Code,
+                        businessesResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(businessesResult.Data);
+            }
+            catch (Exception ex)
             {
-                result.Code = "GetUserBusinesses:2";
-                result.Message = "Session validation failed";
-                return result;
+                return result.SetFailureResult(
+                    "GetUserBusinesses:EXCEPTION",
+                    $"Error getting user businesses: {ex.Message}"
+                );
             }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetUserBusinesses:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "GetUserBusinesses:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
-
-            var businessesResult = await _businessManager.GetUserBusinessesByIds(businessIds, inputUserEmail);
-            if (!businessesResult.Success)
-            {
-                result.Code = "GetUserBusinesses:" + businessesResult.Code;
-                result.Message = businessesResult.Message;
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = businessesResult.Data;
-
-            return result;
-        } 
-
+        }
     }
 }

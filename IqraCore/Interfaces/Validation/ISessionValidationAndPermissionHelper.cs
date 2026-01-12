@@ -31,6 +31,7 @@ namespace IqraCore.Interfaces.Validation
             HttpRequest Request,
             WhiteLabelContext? whiteLabelContext = null,
             // User Permissions
+            bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,
             // User Business Permissions
             bool checkUserBusinessesDisabled = false,
@@ -51,6 +52,7 @@ namespace IqraCore.Interfaces.Validation
             long businessId,
             WhiteLabelContext? whiteLabelContext = null,
             // User Permissions
+            bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,
             // User Businesses Permissions
             bool checkUserBusinessesDisabled = true,
@@ -68,6 +70,7 @@ namespace IqraCore.Interfaces.Validation
         Task<FunctionReturnResult<ValidateUserResult?>> ValidateUserAPIWithPermissions(
             HttpRequest Request,
             // User Permissions
+            bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,
             // User Businesses Permissions
             bool checkUserBusinessesDisabled = false,
@@ -83,6 +86,7 @@ namespace IqraCore.Interfaces.Validation
             long businessId,
             bool checkAPIKeyBusinessRestriction = true,
             // User Permissions
+            bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,
             // User Businesses Permissions
             bool checkUserBusinessesDisabled = true,

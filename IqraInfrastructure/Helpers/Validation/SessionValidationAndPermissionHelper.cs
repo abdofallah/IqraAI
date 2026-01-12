@@ -65,6 +65,7 @@ namespace IqraInfrastructure.Helpers.Validation
             HttpRequest Request,
             WhiteLabelContext? whiteLabelContext = null,
             // User Permissions
+            bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,
             // User Businesses Permissions
             bool checkUserBusinessesDisabled = false,
@@ -100,6 +101,7 @@ namespace IqraInfrastructure.Helpers.Validation
             var validatePermission = ValidateUserPermissions(
                 userData.Permission,
                 // User Permissions
+                checkUserIsAdmin,
                 checkUserDisabled,
                 // Business Permissions
                 checkUserBusinessesDisabled,
@@ -128,6 +130,7 @@ namespace IqraInfrastructure.Helpers.Validation
             long businessId,
             WhiteLabelContext? whiteLabelContext = null,
             // User Permissions
+            bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,       
             // User Business Permissions
             bool checkUserBusinessesDisabled = true,
@@ -147,6 +150,7 @@ namespace IqraInfrastructure.Helpers.Validation
                 Request: Request,
                 whiteLabelContext: null,
                 // User Permissions
+                checkUserIsAdmin: checkUserIsAdmin,
                 checkUserDisabled: checkUserDisabled,
                 // User Business Permissions
                 checkUserBusinessesDisabled: checkUserBusinessesDisabled,
@@ -213,6 +217,7 @@ namespace IqraInfrastructure.Helpers.Validation
         public virtual async Task<FunctionReturnResult<ValidateUserResult?>> ValidateUserAPIWithPermissions(
             HttpRequest Request,
             // User Permissions
+            bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,
             // User Businesses Permissions
             bool checkUserBusinessesDisabled = false,
@@ -245,6 +250,7 @@ namespace IqraInfrastructure.Helpers.Validation
             var validatePermission = ValidateUserPermissions(
                 userData.Permission,
                 // User Permissions
+                checkUserIsAdmin,
                 checkUserDisabled,
                 // Business Permissions
                 checkUserBusinessesDisabled,
@@ -275,6 +281,7 @@ namespace IqraInfrastructure.Helpers.Validation
             long businessId,
             bool checkAPIKeyBusinessRestriction = true,
             // User Permissions
+            bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,
             // User Business Permissions
             bool checkUserBusinessesDisabled = true,
@@ -294,6 +301,7 @@ namespace IqraInfrastructure.Helpers.Validation
             var userSessionValidationResult = await ValidateUserAPIWithPermissions(
                 Request: Request,
                 // User Permissions
+                checkUserIsAdmin: checkUserIsAdmin,
                 checkUserDisabled: checkUserDisabled,
                 // User Business Permissions
                 checkUserBusinessesDisabled: checkUserBusinessesDisabled,
@@ -375,6 +383,7 @@ namespace IqraInfrastructure.Helpers.Validation
         public FunctionReturnResult ValidateUserPermissions(
             UserPermission userPermission,
             // User Permissions
+            bool checkUserIsAdmin,
             bool checkUserDisabled,
             // Business Permissions
             bool checkUserBusinessesDisabled,
@@ -388,6 +397,14 @@ namespace IqraInfrastructure.Helpers.Validation
             var result = new FunctionReturnResult();
 
             // User Permissions
+            if (checkUserIsAdmin && !userPermission.IsAdmin)
+            {
+                return result.SetFailureResult(
+                    "ValidateUserPermissions:USER_NOT_ADMIN",
+                    "User is not admin"
+                );
+            }
+
             if (checkUserDisabled && userPermission.DisableUserAt != null)
             {
                 return result.SetFailureResult(

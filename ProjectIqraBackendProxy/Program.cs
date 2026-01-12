@@ -1,16 +1,30 @@
+using IqraCore.Entities.App.Enum;
 using IqraCore.Entities.Configuration;
+using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Configuration;
+using IqraCore.Entities.Server.Metrics;
 using IqraCore.Interfaces.Modules;
+using IqraCore.Interfaces.Node;
+using IqraCore.Interfaces.Server;
 using IqraCore.Interfaces.User;
 using IqraCore.Utilities;
+using IqraInfrastructure.HostedServices.Call.Outbound;
+using IqraInfrastructure.HostedServices.Lifecycle;
+using IqraInfrastructure.HostedServices.Metrics;
+using IqraInfrastructure.Managers.App;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Call.Inbound;
 using IqraInfrastructure.Managers.Call.Outbound;
 using IqraInfrastructure.Managers.Call.Proxy;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.Node;
+using IqraInfrastructure.Managers.Node.Monitors;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.Server.Metrics;
+using IqraInfrastructure.Managers.Server.Metrics.Monitor;
+using IqraInfrastructure.Managers.Server.Metrics.Monitor.Hardware;
 using IqraInfrastructure.Managers.SIP;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.User;
@@ -24,9 +38,12 @@ using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using IqraInfrastructure.Utilities.App;
+using Microsoft.Extensions.Hosting.Systemd;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using MongoDB.Driver;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace ProjectIqraBackendProxy
 {
@@ -38,6 +55,21 @@ namespace ProjectIqraBackendProxy
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && WindowsServiceHelpers.IsWindowsService())
+            {
+                builder.Services.AddWindowsService(options =>
+                {
+                    options.ServiceName = "IqraAI.Proxy";
+                });
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && SystemdHelpers.IsSystemdService())
+            {
+                builder.Services.AddSystemd();
+            }
+            builder.Services.Configure<HostOptions>(options =>
+            {
+                options.ShutdownTimeout = TimeSpan.FromMinutes(10);
+            });
 
             // Configuration
             var appConfig = builder.Configuration;
@@ -52,6 +84,7 @@ namespace ProjectIqraBackendProxy
                     ProcessingBatchSize = int.Parse(appConfig["Proxy:OutboundProcessing:ProcessingBatchSize"]),
                     ScheduleWindowMinutes = int.Parse(appConfig["Proxy:OutboundProcessing:ScheduleWindowMinutes"])
                 },
+                ApiKey = appConfig["Security:ApiKey"],
                 IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
             };
 
@@ -78,6 +111,9 @@ namespace ProjectIqraBackendProxy
                 _cloudModule!.SetupManagers(builder.Services, appConfig);
             }
 
+            // Hosted Services
+            SetupHostedServices(builder, proxyAppConfig);
+
             // HTTP Client
             builder.Services.AddHttpClient("CallManagerServerForward");
             builder.Services.AddHttpClient("ModemTelClient", client =>
@@ -92,10 +128,7 @@ namespace ProjectIqraBackendProxy
             builder.Services.AddHttpClient("OutboundCallForwardClient");
 
             // Add services to the container
-            builder.Services.AddControllers();
-
-            // Add health checks
-            builder.Services.AddHealthChecks();
+            builder.Services.AddControllers();;
 
             // Configure CORS
             builder.Services.AddCors(options =>
@@ -113,7 +146,7 @@ namespace ProjectIqraBackendProxy
             SetupPostflight(app);
 
             // Initalize All Singleton Services
-            InitializeAllSingletonServices(app.Services);
+            SingletonWarmupHelper.InitializeAllSingletonServices<Program>(app.Services);
 
             app.UseCors("AllowedOrigins");
 
@@ -121,10 +154,44 @@ namespace ProjectIqraBackendProxy
             app.UseAuthorization();
 
             app.MapControllers();
-            app.MapHealthChecks("/health", new HealthCheckOptions
+
+            // BOOTSTRAP: Initial Check
+            using (var scope = app.Services.CreateScope())
             {
-                ResponseWriter = HealthCheckResponseWriter.WriteResponse
-            });
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+                logger.LogInformation("Iqra Proxy Bootstrapping...");
+
+                var regionManager = scope.ServiceProvider.GetRequiredService<RegionManager>();
+                var regionData = await regionManager.GetRegionById(proxyAppConfig.RegionId);
+                if (regionData == null)
+                {
+                    throw new Exception($"Region with id {proxyAppConfig.RegionId} not found.");
+                }
+                var serverData = regionData.Servers.FirstOrDefault(s => s.Id == proxyAppConfig.ServerId);
+                if (serverData == null)
+                {
+                    throw new Exception($"Server with id {proxyAppConfig.ServerId} in region {proxyAppConfig.RegionId} not found.");
+                }
+                if (serverData.APIKey != proxyAppConfig.ApiKey)
+                {
+                    throw new Exception($"Mismatch between ApiKey in config and ApiKey in database.");
+                }
+
+                // Make sure no other proxy node with same config is running
+                var metricsManager = scope.ServiceProvider.GetRequiredService<ServerMetricsManager>();
+                var frontendAlreadyRunning = await metricsManager.CheckProxyNodeRunning(proxyAppConfig.RegionId, proxyAppConfig.ServerId);
+                if (frontendAlreadyRunning)
+                {
+                    throw new Exception("Server Metrics Manager found that a proxy node (with same node id in current region) is already running.\nThis could be a false positive too, but it's better to be safe than sorry.\n\nGiven the redis database takes 30seconds to clear previous running proxy status, if the issue presits for more than a minute, there must be another proxy node (with same node id in current region) running.");
+                }
+
+                // Perform Initial Startup Integrity Check
+                var startupIntregity = scope.ServiceProvider.GetRequiredService<StartupIntegrityCheckService>();
+                await startupIntregity.CheckAsync();
+
+                logger.LogInformation("Iqra Proxy Bootstrapping Completed.");
+            }
 
             app.Run();
         }
@@ -173,6 +240,13 @@ namespace ProjectIqraBackendProxy
 
         private static void SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig)
         {
+            string redisConnectionString = appConfig["RedisDatabase:Endpoint"]!;
+            string redisConfigPassword = appConfig["RedisDatabase:Password"]!;
+            if (!string.IsNullOrEmpty(redisConfigPassword))
+            {
+                redisConnectionString += $",password={redisConfigPassword}";
+            }
+
             // Repositories
             builder.Services.AddSingleton<AppRepository>((sp) =>
             {
@@ -211,7 +285,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new ServerLiveStatusChannelRepository(
                     new RedisConnectionFactory(
-                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:ServerLiveStatusChannelDatabaseIndex"]}",
+                        $"{redisConnectionString},defaultDatabase={ServerLiveStatusChannelRepository.DATABASE_INDEX}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     ),
                     sp.GetRequiredService<ILogger<ServerLiveStatusChannelRepository>>()
@@ -222,7 +296,7 @@ namespace ProjectIqraBackendProxy
             {
                 return new DistributedLockRepository(
                     new RedisConnectionFactory(
-                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:DistributedLockDatabaseIndex"]}",
+                        $"{redisConnectionString},defaultDatabase={DistributedLockRepository.DATABASE_INDEX}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     ),
                     sp.GetRequiredService<ILogger<DistributedLockRepository>>()
@@ -373,6 +447,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     null,
+                    null,
                     null
                 );
             });
@@ -381,7 +456,7 @@ namespace ProjectIqraBackendProxy
                 return new ServerSelectionManager(
                     sp.GetRequiredService<ILogger<ServerSelectionManager>>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<ServerMetricsManager>(),
                     sp.GetRequiredService<DistributedLockRepository>()
                 );
             });
@@ -408,6 +483,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     sp.GetRequiredService<UserRepository>(),
+                    null,
                     null,
                     null
                 );
@@ -452,15 +528,104 @@ namespace ProjectIqraBackendProxy
                 );
             });
 
-            // HOSTED
-            builder.Services.AddHostedService<OutboundCallProcessorService>((sp) =>
+            builder.Services.AddSingleton<IqraAppManager>((sp) =>
+            {
+                return new IqraAppManager(
+                    sp,
+                    null,
+                    sp.GetRequiredService<ILogger<IqraAppManager>>()
+                );
+            });
+
+            builder.Services.AddSingleton<IHardwareMonitor>((sp) =>
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    return new WindowsHardwareMonitor(
+                        sp.GetRequiredService<ILogger<WindowsHardwareMonitor>>(),
+                        appConfig["Hardware:NetworkInterfaceName"]
+                    );
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    return new LinuxHardwareMonitor(
+                        sp.GetRequiredService<ILogger<LinuxHardwareMonitor>>(),
+                        appConfig["Hardware:NetworkInterfaceName"]
+                    );
+                }
+                else
+                {
+                    throw new Exception("Unsupported OS for IHARDWAREMONITOR");
+                }
+            });
+
+            builder.Services.AddSingleton<StartupIntegrityCheckService>((sp) =>
+            {
+                return new StartupIntegrityCheckService(
+                    sp,
+                    sp.GetRequiredService<ILogger<StartupIntegrityCheckService>>(),
+                    AppNodeTypeEnum.Proxy
+                );
+            });
+
+            builder.Services.AddSingleton<ServerMetricsManager>((sp) =>
+            {
+                return new ServerMetricsManager(
+                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<ServerStatusRepository>()
+                );
+            });
+
+            builder.Services.AddSingleton<ProxyMetricsMonitor>((sp) =>
+            {
+                return new ProxyMetricsMonitor(
+                    sp.GetRequiredService<ILogger<ProxyMetricsMonitor>>(),
+                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<ServerStatusRepository>(),
+                    sp.GetRequiredService<IHardwareMonitor>(),
+                    proxyAppConfig
+                );
+            });
+
+            builder.Services.AddSingleton<ProxyWorkloadMonitor>((sp) =>
+            {
+                return new ProxyWorkloadMonitor();
+            });
+
+            builder.Services.AddSingleton<NodeLifecycleManager>((sp) =>
+            {
+                var nodeLifecycleManager = new NodeLifecycleManager(
+                    AppNodeTypeEnum.Proxy,
+                    sp.GetRequiredService<IHostApplicationLifetime>(),
+                    sp.GetRequiredService<IqraAppManager>(),
+                    sp.GetRequiredService<AppRepository>(),
+                    sp.GetRequiredService<RegionRepository>(),
+                    sp.GetRequiredService<ProxyWorkloadMonitor>(),
+                    sp.GetRequiredService<ILogger<NodeLifecycleManager>>()
+                );
+
+                nodeLifecycleManager.SetIdentity(proxyAppConfig.RegionId, proxyAppConfig.ServerId);
+
+                return nodeLifecycleManager;
+            });
+        }
+
+        private static void SetupHostedServices(WebApplicationBuilder builder, ProxyAppConfig proxyAppConfig)
+        {
+            // OutboundCallProcessorService
+            builder.Services.AddSingleton<OutboundCallProcessorService>((sp) =>
             {
                 return new OutboundCallProcessorService(
                     sp.GetRequiredService<ILogger<OutboundCallProcessorService>>(),
                     proxyAppConfig,
                     sp.GetRequiredService<OutboundCallProcessingOrchestrator>(),
-                    sp.GetRequiredService<OutboundCallQueueRepository>()
+                    sp.GetRequiredService<OutboundCallQueueRepository>(),
+                    sp.GetRequiredService<NodeLifecycleManager>()
                 );
+            });
+            builder.Services.AddHostedService<OutboundCallProcessorService>((sp) =>
+            {
+                return sp.GetRequiredService<OutboundCallProcessorService>();
             });
 
             builder.Services.AddHostedService<SipProxyService>((sp) =>
@@ -476,6 +641,27 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<UserManager>()
                 );
             });
+
+            builder.Services.AddHostedService<NodeStateOrchestratorService>((sp) =>
+            {
+                return new NodeStateOrchestratorService(
+                    AppNodeTypeEnum.Proxy,
+                    sp.GetRequiredService<NodeLifecycleManager>(),
+                    sp.GetRequiredService<IqraAppManager>(),
+                    sp.GetRequiredService<ILogger<NodeStateOrchestratorService>>()
+                );
+            });
+
+            builder.Services.AddHostedService<ServerMetricsMonitorService>((sp) =>
+            {
+                return new ServerMetricsMonitorService(
+                    sp,
+                    sp.GetRequiredService<ILogger<ServerMetricsMonitorService>>(),
+                    AppNodeTypeEnum.Proxy,
+                    sp.GetRequiredService<ProxyMetricsMonitor>(),
+                    sp.GetRequiredService<NodeLifecycleManager>()
+                );
+            });
         }
 
         private static void SetupPostflight(WebApplication app)
@@ -485,37 +671,9 @@ namespace ProjectIqraBackendProxy
 
             var regionManager = app.Services.GetRequiredService<RegionManager>();
             regionManager.SetLogger(app.Services.GetRequiredService<ILogger<RegionManager>>());
-        }
 
-        private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)
-        {
-            var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-            logger.LogInformation("Initializing all singleton services from IqraInfrastructure namespace...");
-
-            // Get service descriptors from the service collection
-            var services = GetTypes(serviceProvider)
-                .Where(descriptor => descriptor.Lifetime == ServiceLifetime.Singleton &&
-                       descriptor.ServiceType.Namespace != null &&
-                       descriptor.ServiceType.Namespace.StartsWith("IqraInfrastructure"))
-                .ToList();
-
-            logger.LogInformation($"Found {services.Count} singleton services to initialize");
-
-            foreach (var service in services)
-            {
-                logger.LogInformation($"Initializing service: {service.ServiceType.Name}");
-                serviceProvider.GetService(service.ServiceType);
-            }
-
-            logger.LogInformation("All IqraInfrastructure singleton services initialized successfully");
-        }
-
-        private static List<ServiceDescriptor> GetTypes(IServiceProvider provider)
-        {
-            ServiceProvider serviceProvider = provider as ServiceProvider;
-            var callSiteFactory = serviceProvider.GetType().GetProperty("CallSiteFactory", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(serviceProvider);
-            var serviceDescriptors = callSiteFactory.GetType().GetProperty("Descriptors", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(callSiteFactory) as ServiceDescriptor[];
-            return serviceDescriptors.ToList();
+            var proxyWorkloadMonitor = app.Services.GetRequiredService<ProxyWorkloadMonitor>();
+            proxyWorkloadMonitor.SetupDependencies(app.Services.GetRequiredService<OutboundCallProcessorService>());
         }
     }
 }

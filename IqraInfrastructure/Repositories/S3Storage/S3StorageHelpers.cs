@@ -1,13 +1,8 @@
-﻿using Amazon.Auth.AccessControlPolicy;
-using Amazon.Runtime;
-using Amazon.S3;
+﻿using Amazon.S3;
 using Amazon.S3.Model;
-using Amazon.SecurityToken;
-using Amazon.SecurityToken.Model;
 using IqraCore.Entities.Region;
 using Microsoft.Extensions.Logging;
 using System.Net;
-using System.Text.Json;
 
 namespace IqraInfrastructure.Repositories.S3Storage
 {

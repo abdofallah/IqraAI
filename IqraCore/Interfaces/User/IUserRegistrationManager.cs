@@ -6,6 +6,6 @@ namespace IqraCore.Interfaces.User
 {
     public interface IUserRegistrationManager
     {
-        Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model, Func<string, string, string> hashPasswordFunction);
+        Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model, Func<string, string, string> hashPasswordFunction, string? isAdmin = null);
     }
 }

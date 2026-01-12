@@ -297,6 +297,27 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
+        public async Task<bool> UnmarkProcessableOutboundCallsAsync(List<string> queueIds)
+        {
+            try
+            {
+                var updateDefinition = Builders<OutboundCallQueueData>.Update
+                        .Set(c => c.Status, CallQueueStatusEnum.Queued)
+                        .Set(c => c.EnqueuedAt, null);
+
+                var filter = Builders<OutboundCallQueueData>.Filter.In(c => c.Id, queueIds);
+
+                var result = await _outboundQueueCollection.UpdateManyAsync(filter, updateDefinition);
+
+                return result.IsAcknowledged;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in UnmarkProcessableOutboundCallsAsync");
+                return false;
+            }
+        }
+
         public async Task<bool> UpdateCallStatusAsync(
             string queueId, CallQueueStatusEnum newStatus,
             CallQueueLogEntry? log = null,

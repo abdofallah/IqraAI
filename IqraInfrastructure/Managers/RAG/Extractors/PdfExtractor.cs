@@ -16,8 +16,9 @@ namespace IqraInfrastructure.Managers.RAG.Extractors
         {
             var documents = new List<ExtractorDocumentModel>();
 
-            var pdf = PdfDocument.FromFile(_filePath);
-            var allText = pdf.ExtractAllText();
+            // TODO move to docling
+            //var pdf = PdfDocument.FromFile(_filePath);
+            var allText = "TODO"; //pdf.ExtractAllText();
 
             documents.Add(new ExtractorDocumentModel
             {

@@ -23,9 +23,33 @@ namespace IqraInfrastructure.Repositories.App
         }
 
         // Fields
+        private const string IqraAppConfigConfigField = "IqraAppConfig";
         private const string AppPermissionConfigField = "AppPermissionConfig";
-        private const string VestaCPProxyTemplatesHashField = "VestaCPProxyTemplatesHash";
         private const string EmailTemplatesField = "EmailTemplates";
+
+        /**
+         * 
+         * App Permission Config
+         * 
+        **/
+        public async Task<bool> AddUpdateIqraAppConfig(IqraAppConfig iqraAppConfig)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", IqraAppConfigConfigField);
+
+            var result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, iqraAppConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
+            return result.IsAcknowledged && (result.UpsertedId.IsString || result.ModifiedCount > 0);
+        }
+
+        public async Task<IqraAppConfig?> GetIqraAppConfig()
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", IqraAppConfigConfigField);
+
+            var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
+
+            if (result == null) return null;
+
+            return BsonSerializer.Deserialize<IqraAppConfig>(result);
+        } 
 
         /**
          * 
@@ -35,11 +59,8 @@ namespace IqraInfrastructure.Repositories.App
         public async Task<bool> AddUpdateAppPermissionConfig(AppPermissionConfig appPermissionConfig)
         {
             var filter = Builders<BsonDocument>.Filter.Eq("_id", AppPermissionConfigField);
-            var update = Builders<BsonDocument>.Update.Set(AppPermissionConfigField,
-                BsonDocument.Create(appPermissionConfig)
-            );
 
-            var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+            var result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, appPermissionConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
             return result.ModifiedCount > 0;
         }
 
@@ -52,32 +73,7 @@ namespace IqraInfrastructure.Repositories.App
             if (result == null) return null;
 
             return BsonSerializer.Deserialize<AppPermissionConfig>(result);
-        }
-
-        /**
-         * 
-         * VestaCP Proxy Templates Hash
-         * 
-        **/
-        public async Task<bool> AddUpdateVestaCPProxyTemplatesHash(Dictionary<string, string> templateHashes)
-        {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHashField);
-            var update = Builders<BsonDocument>.Update.Set("TemplateHashes", templateHashes);
-
-            var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
-            return result.ModifiedCount > 0 || result.UpsertedId != null;
-        }
-
-        public async Task<VestaCPProxyTemplateHashes?> GetVestaCPProxyTemplatesHash()
-        {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHashField);
-
-            var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
-
-            if (result == null) return null;
-
-            return BsonSerializer.Deserialize<VestaCPProxyTemplateHashes>(result);
-        }
+        } 
 
         /**
          * 
@@ -87,12 +83,9 @@ namespace IqraInfrastructure.Repositories.App
         public async Task<bool> AddUpdateEmailTemplates(EmailTemplates emailTemplates)
         {
             var filter = Builders<BsonDocument>.Filter.Eq("_id", EmailTemplatesField);
-            var update = Builders<BsonDocument>.Update.Set(EmailTemplatesField,
-                BsonDocument.Create(emailTemplates)
-            );
 
-            var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
-            return result.ModifiedCount > 0;
+            var result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, emailTemplates.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
+            return result.IsAcknowledged && result.ModifiedCount > 0;
         }
         
         public async Task<EmailTemplates?> GetEmailTemplates()

@@ -1,6 +1,5 @@
 ﻿using IqraCore.Entities.Embedding;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Languages;
 using IqraCore.Entities.LLM;
 using IqraCore.Entities.Rerank;
 using IqraCore.Entities.STT;
@@ -59,20 +58,32 @@ namespace ProjectIqraFrontend.Controllers
         }
 
         [HttpGet("/app/specification/languages")]
-        public async Task<FunctionReturnResult<List<LanguagesData>?>> GetAppLanguages()
+        public async Task<FunctionReturnResult<List<LanguagesViewModel>?>> GetAppLanguages()
         {
-            var result = new FunctionReturnResult<List<LanguagesData>?>();
+            var result = new FunctionReturnResult<List<LanguagesViewModel>?>();
 
-            var getLanguagesListResult = await _languagesManager.GetAllLanguagesList();
-            if (!getLanguagesListResult.Success)
+            try
+            {
+                var getLanguagesListResult = await _languagesManager.GetAllLanguagesList();
+                if (!getLanguagesListResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetAppLanguages:{getLanguagesListResult.Code}",
+                        getLanguagesListResult.Message
+                    );
+                }
+
+                var models = getLanguagesListResult.Data!.Select(l => LanguagesViewModel.BuildModelFromEntity(l)).ToList();
+
+                return result.SetSuccessResult(models);
+            }
+            catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    $"GetAppLanguages:{getLanguagesListResult.Code}",
-                    getLanguagesListResult.Message
+                    "GetAppLanguages:EXCEPTION",
+                    ex.Message
                 );
             }
-
-            return result.SetSuccessResult(getLanguagesListResult.Data);
         }
 
         [HttpGet("/app/specification/integrations")]
@@ -80,28 +91,38 @@ namespace ProjectIqraFrontend.Controllers
         {
             var result = new FunctionReturnResult<List<IntegrationViewModel>?>();
 
-            var getIntegrationsListResult = await _integrationsManager.GetIntegrationsList();
-            if (!getIntegrationsListResult.Success)
+            try
             {
-                return result.SetFailureResult(
-                    $"GetAvailableIntegrations:{getIntegrationsListResult.Code}",
-                    getIntegrationsListResult.Message
-                );
-            }
-
-            var resultDto = new List<IntegrationViewModel>();
-            foreach (var item in getIntegrationsListResult.Data!)
-            {
-                var dtoItem = new IntegrationViewModel(item);
-                if (item.LogoS3StorageLink != null)
+                var getIntegrationsListResult = await _integrationsManager.GetIntegrationsList();
+                if (!getIntegrationsListResult.Success)
                 {
-                    dtoItem.LogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400, item.LogoS3StorageLink.OriginRegion);
+                    return result.SetFailureResult(
+                        $"GetAvailableIntegrations:{getIntegrationsListResult.Code}",
+                        getIntegrationsListResult.Message
+                    );
                 }
 
-                resultDto.Add(dtoItem);
-            }
+                var resultDto = new List<IntegrationViewModel>();
+                foreach (var item in getIntegrationsListResult.Data!)
+                {
+                    var dtoItem = new IntegrationViewModel(item);
+                    if (item.LogoS3StorageLink != null)
+                    {
+                        dtoItem.LogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400, item.LogoS3StorageLink.OriginRegion);
+                    }
 
-            return result.SetSuccessResult(resultDto);
+                    resultDto.Add(dtoItem);
+                }
+
+                return result.SetSuccessResult(resultDto);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetAvailableIntegrations:EXCEPTION",
+                    ex.Message
+                );
+            }
         }
 
         [HttpGet("/app/specification/regions")]
@@ -109,25 +130,35 @@ namespace ProjectIqraFrontend.Controllers
         {
             var result = new FunctionReturnResult<List<RegionViewModel>?>();
 
-            var getRegionsListResult = await _regionManager.GetRegions();
-            if (!getRegionsListResult.Success)
+            try
             {
-                return result.SetFailureResult(
-                    $"GetRegions:{getRegionsListResult.Code}",
-                    getRegionsListResult.Message
-                );
-            }
+                var getRegionsListResult = await _regionManager.GetRegions();
+                if (!getRegionsListResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetRegions:{getRegionsListResult.Code}",
+                        getRegionsListResult.Message
+                    );
+                }
 
 
 #if DEBUG
-            const bool includeDevServers = true;
+                const bool includeDevServers = true;
 #else
             const bool includeDevServers = false;
 #endif
 
-            var modelList = getRegionsListResult.Data!.Select(r => RegionViewModel.BuildViewModelFromEntity(r, false, includeDevServers)).ToList();
+                var modelList = getRegionsListResult.Data!.Select(r => RegionViewModel.BuildViewModelFromEntity(r, false, includeDevServers)).ToList();
 
-            return result.SetSuccessResult(modelList);
+                return result.SetSuccessResult(modelList);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetRegions:EXCEPTION",
+                    ex.Message
+                );
+            }
         }
 
         [HttpGet("/app/specification/llmproviders/getbyintegration/{integrationType}")]
@@ -135,16 +166,26 @@ namespace ProjectIqraFrontend.Controllers
         {
             var result = new FunctionReturnResult<LLMProviderData?>();
 
-            var getLLMProviderByIntegrationResult = await _llmProviderManager.GetProviderDataByIntegration(integrationType);
-            if (!getLLMProviderByIntegrationResult.Success)
+            try
+            {
+                var getLLMProviderByIntegrationResult = await _llmProviderManager.GetProviderDataByIntegration(integrationType);
+                if (!getLLMProviderByIntegrationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetLLMProviderByIntegrationType:{getLLMProviderByIntegrationResult.Code}",
+                        getLLMProviderByIntegrationResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(getLLMProviderByIntegrationResult.Data);
+            }
+            catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    $"GetLLMProviderByIntegrationType:{getLLMProviderByIntegrationResult.Code}",
-                    getLLMProviderByIntegrationResult.Message
+                    "GetLLMProviderByIntegrationType:EXCEPTION",
+                    ex.Message
                 );
             }
-
-            return result.SetSuccessResult(getLLMProviderByIntegrationResult.Data);
         }
 
         [HttpGet("/app/specification/sttproviders/getbyintegration/{integrationType}")]
@@ -152,16 +193,26 @@ namespace ProjectIqraFrontend.Controllers
         {
             var result = new FunctionReturnResult<STTProviderData?>();
 
-            var getSTTProviderByIntegrationResult = await _sttProviderManager.GetProviderDataByIntegration(integrationType);
-            if (!getSTTProviderByIntegrationResult.Success)
+            try
+            {
+                var getSTTProviderByIntegrationResult = await _sttProviderManager.GetProviderDataByIntegration(integrationType);
+                if (!getSTTProviderByIntegrationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetSTTProviderByIntegrationType:{getSTTProviderByIntegrationResult.Code}",
+                        getSTTProviderByIntegrationResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(getSTTProviderByIntegrationResult.Data);
+            }
+            catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    $"GetSTTProviderByIntegrationType:{getSTTProviderByIntegrationResult.Code}",
-                    getSTTProviderByIntegrationResult.Message
+                    "GetSTTProviderByIntegrationType:EXCEPTION",
+                    ex.Message
                 );
             }
-
-            return result.SetSuccessResult(getSTTProviderByIntegrationResult.Data);
         }
 
         [HttpGet("/app/specification/ttsproviders/getbyintegration/{integrationType}")]
@@ -169,16 +220,26 @@ namespace ProjectIqraFrontend.Controllers
         {
             var result = new FunctionReturnResult<TTSProviderData?>();
 
-            var getTTSProviderByIntegrationResult = await _ttsProviderManager.GetProviderDataByIntegration(integrationType);
-            if (!getTTSProviderByIntegrationResult.Success)
+            try
+            {
+                var getTTSProviderByIntegrationResult = await _ttsProviderManager.GetProviderDataByIntegration(integrationType);
+                if (!getTTSProviderByIntegrationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetTTSProviderByIntegrationType:{getTTSProviderByIntegrationResult.Code}",
+                        getTTSProviderByIntegrationResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(getTTSProviderByIntegrationResult.Data);
+            }
+            catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    $"GetTTSProviderByIntegrationType:{getTTSProviderByIntegrationResult.Code}",
-                    getTTSProviderByIntegrationResult.Message
+                    "GetTTSProviderByIntegrationType:EXCEPTION",
+                    ex.Message
                 );
             }
-
-            return result.SetSuccessResult(getTTSProviderByIntegrationResult.Data);
         }
 
         [HttpGet("/app/specification/embeddingproviders/getbyintegration/{integrationType}")]
@@ -186,16 +247,26 @@ namespace ProjectIqraFrontend.Controllers
         {
             var result = new FunctionReturnResult<EmbeddingProviderData?>();
 
-            var getEmbeddingProviderByIntegrationResult = await _embeddingProviderManager.GetProviderDataByIntegration(integrationType);
-            if (!getEmbeddingProviderByIntegrationResult.Success)
+            try
+            {
+                var getEmbeddingProviderByIntegrationResult = await _embeddingProviderManager.GetProviderDataByIntegration(integrationType);
+                if (!getEmbeddingProviderByIntegrationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetEmbeddingProviderByIntegrationType:{getEmbeddingProviderByIntegrationResult.Code}",
+                        getEmbeddingProviderByIntegrationResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(getEmbeddingProviderByIntegrationResult.Data);
+            }
+            catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    $"GetEmbeddingProviderByIntegrationType:{getEmbeddingProviderByIntegrationResult.Code}",
-                    getEmbeddingProviderByIntegrationResult.Message
+                    "GetEmbeddingProviderByIntegrationType:EXCEPTION",
+                    ex.Message
                 );
             }
-
-            return result.SetSuccessResult(getEmbeddingProviderByIntegrationResult.Data);
         }
 
         [HttpGet("/app/specification/rerankproviders/getbyintegration/{integrationType}")]
@@ -203,22 +274,28 @@ namespace ProjectIqraFrontend.Controllers
         {
             var result = new FunctionReturnResult<RerankProviderData?>();
 
-            var getRerankProviderByIntegrationResult = await _rerankProviderManager.GetProviderDataByIntegration(integrationType);
-            if (!getRerankProviderByIntegrationResult.Success)
+            try
+            {
+                var getRerankProviderByIntegrationResult = await _rerankProviderManager.GetProviderDataByIntegration(integrationType);
+                if (!getRerankProviderByIntegrationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetRerankProviderByIntegrationType:{getRerankProviderByIntegrationResult.Code}",
+                        getRerankProviderByIntegrationResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(getRerankProviderByIntegrationResult.Data);
+            }
+            catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    $"GetRerankProviderByIntegrationType:{getRerankProviderByIntegrationResult.Code}",
-                    getRerankProviderByIntegrationResult.Message
+                    "GetRerankProviderByIntegrationType:EXCEPTION",
+                    ex.Message
                 );
             }
-
-            return result.SetSuccessResult(getRerankProviderByIntegrationResult.Data);
         }
 
-        /// <summary>
-        /// Returns all Flow Apps, Actions, and Fetchers with their current permission status.
-        /// Used by the Script Builder to populate the node selection menu.
-        /// </summary>
         [HttpGet("/app/specification/flowapps")]
         public async Task<FunctionReturnResult<List<FlowAppDefWithPermissionModel>>> GetFlowApps()
         {
@@ -231,7 +308,6 @@ namespace ProjectIqraFrontend.Controllers
             }
             catch (Exception ex)
             {
-                // Log error
                 return result.SetFailureResult("GetFlowApps:EXCEPTION", ex.Message);
             }
         }

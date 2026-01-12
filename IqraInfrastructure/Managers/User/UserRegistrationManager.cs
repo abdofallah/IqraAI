@@ -21,7 +21,7 @@ namespace IqraInfrastructure.Managers.User
             _userRepoistory = userRepoistory;
         }
 
-        public async Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model, Func<string, string, string> hashPasswordFunction)
+        public async Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model, Func<string, string, string> hashPasswordFunction, string? isAdmin = null)
         {
             var result = new FunctionReturnResult<UserData?>();
 
@@ -31,7 +31,11 @@ namespace IqraInfrastructure.Managers.User
                 EmailHash = _apiKeyProcessor.ComputeEmailHash(model.Email),
                 FirstName = model.FirstName,
                 LastName = model.LastName,
-                PasswordSHA = hashPasswordFunction(model.Email, model.Password)
+                PasswordSHA = hashPasswordFunction(model.Email, model.Password),
+                Permission = new()
+                {
+                    IsAdmin = (isAdmin == "YESADMINENABLED")
+                }
             };
 
             var addResult = await _userRepoistory.AddUserAsync(newUser);

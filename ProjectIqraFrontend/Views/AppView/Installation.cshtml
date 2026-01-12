@@ -1,0 +1,282 @@
+﻿<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation | Iqra AI</title>
+    <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/css/style.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="~/img/favicon/favicon.ico" />
+    <style>
+        #main-body-container {
+            flex-direction: row;
+        }
+
+        #main-intro {
+            height: 100vh;
+            background-color: #000;
+            position: relative;
+            overflow: hidden;
+            width: 40%;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(26,26,26,0.9) 0%, rgba(0,0,0,0.95) 100%);
+            z-index: 10;
+        }
+
+        .main-container {
+            width: 60%;
+        }
+
+        .stepper-list {
+            flex-direction: column;
+        }
+
+        .step-indicator {
+            z-index: 20;
+            position: relative;
+        }
+
+        .step-item {
+            opacity: 0.5;
+            transition: all 0.3s ease;
+            border-left: 2px solid #444;
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+
+        .step-item.active {
+            opacity: 1;
+            border-left-color: var(--tcolor-lighter-green);
+            font-weight: 600;
+        }
+
+        .step-item.completed {
+            opacity: 0.8;
+            border-left-color: var(--bs-success);
+            color: var(--bs-success);
+        }
+
+        .install-container {
+            width: 80%;
+            max-width: 600px;
+            padding: 40px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        @@media (max-width: 768px) {
+            #main-body-container {
+                flex-direction: column;
+            }
+
+            #main-intro {
+                height: auto;
+                width: 100%;
+                padding: 24px 0px;
+            }
+
+            .main-container {
+                width: 100%;
+                height: auto;
+                padding: 30px 0px;
+            }
+
+            .stepper-list {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="d-flex" id="main-body-container">
+        <!-- Left Panel -->
+        <div class="d-flex flex-column justify-content-center px-5" id="main-intro">
+            <div class="overlay"></div>
+            <div class="step-indicator text-white">
+                <div class="mb-5">
+                    <img src="~/img/logo/logo-colored-light.png" alt="Logo" style="width: 150px;">
+                    <h2 class="mt-3">Installation Wizard</h2>
+                    <p class="text-white-50">Setup your self-hosted instance.</p>
+                </div>
+
+                <div class="d-flex w-100 stepper-list">
+                    <div class="step-item active" id="step-indicator-1">
+                        <small>STEP 1</small>
+                        <div>Admin Account</div>
+                    </div>
+                    <div class="step-item" id="step-indicator-2">
+                        <small>STEP 2</small>
+                        <div>Configuration</div>
+                    </div>
+                    <div class="step-item" id="step-indicator-3">
+                        <small>STEP 3</small>
+                        <div>Finalize</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="d-flex flex-column justify-content-center align-items-center main-container bg-dark">
+
+            <!-- STEP 1: Admin Account -->
+            <div class="install-container fade show" id="step-1-container">
+                <h4 class="mb-1">Create Admin Account</h4>
+                <p class="text-white-50 mb-4">This user will have full control over the platform.</p>
+
+                <form id="adminForm">
+                    <div class="mb-3">
+                        <label class="form-label">Admin Email</label>
+                        <input type="email" class="form-control" id="adminEmail" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="adminPassword" required minlength="8">
+                        <div class="form-text text-white-50">Must be at least 8 characters.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Next: Configuration</button>
+                </form>
+            </div>
+
+            <!-- STEP 2: Configuration -->
+            <div class="install-container fade d-none" id="step-2-container">
+                <h4 class="mb-1">System Configuration</h4>
+                <p class="text-white-50 mb-4">Help us improve Iqra AI.</p>
+
+                <form id="configForm">
+                    <div class="card bg-black border-secondary mb-1">
+                        <div class="card-body">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="telemetryToggle" checked>
+                                <label class="form-check-label fw-bold text-white" for="telemetryToggle">Enable Anonymous Telemetry</label>
+                            </div>
+                            <p class="small text-muted mt-2 mb-0">
+                                We collect hardware specs and aggregated call counts to understand and improve performance.
+                                No PII (Personal Identifiable Information) or conversation content is ever sent.
+                            </p>
+                        </div>
+                    </div>
+
+                    <p class="small text-muted mt-0 mb-4">
+                        *Note that by installing, you agree with sending installation and contact/version/specs telemetry which does not come under the above participation agreement.
+                    </p>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary w-50" id="backToStep1">Back</button>
+                        <button type="submit" class="btn btn-success w-50">Install Platform <i class="fa-solid fa-check ms-2"></i></button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- STEP 3: Loading / Success -->
+            <div class="install-container fade d-none text-center" id="step-3-container">
+                <!-- Loading State -->
+                <div id="installingState">
+                    <div class="spinner-border text-primary mb-4" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <h4>Installing...</h4>
+                    <p class="text-white-50">Seeding database and configuring services.<br>This may take a minute.</p>
+                </div>
+
+                <!-- Success State -->
+                <div id="successState" class="d-none">
+                    <i class="fa-solid fa-circle-check text-success fa-4x mb-4"></i>
+                    <h4>Installation Complete!</h4>
+                    <p class="text-white-50 mb-4">Your Iqra AI instance is ready.</p>
+                    <a href="/login" class="btn btn-primary w-100">Go to Login</a>
+                </div>
+
+                <!-- Error State -->
+                <div id="errorState" class="d-none">
+                    <i class="fa-solid fa-circle-xmark text-danger fa-4x mb-4"></i>
+                    <h4>Installation Failed</h4>
+                    <p class="text-danger" id="errorMessage">Unknown error occurred.</p>
+                    <button class="btn btn-outline-light mt-3" onclick="window.location.reload()">Try Again</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="~/js/jquery-3.7.1.min.js"></script>
+    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        $(document).ready(() => {
+            let formData = {
+                adminEmail: '',
+                adminPassword: '',
+                enableExtraTelemetry: true
+            };
+
+            // Navigation Helpers
+            function showStep(stepId) {
+                $('.install-container').addClass('d-none').removeClass('show');
+                $(`#step-${stepId}-container`).removeClass('d-none');
+
+                // Trigger reflow for fade effect
+                setTimeout(() => $(`#step-${stepId}-container`).addClass('show'), 10);
+
+                // Update Indicators
+                $('.step-item').removeClass('active completed');
+                for(let i=1; i < stepId; i++) $(`#step-indicator-${i}`).addClass('completed');
+                $(`#step-indicator-${stepId}`).addClass('active');
+            }
+
+            // Step 1 -> 2
+            $('#adminForm').on('submit', (e) => {
+                e.preventDefault();
+                formData.adminEmail = $('#adminEmail').val();
+                formData.adminPassword = $('#adminPassword').val();
+                showStep(2);
+            });
+
+            // Step 2 -> 1
+            $('#backToStep1').on('click', () => showStep(1));
+
+            // Step 2 -> Install
+            $('#configForm').on('submit', (e) => {
+                e.preventDefault();
+                formData.enableExtraTelemetry = $('#telemetryToggle').is(':checked');
+
+                showStep(3);
+                performInstall();
+            });
+
+            function performInstall() {
+                $.ajax({
+                    url: '/api/install/setup',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: (response) => {
+                        if(response.success) {
+                            $('#installingState').addClass('d-none');
+                            $('#successState').removeClass('d-none');
+                        } else {
+                            showError(response.message);
+                        }
+                    },
+                    error: (xhr) => {
+                        showError("Server connection failed. Check logs.");
+                    }
+                });
+            }
+
+            function showError(msg) {
+                $('#installingState').addClass('d-none');
+                $('#errorState').removeClass('d-none');
+                $('#errorMessage').text(msg);
+            }
+        });
+    </script>
+</body>
+</html>

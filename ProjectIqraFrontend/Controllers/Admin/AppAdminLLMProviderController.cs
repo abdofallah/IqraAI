@@ -1,24 +1,26 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM;
-using IqraCore.Entities.User;
+using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.LLM;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers.Admin
 {
     public class AppAdminLLMProviderController : Controller
     {
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly LLMProviderManager _llmProviderManager;
-        private readonly UserManager _userManager;
         private readonly IntegrationsManager _integrationsManager;
 
-        public AppAdminLLMProviderController(LLMProviderManager llmProviderManager, UserManager userManager, IntegrationsManager integrationsManager)
-        {
+        public AppAdminLLMProviderController(
+            ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
+            LLMProviderManager llmProviderManager,
+            IntegrationsManager integrationsManager
+        ) {
+            _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _llmProviderManager = llmProviderManager;
-            _userManager = userManager;
             _integrationsManager = integrationsManager;
         }
 
@@ -27,50 +29,39 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<List<LLMProviderData>?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "GetLLMProviders:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetLLMProviders:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+                var providersResult = await _llmProviderManager.GetProviderList(page, pageSize);
+                if (!providersResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "GetLLMProviders:" + providersResult.Code,
+                        providersResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(providersResult.Data);
+            }
+            catch (Exception ex)
             {
-                result.Code = "GetLLMProviders:2";
-                result.Message = "Session validation failed";
-                return result;
+                return result.SetFailureResult(
+                    "GetLLMProviders:EXCEPTION",
+                    $"Failed to get LLM providers. Exception: {ex.Message}"
+                );
             }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetLLMProviders:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "GetLLMProviders:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
-
-            var providersResult = await _llmProviderManager.GetProviderList(page, pageSize);
-            if (!providersResult.Success)
-            {
-                result.Code = "GetLLMProviders:" + providersResult.Code;
-                result.Message = providersResult.Message;
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = providersResult.Data;
-            return result;
         }
 
         [HttpPost("/app/admin/llmproviders/save")]
@@ -78,73 +69,65 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<LLMProviderData?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveLLMProvider:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"SaveLLMProvider:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+                string? providerId = formData["providerId"];
+                if (string.IsNullOrEmpty(providerId))
+                {
+                    return result.SetFailureResult(
+                        "SaveLLMProvider:EMPTY_PROVIDER_ID",
+                        "Provider id is required"
+                    );
+                }
+
+                if (!Enum.TryParse(typeof(InterfaceLLMProviderEnum), providerId, true, out object? providerIdEnum))
+                {
+                    return result.SetFailureResult(
+                        "SaveLLMProvider:INVALID_PROVIDER_ID",
+                        "Invalid provider id enum"
+                    );
+                }
+
+                LLMProviderData? provider = await _llmProviderManager.GetProviderData(((InterfaceLLMProviderEnum)providerIdEnum));
+                if (provider == null)
+                {
+                    return result.SetFailureResult(
+                        "SaveLLMProvider:PROVIDER_NOT_FOUND",
+                        "Provider not found"
+                    );
+                }
+
+                var saveResult = await _llmProviderManager.UpdateProvider(provider, formData, _integrationsManager);
+                if (!saveResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "SaveLLMProvider:" + saveResult.Code,
+                        saveResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(saveResult.Data);
+            }
+            catch (Exception ex)
             {
-                result.Code = "SaveLLMProvider:2";
-                result.Message = "Session validation failed";
-                return result;
+                return result.SetFailureResult(
+                    "SaveLLMProvider:EXCEPTION",
+                    $"Failed to save LLM provider. Exception: {ex.Message}"
+                );
             }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveLLMProvider:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "SaveLLMProvider:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
-
-            string? providerId = formData["providerId"];
-            if (string.IsNullOrEmpty(providerId))
-            {
-                result.Code = "SaveLLMProvider:5";
-                result.Message = "Provider id is required";
-                return result;
-            }
-
-            if (!Enum.TryParse(typeof(InterfaceLLMProviderEnum), providerId, true, out object? providerIdEnum))
-            {
-                result.Code = "SaveLLMProvider:6";
-                result.Message = "Invalid provider id enum";
-                return result;
-            }
-
-            LLMProviderData? provider = await _llmProviderManager.GetProviderData(((InterfaceLLMProviderEnum)providerIdEnum));
-            if (provider == null)
-            {
-                result.Code = "SaveLLMProvider:7";
-                result.Message = "Provider not found";
-                return result;
-            }
-
-            var saveResult = await _llmProviderManager.UpdateProvider(provider, formData, _integrationsManager);
-            if (!saveResult.Success)
-            {
-                result.Code = "SaveLLMProvider:" + saveResult.Code;
-                result.Message = saveResult.Message;
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = saveResult.Data;
-            return result;
         }
 
         [HttpPost("/app/admin/llmproviders/model/save")]
@@ -152,110 +135,105 @@ namespace ProjectIqraFrontend.Controllers.Admin
         {
             var result = new FunctionReturnResult<LLMProviderModelData?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            try
             {
-                result.Code = "SaveLLMProviderModel:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
-            {
-                result.Code = "SaveLLMProviderModel:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetFullUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveLLMProviderModel:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "SaveLLMProviderModel:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
-
-            string? providerId = formData["providerId"];
-            if (string.IsNullOrEmpty(providerId))
-            {
-                result.Code = "SaveLLMProviderModel:5";
-                result.Message = "Provider id is required";
-                return result;
-            }
-
-            if (!Enum.TryParse(typeof(InterfaceLLMProviderEnum), providerId, true, out object? providerIdEnum))
-            {
-                result.Code = "SaveLLMProviderModel:6";
-                result.Message = "Invalid provider id enum";
-                return result;
-            }
-
-            LLMProviderData? provider = await _llmProviderManager.GetProviderData(((InterfaceLLMProviderEnum)providerIdEnum));
-            if (provider == null)
-            {
-                result.Code = "SaveLLMProviderModel:7";
-                result.Message = "Provider not found";
-                return result;
-            }
-
-            string? postType = formData["postType"];
-            if (string.IsNullOrEmpty(postType) || (postType != "edit" && postType != "new"))
-            {
-                result.Code = "SaveLLMProviderModel:8";
-                result.Message = "Post type is required or is not edit or new";
-                return result;
-            }
-
-            string? modelId = formData["modelId"];
-            if (string.IsNullOrEmpty(modelId))
-            {
-                result.Code = "SaveLLMProviderModel:9";
-                result.Message = "Model id is required";
-                return result;
-            }
-
-            LLMProviderModelData? oldModelData = provider.Models.Find(m => m.Id == modelId);
-            if (postType == "edit")
-            {
-                if (oldModelData == null)
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
                 {
-                    result.Code = "SaveLLMProviderModel:10";
-                    result.Message = "Model not found";
-                    return result;
+                    return result.SetFailureResult(
+                        $"SaveLLMProviderModel:{validationResult.Code}",
+                        validationResult.Message
+                    );
                 }
-            }
-            else if (postType == "new")
-            {
-                if (oldModelData != null)
+
+                string? providerId = formData["providerId"];
+                if (string.IsNullOrEmpty(providerId))
                 {
-                    result.Code = "SaveLLMProviderModel:11";
-                    result.Message = "Model already exists";
-                    return result;
+                    return result.SetFailureResult(
+                        "SaveLLMProviderModel:EMPTY_PROVIDER_ID",
+                        "Provider id is required"
+                    );
                 }
-            }
 
-            var saveResult = await _llmProviderManager.AddUpdateProviderModel(provider, modelId, postType, oldModelData, formData);
-            if (!saveResult.Success)
+                if (!Enum.TryParse(typeof(InterfaceLLMProviderEnum), providerId, true, out object? providerIdEnum))
+                {
+                    return result.SetFailureResult(
+                        "SaveLLMProviderModel:INVALID_PROVIDER_ID",
+                        "Invalid provider id enum"
+                    );
+                }
+
+                LLMProviderData? provider = await _llmProviderManager.GetProviderData(((InterfaceLLMProviderEnum)providerIdEnum));
+                if (provider == null)
+                {
+                    return result.SetFailureResult(
+                        "SaveLLMProviderModel:PROVIDER_NOT_FOUND",
+                        "Provider not found"
+                    );
+                }
+
+                string? postType = formData["postType"];
+                if (string.IsNullOrEmpty(postType) || (postType != "edit" && postType != "new"))
+                {
+                    return result.SetFailureResult(
+                        "SaveLLMProviderModel:INVALID_POST_TYPE",
+                        "Invalid post type"
+                    );
+                }
+
+                string? modelId = formData["modelId"];
+                if (string.IsNullOrEmpty(modelId))
+                {
+                    return result.SetFailureResult(
+                        "SaveLLMProviderModel:EMPTY_MODEL_ID",
+                        "Model id is required"
+                    );
+                }
+
+                LLMProviderModelData? oldModelData = provider.Models.Find(m => m.Id == modelId);
+                if (postType == "edit")
+                {
+                    if (oldModelData == null)
+                    {
+                        return result.SetFailureResult(
+                            "SaveLLMProviderModel:MODEL_NOT_FOUND",
+                            "Model not found"
+                        );
+                    }
+                }
+                else if (postType == "new")
+                {
+                    if (oldModelData != null)
+                    {
+                        return result.SetFailureResult(
+                            "SaveLLMProviderModel:MODEL_ALREADY_EXISTS",
+                            "Model already exists with id"
+                        );
+                    }
+                }
+
+                var saveResult = await _llmProviderManager.AddUpdateProviderModel(provider, modelId, postType, oldModelData, formData);
+                if (!saveResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "SaveLLMProviderModel:" + saveResult.Code,
+                        saveResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(saveResult.Data);
+            }
+            catch (Exception ex)
             {
-                result.Code = "SaveLLMProviderModel:" + saveResult.Code;
-                result.Message = saveResult.Message;
-                return result;
+                return result.SetFailureResult(
+                    "SaveLLMProviderModel:EXCEPTION",
+                    $"Failed to save LLM provider model. Exception: {ex.Message}"
+                );
             }
-
-            result.Success = true;
-            result.Data = saveResult.Data;
-            return result;
         }
-
     }
 }

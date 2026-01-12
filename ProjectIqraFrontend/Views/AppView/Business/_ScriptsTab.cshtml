@@ -106,20 +106,91 @@
                                             <i class="fa-regular fa-robot"></i>
                                             <span>AI Response</span>
                                         </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="keep-listening">
+                                            <i class="fa-regular fa-ear"></i>
+                                            <span>Keep Listening</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Category -->
+                                <div class="sidebar-category category-action-flow">
+                                    <div class="sidebar-category-title">Action Flow</div>
+                                    <div class="sidebar-nodes-grid">
+                                        <div class="sidebar-node-item disabled" data-preset-id="action-flow-group">
+                                            <i class="fa-regular fa-gears"></i>
+                                            <span>Action Flow Group</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="action-flow-condition">
+                                            <i class="fa-regular fa-filter"></i>
+                                            <span>Condition</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="action-flow-wait">
+                                            <i class="fa-regular fa-timer"></i>
+                                            <span>Wait</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="action-flow-go-to-action">
+                                            <i class="fa-regular fa-arrow-right"></i>
+                                            <span>Go To Action</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="action-flow-return">
+                                            <i class="fa-regular fa-flag-checkered"></i>
+                                            <span>Return</span>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <!-- Logic Category -->
                                 <div class="sidebar-category category-logic">
-                                    <div class="sidebar-category-title">Logic & Flow</div>
+                                    <div class="sidebar-category-title">Logic</div>
                                     <div class="sidebar-nodes-grid">
                                         <div class="sidebar-node-item" data-preset-id="go-to-node">
                                             <i class="fa-regular fa-arrow-turn-down-right"></i>
-                                            <span>Go To Node</span>
+                                            <span>Continue From Node</span>
                                         </div>
-                                        <div class="sidebar-node-item" data-preset-id="add-script-context">
+                                        <div class="sidebar-node-item" data-preset-id="end-call">
+                                            <i class="fa-regular fa-phone-slash"></i>
+                                            <span>End Conversation</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="transfer-agent">
+                                            <i class="fa-regular fa-headset"></i>
+                                            <span>Transfer To Agent</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="transfer-human">
+                                            <i class="fa-regular fa-user-headset"></i>
+                                            <span>Transfer To Human</span>
+                                        </div>
+                                        <div class="sidebar-node-item" data-preset-id="get-dtmf">
+                                            <i class="fa-regular fa-hashtag"></i>
+                                            <span>Get Numerical Input</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="change-language">
+                                            <i class="fa-regular fa-language"></i>
+                                            <span>Change Language</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="add-script-context">
                                             <i class="fa-regular fa-file-circle-plus"></i>
                                             <span>Add Script</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="schedule-call">
+                                            <i class="fa-regular fa-phone-arrow-up-right"></i>
+                                            <span>Schedule Call</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="webhook">
+                                            <i class="fa-regular fa-webhook"></i>
+                                            <span>Webhook</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="set-variable">
+                                            <i class="fa-regular fa-brackets-curly"></i>
+                                            <span>Set Variable</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="send-event">
+                                            <i class="fa-regular fa-command"></i>
+                                            <span>Send Event</span>
+                                        </div>
+                                        <div class="sidebar-node-item disabled" data-preset-id="action-flow-run-code">
+                                            <i class="fa-regular fa-code"></i>
+                                            <span>Run Code</span>
                                         </div>
                                     </div>
                                 </div>
@@ -128,26 +199,6 @@
                                 <div class="sidebar-category category-telephony">
                                     <div class="sidebar-category-title">Telephony</div>
                                     <div class="sidebar-nodes-grid">
-                                        <div class="sidebar-node-item" data-preset-id="end-call">
-                                            <i class="fa-regular fa-phone-slash"></i>
-                                            <span>End Call</span>
-                                        </div>
-                                        <div class="sidebar-node-item" data-preset-id="transfer-agent">
-                                            <i class="fa-regular fa-headset"></i>
-                                            <span>Transfer Agent</span>
-                                        </div>
-                                        <div class="sidebar-node-item" data-preset-id="transfer-human">
-                                            <i class="fa-regular fa-user-headset"></i>
-                                            <span>Transfer Human</span>
-                                        </div>
-                                        <div class="sidebar-node-item" data-preset-id="send-sms">
-                                            <i class="fa-regular fa-comment-sms"></i>
-                                            <span>Send SMS</span>
-                                        </div>
-                                        <div class="sidebar-node-item" data-preset-id="get-dtmf">
-                                            <i class="fa-regular fa-hashtag"></i>
-                                            <span>Get Keypad</span>
-                                        </div>
                                         <div class="sidebar-node-item" data-preset-id="press-dtmf">
                                             <i class="fa-regular fa-mobile-button"></i>
                                             <span>Press Keypad</span>
@@ -163,9 +214,13 @@
                                             <i class="fa-regular fa-wrench"></i>
                                             <span>Custom Tool</span>
                                         </div>
+                                        <div class="sidebar-node-item" data-preset-id="send-sms">
+                                            <i class="fa-regular fa-comment-sms"></i>
+                                            <span>Send SMS</span>
+                                        </div>
                                         <div class="sidebar-node-item" data-preset-id="retrieve-kb">
                                             <i class="fa-regular fa-book-open"></i>
-                                            <span>Retrieve KB</span>
+                                            <span>Retrieve Knowledgebase</span>
                                         </div>
                                         <!-- Dynamic FlowApps will be injected here via JS -->
                                     </div>

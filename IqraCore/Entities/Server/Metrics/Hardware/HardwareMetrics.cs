@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Entities.Server.Metrics
+﻿namespace IqraCore.Entities.Server.Metrics.Hardware
 {
     public struct HardwareMetrics
     {

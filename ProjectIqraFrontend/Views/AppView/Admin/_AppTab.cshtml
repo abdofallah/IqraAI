@@ -1,0 +1,292 @@
+﻿<div class="main-container fade show w-100" id="app-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-cube'></i> <span>App</span></h3>
+    <div class="inner-header-container mb-3">
+        <ul class="nav" id="app-inner-tab" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="app-overview-tab-button" data-bs-toggle="pill" data-bs-target="#app-overview-content" type="button" role="tab">
+                    Overview
+                </button>
+            </li>
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link" id="app-permissions-tab-button" data-bs-toggle="pill" data-bs-target="#app-permissions-content" type="button" role="tab">
+                    Permissions
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="app-email-templates-tab-button" data-bs-toggle="pill" data-bs-target="#app-email-templates-content" type="button" role="tab">
+                    Email Templates
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Container -->
+    <div class="inner-container">
+        <div class="tab-content w-100" id="app-inner-tabContent">
+
+            <!-- 1. App Overview Tab -->
+            <div class="tab-pane fade w-100 show active" id="app-overview-content" role="tabpanel" tabindex="0">
+
+                <!-- Status Banner (Hidden by default) -->
+                <div id="appUpdateBanner" class="alert alert-info d-none mb-4 align-items-center justify-content-between">
+                    <div>
+                        <i class="fa-regular fa-sparkles me-2"></i>
+                        <strong>Update Available!</strong> Version <span id="appRemoteVersion"></span> is ready.
+                    </div>
+                    <a href="https://github.com/abdofallah/IqraAI/releases" target="_blank" class="btn btn-sm btn-info text-white" id="appUpdateChangelog">View Changelog</a>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Version Card -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 bg-dark">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted text-uppercase small mb-3">System Version</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <h2 class="mb-0 me-3" id="appCurrentVersion">...</h2>
+                                    <span class="badge bg-success bg-opacity-25 text-success d-none" id="appVersionBadge">Latest</span>
+                                </div>
+                                <p class="text-white-50 small mb-4">Installed on <span id="appInstallDate">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Health/Telemetry Card -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 bg-dark">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted text-uppercase small mb-3">System Health</h6>
+                                <div class="mb-3">
+                                    <label class="d-block text-white-50 small mb-1">Installation Status</label>
+                                    <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i> Installed</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Migration Status Card -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 bg-dark">
+                            <div class="card-body">
+                                <h6 class="card-title text-muted text-uppercase small mb-3">Database</h6>
+                                <div class="mb-3">
+                                    <label class="d-block text-white-50 small mb-1">Schema Version</label>
+                                    <span class="font-monospace text-info" id="appSchemaVersion">...</span>
+                                </div>
+                                <div>
+                                    <label class="d-block text-white-50 small mb-1">Migration Status</label>
+                                    <span class="badge bg-success bg-opacity-10 text-success" id="appMigrationStatus">Idle</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. App Permissions Tab -->
+            <div class="tab-pane fade w-100" id="app-permissions-content" role="tabpanel" tabindex="0">
+                <!-- Maintenance Mode -->
+                <div class="card bg-dark mb-3">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-1 text-danger">
+                                <i class="fa-regular fa-triangle-exclamation me-2"></i>Maintenance Mode
+                            </h5>
+                            <p class="card-text text-white-50 small mb-0">
+                                If enabled, the entire platform will be inaccessible to users. Admin dashboard remains accessible.
+                            </p>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <button class="btn btn-outline-secondary btn-sm" id="btnConfigureMaintenance" title="Configure Reasons">
+                                <i class="fa-regular fa-gear"></i>
+                            </button>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchMaintenanceMode" style="width: 3em; height: 1.5em;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registration -->
+                <div class="card bg-dark mb-3">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-1 text-warning">
+                                <i class="fa-regular fa-user-plus me-2"></i>Disable Registration
+                            </h5>
+                            <p class="card-text text-white-50 small mb-0">
+                                Prevent new users from signing up. Existing users can still log in.
+                            </p>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <button class="btn btn-outline-secondary btn-sm" id="btnConfigureRegistration" title="Configure Reasons">
+                                <i class="fa-regular fa-gear"></i>
+                            </button>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchDisableRegistration" style="width: 3em; height: 1.5em;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Login -->
+                <div class="card bg-dark mb-3">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-1 text-warning">
+                                <i class="fa-regular fa-right-to-bracket me-2"></i>Disable Login
+                            </h5>
+                            <p class="card-text text-white-50 small mb-0">
+                                Prevent users from logging in. Active sessions may persist until expiry.
+                            </p>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <button class="btn btn-outline-secondary btn-sm" id="btnConfigureLogin" title="Configure Reasons">
+                                <i class="fa-regular fa-gear"></i>
+                            </button>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchDisableLogin" style="width: 3em; height: 1.5em;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. App Email Templates Tab -->
+            <div class="tab-pane fade w-100" id="app-email-templates-content" role="tabpanel" tabindex="0">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-dark">
+                            <div class="card-body d-flex flex-column">
+                                <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                                    <button class="nav-link active text-start mb-2" id="v-pills-verify-tab" data-bs-toggle="pill" data-bs-target="#v-pills-verify" type="button" role="tab">
+                                        <i class="fa-regular fa-check-circle me-2"></i>Verify Email
+                                    </button>
+                                    <button class="nav-link text-start mb-2" id="v-pills-welcome-tab" data-bs-toggle="pill" data-bs-target="#v-pills-welcome" type="button" role="tab">
+                                        <i class="fa-regular fa-hand-wave me-2"></i>Welcome User
+                                    </button>
+                                    <button class="nav-link text-start mb-2" id="v-pills-reset-tab" data-bs-toggle="pill" data-bs-target="#v-pills-reset" type="button" role="tab">
+                                        <i class="fa-regular fa-key me-2"></i>Reset Password
+                                    </button>
+                                </div>
+                                <div class="mt-4">
+                                    <button class="btn btn-primary w-100" id="btnSaveEmailTemplates">
+                                        <i class="fa-regular fa-floppy-disk me-2"></i>Save All Changes
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-9">
+                        <div class="tab-content" id="v-pills-tabContent">
+
+                            <!-- Template: Verify Email -->
+                            <div class="tab-pane fade show active" id="v-pills-verify" role="tabpanel" tabindex="0">
+                                <div class="card bg-dark">
+                                    <div class="card-header bg-transparent">
+                                        <h6 class="mb-0">Verify Email Template</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Subject</label>
+                                            <input type="text" class="form-control" id="inputVerifySubject">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">
+                                                Body <span class="badge bg-secondary ms-2">HTML Supported</span>
+                                            </label>
+                                            <textarea class="form-control font-monospace" id="inputVerifyBody" rows="10"></textarea>
+                                            <div class="form-text text-white-50">
+                                                Available Variables: <code>{{VERIFY_URL}}</code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Template: Welcome -->
+                            <div class="tab-pane fade" id="v-pills-welcome" role="tabpanel" tabindex="0">
+                                <div class="card bg-dark">
+                                    <div class="card-header bg-transparent">
+                                        <h6 class="mb-0">Welcome User Template</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Subject</label>
+                                            <input type="text" class="form-control" id="inputWelcomeSubject">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Body</label>
+                                            <textarea class="form-control font-monospace" id="inputWelcomeBody" rows="10"></textarea>
+                                            <div class="form-text text-white-50">
+                                                Available Variables: <code>{{USER_NAME}}</code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Template: Reset Password -->
+                            <div class="tab-pane fade" id="v-pills-reset" role="tabpanel" tabindex="0">
+                                <div class="card bg-dark">
+                                    <div class="card-header bg-transparent">
+                                        <h6 class="mb-0">Reset Password Template</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Subject</label>
+                                            <input type="text" class="form-control" id="inputResetSubject">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Body</label>
+                                            <textarea class="form-control font-monospace" id="inputResetBody" rows="10"></textarea>
+                                            <div class="form-text text-white-50">
+                                                Available Variables: <code>{{RESET_URL}}</code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal: Permission Reason Configuration -->
+    <div class="modal fade" id="permissionConfigModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="permissionConfigTitle">Configure Permission</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="permissionConfigTarget">
+
+                    <div class="mb-3">
+                        <label class="form-label">Public Reason <span class="text-danger">*</span> <span class="badge bg-secondary ms-2">HTML Supported</span></label>
+                        <textarea class="form-control" id="permissionPublicReason" placeholder="Shown to users (e.g. Under Maintenance)"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Private Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="permissionPrivateReason" placeholder="Internal log (e.g. Database Migration)"></textarea>
+                    </div>
+
+                    <div class="alert alert-warning small d-none" id="permissionConfigWarning">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Saving this will immediately affect the platform.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btnSavePermissionConfig">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

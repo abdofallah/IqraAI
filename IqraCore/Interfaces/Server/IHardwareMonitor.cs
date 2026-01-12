@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Server.Metrics;
+﻿using IqraCore.Entities.Server.Metrics.Hardware;
 
 namespace IqraCore.Interfaces.Server
 {

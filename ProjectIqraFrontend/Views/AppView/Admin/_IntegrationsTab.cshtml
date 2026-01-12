@@ -1,0 +1,140 @@
+﻿<div class="main-container fade w-100 d-none" id="integrations-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-cube'></i> <span>Integrations</span></h3>
+
+    <!-- Main Navigation Header -->
+    <div class="inner-header-container w-100 mb-3 fade d-none" id="integrations-header">
+        <!-- Integration Manager Breadcrumb -->
+        <div class="d-flex flex-column align-items-bewteen justify-content-center fade d-none w-100" id="integrationManagerBreadcrumb">
+            <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item">
+                            <a href="#" id="switchBackToIntegrationsListTab">Integrations</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">
+                            <span id="currentIntegrationName">Integration Name</span>
+                        </li>
+                    </ol>
+                </nav>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveIntegrationButton">
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
+            <ul class="nav nav-pill" id="integrationManagerInnerTab" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="integration-basic-tab" data-bs-toggle="tab" data-bs-target="#integration-basic" type="button" role="tab">
+                        General
+                    </button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="integration-fields-tab" data-bs-toggle="tab" data-bs-target="#integration-fields" type="button" role="tab">
+                        Fields
+                    </button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="integration-help-tab" data-bs-toggle="tab" data-bs-target="#integration-help" type="button" role="tab">
+                        Help
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="inner-container">
+        <!-- Integrations List -->
+        <div class="fade show w-100" id="integrationsListTab">
+            <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                <div style="min-width: 300px" class="me-4">
+                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewIntegrationButton">
+                        <span>+ Add New Integration</span>
+                    </button>
+                </div>
+                <div class="input-group w-100">
+                    <input type="text" class="form-control" placeholder="Search Integration" aria-label="Search Integration">
+                    <button class="input-group-button btn btn-primary">
+                        <i class='fa-regular fa-magnifying-glass'></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row" id="integrationsListContainer">
+                <!-- Integration cards will be added here -->
+            </div>
+        </div>
+
+        <!-- Integration Manager -->
+        <div class="fade d-none w-100" id="integrationManagerTab">
+            <!-- Tab Content -->
+            <div class="tab-content" id="integrationManagerTabContent">
+                <!-- Basic Information Tab -->
+                <div class="tab-pane fade show active" id="integration-basic" role="tabpanel">
+                    <div class="mb-3">
+                        <label for="integrationIdInput" class="form-label">ID</label>
+                        <input type="text" class="form-control" id="integrationIdInput" placeholder="Integration ID (unique)">
+                    </div>
+                    <div class="mb-3">
+                        <label for="integrationNameInput" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="integrationNameInput" placeholder="Integration Name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="integrationDescriptionInput" class="form-label">Description</label>
+                        <textarea class="form-control" id="integrationDescriptionInput" placeholder="Integration Description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="integrationLogoInput" class="form-label">Logo</label>
+                        <div class="d-flex align-items-center">
+                            <img src="/img/placeholder.png" id="integrationLogoPreview" class="me-3">
+                            <input type="file" class="form-control" id="integrationLogoInput" accept="image/*">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="integrationTypesInput" class="form-label">Types</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="integrationTypesInput" placeholder="Add type and press Enter">
+                            <button class="btn btn-outline-secondary" type="button" id="addTypeButton">
+                                Add
+                            </button>
+                        </div>
+                        <div class="mt-2" id="integrationTypesList">
+                            <!-- Type badges will be added here -->
+                        </div>
+                    </div>
+                    <div class="">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="integrationDisabledCheck">
+                            <label class="form-check-label" for="integrationDisabledCheck">
+                                Is Disabled?
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fields Tab -->
+                <div class="tab-pane fade" id="integration-fields" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Fields</h5>
+                        <button class="btn btn-primary btn-sm" id="addNewFieldButton">
+                            <i class="fa-regular fa-plus"></i>
+                            <span> Add Field</span>
+                        </button>
+                    </div>
+                    <div id="integrationFieldsList">
+                        <!-- Fields will be added here -->
+                    </div>
+                </div>
+
+                <!-- Help Tab -->
+                <div class="tab-pane fade" id="integration-help" role="tabpanel">
+                    <div class="mb-3">
+                        <label for="integrationHelpTextInput" class="form-label">Help Text</label>
+                        <input type="text" class="form-control" id="integrationHelpTextInput" placeholder="Help Text">
+                    </div>
+                    <div class="mb-3">
+                        <label for="integrationHelpUrlInput" class="form-label">Help URL</label>
+                        <input type="url" class="form-control" id="integrationHelpUrlInput" placeholder="Help URL">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

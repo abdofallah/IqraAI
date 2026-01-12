@@ -218,7 +218,6 @@ function CreateUserManageBusinessesTableElement(businessData, isNew = false) {
 	let element = $(`<tr>
                 <td>${businessData.id}</td>
                 <td>${businessData.name}</td>
-                <td>${businessData.subUsers.length}</td>
                 <td>
                     <button class="btn btn-info btn-sm" business-id="${businessData.id}" button-type="edit-business" ${isNew ? "disabled" : ""}>
                         <i class="fa-regular fa-eye"></i>

@@ -8,6 +8,9 @@
         public string RegionId { get; set; } = null!;
         public ProxyAppOutboundProcessingConfig OutboundProcessing { get; set; } = new();
 
+        // Security/Api
+        public string ApiKey { get; set; }
+
         // Dynamic Config
         public string ServerEndpoint { get; set; } = null!;
         public int SIPPort { get; set; }

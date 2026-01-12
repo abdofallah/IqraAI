@@ -27,6 +27,7 @@ namespace IqraInfrastructure.Managers.User
         private readonly EmailManager _emailManager;
         private readonly UserApiKeyProcessor _apiKeyProcessor;
         private readonly IUserRegistrationManager _userRegistrationManager;
+        private readonly string _hostURL;
 
         private readonly int _sessionDurationHours = 24;
 
@@ -36,7 +37,8 @@ namespace IqraInfrastructure.Managers.User
             UserSessionRepository userSessionRepository,
             UserRepository userRepository,
             EmailManager emailManager,
-            UserApiKeyProcessor apiKeyProcessor
+            UserApiKeyProcessor apiKeyProcessor,
+            string hostURL
         )
         {
             _logger = logger;
@@ -46,6 +48,7 @@ namespace IqraInfrastructure.Managers.User
             _userSessionDatabase = userSessionRepository;
             _emailManager = emailManager;
             _apiKeyProcessor = apiKeyProcessor;
+            _hostURL = hostURL;
         }
 
         // CURD
@@ -88,6 +91,11 @@ namespace IqraInfrastructure.Managers.User
         }
 
         // Management
+        public async Task<FunctionReturnResult> CreateAdminUserAsync(string email, string password)
+        {
+            return await _userRegistrationManager.RegisterUser(new RegisterModel() { Email = email, Password = password, FirstName = "Iqra", LastName = "Admin" }, HashPassword, "YESADMINENABLED");
+        }
+
         public async Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model)
         {
             return await _userRegistrationManager.RegisterUser(model, HashPassword);
@@ -257,7 +265,7 @@ namespace IqraInfrastructure.Managers.User
             var result = new FunctionReturnResult();
 
             string verifyToken = await GenerateUserRegisterVerifyToken(userEmail);
-            string verifyUrl = $"https://app.iqra.bot/verify?email={userEmail}&token={verifyToken}";
+            string verifyUrl = $"{_hostURL}/ verify?email={userEmail}&token={verifyToken}";
 
             var emailTemplates = await _appRepository.GetEmailTemplates();
             if (emailTemplates == null)
@@ -299,7 +307,7 @@ namespace IqraInfrastructure.Managers.User
             var result = new FunctionReturnResult();
 
             string resetToken = await GenerateResetPasswordToken(userEmail, requestedBy);
-            string resetUrl = $"https://app.iqra.bot/reset?email={userEmail}&token={resetToken}";
+            string resetUrl = $"{_hostURL}/reset?email={userEmail}&token={resetToken}";
 
             var emailTemplates = await _appRepository.GetEmailTemplates();
             if (emailTemplates == null)

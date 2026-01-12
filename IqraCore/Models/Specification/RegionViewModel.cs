@@ -15,7 +15,7 @@ namespace IqraCore.Models.Specification
         {
             var model = new RegionViewModel();
 
-            model.CountryRegion = entity.CountryRegion;
+            model.CountryRegion = entity.RegionId;
             model.CountryCode = entity.CountryCode;
             model.DisabledAt = entity.DisabledAt;
 

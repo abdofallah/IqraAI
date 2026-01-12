@@ -2,6 +2,7 @@
 using IqraCore.Entities.Usage;
 using IqraCore.Entities.User.Usage;
 using IqraCore.Entities.User.Usage.Enums;
+using IqraCore.Models.Usage;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -293,6 +294,43 @@ namespace IqraInfrastructure.Repositories.User
                 doc => doc.SourceType,
                 doc => doc.Count
             );
+        }
+
+        public async Task<List<OverallUsageResult>> GetOverallUsageCount(DateTime startDate, DateTime endDate)
+        {
+            var pipeline = new BsonDocument[]
+            {
+                new BsonDocument("$match", new BsonDocument
+                {
+                    { "CreatedAt", new BsonDocument { { "$gte", startDate }, { "$lt", endDate } } }
+                }),
+                new BsonDocument("$unwind", "$ConsumedFeatures"),
+                new BsonDocument("$group", new BsonDocument
+                {
+                    { "_id", new BsonDocument
+                        {
+                            { "featureKey", "$ConsumedFeatures.FeatureKey" },
+                            { "consumedType", "$ConsumedFeatures.Type" },
+                            { "sourceType", "$SourceType" }
+                        }
+                    },
+                    { "totalQuantity", new BsonDocument("$sum", "$ConsumedFeatures.Quantity") },
+                    { "totalCost", new BsonDocument("$sum", "$ConsumedFeatures.TotalUsage") },
+                    { "count", new BsonDocument("$sum", 1) }
+                }),
+                new BsonDocument("$project", new BsonDocument
+                {
+                    { "_id", 0 },
+                    { "FeatureKey", "$_id.featureKey" },
+                    { "ConsumedType", "$_id.consumedType" },
+                    { "SourceType", "$_id.sourceType" },
+                    { "TotalQuantity", "$totalQuantity" },
+                    { "TotalCost", "$totalCost" },
+                    { "Count", "$count" }
+                })
+            };
+
+            return await _userUsageCollection.Aggregate<OverallUsageResult>(pipeline).ToListAsync();
         }
     }
 }

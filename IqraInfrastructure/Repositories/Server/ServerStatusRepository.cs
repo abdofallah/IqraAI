@@ -7,7 +7,6 @@ namespace IqraInfrastructure.Repositories.Server
     public class ServerStatusRepository
     {
         private readonly IMongoCollection<ServerStatusData> _serverStatusCollection;
-        private readonly IMongoCollection<ServerHistoricalStatusData> _historicalStatusCollection;
         private readonly ILogger<ServerStatusRepository> _logger;
 
         private readonly string DatabaseName = "IqraServerStatus";
@@ -18,7 +17,7 @@ namespace IqraInfrastructure.Repositories.Server
             _logger = logger;
 
             var database = client.GetDatabase(DatabaseName);
-            _historicalStatusCollection = database.GetCollection<ServerHistoricalStatusData>(CollectionName);        
+            _serverStatusCollection = database.GetCollection<ServerStatusData>(CollectionName);        
 
             CreateIndexes();
         }
@@ -27,19 +26,23 @@ namespace IqraInfrastructure.Repositories.Server
         {
             try
             {
-                // Create indexes for historical status
-                var historicalServerIndex = Builders<ServerHistoricalStatusData>.IndexKeys
-                    .Ascending(s => s.ServerId);
+                // 1. Compound Index for efficient Range Queries (NodeId + LastUpdated)
+                // This is critical for graphs: "Give me Node X from Date A to Date B"
+                var compoundIndexKeys = Builders<ServerStatusData>.IndexKeys
+                    .Ascending(s => s.NodeId)
+                    .Ascending(s => s.LastUpdated);
 
-                _historicalStatusCollection.Indexes.CreateOne(
-                    new CreateIndexModel<ServerHistoricalStatusData>(historicalServerIndex));
+                _serverStatusCollection.Indexes.CreateOne(
+                    new CreateIndexModel<ServerStatusData>(compoundIndexKeys, new CreateIndexOptions { Name = "NodeId_LastUpdated" }));
 
-                var historicalTimestampIndex = Builders<ServerHistoricalStatusData>.IndexKeys
-                    .Ascending(s => s.Timestamp);
+                // 2. TTL Index (Auto-delete old data)
+                var ttlIndexKeys = Builders<ServerStatusData>.IndexKeys
+                    .Ascending(s => s.LastUpdated);
 
-                var indexOptions = new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(30) };
-                _historicalStatusCollection.Indexes.CreateOne(
-                    new CreateIndexModel<ServerHistoricalStatusData>(historicalTimestampIndex, indexOptions));
+                var ttlOptions = new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(30), Name = "TTL_30Days" };
+
+                _serverStatusCollection.Indexes.CreateOne(
+                    new CreateIndexModel<ServerStatusData>(ttlIndexKeys, ttlOptions));
             }
             catch (Exception ex)
             {
@@ -51,45 +54,32 @@ namespace IqraInfrastructure.Repositories.Server
         {
             try
             {
-                var historicalStatus = new ServerHistoricalStatusData
-                {
-                    ServerId = status.ServerId,
-                    Timestamp = DateTime.UtcNow,
-                    ActiveCalls = status.CurrentActiveCallsCount,
-                    QueuedCalls = status.QueuedCallsCount,
-                    CpuUsagePercent = status.CpuUsagePercent,
-                    MemoryUsagePercent = status.MemoryUsagePercent,
-                    NetworkDownloadMbps = status.NetworkDownloadMbps,
-                    NetworkUploadMbps = status.NetworkUploadMbps
-                };
-
-                await _historicalStatusCollection.InsertOneAsync(historicalStatus);
+                await _serverStatusCollection.InsertOneAsync(status);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording historical status for server {ServerId}", status.ServerId);
+                _logger.LogError(ex, "Error recording historical status for node {NodeId}", status.NodeId);
             }
         }
 
-        public async Task<List<ServerHistoricalStatusData>> GetServerHistoryAsync(
-            string serverId, DateTime startTime, DateTime endTime)
+        public async Task<List<ServerStatusData>> GetRawServerHistoryAsync(string nodeId, DateTime startTime, DateTime endTime)
         {
             try
             {
-                var filter = Builders<ServerHistoricalStatusData>.Filter.And(
-                    Builders<ServerHistoricalStatusData>.Filter.Eq(s => s.ServerId, serverId),
-                    Builders<ServerHistoricalStatusData>.Filter.Gte(s => s.Timestamp, startTime),
-                    Builders<ServerHistoricalStatusData>.Filter.Lte(s => s.Timestamp, endTime)
+                var filter = Builders<ServerStatusData>.Filter.And(
+                    Builders<ServerStatusData>.Filter.Eq(s => s.NodeId, nodeId),
+                    Builders<ServerStatusData>.Filter.Gte(s => s.LastUpdated, startTime),
+                    Builders<ServerStatusData>.Filter.Lte(s => s.LastUpdated, endTime)
                 );
 
-                var sort = Builders<ServerHistoricalStatusData>.Sort.Ascending(s => s.Timestamp);
+                var sort = Builders<ServerStatusData>.Sort.Ascending(s => s.LastUpdated);
 
-                return await _historicalStatusCollection.Find(filter).Sort(sort).ToListAsync();
+                return await _serverStatusCollection.Find(filter).Sort(sort).ToListAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting history for server {ServerId}", serverId);
-                return new List<ServerHistoricalStatusData>();
+                _logger.LogError(ex, "Error getting raw history for node {NodeId}", nodeId);
+                return new List<ServerStatusData>();
             }
         }
     }

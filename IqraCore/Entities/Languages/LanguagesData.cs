@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using IqraCore.Attributes;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Languages
 {
@@ -10,6 +11,13 @@ namespace IqraCore.Entities.Languages
         public string LocaleName { get; set; } = "";
         public string Name { get; set; } = "";
 
+        [ExcludeInAllEndpoints]
+        public LanguagePromptsData Prompts { get; set; } = new();
+
         public DateTime? DisabledAt { get; set; } = null;
+        public string? PublicDisabledReason { get; set; } = null;
+
+        [ExcludeInAllEndpoints]
+        public string? PrivateDisabledReason { get; set; } = null;
     }
 }

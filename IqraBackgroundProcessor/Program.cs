@@ -1,15 +1,36 @@
+using IqraCore.Entities.App.Enum;
+using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Configuration;
 using IqraCore.Interfaces.Modules;
+using IqraCore.Interfaces.Node;
+using IqraCore.Interfaces.Server;
 using IqraInfrastructure.HostedServices.Call;
 using IqraInfrastructure.HostedServices.Conversation;
+using IqraInfrastructure.HostedServices.Lifecycle;
+using IqraInfrastructure.HostedServices.Metrics;
+using IqraInfrastructure.HostedServices.RAG;
 using IqraInfrastructure.HostedServices.TTS;
+using IqraInfrastructure.Managers.App;
+using IqraInfrastructure.Managers.KnowledgeBase;
+using IqraInfrastructure.Managers.Node;
+using IqraInfrastructure.Managers.Server.Metrics;
+using IqraInfrastructure.Managers.Server.Metrics.Monitor;
+using IqraInfrastructure.Managers.Server.Metrics.Monitor.Hardware;
+using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
+using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.S3Storage;
+using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.TTS.Cache;
+using IqraInfrastructure.Utilities.App;
+using Microsoft.Extensions.Hosting.Systemd;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using MongoDB.Driver;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace IqraBackgroundProcessor
 {
@@ -21,12 +42,28 @@ namespace IqraBackgroundProcessor
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && WindowsServiceHelpers.IsWindowsService())
+            {
+                builder.Services.AddWindowsService(options =>
+                {
+                    options.ServiceName = "IqraAI.Background";
+                });
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && SystemdHelpers.IsSystemdService())
+            {
+                builder.Services.AddSystemd();
+            }
+            builder.Services.Configure<HostOptions>(options =>
+            {
+                options.ShutdownTimeout = TimeSpan.FromMinutes(10);
+            });
 
             // Configuration
             var appConfig = builder.Configuration;
             var backgroundAppConfig = new BackgroundAppConfig()
             {
                 IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
+                DefaultS3StorageRegionId = appConfig["S3Storage:DefaultStorageRegionId"]
             };
             builder.Services.AddSingleton<BackgroundAppConfig>(backgroundAppConfig);
 
@@ -55,16 +92,55 @@ namespace IqraBackgroundProcessor
                 _cloudModule!.SetupManagers(builder.Services, appConfig);
             }
 
+            // Hosted Services
+            SetupHostedServices(builder, appConfig);
+            if (backgroundAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.SetupHostedServices(builder.Services);
+            }
+
+            // HttpClients
+            builder.Services.AddHttpClient();
+
             var app = builder.Build();
 
             // Initalize All Singleton Services
-            InitializeAllSingletonServices(app.Services);
+            SingletonWarmupHelper.InitializeAllSingletonServices<Program>(app.Services);
+
+            // BOOTSTRAP: Initial Check
+            using (var scope = app.Services.CreateScope())
+            {
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+                logger.LogInformation("Iqra Background Bootstrapping...");
+
+                // Make sure no other background node is running
+                var metricsManager = scope.ServiceProvider.GetRequiredService<ServerMetricsManager>();
+                var frontendAlreadyRunning = await metricsManager.CheckAnyBackgroundNodeRunning();
+                if (frontendAlreadyRunning)
+                {
+                    throw new Exception("Server Metrics Manager found that a background node is already running.\nThis could be a false positive too, but it's better to be safe than sorry.\n\nGiven the redis database takes 30seconds to clear previous running background status, if the issue presits for more than a minute, there must be another background node running.");
+                }
+
+                // Perform Initial Startup Integrity Check
+                var startupIntregity = scope.ServiceProvider.GetRequiredService<StartupIntegrityCheckService>();
+                await startupIntregity.CheckAsync();
+
+                logger.LogInformation("Iqra Background Bootstrapping Completed.");
+            }
 
             app.Run();
         }
 
         private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig, BackgroundAppConfig backgroundAppConfig)
         {
+            string redisConnectionString = appConfig["RedisDatabase:Endpoint"]!;
+            string redisConfigPassword = appConfig["RedisDatabase:Password"]!;
+            if (!string.IsNullOrEmpty(redisConfigPassword))
+            {
+                redisConnectionString += $",password={redisConfigPassword}";
+            }
+
             IMongoClient mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
             RegionRepository regionRepository = new RegionRepository(mongoClient);
             var allRegionServers = await regionRepository.GetRegions();
@@ -77,6 +153,28 @@ namespace IqraBackgroundProcessor
 
             builder.Services.AddSingleton<IMongoClient>(mongoClient);
             builder.Services.AddSingleton<S3StorageClientFactory>(s3StorageClientFactory);
+
+            builder.Services.AddSingleton<AppRepository>((sp) =>
+            {
+                return new AppRepository(
+                    sp.GetRequiredService<ILogger<AppRepository>>(),
+                    sp.GetRequiredService<IMongoClient>()
+                );
+            });
+
+            builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
+            {
+                return new MilvusKnowledgeBaseClient(
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    new MilvusOptions()
+                    {
+                        Endpoint = appConfig["Milvus:Endpoint"],
+                        Username = appConfig["Milvus:Username"],
+                        Password = appConfig["Milvus:Password"]
+                    },
+                    sp.GetRequiredService<ILogger<MilvusKnowledgeBaseClient>>()
+                );
+            });
 
             builder.Services.AddSingleton<CallQueueLogsRepository>((sp) =>
             {
@@ -118,10 +216,125 @@ namespace IqraBackgroundProcessor
                     sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
+
+            builder.Services.AddSingleton<ServerLiveStatusChannelRepository>((sp) =>
+            {
+                return new ServerLiveStatusChannelRepository(
+                    new RedisConnectionFactory(
+                        $"{redisConnectionString},defaultDatabase={ServerLiveStatusChannelRepository.DATABASE_INDEX}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    ),
+                    sp.GetRequiredService<ILogger<ServerLiveStatusChannelRepository>>()
+                );
+            });
+
+            builder.Services.AddSingleton<ServerStatusRepository>(sp =>
+            {
+                return new ServerStatusRepository(
+                    sp.GetRequiredService<ILogger<ServerStatusRepository>>(),
+                    sp.GetRequiredService<IMongoClient>()
+                );
+            });
+
+            builder.Services.AddSingleton<RegionRepository>((sp) => {
+                regionRepository.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
+                return regionRepository;
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, BackgroundAppConfig backgroundAppConfig)
         {
+            builder.Services.AddSingleton<IqraAppManager>((sp) =>
+            {
+                return new IqraAppManager(
+                    sp,
+                    null,
+                    sp.GetRequiredService<ILogger<IqraAppManager>>()
+                );
+            });
+
+            builder.Services.AddSingleton<IHardwareMonitor>((sp) =>
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    return new WindowsHardwareMonitor(
+                        sp.GetRequiredService<ILogger<WindowsHardwareMonitor>>(),
+                        appConfig["Hardware:NetworkInterfaceName"]
+                    );
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    return new LinuxHardwareMonitor(
+                        sp.GetRequiredService<ILogger<LinuxHardwareMonitor>>(),
+                        appConfig["Hardware:NetworkInterfaceName"]
+                    );
+                }
+                else
+                {
+                    throw new Exception("Unsupported OS for IHARDWAREMONITOR");
+                }
+            });
+
+            builder.Services.AddSingleton<StartupIntegrityCheckService>((sp) =>
+            {
+                return new StartupIntegrityCheckService(
+                    sp,
+                    sp.GetRequiredService<ILogger<StartupIntegrityCheckService>>(),
+                    AppNodeTypeEnum.Background
+                );
+            });
+
+            builder.Services.AddSingleton<ServerMetricsManager>((sp) =>
+            {
+                return new ServerMetricsManager(
+                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<ServerStatusRepository>()
+                );
+            });
+
+            builder.Services.AddSingleton<ServerMetricsMonitor>((sp) =>
+            {
+                return new ServerMetricsMonitor(
+                    sp.GetRequiredService<ILogger<BackendMetricsMonitor>>(),
+                    new ServerStatusData()
+                    {
+                        NodeId = "Background",
+                        Type = AppNodeTypeEnum.Background,
+                        LastUpdated = DateTime.UtcNow,
+                        CpuUsagePercent = 0,
+                        MemoryUsagePercent = 0,
+                        NetworkDownloadMbps = 0,
+                        NetworkUploadMbps = 0
+                    },
+                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<ServerStatusRepository>(),
+                    sp.GetRequiredService<IHardwareMonitor>()
+                );
+            });
+
+            builder.Services.AddSingleton<NodeLifecycleManager>((sp) =>
+            {
+                return new NodeLifecycleManager(
+                    AppNodeTypeEnum.Proxy,
+                    sp.GetRequiredService<IHostApplicationLifetime>(),
+                    sp.GetRequiredService<IqraAppManager>(),
+                    sp.GetRequiredService<AppRepository>(),
+                    sp.GetRequiredService<RegionRepository>(),
+                    null,
+                    sp.GetRequiredService<ILogger<NodeLifecycleManager>>()
+                );
+            });
+        }
+
+        private static void SetupHostedServices(WebApplicationBuilder builder, IConfiguration appConfig)
+        {
+            string redisConnectionString = appConfig["RedisDatabase:Endpoint"]!;
+            string redisConfigPassword = appConfig["RedisDatabase:Password"]!;
+            if (!string.IsNullOrEmpty(redisConfigPassword))
+            {
+                redisConnectionString += $",password={redisConfigPassword}";
+            }
+
             builder.Services.AddHostedService<CallQueueCleanupService>((sp) =>
             {
                 return new CallQueueCleanupService(
@@ -146,30 +359,41 @@ namespace IqraBackgroundProcessor
                      sp.GetRequiredService<TTSAudioCacheStorageRepository>()
                 );
             });
-        }
 
-        private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)
-        {
-            var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-            logger.LogInformation("Initializing all singleton services from IqraInfrastructure namespace...");
-
-            // Get service descriptors from the service collection
-            var services = GetTypes(serviceProvider)
-                .Where(descriptor => descriptor.Lifetime == ServiceLifetime.Singleton &&
-                       descriptor.ServiceType.Namespace != null &&
-                       descriptor.ServiceType.Namespace.StartsWith("IqraInfrastructure"))
-                .ToList();
-
-            logger.LogInformation($"Found {services.Count} singleton services to initialize");
-
-            foreach (var service in services)
+            builder.Services.AddSingleton<KnowledgeBaseStaleCollectionsUnloadService>((sp) =>
             {
-                logger.LogInformation($"Initializing service: {service.ServiceType.Name}");
-                serviceProvider.GetService(service.ServiceType);
-            }
+                return new KnowledgeBaseStaleCollectionsUnloadService(
+                    sp.GetRequiredService<ILogger<KnowledgeBaseStaleCollectionsUnloadService>>(),
+                    sp.GetRequiredService<MilvusKnowledgeBaseClient>(),
+                    appConfig["Milvus:Database"],
+                    new RedisConnectionFactory(
+                        $"{redisConnectionString},defaultDatabase={KnowledgeBaseCollectionsLoadManager.DATABASE_INDEX}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    )
+                );
+            });
 
-            logger.LogInformation("All IqraInfrastructure singleton services initialized successfully");
-        }
+            builder.Services.AddHostedService<NodeStateOrchestratorService>((sp) =>
+            {
+                return new NodeStateOrchestratorService(
+                    AppNodeTypeEnum.Background,
+                    sp.GetRequiredService<NodeLifecycleManager>(),
+                    sp.GetRequiredService<IqraAppManager>(),
+                    sp.GetRequiredService<ILogger<NodeStateOrchestratorService>>()
+                );
+            });
+
+            builder.Services.AddHostedService<ServerMetricsMonitorService>((sp) =>
+            {
+                return new ServerMetricsMonitorService(
+                    sp,
+                    sp.GetRequiredService<ILogger<ServerMetricsMonitorService>>(),
+                    AppNodeTypeEnum.Background,
+                    sp.GetRequiredService<ServerMetricsMonitor>(),
+                    sp.GetRequiredService<NodeLifecycleManager>()
+                );
+            });
+        }   
 
         private static void LoadCloudAssembly()
         {
@@ -184,14 +408,6 @@ namespace IqraBackgroundProcessor
                 _cloudModule = (ICloudBackgroundAppInitalizer)Activator.CreateInstance(type);
             }
             if (_cloudModule == null) throw new Exception("Cloud module not found");
-        }
-
-        private static List<ServiceDescriptor> GetTypes(IServiceProvider provider)
-        {
-            ServiceProvider serviceProvider = provider as ServiceProvider;
-            var callSiteFactory = serviceProvider.GetType().GetProperty("CallSiteFactory", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(serviceProvider);
-            var serviceDescriptors = callSiteFactory.GetType().GetProperty("Descriptors", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(callSiteFactory) as ServiceDescriptor[];
-            return serviceDescriptors.ToList();
         }
     }
 }

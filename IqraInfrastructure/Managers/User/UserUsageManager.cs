@@ -9,7 +9,6 @@ using IqraInfrastructure.Repositories.User;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using System.Globalization;
-using static TorchSharp.torch.utils;
 
 namespace IqraInfrastructure.Managers.User
 {
@@ -383,6 +382,21 @@ namespace IqraInfrastructure.Managers.User
             }
         }
 
+        public async Task<FunctionReturnResult<List<OverallUsageResult>?>> GetOverallUsage(DateTime startData, DateTime endDate)
+        {
+            var result = new FunctionReturnResult<List<OverallUsageResult>?>();
+            try
+            {
+                var currentUsageCounts = await _usageRepository.GetOverallUsageCount(startData, endDate);
+
+                return result.SetSuccessResult(currentUsageCounts);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult("GetOverallUsageCount:EXCEPTION", $"An unexpected error occurred: {ex.Message}");
+            }
+        }
+
         // Helpers
         private IEnumerable<(string PeriodKey, string Label)> GetTimePeriods(DateTime start, DateTime end, UserUsageGroupBy groupBy, string labelFormat)
         {
@@ -409,7 +423,6 @@ namespace IqraInfrastructure.Managers.User
                     break;
             }
         }
-
         private UserUsageSummaryStackedChartDataModel BuildChart(List<UserUsageAggregatedChartDataResult> data, DateTime startDate, DateTime inclusiveEndDate, UserUsageGroupBy groupBy, string labelFormat, bool isIntValue = false)
         {
             var chart = new UserUsageSummaryStackedChartDataModel();

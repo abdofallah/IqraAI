@@ -225,7 +225,6 @@ function CreateBusinessesListTableElement(businessData) {
                     <td>${businessData.id}</td>
                     <td>${businessData.name}</td>
                     <td>${businessData.masterUserEmail}</td>
-                    <td></td>
                     <td>
                         <button class="btn btn-info btn-sm" business-id="${businessData.id}" button-type="edit-list-business">
                             <i class="fa-regular fa-eye"></i>
@@ -253,181 +252,181 @@ function FillBusinessManageTab(businessData) {
 	// Permissions
 	const permissions = businessData.permission;
 
-	// General Permissions
-	SetPermissionInput(businessesManageDisabledFullInput, businessesManageDisabledFullReasonInput, permissions.disabledFullAt, permissions.disabledFullReason);
-	SetPermissionInput(businessesManageDisabledEditInput, businessesManageDisabledEditReasonInput, permissions.disabledEditingAt, permissions.disabledEditingReason);
-	SetPermissionInput(businessesManageDisabledDeleteInput, businessesManageDisabledDeleteReasonInput, permissions.disabledDeletingAt, permissions.disabledDeletingReason);
+	//// General Permissions
+	//SetPermissionInput(businessesManageDisabledFullInput, businessesManageDisabledFullReasonInput, permissions.disabledFullAt, permissions.disabledFullReason);
+	//SetPermissionInput(businessesManageDisabledEditInput, businessesManageDisabledEditReasonInput, permissions.disabledEditingAt, permissions.disabledEditingReason);
+	//SetPermissionInput(businessesManageDisabledDeleteInput, businessesManageDisabledDeleteReasonInput, permissions.disabledDeletingAt, permissions.disabledDeletingReason);
 
-	// Routing Permissions
-	SetPermissionInput(businessesManageDisableRoutingInput, businessesManageDisableRoutingReasonInput, permissions.routing.disabledFullAt, permissions.routing.disabledFullReason);
-	SetPermissionInput(businessesManageDisableAddingInput, businessesManageDisableAddingReasonInput, permissions.routing.disabledAddingAt, permissions.routing.disabledAddingReason);
-	SetPermissionInput(businessesManageDisableEditingInput, businessesManageDisableEditingReasonInput, permissions.routing.disabledEditingAt, permissions.routing.disabledEditingReason);
-	SetPermissionInput(businessesManageDisableDeletingInput, businessesManageDisableDeletingReasonInput, permissions.routing.disabledDeletingAt, permissions.routing.disabledDeletingReason);
+	//// Routing Permissions
+	//SetPermissionInput(businessesManageDisableRoutingInput, businessesManageDisableRoutingReasonInput, permissions.routing.disabledFullAt, permissions.routing.disabledFullReason);
+	//SetPermissionInput(businessesManageDisableAddingInput, businessesManageDisableAddingReasonInput, permissions.routing.disabledAddingAt, permissions.routing.disabledAddingReason);
+	//SetPermissionInput(businessesManageDisableEditingInput, businessesManageDisableEditingReasonInput, permissions.routing.disabledEditingAt, permissions.routing.disabledEditingReason);
+	//SetPermissionInput(businessesManageDisableDeletingInput, businessesManageDisableDeletingReasonInput, permissions.routing.disabledDeletingAt, permissions.routing.disabledDeletingReason);
 
-	// Agents Permissions
-	SetPermissionInput(businessesManageDisableFullAgentsInput, businessesManageDisableFullAgentsReasonInput, permissions.agents.disabledFullAt, permissions.agents.disabledFullReason);
-	SetPermissionInput(businessesManageDisableAddingAgentsInput, businessesManageDisableAddingAgentsReasonInput, permissions.agents.disabledAddingAt, permissions.agents.disabledAddingReason);
-	SetPermissionInput(businessesManageDisableEditingAgentsInput, businessesManageDisableEditingAgentsReasonInput, permissions.agents.disabledEditingAt, permissions.agents.disabledEditingReason);
-	SetPermissionInput(businessesManageDisableDeletingAgentsInput, businessesManageDisableDeletingAgentsReasonInput, permissions.agents.disabledDeletingAt, permissions.agents.disabledDeletingReason);
+	//// Agents Permissions
+	//SetPermissionInput(businessesManageDisableFullAgentsInput, businessesManageDisableFullAgentsReasonInput, permissions.agents.disabledFullAt, permissions.agents.disabledFullReason);
+	//SetPermissionInput(businessesManageDisableAddingAgentsInput, businessesManageDisableAddingAgentsReasonInput, permissions.agents.disabledAddingAt, permissions.agents.disabledAddingReason);
+	//SetPermissionInput(businessesManageDisableEditingAgentsInput, businessesManageDisableEditingAgentsReasonInput, permissions.agents.disabledEditingAt, permissions.agents.disabledEditingReason);
+	//SetPermissionInput(businessesManageDisableDeletingAgentsInput, businessesManageDisableDeletingAgentsReasonInput, permissions.agents.disabledDeletingAt, permissions.agents.disabledDeletingReason);
 
-	// Tools Permissions
-	SetPermissionInput(businessesManageDisableFullToolsInput, businessesManageDisableFullToolsReasonInput, permissions.tools.disabledFullAt, permissions.tools.disabledFullReason);
-	SetPermissionInput(businessesManageDisableAddingToolsInput, businessesManageDisableAddingToolsReasonInput, permissions.tools.disabledAddingAt, permissions.tools.disabledAddingReason);
-	SetPermissionInput(businessesManageDisableEditingToolsInput, businessesManageDisableEditingToolsReasonInput, permissions.tools.disabledEditingAt, permissions.tools.disabledEditingReason);
-	SetPermissionInput(businessesManageDisableDeletingToolsInput, businessesManageDisableDeletingToolsReasonInput, permissions.tools.disabledDeletingAt, permissions.tools.disabledDeletingReason);
+	//// Tools Permissions
+	//SetPermissionInput(businessesManageDisableFullToolsInput, businessesManageDisableFullToolsReasonInput, permissions.tools.disabledFullAt, permissions.tools.disabledFullReason);
+	//SetPermissionInput(businessesManageDisableAddingToolsInput, businessesManageDisableAddingToolsReasonInput, permissions.tools.disabledAddingAt, permissions.tools.disabledAddingReason);
+	//SetPermissionInput(businessesManageDisableEditingToolsInput, businessesManageDisableEditingToolsReasonInput, permissions.tools.disabledEditingAt, permissions.tools.disabledEditingReason);
+	//SetPermissionInput(businessesManageDisableDeletingToolsInput, businessesManageDisableDeletingToolsReasonInput, permissions.tools.disabledDeletingAt, permissions.tools.disabledDeletingReason);
 
-	// Context Permissions
-	SetPermissionInput(businessPermissionsDisableFullInput, businessPermissionsDisableFullReasonInput, permissions.context.disabledFullAt, permissions.context.disabledFullReason);
-	SetPermissionInput(
-		businessPermissionsContextBrandingDisableEditingInput,
-		businessPermissionsContextBrandingDisableEditingReasonInput,
-		permissions.context.branding.disabledEditingAt,
-		permissions.context.branding.disabledEditingReason,
-	);
+	//// Context Permissions
+	//SetPermissionInput(businessPermissionsDisableFullInput, businessPermissionsDisableFullReasonInput, permissions.context.disabledFullAt, permissions.context.disabledFullReason);
+	//SetPermissionInput(
+	//	businessPermissionsContextBrandingDisableEditingInput,
+	//	businessPermissionsContextBrandingDisableEditingReasonInput,
+	//	permissions.context.branding.disabledEditingAt,
+	//	permissions.context.branding.disabledEditingReason,
+	//);
 
-	// Context Branches Permissions
-	SetPermissionInput(
-		businessPermissionContextBranchesDisableFullInput,
-		businessPermissionContextBranchesDisableFullReasonInput,
-		permissions.context.branches.disabledFullAt,
-		permissions.context.branches.disabledFullReason,
-	);
-	SetPermissionInput(
-		businessPermissionContextBranchesDisableAddingInput,
-		businessPermissionContextBranchesDisableAddingReasonInput,
-		permissions.context.branches.disabledAddingAt,
-		permissions.context.branches.disabledAddingReason,
-	);
-	SetPermissionInput(
-		businessPermissionContextBranchesDisableEditingInput,
-		businessPermissionContextBranchesDisableEditingReasonInput,
-		permissions.context.branches.disabledEditingAt,
-		permissions.context.branches.disabledEditingReason,
-	);
-	SetPermissionInput(
-		businessPermissionContextBranchesDisableDeletingInput,
-		businessPermissionContextBranchesDisableDeletingReasonInput,
-		permissions.context.branches.disabledDeletingAt,
-		permissions.context.branches.disabledDeletingReason,
-	);
+	//// Context Branches Permissions
+	//SetPermissionInput(
+	//	businessPermissionContextBranchesDisableFullInput,
+	//	businessPermissionContextBranchesDisableFullReasonInput,
+	//	permissions.context.branches.disabledFullAt,
+	//	permissions.context.branches.disabledFullReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionContextBranchesDisableAddingInput,
+	//	businessPermissionContextBranchesDisableAddingReasonInput,
+	//	permissions.context.branches.disabledAddingAt,
+	//	permissions.context.branches.disabledAddingReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionContextBranchesDisableEditingInput,
+	//	businessPermissionContextBranchesDisableEditingReasonInput,
+	//	permissions.context.branches.disabledEditingAt,
+	//	permissions.context.branches.disabledEditingReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionContextBranchesDisableDeletingInput,
+	//	businessPermissionContextBranchesDisableDeletingReasonInput,
+	//	permissions.context.branches.disabledDeletingAt,
+	//	permissions.context.branches.disabledDeletingReason,
+	//);
 
-	// Context Services Permissions
-	SetPermissionInput(
-		businessPermissionContextServicesDisableFull,
-		businessPermissionContextServicesDisableFullReasonInput,
-		permissions.context.services.disabledFullAt,
-		permissions.context.services.disabledFullReason,
-	);
-	SetPermissionInput(
-		businessPermissionContextServicesDisableAdd,
-		businessPermissionContextServicesDisableAddReasonInput,
-		permissions.context.services.disabledAddingAt,
-		permissions.context.services.disabledAddingReason,
-	);
-	SetPermissionInput(
-		businessPermissionContextServicesDisableEdit,
-		businessPermissionContextServicesDisableEditReasonInput,
-		permissions.context.services.disabledEditingAt,
-		permissions.context.services.disabledEditingReason,
-	);
-	SetPermissionInput(
-		businessPermissionContextServicesDisableDelete,
-		businessPermissionContextServicesDisableDeleteReasonInput,
-		permissions.context.services.disabledDeletingAt,
-		permissions.context.services.disabledDeletingReason,
-	);
+	//// Context Services Permissions
+	//SetPermissionInput(
+	//	businessPermissionContextServicesDisableFull,
+	//	businessPermissionContextServicesDisableFullReasonInput,
+	//	permissions.context.services.disabledFullAt,
+	//	permissions.context.services.disabledFullReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionContextServicesDisableAdd,
+	//	businessPermissionContextServicesDisableAddReasonInput,
+	//	permissions.context.services.disabledAddingAt,
+	//	permissions.context.services.disabledAddingReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionContextServicesDisableEdit,
+	//	businessPermissionContextServicesDisableEditReasonInput,
+	//	permissions.context.services.disabledEditingAt,
+	//	permissions.context.services.disabledEditingReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionContextServicesDisableDelete,
+	//	businessPermissionContextServicesDisableDeleteReasonInput,
+	//	permissions.context.services.disabledDeletingAt,
+	//	permissions.context.services.disabledDeletingReason,
+	//);
 
-	// Context Products Permissions
-	SetPermissionInput(
-		businessPermissionContextProductsDisabledFullInput,
-		businessPermissionContextProductsDisabledFullReasonInput,
-		permissions.context.products.disabledFullAt,
-		permissions.context.products.disabledFullReason,
-	);
-	SetPermissionInput(
-		businessPermissionContextProductsDisabledAddInput,
-		businessPermissionContextProductsDisabledAddReasonInput,
-		permissions.context.products.disabledAddingAt,
-		permissions.context.products.disabledAddingReason,
-	);
-	SetPermissionInput(
-		businessPermissionContextProductsDisabledEditInput,
-		businessPermissionContextProductsDisabledEditReasonInput,
-		permissions.context.products.disabledEditingAt,
-		permissions.context.products.disabledEditingReason,
-	);
-	SetPermissionInput(
-		businessPermissionContextProductsDisabledDeleteInput,
-		businessPermissionContextProductsDisabledDeleteReasonInput,
-		permissions.context.products.disabledDeletingAt,
-		permissions.context.products.disabledDeletingReason,
-	);
+	//// Context Products Permissions
+	//SetPermissionInput(
+	//	businessPermissionContextProductsDisabledFullInput,
+	//	businessPermissionContextProductsDisabledFullReasonInput,
+	//	permissions.context.products.disabledFullAt,
+	//	permissions.context.products.disabledFullReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionContextProductsDisabledAddInput,
+	//	businessPermissionContextProductsDisabledAddReasonInput,
+	//	permissions.context.products.disabledAddingAt,
+	//	permissions.context.products.disabledAddingReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionContextProductsDisabledEditInput,
+	//	businessPermissionContextProductsDisabledEditReasonInput,
+	//	permissions.context.products.disabledEditingAt,
+	//	permissions.context.products.disabledEditingReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionContextProductsDisabledDeleteInput,
+	//	businessPermissionContextProductsDisabledDeleteReasonInput,
+	//	permissions.context.products.disabledDeletingAt,
+	//	permissions.context.products.disabledDeletingReason,
+	//);
 
-	// Make Call Permissions
-	SetPermissionInput(
-		businessPermissionsMakeCallDisableCallingInput,
-		businessPermissionsMakeCallDisableCallingReasonInput,
-		permissions.makeCall.disabledCallingAt,
-		permissions.makeCall.disabledCallingReason,
-	);
+	//// Make Call Permissions
+	//SetPermissionInput(
+	//	businessPermissionsMakeCallDisableCallingInput,
+	//	businessPermissionsMakeCallDisableCallingReasonInput,
+	//	permissions.makeCall.disabledCallingAt,
+	//	permissions.makeCall.disabledCallingReason,
+	//);
 
-	// Conversations Permissions
-	SetPermissionInput(
-		businessPermissionsConversationInboundDisableFullInput,
-		businessPermissionsConversationInboundDisableFullReasonInput,
-		permissions.conversations.inbound.disabledFullAt,
-		permissions.conversations.inbound.disabledFullReason,
-	);
-	SetPermissionInput(
-		businessPermissionsConversationInboundDisableExporting,
-		businessPermissionsConversationInboundDisableExportingReasonInput,
-		permissions.conversations.inbound.disabledExportingAt,
-		permissions.conversations.inbound.disabledExportingReason,
-	);
-	SetPermissionInput(
-		businessPermissionsConversationInboundDisableDeleting,
-		businessPermissionsConversationInboundDisableDeletingReasonInput,
-		permissions.conversations.inbound.disabledDeletingAt,
-		permissions.conversations.inbound.disabledDeletingReason,
-	);
+	//// Conversations Permissions
+	//SetPermissionInput(
+	//	businessPermissionsConversationInboundDisableFullInput,
+	//	businessPermissionsConversationInboundDisableFullReasonInput,
+	//	permissions.conversations.inbound.disabledFullAt,
+	//	permissions.conversations.inbound.disabledFullReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionsConversationInboundDisableExporting,
+	//	businessPermissionsConversationInboundDisableExportingReasonInput,
+	//	permissions.conversations.inbound.disabledExportingAt,
+	//	permissions.conversations.inbound.disabledExportingReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionsConversationInboundDisableDeleting,
+	//	businessPermissionsConversationInboundDisableDeletingReasonInput,
+	//	permissions.conversations.inbound.disabledDeletingAt,
+	//	permissions.conversations.inbound.disabledDeletingReason,
+	//);
 
-	SetPermissionInput(
-		businessPermissionsConversationOutboundDisableFullInput,
-		businessPermissionsConversationOutboundDisableFullReasonInput,
-		permissions.conversations.outbound.disabledFullAt,
-		permissions.conversations.outbound.disabledFullReason,
-	);
-	SetPermissionInput(
-		businessPermissionsConversationOutboundDisableExporting,
-		businessPermissionsConversationOutboundDisableExportingReasonInput,
-		permissions.conversations.outbound.disabledExportingAt,
-		permissions.conversations.outbound.disabledExportingReason,
-	);
-	SetPermissionInput(
-		businessPermissionsConversationOutboundDisableDeleting,
-		businessPermissionsConversationOutboundDisableDeletingReasonInput,
-		permissions.conversations.outbound.disabledDeletingAt,
-		permissions.conversations.outbound.disabledDeletingReason,
-	);
+	//SetPermissionInput(
+	//	businessPermissionsConversationOutboundDisableFullInput,
+	//	businessPermissionsConversationOutboundDisableFullReasonInput,
+	//	permissions.conversations.outbound.disabledFullAt,
+	//	permissions.conversations.outbound.disabledFullReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionsConversationOutboundDisableExporting,
+	//	businessPermissionsConversationOutboundDisableExportingReasonInput,
+	//	permissions.conversations.outbound.disabledExportingAt,
+	//	permissions.conversations.outbound.disabledExportingReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionsConversationOutboundDisableDeleting,
+	//	businessPermissionsConversationOutboundDisableDeletingReasonInput,
+	//	permissions.conversations.outbound.disabledDeletingAt,
+	//	permissions.conversations.outbound.disabledDeletingReason,
+	//);
 
-	SetPermissionInput(
-		businessPermissionsConversationWebsocketDisableFullInput,
-		businessPermissionsConversationWebsocketDisableFullReasonInput,
-		permissions.conversations.websocket.disabledFullAt,
-		permissions.conversations.websocket.disabledFullReason,
-	);
-	SetPermissionInput(
-		businessPermissionsConversationWebsocketDisableExporting,
-		businessPermissionsConversationWebsocketDisableExportingReasonInput,
-		permissions.conversations.websocket.disabledExportingAt,
-		permissions.conversations.websocket.disabledExportingReason,
-	);
-	SetPermissionInput(
-		businessPermissionsConversationWebsocketDisableDeleting,
-		businessPermissionsConversationWebsocketDisableDeletingReasonInput,
-		permissions.conversations.websocket.disabledDeletingAt,
-		permissions.conversations.websocket.disabledDeletingReason,
-	);
+	//SetPermissionInput(
+	//	businessPermissionsConversationWebsocketDisableFullInput,
+	//	businessPermissionsConversationWebsocketDisableFullReasonInput,
+	//	permissions.conversations.websocket.disabledFullAt,
+	//	permissions.conversations.websocket.disabledFullReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionsConversationWebsocketDisableExporting,
+	//	businessPermissionsConversationWebsocketDisableExportingReasonInput,
+	//	permissions.conversations.websocket.disabledExportingAt,
+	//	permissions.conversations.websocket.disabledExportingReason,
+	//);
+	//SetPermissionInput(
+	//	businessPermissionsConversationWebsocketDisableDeleting,
+	//	businessPermissionsConversationWebsocketDisableDeletingReasonInput,
+	//	permissions.conversations.websocket.disabledDeletingAt,
+	//	permissions.conversations.websocket.disabledDeletingReason,
+	//);
 }
 
 function CreateBusinessManageNumberListTableElement(numberData) {

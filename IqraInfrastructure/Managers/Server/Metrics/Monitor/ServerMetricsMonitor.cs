@@ -1,56 +1,43 @@
-﻿using IqraCore.Entities.Helper.Server;
+﻿using IqraCore.Constants;
+using IqraCore.Entities.App.Enum;
+using IqraCore.Entities.Node.Enum;
 using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Metrics;
+using IqraCore.Entities.Server.Metrics.Hardware;
 using IqraCore.Interfaces.Server;
 using IqraInfrastructure.Repositories.Server;
 using Microsoft.Extensions.Logging;
 
-namespace IqraInfrastructure.Managers.Server.Metrics
+namespace IqraInfrastructure.Managers.Server.Metrics.Monitor
 {
     public class ServerMetricsMonitor : IAsyncDisposable
     {
         private readonly ILogger<ServerMetricsMonitor> _logger;
-        private readonly BackendAppConfig _serverConfig;
         private readonly ServerLiveStatusChannelRepository _serverStatusChannel;
         private readonly ServerStatusRepository _serverStatusRepository;
         private readonly IHardwareMonitor _hardwareMonitor;
 
-        private ServerStatusData _currentStatus;
-        private readonly object _statusLock = new object();
+        public readonly ServerStatusData _currentStatus;
+        public readonly object _statusLock = new object();
 
         private DateTime _lastHistoricalRecordTime = DateTime.MinValue;
         private readonly TimeSpan _historicalRecordInterval = TimeSpan.FromMinutes(1);
 
         public ServerMetricsMonitor(
             ILogger<ServerMetricsMonitor> logger,
-            BackendAppConfig serverConfig,
+            ServerStatusData currentStatus,
             ServerLiveStatusChannelRepository serverStatusChannel,
             ServerStatusRepository serverStatusRepository,
             IHardwareMonitor hardwareMonitor
         )
         {
             _logger = logger;
-            _serverConfig = serverConfig;
             _serverStatusChannel = serverStatusChannel;
             _serverStatusRepository = serverStatusRepository;
             _hardwareMonitor = hardwareMonitor;
+            _currentStatus = currentStatus;
 
-            _currentStatus = new ServerStatusData
-            {
-                ServerId = _serverConfig.Id,
-                RegionId = _serverConfig.RegionId,
-                Type = ServerTypeEnum.Backend, // TODO what if its loaded by proxy?
-                LastUpdated = DateTime.UtcNow,
-                MaintenanceMode = false,
-                MaxConcurrentCallsCount = _serverConfig.ExpectedMaxConcurrentCalls,// todo this should also be dynamic averaged
-                CurrentActiveCallsCount = 0,
-                QueuedCallsCount = 0,
-                CpuUsagePercent = 0,
-                MemoryUsagePercent = 0,
-                NetworkDownloadMbps = 0,
-                NetworkUploadMbps = 0
-            };
-
+            // Initialize synchronously to ensure state is ready before usage
             InitializeAsync().GetAwaiter().GetResult();
         }
 
@@ -59,44 +46,21 @@ namespace IqraInfrastructure.Managers.Server.Metrics
             _logger.LogInformation("Initializing ServerStatusManager and Hardware Monitor...");
 
             await _hardwareMonitor.InitializeAsync();
-            await UpdateAndPublishStatusAsync(recordHistorical: false);
-        }
 
-        public ServerStatusData GetCurrentStatus()
-        {
+            // Set Static Info
             lock (_statusLock)
             {
-                return (ServerStatusData)_currentStatus.Clone();
+                _currentStatus.Version = IqraGlobalConstants.CurrentAppVersion;
+                _currentStatus.RuntimeStatus = NodeRuntimeStatus.Starting;
             }
         }
 
-        public void SetActiveCallsCount(int count)
+        public void SetRuntimeStatus(NodeRuntimeStatus status, string reason)
         {
             lock (_statusLock)
             {
-                _currentStatus.CurrentActiveCallsCount = Math.Max(0, count);
-            }
-        }
-
-        public void SetQueuedCalls(int count)
-        {
-            lock (_statusLock)
-            {
-                _currentStatus.QueuedCallsCount = Math.Max(0, count);
-            }
-        }
-
-        public void SetMaintenanceMode(bool enabled)
-        {
-            lock (_statusLock)
-            {
-                if (_currentStatus.MaintenanceMode != enabled)
-                {
-                    _currentStatus.MaintenanceMode = enabled;
-                    _currentStatus.MaintenanceModeStartedAt = enabled ? DateTime.UtcNow : null;
-
-                    _logger.LogInformation($"Maintenance mode set to {enabled}");
-                }
+                _currentStatus.RuntimeStatus = status;
+                _currentStatus.RuntimeStatusReason = reason;
             }
         }
 
@@ -136,19 +100,34 @@ namespace IqraInfrastructure.Managers.Server.Metrics
             }
         }
 
-        public bool HasCapacity()
+        public async Task ClearCurrentStatusAsync()
         {
-            lock (_statusLock)
+            try
             {
-                return !_currentStatus.MaintenanceMode &&
-                       _currentStatus.CurrentActiveCallsCount < _currentStatus.MaxConcurrentCallsCount;
+                if (_currentStatus.Type == AppNodeTypeEnum.Backend && _currentStatus is BackendServerStatusData backendStatus)
+                {
+                    await _serverStatusChannel.RemoveServerStatusAsync(backendStatus.RegionId, backendStatus.NodeId);
+                }
+                else if (_currentStatus.Type == AppNodeTypeEnum.Proxy && _currentStatus is ProxyServerStatusData proxyStatus)
+                {
+                    await _serverStatusChannel.RemoveServerStatusAsync(proxyStatus.RegionId, proxyStatus.NodeId);
+                }
+                else if (_currentStatus.Type != AppNodeTypeEnum.Unknown)
+                {
+                    // Singleton nodes (Frontend/Background)
+                    await _serverStatusChannel.RemoveServerStatusAsync("singleton", _currentStatus.NodeId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing server status from Redis.");
             }
         }
 
         public async ValueTask DisposeAsync()
         {
+            await ClearCurrentStatusAsync();
             _hardwareMonitor?.Dispose();
-            await ValueTask.CompletedTask;
         }
     }
 }

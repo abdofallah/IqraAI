@@ -8,5 +8,6 @@ namespace IqraCore.Interfaces.Modules
         void SetupConfiguration(IServiceCollection services, IConfiguration appConfig);
         void SetupManagers(IServiceCollection services, IConfiguration appConfig);
         void SetupRepositories(IServiceCollection services, IConfiguration appConfig);
+        void SetupHostedServices(IServiceCollection services);
     }
 }

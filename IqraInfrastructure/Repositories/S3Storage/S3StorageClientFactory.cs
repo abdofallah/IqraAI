@@ -61,7 +61,7 @@ namespace IqraInfrastructure.Repositories.S3Storage
                         );
                     }
 
-                    _regionClients.Add(region.CountryRegion, (s3Client, s3StorageServer));
+                    _regionClients.Add(region.RegionId, (s3Client, s3StorageServer));
                 }
 
                 return result.SetSuccessResult();

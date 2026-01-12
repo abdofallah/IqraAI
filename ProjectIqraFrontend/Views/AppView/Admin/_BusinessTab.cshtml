@@ -1,0 +1,530 @@
+﻿<div class="main-container fade w-100 d-none" id="business-tab">
+    <h3 class="fw-bold tab-title"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
+    <div class="inner-container">
+        <!-- Manager Inner Tabs -->
+        <div class="mb-3">
+            <ul class="nav w-100 fade show" id="business-inner-tab" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link disabled" id="businesses-analytics-tab" data-bs-toggle="pill" data-bs-target="#businesses-analytics" type="button" role="tab" aria-controls="businesses-analytics" aria-selected="true">Analytics</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="businesses-list-tab" data-bs-toggle="pill" data-bs-target="#businesses-list" type="button" role="tab" aria-controls="businesses-list" aria-selected="true">List</button>
+                </li>
+            </ul>
+            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="businesses-manage-breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="#" id="switchBackToBusinessesListTabFromManageTab">Business</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page"><span id="currentManageBusinessName">Business</span></li>
+                </ol>
+            </nav>
+        </div>
+        <!-- Tab Content -->
+        <div class="tab-content w-100" id="businesses-inner-tabContent">
+            <!-- Analytics -->
+            <div class="tab-pane fade w-100" id="businesses-analytics" role="tabpanel" aria-labelledby="businesses-analytics-tab" tabindex="0">
+                analytics
+            </div>
+
+            <!-- List -->
+            <div class="tab-pane fade w-100 show active" id="businesses-list" role="tabpanel" aria-labelledby="businesses-list-tab" tabindex="0">
+                <!-- Businesses List Table Tab -->
+                <div class="fade w-100 show" id="businessesListTableTab">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewBusinessButton">
+                                <span>+ Add New Business</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Business Name or Id" aria-label="Business Name or Id" aria-describedby="searchBusinessButton">
+                            <button class="input-group-button btn btn-primary" id="searchBusinessButton">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <table id="businessesListTable" class="table w-100">
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Master Email</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamically Generated -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Businesses Manage Tab -->
+                <div class="fade w-100 d-none" id="businessesManageTab">
+                    <!-- Businesses Manage General Tab -->
+                    <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
+                        <ul class="nav" id="businesses-manage-tab" role="tablist">
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link active" id="businesses-manage-general-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-general" type="button" role="tab" aria-controls="businesses-manage-general" aria-selected="true">General</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="businesses-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions" type="button" role="tab" aria-controls="businesses-manage-permissions" aria-selected="true">Permissions</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="businesses-manage-numbers-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-numbers" type="button" role="tab" aria-controls="businesses-manage-numbers" aria-selected="true">Numbers</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link disabled" id="businesses-manage-routing-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-routing" type="button" role="tab" aria-controls="businesses-manage-routing" aria-selected="true">Routing</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link disabled" id="businesses-manage-agents-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-agents" type="button" role="tab" aria-controls="businesses-manage-agents" aria-selected="true">Agents</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link disabled" id="businesses-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-analytics" type="button" role="tab" aria-controls="businesses-manage-analytics" aria-selected="true">Analytics</button>
+                            </li>
+                        </ul>
+
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="businessesManageSaveButton">
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content w-100" id="businesses-manage-tabContent">
+                        <!-- General -->
+                        <div class="tab-pane fade w-100 show active" id="businesses-manage-general" role="tabpanel" aria-labelledby="businesses-manage-general-tab" tabindex="0">
+                            <div class="mb-3">
+                                <label for="manageBusinessNameInput" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="manageBusinessNameInput" placeholder="Name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="manageBusinessLogoInput" class="form-label d-block">Logo</label>
+                                <img src="~/img/logo/logo-colored-light.png" class="img-fluid rounded-3 mb-3" alt="Business Logo" id="manageBusinessLogoPreview">
+                                <input type="file" class="form-control" id="manageBusinessLogoInput" placeholder="Logo">
+                            </div>
+                            <div class="mb-3">
+                                <label for="manageBusinessMasterUserInput" class="form-label">Master User</label>
+                                <input type="text" class="form-control" id="manageBusinessMasterUserInput" placeholder="Master User" disabled>
+                            </div>
+                        </div>
+
+                        <!-- Permissions -->
+                        <div class="tab-pane fade w-100" id="businesses-manage-permissions" role="tabpanel" aria-labelledby="businesses-manage-permissions-tab" tabindex="0">
+                            <ul class="nav mb-3" id="businesses-manage-permissions-tab" role="tablist">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" id="businesses-manage-permissions-general-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-general" type="button" role="tab" aria-controls="businesses-manage-permissions-general" aria-selected="true">General</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" id="businesses-manage-permissions-routing-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-routing" type="button" role="tab" aria-controls="businesses-manage-permissions-routing" aria-selected="true">Routing</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" id="businesses-manage-permissions-agents-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-agents" type="button" role="tab" aria-controls="businesses-manage-permissions-agents" aria-selected="true">Agents</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" id="businesses-manage-permissions-tools-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-tools" type="button" role="tab" aria-controls="businesses-manage-permissions-tools" aria-selected="true">Tools</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" id="businesses-manage-permissions-context-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-context" type="button" role="tab" aria-controls="businesses-manage-permissions-context" aria-selected="true">Context</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" id="businesses-manage-permissions-makecall-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-makecall" type="button" role="tab" aria-controls="businesses-manage-permissions-makecall" aria-selected="true">Make Call</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" id="businesses-manage-permissions-conversation-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-conversation" type="button" role="tab" aria-controls="businesses-manage-permissions-conversation" aria-selected="true">Conversation</button>
+                                </li>
+                            </ul>
+                            <div class="tab-content w-100" id="businesses-manage-permissions-tab-content">
+                                <div class="tab-pane fade show active" id="businesses-manage-permissions-general" role="tabpanel" aria-labelledby="businesses-manage-permissions-general-tab">
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisabledFullInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisabledFullInput" class="form-label d-block">Disabled Full</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisabledFullReasonInput" placeholder="Disabled Full Reason">
+                                    </div>
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisabledEditInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisabledEditInput" class="form-label d-block">Disabled Edit</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisabledEditReasonInput" placeholder="Disabled Edit Reason">
+                                    </div>
+                                    <div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisabledDeleteInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisabledDeleteInput" class="form-label d-block">Disabled Delete</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisabledDeleteReasonInput" placeholder="Disabled Delete Reason">
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="businesses-manage-permissions-routing" role="tabpanel" aria-labelledby="businesses-manage-permissions-routing-tab">
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableRoutingInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableRoutingInput" class="form-label d-block">Disable Full</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableRoutingReasonInput" placeholder="Disable Routing Reason">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableAddingInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableAddingInput" class="form-label d-block">Disable Adding</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableAddingReasonInput" placeholder="Disable Adding Reason">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableEditingInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableEditingInput" class="form-label d-block">Disable Editing</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableEditingReasonInput" placeholder="Disable Editing Reason">
+                                    </div>
+
+                                    <div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableDeletingInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableDeletingInput" class="form-label d-block">Disable Deleting</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="businesses-manage-permissions-agents" role="tabpanel" aria-labelledby="businesses-manage-permissions-agents-tab">
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableFullAgentsInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableFullAgentsInput" class="form-label d-block">Disable Full</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableFullAgentsReasonInput" placeholder="Disable Full Reason">
+                                    </div>
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableAddingAgentsInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableAddingAgentsInput" class="form-label d-block">Disable Adding</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableAddingAgentsReasonInput" placeholder="Disable Adding Reason">
+                                    </div>
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableEditingAgentsInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableEditingAgentsInput" class="form-label d-block">Disable Editing</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableEditingAgentsReasonInput" placeholder="Disable Editing Reason">
+                                    </div>
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableDeletingAgentsInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableDeletingAgentsInput" class="form-label d-block">Disable Deleting</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableDeletingAgentsReasonInput" placeholder="Disable Deleting Reason">
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="businesses-manage-permissions-tools" role="tabpanel" aria-labelledby="businesses-manage-permissions-tools-tab">
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableFullToolsInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableFullToolsInput" class="form-label d-block">Disable Full</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableFullToolsReasonInput" placeholder="Disable Full Reason">
+                                    </div>
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableAddingToolsInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableAddingToolsInput" class="form-label d-block">Disable Adding</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableAddingToolsReasonInput" placeholder="Disable Adding Reason">
+                                    </div>
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableEditingToolsInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableEditingToolsInput" class="form-label d-block">Disable Editing</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableEditingToolsReasonInput" placeholder="Disable Editing Reason">
+                                    </div>
+                                    <div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableDeletingToolsInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableDeletingToolsInput" class="form-label d-block">Disable Deleting</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisableDeletingToolsReasonInput" placeholder="Disable Deleting Reason">
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="businesses-manage-permissions-context" role="tabpanel" aria-labelledby="businesses-manage-permissions-context-tab">
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">General</label>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsDisableFullInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionsDisableFullInput" class="form-label d-block">Disable Full</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsDisableFullReasonInput" placeholder="Disable Full Reason">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Branding</label>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsContextBrandingDisableEditingInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionsContextBrandingDisableEditingInput" class="form-label d-block">Disable Editing</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsContextBrandingDisableEditingReasonInput" placeholder="Disable Editing Reason">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Branches</label>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextBranchesDisableFullInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionContextBranchesDisableFullInput" class="form-label d-block">Disable Full</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextBranchesDisableFullReasonInput" placeholder="Disable Full Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextBranchesDisableAddingInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionContextBranchesDisableAddingInput" class="form-label d-block">Disable Adding</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextBranchesDisableAddingReasonInput" placeholder="Disable Adding Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextBranchesDisableEditingInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionContextBranchesDisableEditingInput" class="form-label d-block">Disable Editing</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextBranchesDisableEditingReasonInput" placeholder="Disable Editing Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextBranchesDisableDeletingInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionContextBranchesDisableDeletingInput" class="form-label d-block">Disable Deleting</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextBranchesDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Services</label>
+
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="businessPermissionContextServicesDisableFull" check-type="permission-with-reason">
+                                                <label class="form-check-label" for="businessPermissionContextServicesDisableFull">Disable Full</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextServicesDisableFullReasonInput" placeholder="Disable Full Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="businessPermissionContextServicesDisableAdd" check-type="permission-with-reason">
+                                                <label class="form-check-label" for="businessPermissionContextServicesDisableAdd">Disable Adding</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextServicesDisableAddReasonInput" placeholder="Disable Adding Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="businessPermissionContextServicesDisableEdit" check-type="permission-with-reason">
+                                                <label class="form-check-label" for="businessPermissionContextServicesDisableEdit">Disable Editing</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextServicesDisableEditReasonInput" placeholder="Disable Editing Reason">
+                                        </div>
+                                        <div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="businessPermissionContextServicesDisableDelete" check-type="permission-with-reason">
+                                                <label class="form-check-label" for="businessPermissionContextServicesDisableDelete">Disable Deleting</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextServicesDisableDeleteReasonInput" placeholder="Disable Deleting Reason">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Products</label>
+
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextProductsDisabledFullInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionContextProductsDisabledFullInput" class="form-label d-block">Disable Full</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextProductsDisabledFullReasonInput" placeholder="Disable Full Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextProductsDisabledAddInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionContextProductsDisabledAddInput" class="form-label d-block">Disable Adding</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextProductsDisabledAddReasonInput" placeholder="Disable Adding Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextProductsDisabledEditInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionContextProductsDisabledEditInput" class="form-label d-block">Disable Editing</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextProductsDisabledEditReasonInput" placeholder="Disable Editing Reason">
+                                        </div>
+                                        <div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextProductsDisabledDeleteInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionContextProductsDisabledDeleteInput" class="form-label d-block">Disable Deleting</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionContextProductsDisabledDeleteReasonInput" placeholder="Disable Deleting Reason">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="businesses-manage-permissions-makecall" role="tabpanel" aria-labelledby="businesses-manage-permissions-makecall-tab">
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsMakeCallDisableCallingInput" check-type="permission-with-reason">
+                                            <label for="businessPermissionsMakeCallDisableCallingInput" class="form-label d-block">Disable Calling</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessPermissionsMakeCallDisableCallingReasonInput" placeholder="Disable Calling Reason">
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="businesses-manage-permissions-conversation" role="tabpanel" aria-labelledby="businesses-manage-permissions-conversation-tab">
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Inbound</label>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationInboundDisableFullInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionsConversationInboundDisableFullInput" class="form-label d-block">Disable Full</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsConversationInboundDisableFullReasonInput" placeholder="Disable Full Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationInboundDisableExporting" check-type="permission-with-reason">
+                                                <label for="businessPermissionsConversationInboundDisableExporting" class="form-label d-block">Disable Exporting</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsConversationInboundDisableExportingReasonInput" placeholder="Disable Exporting Reason">
+                                        </div>
+
+                                        <div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationInboundDisableDeleting" check-type="permission-with-reason">
+                                                <label for="businessPermissionsConversationInboundDisableDeleting" class="form-label d-block">Disable Deleting</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsConversationInboundDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Outbound</label>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationOutboundDisableFullInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionsConversationOutboundDisableFullInput" class="form-label d-block">Disable Full</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsConversationOutboundDisableFullReasonInput" placeholder="Disable Full Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationOutboundDisableExporting" check-type="permission-with-reason">
+                                                <label for="businessPermissionsConversationOutboundDisableExporting" class="form-label d-block">Disable Exporting</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsConversationOutboundDisableExportingReasonInput" placeholder="Disable Exporting Reason">
+                                        </div>
+
+                                        <div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationOutboundDisableDeleting" check-type="permission-with-reason">
+                                                <label for="businessPermissionsConversationOutboundDisableDeleting" class="form-label d-block">Disable Deleting</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsConversationOutboundDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="form-label d-block">Websocket</label>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationWebsocketDisableFullInput" check-type="permission-with-reason">
+                                                <label for="businessPermissionsConversationWebsocketDisableFullInput" class="form-label d-block">Disable Full</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsConversationWebsocketDisableFullReasonInput" placeholder="Disable Full Reason">
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationWebsocketDisableExporting" check-type="permission-with-reason">
+                                                <label for="businessPermissionsConversationWebsocketDisableExporting" class="form-label d-block">Disable Exporting</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsConversationWebsocketDisableExportingReasonInput" placeholder="Disable Exporting Reason">
+                                        </div>
+
+                                        <div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationWebsocketDisableDeleting" check-type="permission-with-reason">
+                                                <label for="businessPermissionsConversationWebsocketDisableDeleting" class="form-label d-block">Disable Deleting</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessPermissionsConversationWebsocketDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Numbers -->
+                        <div class="tab-pane fade w-100" id="businesses-manage-numbers" role="tabpanel" aria-labelledby="businesses-manage-numbers-tab" tabindex="0">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewbusinessManageNumberButton" data-bs-toggle="modal" data-bs-target="#addBusinessManagerNumberModal">
+                                        <span>+ Add Number</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Id or Number" aria-label="Id or Number" aria-describedby="searchbusinessManageNumberButton">
+                                    <button class="input-group-button btn btn-primary" id="searchBusinessButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="businessManageNumberListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Country</th>
+                                        <th scope="col">Number</th>
+                                        <th scope="col">Provider</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                            <!-- Add Number Modal -->
+                            <div class="modal modal-lg fade" id="addBusinessManagerNumberModal" tabindex="-1" aria-labelledby="addBusinessManagerNumberModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h1 class="modal-title fs-5" id="addBusinessManagerNumberModalLabel">Add Business Number</h1>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <!-- TODO -->
+                                            todo
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-primary btn-ic-span-align">
+                                                <i class="fa-regular fa-plus"></i>
+                                                <span> Add</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Routing -->
+                        <div class="tab-pane fade w-100" id="businesses-manage-routing" role="tabpanel" aria-labelledby="businesses-manage-routing-tab" tabindex="0">
+                            routing
+                        </div>
+
+                        <!-- Agents -->
+                        <div class="tab-pane fade w-100" id="businesses-manage-agents" role="tabpanel" aria-labelledby="businesses-manage-agents-tab" tabindex="0">
+                            agents
+                        </div>
+
+                        <!-- Analytics -->
+                        <div class="tab-pane fade w-100" id="businesses-manage-analytics" role="tabpanel" aria-labelledby="businesses-manage-analytics-tab" tabindex="0">
+                            analytics
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

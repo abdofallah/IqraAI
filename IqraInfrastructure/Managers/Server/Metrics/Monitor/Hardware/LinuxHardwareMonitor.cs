@@ -1,19 +1,17 @@
-﻿using IqraCore.Entities.Server.Metrics;
-using IqraCore.Entities.Server;
-using IqraCore.Interfaces.Server;
+﻿using IqraCore.Interfaces.Server;
 using Microsoft.Extensions.Logging;
+using IqraCore.Entities.Server.Metrics.Hardware;
 
-namespace IqraInfrastructure.Managers.Server.Metrics
+namespace IqraInfrastructure.Managers.Server.Metrics.Monitor.Hardware
 {
     public class LinuxHardwareMonitor : IHardwareMonitor
     {
         private readonly ILogger<LinuxHardwareMonitor> _logger;
-        private readonly BackendAppConfig _serverConfig;
 
         private const string ProcStatPath = "/proc/stat";
         private const string ProcMemInfoPath = "/proc/meminfo";
-        private string? _networkRxBytesPath;
-        private string? _networkTxBytesPath;
+        private readonly string _networkRxBytesPath;
+        private readonly string _networkTxBytesPath;
 
         // CPU State
         private long _previousTotalCpuTime = 0;
@@ -24,43 +22,44 @@ namespace IqraInfrastructure.Managers.Server.Metrics
         private long _previousTxBytes = 0;
         private DateTime _lastNetworkReadTime = DateTime.MinValue;
 
-        public LinuxHardwareMonitor(ILogger<LinuxHardwareMonitor> logger, BackendAppConfig serverConfig)
-        {
+        public LinuxHardwareMonitor(
+            ILogger<LinuxHardwareMonitor> logger,
+            string networkInterfaceName
+        ) {
             _logger = logger;
-            _serverConfig = serverConfig ?? throw new ArgumentNullException(nameof(serverConfig));
 
             if (!OperatingSystem.IsLinux())
             {
                 throw new PlatformNotSupportedException("LinuxHardwareMonitor can only run on Linux.");
             }
 
-            if (string.IsNullOrWhiteSpace(serverConfig.NetworkInterfaceName))
-            {
-                _logger.LogWarning("ServerConfig.NetworkInterfaceName is not set. Network monitoring will be disabled.");
-            }
-            else
-            {
-                _networkRxBytesPath = $"/sys/class/net/{serverConfig.NetworkInterfaceName}/statistics/rx_bytes";
-                _networkTxBytesPath = $"/sys/class/net/{serverConfig.NetworkInterfaceName}/statistics/tx_bytes";
-            }
+            _networkRxBytesPath = $"/sys/class/net/{networkInterfaceName}/statistics/rx_bytes";
+            _networkTxBytesPath = $"/sys/class/net/{networkInterfaceName}/statistics/tx_bytes";
         }
 
-        public Task InitializeAsync()
+        public async Task InitializeAsync()
         {
             // Prime CPU reading
             if (!ReadLinuxCpuTimes(out _previousTotalCpuTime, out _previousIdleCpuTime))
             {
-                _logger.LogWarning("Initial read of Linux CPU times failed.");
+                throw new Exception("Initial read of Linux CPU times failed.");
+            }
+
+            // Prime Memory reading
+            if (GetLinuxMemoryUsage() == null)
+            {
+                throw new Exception("Initial read of Linux memory failed.");
             }
 
             // Prime Network reading
             if (_networkRxBytesPath != null && _networkTxBytesPath != null)
             {
-                ReadNetworkBytes(out _previousRxBytes, out _previousTxBytes);
+                if (!ReadNetworkBytes(out _previousRxBytes, out _previousTxBytes))
+                {
+                    throw new Exception("Initial read of Linux network bytes failed.");
+                }
                 _lastNetworkReadTime = DateTime.UtcNow;
             }
-
-            return Task.CompletedTask; // No async operations needed for initialization here
         }
 
         public HardwareMetrics GetMetrics()
@@ -68,7 +67,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
             return new HardwareMetrics
             {
                 CpuUsagePercent = GetLinuxCpuUsage(),
-                MemoryUsagePercent = GetLinuxMemoryUsage(),
+                MemoryUsagePercent = GetLinuxMemoryUsage() ?? 0.0,
                 NetworkDownloadMbps = GetLinuxNetworkRate(true), // true for Download (rx)
                 NetworkUploadMbps = GetLinuxNetworkRate(false) // false for Upload (tx)
             };
@@ -140,7 +139,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
         }
 
         // --- Memory ---
-        private double GetLinuxMemoryUsage()
+        private double? GetLinuxMemoryUsage()
         {
             try
             {
@@ -171,7 +170,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
                 if (memTotal <= 0 || memFree < 0 || buffers < 0 || cached < 0)
                 {
                     _logger.LogWarning($"Could not parse required memory fields from {ProcMemInfoPath}.");
-                    return 0.0;
+                    return null;
                 }
 
                 // More modern/accurate calculation for available memory:
@@ -192,7 +191,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
                 }
 
 
-                if (memTotal <= 0) return 0.0; // Avoid division by zero
+                if (memTotal <= 0) return null; // Avoid division by zero
 
                 double memUsagePercent = (double)memUsed / memTotal * 100.0;
                 return Math.Clamp(memUsagePercent, 0.0, 100.0);
@@ -200,7 +199,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, $"Error reading memory info from {ProcMemInfoPath}.");
-                return 0.0;
+                return null;
             }
         }
 
@@ -211,8 +210,6 @@ namespace IqraInfrastructure.Managers.Server.Metrics
             txBytes = 0;
             bool rxOk = false;
             bool txOk = false;
-
-            if (string.IsNullOrEmpty(_networkRxBytesPath) || string.IsNullOrEmpty(_networkTxBytesPath)) return false;
 
             try
             {
@@ -236,7 +233,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, $"Error reading network stats from /sys/class/net/{_serverConfig.NetworkInterfaceName}/statistics");
+                _logger.LogWarning(ex, "Error reading network stats from {Path}", _networkRxBytesPath);
                 return false;
             }
         }

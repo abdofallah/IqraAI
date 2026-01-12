@@ -1,0 +1,629 @@
+﻿<div class="main-container fade d-none w-100" id="infrastructure-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-server-network nav_icon'></i> <span>Infrastructure</span></h3>
+
+    <!-- ========================================================================================== -->
+    <!-- DYNAMIC HEADER -->
+    <!-- ========================================================================================== -->
+    <div class="inner-header-container w-100 mb-3" id="infra-header-container">
+
+        <!-- LEVEL 1: ROOT HEADER -->
+        <div class="d-flex flex-row align-items-center justify-content-between w-100 fade show" id="infra-root-header">
+            <ul class="nav" role="tablist">
+                <li class="nav-item me-2">
+                    <button class="nav-link active" id="infra-root-dashboard-tab" data-bs-toggle="pill" data-bs-target="#infra-root-dashboard" type="button" role="tab">Dashboard</button>
+                </li>
+                <li class="nav-item me-2">
+                    <button class="nav-link" id="infra-root-frontend-tab" data-bs-toggle="pill" data-bs-target="#infra-root-frontend" type="button" role="tab">Frontend Node</button>
+                </li>
+                <li class="nav-item me-2">
+                    <button class="nav-link" id="infra-root-background-tab" data-bs-toggle="pill" data-bs-target="#infra-root-background" type="button" role="tab">Background Node</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="infra-root-regions-tab" data-bs-toggle="pill" data-bs-target="#infra-root-regions" type="button" role="tab">Regions</button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- LEVEL 2: REGION MANAGER HEADER -->
+        <div class="w-100 fade d-none" id="infra-region-manager-header">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="#" id="switchBackToInfraRoot">Regions</a></li>
+                        <li class="breadcrumb-item active" aria-current="page"><span id="currentRegionName">Region</span></li>
+                    </ol>
+                </nav>
+                <div>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="confirmSaveRegionButton" disabled>
+                        <i class="fa-regular fa-floppy-disk"></i>
+                        <span>Save Changes</span>
+                        <div class="spinner-border save-button-spinner d-none" role="status"><span class="visually-hidden">Loading...</span></div>
+                    </button>
+                </div>
+            </div>
+
+            <ul class="nav" role="tablist">
+                <li class="nav-item me-2"><button class="nav-link active" id="region-manager-overview-tab" data-bs-target="#region-manager-overview" data-bs-toggle="pill" type="button" role="tab">Overview</button></li>
+                <li class="nav-item me-2"><button class="nav-link" id="region-manager-servers-tab" data-bs-target="#region-manager-servers" data-bs-toggle="pill" type="button" role="tab">Servers</button></li>
+                <li class="nav-item me-2"><button class="nav-link" id="region-manager-s3-tab" data-bs-target="#region-manager-s3" data-bs-toggle="pill" type="button" role="tab">S3 Storage</button></li>
+                <li class="nav-item"><button class="nav-link" id="region-manager-settings-tab" data-bs-target="#region-manager-settings" data-bs-toggle="pill" type="button" role="tab">Settings</button></li>
+            </ul>
+        </div>
+
+        <!-- LEVEL 3: SERVER MANAGER HEADER -->
+        <div class="w-100 fade d-none" id="infra-server-manager-header">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="#" id="switchBackToRegionManager">Region Servers</a></li>
+                        <li class="breadcrumb-item active" aria-current="page"><span id="currentServerName">Server</span></li>
+                    </ol>
+                </nav>
+                <div>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="confirmSaveServerButton" disabled>
+                        <i class="fa-regular fa-floppy-disk"></i>
+                        <span>Save Configuration</span>
+                        <div class="spinner-border save-button-spinner d-none" role="status"><span class="visually-hidden">Loading...</span></div>
+                    </button>
+                </div>
+            </div>
+
+            <ul class="nav" role="tablist">
+                <li class="nav-item me-2"><button class="nav-link" id="server-manager-metrics-tab" data-bs-target="#server-manager-metrics" data-bs-toggle="pill" type="button" role="tab">Metrics</button></li>
+                <li class="nav-item"><button class="nav-link active" id="server-manager-settings-tab" data-bs-target="#server-manager-settings" data-bs-toggle="pill" type="button" role="tab">Settings</button></li>
+            </ul>
+        </div>
+
+    </div>
+
+    <!-- ========================================================================================== -->
+    <!-- CONTENT CONTAINER -->
+    <!-- ========================================================================================== -->
+    <div class="inner-container">
+
+        <!-- 1. ROOT CONTENT -->
+        <div class="fade show w-100" id="infraRootTab">
+            <div class="tab-content w-100">
+
+                <!-- Dashboard -->
+                <div class="tab-pane fade show active w-100" id="infra-root-dashboard" role="tabpanel">
+                    <div class="row g-4 mb-4">
+                        <!-- Stats Cards -->
+                        <div class="col-md-3">
+                            <div class="card bg-dark h-100 border-start border-4 border-info">
+                                <div class="card-body">
+                                    <h6 class="text-white-50 text-uppercase small mb-3">Live Conversations</h6>
+                                    <div class="row g-0 text-center">
+                                        <div class="col-6 border-end border-secondary">
+                                            <div class="h3 mb-0 text-white" id="dashboardTotalTelephony">0</div>
+                                            <div class="small text-muted"><i class="fa-regular fa-phone me-1"></i>Phone</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="h3 mb-0 text-white" id="dashboardTotalWeb">0</div>
+                                            <div class="small text-muted"><i class="fa-regular fa-globe me-1"></i>Web</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark h-100 border-start border-4 border-warning">
+                                <div class="card-body">
+                                    <h6 class="text-white-50 text-uppercase small mb-3">Outbound Pipeline</h6>
+                                    <div class="row g-0 text-center">
+                                        <div class="col-6 border-end border-secondary">
+                                            <div class="h3 mb-0 text-white" id="dashboardQueueProcessing">0</div>
+                                            <div class="small text-muted">Processing</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="h3 mb-0 text-white-50" id="dashboardQueueMarked">0</div>
+                                            <div class="small text-muted">Pending</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark h-100">
+                                <div class="card-body">
+                                    <h6 class="text-white-50 text-uppercase small mb-3">Capacity (Active/Total)</h6>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="small text-muted">Backend Nodes</span>
+                                        <span class="fw-bold text-white"><span id="dashboardActiveBackendNodes">0</span> / <span id="dashboardTotalBackendNodes">0</span></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="small text-muted">Proxy Nodes</span>
+                                        <span class="fw-bold text-white"><span id="dashboardActiveProxyNodes">0</span> / <span id="dashboardTotalProxyNodes">0</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark h-100">
+                                <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                                    <h6 class="text-white-50 text-uppercase small mb-1">Total Active Nodes</h6>
+                                    <div class="d-flex align-items-baseline">
+                                        <span class="display-6 fw-bold text-success me-2" id="dashboardActiveNodesCount">0</span>
+                                        <span class="text-muted small">/ <span id="dashboardConfiguredNodesCount">0</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h5 class="mb-3 border-bottom border-secondary pb-2">Regional Status</h5>
+                    <div class="row g-3" id="infraDashboardRegionGrid">
+                        <div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-circle-notch fa-spin me-2"></i> Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Frontend Node Tab -->
+                <div class="tab-pane fade w-100" id="infra-root-frontend" role="tabpanel">
+                    <div class="row g-4" id="infraFrontendContainer">
+                        <!-- Injected via JS -->
+                    </div>
+                    <div class="card bg-dark mt-4">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Historical Performance</h6>
+                            <!-- Time Range Controls -->
+                            <div class="btn-group btn-group-sm" role="group">
+                                <input type="radio" class="btn-check history-range-selector" name="frontendHistoryRange" id="frontendRange24h" value="1" checked autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="frontendRange24h">24H</label>
+
+                                <input type="radio" class="btn-check history-range-selector" name="frontendHistoryRange" id="frontendRange7d" value="7" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="frontendRange7d">7D</label>
+
+                                <input type="radio" class="btn-check history-range-selector" name="frontendHistoryRange" id="frontendRange14d" value="14" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="frontendRange14d">14D</label>
+
+                                <input type="radio" class="btn-check history-range-selector" name="frontendHistoryRange" id="frontendRange30d" value="30" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="frontendRange30d">30D</label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Metric Tabs -->
+                            <ul class="nav mb-3 nav-fill history-metric-tabs" role="tablist" data-target-chart="frontend">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" data-metric="cpu" data-bs-toggle="pill" type="button">CPU</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" data-metric="ram" data-bs-toggle="pill" type="button">RAM</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" data-metric="network" data-bs-toggle="pill" type="button">Network</button>
+                                </li>
+                            </ul>
+                            <!-- Canvas -->
+                            <div class="position-relative" style="height: 300px; width: 100%;">
+                                <canvas id="infraFrontendChart"></canvas>
+
+                                <div id="infraFrontendChartNoData" class="d-none position-absolute top-50 start-50 translate-middle text-center">
+                                    <i class="fa-regular fa-chart-scatter fa-3x text-secondary mb-3"></i>
+                                    <h6 class="text-muted">No historical data found</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Background Node Tab -->
+                <div class="tab-pane fade w-100" id="infra-root-background" role="tabpanel">
+                    <div class="row g-4" id="infraBackgroundContainer">
+                        <!-- Injected via JS -->
+                    </div>
+                    <div class="card bg-dark mt-4">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Historical Performance</h6>
+                            <!-- Time Range Controls -->
+                            <div class="btn-group btn-group-sm" role="group">
+                                <input type="radio" class="btn-check history-range-selector" name="backgroundHistoryRange" id="backgroundRange24h" value="1" checked autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="backgroundRange24h">24H</label>
+
+                                <input type="radio" class="btn-check history-range-selector" name="backgroundHistoryRange" id="backgroundRange7d" value="7" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="backgroundRange7d">7D</label>
+
+                                <input type="radio" class="btn-check history-range-selector" name="backgroundHistoryRange" id="backgroundRange14d" value="14" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="backgroundRange14d">14D</label>
+
+                                <input type="radio" class="btn-check history-range-selector" name="backgroundHistoryRange" id="backgroundRange30d" value="30" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="backgroundRange30d">30D</label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Metric Tabs -->
+                            <ul class="nav mb-3 nav-fill history-metric-tabs" role="tablist" data-target-chart="background">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" data-metric="cpu" data-bs-toggle="pill" type="button">CPU</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" data-metric="ram" data-bs-toggle="pill" type="button">RAM</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" data-metric="network" data-bs-toggle="pill" type="button">Network</button>
+                                </li>
+                            </ul>
+                            <!-- Canvas -->
+                            <div class="position-relative" style="height: 300px; width: 100%;">
+                                <canvas id="infraBackgroundChart"></canvas>
+
+                                <div id="infraBackgroundChartNoData" class="d-none position-absolute top-50 start-50 translate-middle text-center">
+                                    <i class="fa-regular fa-chart-scatter fa-3x text-secondary mb-3"></i>
+                                    <h6 class="text-muted">No historical data found</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regions List -->
+                <div class="tab-pane fade w-100" id="infra-root-regions" role="tabpanel">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionButton">
+                                <span>+ Add New Region</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Search Regions..." id="searchRegionInput">
+                            <button class="input-group-button btn btn-primary"><i class='fa-regular fa-magnifying-glass'></i></button>
+                        </div>
+                    </div>
+                    <div class="row g-3" id="infraRegionsCardListContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. REGION MANAGER CONTENT -->
+        <div class="fade d-none w-100" id="infraRegionManagerTab">
+            <div class="tab-content w-100">
+                <!-- Overview -->
+                <div class="tab-pane fade show active w-100" id="region-manager-overview" role="tabpanel">
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-dark h-100">
+                                <div class="card-body">
+                                    <h6 class="text-muted small text-uppercase mb-3">Backend Nodes</h6>
+                                    <div class="row text-center mb-3">
+                                        <div class="col-6 border-end border-secondary">
+                                            <div class="h3 mb-0 text-success" id="regionOverviewBackendOnline">0</div>
+                                            <div class="small text-muted">Online</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="h3 mb-0 text-danger" id="regionOverviewBackendOffline">0</div>
+                                            <div class="small text-muted">Offline</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-around text-center border-top border-secondary pt-3">
+                                        <div><span class="text-white fw-bold" id="regionOverviewTelephony">0</span> <small class="text-muted">Phone Sessions</small></div>
+                                        <div><span class="text-white fw-bold" id="regionOverviewWeb">0</span> <small class="text-muted">Web Sessions</small></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-dark h-100">
+                                <div class="card-body">
+                                    <h6 class="text-muted small text-uppercase mb-3">Proxy Nodes</h6>
+                                    <div class="row text-center mb-3">
+                                        <div class="col-6 border-end border-secondary">
+                                            <div class="h3 mb-0 text-success" id="regionOverviewProxyOnline">0</div>
+                                            <div class="small text-muted">Online</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="h3 mb-0 text-danger" id="regionOverviewProxyOffline">0</div>
+                                            <div class="small text-muted">Offline</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-around text-center border-top border-secondary pt-3">
+                                        <div><span class="text-white fw-bold" id="regionOverviewQueueProcessing">0</span> <small class="text-muted">Processing</small></div>
+                                        <div><span class="text-white-50 fw-bold" id="regionOverviewQueuePending">0</span> <small class="text-muted">Pending</small></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Servers List -->
+                <div class="tab-pane fade w-100" id="region-manager-servers" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0 text-white">Proxy Nodes</h5>
+                        <button class="btn btn-sm btn-outline-primary" id="btnAddProxyServer">
+                            <i class="fa-solid fa-plus"></i> <span>Add Proxy</span>
+                        </button>
+                    </div>
+                    <div class="row g-3 mb-5" id="regionProxyListContainer"></div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0 text-white">Backend Nodes</h5>
+                        <button class="btn btn-sm btn-outline-primary" id="btnAddBackendServer">
+                            <i class="fa-solid fa-plus"></i> <span>Add Backend</span>
+                        </button>
+                    </div>
+                    <div class="row g-3" id="regionBackendListContainer"></div>
+                </div>
+
+                <!-- S3 Config -->
+                <div class="tab-pane fade w-100" id="region-manager-s3" role="tabpanel">
+                    <div class="card bg-dark mw-100" style="max-width: 800px;">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Endpoint URL</label>
+                                <input type="text" class="form-control" id="editRegionS3Endpoint" placeholder="e.g. http://10.0.0.5:9000">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Access Key</label>
+                                    <input type="text" class="form-control" id="editRegionS3AccessKey">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Secret Key</label>
+                                    <input type="password" class="form-control" id="editRegionS3SecretKey">
+                                </div>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="editRegionS3UseSSL">
+                                <label class="form-check-label" for="editRegionS3UseSSL">Use SSL (HTTPS)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Region Settings -->
+                <div class="tab-pane fade w-100" id="region-manager-settings" role="tabpanel">
+                    <div class="card bg-dark mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title text-danger mb-4">Region Controls</h5>
+
+                            <!-- Maintenance -->
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div>
+                                    <h6 class="mb-1 text-warning">Maintenance Mode</h6>
+                                    <p class="text-muted small mb-0">Prevents new calls from being routed to this region.</p>
+                                    <div class="small text-info d-none" id="regionMaintenanceReasonDisplay"><i class="fa-solid fa-circle-info me-1"></i> Reason: <span></span></div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input status-toggle" type="checkbox" role="switch" id="editRegionMaintenanceMode" data-type="maintenance" style="width: 3em; height: 1.5em;">
+                                </div>
+                            </div>
+
+                            <!-- Disabled -->
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1 text-secondary">Disable Region</h6>
+                                    <p class="text-muted small mb-0">Completely disables the region configuration.</p>
+                                    <div class="small text-info d-none" id="regionDisabledReasonDisplay"><i class="fa-solid fa-circle-info me-1"></i> Reason: <span></span></div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input status-toggle" type="checkbox" role="switch" id="editRegionDisabled" data-type="disabled" style="width: 3em; height: 1.5em;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. SERVER MANAGER CONTENT -->
+        <div class="fade d-none w-100" id="infraServerManagerTab">
+            <div class="tab-content w-100">
+
+                <!-- Metrics -->
+                <div class="tab-pane fade w-100" id="server-manager-metrics" role="tabpanel">
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-dark h-100 text-center">
+                                <div class="card-body">
+                                    <div class="small text-muted mb-2">Live Status</div>
+                                    <div class="badge bg-secondary fs-6" id="serverMetricStatusBadge">Offline</div>
+                                </div>
+                            </div>
+                            </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark h-100 text-center">
+                                <div class="card-body">
+                                    <div class="small text-muted mb-2">CPU</div>
+                                    <div class="display-6 fw-bold text-white">
+                                        <span id="serverMetricCpu">0</span>
+                                        <span class="fs-5">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark h-100 text-center">
+                                <div class="card-body">
+                                    <div class="small text-muted mb-2">RAM</div>
+                                    <div class="display-6 fw-bold text-white">
+                                        <span id="serverMetricRam">0</span>
+                                        <span class="fs-5">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark h-100 text-center">
+                                <div class="card-body" id="serverMetricDynamicCard">
+                                    <div class="small text-muted mb-2">Load</div>
+                                    <div class="display-6 fw-bold text-info">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card bg-dark mt-4">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Historical Performance</h6>
+                            <!-- Time Range Controls -->
+                            <div class="btn-group btn-group-sm" role="group">
+                                <input type="radio" class="btn-check history-range-selector" name="serverHistoryRange" id="serverRange24h" value="1" checked autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="serverRange24h">24H</label>
+
+                                <input type="radio" class="btn-check history-range-selector" name="serverHistoryRange" id="serverRange7d" value="7" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="serverRange7d">7D</label>
+
+                                <input type="radio" class="btn-check history-range-selector" name="serverHistoryRange" id="serverRange14d" value="14" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="serverRange14d">14D</label>
+
+                                <input type="radio" class="btn-check history-range-selector" name="serverHistoryRange" id="serverRange30d" value="30" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="serverRange30d">30D</label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Metric Tabs -->
+                            <ul class="nav mb-3 nav-fill history-metric-tabs" role="tablist" data-target-chart="server">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" data-metric="cpu" data-bs-toggle="pill" type="button">CPU</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" data-metric="ram" data-bs-toggle="pill" type="button">RAM</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" data-metric="network" data-bs-toggle="pill" type="button">Network</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="serverDynamicMetricTab" data-metric="dynamic" data-bs-toggle="pill" type="button">Load</button>
+                                </li>
+                            </ul>
+                            <!-- Canvas -->
+                            <div class="position-relative" style="height: 300px; width: 100%;">
+                                <canvas id="serverMetricsChart"></canvas>
+
+                                <div id="serverMetricsChartNoData" class="d-none position-absolute top-50 start-50 translate-middle text-center">
+                                    <i class="fa-regular fa-chart-scatter fa-3x text-secondary mb-3"></i>
+                                    <h6 class="text-muted">No historical data found</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Server Settings -->
+                <div class="tab-pane fade show active w-100" id="server-manager-settings" role="tabpanel">
+
+                    <!-- Configuration -->
+                    <div class="card bg-dark mw-100 mb-4" style="max-width: 800px;">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Configuration</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Endpoint / IP <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="editServerEndpoint" placeholder="e.g. 10.0.0.1">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Server Type <span class="text-danger">*</span></label>
+                                <select class="form-select" id="editServerType">
+                                    <option value="2">Backend (Media & Logic)</option>
+                                    <option value="1">Proxy (Signaling)</option>
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">API Secret <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="editServerApiKey">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">SIP Port</label>
+                                    <input type="number" class="form-control" id="editServerSipPort" value="5060">
+                                </div>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="editServerIsDev">
+                                <label class="form-check-label" for="editServerIsDev">Development Server</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="card bg-dark mb-4" id="serverControlsCard">
+                        <div class="card-body">
+                            <h5 class="card-title text-danger mb-4">Node Controls</h5>
+                            <!-- Maintenance -->
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div>
+                                    <h6 class="mb-1 text-warning">Maintenance Mode</h6>
+                                    <p class="text-muted small mb-0">Stop routing new calls to this node.</p>
+                                    <div class="small text-info d-none" id="serverMaintenanceReasonDisplay"><i class="fa-solid fa-circle-info me-1"></i> Reason: <span></span></div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input status-toggle" type="checkbox" role="switch" id="editServerMaintenanceMode" data-type="maintenance" style="width: 3em; height: 1.5em;">
+                                </div>
+                            </div>
+                            <!-- Disabled -->
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1 text-secondary">Disable Node</h6>
+                                    <p class="text-muted small mb-0">Permanently disable this node.</p>
+                                    <div class="small text-info d-none" id="serverDisabledReasonDisplay"><i class="fa-solid fa-circle-info me-1"></i> Reason: <span></span></div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input status-toggle" type="checkbox" role="switch" id="editServerDisabled" data-type="disabled" style="width: 3em; height: 1.5em;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================================== -->
+<!-- MODALS -->
+<!-- ========================================================================================== -->
+
+<!-- Add Region Modal -->
+<div class="modal fade" id="infraAddRegionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title">Add New Region</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Country</label>
+                    <select class="form-select" id="infraNewRegionCountry">
+                        <option value="" disabled selected>Select Country</option>
+                        <!-- Populated via JS using CountriesList -->
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Region Name</label>
+                    <input type="text" class="form-control" id="infraNewRegionId" placeholder="e.g. east, west-2, 1">
+                    <div class="form-text text-white-50">
+                        Resulting ID: <span id="infraNewRegionPreview" class="text-info font-monospace">...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="infraBtnConfirmAddRegion">Create Region</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Change Reason Modal -->
+<div class="modal fade" id="infraStatusReasonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title" id="infraStatusModalTitle">Change Status</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" id="infraStatusModalMessage">Please provide a reason for this action.</p>
+                <div class="mb-3">
+                    <label class="form-label">Public Reason <i class="fa-solid fa-globe text-muted ms-1" title="Visible to users"></i></label>
+                    <input type="text" class="form-control" id="infraStatusPublicReason" placeholder="e.g., Scheduled Maintenance">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Private Reason <i class="fa-solid fa-lock text-muted ms-1" title="Internal only"></i></label>
+                    <input type="text" class="form-control" id="infraStatusPrivateReason" placeholder="e.g., Ticket #1234">
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="infraStatusConfirmButton">Confirm Change</button>
+            </div>
+        </div>
+    </div>
+</div>

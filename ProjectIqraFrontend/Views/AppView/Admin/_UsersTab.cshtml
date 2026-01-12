@@ -1,0 +1,341 @@
+﻿<div class="main-container fade w-100 d-none" id="users-tab">
+    <h3 class="fw-bold tab-title"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
+    <div class="inner-container">
+        <!-- Manager Inner Tabs -->
+        <div class="mb-3">
+            <ul class="nav w-100 fade show" id="users-inner-tab" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link disabled" id="users-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-analytics" type="button" role="tab" aria-controls="users-analytics" aria-selected="true">Analytics</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="users-list-tab" data-bs-toggle="pill" data-bs-target="#users-list" type="button" role="tab" aria-controls="users-list" aria-selected="true">List</button>
+                </li>
+            </ul>
+            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="users-manage-breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="#" id="switchBackToUsersListTabFromManageTab">Users</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page"><span id="currentManageUserName">User</span></li>
+                </ol>
+            </nav>
+        </div>
+        <!-- Tab Content -->
+        <div class="tab-content w-100" id="users-inner-tabContent">
+            <!-- Analytics -->
+            <div class="tab-pane fade w-100" id="users-analytics" role="tabpanel" aria-labelledby="users-analytics-tab" tabindex="0">
+                analytics
+            </div>
+
+            <!-- List -->
+            <div class="tab-pane fade w-100 show active" id="users-list" role="tabpanel" aria-labelledby="users-list-tab" tabindex="0">
+                <!-- Users List Table Tab -->
+                <div class="fade w-100 show" id="usersListTableTab">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewUserButton">
+                                <span>+ Add New User</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="User Name or Email" aria-label="User Name or Email" aria-describedby="searchUserButton">
+                            <button class="input-group-button btn btn-primary" id="searchAgentScriptButton">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <table id="usersListTable" class="table w-100">
+                        <thead>
+                            <tr>
+                                <th scope="col">Email</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Businesses</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamically Generated -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Users Manage Tab -->
+                <div class="fade w-100 d-none" id="usersManageTab">
+                    <!-- Header Tab -->
+                    <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
+                        <ul class="nav" id="users-manage-tab" role="tablist">
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link active" id="users-manage-general-tab" data-bs-toggle="pill" data-bs-target="#users-manage-general" type="button" role="tab" aria-controls="users-manage-general" aria-selected="true">General</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="users-manage-billing-tab-button" data-bs-toggle="pill" data-bs-target="#users-manage-billing-content" type="button" role="tab" aria-controls="users-manage-billing-content" aria-selected="false">Billing</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="users-manage-actions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-actions" type="button" role="tab" aria-controls="users-manage-actions" aria-selected="true">Actions</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="users-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-permissions" type="button" role="tab" aria-controls="users-manage-permissions" aria-selected="true">Permissions</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="users-manage-businesses-tab" data-bs-toggle="pill" data-bs-target="#users-manage-businesses" type="button" role="tab" aria-controls="users-manage-businesses" aria-selected="true">Businesses</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link disabled" id="users-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-manage-analytics" type="button" role="tab" aria-controls="users-manage-analytics" aria-selected="true">Analytics</button>
+                            </li>
+                        </ul>
+
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="usersManageSaveButton">
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+                    <!-- Tab Content -->
+                    <div class="tab-content w-100" id="users-manage-tabContent">
+                        <!-- General -->
+                        <div class="tab-pane fade w-100 show active" id="users-manage-general" role="tabpanel" aria-labelledby="users-manage-general-tab" tabindex="0">
+                            <div class="mb-3">
+                                <label for="usersManageFirstNameInput" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="usersManageFirstNameInput" placeholder="First Name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="usersManageLastNameInput" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="usersManageLastNameInput" placeholder="Last Name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="usersManageEmailInput" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="usersManageEmailInput" placeholder="Email">
+                            </div>
+                            <div class="mb-3">
+                                <label for="usersManagePasswordInput" class="form-label">Password</label>
+                                <input type="text" class="form-control" id="usersManagePasswordInput" placeholder="Password">
+                            </div>
+                        </div>
+                        <!-- Billing -->
+                        <div class="tab-pane fade w-100" id="users-manage-billing-content" role="tabpanel" aria-labelledby="users-manage-billing-tab-button" tabindex="0">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h4>Plan & Credits</h4>
+                                    <div class="mb-3">
+                                        <label for="userManageCurrentPlanSelect" class="form-label">Current Plan</label>
+                                        <select class="form-select" id="userManageCurrentPlanSelect" name="Billing.CurrentPlanId">
+                                            <option value="">-- No Plan Assigned --</option>
+                                            <!-- Options will be populated by JS with available PlanDefinitions (ID as value, Name as text) -->
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="userManageCreditBalanceInput" class="form-label">Credit Balance</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" step="0.01" class="form-control" id="userManageCreditBalanceInput" name="Billing.CreditBalance" placeholder="0.00">
+                                            <button class="btn btn-outline-secondary" type="button" id="adjustUserCreditButton" data-bs-toggle="modal" data-bs-target="#adjustCreditModal">Adjust</button>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Plan Base Concurrency</label>
+                                        <input type="text" class="form-control" id="userManagePlanBaseConcurrencyDisplay" placeholder="N/A" disabled readonly>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="userManagePurchasedConcurrencyInput" class="form-label">Purchased Additional Concurrency Slots</label>
+                                        <input type="number" class="form-control" id="userManagePurchasedConcurrencyInput" name="Billing.PurchasedAdditionalConcurrencySlots" placeholder="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Total Owned Concurrency Slots</label>
+                                        <input type="text" class="form-control" id="userManageTotalConcurrencyDisplay" placeholder="N/A" disabled readonly>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="userManageLastConcurrencyFeeBilledAtInput" class="form-label">Last Concurrency Fee Billed At</label>
+                                        <input type="text" class="form-control" id="userManageLastConcurrencyFeeBilledAtInput" name="Billing.LastConcurrencyFeeBilledAt" placeholder="N/A" disabled readonly>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="userManageNextConcurrencyFeeBillingDateInput" class="form-label">Next Concurrency Fee Billing Date</label>
+                                        <input type="text" class="form-control" id="userManageNextConcurrencyFeeBillingDateInput" name="Billing.NextConcurrencyFeeBillingDate" placeholder="N/A" disabled readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h4>Auto-Refill Settings</h4>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="userManageAutoRefillStatusToggle" name="Billing.AutoRefill.StatusBoolean"> <!-- JS will convert to enum -->
+                                        <label class="form-check-label" for="userManageAutoRefillStatusToggle">Enable Auto-Refill</label>
+                                    </div>
+                                    <div id="userManageAutoRefillDetails" class="d-none">
+                                        <!-- Show only if toggle is on -->
+                                        <div class="mb-3">
+                                            <label for="userManageAutoRefillThresholdInput" class="form-label">Refill When Balance Below</label>
+                                            <input type="number" step="0.01" class="form-control" id="userManageAutoRefillThresholdInput" name="Billing.AutoRefill.RefillWhenBalanceBelow" placeholder="e.g., 10.00">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="userManageAutoRefillAmountInput" class="form-label">Refill Amount</label>
+                                            <input type="number" step="0.01" class="form-control" id="userManageAutoRefillAmountInput" name="Billing.AutoRefill.RefillAmount" placeholder="e.g., 50.00">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="userManageAutoRefillPaymentMethodSelect" class="form-label">Default Payment Method</label>
+                                            <select class="form-select" id="userManageAutoRefillPaymentMethodSelect" name="Billing.AutoRefill.DefaultPaymentMethodId">
+                                                <option value="">-- Select Payment Method --</option>
+                                                <!-- Options populated by JS with user's saved payment methods -->
+                                            </select>
+                                            <!-- We'll need another section (perhaps under User Profile in user-facing dashboard) to manage UserPaymentMethods -->
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Last Auto-Refill Attempt</label>
+                                            <input type="text" class="form-control" id="userManageAutoRefillLastAttemptDisplay" placeholder="N/A" disabled readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <h4>Billing History (Transactions)</h4>
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                <table class="table table-sm" id="userBillingHistoryTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Type</th>
+                                            <th>Description</th>
+                                            <th>Amount</th>
+                                            <th>Balance After</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamically generated transaction rows for this user -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- Actions -->
+                        <div class="tab-pane fade w-100" id="users-manage-actions" role="tabpanel" aria-labelledby="users-manage-actions-tab" tabindex="0">
+                            <div class="mb-3">
+                                <label for="usersManageSendResetPasswordInput" class="form-label d-block">Send Reset Password</label>
+                                <button class="input-group-button btn btn-primary" id="usersManageSendResetPasswordButton">
+                                    <i class='fa-regular fa-key'></i>
+                                    <span> Send</span>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Permissions -->
+                        <div class="tab-pane fade w-100" id="users-manage-permissions" role="tabpanel" aria-labelledby="users-manage-permissions-tab" tabindex="0">
+                            <div class="mb-3">
+                                <label class="form-label d-block">Authentication</label>
+
+                                <div class="">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableLoginInput" check-type="permission-with-reason">
+                                        <label for="usersManageDisableLoginInput" class="form-label d-block">Login Disabled</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="usersManageLoginDisabledReasonInput" placeholder="Login Disabled Reason">
+                                </div>
+
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label d-block">Business</label>
+
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableCompleteBusinessInput" check-type="permission-with-reason">
+                                        <label for="usersManageDisableCompleteBusinessInput" class="form-label d-block">Disable Complete (Viewing Also)</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="usersManageDisableCompleteBusinessReasonInput" placeholder="Disable Complete Reason">
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableEditBusinessInput" check-type="permission-with-reason">
+                                        <label for="usersManageDisableEditBusinessInput" class="form-label d-block">Disable Edit</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="usersManageDisableEditBusinessReasonInput" placeholder="Disable Edit Reason">
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableDeleteBusinessInput" check-type="permission-with-reason">
+                                        <label for="usersManageDisableDeleteBusinessInput" class="form-label d-block">Disable Delete</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="usersManageDisableDeleteBusinessReasonInput" placeholder="Disable Delete Reason">
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableAddBusinessInput" check-type="permission-with-reason">
+                                        <label for="usersManageDisableAddBusinessInput" class="form-label d-block">Disable Add</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="usersManageDisableAddBusinessReasonInput" placeholder="Disable Add Reason">
+                                </div>
+
+                            </div>
+                        </div>
+                        <!-- Businesses -->
+                        <div class="tab-pane fade w-100" id="users-manage-businesses" role="tabpanel" aria-labelledby="users-manage-businesses-tab" tabindex="0">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addUserBusinessModalButton" data-bs-toggle="modal" data-bs-target="#addUserBusinessModal">
+                                        <span>+ Add Business</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Business name or id" aria-label="Business name or id" aria-describedby="searchUserBusinessButton">
+                                    <button class="input-group-button btn btn-primary" id="searchUserBusinessButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="userBusinessesListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                            <!-- Add Business Modal -->
+                            <div class="modal modal-lg fade" id="addUserBusinessModal" tabindex="-1" aria-labelledby="addUserBusinessModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h1 class="modal-title fs-5" id="addUserBusinessModalLabel">Add User Business</h1>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="input-group w-100 mb-3">
+                                                <input type="text" class="form-control" placeholder="Business name or id" aria-label="Business name or id" aria-describedby="searchAddUserBusinessModalButton" id="addUserBusinessModalSearchInput">
+                                                <button class="input-group-button btn btn-primary" id="searchAddUserBusinessModalButton" disabled>
+                                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                                </button>
+                                            </div>
+                                            <table id="addUserBusinessModalListTable" class="table w-100 table-selectable">
+                                                <thead>
+                                                    <tr>
+                                                        <th scope="col">#</th>
+                                                        <th scope="col">Name</th>
+                                                        <th scope="col">Master Email</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <!-- Dynamically Generated -->
+                                                    <tr>
+                                                        <td colspan="3" class="text-center">Search for results...</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-primary btn-ic-span-align" id="addUserBusinessModalSaveButton" disabled>
+                                                <i class="fa-regular fa-plus"></i>
+                                                <span> Add</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Analytics -->
+                        <div class="tab-pane fade w-100" id="users-manage-analytics" role="tabpanel" aria-labelledby="users-manage-analytics-tab" tabindex="0">
+                            analytics
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
