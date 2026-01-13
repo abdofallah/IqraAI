@@ -77,7 +77,7 @@
     </div>
 
     <!-- ========================================================================================== -->
-    <!-- CONTENT CONTAINER -->
+    <!-- CONTENT CONTAINER                                                                          -->
     <!-- ========================================================================================== -->
     <div class="inner-container">
 
@@ -210,6 +210,33 @@
                     <div class="row g-4" id="infraBackgroundContainer">
                         <!-- Injected via JS -->
                     </div>
+
+                    <!-- Background Configuration -->
+                    <div class="card bg-dark mt-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Configuration</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Endpoint</label>
+                                <input type="text" class="form-control" id="backgroundNodeEndpoint" placeholder="e.g. 10.0.0.1">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">API Key</label>
+                                <input type="password" class="form-control" id="backgroundNodeApiKey">
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="backgroundNodeUseSSL">
+                                <label class="form-check-label" for="backgroundNodeUseSSL">Use SSL</label>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <button class="btn btn-primary" id="btnSaveBackgroundConfig">Save Configuration</button>
+                                <button class="btn btn-outline-danger" id="btnShutdownBackgroundNode">
+                                    <i class="fa-regular fa-power-off me-2"></i>Shutdown Node
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Historical Performance -->
                     <div class="card bg-dark mt-4">
                         <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">Historical Performance</h6>
@@ -397,6 +424,17 @@
                                     <input class="form-check-input status-toggle" type="checkbox" role="switch" id="editRegionDisabled" data-type="disabled" style="width: 3em; height: 1.5em;">
                                 </div>
                             </div>
+
+                            <!-- Shutdown -->
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top border-secondary">
+                                <div>
+                                    <h6 class="mb-1 text-danger">Graceful Shutdown</h6>
+                                    <p class="text-muted small mb-0">Send shutdown signal to all nodes in this region.</p>
+                                </div>
+                                <button class="btn btn-outline-danger btn-sm" id="btnShutdownRegion">
+                                    <i class="fa-regular fa-power-off me-2"></i>Shutdown All Nodes
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -556,6 +594,15 @@
                                 <div class="form-check form-switch">
                                     <input class="form-check-input status-toggle" type="checkbox" role="switch" id="editServerDisabled" data-type="disabled" style="width: 3em; height: 1.5em;">
                                 </div>
+                            </div>
+                            <!-- Danger Zone -->
+                            <div class="d-flex justify-content-end gap-3 pt-3 border-top border-secondary">
+                                <button class="btn btn-outline-danger btn-sm" id="btnShutdownServer">
+                                    <i class="fa-regular fa-power-off me-2"></i>Shutdown Node
+                                </button>
+                                <button class="btn btn-danger btn-sm" id="btnDeleteServer">
+                                    <i class="fa-regular fa-trash me-2"></i>Delete Configuration
+                                </button>
                             </div>
                         </div>
                     </div>

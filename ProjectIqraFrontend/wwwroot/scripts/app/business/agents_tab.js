@@ -3060,7 +3060,7 @@ function initAgentTab() {
 
 					ManageAgentType = "edit";
 				},
-				(saveError, isUnsuccessful) => {
+				(errorResult, isUnsuccessful) => {
 					var resultMessage = "Check console logs for more details.";
 					if (errorResult && errorResult.message) resultMessage = errorResult.message;
 
@@ -3071,7 +3071,7 @@ function initAgentTab() {
 						timeout: 6000,
 					});
 
-					console.log("Error occured while saving business agent data: ", saveError);
+					console.log("Error occured while saving business agent data: ", errorResult);
 
 					confirmPublishAgentButton.prop("disabled", false);
 					confirmPublishAgentButtonSpinner.addClass("d-none");

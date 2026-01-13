@@ -26,6 +26,7 @@ namespace IqraInfrastructure.Repositories.App
         private const string IqraAppConfigConfigField = "IqraAppConfig";
         private const string AppPermissionConfigField = "AppPermissionConfig";
         private const string EmailTemplatesField = "EmailTemplates";
+        private const string CoreNodesConfigField = "CoreNodesConfig";
 
         /**
          * 
@@ -37,7 +38,7 @@ namespace IqraInfrastructure.Repositories.App
             var filter = Builders<BsonDocument>.Filter.Eq("_id", IqraAppConfigConfigField);
 
             var result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, iqraAppConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
-            return result.IsAcknowledged && (result.UpsertedId.IsString || result.ModifiedCount > 0);
+            return result.IsAcknowledged && ((result.UpsertedId != null && result.UpsertedId.IsString) || result.ModifiedCount > 0);
         }
 
         public async Task<IqraAppConfig?> GetIqraAppConfig()
@@ -61,7 +62,7 @@ namespace IqraInfrastructure.Repositories.App
             var filter = Builders<BsonDocument>.Filter.Eq("_id", AppPermissionConfigField);
 
             var result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, appPermissionConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged && ((result.UpsertedId != null && result.UpsertedId.IsString) || result.ModifiedCount > 0);
         }
 
         public async Task<AppPermissionConfig?> GetAppPermissionConfig()
@@ -85,7 +86,7 @@ namespace IqraInfrastructure.Repositories.App
             var filter = Builders<BsonDocument>.Filter.Eq("_id", EmailTemplatesField);
 
             var result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, emailTemplates.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
-            return result.IsAcknowledged && result.ModifiedCount > 0;
+            return result.IsAcknowledged && ((result.UpsertedId != null && result.UpsertedId.IsString) || result.ModifiedCount > 0);
         }
         
         public async Task<EmailTemplates?> GetEmailTemplates()
@@ -104,6 +105,46 @@ namespace IqraInfrastructure.Repositories.App
                 _logger.LogError(ex, "Error getting email templates");
                 return null;
             }
+        }
+
+        /**
+         * 
+         * Core Nodes Configuration
+         * 
+        **/ 
+
+        public async Task<bool> AddUpdateCoreNodesConfig(CoreNodesConfig coreNodesConfig)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", CoreNodesConfigField);
+
+            var result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, coreNodesConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
+            return result.IsAcknowledged && ((result.UpsertedId != null && result.UpsertedId.IsString) || result.ModifiedCount > 0);
+        }
+
+
+
+        public async Task<bool> AddUpdateCoreNodeBackgroundNodeConfig(string endpoint, bool useSSL, string apiKey)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", CoreNodesConfigField);
+
+            var update = Builders<BsonDocument>.Update
+                .Set("BackgroundNodeEndpoint", endpoint)
+                .Set("BackgroundNodeUseSSL", useSSL)
+                .Set("BackgroundNodeApiKey", apiKey);
+
+            var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+            return result.IsAcknowledged && ((result.UpsertedId != null && result.UpsertedId.IsString) || result.ModifiedCount > 0);
+        }
+
+        public async Task<CoreNodesConfig?> GetCoreNodesConfig()
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", CoreNodesConfigField);
+
+            var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
+
+            if (result == null) return null;
+
+            return BsonSerializer.Deserialize<CoreNodesConfig>(result);
         }
     }
 }

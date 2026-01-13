@@ -12,8 +12,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
     [Route("app/admin/infrastructure")]
     public class AppAdminInfrastructureController : Controller
     {
-        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper
-            ;
+        private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly InfrastructureManager _infraManager;
         private readonly RegionManager _regionManager;
 
@@ -149,6 +148,87 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result.SetFailureResult(
                     "GetServerHistory:EXCEPTION",
                     $"Failed to get server history. Exception: {ex.Message}"
+                );
+            }
+        }
+
+        // Core Services
+        [HttpPost("core/background/config")]
+        public async Task<FunctionReturnResult> UpdateCoreBackgroundConfig([FromBody] UpdateCoreBackgroundConfigRequestModel data)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"UpdateCoreBackgroundConfig:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+
+                var updateResult = await _infraManager.UpdateCoreBackgroundConfigAsync(data);
+                if (!updateResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"UpdateCoreBackgroundConfig:{updateResult.Code}",
+                        updateResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "UpdateCoreBackgroundConfig:EXCEPTION",
+                    $"Failed to update core background config. Exception: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpPost("core/background/shutdown")]
+        public async Task<FunctionReturnResult> ShutdownCoreBackground()
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ShutdownCoreBackground:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+
+                var shutdownResult = await _infraManager.ShutdownCoreBackgroundAsync();
+                if (!shutdownResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ShutdownCoreBackground:{shutdownResult.Code}",
+                        shutdownResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "ShutdownCoreBackground:EXCEPTION",
+                    $"Failed to shutdown core background. Exception: {ex.Message}"
                 );
             }
         }
@@ -386,6 +466,45 @@ namespace ProjectIqraFrontend.Controllers.Admin
             }
         }
 
+        [HttpPost("regions/{regionId}/shutdown")]
+        public async Task<FunctionReturnResult> ShutdownRegion(string regionId)
+        {
+            var result = new FunctionReturnResult();
+            try
+            {
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                        Request: Request,
+                        checkUserIsAdmin: true,
+                        checkUserDisabled: true
+                    );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ShutdownRegion:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+
+                var shutdownResult = await _infraManager.ShutdownRegionAsync(regionId);
+                if (!shutdownResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ShutdownRegion:{shutdownResult.Code}",
+                        shutdownResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "ShutdownRegion:EXCEPTION",
+                    $"Failed to shutdown region. Exception: {ex.Message}"
+                );
+            }
+        }
+
         // SERVER MANAGEMENT
         [HttpPost("regions/{regionId}/servers")]
         public async Task<FunctionReturnResult> AddRegionServer(string regionId, [FromBody] CreateUpdateServerRequestModel serverData)
@@ -607,6 +726,45 @@ namespace ProjectIqraFrontend.Controllers.Admin
             {
                 return result.SetFailureResult(
                     "ToggleServerDisabled:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpPost("regions/{regionId}/servers/{serverId}/shutdown")]
+        public async Task<FunctionReturnResult> ShutdownRegionServer(string regionId, string serverId)
+        {
+            var result = new FunctionReturnResult();
+            try
+            {
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                        Request: Request,
+                        checkUserIsAdmin: true,
+                        checkUserDisabled: true
+                    );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ShutdownRegionServer:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+
+                var shutdownResult = await _infraManager.ShutdownRegionServerAsync(regionId, serverId);
+                if (!shutdownResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ShutdownRegionServer:{shutdownResult.Code}",
+                        shutdownResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "ShutdownRegionServer:EXCEPTION",
                     $"Exception: {ex.Message}"
                 );
             }

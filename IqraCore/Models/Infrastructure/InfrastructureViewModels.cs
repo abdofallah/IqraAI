@@ -30,7 +30,7 @@ namespace IqraCore.Models.Infrastructure
 
         // Core Services
         public SingletonNodeStatus? FrontendNode { get; set; }
-        public SingletonNodeStatus? BackgroundNode { get; set; }
+        public BackgroundNodeStatus? BackgroundNode { get; set; }
 
         public List<RegionSummaryModel> Regions { get; set; } = new();
     }
@@ -42,6 +42,13 @@ namespace IqraCore.Models.Infrastructure
         public double RamUsage { get; set; }
         public string Version { get; set; } = string.Empty;
         public DateTime LastHeartbeat { get; set; }
+    }
+
+    public class BackgroundNodeStatus : SingletonNodeStatus
+    {
+        public string Endpoint { get; set; } = string.Empty;
+        public bool UseSSL { get; set; }
+        public string ApiKey { get; set; } = string.Empty;
     }
 
     // --- Region Summary Card ---

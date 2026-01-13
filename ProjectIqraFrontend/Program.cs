@@ -1059,6 +1059,8 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<InfrastructureManager>((sp) =>
             {
                 return new InfrastructureManager(
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<ServerMetricsManager>(),
                     sp.GetRequiredService<ServerStatusRepository>(),

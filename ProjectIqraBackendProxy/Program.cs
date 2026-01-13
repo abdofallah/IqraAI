@@ -1,10 +1,7 @@
 using IqraCore.Entities.App.Enum;
 using IqraCore.Entities.Configuration;
-using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Configuration;
-using IqraCore.Entities.Server.Metrics;
 using IqraCore.Interfaces.Modules;
-using IqraCore.Interfaces.Node;
 using IqraCore.Interfaces.Server;
 using IqraCore.Interfaces.User;
 using IqraCore.Utilities;
@@ -130,16 +127,6 @@ namespace ProjectIqraBackendProxy
             // Add services to the container
             builder.Services.AddControllers();;
 
-            // Configure CORS
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowedOrigins",
-                    p => p
-                        .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
-                        .AllowAnyMethod()
-                        .AllowAnyHeader());
-            });
-
             var app = builder.Build();
 
             // Postflight: Inject dependecies where needed
@@ -147,8 +134,6 @@ namespace ProjectIqraBackendProxy
 
             // Initalize All Singleton Services
             SingletonWarmupHelper.InitializeAllSingletonServices<Program>(app.Services);
-
-            app.UseCors("AllowedOrigins");
 
             app.UseAuthentication();
             app.UseAuthorization();

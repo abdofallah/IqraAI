@@ -2,7 +2,6 @@ using IqraCore.Entities.App.Enum;
 using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Configuration;
 using IqraCore.Interfaces.Modules;
-using IqraCore.Interfaces.Node;
 using IqraCore.Interfaces.Server;
 using IqraInfrastructure.HostedServices.Call;
 using IqraInfrastructure.HostedServices.Conversation;
@@ -31,6 +30,7 @@ using Microsoft.Extensions.Hosting.WindowsServices;
 using MongoDB.Driver;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using WebSocketSharp;
 
 namespace IqraBackgroundProcessor
 {
@@ -63,7 +63,8 @@ namespace IqraBackgroundProcessor
             var backgroundAppConfig = new BackgroundAppConfig()
             {
                 IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
-                DefaultS3StorageRegionId = appConfig["S3Storage:DefaultStorageRegionId"]
+                DefaultS3StorageRegionId = appConfig["S3Storage:DefaultStorageRegionId"],
+                ApiKey = appConfig["Security:ApiKey"],
             };
             builder.Services.AddSingleton<BackgroundAppConfig>(backgroundAppConfig);
 
@@ -102,10 +103,18 @@ namespace IqraBackgroundProcessor
             // HttpClients
             builder.Services.AddHttpClient();
 
+            // Add services to the container
+            builder.Services.AddControllers();
+
             var app = builder.Build();
 
             // Initalize All Singleton Services
             SingletonWarmupHelper.InitializeAllSingletonServices<Program>(app.Services);
+
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            app.MapControllers();
 
             // BOOTSTRAP: Initial Check
             using (var scope = app.Services.CreateScope())
@@ -113,6 +122,21 @@ namespace IqraBackgroundProcessor
                 var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
                 logger.LogInformation("Iqra Background Bootstrapping...");
+
+                // Make sure background node is configured correctly
+                var appRepository = scope.ServiceProvider.GetRequiredService<AppRepository>();
+                var coreNodesConfig = await appRepository.GetCoreNodesConfig();
+                if (
+                    coreNodesConfig == null ||
+                    string.IsNullOrEmpty(coreNodesConfig.BackgroundNodeEndpoint) ||
+                    string.IsNullOrEmpty(coreNodesConfig.BackgroundNodeApiKey)
+                ) {
+                    throw new Exception("Background Node is not configured in the admin dashboard. Please configure the endpoint and apikey in the infrastructure dashboard.");
+                }
+                if (coreNodesConfig.BackgroundNodeApiKey != backgroundAppConfig.ApiKey)
+                {
+                    throw new Exception("Mismatch between ApiKey in config and ApiKey in database.");
+                }
 
                 // Make sure no other background node is running
                 var metricsManager = scope.ServiceProvider.GetRequiredService<ServerMetricsManager>();

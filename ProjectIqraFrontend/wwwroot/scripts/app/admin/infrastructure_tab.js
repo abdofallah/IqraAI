@@ -75,11 +75,23 @@ const dashboardActiveProxyNodes = infraRootTab.find("#dashboardActiveProxyNodes"
 const dashboardTotalProxyNodes = infraRootTab.find("#dashboardTotalProxyNodes");
 const dashboardActiveNodesCount = infraRootTab.find("#dashboardActiveNodesCount");
 const dashboardConfiguredNodesCount = infraRootTab.find("#dashboardConfiguredNodesCount");
+
 // Core Services
+
+// Frontend
 const infraFrontendContainer = infraRootTab.find("#infraFrontendContainer");
-const infraBackgroundContainer = infraRootTab.find("#infraBackgroundContainer");
 const infraFrontendChartCanvas = infraRootTab.find("#infraFrontendChart");
+
+// Background
+const infraBackgroundContainer = infraRootTab.find("#infraBackgroundContainer");
 const infraBackgroundChartCanvas = infraRootTab.find("#infraBackgroundChart");
+// Background Config Elements
+const backgroundNodeEndpoint = infraRootTab.find("#backgroundNodeEndpoint");
+const backgroundNodeApiKey = infraRootTab.find("#backgroundNodeApiKey");
+const backgroundNodeUseSSL = infraRootTab.find("#backgroundNodeUseSSL");
+const btnSaveBackgroundConfig = infraRootTab.find("#btnSaveBackgroundConfig");
+const btnShutdownBackgroundNode = infraRootTab.find("#btnShutdownBackgroundNode");
+
 // Regions List
 const infraRegionsCardListContainer = infraRootTab.find("#infraRegionsCardListContainer");
 const addNewRegionButton = infraRootTab.find("#addNewRegionButton");
@@ -120,6 +132,7 @@ const editRegionMaintenanceMode = infraRegionManagerTab.find("#editRegionMainten
 const editRegionDisabled = infraRegionManagerTab.find("#editRegionDisabled");
 const regionMaintenanceReasonDisplay = infraRegionManagerTab.find("#regionMaintenanceReasonDisplay");
 const regionDisabledReasonDisplay = infraRegionManagerTab.find("#regionDisabledReasonDisplay");
+const btnShutdownRegion = infraRegionManagerTab.find("#btnShutdownRegion");
 
 // SERVER MANAGER - Header
 const infraServerManagerHeader = infraHeaderContainer.find("#infra-server-manager-header");
@@ -145,6 +158,8 @@ const editServerMaintenanceMode = infraServerManagerTab.find("#editServerMainten
 const editServerDisabled = infraServerManagerTab.find("#editServerDisabled");
 const serverMaintenanceReasonDisplay = infraServerManagerTab.find("#serverMaintenanceReasonDisplay");
 const serverDisabledReasonDisplay = infraServerManagerTab.find("#serverDisabledReasonDisplay");
+const btnShutdownServer = infraServerManagerTab.find("#btnShutdownServer");
+const btnDeleteServer = infraServerManagerTab.find("#btnDeleteServer");
 // Metrics
 const serverMetricStatusBadge = infraServerManagerTab.find("#serverMetricStatusBadge");
 const serverMetricCpu = infraServerManagerTab.find("#serverMetricCpu");
@@ -192,6 +207,23 @@ function FetchServerHistory(nodeId, startIso, endIso, onSuccess) {
     );
 }
 
+function UpdateCoreBackgroundConfig(data, onSuccess, onError) {
+    return $.ajax({
+        url: '/app/admin/infrastructure/core/background/config',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: (res) => res.success ? onSuccess(res.data) : onError(res),
+        error: (err) => onError(err)
+    });
+}
+
+function ShutdownCoreBackground(onSuccess, onError) {
+    return $.post('/app/admin/infrastructure/core/background/shutdown',
+        (res) => res.success ? onSuccess(res.data) : onError(res)
+    );
+}
+
 function AddRegion(data, onSuccess, onError) {
     return $.ajax({
         url: '/app/admin/infrastructure/regions',
@@ -225,6 +257,12 @@ function DeleteRegion(regionId, onSuccess, onError) {
     });
 }
 
+function ShutdownRegion(regionId, onSuccess, onError) {
+    return $.post(`/app/admin/infrastructure/regions/${regionId}/shutdown`,
+        (res) => res.success ? onSuccess(res.data) : onError(res)
+    );
+}
+
 function SaveServerConfig(regionId, serverId, data, onSuccess, onError) {
     const url = serverId
         ? `/app/admin/infrastructure/regions/${regionId}/servers/${serverId}`
@@ -238,6 +276,12 @@ function SaveServerConfig(regionId, serverId, data, onSuccess, onError) {
         success: (res) => res.success ? onSuccess(res.data) : onError(res),
         error: (err) => onError(err)
     });
+}
+
+function ShutdownRegionServer(regionId, serverId, onSuccess, onError) {
+    return $.post(`/app/admin/infrastructure/regions/${regionId}/servers/${serverId}/shutdown`,
+        (res) => res.success ? onSuccess(res.data) : onError(res)
+    );
 }
 
 function ToggleRegionStatus(regionId, type, enabled, reasons, onSuccess, onError) {
@@ -258,6 +302,14 @@ function ToggleServerStatus(regionId, serverId, type, enabled, reasons, onSucces
     }, (res) => res.success ? onSuccess(res.data) : onError(res));
 }
 
+function DeleteRegionServer(regionId, serverId, onSuccess, onError) {
+    return $.ajax({
+        url: `/app/admin/infrastructure/regions/${regionId}/servers/${serverId}`,
+        type: 'DELETE',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res),
+        error: (err) => onError(err)
+    });
+}
 
 /** FUNCTIONS **/
 
@@ -358,7 +410,9 @@ function showServerManagerTab() {
 function StartInfraOverviewPolling() {
     if (InfraOverviewPollingInterval) return;
     FetchAndFillOverview();
-    InfraOverviewPollingInterval = setInterval(FetchAndFillOverview, 3000);
+    InfraOverviewPollingInterval = setInterval(() => {
+        FetchAndFillOverview(true);
+    }, 3000);
 }
 function StopInfraOverviewPolling() {
     if (InfraOverviewPollingInterval) { clearInterval(InfraOverviewPollingInterval); InfraOverviewPollingInterval = null; }
@@ -374,13 +428,13 @@ function StopInfraDetailPolling() {
 
 
 // --- Root Tab Logic ---
-function FetchAndFillOverview() {
+function FetchAndFillOverview(isRefresh = false) {
     if (infraTab.hasClass('d-none')) return;
     GetInfraOverview((data) => {
         CurrentInfraOverviewData = data;
         FillInfraDashboard();
-        FillSingletonNodes();
-        FillInfraRegionsList();
+        FillSingletonNodes(isRefresh);
+        FillInfraRegionsList(isRefresh);
     }, (err) => console.log("Poll Error", err));
 }
 
@@ -435,7 +489,7 @@ function FillInfraDashboard() {
     }
 }
 
-function FillSingletonNodes() {
+function FillSingletonNodes(isRefresh = false) {
     const data = CurrentInfraOverviewData;
 
     // Helper to render live card
@@ -462,55 +516,116 @@ function FillSingletonNodes() {
     };
 
     renderCard("Frontend", data.frontendNode, infraFrontendContainer);
-    renderCard("Background", data.backgroundNode, infraBackgroundContainer);
+    FillBackgroundNodeTab(renderCard, data.backgroundNode, isRefresh); 
 
     // Initialize Charts if Node ID exists
     InitializeNodeChart('frontend', 'Frontend');
     InitializeNodeChart('background', 'Background');
 }
 
-function FillInfraRegionsList() {
+function FillInfraRegionsList(isRefresh = false) {
     const container = infraRegionsCardListContainer;
+
+    // Prevent update if user is searching to avoid UI jumping
     if (searchRegionInput.is(":focus")) return;
 
-    container.empty();
-    if (!CurrentInfraOverviewData || CurrentInfraOverviewData.regions.length === 0) {
+    // Data Validation
+    const regions = (CurrentInfraOverviewData && CurrentInfraOverviewData.regions) ? CurrentInfraOverviewData.regions : [];
+    const term = searchRegionInput.val().toLowerCase();
+
+    // Filter regions based on search term
+    const filteredRegions = regions.filter(r => {
+        return !term || r.regionId.toLowerCase().includes(term);
+    });
+
+    // Handle Empty State
+    if (filteredRegions.length === 0) {
         container.html('<div class="col-12 text-center text-muted mt-5">No regions found.</div>');
         return;
+    } else {
+        // Remove the "No regions found" message if it was there
+        container.find('.text-center.text-muted').closest('.col-12').remove();
     }
 
-    CurrentInfraOverviewData.regions.forEach(r => {
-        const term = searchRegionInput.val().toLowerCase();
-        if (term && !r.regionId.toLowerCase().includes(term)) return;
+    // Keep track of IDs present in the current data to handle removals later
+    const currentDataIds = filteredRegions.map(r => r.regionId);
 
-        const countryDisplay = (typeof CountriesList !== 'undefined' && CountriesList[r.countryCode]) ? CountriesList[r.countryCode].Country : r.countryCode;
+    // Iterate and Update or Append
+    filteredRegions.forEach(r => {
+        const countryDisplay = (typeof CountriesList !== 'undefined' && CountriesList[r.countryCode])
+            ? CountriesList[r.countryCode].Country
+            : r.countryCode;
 
-        const html = `
-        <div class="col-md-4">
-            <div class="card bg-dark border-secondary h-100 region-card" data-item-id="${r.regionId}" style="cursor: pointer;">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="card-title mb-0">${countryDisplay}</h5>
-                        <div class="dropdown action-dropdown dropdown-menu-end" onclick="event.stopPropagation()">
-                             <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-ellipsis"></i></button>
-                             <ul class="dropdown-menu">
-                                <li><span class="dropdown-item text-danger" data-item-id="${r.regionId}" button-type="delete-region"><i class="fa-solid fa-trash me-2"></i>Delete</span></li>
-                             </ul>
+        const existingCard = container.find(`.region-card[data-item-id="${r.regionId}"]`);
+
+        if (existingCard.length > 0) {
+            // --- UPDATE EXISTING CARD ---
+            // Only update specific elements to preserve dropdown state
+            existingCard.find('.card-title').text(countryDisplay);
+
+            // Target the stats (Backend, Proxy, Status)
+            const stats = existingCard.find('.h5');
+            $(stats[0]).text(`${r.onlineBackendNodes}/${r.totalBackendNodes}`); // Backend
+            $(stats[1]).text(`${r.onlineProxyNodes}/${r.totalProxyNodes}`);   // Proxy
+
+            // Status Logic
+            const statusLabel = $(stats[2]);
+            statusLabel.removeClass('text-danger text-success')
+                .addClass(r.isMaintenanceMode ? 'text-danger' : 'text-success')
+                .text(r.isMaintenanceMode ? 'Maint.' : 'Live');
+
+        } else {
+            // --- APPEND NEW CARD ---
+            const html = `
+            <div class="col-md-4 mb-4">
+                <div class="card bg-dark border-secondary h-100 region-card" data-item-id="${r.regionId}" style="cursor: pointer;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="card-title mb-0">${countryDisplay}</h5>
+                            <div class="dropdown action-dropdown dropdown-menu-end">
+                                 <button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-ellipsis"></i></button>
+                                 <ul class="dropdown-menu">
+                                    <li>
+                                        <span class="dropdown-item text-danger" data-item-id="${r.regionId}" button-type="delete-region">
+                                            <i class="fa-solid fa-trash me-2"></i>Delete
+                                        </span>
+                                    </li>
+                                 </ul>
+                            </div>
+                        </div>
+                        <div class="small text-muted font-monospace mb-3">${r.regionId}</div>
+                        <div class="d-flex justify-content-between text-center border-top border-secondary pt-2">
+                            <div><div class="h5 mb-0 text-white">${r.onlineBackendNodes}/${r.totalBackendNodes}</div><div class="small text-muted">Backend</div></div>
+                            <div><div class="h5 mb-0 text-white">${r.onlineProxyNodes}/${r.totalProxyNodes}</div><div class="small text-muted">Proxy</div></div>
+                            <div><div class="h5 mb-0 ${r.isMaintenanceMode ? 'text-danger' : 'text-success'}">${r.isMaintenanceMode ? 'Maint.' : 'Live'}</div><div class="small text-muted">Status</div></div>
                         </div>
                     </div>
-                    <div class="small text-muted font-monospace mb-3">${r.regionId}</div>
-                    <div class="d-flex justify-content-between text-center border-top border-secondary pt-2">
-                        <div><div class="h5 mb-0 text-white">${r.onlineBackendNodes}/${r.totalBackendNodes}</div><div class="small text-muted">Backend</div></div>
-                        <div><div class="h5 mb-0 text-white">${r.onlineProxyNodes}/${r.totalProxyNodes}</div><div class="small text-muted">Proxy</div></div>
-                        <div><div class="h5 mb-0 ${r.isMaintenanceMode ? 'text-danger' : 'text-success'}">${r.isMaintenanceMode ? 'Maint.' : 'Live'}</div><div class="small text-muted">Status</div></div>
-                    </div>
                 </div>
-            </div>
-        </div>`;
-        container.append(html);
+            </div>`;
+            container.append(html);
+        }
+    });
+
+    // REMOVE DELETED REGIONS (Cleanup)
+    container.find('.region-card').each(function () {
+        const cardId = $(this).attr('data-item-id');
+        if (!currentDataIds.includes(cardId)) {
+            $(this).closest('.col-md-4').fadeOut(300, function () {
+                $(this).remove();
+            });
+        }
     });
 }
 
+function FillBackgroundNodeTab(renderCard, backgroundNodeData, isRefresh = false) {
+    renderCard("Background", backgroundNodeData, infraBackgroundContainer);
+
+    if (!isRefresh) {
+        backgroundNodeEndpoint.val(backgroundNodeData.endpoint);
+        backgroundNodeUseSSL.prop('checked', backgroundNodeData.useSSL);
+        backgroundNodeApiKey.val(backgroundNodeData.apiKey);
+    }
+}
 
 // --- Region Manager Logic ---
 function FetchAndFillRegionDetail(regionId, isRefresh = false) {
@@ -722,12 +837,19 @@ function submitStatusChange(reasons = { public: "", private: "" }, skipModal = f
         else FetchAndFillRegionDetail(CurrentManageRegionData.regionId);
     };
 
-    const errorCb = (err) => {
+    const errorCb = (errorResult) => {
+        var resultMessage = "Check console logs for more details.";
+        if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
         AlertManager.createAlert({
-            type: 'danger',
-            message: 'Failed to update status',
-            timeout: 5000
+            type: "danger",
+            message: "Error occured while toggling status.",
+            resultMessage: resultMessage,
+            timeout: 6000,
         });
+
+        console.log("Error occured while toggling status: ", errorResult);
+
         PendingStatusToggle = null;
         PendingStatusAction = null;
     };
@@ -1051,10 +1173,91 @@ function populateCountriesList() {
 function initInfrastructureTab() {
     $(document).ready(() => {
         showInfraRootTab();
+        InitInfraCharts();
 
         // --- Event Handlers ---
 
-        InitInfraCharts();
+        // Background Node: Save Config
+        btnSaveBackgroundConfig.on("click", () => {
+            const data = {
+                endpoint: backgroundNodeEndpoint.val(),
+                apiKey: backgroundNodeApiKey.val(),
+                useSSL: backgroundNodeUseSSL.is(":checked")
+            };
+
+            if (!data.endpoint || !data.apiKey) {
+                AlertManager.createAlert({
+                    type: 'warning',
+                    message: 'Endpoint and API Key are required.',
+                    timeout: 4000
+                });
+                return;
+            }
+
+            const btn = btnSaveBackgroundConfig;
+            const originalText = btn.text();
+            btn.prop('disabled', true).text('Saving...');
+
+            UpdateCoreBackgroundConfig(data,
+                () => {
+                    AlertManager.createAlert({
+                        type: 'success',
+                        message: 'Configuration updated.',
+                        timeout: 6000
+                    });
+                    btn.prop('disabled', false).text(originalText);
+                },
+                (errorResult) => {
+                    var resultMessage = "Check console logs for more details.";
+                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: "Error occured while updating configuration.",
+                        resultMessage: resultMessage,
+                        timeout: 6000,
+                    });
+
+                    console.log("Error occured while updating configuration: ", errorResult);
+
+                    btn.prop('disabled', false).text(originalText);
+                }
+            );
+        });
+
+        // Background Node: Shutdown
+        btnShutdownBackgroundNode.on("click", () => {
+            const confirm = new BootstrapConfirmDialog({
+                title: "Shutdown Background Node?",
+                message: "Are you sure? This will stop all background processing tasks immediately.",
+                confirmButtonClass: "btn-danger",
+                confirmText: "Shutdown"
+            });
+            confirm.show().then(ok => {
+                if (ok) {
+                    ShutdownCoreBackground(
+                        () => AlertManager.createAlert({
+                            type: 'success',
+                            message: 'Shutdown signal sent.',
+                            timeout: 6000
+                        }),
+                        (errorResult) => {
+                            var resultMessage = "Check console logs for more details.";
+                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: "Error occured while shutting down background node.",
+                                resultMessage: resultMessage,
+                                timeout: 6000,
+                            });
+
+                            console.log("Error occured while shutting down background node: ", errorResult);
+                        }
+                    );
+                }
+            });
+        });
 
         // ROOT: Add Region Modal
         addNewRegionButton.on("click", () => {
@@ -1106,12 +1309,19 @@ function initInfrastructureTab() {
                     FetchAndFillOverview();
                     btn.prop('disabled', false).text(originalText);
                 },
-                (err) => {
+                (resultMessage) => {
+                    var resultMessage = "Check console logs for more details.";
+                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
                     AlertManager.createAlert({
-                        type: 'danger',
-                        message: 'Failed to create region.',
-                        timeout: 6000
-                    })
+                        type: "danger",
+                        message: "Error occured while adding region.",
+                        resultMessage: resultMessage,
+                        timeout: 6000,
+                    });
+
+                    console.log("Error occured while adding region: ", errorResult);
+
                     btn.prop('disabled', false).text(originalText);
                 }
             );
@@ -1134,29 +1344,41 @@ function initInfrastructureTab() {
         });
 
         // ROOT: Delete Region
-        infraRegionsCardListContainer.on("click", "span[button-type='delete-region']", (e) => {
+        infraRegionsCardListContainer.on("click", ".region-card span[button-type='delete-region']", (e) => {
             const rId = $(e.currentTarget).data("item-id");
             const confirm = new BootstrapConfirmDialog({
                 title: "Delete Region",
-                message: `Delete ${rId}?`,
+                message: `Delete ${rId}?<br><b>NOTE</b>: You must stop all nodes online for this region and set the disabled flag to true before deleting.`,
                 confirmButtonClass: "btn-danger"
             });
             confirm.show().then(ok => {
-                if (ok) {
-                    DeleteRegion(rId, () => {
-                        AlertManager.createAlert({
-                            type: 'success',
-                            message: 'Deleted',
-                            timeout: 6000
-                        });
-                        FetchAndFillOverview();
-                    },
-                    (e) => AlertManager.createAlert({
-                        type: 'danger',
-                        message: 'Failed',
-                        timeout: 6000
-                    }));
-                }
+                if (ok)
+                {
+                    DeleteRegion(
+                        rId,
+                        () => {
+                            AlertManager.createAlert({
+                                type: 'success',
+                                message: 'Region deleted successfully.',
+                                timeout: 6000
+                            });
+                            FetchAndFillOverview();
+                        },
+                        (errorResult) => {
+                            var resultMessage = "Check console logs for more details.";
+                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: "Error occured while deleting region.",
+                                resultMessage: resultMessage,
+                                timeout: 6000,
+                            });
+
+                            console.log("Error occured while deleting region: ", errorResult);
+                        }
+                    );
+                }   
             });
         });
 
@@ -1187,12 +1409,19 @@ function initInfrastructureTab() {
                     });
                     confirmSaveRegionButtonSpinner.addClass("d-none");
                 },
-                (e) => {
+                (errorResult) => {
+                    var resultMessage = "Check console logs for more details.";
+                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
                     AlertManager.createAlert({
-                        type: 'danger',
-                        message: 'Failed',
-                        timeout: 6000
+                        type: "danger",
+                        message: "Error occured while saving region s3 config.",
+                        resultMessage: resultMessage,
+                        timeout: 6000,
                     });
+
+                    console.log("Error occured while saving region s3 config: ", errorResult);
+
                     confirmSaveRegionButtonSpinner.addClass("d-none");
                     confirmSaveRegionButton.prop("disabled", false);
                 }
@@ -1202,6 +1431,40 @@ function initInfrastructureTab() {
         // REGION MANAGER: S3 Input Changes
         regionS3Inputs.on("input change", () => {
             confirmSaveRegionButton.prop("disabled", false);
+        });
+
+        // REGION MANAGER: Shutdown Region
+        btnShutdownRegion.on("click", () => {
+            const confirm = new BootstrapConfirmDialog({
+                title: "Shutdown Region?",
+                message: `Shutdown all servers in <b>${CurrentManageRegionData.regionId}</b>? This will terminate all active calls and stop processing queues.`,
+                confirmButtonClass: "btn-danger",
+                confirmText: "Shutdown All"
+            });
+            confirm.show().then(ok => {
+                if (ok) {
+                    ShutdownRegion(CurrentManageRegionData.regionId,
+                        () => AlertManager.createAlert({
+                            type: 'success',
+                            message: 'Region shutdown initiated.',
+                            timeout: 6000
+                        }),
+                        (errorResult) => {
+                            var resultMessage = "Check console logs for more details.";
+                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: "Error occured while shutting down region nodes.",
+                                resultMessage: resultMessage,
+                                timeout: 6000,
+                            });
+
+                            console.log("Error occured while shutting down region nodes: ", errorResult);
+                        }
+                    );
+                }
+            });
         });
 
         // REGION MANAGER & SERVER MANAGER: Status Toggles
@@ -1261,8 +1524,19 @@ function initInfrastructureTab() {
                     confirmSaveServerButtonSpinner.addClass("d-none");
                     showRegionManagerTab();
                 },
-                (e) => {
-                    AlertManager.createAlert({ type: 'danger', message: 'Failed', timeout: 6000 });
+                (errorResult) => {
+                    var resultMessage = "Check console logs for more details.";
+                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: "Error occured while saving region server.",
+                        resultMessage: resultMessage,
+                        timeout: 6000,
+                    });
+
+                    console.log("Error occured while saving region server: ", errorResult);
+
                     confirmSaveServerButtonSpinner.addClass("d-none");
                     confirmSaveServerButton.prop("disabled", false);
                 }
@@ -1274,24 +1548,71 @@ function initInfrastructureTab() {
             confirmSaveServerButton.prop("disabled", false);
         });
 
-        // SERVER MANAGER: Delete
-        infraServerManagerTab.find("#btnDeleteServer").on("click", () => {
-            if (confirm("Delete Server?")) {
-                DeleteServer(CurrentManageRegionData.regionId, CurrentManageServerData.id,
-                    () => {
-                        AlertManager.createAlert({
-                            type: 'success',
-                            message: 'Deleted',
-                            timeout: 6000
-                        }); showRegionManagerTab();
-                    },
-                    (e) => AlertManager.createAlert({
-                        type: 'danger',
-                        message: 'Failed',
-                        timeout: 6000
-                    })
-                );
-            }
+        // SERVER MANAGER: Shutdown Server
+        btnShutdownServer.on("click", () => {
+            const confirm = new BootstrapConfirmDialog({
+                title: "Shutdown Server?",
+                message: `Shutdown <b>${CurrentManageServerData.endpoint}</b>? Active sessions on this node will be terminated.`,
+                confirmButtonClass: "btn-danger",
+                confirmText: "Shutdown"
+            });
+            confirm.show().then(ok => {
+                if (ok) {
+                    ShutdownRegionServer(CurrentManageRegionData.regionId, CurrentManageServerData.id,
+                        () => AlertManager.createAlert({ type: 'success', message: 'Server shutdown initiated.', timeout: 6000 }),
+                        (errorResult) => {
+                            var resultMessage = "Check console logs for more details.";
+                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: "Error occured while shutting down region server.",
+                                resultMessage: resultMessage,
+                                timeout: 6000,
+                            });
+
+                            console.log("Error occured while shutting down region server: ", errorResult);
+                        }
+                    );
+                }
+            });
+        });
+
+        // SERVER MANAGER: Delete Server
+        btnDeleteServer.on("click", () => {
+            const confirm = new BootstrapConfirmDialog({
+                title: "Delete Server Configuration?",
+                message: `Remove <b>${CurrentManageServerData.endpoint}</b> from configuration?<br>Note: Server must be Disabled and Offline.`,
+                confirmButtonClass: "btn-danger",
+                confirmText: "Delete"
+            });
+            confirm.show().then(ok => {
+                if (ok) {
+                    DeleteRegionServer(CurrentManageRegionData.regionId, CurrentManageServerData.id,
+                        () => {
+                            AlertManager.createAlert({
+                                type: 'success',
+                                message: 'Server deleted.',
+                                timeout: 6000
+                            });
+                            showRegionManagerTab();
+                        },
+                        (errorResult) => {
+                            var resultMessage = "Check console logs for more details.";
+                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: "Error occured while deleting region server.",
+                                resultMessage: resultMessage,
+                                timeout: 6000,
+                            });
+
+                            console.log("Error occured while deleting region server: ", errorResult);
+                        }
+                    );
+                }
+            });
         });
 
         // MODAL CONFIRM

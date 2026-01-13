@@ -8,24 +8,32 @@ using IqraCore.Entities.Server.Metrics;
 using IqraCore.Models.Infrastructure;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server.Metrics;
+using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Server;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Infrastructure
 {
     public class InfrastructureManager
     {
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly AppRepository _appRepo;
         private readonly RegionManager _regionManager;
         private readonly ServerMetricsManager _metricsManager;
         private readonly ServerStatusRepository _historyRepo;
         private readonly ILogger<InfrastructureManager> _logger;
 
         public InfrastructureManager(
+            IHttpClientFactory httpClientFactory,
+            AppRepository appRepo,
             RegionManager regionManager,
             ServerMetricsManager metricsManager,
             ServerStatusRepository historyRepo,
-            ILogger<InfrastructureManager> logger)
-        {
+            ILogger<InfrastructureManager> logger
+        ) {
+            _httpClientFactory = httpClientFactory;
+            _appRepo = appRepo;
             _regionManager = regionManager;
             _metricsManager = metricsManager;
             _historyRepo = historyRepo;
@@ -92,7 +100,7 @@ namespace IqraInfrastructure.Managers.Infrastructure
                 var background = liveNodes.FirstOrDefault(n => n.Type == AppNodeTypeEnum.Background);
                 if (background != null)
                 {
-                    model.BackgroundNode = new SingletonNodeStatus
+                    model.BackgroundNode = new BackgroundNodeStatus
                     {
                         IsOnline = true,
                         CpuUsage = background.CpuUsagePercent,
@@ -103,7 +111,14 @@ namespace IqraInfrastructure.Managers.Infrastructure
                 }
                 else
                 {
-                    model.BackgroundNode = new SingletonNodeStatus { IsOnline = false };
+                    model.BackgroundNode = new BackgroundNodeStatus { IsOnline = false };
+                }
+                var coreNodesConfig = await _appRepo.GetCoreNodesConfig();
+                if (coreNodesConfig != null)
+                {
+                    model.BackgroundNode.Endpoint = coreNodesConfig.BackgroundNodeEndpoint;
+                    model.BackgroundNode.UseSSL = coreNodesConfig.BackgroundNodeUseSSL;
+                    model.BackgroundNode.ApiKey = coreNodesConfig.BackgroundNodeApiKey;
                 }
 
                 // 5. Process Regions Summary
@@ -157,8 +172,10 @@ namespace IqraInfrastructure.Managers.Infrastructure
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error building infrastructure overview");
-                return result.SetFailureResult("GetOverview:EXCEPTION", ex.Message);
+                return result.SetFailureResult(
+                    "GetOverview:EXCEPTION",
+                    $"Error getting overview: {ex.Message}"
+                );
             }
         }
 
@@ -169,7 +186,13 @@ namespace IqraInfrastructure.Managers.Infrastructure
             {
                 // 1. Fetch Config
                 var region = await _regionManager.GetRegionById(regionId);
-                if (region == null) return result.SetFailureResult("NOT_FOUND", "Region not found");
+                if (region == null)
+                {
+                    return result.SetFailureResult(
+                        "GetRegionDetail:NOT_FOUND",
+                        "Region not found"
+                    );
+                }
 
                 // 2. Fetch Live State (Map for O(1) lookup)
                 var liveNodesMap = await _metricsManager.GetAllActiveNodesMapAsync();
@@ -209,7 +232,7 @@ namespace IqraInfrastructure.Managers.Infrastructure
                     };
 
                     // Try Find Metrics
-                    if (liveNodesMap.TryGetValue(serverConfig.Endpoint, out var metrics))
+                    if (liveNodesMap.TryGetValue(serverConfig.Id, out var metrics))
                     {
                         vm.Metrics = metrics;
                     }
@@ -221,7 +244,7 @@ namespace IqraInfrastructure.Managers.Infrastructure
                 var zombies = liveNodesMap.Values.Where(n =>
                     (n is BackendServerStatusData b && b.RegionId == regionId) ||
                     (n is ProxyServerStatusData p && p.RegionId == regionId)
-                ).Where(n => !region.Servers.Any(s => s.Endpoint == n.NodeId));
+                ).Where(n => !region.Servers.Any(s => s.Id == n.NodeId));
 
                 foreach (var z in zombies)
                 {
@@ -258,13 +281,17 @@ namespace IqraInfrastructure.Managers.Infrastructure
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting region details");
-                return result.SetFailureResult("GetRegionDetail:EXCEPTION", ex.Message);
+                return result.SetFailureResult(
+                    "GetRegionDetail:EXCEPTION",
+                    $"Error getting region details: {ex.Message}"
+                );
             }
         }
 
-        public async Task<FunctionReturnResult<List<ServerStatusData>>> GetServerHistoryAsync(string nodeId, DateTime startUtc, DateTime endUtc)
+        public async Task<FunctionReturnResult<List<ServerStatusData>?>> GetServerHistoryAsync(string nodeId, DateTime startUtc, DateTime endUtc)
         {
+            var result = new FunctionReturnResult<List<ServerStatusData>?>();
+
             try
             {
                 // Sanity check: prevent fetching years of data by accident
@@ -275,12 +302,378 @@ namespace IqraInfrastructure.Managers.Infrastructure
 
                 // Use the Raw method we defined previously in the Repository
                 var data = await _historyRepo.GetRawServerHistoryAsync(nodeId, startUtc, endUtc);
+                if (data == null)
+                {
+                    return result.SetFailureResult(
+                        "GetServerHistoryAsync:NOT_FOUND",
+                        "No data found"
+                    );
+                }
 
-                return new FunctionReturnResult<List<ServerStatusData>>().SetSuccessResult(data);
+                return result.SetSuccessResult(data);
             }
             catch (Exception ex)
             {
-                return new FunctionReturnResult<List<ServerStatusData>>().SetFailureResult("EXCEPTION", ex.Message);
+                return result.SetFailureResult(
+                    "GetServerHistoryAsync:EXCEPTION",
+                    $"Error getting server history: {ex.Message}"
+                );
+            }
+        }
+
+        public async Task<FunctionReturnResult> ShutdownCoreBackgroundAsync()
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                var backgroundNodeRunning = await _metricsManager.CheckAnyBackgroundNodeRunning();
+                if (!backgroundNodeRunning)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownCoreBackgroundAsync:NOT_ONLINE",
+                        "Background node is already offline"
+                    );
+                }
+
+                var coreNodesConfig = await _appRepo.GetCoreNodesConfig();
+                if (coreNodesConfig == null)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownCoreBackgroundAsync:NOT_FOUND",
+                        "No core nodes configuration found"
+                    );
+                }
+
+                if (string.IsNullOrEmpty(coreNodesConfig.BackgroundNodeEndpoint) || string.IsNullOrEmpty(coreNodesConfig.BackgroundNodeApiKey))
+                {
+                    return result.SetFailureResult(
+                        "ShutdownCoreBackgroundAsync:NODE_CONFIG_NOT_FOUND",
+                        "Background node endpoint or api key not found in configuration found"
+                    );
+                }
+
+                var shutdownRequest = await ForwardShutdownRequestToNode(coreNodesConfig.BackgroundNodeEndpoint, coreNodesConfig.BackgroundNodeUseSSL, coreNodesConfig.BackgroundNodeApiKey);
+                if (!shutdownRequest.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ShutdownCoreBackgroundAsync:{shutdownRequest.Code}",
+                        shutdownRequest.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex) {
+                return result.SetFailureResult(
+                    "ShutdownCoreBackgroundAsync:EXCEPTION",
+                    $"Error shutting down core background: {ex.Message}"
+                );
+            }
+        }
+
+        public async Task<FunctionReturnResult> ShutdownRegionAsync(string regionId)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                var regionData = await _regionManager.GetRegionById(regionId);
+                if (regionData == null)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownRegionAsync:NOT_FOUND",
+                        "Region not found"
+                    );
+                }
+
+                if (regionData.Servers.Count == 0)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownRegionAsync:NOT_FOUND",
+                        "No servers found in region"
+                    );
+                }
+
+                var liveRegionNodes = await _metricsManager.GetAllActiveNodesAsync();
+                if (liveRegionNodes.Count == 0)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownRegionAsync:NOT_FOUND",
+                        "No live nodes found in region"
+                    );
+                }
+
+                var nodeIds = new List<string>();
+                var shutdownRequestTasks = new List<Task<FunctionReturnResult>>();
+                foreach (var server in regionData.Servers)
+                {
+                    var isNodeLive = false;
+
+                    foreach (var livenode in liveRegionNodes)
+                    {
+                        if (isNodeLive) break;
+
+                        if (server.Type == ServerTypeEnum.Backend)
+                        {
+                            if (livenode is BackendServerStatusData bsd)
+                            {
+                                if (bsd.RegionId == regionId)
+                                {
+                                    if (bsd.RuntimeStatus != NodeRuntimeStatus.Draining)
+                                    {
+                                        isNodeLive = true;
+                                    }
+                                }
+                            }
+                        }
+                        else if (server.Type == ServerTypeEnum.Proxy)
+                        {
+                            if (livenode is ProxyServerStatusData psd)
+                            {
+                                if (psd.RegionId == regionId)
+                                {
+                                    if (psd.RuntimeStatus != NodeRuntimeStatus.Draining)
+                                    {
+                                        isNodeLive = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (isNodeLive)
+                    {
+                        nodeIds.Add(server.Id);
+                        shutdownRequestTasks.Add(ForwardShutdownRequestToNode(server.Endpoint, server.UseSSL, server.APIKey, true));
+                    }
+                }
+
+                if (shutdownRequestTasks.Count == 0)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownRegionAsync:NOT_FOUND",
+                        "No live nodes found in region"
+                    );
+                }
+
+                await Task.WhenAll(shutdownRequestTasks);
+
+                var shutdownRequestResult = shutdownRequestTasks.Select(t => t.Result).ToList();
+
+                var failedShutdownRequests = new List<string>();
+                for (var i = 0; i < shutdownRequestResult.Count; i++)
+                {
+                    if (!shutdownRequestResult[i].Success)
+                    {
+                        failedShutdownRequests.Add(nodeIds[i]);
+                    }
+                }
+
+                if (failedShutdownRequests.Count > 0)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownRegionAsync:EXCEPTION",
+                        $"Error shutting down region servers: [{string.Join(", ", failedShutdownRequests)}], Other servers if any were requested to shut down successfully."
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "ShutdownRegionAsync:EXCEPTION",
+                    $"Error shutting down region: {ex.Message}"
+                );
+            }
+        }
+
+        public async Task<FunctionReturnResult> ShutdownRegionServerAsync(string regionId, string serverId)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                var regionData = await _regionManager.GetRegionById(regionId);
+                if (regionData == null)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownRegionServerAsync:NOT_FOUND",
+                        "Region not found"
+                    );
+                }
+
+                var serverData = regionData.Servers.FirstOrDefault(s => s.Id == serverId);
+                if (serverData == null)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownRegionServerAsync:NOT_FOUND",
+                        "Server not found in region"
+                    );
+                }
+
+                var liveMetricData = await _metricsManager.GetServerStatusData(regionId, serverId);
+                if (liveMetricData == null)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownRegionServerAsync:SERVER_OFFLINE",
+                        "Server is offline"
+                    );
+                }
+
+                if (liveMetricData.RuntimeStatus == NodeRuntimeStatus.Draining)
+                {
+                    return result.SetFailureResult(
+                        "ShutdownRegionServerAsync:SERVER_OFFLINE",
+                        "Server is already shutting down"
+                    );
+                }
+
+                var shutdownRequest = await ForwardShutdownRequestToNode(serverData.Endpoint, serverData.UseSSL, serverData.APIKey);
+                if (!shutdownRequest.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ShutdownRegionServerAsync:{shutdownRequest.Code}",
+                        shutdownRequest.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "ShutdownRegionServerAsync:EXCEPTION",
+                    $"Error shutting down region server: {ex.Message}"
+                );
+            }
+        }
+
+        public async Task<FunctionReturnResult> UpdateCoreBackgroundConfigAsync(UpdateCoreBackgroundConfigRequestModel data)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                if (string.IsNullOrEmpty(data.Endpoint))
+                {
+                    return result.SetFailureResult(
+                        "UpdateCoreBackgroundConfigAsync:NOT_FOUND",
+                        "Endpoint not found or empty"
+                    );
+                }
+
+                if (string.IsNullOrEmpty(data.ApiKey))
+                {
+                    return result.SetFailureResult(
+                        "UpdateCoreBackgroundConfigAsync:NOT_FOUND",
+                        "API Key not found or empty"
+                    );
+                }
+                else if (data.ApiKey.Length < 32)
+                {
+                    return result.SetFailureResult(
+                        "UpdateCoreBackgroundConfigAsync:API_KEY_TOO_SHORT",
+                        "API Key can not be smaller than 32 chars"
+                    );
+                }
+
+                var updateResult = await _appRepo.AddUpdateCoreNodeBackgroundNodeConfig(data.Endpoint, data.UseSSL, data.ApiKey);
+                if (!updateResult)
+                {
+                    return result.SetFailureResult(
+                        "UpdateCoreBackgroundConfigAsync:EXCEPTION",
+                        "Error updating core background config"
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "UpdateCoreBackgroundConfigAsync:EXCEPTION",
+                    $"Error updating core background config: {ex.Message}"
+                );
+            }
+        }
+
+        private async Task<FunctionReturnResult> ForwardShutdownRequestToNode(string endpoint, bool useSSL, string apiKey, bool ignoreAlreadyShuttingDown = false)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                // Create the HttpClient
+                using var client = _httpClientFactory.CreateClient();
+
+                // Set headers
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+                // Prepare the request body
+                var request = new
+                {
+                    IgnoreAlreadyShuttingDown = ignoreAlreadyShuttingDown
+                };
+                var content = new StringContent(JsonSerializer.Serialize(request), System.Text.Encoding.UTF8, "application/json");
+
+                // Send the notification
+                string serverEndpoint = endpoint;
+                if (useSSL)
+                {
+                    serverEndpoint = "https://" + serverEndpoint;
+                }
+                else
+                {
+                    serverEndpoint = "http://" + serverEndpoint;
+                }
+
+                var baseUri = new Uri(serverEndpoint);
+                baseUri = new Uri(baseUri, $"{(baseUri.AbsolutePath != "/" ? baseUri.AbsolutePath : "")}/api/node/management/shutdown");
+                var response = await client.PostAsync(baseUri, content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    return result.SetFailureResult(
+                        $"ForwardShutdownRequestToNode:STATUS_CODE_{response.StatusCode}",
+                        errorContent
+                    );
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                FunctionReturnResult? responseData = null;
+                try
+                {
+                    responseData = JsonSerializer.Deserialize<FunctionReturnResult>(responseContent);
+                }
+                catch { /** do nothing **/ }
+                if (responseData == null) // should never hapopen tho
+                {
+                    return result.SetFailureResult(
+                        "ForwardShutdownRequestToNode:INVALID_RESPONSE",
+                        responseContent
+                    );
+                }
+
+                if (!responseData.Success)
+                {
+                    return result.SetFailureResult(
+                        $"ForwardShutdownRequestToNode:{responseData.Code}",
+                        responseData.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "ForwardShutdownRequestToNode:EXCEPTION",
+                    $"Error forwarding shutdown request to node: {ex.Message}"
+                );
             }
         }
     }

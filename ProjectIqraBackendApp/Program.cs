@@ -1,9 +1,7 @@
 using IqraCore.Entities.App.Enum;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
-using IqraCore.Entities.Server.Configuration;
 using IqraCore.Interfaces.Modules;
-using IqraCore.Interfaces.Node;
 using IqraCore.Interfaces.Server;
 using IqraCore.Interfaces.User;
 using IqraCore.Utilities;
@@ -61,11 +59,9 @@ using IqraInfrastructure.Utilities.App;
 using IqraInfrastructure.Utilities.Templating;
 using IqraInfrastructure.Utilities.Validation;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting.Systemd;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using MongoDB.Driver;
-using System;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -155,15 +151,6 @@ namespace ProjectIqraBackendApp
 
             // Add services to the container
             builder.Services.AddControllers();
-
-            // Configure CORS
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowedOrigins", p => p
-                    .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
-                    .AllowAnyMethod()
-                    .AllowAnyHeader());
-            });
 
             var app = builder.Build();
             var appLogger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -272,8 +259,6 @@ namespace ProjectIqraBackendApp
                     await next(context);
                 }
             });
-
-            app.UseCors("AllowedOrigins");
 
             app.UseAuthentication();
             app.UseAuthorization();

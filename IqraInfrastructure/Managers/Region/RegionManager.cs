@@ -93,7 +93,11 @@ namespace IqraInfrastructure.Managers.Region
                     PrivateDisabledReason = "Newly created region",
                     MaintenanceEnabledAt = DateTime.UtcNow,
                     PublicMaintenanceEnabledReason = "Region initialization",
-                    PrivateMaintenanceEnabledReason = "Newly created region"
+                    PrivateMaintenanceEnabledReason = "Newly created region",
+                    S3Server = new RegionS3StorageServerData()
+                    {
+                        DisabledAt = DateTime.UtcNow
+                    }
                 };
 
                 var success = await _regionRepository.AddRegion(newRegion);

@@ -26,16 +26,21 @@ namespace IqraInfrastructure.Repositories.Server
             try
             {
                 var db = _redisFactory.GetDatabase();
-                var json = JsonSerializer.Serialize(status);
-
+                var json = "";
                 var regionId = "singleton";
                 if (status is BackendServerStatusData backendStatus)
                 {
+                    json = JsonSerializer.Serialize<BackendServerStatusData>(backendStatus);
                     regionId = backendStatus.RegionId;
                 }
                 else if (status is ProxyServerStatusData proxyStatus)
                 {
+                    json = JsonSerializer.Serialize<ProxyServerStatusData>(proxyStatus);
                     regionId = proxyStatus.RegionId;
+                }
+                else
+                {
+                    json = JsonSerializer.Serialize(status);
                 }
 
                 var key = $"server:status:{regionId}:{status.NodeId}";
