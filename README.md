@@ -14,6 +14,13 @@
 </p>
 
 <p align="center">
+  <a href="./README.md"><b>English</b></a> &nbsp; • &nbsp;
+  <a href="./README.ar.md"><b>العربية</b></a> &nbsp; • &nbsp;
+  <a href="./README.cn.md"><b>中文</b></a> &nbsp; • &nbsp;
+  <a href="./README.ru.md"><b>Русский</b></a>
+</p>
+
+<p align="center">
   <a href="https://app.iqra.bot"><b>Iqra Cloud</b></a> &nbsp; • &nbsp;
   <a href="https://docs.iqra.bot"><b>Documentation</b></a> &nbsp; • &nbsp;
   <a href="https://docs.iqra.bot/developers/self-hosting"><b>Self Hosting</b></a> &nbsp; • &nbsp;
@@ -36,9 +43,15 @@
   <img src="https://img.shields.io/github/commit-activity/m/abdofallah/IqraAI?color=black" alt="Activity">
 </p>
 
-# Iqra AI
+> [!WARNING]  
+> **Pre-Release Notice (v0.1 Pending)**  
+> This codebase is currently active but requires manual service configuration. The automated seeding scripts for the database are pending the official v0.1 release. Developers are welcome to explore the architecture, but production deployment requires manual DB setup for now.
 
-[Iqra AI](https://iqra.bot) is a low-code orchestration platform for building high-fidelity Voice AI Agents, created by [Badal Technologies](https://www.badal.om). Designed for agencies and enterprises that require precision, it bridges the gap between Large Language Models and real-time channels (telephony, web). We prioritize architecture over magic—giving you deep control over latency via multi-region routing, native multi-language support for cultural accuracy, and a deterministic yet dynamic AI-first graph-based script builder.
+# The Dynamic AI-First Engine
+
+**Iqra AI** is an orchestration infrastructure designed to bridge the gap between the chaos of LLMs and the reliability of business code. It allows you to build superhuman Voice & Conversational Agents that think dynamically but act systematically.
+
+Unlike standard "wrappers," Iqra AI provides a **Deterministic Logic Layer** alongside the probabilistic nature of AI. We prioritize architecture over magic—giving you deep control over latency via multi-region routing, native multi-language support for cultural accuracy, and strict compliance tools for enterprise deployment.
 
 ## Deployment Options
 
@@ -53,21 +66,52 @@ Run the core engine on your own infrastructure. This version includes the full A
 
 ### 3. Enterprise
 For large-scale organizations requiring dedicated infrastructure, custom SLAs, on-premise installation support, or specific compliance requirements (e.g., data residency within specific GCC nations).
-[Contact Sales](mailto:change@badal.om)
+[Contact Sales](https://www.iqra.bot/contact)
 
-## Key Features
+---
 
-*   **Visual Script Builder:** A graph-based editor to design deterministic conversation flows, combining LLM intelligence with strict business logic.
-*   **Omnichannel Support:** Deploy agents via standard Telephony (Twilio, Telnyx, Vonage, SIP Trunking) or directly to browsers and mobile apps via high-fidelity WebRTC/WebSockets.
-*   **Deep Integrations:** Native support for industry-leading providers (OpenAI, Azure, Google, ElevenLabs, Deepgram) with a modular architecture that allows plugging in custom LLM, TTS, STT, and Embedding models.
-*   [**FlowApps System:**](https://docs.iqra.bot/developers/flowapp) A plugin architecture to integrate third-party tools (Cal.com, HubSpot) with native UI configuration and schema validation.
-*   **Advanced Interruption:** A dedicated engine for handling barge-ins, allowing the agent to pause, listen, and determine if the user is interrupting or just backchanneling.
-*   **Multi-Region Routing:** Assign specific phone numbers/sessions to specific processing servers (e.g., US East vs. EU Central) to optimize audio latency.
-*   **Whitelabeling (Cloud Only):** A comprehensive system for agencies to resell the platform under their own brand, domain, and pricing structure.
+## The Engine
+
+Iqra AI is built on a "Bring Your Own Everything" architecture designed for technical scalability.
+
+<img src="./.github/images/features/visual-ide.png" alt="Visual IDE" width="100%" style="border-radius: 8px; margin-top: 10px; margin-bottom: 20px;">
+
+### 1. [Visual IDE](https://docs.iqra.bot/build/script)
+A **No-Code** graph-based editor that doesn't sacrifice depth. While accessible to non-engineers, it exposes granular control over system prompts, variable states, and tool definitions. It allows you to orchestrate logic, configure intelligence, and debug conversations in a unified studio without context switching.
+
+
+### 2. [Deterministic Logic](https://docs.iqra.bot/build/script/action-flows)
+Embed strict, step-by-step **Workflows** directly into the conversation. Similar to a visual automation engine running inside your agent, this layer handles conditional routing (If/Else), loops, and math operations deterministically. The AI handles the conversation; the System handles the execution logic.
+
+### 3. [Native Multilingual (Parallel Contexts)](https://docs.iqra.bot/build/multi-language)
+Translation layers create double latency and lose cultural nuance. Iqra AI runs parallel logic stacks. An agent can switch from an English "Professional" persona (using Deepgram) to an Arabic "Hospitable" persona (using Azure Speech) instantly, mid-sentence, loading a completely different neural configuration.
+
+### 4. Global Edge Network (Multi-Region)
+Designed for horizontal scaling. You can deploy distinct instances of the **Iqra Proxy** and **Backend** in geographically disparate clusters (e.g., Kubernetes nodes in US-East vs. EU-Central). The system routes sessions to the nearest compute node to minimize RTP latency and combat physics.
+
+### 5. [Deep Integrations](https://docs.iqra.bot/build/tools)
+A modular **Bring Your Own Model (BYOM)** architecture. We provide native, optimized adapters for industry leaders (OpenAI, Azure, Gemini, Anthropic, Groq, ElevenLabs, Deepgram), but the abstract interface allows you to plug in custom fine-tuned models or local inference endpoints easily.
+
+### 6. [Secure Sessions (PCI-DSS)](https://docs.iqra.bot/build/script/secure-sessions)
+Maintains control of the private context. Our **Secure Sessions** feature creates a "Clean Room" for sensitive data collection. The audio/DTMF is processed by the deterministic engine via strict **Get/Set variable rules**. The AI never sees the raw digits, only the validation result, ensuring compliance with data privacy standards.
+
+### 7. Omnichannel Deployment
+One brain, many bodies. Deploy agents via standard SIP Trunking (Twilio, Telnyx, Vonage) or bypass the PSTN entirely using our high-performance **WebRTC/WebSocket** gateway for browser and mobile app integration with sub-second latency.
+
+### 8. [FlowApps System](https://docs.iqra.bot/developers/flowapp)
+An open **Plugin System** that abstracts external APIs. Developers can write C#/.NET connectors once, define a schema, and let end-users configure credentials and parameters visually (e.g. Cal.com, HubSpot), eliminating the need for repetitive custom HTTP tool scripting.
+
+### 9. [Smart Turn Taking](https://docs.iqra.bot/build/agent/interruption)
+Give the user full control over the interruption pipeline. The engine allows you to select between standard **VAD** (Voice Activity Detection), **ML-based** projection models, or **LLM-based** decision making to accurately distinguish between a pause, a backchannel ('uh-huh'), and a true barge-in.
+
+### 10. Whitelabeling (Cloud Only)
+A comprehensive system for Agencies to resell the platform. Rebrand the entire dashboard with your logo, custom domain, and define your own pricing structure for your clients.
+
+---
 
 ## Contributing
 
-We welcome contributions to the core engine and the FlowApp ecosystem.
+We welcome contributions to the core engine, the Integrations & the FlowApp ecosystem.
 Please read our [Contribution Guidelines](./CONTRIBUTING.md) before submitting a Pull Request.
 
 ## Security
