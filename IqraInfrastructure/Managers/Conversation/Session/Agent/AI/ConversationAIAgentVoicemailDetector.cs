@@ -150,9 +150,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             _llmService = llmServiceResult.Data;
-            _llmService.SetSystemPrompt(
-                "You are Chatbot trying to determine if this is a voicemail system or a human.\r\n\r\nYou will be provided with the time elapsed since the start of the call and the message spoken so far.\r\n\r\nIf you hear any of these phrases (or very similar ones):\r\n- \"Please leave a message after the beep\"\r\n- \"No one is available to take your call\"\r\n- \"Record your message after the tone\"\r\n- \"You have reached voicemail for...\"\r\n- \"You have reached [phone number]\"\r\n- \"[phone number] is unavailable\"\r\n- \"The person you are trying to reach...\"\r\n- \"The number you have dialed...\"\r\n- \"Your call has been forwarded to an automated voice messaging system\"\r\nand determine that it is a voicemail, then reply with: \"voice_mail_detected\".\r\n\r\nIf it sounds like a human (saying hello, asking questions, etc.) given atleast a few seconds have elapsed, then reply with: \"human_conversation_detected\".\r\n\r\nIf you are unable to determine if this is a voicemail or human, then reply with: \"unknown\"."
-            );
+            _llmService.SetSystemPrompt(_agentState.CurrentLanguageData!.Prompts.VoicemailVerificationPrompt);
         }
 
         public async Task StartAsync()

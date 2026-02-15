@@ -1,5 +1,4 @@
-﻿using IqraCore.Attributes;
-using IqraCore.Entities.ProviderBase;
+﻿using IqraCore.Entities.ProviderBase;
 
 namespace IqraCore.Entities.LLM
 {
@@ -15,11 +14,5 @@ namespace IqraCore.Entities.LLM
 
         public int MaxInputTokenLength { get; set; } = 0;
         public int MaxOutputTokenLength { get; set; } = 0;
-
-        [ExcludeInAllEndpoints]
-        [IncludeInEndpoint("/app/admin/llmproviders")]
-        [IncludeInEndpoint("/app/admin/llmproviders/model/save")]
-        [MultiLanguageProperty]
-        public Dictionary<string, string> PromptTemplates { get; set; } = new Dictionary<string, string>();
     }
 }

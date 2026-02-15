@@ -16,6 +16,7 @@ namespace IqraInfrastructure.HostedServices.Metrics
         private readonly ServerMetricsMonitor _serverMetricsMonitor;
         private readonly AppNodeTypeEnum _appNodeType;
         private readonly NodeLifecycleManager _nodeLifecycleManager;
+        private readonly bool _doNotLogInstanceStatus;
 
         // Backend
         private readonly BackendCallProcessorManager? _backendCallProcessorManager;
@@ -31,12 +32,14 @@ namespace IqraInfrastructure.HostedServices.Metrics
             ILogger<ServerMetricsMonitorService> logger,
             AppNodeTypeEnum appNodeType,
             ServerMetricsMonitor serverMetricsMonitor,
-            NodeLifecycleManager nodeLifecycleManager
+            NodeLifecycleManager nodeLifecycleManager,
+            bool doNotLogInstanceStatus = false
         ) {
             _logger = logger;
             _appNodeType = appNodeType;
             _serverMetricsMonitor = serverMetricsMonitor;
             _nodeLifecycleManager = nodeLifecycleManager;
+            _doNotLogInstanceStatus = doNotLogInstanceStatus;
 
             if (_appNodeType == AppNodeTypeEnum.Backend)
             {
@@ -100,7 +103,10 @@ namespace IqraInfrastructure.HostedServices.Metrics
                     );
 
                     // Update and publish server status
-                    await _serverMetricsMonitor.UpdateAndPublishStatusAsync();
+                    if (!_doNotLogInstanceStatus)
+                    {
+                        await _serverMetricsMonitor.UpdateAndPublishStatusAsync();
+                    }
                 }
                 catch (Exception ex)
                 {

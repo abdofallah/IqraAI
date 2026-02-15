@@ -21,9 +21,18 @@ namespace IqraInfrastructure.Repositories.Embedding
             _embeddingProviderCollection = database.GetCollection<EmbeddingProviderData>(CollectionName);
         }
 
-        public async Task AddProviderAsync(EmbeddingProviderData providerData)
+        public async Task<bool> AddProviderAsync(EmbeddingProviderData providerData)
         {
-            await _embeddingProviderCollection.InsertOneAsync(providerData);
+            try
+            {
+                await _embeddingProviderCollection.InsertOneAsync(providerData);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding provider {ProviderId}", providerData.Id);
+                return false;
+            }
         }
 
         public async Task<EmbeddingProviderData?> GetProviderAsync(InterfaceEmbeddingProviderEnum id)
@@ -36,26 +45,6 @@ namespace IqraInfrastructure.Repositories.Embedding
             var filter = Builders<EmbeddingProviderData>.Filter.Eq(x => x.Id, providerData.Id);
             return await _embeddingProviderCollection.ReplaceOneAsync(filter, providerData);
         }
-
-        public async Task<UpdateResult> DisableProviderAsync(InterfaceEmbeddingProviderEnum id)
-        {
-            var filter = Builders<EmbeddingProviderData>.Filter.Eq(x => x.Id, id);
-            var update = Builders<EmbeddingProviderData>.Update.Set(x => x.DisabledAt, DateTime.UtcNow);
-            return await _embeddingProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<UpdateResult> EnableProviderAsync(InterfaceEmbeddingProviderEnum id)
-        {
-            var filter = Builders<EmbeddingProviderData>.Filter.Eq(x => x.Id, id);
-            var update = Builders<EmbeddingProviderData>.Update.Set(x => x.DisabledAt, null);
-            return await _embeddingProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<List<EmbeddingProviderData>> GetAllProvidersAsync()
-        {
-            return await _embeddingProviderCollection.Find(_ => true).ToListAsync();
-        }
-
         public async Task<List<EmbeddingProviderData>?> GetProviderListAsync(int page, int pageSize)
         {
             return await _embeddingProviderCollection
@@ -80,16 +69,6 @@ namespace IqraInfrastructure.Repositories.Embedding
                 Builders<EmbeddingProviderData>.Filter.ElemMatch(x => x.Models, m => m.Id == modelData.Id)
             );
             var update = Builders<EmbeddingProviderData>.Update.Set(x => x.Models.FirstMatchingElement(), modelData);
-            return await _embeddingProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<UpdateResult> DisableModelAsync(InterfaceEmbeddingProviderEnum providerId, string modelId)
-        {
-            var filter = Builders<EmbeddingProviderData>.Filter.And(
-                Builders<EmbeddingProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<EmbeddingProviderData>.Filter.ElemMatch(x => x.Models, m => m.Id == modelId)
-            );
-            var update = Builders<EmbeddingProviderData>.Update.Set(x => x.Models.FirstMatchingElement().DisabledAt, DateTime.UtcNow);
             return await _embeddingProviderCollection.UpdateOneAsync(filter, update);
         }
 

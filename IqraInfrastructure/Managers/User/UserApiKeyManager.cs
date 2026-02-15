@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
+using IqraCore.Interfaces.User;
 using IqraCore.Models.User;
 using IqraCore.Models.User.MasterUserDataModel;
 using IqraInfrastructure.Helpers.User;
@@ -13,7 +14,7 @@ using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.User
 {
-    public class UserApiKeyManager
+    public class UserApiKeyManager : IUserApiKeyManager
     {
         private readonly ILogger<UserApiKeyManager> _logger;
         private readonly UserRepository _userRepository;
@@ -26,7 +27,12 @@ namespace IqraInfrastructure.Managers.User
             _apiKeyProcessor = apiKeyProcessor;
         }
 
-        public async Task<FunctionReturnResult<UserApiKeyCreateModel?>> CreateUserApiKeyAsync(UserData user, string friendlyName, List<long> restrictedBusinessIds)
+        public virtual async Task<UserData?> GetFullUserByEmailHash(string email)
+        {
+            return await _userRepository.GetUserByEmailHashAsync(email);
+        }
+
+        public async Task<FunctionReturnResult<UserApiKeyCreateModel?>> CreateUserApiKeyAsync(UserData user, string friendlyName, bool allowUserManagementApiRequests, List<long> restrictedBusinessIds)
         {
             var result = new FunctionReturnResult<UserApiKeyCreateModel?>();
 
@@ -51,7 +57,8 @@ namespace IqraInfrastructure.Managers.User
                     DisplayName = displayName,
                     CreatedUtc = DateTime.UtcNow,
                     LastUsedUtc = null,
-                    RestrictedToBusinessIds = restrictedBusinessIds ?? new List<long>()
+                    RestrictedToBusinessIds = restrictedBusinessIds ?? new List<long>(),
+                    AllowUserManagementApiRequests = allowUserManagementApiRequests
                 };
 
                 // Add key to the user's document in the database
@@ -126,7 +133,7 @@ namespace IqraInfrastructure.Managers.User
             var encryptedPayload = keyParts[2];
 
             // Route: Find the user by their email hash
-            var user = await _userRepository.GetUserByEmailHashAsync(emailHash);
+            var user = await GetFullUserByEmailHash(emailHash);
             if (user == null)
             {
                 return result.SetFailureResult("VALIDATE_API_KEY:USER_NOT_FOUND", "User not found.");

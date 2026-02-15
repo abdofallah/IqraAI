@@ -6,55 +6,26 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-	<ItemGroup>
-	  <None Update="Models\BlandAIVM\cnnModel.pt">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Models\BlandAIVM\config.json">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Models\BlandAIVM\preprocessor_config.json">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Models\BlandAIVM\training_args.bin">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Models\BlandAIVM\voicemail_detector.onnx">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Models\Silero\silero_vad.jit">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Models\Silero\silero_vad.onnx">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Models\Silero\silero_vad_16k_op15.onnx">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Models\Silero\silero_vad_half.onnx">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Models\SmartTurn\smart-turn-v3.0.onnx">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="VestaCP\ProxyTemplates\iqrabusiness-https.stpl">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	  <None Update="VestaCP\ProxyTemplates\iqrabusiness-https.tpl">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	  <None Update="VestaCP\ProxyTemplates\iqrabusiness-maintenance.stpl">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	  <None Update="VestaCP\ProxyTemplates\iqrabusiness-maintenance.tpl">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
+	<ItemGroup Condition="'$(IncludeIqraModels)' != 'false'">
+		<Folder Include="Models\BlandAIVM\" />
+		<Folder Include="Models\Silero\" />
+		<Folder Include="Models\SmartTurn\" />
+		<None Update="Models\**\*.*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Models\BlandAIVM\" />
-	  <Folder Include="Models\Silero\" />
-	  <Folder Include="Models\SmartTurn\" />
-	  <Folder Include="Seeding\Languages\" />
+	<ItemGroup Condition="'$(IncludeVestaCP)' != 'false'">
+		<Folder Include="VestaCP\ProxyTemplates\" />
+		<None Update="VestaCP\**\*.*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(IncludeSeeding)' != 'false'">
+		<Folder Include="Seeding\Languages\" />
+		<None Update="Seeding\**\*.*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 </Project>

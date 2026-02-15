@@ -16,7 +16,10 @@
         public string RagQueryRefinementPrompt { get; set; } = "";
 
         public string PostAnalaysisSummaryGenerationPrompt { get; set; } = "";
+        public string PostAnalaysisSummaryGenerationPromptQuery { get; set; } = "";
         public string PostAnalaysisTagsClassificationPrompt { get; set; } = "";
+        public string PostAnalaysisTagsClassificationPromptQuery { get; set; } = "";
         public string PostAnalaysisDataExtractionPrompt { get; set; } = "";
+        public string PostAnalaysisDataExtractionPromptQuery { get; set; } = "";
     }
 }

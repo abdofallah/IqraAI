@@ -1185,7 +1185,7 @@ function fillAgentInterruptionsTab() {
 	else if (interruptions.turnEnd.type.value == AGENT_INTERRUPTION_TURN_END_TYPE.AI) {
 		editAgentTurnEndViaAIUseAgentLLM.prop("checked", interruptions.turnEnd.useAgentLLM).change();
 		if (!interruptions.turnEnd.useAgentLLM && interruptions.turnEnd.llmIntegration) {
-			agentTurnEndLLMIntegrationManager.load(interruptions.turnEnd.llmIntegration);
+			agentTurnEndLLMIntegrationManager.load(interruptions.turnEnd.llmIntegration, BusinessFullData.businessApp.integrations);
 		} else {
 			agentTurnEndLLMIntegrationManager.reset();
 		}
@@ -1214,7 +1214,7 @@ function fillAgentInterruptionsTab() {
 			agentInterruptionVerifyAIUseAgentLLM.prop("checked", interruptions.verification.useAgentLLM).change();
 			
 			if (interruptions.verification.enabled && !interruptions.verification.useAgentLLM && interruptions.verification.llmIntegration) {
-				agentInterruptionVerifyLLMIntegrationManager.load(interruptions.verification.llmIntegration);
+				agentInterruptionVerifyLLMIntegrationManager.load(interruptions.verification.llmIntegration, BusinessFullData.businessApp.integrations);
 			} else {
 				agentInterruptionVerifyLLMIntegrationManager.reset();
 			}
@@ -1408,9 +1408,9 @@ function validateAgentInterruptionsTab(onlyRemove = true) {
 
 // Integration Tab Functions
 function fillIntegrationsFromAgentData() {
-	agentSTTIntegrationManager.load(CurrentManageAgentData.integrations.stt);
-	agentLLMIntegrationManager.load(CurrentManageAgentData.integrations.llm);
-	agentTTSIntegrationManager.load(CurrentManageAgentData.integrations.tts);
+	agentSTTIntegrationManager.load(CurrentManageAgentData.integrations.stt, BusinessFullData.businessApp.integrations);
+	agentLLMIntegrationManager.load(CurrentManageAgentData.integrations.llm, BusinessFullData.businessApp.integrations);
+	agentTTSIntegrationManager.load(CurrentManageAgentData.integrations.tts, BusinessFullData.businessApp.integrations);
 }
 
 function validateAgentIntegrationsTab() {
@@ -1513,7 +1513,7 @@ function fillAgentKnowledgeBaseTab() {
 	else if (kbData.searchStrategy.type.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
 		agentKbClassifierUseAgentLLM.prop('checked', kbData.classifier.useAgentLLM).trigger('change');
 		if (!kbData.classifier.useAgentLLM && kbData.classifier.llmIntegration) {
-			agentKbClassifierLLMIntegrationManager.load(kbData.classifier.llmIntegration);
+			agentKbClassifierLLMIntegrationManager.load(kbData.classifier.llmIntegration, BusinessFullData.businessApp.integrations);
 		}
     }
 
@@ -1522,7 +1522,7 @@ function fillAgentKnowledgeBaseTab() {
 		agentKbRefinementQueryCount.val(kbData.refinement.queryCount);
 		agentKbRefinementUseAgentLLM.prop('checked', kbData.refinement.useAgentLLM).trigger('change');
 		if (!kbData.refinement.useAgentLLM && kbData.refinement.llmIntegration) {
-			agentKbRefinementLLMIntegrationManager.load(kbData.refinement.llmIntegration);
+			agentKbRefinementLLMIntegrationManager.load(kbData.refinement.llmIntegration, BusinessFullData.businessApp.integrations);
 		}
 	}	
 }

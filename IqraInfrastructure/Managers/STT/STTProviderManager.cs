@@ -2,9 +2,10 @@
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
-using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.STT;
+using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.AI;
+using IqraInfrastructure.Helpers.Provider;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.STT.Providers;
 using IqraInfrastructure.Repositories.STT;
@@ -12,27 +13,27 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.STT
 {
     public class STTProviderManager
     {
         private readonly ILogger<STTProviderManager> _logger;
-
         private readonly STTProviderRepository _sttProviderRepository;
         private readonly IntegrationsManager _integrationsManager;
 
-        private Dictionary<InterfaceSTTProviderEnum, Type> _sttProviderClasses = new Dictionary<InterfaceSTTProviderEnum, Type>();
+        private readonly Dictionary<InterfaceSTTProviderEnum, Type> _sttProviderClasses = new();
 
-        public STTProviderManager(ILogger<STTProviderManager> logger, STTProviderRepository sttProviderRepository, IntegrationsManager integrationsManager)
+        public STTProviderManager(
+            ILogger<STTProviderManager> logger,
+            STTProviderRepository sttProviderRepository,
+            IntegrationsManager integrationsManager)
         {
             _logger = logger;
-
             _sttProviderRepository = sttProviderRepository;
             _integrationsManager = integrationsManager;
 
-            InitializeProvidersAsync().Wait();
+            InitializeProvidersAsync().GetAwaiter().GetResult();
         }
 
         private async Task InitializeProvidersAsync()
@@ -46,19 +47,14 @@ namespace IqraInfrastructure.Managers.STT
 
                 if (provider == null)
                 {
-                    provider = new STTProviderData
+                    var addResult = await AddProvider(providerEnum);
+                    if (!addResult.Success)
                     {
-                        Id = providerEnum,
-                        DisabledAt = DateTime.UtcNow
-                    };
+                        throw new Exception($"Failed to add stt provider: {providerEnum}: [{addResult.Code}] {addResult.Message}");
+                    }
+                }
 
-                    await AddProvider(provider);
-                }
-                
-                if (provider.DisabledAt == null)
-                {
-                    RegisterProviderService(providerEnum);
-                }
+                RegisterProviderService(providerEnum);
             }
         }
 
@@ -76,7 +72,7 @@ namespace IqraInfrastructure.Managers.STT
                 var getProviderTypeMethod = type.GetMethod("GetProviderTypeStatic", BindingFlags.Static | BindingFlags.Public);
                 if (getProviderTypeMethod != null)
                 {
-                    var returnedProviderEnum = (InterfaceSTTProviderEnum)getProviderTypeMethod.Invoke(null, null);
+                    var returnedProviderEnum = (InterfaceSTTProviderEnum)getProviderTypeMethod.Invoke(null, null)!;
                     if (returnedProviderEnum == providerEnum)
                     {
                         _sttProviderClasses[providerEnum] = type;
@@ -92,53 +88,80 @@ namespace IqraInfrastructure.Managers.STT
         {
             var result = new FunctionReturnResult<List<STTProviderData>?>();
 
-            var providerList = await _sttProviderRepository.GetProviderListAsync(page, pageSize);
-            if (providerList == null)
+            try
             {
-                result.Code = "GetProviderList:1";
-                result.Message = "No providers found";
-                return result;
-            }
+                var providerList = await _sttProviderRepository.GetProviderListAsync(page, pageSize);
+                if (providerList == null)
+                {
+                    return result.SetFailureResult(
+                        "GetProviderList:NOT_FOUND",
+                        "No providers found"
+                    );
+                }
 
-            result.Success = true;
-            result.Data = providerList;
-            return result;
+                return result.SetSuccessResult(providerList);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetProviderList:EXCEPTION",
+                    $"Failed to get provider list: {ex.Message}"
+                );
+            }
         }
 
-        public async Task<FunctionReturnResult<STTProviderData>> AddProvider(STTProviderData providerData)
+        private async Task<FunctionReturnResult<STTProviderData>> AddProvider(InterfaceSTTProviderEnum providerId)
         {
             var result = new FunctionReturnResult<STTProviderData>();
 
-            if (providerData.Id == InterfaceSTTProviderEnum.Unknown)
+            try
             {
-                result.Code = "AddProvider:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
+                var providerData = new STTProviderData()
+                {
+                    Id = providerId,
+                    DisabledAt = DateTime.UtcNow
+                };
 
-            var existingProvider = await _sttProviderRepository.GetProviderAsync(providerData.Id);
-            if (existingProvider != null)
+                if (providerData.Id == InterfaceSTTProviderEnum.Unknown)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:INVALID_ID",
+                        "Invalid provider ID"
+                    );
+                }
+
+                var existingProvider = await _sttProviderRepository.GetProviderAsync(providerData.Id);
+                if (existingProvider != null)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:EXISTS",
+                        "Provider already exists"
+                    );
+                }
+
+                var addResult = await _sttProviderRepository.AddProviderAsync(providerData);
+                if (!addResult)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:FAILED",
+                        "Failed to add provider"
+                    );
+                }
+
+                return result.SetSuccessResult(providerData);
+            }
+            catch (Exception ex)
             {
-                result.Code = "AddProvider:2";
-                result.Message = "Provider already exists";
-                return result;
+                return result.SetFailureResult(
+                    "AddProvider:EXCEPTION",
+                    $"Failed to add provider: {ex.Message}"
+                );
             }
-
-            providerData.DisabledAt = DateTime.UtcNow;
-            await _sttProviderRepository.AddProviderAsync(providerData);
-
-            result.Success = true;
-            result.Data = providerData;
-            return result;
         }
 
         public Type? GetProviderService(InterfaceSTTProviderEnum providerId)
         {
-            if (_sttProviderClasses.TryGetValue(providerId, out var service))
-            {
-                return service;
-            }
-            return null;
+            return _sttProviderClasses.TryGetValue(providerId, out var service) ? service : null;
         }
 
         public async Task<STTProviderData?> GetProviderData(InterfaceSTTProviderEnum providerId)
@@ -146,147 +169,30 @@ namespace IqraInfrastructure.Managers.STT
             return await _sttProviderRepository.GetProviderAsync(providerId);
         }
 
-        public async Task<FunctionReturnResult<STTProviderModelData?>> AddUpdateProviderModel(
-            STTProviderData provider,
-            string modelId,
-            string postType,
-            STTProviderModelData? oldModelData,
-            IFormCollection formData)
+        public async Task<FunctionReturnResult<STTProviderData?>> GetProviderDataByIntegration(string integrationType)
         {
-            var result = new FunctionReturnResult<STTProviderModelData?>();
+            var result = new FunctionReturnResult<STTProviderData?>();
 
-            var newModelData = new STTProviderModelData()
-            {
-                Id = modelId
-            };
-
-            if (!formData.TryGetValue("changes", out var changesJsonString))
-            {
-                result.Code = "AddUpdateProviderModel:1";
-                result.Message = "Changes data not found";
-                return result;
-            }
-
-            JsonDocument changesJsonElement;
             try
             {
-                changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString);
-            }
-            catch (JsonException)
-            {
-                result.Code = "AddUpdateProviderModel:2";
-                result.Message = "Invalid JSON format for changes";
-                return result;
-            }
-
-            if (changesJsonElement == null)
-            {
-                result.Code = "AddUpdateProviderModel:3";
-                result.Message = "Failed to parse changes JSON";
-                return result;
-            }
-
-            // Model Name
-            if (!changesJsonElement.RootElement.TryGetProperty("name", out var modelNameElement))
-            {
-                result.Code = "AddUpdateProviderModel:4";
-                result.Message = "Model name not found";
-                return result;
-            }
-
-            string? modelName = modelNameElement.GetString();
-            if (string.IsNullOrEmpty(modelName))
-            {
-                result.Code = "AddUpdateProviderModel:5";
-                result.Message = "Model name is empty";
-                return result;
-            }
-            newModelData.Name = modelName;
-
-            // Disabled
-            if (changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
-            {
-                bool isDisabled = disabledElement.GetBoolean();
-                if (isDisabled)
+                var providerData = await _sttProviderRepository.GetProviderDataByIntegration(integrationType);
+                if (providerData == null)
                 {
-                    if (postType == "edit" && oldModelData?.DisabledAt != null)
-                    {
-                        newModelData.DisabledAt = oldModelData.DisabledAt;
-                    }
-                    else
-                    {
-                        newModelData.DisabledAt = DateTime.UtcNow;
-                    }
+                    return result.SetFailureResult(
+                        "GetProviderDataByIntegration:NOT_FOUND",
+                        "Provider not found by integration type"
+                    );
                 }
-                else
-                {
-                    newModelData.DisabledAt = null;
-                }
-            }
 
-            // Price Per Unit
-            if (changesJsonElement.RootElement.TryGetProperty("pricePerUnit", out var priceElement))
-            {
-                if (decimal.TryParse(priceElement.GetString(), out decimal price))
-                {
-                    newModelData.PricePerUnit = price;
-                }
-                else
-                {
-                    result.Code = "AddUpdateProviderModel:6";
-                    result.Message = "Invalid price";
-                    return result;
-                }
+                return result.SetSuccessResult(providerData);
             }
-
-            // Price Unit
-            if (changesJsonElement.RootElement.TryGetProperty("priceUnit", out var priceUnitElement))
+            catch (Exception ex)
             {
-                string? priceUnit = priceUnitElement.GetString();
-                if (string.IsNullOrEmpty(priceUnit))
-                {
-                    result.Code = "AddUpdateProviderModel:7";
-                    result.Message = "Price unit is required";
-                    return result;
-                }
-                newModelData.PriceUnit = priceUnit;
+                return result.SetFailureResult(
+                    "GetProviderDataByIntegration:EXCEPTION",
+                    $"Failed to get provider data: {ex.Message}"
+                );
             }
-
-            // Supported Languages
-            if (changesJsonElement.RootElement.TryGetProperty("supportedLanguages", out var languagesElement))
-            {
-                newModelData.SupportedLanguages = new List<string>();
-                foreach (var language in languagesElement.EnumerateArray())
-                {
-                    newModelData.SupportedLanguages.Add(language.GetString() ?? "");
-                }
-            }
-
-            // Saving new data to database
-            if (postType == "new")
-            {
-                var addResult = await _sttProviderRepository.AddModelAsync(provider.Id, newModelData);
-                if (!addResult.IsAcknowledged || addResult.ModifiedCount == 0)
-                {
-                    result.Code = "AddUpdateProviderModel:8";
-                    result.Message = "Failed to add model";
-                    return result;
-                }
-            }
-            else if (postType == "edit")
-            {
-                var editResult = await _sttProviderRepository.UpdateModelAsync(provider.Id, newModelData);
-                if (!editResult.IsAcknowledged || editResult.ModifiedCount == 0)
-                {
-                    result.Code = "AddUpdateProviderModel:9";
-                    result.Message = "Failed to edit model";
-                    return result;
-                }
-            }
-
-            result.Data = newModelData;
-            result.Success = true;
-            return result;
         }
 
         public async Task<FunctionReturnResult<STTProviderData?>> UpdateProvider(
@@ -298,21 +204,24 @@ namespace IqraInfrastructure.Managers.STT
 
             try
             {
-                if (!formData.TryGetValue("changes", out var changesJsonString))
+                if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
                 {
-                    result.Code = "UpdateProvider:1";
-                    result.Message = "Changes data not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:CHANGES_DATA_NOT_FOUND",
+                        "Changes data not found"
+                    );
                 }
 
-                var changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString);
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
                 if (changesJsonElement == null)
                 {
-                    result.Code = "UpdateProvider:2";
-                    result.Message = "Unable to parse changes json string";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:JSON_PARSE_ERROR",
+                        "Unable to parse changes json string"
+                    );
                 }
 
+                var root = changesJsonElement.RootElement;
                 var newProviderData = new STTProviderData
                 {
                     Id = provider.Id,
@@ -320,150 +229,273 @@ namespace IqraInfrastructure.Managers.STT
                 };
 
                 // Handle disabled state
-                if (!changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
+                if (!root.TryGetProperty("disabled", out var disabledElement))
                 {
-                    result.Code = "UpdateProvider:3";
-                    result.Message = "Provider disabled state not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:DISABLED_STATE_NOT_FOUND",
+                        "Provider disabled state not found"
+                    );
                 }
 
                 bool disabled = disabledElement.GetBoolean();
-                if (disabled)
-                {
-                    if (provider.DisabledAt != null)
-                    {
-                        newProviderData.DisabledAt = provider.DisabledAt;
-                    }
-                    else
-                    {
-                        newProviderData.DisabledAt = DateTime.UtcNow;
-                    }
-                }
-                else
-                {
-                    newProviderData.DisabledAt = null;
-                }
+                newProviderData.DisabledAt = disabled ? (provider.DisabledAt ?? DateTime.UtcNow) : null;
 
                 // Handle integration selection
-                if (!changesJsonElement.RootElement.TryGetProperty("integrationId", out var integrationIdElement))
+                if (!root.TryGetProperty("integrationId", out var integrationIdElement))
                 {
-                    result.Code = "UpdateProvider:4";
-                    result.Message = "Integration ID not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:INTEGRATION_ID_NOT_FOUND",
+                        "Integration ID is missing"
+                    );
                 }
 
                 string? integrationId = integrationIdElement.GetString();
                 if (string.IsNullOrEmpty(integrationId))
                 {
-                    result.Code = "UpdateProvider:5";
-                    result.Message = "Integration ID is required";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:MISSING_INTEGRATION_ID", 
+                        "Integration ID is required"
+                    );
                 }
 
                 // Validate integration exists and is STT type
                 var integration = await integrationsManager.getIntegrationData(integrationId);
-                if (integration == null || !integration.Success)
+                if (integration.Data == null || !integration.Success)
                 {
-                    result.Code = "UpdateProvider:6";
-                    result.Message = "Selected integration not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:SELECTED_INTEGRATION_NOT_FOUND", 
+                        "Selected integration not found"
+                    );
                 }
 
                 if (!integration.Data.Type.Contains("STT") && !integration.Data.Type.Contains("SPEECH2TEXT"))
                 {
-                    result.Code = "UpdateProvider:7";
-                    result.Message = "Selected integration is not an STT integration";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:INVALID_INTEGRATION", 
+                        "Selected integration is not an STT integration"
+                    );
                 }
 
                 newProviderData.IntegrationId = integrationId;
 
                 // Handle integration fields
-                if (changesJsonElement.RootElement.TryGetProperty("userIntegrationFields", out var fieldsElement))
+                if (!root.TryGetProperty("userIntegrationFields", out var fieldsElement))
                 {
-                    newProviderData.UserIntegrationFields = new List<ProviderFieldBase>();
+                    return result.SetFailureResult(
+                        "UpdateProvider:USER_INTEGRATION_FIELDS_NOT_FOUND",
+                        "User integration fields not found"
+                    );
+                }
+                else
+                {
+                    var availableModelIds = newProviderData.Models.Select(m => m.Id).ToList();
 
-                    foreach (var fieldElement in fieldsElement.EnumerateArray())
+                    var parseResult = ProviderIntegrationFieldsHelper.ParseAndValidateFields(fieldsElement, availableModelIds);
+                    if (!parseResult.Success || parseResult.Data == null)
                     {
-                        var field = new ProviderFieldBase
-                        {
-                            Id = fieldElement.GetProperty("id").GetString() ?? "",
-                            Name = fieldElement.GetProperty("name").GetString() ?? "",
-                            Type = fieldElement.GetProperty("type").GetString() ?? "",
-                            Tooltip = fieldElement.GetProperty("tooltip").GetString() ?? "",
-                            Placeholder = fieldElement.GetProperty("placeholder").GetString() ?? "",
-                            DefaultValue = fieldElement.GetProperty("defaultValue").GetString() ?? "",
-                            Required = fieldElement.GetProperty("required").GetBoolean(),
-                            IsEncrypted = fieldElement.GetProperty("isEncrypted").GetBoolean()
-                        };
-
-                        if (field.Type == "select" && fieldElement.TryGetProperty("options", out var optionsElement))
-                        {
-                            field.Options = new List<ProviderFieldOption>();
-                            foreach (var optionElement in optionsElement.EnumerateArray())
-                            {
-                                field.Options.Add(new ProviderFieldOption
-                                {
-                                    Key = optionElement.GetProperty("key").GetString() ?? "",
-                                    Value = optionElement.GetProperty("value").GetString() ?? "",
-                                    IsDefault = optionElement.GetProperty("isDefault").GetBoolean()
-                                });
-                            }
-                        }
-
-                        newProviderData.UserIntegrationFields.Add(field);
+                        return result.SetFailureResult(
+                            $"UpdateProvider:{parseResult.Code}",
+                            parseResult.Message
+                        );
                     }
+
+                    newProviderData.UserIntegrationFields = parseResult.Data;
                 }
 
                 // Save to database
                 var updateResult = await _sttProviderRepository.UpdateProviderAsync(newProviderData);
                 if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
                 {
-                    result.Code = "UpdateProvider:8";
-                    result.Message = "Failed to update provider";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:UPDATE_FAILED", 
+                        "Failed to update provider"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = newProviderData;
+                return result.SetSuccessResult(newProviderData);
             }
             catch (Exception ex)
             {
-                result.Code = "UpdateProvider:9";
-                result.Message = "Error processing provider update: " + ex.Message;
+                return result.SetFailureResult(
+                    "UpdateProvider:EXCEPTION",
+                    $"Failed to update provider: {ex.Message}"
+                );
             }
-
-            return result;
         }
 
-        public async Task<FunctionReturnResult<STTProviderData?>> GetProviderDataByIntegration(string integrationType)
+        public async Task<FunctionReturnResult<STTProviderModelData?>> AddUpdateProviderModel(
+            STTProviderData provider,
+            string modelId,
+            string postType,
+            STTProviderModelData? oldModelData,
+            IFormCollection formData)
         {
-            var result = new FunctionReturnResult<STTProviderData?>();
+            var result = new FunctionReturnResult<STTProviderModelData?>();
 
             try
             {
-                var providerData = await _sttProviderRepository.GetProviderDataByIntegration(integrationType);
-
-                if (providerData == null)
+                var newModelData = new STTProviderModelData()
                 {
-                    result.Code = "GetProviderDataByIntegration:1";
-                    result.Message = "Provider not find by integration type";
-                    return result;
+                    Id = modelId
+                };
+
+                if (!formData.TryGetValue("changes", out var changesJsonString))
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:CHANGES_DATA_NOT_FOUND", 
+                        "Changes data not found"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = providerData;
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
+                if (changesJsonElement == null)
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:JSON_PARSE_ERROR", 
+                        "Failed to parse changes JSON"
+                    );
+                }
+
+                var root = changesJsonElement.RootElement;
+
+                // Model Name
+                if (root.TryGetProperty("name", out var modelNameElement))
+                {
+                    string? modelName = modelNameElement.GetString();
+                    if (string.IsNullOrEmpty(modelName))
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:EMPTY_NAME", 
+                            "Model name is empty"
+                        );
+                    }
+                    newModelData.Name = modelName;
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:NAME_NOT_FOUND",
+                        "Model name not found"
+                    );
+                }
+
+                // Disabled State
+                if (root.TryGetProperty("disabled", out var disabledElement))
+                {
+                    bool isDisabled = disabledElement.GetBoolean();
+                    if (isDisabled)
+                    {
+                        newModelData.DisabledAt = (postType == "edit" && oldModelData?.DisabledAt != null)
+                            ? oldModelData.DisabledAt
+                            : DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        newModelData.DisabledAt = null;
+                    }
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:DISABLED_STATE_NOT_FOUND",
+                        "Disabled state not found"
+                    );
+                }
+
+                // Price Per Unit
+                if (root.TryGetProperty("pricePerUnit", out var priceElement))
+                {
+                    // Use string parsing for safety with decimals in JSON
+                    if (decimal.TryParse(priceElement.GetString(), out decimal price))
+                    {
+                        newModelData.PricePerUnit = price;
+                    }
+                    else if (priceElement.TryGetDecimal(out decimal decimalVal))
+                    {
+                        newModelData.PricePerUnit = decimalVal;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_PRICE", 
+                            "Invalid price format"
+                        );
+                    }
+                }
+
+                // Price Unit
+                if (root.TryGetProperty("priceUnit", out var priceUnitElement))
+                {
+                    string? priceUnit = priceUnitElement.GetString();
+                    if (string.IsNullOrEmpty(priceUnit))
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:EMPTY_PRICE_UNIT",
+                            "Price unit is required"
+                        );
+                    }
+                    newModelData.PriceUnit = priceUnit;
+                }
+
+                // Supported Languages
+                if (root.TryGetProperty("supportedLanguages", out var languagesElement) && languagesElement.ValueKind == JsonValueKind.Array)
+                {
+                    newModelData.SupportedLanguages = new List<string>();
+                    foreach (var language in languagesElement.EnumerateArray())
+                    {
+                        newModelData.SupportedLanguages.Add(language.GetString() ?? "");
+                    }
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:LANGUAGES_NOT_FOUND",
+                        "Supported languages not found or invalid format"
+                    );
+                }
+
+                // Saving new data to database
+                if (postType == "new")
+                {
+                    var addResult = await _sttProviderRepository.AddModelAsync(provider.Id, newModelData);
+                    if (!addResult.IsAcknowledged || addResult.ModifiedCount == 0)
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:DB_ADD_FAILED", 
+                            "Failed to add model to database"
+                        );
+                    }
+                }
+                else if (postType == "edit")
+                {
+                    var editResult = await _sttProviderRepository.UpdateModelAsync(provider.Id, newModelData);
+                    if (!editResult.IsAcknowledged || editResult.ModifiedCount == 0)
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:DB_UPDATE_FAILED",
+                            "Failed to update model in database"
+                        );
+                    }
+                }
+
+                return result.SetSuccessResult(newModelData);
             }
             catch (Exception ex)
             {
-                result.Code = "GetProviderDataByIntegration:2";
-                result.Message = "Failed to get provider data: " + ex.Message;
+                return result.SetFailureResult(
+                    "AddUpdateProviderModel:EXCEPTION",
+                    ex.Message
+                );
             }
-
-            return result;
         }
-    
-        public async Task<FunctionReturnResult<ISTTService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, int inputSampleRate, int inputBitsPerSample, AudioEncodingTypeEnum inputAudioEncoding)
+
+        public async Task<FunctionReturnResult<ISTTService?>> BuildProviderServiceByIntegration(
+            BusinessAppIntegration integrationData,
+            BusinessAppAgentIntegrationData agentIntegrationData,
+            int inputSampleRate,
+            int inputBitsPerSample,
+            AudioEncodingTypeEnum inputAudioEncoding
+        )
         {
             var result = new FunctionReturnResult<ISTTService?>();
 
@@ -472,12 +504,74 @@ namespace IqraInfrastructure.Managers.STT
                 var sttProviderData = await GetProviderDataByIntegration(integrationData.Type);
                 if (!sttProviderData.Success)
                 {
-                    result.Code = "BuildProviderServiceByIntegration:1";
-                    result.Message = "Provider not find by integration type";
-                    return result;
+                    return result.SetFailureResult(
+                        "BuildProviderServiceByIntegration:PROVIDER_NOT_FOUND", 
+                        "Provider not found by integration type"
+                    );
                 }
 
-                switch (sttProviderData.Data.Id)
+                // Create the Audio Detail Object used by the refactored services
+                var ttsAudioFormat = new TTSProviderAvailableAudioFormat
+                {
+                    SampleRateHz = inputSampleRate,
+                    BitsPerSample = inputBitsPerSample,
+                    Encoding = inputAudioEncoding
+                };
+
+                // --- Helper functions for safe extraction ---
+                string GetString(string key, string defaultValue = "")
+                {
+                    return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
+                        ? val.ToString()! : defaultValue;
+                }
+
+                int GetInt(string key, int defaultValue)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (int.TryParse(val.ToString(), out int parsed)) return parsed;
+                        return Convert.ToInt32(val);
+                    }
+                    return defaultValue;
+                }
+
+                double GetDouble(string key, double defaultValue)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (double.TryParse(val.ToString(), out double parsed)) return parsed;
+                        return Convert.ToDouble(val);
+                    }
+                    return defaultValue;
+                }
+
+                bool GetBool(string key, bool defaultValue)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        var s = val.ToString()!.ToLower();
+                        if (s == "on" || s == "yes" || s == "true") return true;
+                        if (s == "off" || s == "no" || s == "false") return false;
+                    }
+                    return defaultValue;
+                }
+
+                List<string> GetList(string key)
+                {
+                    var list = new List<string>();
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        var s = val.ToString();
+                        if (!string.IsNullOrWhiteSpace(s))
+                        {
+                            list.AddRange(s.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)));
+                        }
+                    }
+                    return list;
+                }
+                // ---------------------------------------------
+
+                switch (sttProviderData.Data!.Id)
                 {
                     case InterfaceSTTProviderEnum.AzureSpeechServices:
                         {
@@ -488,65 +582,64 @@ namespace IqraInfrastructure.Managers.STT
                             string resourceGroupName = integrationData.Fields["resource_group_name"];
                             string speechResourceName = integrationData.Fields["speech_resource_name"];
                             string resourceRegion = integrationData.Fields["resource_region"];
-                            string languageId = (string)agentIntegrationData.FieldValues["langauge_id"];
-                            string? continousLanguageIdentificationIdsString = (string?)agentIntegrationData.FieldValues["continous_language_identification_ids"];
-                            string speakerDiarizationString = (string)agentIntegrationData.FieldValues["speaker_diarization"];
-                            string? phrasesListString = (string?)agentIntegrationData.FieldValues["phrases_list"];
-                            int silenceTimeout = (int)agentIntegrationData.FieldValues["silence_timeout"];
 
-                            List<string> continousLanguageIdentificationIds = new List<string>();
-                            if (!string.IsNullOrEmpty(continousLanguageIdentificationIdsString))
-                            {
-                                continousLanguageIdentificationIds.AddRange(continousLanguageIdentificationIdsString.Split(','));
-                            }
+                            string languageId = GetString("langauge_id", "en-US");
+                            int silenceTimeout = GetInt("silence_timeout", 100);
+                            bool speakerDiarization = GetBool("speaker_diarization", false);
+                            List<string> continousLanguageIdentificationIds = GetList("continous_language_identification_ids");
+                            List<string> phrasesList = GetList("phrases_list");
 
-                            bool speakerDiarization = (speakerDiarizationString == "on");
-
-                            List<string> phrasesList = new List<string>();
-                            if (!string.IsNullOrEmpty(phrasesListString))
-                            {
-                                phrasesList.AddRange(phrasesListString.Split(','));
-                            }
-
-                            var azureSTTService = new AzureSpeechSTTService(tenantId, clientId, clientSecret, subscriptionId, resourceGroupName, speechResourceName, resourceRegion, languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList, silenceTimeout, inputSampleRate, inputBitsPerSample, inputAudioEncoding);
-                            return result.SetSuccessResult(
-                                azureSTTService
+                            var azureSTTService = new AzureSpeechSTTService(
+                                tenantId,
+                                clientId,
+                                clientSecret,
+                                subscriptionId,
+                                resourceGroupName,
+                                speechResourceName,
+                                resourceRegion,
+                                languageId,
+                                continousLanguageIdentificationIds,
+                                speakerDiarization,
+                                phrasesList,
+                                silenceTimeout,
+                                ttsAudioFormat
                             );
+
+                            return result.SetSuccessResult(azureSTTService);
                         }
 
                     case InterfaceSTTProviderEnum.Deepgram:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
-                            string language = (string)agentIntegrationData.FieldValues["language"];
-                            string model = (string)agentIntegrationData.FieldValues["model"];
-                            string speakerDiarizationStringDg = (string)agentIntegrationData.FieldValues["speaker_diarization"];
-                            string? keywordsListString = (string?)agentIntegrationData.FieldValues["keywords_list"];
-                            int silenceTimeoutDg = Convert.ToInt32(agentIntegrationData.FieldValues["silence_timeout"]);
-                            string punctuateString = (string)agentIntegrationData.FieldValues["punctuate"];
-                            string smartFormatString = (string)agentIntegrationData.FieldValues["smart_format"];
-                            string fillerWordsString = (string)agentIntegrationData.FieldValues["filler_words"];
-                            string profanityFilterString = (string)agentIntegrationData.FieldValues["profanity_filter"];
+                            string language = GetString("language", "en");
+                            string model = GetString("model", "nova-3");
+                            int silenceTimeout = GetInt("silence_timeout", 300);
+                            List<string> keywordsList = GetList("keywords_list");
 
-                            bool speakerDiarizationDg = (speakerDiarizationStringDg.ToLower() == "on");
-                            bool punctuate = (punctuateString.ToLower() == "on");
-                            bool smartFormat = (smartFormatString.ToLower() == "on");
-                            bool fillerWords = (fillerWordsString.ToLower() == "on");
-                            bool profanityFilter = (profanityFilterString.ToLower() == "on");
+                            // V1 Boolean Flags
+                            bool speakerDiarization = GetBool("speaker_diarization", false);
+                            bool punctuate = GetBool("punctuate", true);
+                            bool smartFormat = GetBool("smart_format", true);
+                            bool fillerWords = GetBool("filler_words", false);
+                            bool profanityFilter = GetBool("profanity_filter", false);
 
-                            List<string> keywordsList = new List<string>();
-                            if (!string.IsNullOrEmpty(keywordsListString))
-                            {
-                                keywordsList.AddRange(keywordsListString.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)));
-                            }
+                            // V2 Flux Params
+                            double fluxEotThreshold = GetDouble("flux_eot_threshold", 0.7);
 
                             var deepgramSTTService = new DeepgramSTTService(
-                                apiKey, language, model, speakerDiarizationDg, keywordsList, silenceTimeoutDg, inputSampleRate, inputBitsPerSample, inputAudioEncoding,
-                                punctuate: punctuate,
-                                smartFormat: smartFormat,
-                                fillerWords: fillerWords,
-                                profanityFilter: profanityFilter
-                            // Other parameters will use their default values from the constructor
+                                apiKey,
+                                language,
+                                model,
+                                keywordsList,
+                                silenceTimeout,
+                                speakerDiarization,
+                                punctuate,
+                                smartFormat,
+                                fillerWords,
+                                profanityFilter,
+                                fluxEotThreshold,
+                                ttsAudioFormat
                             );
 
                             return result.SetSuccessResult(deepgramSTTService);
@@ -556,33 +649,66 @@ namespace IqraInfrastructure.Managers.STT
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
-                            string formatTurnsString = (string)agentIntegrationData.FieldValues["format_turns"];
-                            float endOfTurnConfidenceThreshold = (float)(double)agentIntegrationData.FieldValues["end_of_turn_confidence_threshold"];
-                            int minEndOfTurnSilenceWhenConfident = (int)agentIntegrationData.FieldValues["min_end_of_turn_silence_when_confident"];
-                            int maxTurnSilence = (int)agentIntegrationData.FieldValues["max_turn_silence"];
+                            bool formatTurns = GetBool("format_turns", false);
+                            float endOfTurnConfidenceThreshold = (float)GetDouble("end_of_turn_confidence_threshold", 0.4);
+                            int minEndOfTurnSilenceWhenConfident = GetInt("min_end_of_turn_silence_when_confident", 400);
+                            int maxTurnSilence = GetInt("max_turn_silence", 1280);
+                            double vadThreshold = GetDouble("vad_threshold", 0.4);
+                            string speechModel = GetString("speech_model", "universal-streaming-english");
 
-                            bool formatTurns = (formatTurnsString.ToLower() == "on");
+                            string[] keyterms = GetList("keyterms_prompt").ToArray();
 
                             var assemblySTTService = new AssemblyAISpeechSTTService(
                                 apiKey,
-                                inputSampleRate,
-                                inputBitsPerSample,
-                                inputAudioEncoding,
                                 formatTurns,
                                 endOfTurnConfidenceThreshold,
                                 minEndOfTurnSilenceWhenConfident,
-                                maxTurnSilence
+                                maxTurnSilence,
+                                vadThreshold,
+                                keyterms,
+                                speechModel,
+                                ttsAudioFormat
                             );
 
                             return result.SetSuccessResult(assemblySTTService);
                         }
 
+                    case InterfaceSTTProviderEnum.ElevenLabs:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+
+                            string modelId = GetString("model_id", "scribe_v2");
+                            string languageCode = GetString("language_code", "");
+
+                            double vadSilenceThreshold = GetDouble("vad_silence_threshold", 1.5);
+                            double vadThreshold = GetDouble("vad_threshold", 0.4);
+                            int minSpeechDuration = GetInt("min_speech_duration_ms", 100);
+                            int minSilenceDuration = GetInt("min_silence_duration_ms", 100);
+
+                            var elevenLabsService = new ElevenLabsSTTService(
+                                apiKey,
+                                modelId,
+                                languageCode,
+                                vadSilenceThreshold,
+                                vadThreshold,
+                                minSpeechDuration,
+                                minSilenceDuration,
+                                ttsAudioFormat
+                            );
+
+                            return result.SetSuccessResult(elevenLabsService);
+                        }
+
                     default:
                         _logger.LogError("Business app STT provider {ProviderType} not supported", sttProviderData.Data.Id);
-                        return result;
+                        return result.SetFailureResult(
+                            "BuildProviderServiceByIntegration:NOT_SUPPORTED",
+                            $"Provider {sttProviderData.Data.Id} not supported"
+                        );
                 }
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 return result.SetFailureResult(
                     "BuildProviderServiceByIntegration:EXCEPTION",
                     ("Failed to build provider service: " + ex.Message)

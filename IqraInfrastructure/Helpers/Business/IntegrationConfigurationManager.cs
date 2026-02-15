@@ -166,7 +166,7 @@ namespace IqraInfrastructure.Helpers.Business
             {
                 var ttsData = providerData.Data as TTSProviderData;
                 userIntegrationFields = ttsData.UserIntegrationFields;
-                models = ttsData.Models.Cast<TTSProviderSpeakerData>();
+                models = ttsData.Models.Cast<TTSProviderModelData>();
             }
             else if (integrationType == "LLM")
             {
@@ -266,31 +266,6 @@ namespace IqraInfrastructure.Helpers.Business
                                     result.Code = "ValidateIntegrationData:11";
                                     result.Message = $"{integrationType} model is disabled in integration with name {currentIntegrationResult.Data.FriendlyName}.";
                                     return result;
-                                }
-
-                                if (integrationType == "TTS")
-                                {
-                                    var ttsSpeaker = fieldValueModelData as TTSProviderSpeakerData;
-                                    if (ttsSpeaker == null)
-                                    {
-                                        result.Code = "ValidateIntegrationData:12";
-                                        result.Message = $"Invalid TTS speaker data structure in integration with name {currentIntegrationResult.Data.FriendlyName}.";
-                                        return result;
-                                    }
-
-                                    if (businessLanguage == null)
-                                    {
-                                        result.Code = "ValidateIntegrationData:LANGUAGE_NOT_PROVIDED";
-                                        result.Message = "Missing business language required for validation.";
-                                        return result;
-                                    }
-
-                                    if (!ttsSpeaker.IsMultilingual && !ttsSpeaker.SupportedLanguages.Contains(businessLanguage))
-                                    {
-                                        result.Code = "ValidateIntegrationData:13";
-                                        result.Message = $"TTS speaker '{ttsSpeaker.Name}' does not support language '{businessLanguage}' in integration with name {currentIntegrationResult.Data.FriendlyName}.";
-                                        return result;
-                                    }
                                 }
                             }
 

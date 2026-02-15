@@ -45,6 +45,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.User
                 // API Key Validation
                 var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIWithPermissions(
                     Request: Request,
+                    checkUserApiAccessManagementRestriction: true,
                     checkUserDisabled: true
                 );
                 if (!apiKeyValidaiton.Success)

@@ -1,8 +1,10 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Integrations;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.Specification;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Repositories.Integrations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
@@ -12,13 +14,16 @@ namespace ProjectIqraFrontend.Controllers.Admin
     {
         private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly IntegrationsManager _integrationsManager;
+        private readonly IntegrationsLogoRepository _integrationsLogoRepository;
 
         public AppAdminIntegrationsController(
             ISessionValidationAndPermissionHelper sessionValidationAndPermissionHelper,
-            IntegrationsManager integrationsManager
+            IntegrationsManager integrationsManager,
+            IntegrationsLogoRepository integrationsLogoRepository
         ) {
             _userSessionValidationAndPermissionHelper = sessionValidationAndPermissionHelper;
             _integrationsManager = integrationsManager;
+            _integrationsLogoRepository = integrationsLogoRepository;
         }
 
         [HttpGet("/app/admin/integrations")]
@@ -48,6 +53,14 @@ namespace ProjectIqraFrontend.Controllers.Admin
                         $"GetIntegrations:{integrationsResult.Code}",
                         integrationsResult.Message
                     );
+                }
+
+                foreach (var item in integrationsResult.Data!)
+                {
+                    if (item.LogoS3StorageLink != null)
+                    {
+                        item.PresignedLogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400, item.LogoS3StorageLink.OriginRegion);
+                    }
                 }
 
                 return result.SetSuccessResult(integrationsResult.Data);

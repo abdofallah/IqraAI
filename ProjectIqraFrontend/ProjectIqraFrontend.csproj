@@ -18,7 +18,9 @@
   <ItemGroup>
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
     <ProjectReference Include="..\IqraInfrastructure\IqraInfrastructure.csproj" />
-    <ProjectReference Include="..\IqraStatic\IqraStatic.csproj" />
+	<ProjectReference Include="..\IqraStatic\IqraStatic.csproj">
+		<Properties>IncludeIqraModels=false</Properties>
+	</ProjectReference>
   </ItemGroup>
 	
 

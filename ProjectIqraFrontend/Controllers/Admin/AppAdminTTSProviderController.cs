@@ -130,10 +130,10 @@ namespace ProjectIqraFrontend.Controllers.Admin
             }
         }
 
-        [HttpPost("/app/admin/ttsproviders/speaker/save")]
-        public async Task<FunctionReturnResult<TTSProviderSpeakerData?>> SaveTTSProviderSpeaker(IFormCollection formData)
+        [HttpPost("/app/admin/ttsproviders/model/save")]
+        public async Task<FunctionReturnResult<TTSProviderModelData?>> SaveTTSProviderModel(IFormCollection formData)
         {
-            var result = new FunctionReturnResult<TTSProviderSpeakerData?>();
+            var result = new FunctionReturnResult<TTSProviderModelData?>();
 
             try
             {
@@ -145,7 +145,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 if (!validationResult.Success)
                 {
                     return result.SetFailureResult(
-                        $"SaveTTSProviderSpeaker:{validationResult.Code}",
+                        $"SaveTTSProviderModel:{validationResult.Code}",
                         validationResult.Message
                     );
                 }
@@ -154,7 +154,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 if (string.IsNullOrEmpty(providerId))
                 {
                     return result.SetFailureResult(
-                        "SaveTTSProviderSpeaker:EMPTY_PROVIDER_ID",
+                        "SaveTTSProviderModel:EMPTY_PROVIDER_ID",
                         "Provider id is required"
                     );
                 }
@@ -162,7 +162,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 if (!Enum.TryParse(typeof(InterfaceTTSProviderEnum), providerId, true, out object? providerIdEnum))
                 {
                     return result.SetFailureResult(
-                        "SaveTTSProviderSpeaker:INVALID_PROVIDER_ID",
+                        "SaveTTSProviderModel:INVALID_PROVIDER_ID",
                         "Invalid provider id"
                     );
                 }
@@ -171,17 +171,17 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 if (provider == null)
                 {
                     return result.SetFailureResult(
-                        "SaveTTSProviderSpeaker:NOT_FOUND",
+                        "SaveTTSProviderModel:NOT_FOUND",
                         "Provider not found"
                     );
                 }
 
-                string? speakerId = formData["speakerId"];
-                if (string.IsNullOrEmpty(speakerId))
+                string? modelId = formData["modelId"];
+                if (string.IsNullOrEmpty(modelId))
                 {
                     return result.SetFailureResult(
-                        "SaveTTSProviderSpeaker:EMPTY_SPEAKER_ID",
-                        "Speaker id is required"
+                        "SaveTTSProviderModel:EMPTY_MODEL_ID",
+                        "Model id is required"
                     );
                 }
 
@@ -189,34 +189,34 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 if (string.IsNullOrEmpty(postType) || (postType != "edit" && postType != "new"))
                 {
                     return result.SetFailureResult(
-                        "SaveTTSProviderSpeaker:INVALID_POST_TYPE",
+                        "SaveTTSProviderModel:INVALID_POST_TYPE",
                         "Post type is required and must be either 'edit' or 'new'"
                     );
                 }
 
-                var oldSpeakerData = provider.Models.Find(s => s.Id == speakerId);
-                if (postType == "edit" && oldSpeakerData == null)
+                var oldModelData = provider.Models.Find(s => s.Id == modelId);
+                if (postType == "edit" && oldModelData == null)
                 {
                     return result.SetFailureResult(
-                        "SaveTTSProviderSpeaker:NOT_FOUND",
-                        "Speaker not found"
+                        "SaveTTSProviderModel:NOT_FOUND",
+                        "Model not found"
                     );
                 }
-                else if (postType == "new" && oldSpeakerData != null)
+                else if (postType == "new" && oldModelData != null)
                 {
                     return result.SetFailureResult(
-                        "SaveTTSProviderSpeaker:SPEAKER_EXISTS",
-                        "Speaker already exists with this id"
+                        "SaveTTSProviderModel:MODEL_EXISTS",
+                        "Model already exists with this id"
                     );
                 }
 
-                var saveResult = await _ttsProviderManager.AddUpdateProviderSpeaker(
-                    provider, speakerId, postType, oldSpeakerData, formData);
+                var saveResult = await _ttsProviderManager.AddUpdateProviderModel(
+                    provider, modelId, postType, oldModelData, formData);
 
                 if (!saveResult.Success)
                 {
                     return result.SetFailureResult(
-                        "SaveTTSProviderSpeaker:" + saveResult.Code,
+                        "SaveTTSProviderModel:" + saveResult.Code,
                         saveResult.Message
                     );
                 }
@@ -226,8 +226,8 @@ namespace ProjectIqraFrontend.Controllers.Admin
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "SaveTTSProviderSpeaker:Exception",
-                    $"Error saving TTS provider speaker: {ex.Message}"
+                    "SaveTTSProviderModel:Exception",
+                    $"Error saving TTS provider model: {ex.Message}"
                 );
             }
         }

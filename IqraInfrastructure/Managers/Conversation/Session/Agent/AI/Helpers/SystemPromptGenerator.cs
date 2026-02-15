@@ -4,6 +4,7 @@ using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.Languages;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -18,20 +19,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
     {
         private readonly ILogger<SystemPromptGenerator> _logger;
         private readonly LanguagesManager _languagesManager;
-        private readonly LLMProviderManager _llmProviderManager;
 
-        public SystemPromptGenerator(ILogger<SystemPromptGenerator> logger, LanguagesManager languagesManager, LLMProviderManager llmProviderManager)
+        public SystemPromptGenerator(ILogger<SystemPromptGenerator> logger, LanguagesManager languagesManager)
         {
             _logger = logger;
             _languagesManager = languagesManager;
-            _llmProviderManager = llmProviderManager;
         }
 
         public async Task<FunctionReturnResult<string?>> GenerateInitialSystemPrompt(
             BusinessApp businessApp,
             BusinessAppAgent agent,
             ConversationSessionContext currentSessionContext,
-            string languageCode,
+            LanguagesData currentLanguageData,
             InterfaceLLMProviderEnum llmProvider,
             string llmModelId
         )
@@ -40,37 +39,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
 
             try
             {
-                var langaugeDataResult = await _languagesManager.GetLanguageByCode(languageCode);
-                if (!langaugeDataResult.Success)
-                {
-                    result.Code = "GenerateSystemPrompt:" + langaugeDataResult.Code;
-                    result.Message = langaugeDataResult.Message;
-                    return result;
-                }
-
-                var llmProviderDataResult = await _llmProviderManager.GetProviderData(llmProvider);
-                if (llmProviderDataResult == null)
-                {
-                    result.Code = "GenerateSystemPrompt:1";
-                    result.Message = "LLM provider not found";
-                    return result;
-                }
-
-                var llmModelData = llmProviderDataResult.Models.Find(m => m.Id == llmModelId);
-                if (llmModelData == null)
-                {
-                    result.Code = "GenerateSystemPrompt:2";
-                    result.Message = "LLM model not found";
-                    return result;
-                }
-
-                if (!llmModelData.PromptTemplates.TryGetValue(languageCode, out string? systemPromptForLanguage) || string.IsNullOrWhiteSpace(systemPromptForLanguage))
-                {
-                    result.Code = "GenerateSystemPrompt:3";
-                    result.Message = "System prompt not found for language or is empty";
-                    return result;
-                }
-
                 BusinessAppScript? openingScript = businessApp.Scripts.Find(d => d.Id == currentSessionContext.Agent.OpeningScriptId);
                 if (openingScript == null)
                 {
@@ -82,7 +50,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                 var openingScriptNodesData = GetScriptNodesData(openingScript, businessApp);
 
                 // Initialize Scriban template
-                var template = Template.Parse(systemPromptForLanguage);    
+                var template = Template.Parse(currentLanguageData.Prompts.ConversationBasePrompt);    
                 if (template.HasErrors)
                 {
                     result.Code = "GenerateSystemPrompt:5";
@@ -101,12 +69,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
 
                 // Add Agent data
                 var agentObject = new ScriptObject();
-                agentObject["Personality"] = CreateAgentPersonalityObject(agent.Personality, languageCode);
+                agentObject["Personality"] = CreateAgentPersonalityObject(agent.Personality, currentLanguageData.Id);
                 agentObject["Context"] = CreateAgentContextObject(agent.Context);
-                agentObject["Scripts"] = CreateAgentScriptsObject(openingScriptNodesData.tools, new List<BusinessAppScript>() { openingScript }, languageCode);
-                agentObject["ScriptTools"] = CreateAgentScriptToolsObject(openingScriptNodesData.tools, languageCode);
-                agentObject["ScriptAgents"] = CreateAgentScriptAgentsObject(openingScriptNodesData.agents, languageCode);
-                agentObject["ScriptAddableScripts"] = CreateAgentScriptAddableScriptsObject(openingScriptNodesData.scripts, languageCode);
+                agentObject["Scripts"] = CreateAgentScriptsObject(openingScriptNodesData.tools, new List<BusinessAppScript>() { openingScript }, currentLanguageData.Id);
+                agentObject["ScriptTools"] = CreateAgentScriptToolsObject(openingScriptNodesData.tools, currentLanguageData.Id);
+                agentObject["ScriptAgents"] = CreateAgentScriptAgentsObject(openingScriptNodesData.agents, currentLanguageData.Id);
+                agentObject["ScriptAddableScripts"] = CreateAgentScriptAddableScriptsObject(openingScriptNodesData.scripts, currentLanguageData.Id);
                 agentObject["HasDTMFRequestTool"] = openingScriptNodesData.hasDTMFRequestTool;
                 agentObject["HasSendSMSTool"] = openingScriptNodesData.hasSendSMSTool;
                 agentObject["HasRetrieveKnowledgeBaseTool"] = openingScriptNodesData.hasRetrieveKnowledgeBaseTool;
@@ -114,15 +82,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                 
                 // Add Context (company) data
                 var contextObject = new ScriptObject();
-                contextObject["Branding"] = CreateBrandingObject(businessApp.Context.Branding, languageCode);
-                contextObject["Branches"] = CreateBranchesObject(businessApp.Context.Branches, languageCode);
-                contextObject["Services"] = CreateServicesObject(businessApp.Context.Services, languageCode);
-                contextObject["Products"] = CreateProductsObject(businessApp.Context.Products, languageCode);
+                contextObject["Branding"] = CreateBrandingObject(businessApp.Context.Branding, currentLanguageData.Id);
+                contextObject["Branches"] = CreateBranchesObject(businessApp.Context.Branches, currentLanguageData.Id);
+                contextObject["Services"] = CreateServicesObject(businessApp.Context.Services, currentLanguageData.Id);
+                contextObject["Products"] = CreateProductsObject(businessApp.Context.Products, currentLanguageData.Id);
                 modelObject["Context"] = contextObject;
 
                 // Add Route Data
                 var routeObject = new ScriptObject();
-                routeObject["Multilangauges"] = CreateRouteLanguageObject(currentSessionContext.Language, languageCode);
+                routeObject["Multilangauges"] = CreateRouteLanguageObject(currentSessionContext.Language, currentLanguageData.Id);
                 modelObject["Route"] = routeObject;
 
                 // Add the model to the context

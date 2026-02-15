@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.Languages;
-using IqraInfrastructure.Repositories.App;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -29,25 +28,50 @@ namespace IqraInfrastructure.Repositories.Languages
                 .ToListAsync();
         }
 
-        public async Task<List<LanguagesData>?> GetAllLanguagesList()
+        public async Task<List<LanguagesData>?> GetAllLanguagesList(bool withPrompts)
         {
-            return await _languagesCollection
-                .Find(_ => true)
-                .ToListAsync();
+            if (withPrompts)
+            {
+                return await _languagesCollection.Find(_ => true).ToListAsync();
+            }
+            else
+            {
+                var projection = Builders<LanguagesData>.Projection
+                    .Exclude(d => d.Prompts);
+
+                return await _languagesCollection.Find(_ => true).Project<LanguagesData>(projection).ToListAsync();
+            }
         }
 
-        public async Task<LanguagesData?> GetLanguageByCode(string languageCode)
+        public async Task<LanguagesData?> GetLanguageByCode(string languageCode, bool withPrompts)
         {
             var filter = Builders<LanguagesData>.Filter.Eq(d => d.Id, languageCode);
 
-            return await _languagesCollection.Find(filter).FirstOrDefaultAsync();
+            if (withPrompts)
+            {
+                return await _languagesCollection.Find(filter).FirstOrDefaultAsync();
+            }
+            else
+            {
+                var projection = Builders<LanguagesData>.Projection
+                    .Exclude(d => d.Prompts);
+
+                return await _languagesCollection.Find(filter).Project<LanguagesData>(projection).FirstOrDefaultAsync();
+            }
         }
 
         public async Task<bool> AddNewLanguage(LanguagesData newLanguagesData)
         {
-            await _languagesCollection.InsertOneAsync(newLanguagesData);
-
-            return true;
+            try
+            {
+                await _languagesCollection.InsertOneAsync(newLanguagesData);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add new language");
+                return false;
+            }
         }
 
         public async Task<bool> ReplaceLanguage(LanguagesData newLanguagesData)

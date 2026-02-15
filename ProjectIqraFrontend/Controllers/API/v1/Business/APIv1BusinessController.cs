@@ -40,6 +40,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                 var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
                     Request: Request,
                     businessId: businessId,
+                    checkAPIKeyBusinessRestriction: true,
                     // User Permissions
                     checkUserDisabled: true,
                     // User Business Permissions

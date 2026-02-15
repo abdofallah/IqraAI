@@ -24,6 +24,8 @@ namespace IqraCore.Interfaces.Validation
 
     public interface ISessionValidationAndPermissionHelper
     {
+        Task<UserData?> GetUserDataAsync(string email);
+
         Task<FunctionReturnResult<string?>> ValidateUserSessionAsync(
             HttpRequest Request
         );
@@ -69,6 +71,7 @@ namespace IqraCore.Interfaces.Validation
 
         Task<FunctionReturnResult<ValidateUserResult?>> ValidateUserAPIWithPermissions(
             HttpRequest Request,
+            bool checkUserApiAccessManagementRestriction = false,
             // User Permissions
             bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,
@@ -84,6 +87,7 @@ namespace IqraCore.Interfaces.Validation
         Task<FunctionReturnResult<ValidateUserAndBusinessResult?>> ValidateUserAPIAndBusinessWithPermissions(
             HttpRequest Request,
             long businessId,
+            bool checkUserApiAccessManagementRestriction = false,      
             bool checkAPIKeyBusinessRestriction = true,
             // User Permissions
             bool checkUserIsAdmin = false,

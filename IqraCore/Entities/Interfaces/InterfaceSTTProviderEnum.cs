@@ -5,6 +5,7 @@
         Unknown = 0,
         AzureSpeechServices = 1,
         Deepgram = 2,
-        AssemblyAI = 3
+        AssemblyAI = 3,
+        ElevenLabs = 4
     }
 }

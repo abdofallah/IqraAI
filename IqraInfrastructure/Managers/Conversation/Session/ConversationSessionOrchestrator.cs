@@ -26,6 +26,7 @@ using IqraInfrastructure.Managers.Conversation.Session.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Logger;
 using IqraInfrastructure.Managers.Conversation.Session.Mixer;
 using IqraInfrastructure.Managers.Conversation.Session.Recording;
+using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Conversation;
@@ -135,6 +136,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             ILoggerFactory loggerFactory,
             CampaignActionExecutorService campaignActionExecutorService,
             LLMProviderManager llmProviderManager,
+            LanguagesManager langaugesManager,
 
             CallQueueData? queueData = null,
             WebSessionData? webSessionData = null
@@ -155,7 +157,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             _logger = _sessionLoggerFactory.CreateLogger<ConversationSessionOrchestrator>();
             _campaignActionExecutorService = campaignActionExecutorService;
-            _conversationSessionPostAnalysisService = new ConversationSessionPostAnalysisService(_sessionLoggerFactory, conversationStateRepository, llmProviderManager);
+            _conversationSessionPostAnalysisService = new ConversationSessionPostAnalysisService(_sessionLoggerFactory, conversationStateRepository, llmProviderManager, langaugesManager);
 
             if (IsCallInitiated)
             {

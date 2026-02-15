@@ -1,17 +1,17 @@
 ﻿<div class="main-container fade w-100 d-none" id="tts-provider-tab">
-    <h3 class="fw-bold tab-title">
-        <i class='fa-regular fa-volume-high nav_icon'></i>
-        <span>TTS Provider</span>
-    </h3>
-    <div class="inner-container">
-        <!-- Manager Inner Tabs -->
-        <div class="mb-3">
-            <ul class="nav w-100 fade show" id="tts-provider-inner-tab" role="tablist">
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link active" id="tts-provider-list-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-list" type="button" role="tab" aria-controls="tts-provider-list" aria-selected="true">List</button>
-                </li>
-            </ul>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="tts-provider-manage-breadcrumb">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-volume-high nav_icon'></i> <span>TTS Provider</span></h3>
+
+    <div class="inner-header-container mb-3">
+        <!-- List Header -->
+        <ul class="nav w-100 fade show" id="tts-provider-list-inner-header" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="tts-provider-list-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-list" type="button" role="tab" aria-controls="tts-provider-list" aria-selected="true">List</button>
+            </li>
+        </ul>
+
+        <!-- Manager Header -->
+        <div class="w-100 fade d-none" id="tts-provider-manager-inner-header">
+            <nav class="mb-3" aria-label="breadcrumb" id="tts-provider-manage-breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item">
                         <a href="#" id="switchBackToTTSProviderListTabFromManageTab">Providers</a>
@@ -21,27 +21,48 @@
                     </li>
                 </ol>
             </nav>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="tts-provider-speaker-manager-breadcrumb">
-                <div class="d-flex flex-row align-items-center justify-content-between">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item" aria-current="page">
-                            <span id="currentManageSpeakerTTSProviderName">Provider</span>
-                        </li>
-                        <li class="breadcrumb-item">
-                            <a href="#" id="switchBackToTTSProviderManagerSpeakersListTabFromSpeakerTab">Speakers</a>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page">
-                            <span id="currentManageTTSProviderSpeakerName">Speaker</span>
-                        </li>
-                    </ol>
-                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageTTSProviderSpeakerButton">
-                        <i class='fa-regular fa-floppy-disk'></i>
-                        <span> Save</span>
-                    </button>
-                </div>
-            </nav>
+            <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                <ul class="nav fade show" id="tts-provider-manager-inner-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="tts-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-manager-general" type="button" role="tab" aria-controls="tts-provider-manager-general" aria-selected="true">General</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="tts-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-manager-models" type="button" role="tab" aria-controls="tts-provider-manager-models" aria-selected="true">Models</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tts-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-manager-integrations" type="button" role="tab" aria-controls="tts-provider-manager-integrations" aria-selected="false">Integrations</button>
+                    </li>
+                </ul>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageTTSProviderButton" disabled>
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
         </div>
+        
+        <!-- Manager Model Header -->
+        <div class="w-100 fade d-none" id="tts-provider-manager-model-inner-header">
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item" aria-current="page">
+                        <span id="currentManageModelTTSProviderName">Provider</span>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="#" id="switchBackToTTSProviderManagerModelsListTabFromModelTab">Models</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <span id="currentManageTTSProviderModelName">Model</span>
+                    </li>
+                </ol>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageTTSProviderModelButton">
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
+    <div class="inner-container">
         <!-- Tab Content -->
         <div class="tab-content" id="tts-provider-tab-content">
             <!-- List -->
@@ -63,7 +84,7 @@
                                 <th scope="col">#</th>
                                 <th scope="col">Name</th>
                                 <th scope="col">Disabled</th>
-                                <th scope="col">Speakers</th>
+                                <th scope="col">Models</th>
                                 <th scope="col">Actions</th>
                             </tr>
                         </thead>
@@ -75,25 +96,6 @@
 
                 <!-- Provider Manage Tab -->
                 <div class="fade w-100 d-none" id="ttsProviderManageTab">
-                    <!-- Manager Inner Tabs -->
-                    <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="tts-provider-manager-inner-tab-container">
-                        <ul class="nav fade show" id="tts-provider-manager-inner-tab" role="tablist">
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="tts-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-manager-general" type="button" role="tab" aria-controls="tts-provider-manager-general" aria-selected="true">General</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="tts-provider-manager-speakers-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-manager-speakers" type="button" role="tab" aria-controls="tts-provider-manager-speakers" aria-selected="true">Speakers</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="tts-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-manager-integrations" type="button" role="tab" aria-controls="tts-provider-manager-integrations" aria-selected="false">Integrations</button>
-                            </li>
-                        </ul>
-                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageTTSProviderButton" disabled>
-                            <i class='fa-regular fa-floppy-disk'></i>
-                            <span> Save</span>
-                        </button>
-                    </div>
-
                     <!-- Tab Content -->
                     <div class="tab-content" id="tts-provider-manager-manage-tab-content">
                         <!-- General Tab -->
@@ -114,33 +116,30 @@
                             </div>
                         </div>
 
-                        <!-- Speakers Tab -->
-                        <div class="tab-pane fade w-100" id="tts-provider-manager-speakers" role="tabpanel" aria-labelledby="tts-provider-manager-speakers-tab" tabindex="0">
+                        <!-- Models Tab -->
+                        <div class="tab-pane fade w-100" id="tts-provider-manager-models" role="tabpanel" aria-labelledby="tts-provider-manager-models-tab" tabindex="0">
 
-                            <!-- Speakers List Tab -->
-                            <div class="fade w-100 show" id="ttsProviderManagerSpeakersListTab">
+                            <!-- Models List Tab -->
+                            <div class="fade w-100 show" id="ttsProviderManagerModelsListTab">
                                 <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                     <div style="min-width: 200px" class="me-4">
-                                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewTTSProviderSpeakerButton">
-                                            <span>+ Add New Speaker</span>
+                                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewTTSProviderModelButton">
+                                            <span>+ Add New Model</span>
                                         </button>
                                     </div>
                                     <div class="input-group w-100">
-                                        <input type="text" class="form-control" placeholder="Speaker Name or Id" aria-label="Speaker Name or Id" aria-describedby="searchTTSProviderSpeakerButton">
-                                        <button class="input-group-button btn btn-primary" id="searchTTSProviderSpeakerButton">
+                                        <input type="text" class="form-control" placeholder="Model Name or Id" aria-label="Model Name or Id" aria-describedby="searchTTSProviderModelButton">
+                                        <button class="input-group-button btn btn-primary" id="searchTTSProviderModelButton">
                                             <i class='fa-regular fa-magnifying-glass'></i>
                                         </button>
                                     </div>
                                 </div>
-                                <table id="ttsProviderSpeakerListTable" class="table w-100">
+                                <table id="ttsProviderModelListTable" class="table w-100">
                                     <thead>
                                         <tr>
                                             <th scope="col">#</th>
                                             <th scope="col">Name</th>
                                             <th scope="col">Languages</th>
-                                            <th scope="col">Gender</th>
-                                            <th scope="col">Age Group</th>
-                                            <th scope="col">Styles</th>
                                             <th scope="col">Disabled</th>
                                             <th scope="col">Actions</th>
                                         </tr>
@@ -151,97 +150,24 @@
                                 </table>
                             </div>
 
-                            <!-- Speaker Manage Tab -->
-                            <div class="fade w-100 d-none" id="ttsProviderManagerSpeakerManageTab">
+                            <!-- Model Manage Tab -->
+                            <div class="fade w-100 d-none" id="ttsProviderManagerModelManageTab">
                                 <!-- Basic Information -->
                                 <div class="mb-3">
-                                    <label class="form-label" for="manageTTSProviderSpeakerIdInput">Identifier</label>
-                                    <input type="text" class="form-control" id="manageTTSProviderSpeakerIdInput" placeholder="Speaker Identifier">
+                                    <label class="form-label" for="manageTTSProviderModelIdInput">Identifier</label>
+                                    <input type="text" class="form-control" id="manageTTSProviderModelIdInput" placeholder="Model Identifier">
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label" for="manageTTSProviderSpeakerNameInput">Name</label>
-                                    <input type="text" class="form-control" id="manageTTSProviderSpeakerNameInput" placeholder="Speaker Name">
+                                    <label class="form-label" for="manageTTSProviderModelNameInput">Name</label>
+                                    <input type="text" class="form-control" id="manageTTSProviderModelNameInput" placeholder="Model Name">
                                 </div>
 
                                 <!-- Price Settings -->
                                 <div class="mb-3">
                                     <label class="form-label">Price Per Unit</label>
                                     <div class="input-group">
-                                        <input type="number" class="form-control" placeholder="Price" id="manageTTSProviderSpeakerPriceInput">
-                                        <input type="text" class="form-control" style="max-width: 200px" placeholder="Unit (e.g., per character)" id="manageTTSProviderSpeakerPriceUnitInput">
-                                    </div>
-                                </div>
-
-                                <!-- Speaker Characteristics -->
-                                <div class="row mb-3">
-                                    <div class="col-md-4">
-                                        <label class="form-label">Gender</label>
-                                        <select class="form-select" id="manageTTSProviderSpeakerGenderSelect">
-                                            <option value="">Select Gender</option>
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                            <option value="Neutral">Neutral</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Age Group</label>
-                                        <select class="form-select" id="manageTTSProviderSpeakerAgeGroupSelect">
-                                            <option value="">Select Age Group</option>
-                                            <option value="Child">Child</option>
-                                            <option value="Young">Young</option>
-                                            <option value="Adult">Adult</option>
-                                            <option value="Senior">Senior</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Personality</label>
-                                        <select class="form-select" id="manageTTSProviderSpeakerPersonalitySelect" multiple>
-                                            <option value="Animated">Animated</option>
-                                            <option value="Approachable">Approachable</option>
-                                            <option value="Authentic">Authentic</option>
-                                            <option value="Authoritative">Authoritative</option>
-                                            <option value="Bright">Bright</option>
-                                            <option value="Calm">Calm</option>
-                                            <option value="Caring">Caring</option>
-                                            <option value="Casual">Casual</option>
-                                            <option value="Cheerful">Cheerful</option>
-                                            <option value="Clear">Clear</option>
-                                            <option value="Confident">Confident</option>
-                                            <option value="Crisp">Crisp</option>
-                                            <option value="Curious">Curious</option>
-                                            <option value="Deep">Deep</option>
-                                            <option value="Emotional">Emotional</option>
-                                            <option value="Empathetic">Empathetic</option>
-                                            <option value="Engaging">Engaging</option>
-                                            <option value="Expressive">Expressive</option>
-                                            <option value="Formal">Formal</option>
-                                            <option value="Friendly">Friendly</option>
-                                            <option value="Gentle">Gentle</option>
-                                            <option value="Hoarse">Hoarse</option>
-                                            <option value="Honest">Honest</option>
-                                            <option value="Knowledgeable">Knowledgeable</option>
-                                            <option value="Light-Hearted">Light-Hearted</option>
-                                            <option value="Mature">Mature</option>
-                                            <option value="Pleasant">Pleasant</option>
-                                            <option value="Polite">Polite</option>
-                                            <option value="Professional">Professional</option>
-                                            <option value="Resonant">Resonant</option>
-                                            <option value="Serious">Serious</option>
-                                            <option value="Shy">Shy</option>
-                                            <option value="Sincere">Sincere</option>
-                                            <option value="Smooth">Smooth</option>
-                                            <option value="Soft">Soft</option>
-                                            <option value="Soothing">Soothing</option>
-                                            <option value="Strong">Strong</option>
-                                            <option value="Thoughtful">Thoughtful</option>
-                                            <option value="Trustworthy">Trustworthy</option>
-                                            <option value="Upbeat">Upbeat</option>
-                                            <option value="Versatile">Versatile</option>
-                                            <option value="Warm">Warm</option>
-                                            <option value="Well-Rounded">Well-Rounded</option>
-                                            <option value="Whimsical">Whimsical</option>
-                                            <option value="Youthful">Youthful</option>
-                                        </select>
+                                        <input type="number" class="form-control" placeholder="Price" id="manageTTSProviderModelPriceInput">
+                                        <input type="text" class="form-control" style="max-width: 200px" placeholder="Unit (e.g., per character)" id="manageTTSProviderModelPriceUnitInput">
                                     </div>
                                 </div>
 
@@ -250,31 +176,18 @@
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <label class="form-label mb-0">Supported Languages</label>
                                         <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="manageTTSProviderSpeakerMultilingualInput">
-                                            <label class="form-check-label" for="manageTTSProviderSpeakerMultilingualInput">Multilingual</label>
+                                            <input class="form-check-input" type="checkbox" role="switch" id="manageTTSProviderModelMultilingualInput">
+                                            <label class="form-check-label" for="manageTTSProviderModelMultilingualInput">Multilingual</label>
                                         </div>
                                     </div>
-                                    <div id="manageTTSProviderSpeakerLanguagesContainer">
+                                    <div id="manageTTSProviderModelLanguagesContainer">
                                         <!-- Will be populated with language checkboxes -->
                                     </div>
                                 </div>
 
-                                <!-- Speaking Styles -->
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <label class="form-label mb-0">Speaking Styles</label>
-                                        <button class="btn btn-outline-light btn-sm" id="addNewSpeakingStyleButton">
-                                            <i class="fa-regular fa-plus"></i> Add Style
-                                        </button>
-                                    </div>
-                                    <div id="manageTTSProviderSpeakerStylesContainer">
-                                        <!-- Will be populated with speaking styles -->
-                                    </div>
-                                </div>
-
                                 <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="manageTTSProviderSpeakerDisabledInput">
-                                    <label class="form-check-label" for="manageTTSProviderSpeakerDisabledInput">Disabled</label>
+                                    <input class="form-check-input" type="checkbox" role="switch" id="manageTTSProviderModelDisabledInput">
+                                    <label class="form-check-label" for="manageTTSProviderModelDisabledInput">Disabled</label>
                                 </div>
                             </div>
                         </div>

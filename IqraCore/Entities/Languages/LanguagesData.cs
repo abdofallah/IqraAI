@@ -12,12 +12,14 @@ namespace IqraCore.Entities.Languages
         public string Name { get; set; } = "";
 
         [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/languages")]
         public LanguagePromptsData Prompts { get; set; } = new();
 
         public DateTime? DisabledAt { get; set; } = null;
         public string? PublicDisabledReason { get; set; } = null;
 
         [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/languages")]
         public string? PrivateDisabledReason { get; set; } = null;
     }
 }

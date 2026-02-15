@@ -361,6 +361,7 @@ namespace IqraInfrastructure.Managers.WebSession
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
                     _campaignActionExecutorService,
                     _serviceProvider.GetRequiredService<LLMProviderManager>(),
+                    _serviceProvider.GetRequiredService<LanguagesManager>(),
 
                     webSessionData: webSessionData
                 );

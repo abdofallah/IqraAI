@@ -23,5 +23,7 @@ namespace IqraCore.Entities.User
         public DateTime? LastUsedUtc { get; set; }
 
         public List<long> RestrictedToBusinessIds { get; set; } = new List<long>();
+
+        public bool AllowUserManagementApiRequests { get; set; } = false;
     }
 }

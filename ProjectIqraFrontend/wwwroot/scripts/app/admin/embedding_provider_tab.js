@@ -10,28 +10,30 @@ let IsSavingEmbeddingProviderTab = false;
 /** Elements Variables **/
 const EmbeddingProviderTab = $("#embedding-provider-tab");
 
-const embeddingProviderInnerTab = EmbeddingProviderTab.find("#embedding-provider-inner-tab");
-const embeddingProviderManageBreadcrumb = EmbeddingProviderTab.find("#embedding-provider-manage-breadcrumb");
+// Header
+const embeddingProviderInnerHeader = EmbeddingProviderTab.find("#embedding-provider-inner-header");
 
-const switchBackToEmbeddingProviderListTabFromManageTab = embeddingProviderManageBreadcrumb.find("#switchBackToEmbeddingProviderListTabFromManageTab");
-const currentManageEmbeddingProviderName = embeddingProviderManageBreadcrumb.find("#currentManageEmbeddingProviderName");
+// Manager Header
+const embeddingProviderManageInnerHeader = EmbeddingProviderTab.find("#embedding-provider-manager-inner-header");
+const switchBackToEmbeddingProviderListTabFromManageTab = embeddingProviderManageInnerHeader.find("#switchBackToEmbeddingProviderListTabFromManageTab");
+const currentManageEmbeddingProviderName = embeddingProviderManageInnerHeader.find("#currentManageEmbeddingProviderName");
+const saveManageEmbeddingProviderButton = embeddingProviderManageInnerHeader.find("#saveManageEmbeddingProviderButton");
 
+// Manager Model Header
+const embeddingProviderModelManagerInnerHeader = EmbeddingProviderTab.find("#embedding-provider-model-manager-inner-header");
+const currentManageModelEmbeddingProviderName = embeddingProviderModelManagerInnerHeader.find("#currentManageModelEmbeddingProviderName");
+const currentManageEmbeddingProviderModelName = embeddingProviderModelManagerInnerHeader.find("#currentManageEmbeddingProviderModelName");
+const switchBackToEmbeddingProviderManagerModelsListTabFromModelTab = embeddingProviderModelManagerInnerHeader.find("#switchBackToEmbeddingProviderManagerModelsListTabFromModelTab");
+const saveManageEmbeddingProviderModelButton = embeddingProviderModelManagerInnerHeader.find("#saveManageEmbeddingProviderModelButton");
+
+// List Tab
 const EmbeddingProviderListTableTab = EmbeddingProviderTab.find("#embeddingProviderListTableTab");
 const EmbeddingProviderListTable = EmbeddingProviderListTableTab.find("#embeddingProviderListTable");
 
+// Manager Tab
 const EmbeddingProviderManageTab = EmbeddingProviderTab.find("#embeddingProviderManageTab");
 const embeddingProviderModelListTable = EmbeddingProviderManageTab.find("#embeddingProviderModelListTable");
 const addNewEmbeddingProviderModelButton = EmbeddingProviderManageTab.find("#addNewEmbeddingProviderModelButton");
-
-const embeddingProviderManagerInnerTabContainer = EmbeddingProviderManageTab.find("#embedding-provider-manager-inner-tab-container");
-const embeddingProviderManagerInnerTab = embeddingProviderManagerInnerTabContainer.find("#embedding-provider-manager-inner-tab");
-const embeddingProviderModelManagerBreadcrumb = EmbeddingProviderTab.find("#embedding-provider-model-manager-breadcrumb");
-const saveManageEmbeddingProviderModelButton = embeddingProviderModelManagerBreadcrumb.find("#saveManageEmbeddingProviderModelButton");
-const saveManageEmbeddingProviderButton = embeddingProviderManagerInnerTabContainer.find("#saveManageEmbeddingProviderButton");
-
-const currentManageModelEmbeddingProviderName = embeddingProviderModelManagerBreadcrumb.find("#currentManageModelEmbeddingProviderName");
-const currentManageEmbeddingProviderModelName = embeddingProviderModelManagerBreadcrumb.find("#currentManageEmbeddingProviderModelName");
-const switchBackToEmbeddingProviderManagerModelsListTabFromModelTab = embeddingProviderModelManagerBreadcrumb.find("#switchBackToEmbeddingProviderManagerModelsListTabFromModelTab");
 
 const embeddingProviderManagerGeneral = EmbeddingProviderManageTab.find("#embedding-provider-manager-general");
 const manageEmbeddingProviderIdInput = embeddingProviderManagerGeneral.find("#manageEmbeddingProviderIdInput");
@@ -148,30 +150,38 @@ function ResetAndEmptyEmbeddingProvidersManageTab() {
 
 function ShowEmbeddingProviderManageTab() {
     EmbeddingProviderListTableTab.removeClass("show");
-    embeddingProviderInnerTab.removeClass("show");
+    embeddingProviderInnerHeader.removeClass("show");
+
     setTimeout(() => {
         EmbeddingProviderListTableTab.addClass("d-none");
-        embeddingProviderInnerTab.addClass("d-none");
+        embeddingProviderInnerHeader.addClass("d-none");
+
         EmbeddingProviderManageTab.removeClass("d-none");
-        embeddingProviderManageBreadcrumb.removeClass("d-none");
+        embeddingProviderManageInnerHeader.removeClass("d-none");
         setTimeout(() => {
             EmbeddingProviderManageTab.addClass("show");
-            embeddingProviderManageBreadcrumb.addClass("show");
+            embeddingProviderManageInnerHeader.addClass("show");
+
+            setDynamicBodyHeight();
         }, 10);
     }, 300);
 }
 
 function ShowEmbeddingProviderListTab() {
     EmbeddingProviderManageTab.removeClass("show");
-    embeddingProviderManageBreadcrumb.removeClass("show");
+    embeddingProviderManageInnerHeader.removeClass("show");
+
     setTimeout(() => {
         EmbeddingProviderManageTab.addClass("d-none");
-        embeddingProviderManageBreadcrumb.addClass("d-none");
+        embeddingProviderManageInnerHeader.addClass("d-none");
+
         EmbeddingProviderListTableTab.removeClass("d-none");
-        embeddingProviderInnerTab.removeClass("d-none");
+        embeddingProviderInnerHeader.removeClass("d-none");
         setTimeout(() => {
             EmbeddingProviderListTableTab.addClass("show");
-            embeddingProviderInnerTab.addClass("show");
+            embeddingProviderInnerHeader.addClass("show");
+
+            setDynamicBodyHeight();
         }, 10);
     }, 300);
 }
@@ -206,34 +216,38 @@ function FillEmbeddingProviderManageTab(providerData) {
 
 function ShowEmbeddingProviderModelManageTab() {
     embeddingProviderManagerModelsListTab.removeClass("show");
-    embeddingProviderManagerInnerTabContainer.removeClass("show");
-    embeddingProviderManageBreadcrumb.removeClass("show");
+    embeddingProviderManageInnerHeader.removeClass("show");
+
     setTimeout(() => {
         embeddingProviderManagerModelsListTab.addClass("d-none");
-        embeddingProviderManagerInnerTabContainer.addClass("d-none");
-        embeddingProviderManageBreadcrumb.addClass("d-none");
+        embeddingProviderManageInnerHeader.addClass("d-none");
+
         embeddingProviderManagerModelManageTab.removeClass("d-none");
-        embeddingProviderModelManagerBreadcrumb.removeClass("d-none");
+        embeddingProviderModelManagerInnerHeader.removeClass("d-none");
         setTimeout(() => {
             embeddingProviderManagerModelManageTab.addClass("show");
-            embeddingProviderModelManagerBreadcrumb.addClass("show");
+            embeddingProviderModelManagerInnerHeader.addClass("show");
+
+            setDynamicBodyHeight();
         }, 10);
     }, 300);
 }
 
 function ShowEmbeddingProviderModelListTab() {
     embeddingProviderManagerModelManageTab.removeClass("show");
-    embeddingProviderModelManagerBreadcrumb.removeClass("show");
+    embeddingProviderModelManagerInnerHeader.removeClass("show");
+
     setTimeout(() => {
         embeddingProviderManagerModelManageTab.addClass("d-none");
-        embeddingProviderModelManagerBreadcrumb.addClass("d-none");
+        embeddingProviderModelManagerInnerHeader.addClass("d-none");
+
         embeddingProviderManagerModelsListTab.removeClass("d-none");
-        embeddingProviderManagerInnerTabContainer.removeClass("d-none");
-        embeddingProviderManageBreadcrumb.removeClass("d-none");
+        embeddingProviderManageInnerHeader.removeClass("d-none");
         setTimeout(() => {
             embeddingProviderManagerModelsListTab.addClass("show");
-            embeddingProviderManagerInnerTabContainer.addClass("show");
-            embeddingProviderManageBreadcrumb.addClass("show");
+            embeddingProviderManageInnerHeader.addClass("show");
+
+            setDynamicBodyHeight();
         }, 10);
     }, 300);
 }
@@ -313,7 +327,6 @@ function fillEmbeddingProviderIntegrationSelect() {
     });
 }
 
-// All Integration functions are generic and identical to the LLM versions after find/replace.
 function createEmbeddingProviderIntegrationFieldElement(fieldData = null) {
     const fieldId = fieldData?.id || generateUniqueId();
     return `
@@ -745,7 +758,7 @@ $(document).ready(() => {
         );
     });
 
-    embeddingProviderManagerInnerTab.find('button[data-bs-toggle="pill"]').on("shown.bs.tab", (event) => {
+    embeddingProviderManageInnerHeader.find('button[data-bs-toggle="pill"]').on("shown.bs.tab", (event) => {
         let newTab = event.target;
         if (newTab.id == "embedding-provider-manager-models-tab") {
             saveManageEmbeddingProviderButton.addClass("d-none");

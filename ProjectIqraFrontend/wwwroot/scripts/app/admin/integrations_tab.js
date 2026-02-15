@@ -8,7 +8,6 @@ const integrationsTab = $("#integrations-tab");
 const integrationsHeader = integrationsTab.find("#integrations-header");
 
 // List view elements
-const integrationsListBreadcrumb = integrationsTab.find("#integrationsListBreadcrumb");
 const integrationsListTab = integrationsTab.find("#integrationsListTab");
 const integrationsListContainer = integrationsTab.find("#integrationsListContainer");
 const addNewIntegrationButton = integrationsTab.find("#addNewIntegrationButton");
@@ -78,22 +77,13 @@ function SaveIntegrationToAPI(formData, successCallback, errorCallback) {
 function createIntegrationCardElement(integration) {
 	const typesBadges = integration.type.map((type) => `<span class="badge border border-dark text-dark me-1 mb-1">${type}</span>`).join("");
 
-	return `
-                <div class="col-lg-4 col-md-6 col-12 mb-3">
-                    <div class="business-card d-flex flex-column align-items-start justify-content-center"
-                        data-integration-id="${integration.id}">
-                        <div class="d-flex flex-row align-items-center justify-content-between w-100 mb-3">
-                            <div class="d-flex flex-row align-items-center">
-                                <img src="${integration.logoUrl}">
-                                <div>
-                                    <h4>${integration.name}</h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div>${typesBadges}</div>
-                    </div>
-                </div>
-            `;
+	return createIqraCardElement({
+		id: integration.id,
+		type: 'integration',
+		visualHtml: `<img src="${integration.presignedLogoUrl}" alt="${integration.name} logo">`,
+		titleHtml: integration.name,
+		descriptionHtml: typesBadges
+	});
 }
 
 function createFieldElement(fieldData = null) {
@@ -195,6 +185,7 @@ function createIntegrationFieldOptionElement(optionData = null) {
                 </div>
             `;
 }
+
 function createTypeBadgeElement(type) {
 	return `
                 <span class="badge border me-1 mb-1">
@@ -240,33 +231,33 @@ function FillIntegrationsList() {
 }
 
 function ShowIntegrationsListTab() {
-	integrationManagerBreadcrumb.removeClass("show");
+	integrationsHeader.removeClass("show");
 	integrationManagerTab.removeClass("show");
 	setTimeout(() => {
-		integrationManagerBreadcrumb.addClass("d-none");
+		integrationsHeader.addClass("d-none");
 		integrationManagerTab.addClass("d-none");
 
-		integrationsListBreadcrumb.removeClass("d-none");
 		integrationsListTab.removeClass("d-none");
 		setTimeout(() => {
-			integrationsListBreadcrumb.addClass("show");
 			integrationsListTab.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
 function ShowIntegrationManagerTab() {
-	integrationsListBreadcrumb.removeClass("show");
 	integrationsListTab.removeClass("show");
 	setTimeout(() => {
-		integrationsListBreadcrumb.addClass("d-none");
 		integrationsListTab.addClass("d-none");
 
-		integrationManagerBreadcrumb.removeClass("d-none");
+		integrationsHeader.removeClass("d-none");
 		integrationManagerTab.removeClass("d-none");
 		setTimeout(() => {
-			integrationManagerBreadcrumb.addClass("show");
+			integrationsHeader.addClass("show");
 			integrationManagerTab.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
@@ -514,6 +505,7 @@ function collectFields() {
 	});
 	return fields;
 }
+
 function resetOrClearIntegrationManager() {
 	integrationIdInput.val("");
 	integrationIdInput.prop("disabled", false);
@@ -539,8 +531,8 @@ function fillIntegrationManager(integrationData) {
 
 	integrationNameInput.val(integrationData.name);
 	integrationDescriptionInput.val(integrationData.description);
-	if (integrationData.logo) {
-		integrationLogoPreview.attr("src", integrationData.logoUrl);
+	if (integrationData.presignedLogoUrl) {
+		integrationLogoPreview.attr("src", integrationData.presignedLogoUrl);
 	}
 
 	// Set disabled state
@@ -601,10 +593,10 @@ function initIntegrationsTab() {
 	});
 
 	// Edit integration
-	integrationsListContainer.on("click", ".business-card", (event) => {
+	integrationsListContainer.on("click", ".integration-card", (event) => {
 		event.preventDefault();
 		const card = $(event.currentTarget);
-		const integrationId = card.data("integration-id");
+		const integrationId = card.attr("data-item-id");
 
 		CurrentIntegrationData = CurrentIntegrationsList.find((i) => i.id === integrationId);
 		if (!CurrentIntegrationData) return;

@@ -1,14 +1,17 @@
 ﻿<div class="main-container fade w-100 d-none" id="rerank-provider-tab">
-    <h3 class="fw-bold tab-title"><i class='fa-regular fa-sort-amount-up-alt nav_icon'></i> <span>Rerank Provider</span></h3>
-    <div class="inner-container">
-        <!-- Manager Inner Tabs & Breadcrumbs -->
-        <div class="mb-3">
-            <ul class="nav w-100 fade show" id="rerank-provider-inner-tab" role="tablist">
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link active" id="rerank-provider-list-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-list" type="button" role="tab" aria-controls="rerank-provider-list" aria-selected="true">List</button>
-                </li>
-            </ul>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="rerank-provider-manage-breadcrumb">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-sort-amount-up-alt nav_icon'></i> <span>Rerank Provider</span></h3>
+
+    <div class="inner-header-container mb-3">
+        <!-- Inner Header -->
+        <ul class="nav w-100 fade show" id="rerank-provider-inner-header" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="rerank-provider-list-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-list" type="button" role="tab" aria-controls="rerank-provider-list" aria-selected="true">List</button>
+            </li>
+        </ul>
+
+        <!-- Manager Header -->
+        <div class="w-100 fade d-none" id="rerank-provider-manager-inner-header">
+            <nav class="mb-3" aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item">
                         <a href="#" id="switchBackToRerankProviderListTabFromManageTab">Providers</a>
@@ -16,25 +19,53 @@
                     <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRerankProviderName">Provider</span></li>
                 </ol>
             </nav>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="rerank-provider-model-manager-breadcrumb">
-                <div class="d-flex flex-row align-items-center justify-content-between">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item" aria-current="page"><span id="currentManageModelRerankProviderName">Provider</span></li>
-                        <li class="breadcrumb-item">
-                            <a href="#" id="switchBackToRerankProviderManagerModelsListTabFromModelTab">Models</a>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRerankProviderModelName">Model</span></li>
-                    </ol>
-                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRerankProviderModelButton">
-                        <i class='fa-regular fa-floppy-disk'></i>
-                        <span> Save</span>
-                    </button>
-                </div>
-            </nav>
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <ul class="nav fade show" id="rerank-provider-manager-inner-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="rerank-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-manager-general" type="button" role="tab" aria-controls="rerank-provider-manager-general" aria-selected="true">General</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="rerank-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-manager-models" type="button" role="tab" aria-controls="rerank-provider-manager-models" aria-selected="true">Models</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="rerank-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-manager-integrations" type="button" role="tab" aria-controls="rerank-provider-manager-integrations" aria-selected="false">Integrations</button>
+                    </li>
+                </ul>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRerankProviderButton" disabled>
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
         </div>
+
+        <!-- Manager Inner Tabs -->
+        <div class="w-100 fade d-none" id="rerank-provider-manager-model-inner-header">
+            <nav class="mb-3" aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item" aria-current="page"><span id="currentManageModelRerankProviderName">Provider</span></li>
+                    <li class="breadcrumb-item">
+                        <a href="#" id="switchBackToRerankProviderManagerModelsListTabFromModelTab">Models</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRerankProviderModelName">Model</span></li>
+                </ol>
+            </nav>
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <ul class="nav" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="rerank-provider-model-manager-general-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-model-manager-general" type="button" role="tab" aria-controls="rerank-provider-model-manager-general" aria-selected="true">General</button>
+                    </li>
+                </ul>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRerankProviderModelButton">
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="inner-container">
         <!-- Tab Content -->
         <div class="tab-content" id="rerank-provider-tab-content">
-
             <!-- List -->
             <div class="tab-pane fade w-100 show active" id="rerank-provider-list" role="tabpanel" aria-labelledby="rerank-provider-list-tab" tabindex="0">
                 <div class="fade w-100 show" id="rerankProviderListTableTab">
@@ -64,25 +95,6 @@
 
                 <!-- Provider Manage Tab -->
                 <div class="fade w-100 d-none" id="rerankProviderManageTab">
-                    <!-- Manager Inner Tabs -->
-                    <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="rerank-provider-manager-inner-tab-container">
-                        <ul class="nav fade show" id="rerank-provider-manager-inner-tab" role="tablist">
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="rerank-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-manager-general" type="button" role="tab" aria-controls="rerank-provider-manager-general" aria-selected="true">General</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="rerank-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-manager-models" type="button" role="tab" aria-controls="rerank-provider-manager-models" aria-selected="true">Models</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="rerank-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-manager-integrations" type="button" role="tab" aria-controls="rerank-provider-manager-integrations" aria-selected="false">Integrations</button>
-                            </li>
-                        </ul>
-                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRerankProviderButton" disabled>
-                            <i class='fa-regular fa-floppy-disk'></i>
-                            <span> Save</span>
-                        </button>
-                    </div>
-
                     <!-- Tab Content -->
                     <div class="tab-content" id="rerank-provider-manager-manage-tab-content">
                         <!-- General -->
@@ -137,14 +149,6 @@
 
                             <!-- Manage Tab -->
                             <div class="fade w-100 d-none" id="rerankProviderManagerModelManageTab">
-                                <!-- Manager Inner Tabs (Simplified) -->
-                                <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                                    <ul class="nav" id="rerank-provider-model-manager-inner-tab" role="tablist">
-                                        <li class="nav-item me-2" role="presentation">
-                                            <button class="nav-link active" id="rerank-provider-model-manager-general-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-model-manager-general" type="button" role="tab" aria-controls="rerank-provider-model-manager-general" aria-selected="true">General</button>
-                                        </li>
-                                    </ul>
-                                </div>
                                 <!-- Tab Content -->
                                 <div class="tab-content" id="rerank-provider-model-manager-manage-tab-content">
                                     <!-- General -->

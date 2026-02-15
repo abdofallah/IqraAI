@@ -81,7 +81,7 @@ namespace ProjectIqraBackendProxy
                     ProcessingBatchSize = int.Parse(appConfig["Proxy:OutboundProcessing:ProcessingBatchSize"]),
                     ScheduleWindowMinutes = int.Parse(appConfig["Proxy:OutboundProcessing:ScheduleWindowMinutes"])
                 },
-                ApiKey = appConfig["Security:ApiKey"],
+                ApiKey = appConfig["Proxy:ApiKey"],
                 IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
             };
 

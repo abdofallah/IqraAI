@@ -177,7 +177,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             return GetProviderTypeStatic();
         }
 
-        public InterfaceLLMProviderEnum GetProviderTypeStatic()
+        public static InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.AzureOpenAI;
         }

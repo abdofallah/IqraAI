@@ -147,41 +147,10 @@
         
     </div>
 
-    <!-- Modals -->
-    <div class="modal fade" id="adjustCreditModal" tabindex="-1" aria-labelledby="adjustCreditModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="adjustCreditModalLabel">Adjust User Credit</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Current Balance for <strong id="adjustCreditUserName"></strong>: <span id="adjustCreditCurrentBalance"></span></p>
-                    <input type="hidden" id="adjustCreditUserEmailInput">
-                    <div class="mb-3">
-                        <label for="adjustmentTypeSelect" class="form-label">Adjustment Type</label>
-                        <select class="form-select" id="adjustmentTypeSelect">
-                            <option value="ManualCreditAdjustment">Add Credit (Manual)</option>
-                            <option value="ManualDebitAdjustment">Remove Credit (Manual)</option>
-                            <option value="Refund">Refund</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="adjustmentAmountInput" class="form-label">Amount</label>
-                        <input type="number" step="0.01" class="form-control" id="adjustmentAmountInput" placeholder="e.g., 10.00">
-                    </div>
-                    <div class="mb-3">
-                        <label for="adjustmentReasonInput" class="form-label">Reason / Description <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="adjustmentReasonInput" rows="3" placeholder="e.g., Goodwill gesture, Correction for billing error" required></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="confirmCreditAdjustmentButton">Apply Adjustment</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- ASP -->
+    <script>
+        const IsCloudVersion = @(FrontendAppConfig.IsCloudVersion ? "true" : "false");
+    </script>
 
     <!-- libs -->
     <script src="~/js/jquery-3.7.1.min.js"></script>
@@ -189,6 +158,8 @@
     <script src="~/libs/chart.js-4.4.2-dist/chart.umd.js"></script>
 
     <!-- Custom Scripts -->
+    <script src="~/js/ui_helpers.js"></script>
+    <script src="~/js/provider-integration-fields-helper.js"></script>
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>
     <script src="~/js/confirm_dialog.js"></script>
@@ -204,16 +175,7 @@
         let CurrentAppEmailTemplatesData = null;
         var CurrentUsersList = null;
         var CurrentBusinessesList = null;
-        @{
-            if (FrontendAppConfig.IsCloudVersion)
-            {
-                <text>var CurrentPlansList = null;</text>
-            }
-            else
-            {
-                <text>var CurrentPlansList = {};</text>
-            }
-        }
+        var CurrentPlansList = IsCloudVersion ? {} : null;
         var CurrentLLMProvidersList = null;
         var CurrentSTTProvidersList = null;
         var CurrentTTSProvidersList = null;
@@ -335,21 +297,17 @@
                 , 100);
         }
 
-        @{
-            if (FrontendAppConfig.IsCloudVersion)
-            {
-                <text>
-                    function RunActionAfterPlansLoad(action) {
-                        var plansCheckInterval = setInterval(
-                            () => {
-                                if (CurrentPlansList != null) {
-                                    clearInterval(plansCheckInterval);
-                                    action();
-                                }
-                            }
-                        , 100);
+        if (IsCloudVersion)
+        {
+            function RunActionAfterPlansLoad(action) {
+                var plansCheckInterval = setInterval(
+                    () => {
+                        if (CurrentPlansList != null) {
+                            clearInterval(plansCheckInterval);
+                            action();
+                        }
                     }
-                </text>
+                , 100);
             }
         }
 
@@ -434,6 +392,12 @@
     <!-- Scripts -->
     <script src="~/scripts/app/admin/app_tab.js"></script>
     <script src="~/scripts/app/admin/users_tab.js"></script>
+    @{
+        if (FrontendAppConfig.IsCloudVersion)
+        {
+            <script src="~/scripts/app/admin/users_tab/manager_billing_tab.js"></script>
+        }
+    }
     <script src="~/scripts/app/admin/businesses_tab.js"></script>
     @{
         if (FrontendAppConfig.IsCloudVersion)
@@ -474,55 +438,45 @@
             },
         );
 
-        @{
-            if (FrontendAppConfig.IsCloudVersion)
-            {
-                <text>
-                    FetchPlansFromAPI(
-                        PlansListTablePage, PlansListTablePageSize,
-                        (plans) => {
-                            CurrentPlansList = plans;
-                        },
-                        (error) => {
-                            AlertManager.createAlert({
-                                type: "danger",
-                                message: "Error occured while fetching plans. Check browser console for logs.",
-                                timeout: 5000
-                            });
+        if (IsCloudVersion)
+        {
+            FetchPlansFromAPI(
+                PlansListTablePage, PlansListTablePageSize,
+                (plans) => {
+                    CurrentPlansList = plans;
+                },
+                (error) => {
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: "Error occured while fetching plans. Check browser console for logs.",
+                        timeout: 5000
+                    });
 
-                            console.error("Error occured while fetching plans:", error);
-                        }
-                    );
-                </text>
-            }
+                    console.error("Error occured while fetching plans:", error);
+                }
+            );
         }
  
-        @{
-            if (FrontendAppConfig.IsCloudVersion)
-            {
-                <text>
-                    // Users Tab
-                    RunActionAfterUsersLoad(() => {
-                        RunActionAfterPlansLoad(() => {
-                            initUsersTab();
-                        });
-                    });
 
-                    // Billing/Plan Tab
-                    RunActionAfterPlansLoad(() => {
-                        InitBillingPlansTab();
-                    });
-                </text>
-            }
-            else
-            {
-                <text>
-                    // Users Tab
-                    RunActionAfterUsersLoad(() => {
-                        initUsersTab();
-                    });
-                </text>
-            }
+        if (IsCloudVersion)
+        {
+            // Users Tab
+            RunActionAfterUsersLoad(() => {
+                RunActionAfterPlansLoad(() => {
+                    initUsersTab();
+                });
+            });
+
+            // Billing/Plan Tab
+            RunActionAfterPlansLoad(() => {
+                InitBillingPlansTab();
+            });
+        }
+        else {
+            // Users Tab
+            RunActionAfterUsersLoad(() => {
+                initUsersTab();
+            });
         }
 
         EverythingInitalized = true;

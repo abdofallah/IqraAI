@@ -10,28 +10,30 @@ let IsSavingRerankProviderTab = false;
 /** Elements Variables **/
 const RerankProviderTab = $("#rerank-provider-tab");
 
-const rerankProviderInnerTab = RerankProviderTab.find("#rerank-provider-inner-tab");
-const rerankProviderManageBreadcrumb = RerankProviderTab.find("#rerank-provider-manage-breadcrumb");
+// Header
+const rerankProviderInnerHeader = RerankProviderTab.find("#rerank-provider-inner-header");
 
-const switchBackToRerankProviderListTabFromManageTab = rerankProviderManageBreadcrumb.find("#switchBackToRerankProviderListTabFromManageTab");
-const currentManageRerankProviderName = rerankProviderManageBreadcrumb.find("#currentManageRerankProviderName");
+// Manager Header
+const rerankProviderManagerInnerHeader = RerankProviderTab.find("#rerank-provider-manager-inner-header");
+const switchBackToRerankProviderListTabFromManageTab = rerankProviderManagerInnerHeader.find("#switchBackToRerankProviderListTabFromManageTab");
+const currentManageRerankProviderName = rerankProviderManagerInnerHeader.find("#currentManageRerankProviderName");
+const saveManageRerankProviderButton = rerankProviderManagerInnerHeader.find("#saveManageRerankProviderButton");
 
+// Manager Model Header
+const rerankProviderModelManagerModelInnerHeader = RerankProviderTab.find("#rerank-provider-manager-model-inner-header");
+const currentManageModelRerankProviderName = rerankProviderModelManagerModelInnerHeader.find("#currentManageModelRerankProviderName");
+const currentManageRerankProviderModelName = rerankProviderModelManagerModelInnerHeader.find("#currentManageRerankProviderModelName");
+const switchBackToRerankProviderManagerModelsListTabFromModelTab = rerankProviderModelManagerModelInnerHeader.find("#switchBackToRerankProviderManagerModelsListTabFromModelTab");
+const saveManageRerankProviderModelButton = rerankProviderModelManagerModelInnerHeader.find("#saveManageRerankProviderModelButton");
+
+// List Tab
 const RerankProviderListTableTab = RerankProviderTab.find("#rerankProviderListTableTab");
 const RerankProviderListTable = RerankProviderListTableTab.find("#rerankProviderListTable");
 
+// Manager Tab
 const RerankProviderManageTab = RerankProviderTab.find("#rerankProviderManageTab");
 const rerankProviderModelListTable = RerankProviderManageTab.find("#rerankProviderModelListTable");
 const addNewRerankProviderModelButton = RerankProviderManageTab.find("#addNewRerankProviderModelButton");
-
-const rerankProviderManagerInnerTabContainer = RerankProviderManageTab.find("#rerank-provider-manager-inner-tab-container");
-const rerankProviderManagerInnerTab = rerankProviderManagerInnerTabContainer.find("#rerank-provider-manager-inner-tab");
-const rerankProviderModelManagerBreadcrumb = RerankProviderTab.find("#rerank-provider-model-manager-breadcrumb");
-const saveManageRerankProviderModelButton = rerankProviderModelManagerBreadcrumb.find("#saveManageRerankProviderModelButton");
-const saveManageRerankProviderButton = rerankProviderManagerInnerTabContainer.find("#saveManageRerankProviderButton");
-
-const currentManageModelRerankProviderName = rerankProviderModelManagerBreadcrumb.find("#currentManageModelRerankProviderName");
-const currentManageRerankProviderModelName = rerankProviderModelManagerBreadcrumb.find("#currentManageRerankProviderModelName");
-const switchBackToRerankProviderManagerModelsListTabFromModelTab = rerankProviderModelManagerBreadcrumb.find("#switchBackToRerankProviderManagerModelsListTabFromModelTab");
 
 const rerankProviderManagerGeneral = RerankProviderManageTab.find("#rerank-provider-manager-general");
 const manageRerankProviderIdInput = rerankProviderManagerGeneral.find("#manageRerankProviderIdInput");
@@ -146,30 +148,40 @@ function ResetAndEmptyRerankProvidersManageTab() {
 
 function ShowRerankProviderManageTab() {
     RerankProviderListTableTab.removeClass("show");
-    rerankProviderInnerTab.removeClass("show");
+    rerankProviderInnerHeader.removeClass("show");
+
     setTimeout(() => {
         RerankProviderListTableTab.addClass("d-none");
-        rerankProviderInnerTab.addClass("d-none");
+        rerankProviderInnerHeader.addClass("d-none");
+
         RerankProviderManageTab.removeClass("d-none");
-        rerankProviderManageBreadcrumb.removeClass("d-none");
+        rerankProviderManagerInnerHeader.removeClass("d-none");
+
         setTimeout(() => {
             RerankProviderManageTab.addClass("show");
-            rerankProviderManageBreadcrumb.addClass("show");
+            rerankProviderManagerInnerHeader.addClass("show");
+
+            setDynamicBodyHeight();
         }, 10);
     }, 300);
 }
 
 function ShowRerankProviderListTab() {
     RerankProviderManageTab.removeClass("show");
-    rerankProviderManageBreadcrumb.removeClass("show");
+    rerankProviderManagerInnerHeader.removeClass("show");
+
     setTimeout(() => {
         RerankProviderManageTab.addClass("d-none");
-        rerankProviderManageBreadcrumb.addClass("d-none");
+        rerankProviderManagerInnerHeader.addClass("d-none");
+
         RerankProviderListTableTab.removeClass("d-none");
-        rerankProviderInnerTab.removeClass("d-none");
+        rerankProviderInnerHeader.removeClass("d-none");
+
         setTimeout(() => {
             RerankProviderListTableTab.addClass("show");
-            rerankProviderInnerTab.addClass("show");
+            rerankProviderInnerHeader.addClass("show");
+
+            setDynamicBodyHeight();
         }, 10);
     }, 300);
 }
@@ -204,34 +216,40 @@ function FillRerankProviderManageTab(providerData) {
 
 function ShowRerankProviderModelManageTab() {
     rerankProviderManagerModelsListTab.removeClass("show");
-    rerankProviderManagerInnerTabContainer.removeClass("show");
-    rerankProviderManageBreadcrumb.removeClass("show");
+    rerankProviderManagerInnerHeader.removeClass("show");
+
     setTimeout(() => {
         rerankProviderManagerModelsListTab.addClass("d-none");
-        rerankProviderManagerInnerTabContainer.addClass("d-none");
-        rerankProviderManageBreadcrumb.addClass("d-none");
+        rerankProviderManagerInnerHeader.addClass("d-none");
+
         rerankProviderManagerModelManageTab.removeClass("d-none");
-        rerankProviderModelManagerBreadcrumb.removeClass("d-none");
+        rerankProviderModelManagerModelInnerHeader.removeClass("d-none");
+
         setTimeout(() => {
             rerankProviderManagerModelManageTab.addClass("show");
-            rerankProviderModelManagerBreadcrumb.addClass("show");
+            rerankProviderModelManagerModelInnerHeader.addClass("show");
+
+            setDynamicBodyHeight();
         }, 10);
     }, 300);
 }
 
 function ShowRerankProviderModelListTab() {
     rerankProviderManagerModelManageTab.removeClass("show");
-    rerankProviderModelManagerBreadcrumb.removeClass("show");
+    rerankProviderModelManagerModelInnerHeader.removeClass("show");
+
     setTimeout(() => {
         rerankProviderManagerModelManageTab.addClass("d-none");
-        rerankProviderModelManagerBreadcrumb.addClass("d-none");
+        rerankProviderModelManagerModelInnerHeader.addClass("d-none");
+
         rerankProviderManagerModelsListTab.removeClass("d-none");
-        rerankProviderManagerInnerTabContainer.removeClass("d-none");
-        rerankProviderManageBreadcrumb.removeClass("d-none");
+        rerankProviderManagerInnerHeader.removeClass("d-none");
+
         setTimeout(() => {
             rerankProviderManagerModelsListTab.addClass("show");
-            rerankProviderManagerInnerTabContainer.addClass("show");
-            rerankProviderManageBreadcrumb.addClass("show");
+            rerankProviderManagerInnerHeader.addClass("show");
+
+            setDynamicBodyHeight();
         }, 10);
     }, 300);
 }
@@ -311,7 +329,7 @@ function fillRerankProviderIntegrationSelect() {
     });
 }
 
-/** Integration Functions (Adapted from LLM Provider) **/
+/** Integration Functions **/
 
 function createRerankProviderIntegrationFieldElement(fieldData = null) {
     const fieldId = fieldData?.id || generateUniqueId();

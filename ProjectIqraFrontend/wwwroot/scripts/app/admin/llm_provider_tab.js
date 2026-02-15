@@ -4,36 +4,43 @@ let CurrentManageLLMProviderData = null;
 
 let CurrentManageLLMProviderModelType = null;
 let CurrentManageLLMProviderModelData = null;
-let CurrentManageLLMProviderModelPromptLanguageNewData = null;
 
 let IsSavingLLMProviderTab = false;
 
 /** Elements Variables **/
 const LLMProviderTab = $("#llm-provider-tab");
 
-const llmProviderInnerTab = LLMProviderTab.find("#llm-provider-inner-tab");
-const llmProviderManageBreadcrumb = LLMProviderTab.find("#llm-provider-manage-breadcrumb");
+// Headers
 
-const switchBackToLLMProviderListTabFromManageTab = llmProviderManageBreadcrumb.find("#switchBackToLLMProviderListTabFromManageTab");
-const currentManageLLMProviderName = llmProviderManageBreadcrumb.find("#currentManageLLMProviderName");
+// List Header
+const llmProviderInnerHeader = LLMProviderTab.find("#llm-provider-inner-header");
 
+// Provider Manager Header
+const llmProviderManageInnerHeader = LLMProviderTab.find("#llm-provider-manage-inner-header");
+const switchBackToLLMProviderListTabFromManageTab = llmProviderManageInnerHeader.find("#switchBackToLLMProviderListTabFromManageTab");
+const currentManageLLMProviderName = llmProviderManageInnerHeader.find("#currentManageLLMProviderName");
+const saveManageLLMProviderButton = llmProviderManageInnerHeader.find("#saveManageLLMProviderButton");
+const llmProviderManagerInnerTab = llmProviderManageInnerHeader.find("#llm-provider-manager-inner-tab");
+const llmProviderManagerGeneralTabButton = llmProviderManagerInnerTab.find("#llm-provider-manager-general-tab");
+
+// Provider Model Manager Header
+const llmProviderModelManagerInnerHeader = LLMProviderTab.find("#llm-provider-model-manager-inner-header");
+const saveManageLLMProviderModelButton = llmProviderModelManagerInnerHeader.find("#saveManageLLMProviderModelButton");
+const currentManageModelLLMProviderName = llmProviderModelManagerInnerHeader.find("#currentManageModelLLMProviderName");
+const currentManageLLMProviderModelName = llmProviderModelManagerInnerHeader.find("#currentManageLLMProviderModelName");
+const switchBackToLLMProviderManagerModelsListTabFromModelTab = llmProviderModelManagerInnerHeader.find("#switchBackToLLMProviderManagerModelsListTabFromModelTab");
+const llmProviderModelManagerGeneralTabButton = llmProviderModelManagerInnerHeader.find("#llm-provider-model-manager-general-tab");
+
+// List Tab
 const LLMProviderListTableTab = LLMProviderTab.find("#llmProviderListTableTab");
 const LLMProviderListTable = LLMProviderListTableTab.find("#llmProviderListTable");
 
+// Provider Manager Tab
 const LLMProviderManageTab = LLMProviderTab.find("#llmProviderManageTab");
 const llmProviderModelListTable = LLMProviderManageTab.find("#llmProviderModelListTable");
 const addNewLLMProviderModelButton = LLMProviderManageTab.find("#addNewLLMProviderModelButton");
 
-const llmProviderManagerInnerTabContainer = LLMProviderManageTab.find("#llm-provider-manager-inner-tab-container");
-const llmProviderManagerInnerTab = llmProviderManagerInnerTabContainer.find("#llm-provider-manager-inner-tab");
-const llmProviderModelManagerBreadcrumb = LLMProviderTab.find("#llm-provider-model-manager-breadcrumb");
-const saveManageLLMProviderModelButton = llmProviderModelManagerBreadcrumb.find("#saveManageLLMProviderModelButton");
-const saveManageLLMProviderButton = llmProviderManagerInnerTabContainer.find("#saveManageLLMProviderButton");
-
-const currentManageModelLLMProviderName = llmProviderModelManagerBreadcrumb.find("#currentManageModelLLMProviderName");
-const currentManageLLMProviderModelName = llmProviderModelManagerBreadcrumb.find("#currentManageLLMProviderModelName");
-const switchBackToLLMProviderManagerModelsListTabFromModelTab = llmProviderModelManagerBreadcrumb.find("#switchBackToLLMProviderManagerModelsListTabFromModelTab");
-
+// Provider Manager > General Tab
 const llmProviderManagerGeneral = LLMProviderManageTab.find("#llm-provider-manager-general");
 
 const manageLLMProviderIdInput = llmProviderManagerGeneral.find("#manageLLMProviderIdInput");
@@ -41,11 +48,12 @@ const manageLLMProviderDisabledInput = llmProviderManagerGeneral.find("#manageLL
 
 const manageLLMProviderIntegrationSelect = llmProviderManagerGeneral.find("#manageLLMProviderIntegrationSelect");
 
+// Provider Manager > Models List Tab
 const llmProviderManagerModelsListTab = LLMProviderManageTab.find("#llmProviderManagerModelsListTab");
 
-const llmProviderManagerModelManageTab = LLMProviderManageTab.find("#llmProviderManagerModelManageTab");
 
-const llmProviderManagerGeneralTab = LLMProviderManageTab.find("#llm-provider-manager-general-tab");
+// Provider Model Manager
+const llmProviderManagerModelManageTab = LLMProviderManageTab.find("#llmProviderManagerModelManageTab");
 
 const manageLLMProviderModelIdInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelIdInput");
 const manageLLMProviderModelNameInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelNameInput");
@@ -60,15 +68,6 @@ const manageLLMProviderModelInputLengthInput = llmProviderManagerModelManageTab.
 const manageLLMProviderModelOutputLengthInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelOutputLengthInput");
 
 const manageLLMProviderModelDisabledInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelDisabledInput");
-
-const manageLLMProviderModelPromptTemplateInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelPromptTemplateInput");
-
-var manageLLMProviderModelLanguageDropdown = null;
-RunActionAfterLanguagesLoad(() => {
-	manageLLMProviderModelLanguageDropdown = new MultiLanguageDropdown("manageLLMProviderModelLanguageContainer", CurrentLanguagesList);
-});
-
-var llmProviderModelManagerGeneralTab = llmProviderManagerModelManageTab.find("#llm-provider-model-manager-general-tab");
 
 // Integration Variables
 const llmProviderIntegrationsTab = $("#llm-provider-manager-integrations");
@@ -176,41 +175,45 @@ function ResetAndEmptyLLMProvidersManageTab() {
 	manageLLMProviderDisabledInput.prop("checked", false).change();
 	llmProviderModelListTable.find("tbody").empty();
 
-	llmProviderManagerGeneralTab.click();
+	llmProviderManagerGeneralTabButton.click();
 }
 
 function ShowLLMProviderManageTab() {
 	LLMProviderListTableTab.removeClass("show");
-	llmProviderInnerTab.removeClass("show");
+	llmProviderInnerHeader.removeClass("show");
 
 	setTimeout(() => {
 		LLMProviderListTableTab.addClass("d-none");
-		llmProviderInnerTab.addClass("d-none");
+		llmProviderInnerHeader.addClass("d-none");
 
 		LLMProviderManageTab.removeClass("d-none");
-		llmProviderManageBreadcrumb.removeClass("d-none");
+		llmProviderManageInnerHeader.removeClass("d-none");
 
 		setTimeout(() => {
 			LLMProviderManageTab.addClass("show");
-			llmProviderManageBreadcrumb.addClass("show");
+			llmProviderManageInnerHeader.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
 function ShowLLMProviderListTab() {
 	LLMProviderManageTab.removeClass("show");
-	llmProviderManageBreadcrumb.removeClass("show");
+	llmProviderManageInnerHeader.removeClass("show");
 
 	setTimeout(() => {
 		LLMProviderManageTab.addClass("d-none");
-		llmProviderManageBreadcrumb.addClass("d-none");
+		llmProviderManageInnerHeader.addClass("d-none");
 
 		LLMProviderListTableTab.removeClass("d-none");
-		llmProviderInnerTab.removeClass("d-none");
+		llmProviderInnerHeader.removeClass("d-none");
 
 		setTimeout(() => {
 			LLMProviderListTableTab.addClass("show");
-			llmProviderInnerTab.addClass("show");
+			llmProviderInnerHeader.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
@@ -255,40 +258,40 @@ function FillLLMProviderManageTab(llmProviderData) {
 
 function ShowLLMProviderModelManageTab() {
 	llmProviderManagerModelsListTab.removeClass("show");
-	llmProviderManagerInnerTabContainer.removeClass("show");
-	llmProviderManageBreadcrumb.removeClass("show");
+	llmProviderManageInnerHeader.removeClass("show");
 
 	setTimeout(() => {
 		llmProviderManagerModelsListTab.addClass("d-none");
-		llmProviderManagerInnerTabContainer.addClass("d-none");
-		llmProviderManageBreadcrumb.addClass("d-none");
+		llmProviderManageInnerHeader.addClass("d-none");
 
 		llmProviderManagerModelManageTab.removeClass("d-none");
-		llmProviderModelManagerBreadcrumb.removeClass("d-none");
+		llmProviderModelManagerInnerHeader.removeClass("d-none");
 
 		setTimeout(() => {
 			llmProviderManagerModelManageTab.addClass("show");
-			llmProviderModelManagerBreadcrumb.addClass("show");
+			llmProviderModelManagerInnerHeader.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
 function ShowLLMProviderModelListTab() {
 	llmProviderManagerModelManageTab.removeClass("show");
-	llmProviderModelManagerBreadcrumb.removeClass("show");
+	llmProviderModelManagerInnerHeader.removeClass("show");
 
 	setTimeout(() => {
 		llmProviderManagerModelManageTab.addClass("d-none");
-		llmProviderModelManagerBreadcrumb.addClass("d-none");
+		llmProviderModelManagerInnerHeader.addClass("d-none");
 
 		llmProviderManagerModelsListTab.removeClass("d-none");
-		llmProviderManagerInnerTabContainer.removeClass("d-none");
-		llmProviderManageBreadcrumb.removeClass("d-none");
+		llmProviderManageInnerHeader.removeClass("d-none");
 
 		setTimeout(() => {
 			llmProviderManagerModelsListTab.addClass("show");
-			llmProviderManagerInnerTabContainer.addClass("show");
-			llmProviderManageBreadcrumb.addClass("show");
+			llmProviderManageInnerHeader.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
@@ -342,15 +345,6 @@ function CheckLLMProviderModelManageTabHasChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
-	changes.promptTemplates = {};
-	CurrentLanguagesList.forEach((language) => {
-		changes.promptTemplates[language.id] = CurrentManageLLMProviderModelPromptLanguageNewData[language.id];
-
-		if (CurrentManageLLMProviderModelPromptLanguageNewData[language.id] != CurrentManageLLMProviderModelData.promptTemplates[language.id]) {
-			hasChanges = true;
-		}
-	});
-
 	if (enableDisableButton == true) {
 		saveManageLLMProviderModelButton.prop("disabled", !hasChanges);
 	}
@@ -401,7 +395,7 @@ function ResetAndEmptyLLMProviderModelManageTab() {
 
 	saveManageLLMProviderModelButton.prop("disabled", true);
 
-	llmProviderModelManagerGeneralTab.click();
+	llmProviderModelManagerGeneralTabButton.click();
 }
 
 function CreateDefaultLLMProviderModelObject() {
@@ -414,13 +408,8 @@ function CreateDefaultLLMProviderModelObject() {
 		outputPrice: "",
 		outputPriceTokenUnit: "",
 		maxInputTokenLength: "",
-		maxOutputTokenLength: "",
-		promptTemplates: {},
+		maxOutputTokenLength: ""
 	};
-
-	CurrentLanguagesList.forEach((language) => {
-		object.promptTemplates[language.id] = "";
-	});
 
 	return object;
 }
@@ -527,23 +516,6 @@ function ValidateLLMProviderModelManageTabFields(onlyRemove = false) {
 		manageLLMProviderModelOutputLengthInput.removeClass("is-invalid");
 	}
 
-	// Prompts Tab Fields
-
-	Object.keys(CurrentManageLLMProviderModelPromptLanguageNewData).forEach((proxyTemplateLanguageDataKey) => {
-		let proxyTemplateLanguageData = CurrentManageLLMProviderModelPromptLanguageNewData[proxyTemplateLanguageDataKey];
-
-		if (!proxyTemplateLanguageData || proxyTemplateLanguageData.trim().length === 0 || proxyTemplateLanguageData === "") {
-			validated = false;
-			errors.push(`Prompt template for language ${proxyTemplateLanguageDataKey} is required and can not be empty.`);
-
-			if (!onlyRemove) {
-				manageLLMProviderModelPromptTemplateInput.addClass("is-invalid");
-			}
-		} else {
-			manageLLMProviderModelPromptTemplateInput.removeClass("is-invalid");
-		}
-	});
-
 	return {
 		validated: validated,
 		errors: errors,
@@ -560,14 +532,6 @@ function FillLLMProviderModelManageTab(modelData) {
 	manageLLMProviderModelInputLengthInput.val(modelData.maxInputTokenLength);
 	manageLLMProviderModelOutputLengthInput.val(modelData.maxOutputTokenLength);
 	manageLLMProviderModelDisabledInput.prop("checked", modelData.disabledAt != null);
-
-	Object.keys(modelData.promptTemplates).forEach((proxyTemplateLanguageDataKey) => {
-		let value = modelData.promptTemplates[proxyTemplateLanguageDataKey];
-
-		let valueIsInComplete = !value || value == "" || value.trim() == "";
-		manageLLMProviderModelLanguageDropdown.setLanguageStatus(proxyTemplateLanguageDataKey, valueIsInComplete ? "incomplete" : "complete");
-	});
-	manageLLMProviderModelPromptTemplateInput.val(modelData.promptTemplates[manageLLMProviderModelLanguageDropdown.getSelectedLanguage().id]).change();
 }
 
 function ValidateLLMProviderManageTab(onlyRemove = true) {
@@ -1095,7 +1059,6 @@ $(document).ready(() => {
 			(saveResponse) => {
 				if (saveResponse.success) {
 					CurrentManageLLMProviderModelData = saveResponse.data;
-					CurrentManageLLMProviderModelPromptLanguageNewData = saveResponse.data.promptTemplates;
 
 					let newTableElement = CreateLLMProviderModelListTableElement(CurrentManageLLMProviderModelData);
 
@@ -1148,7 +1111,6 @@ $(document).ready(() => {
 		event.preventDefault();
 
 		CurrentManageLLMProviderModelType = null;
-		CurrentManageLLMProviderModelPromptLanguageNewData = null;
 
 		ShowLLMProviderModelListTab();
 	});
@@ -1157,7 +1119,6 @@ $(document).ready(() => {
 		event.preventDefault();
 
 		CurrentManageLLMProviderModelData = CreateDefaultLLMProviderModelObject();
-		CurrentManageLLMProviderModelPromptLanguageNewData = CreateDefaultLLMProviderModelObject().promptTemplates;
 
 		currentManageModelLLMProviderName.text(CurrentManageLLMProviderData.id.name);
 		currentManageLLMProviderModelName.text("New Model");
@@ -1203,11 +1164,6 @@ $(document).ready(() => {
 		let currentModelId = $(event.currentTarget).attr("model-id");
 
 		CurrentManageLLMProviderModelData = CurrentManageLLMProviderData.models.find((model) => model.id == currentModelId);
-
-		CurrentManageLLMProviderModelPromptLanguageNewData = {};
-		Object.keys(CurrentManageLLMProviderModelData.promptTemplates).forEach((languageId) => {
-			CurrentManageLLMProviderModelPromptLanguageNewData[languageId] = CurrentManageLLMProviderModelData.promptTemplates[languageId];
-		});
 
 		currentManageModelLLMProviderName.text(CurrentManageLLMProviderData.id.name);
 		currentManageLLMProviderModelName.text(CurrentManageLLMProviderModelData.name);
@@ -1264,28 +1220,6 @@ $(document).ready(() => {
 
 		CheckLLMProviderManageTabHasChanges(true);
 	});
-
-	var checkManageLLMProviderModelLanguageDropdownInterval = setInterval(() => {
-		if (manageLLMProviderModelLanguageDropdown != null) {
-			manageLLMProviderModelPromptTemplateInput.on("input change", (event) => {
-				let currentLanguage = manageLLMProviderModelLanguageDropdown.getSelectedLanguage();
-
-				let value = manageLLMProviderModelPromptTemplateInput.val();
-
-				CurrentManageLLMProviderModelPromptLanguageNewData[currentLanguage.id] = value;
-
-				let valueIsInComplete = !value || value == "" || value.trim() == "";
-				manageLLMProviderModelLanguageDropdown.setLanguageStatus(currentLanguage.id, valueIsInComplete ? "incomplete" : "complete");
-			});
-
-			manageLLMProviderModelLanguageDropdown.onLanguageChange((language) => {
-				let promptTemplate = CurrentManageLLMProviderModelPromptLanguageNewData[language.id];
-				manageLLMProviderModelPromptTemplateInput.val(promptTemplate);
-			});
-
-			clearInterval(checkManageLLMProviderModelLanguageDropdownInterval);
-		}
-	}, 100);
 
 	// INIT
 

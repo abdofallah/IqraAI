@@ -214,7 +214,7 @@ function fillPCAManager(templateData) {
     pcaDescriptionInput.val(templateData.general.description);
 
     // Configuration
-    if (pcaConfigurationLLMIntegrationManager) pcaConfigurationLLMIntegrationManager.load(templateData.configuration.llmIntegration);
+    if (pcaConfigurationLLMIntegrationManager) pcaConfigurationLLMIntegrationManager.load(templateData.configuration.llmIntegration, BusinessFullData.businessApp.integrations);
 
     // Summary
     pcaSummaryActiveToggle.prop("checked", templateData.summary.isActive).change();

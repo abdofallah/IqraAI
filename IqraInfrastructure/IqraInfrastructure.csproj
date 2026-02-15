@@ -59,7 +59,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Dependencies\ElevenLabs\src\libs\ElevenLabs\ElevenLabs.csproj" />
+    <ProjectReference Include="..\Dependencies\ElevenLabs-DotNet\ElevenLabs-DotNet\ElevenLabs-DotNet.csproj" />
     <ProjectReference Include="..\Dependencies\sipsorcery\src\SIPSorcery.csproj" />
     <ProjectReference Include="..\Dependencies\w3c-validator-net\src\W3CValidator.Core\W3CValidator.Core.csproj" />
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
@@ -71,9 +71,20 @@
 	<ItemGroup>
 		<ProjectReference Include="..\IqraGenerators\IqraGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
+
 	<ItemGroup>
-		<AdditionalFiles Include="Managers\FlowApp\Apps\**\*.json" />
+		<_FlowAppJsonFiles Include="Managers\FlowApp\Apps\**\*.json" />
+
+		<Content Remove="@(_FlowAppJsonFiles)" />
+		<None Remove="@(_FlowAppJsonFiles)" />
+
+		<AdditionalFiles Include="@(_FlowAppJsonFiles)" />
 	</ItemGroup>
+	
+	<!-- FORCE GENERATOR REBUILD -->
+    <Target Name="BuildGenerators" BeforeTargets="ResolveReferences">
+	    <MSBuild Projects="..\IqraGenerators\IqraGenerators.csproj" Targets="Build" Properties="Configuration=$(Configuration);Platform=$(Platform)" />
+    </Target>
 	<!-- ================================================================== -->
 	<!-- END FlowApp Generators And Config                                  -->
 	<!-- ================================================================== -->

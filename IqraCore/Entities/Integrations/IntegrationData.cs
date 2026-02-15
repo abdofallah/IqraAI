@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.S3Storage;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.S3Storage;
 using MongoDB.Bson;
 
 namespace IqraCore.Entities.Integrations
@@ -8,8 +9,18 @@ namespace IqraCore.Entities.Integrations
         public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+
         public DateTime? DisabledAt { get; set; } = null;
+        [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/integrations")]
+        public string? PrivateDisabledReason { get; set; } = null;
+        public string? PublicDisabledReason { get; set; } = null;
+
         public S3StorageFileLink? LogoS3StorageLink { get; set; } = null;
+        [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/integrations")]
+        public string? PresignedLogoUrl { get; set; } = null;
+
         public List<string> Type { get; set; } = new List<string>();
         public List<IntegrationFieldData> Fields { get; set; } = new List<IntegrationFieldData>();
         public IntegrationHelpData Help { get; set; } = new IntegrationHelpData();

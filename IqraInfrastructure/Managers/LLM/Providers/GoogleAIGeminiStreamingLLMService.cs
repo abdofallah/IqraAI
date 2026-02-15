@@ -46,8 +46,6 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
             _initialMessages = new List<Content>();
             _messagesMemory = new List<Content>();
-
-            SetSystemPrompt("You are Iqra. A helpful AI Assitant.");
         }
 
         public async Task ProcessInputAsync(CancellationToken cancellationToken, string? beforeMessageContext = null, string? afterMessageContext = null)

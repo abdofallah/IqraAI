@@ -3,8 +3,8 @@ using IqraCore.Entities.Embedding;
 using IqraCore.Entities.Embedding.Providers.GoogleGemini;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
-using IqraCore.Entities.ProviderBase;
 using IqraCore.Interfaces.AI;
+using IqraInfrastructure.Helpers.Provider;
 using IqraInfrastructure.Managers.Embedding.Providers;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Repositories.Embedding;
@@ -25,7 +25,10 @@ namespace IqraInfrastructure.Managers.Embedding
 
         private readonly Dictionary<InterfaceEmbeddingProviderEnum, Type> _embeddingProviderClasses = new();
 
-        public EmbeddingProviderManager(ILoggerFactory loggerFactory, EmbeddingProviderRepository embeddingProviderRepository, IntegrationsManager integrationsManager)
+        public EmbeddingProviderManager(
+            ILoggerFactory loggerFactory,
+            EmbeddingProviderRepository embeddingProviderRepository,
+            IntegrationsManager integrationsManager)
         {
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<EmbeddingProviderManager>();
@@ -33,7 +36,7 @@ namespace IqraInfrastructure.Managers.Embedding
             _embeddingProviderRepository = embeddingProviderRepository;
             _integrationsManager = integrationsManager;
 
-            InitializeProvidersAsync().Wait();
+            InitializeProvidersAsync().GetAwaiter().GetResult();
         }
 
         private async Task InitializeProvidersAsync()
@@ -47,18 +50,14 @@ namespace IqraInfrastructure.Managers.Embedding
 
                 if (provider == null)
                 {
-                    provider = new EmbeddingProviderData
+                    var addResult = await AddProvider(providerEnum);
+                    if (!addResult.Success)
                     {
-                        Id = providerEnum,
-                        DisabledAt = DateTime.UtcNow
-                    };
-                    await AddProvider(provider);
+                        throw new Exception($"Failed to add embedding provider: {providerEnum}: [{addResult.Code}] {addResult.Message}");
+                    }
                 }
 
-                if (provider.DisabledAt == null)
-                {
-                    RegisterProviderService(providerEnum);
-                }
+                RegisterProviderService(providerEnum);
             }
         }
 
@@ -85,127 +84,88 @@ namespace IqraInfrastructure.Managers.Embedding
                 }
             }
 
-            // This is not a critical error if a service implementation is not yet created.
+            // Warning only as service implementation might not exist yet
             _logger.LogWarning("No matching IEmbeddingService implementation found for provider: {Provider}", providerEnum);
         }
 
         public async Task<FunctionReturnResult<List<EmbeddingProviderData>?>> GetProviderList(int page, int pageSize)
         {
             var result = new FunctionReturnResult<List<EmbeddingProviderData>?>();
-            var providerList = await _embeddingProviderRepository.GetProviderListAsync(page, pageSize);
-            if (providerList == null)
-            {
-                return result.SetFailureResult("GetProviderList:1", "No providers found");
-            }
-
-            result.Success = true;
-            result.Data = providerList;
-            return result;
-        }
-
-        public async Task<FunctionReturnResult<EmbeddingProviderData>> AddProvider(EmbeddingProviderData providerData)
-        {
-            var result = new FunctionReturnResult<EmbeddingProviderData>();
-
-            if (providerData.Id == InterfaceEmbeddingProviderEnum.Unknown)
-            {
-                return result.SetFailureResult("AddProvider:1", "Invalid provider ID");
-            }
-
-            var existingProvider = await _embeddingProviderRepository.GetProviderAsync(providerData.Id);
-            if (existingProvider != null)
-            {
-                return result.SetFailureResult("AddProvider:2", "Provider already exists");
-            }
-
-            providerData.DisabledAt = DateTime.UtcNow;
-            await _embeddingProviderRepository.AddProviderAsync(providerData);
-
-            return result.SetSuccessResult(providerData);
-        }
-
-        public async Task<FunctionReturnResult> DisableProvider(InterfaceEmbeddingProviderEnum providerId)
-        {
-            var result = new FunctionReturnResult();
-            if (providerId == InterfaceEmbeddingProviderEnum.Unknown)
-            {
-                return result.SetFailureResult("DisableProvider:1", "Invalid provider ID");
-            }
-
-            var updateResult = await _embeddingProviderRepository.DisableProviderAsync(providerId);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
-            {
-                return result.SetFailureResult("DisableProvider:2", "Provider not found or already disabled");
-            }
-
-            _embeddingProviderClasses.Remove(providerId);
-            return result.SetSuccessResult();
-        }
-
-        public async Task<FunctionReturnResult> EnableProvider(InterfaceEmbeddingProviderEnum providerId)
-        {
-            var result = new FunctionReturnResult();
-            if (providerId == InterfaceEmbeddingProviderEnum.Unknown)
-            {
-                return result.SetFailureResult("EnableProvider:1", "Invalid provider ID");
-            }
-
-            var updateResult = await _embeddingProviderRepository.EnableProviderAsync(providerId);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
-            {
-                return result.SetFailureResult("EnableProvider:2", "Provider not found or already enabled");
-            }
 
             try
             {
-                RegisterProviderService(providerId);
+                var providerList = await _embeddingProviderRepository.GetProviderListAsync(page, pageSize);
+                if (providerList == null)
+                {
+                    return result.SetFailureResult(
+                        "GetProviderList:NOT_FOUND",
+                        "No providers found"
+                    );
+                }
+
+                return result.SetSuccessResult(providerList);
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult("EnableProvider:3", $"Failed to register provider service: {ex.Message}");
+                return result.SetFailureResult(
+                    "GetProviderList:EXCEPTION",
+                    $"Failed to get provider list: {ex.Message}"
+                );
             }
-
-            return result.SetSuccessResult();
         }
 
-        public async Task<FunctionReturnResult> AddModel(InterfaceEmbeddingProviderEnum providerId, EmbeddingProviderModelData modelData)
+        public async Task<FunctionReturnResult<EmbeddingProviderData>> AddProvider(InterfaceEmbeddingProviderEnum providerId)
         {
-            var result = new FunctionReturnResult();
-            if (providerId == InterfaceEmbeddingProviderEnum.Unknown)
+            var result = new FunctionReturnResult<EmbeddingProviderData>();
+
+            try
             {
-                return result.SetFailureResult("AddModel:1", "Invalid provider ID");
-            }
+                var providerData = new EmbeddingProviderData()
+                {
+                    Id = providerId,
+                    DisabledAt = DateTime.UtcNow
+                };
 
-            var updateResult = await _embeddingProviderRepository.AddModelAsync(providerId, modelData);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
+                if (providerData.Id == InterfaceEmbeddingProviderEnum.Unknown)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:INVALID_ID",
+                        "Invalid provider ID"
+                    );
+                }
+
+                var existingProvider = await _embeddingProviderRepository.GetProviderAsync(providerData.Id);
+                if (existingProvider != null)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:EXISTS",
+                        "Provider already exists"
+                    );
+                }
+
+                var success = await _embeddingProviderRepository.AddProviderAsync(providerData);
+                if (!success)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:FAILED",
+                        "Failed to add provider"
+                    );
+                }
+
+                return result.SetSuccessResult(providerData);
+            }
+            catch (Exception ex)
             {
-                return result.SetFailureResult("AddModel:2", "Provider not found or model already exists");
+                return result.SetFailureResult(
+                    "AddProvider:EXCEPTION",
+                    $"Failed to add provider: {ex.Message}"
+                );
             }
-
-            return result.SetSuccessResult();
-        }
-
-        public async Task<FunctionReturnResult> DisableModel(InterfaceEmbeddingProviderEnum providerId, string modelId)
-        {
-            var result = new FunctionReturnResult();
-            if (providerId == InterfaceEmbeddingProviderEnum.Unknown)
-            {
-                return result.SetFailureResult("DisableModel:1", "Invalid provider ID");
-            }
-
-            var updateResult = await _embeddingProviderRepository.DisableModelAsync(providerId, modelId);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
-            {
-                return result.SetFailureResult("DisableModel:2", "Provider or model not found");
-            }
-
-            return result.SetSuccessResult();
         }
 
         public Type? GetProviderService(InterfaceEmbeddingProviderEnum providerId)
         {
-            _embeddingProviderClasses.TryGetValue(providerId, out var service);
-            return service;
+            return _embeddingProviderClasses.TryGetValue(providerId, out var service) ? service : null;
         }
 
         public async Task<EmbeddingProviderData?> GetProviderData(InterfaceEmbeddingProviderEnum providerId)
@@ -213,236 +173,292 @@ namespace IqraInfrastructure.Managers.Embedding
             return await _embeddingProviderRepository.GetProviderAsync(providerId);
         }
 
-        public async Task<FunctionReturnResult<EmbeddingProviderModelData?>> AddUpdateProviderModel(EmbeddingProviderData provider, string modelId, string postType, EmbeddingProviderModelData? oldModelData, IFormCollection formData)
+        public async Task<FunctionReturnResult<EmbeddingProviderModelData?>> AddUpdateProviderModel(
+            EmbeddingProviderData provider,
+            string modelId,
+            string postType,
+            EmbeddingProviderModelData? oldModelData,
+            IFormCollection formData)
         {
             var result = new FunctionReturnResult<EmbeddingProviderModelData?>();
 
-            var newModelData = new EmbeddingProviderModelData { Id = modelId };
-
-            if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
-            {
-                return result.SetFailureResult("AddUpdateProviderModel:1", "Changes data not found or is empty");
-            }
-
-            JsonDocument changesJson;
             try
             {
-                changesJson = JsonDocument.Parse(changesJsonString);
-            }
-            catch (JsonException ex)
-            {
-                return result.SetFailureResult("AddUpdateProviderModel:2", $"Invalid JSON format for changes: {ex.Message}");
-            }
+                var newModelData = new EmbeddingProviderModelData { Id = modelId };
 
-            var root = changesJson.RootElement;
-
-            // Model Name
-            if (!root.TryGetProperty("name", out var nameElement) || nameElement.ValueKind != JsonValueKind.String || string.IsNullOrEmpty(nameElement.GetString()))
-            {
-                return result.SetFailureResult("AddUpdateProviderModel:3", "Model name is required");
-            }
-            newModelData.Name = nameElement.GetString()!;
-
-            // Disabled
-            if (root.TryGetProperty("disabled", out var disabledElement) && disabledElement.GetBoolean())
-            {
-                newModelData.DisabledAt = (postType == "edit" && oldModelData?.DisabledAt != null) ? oldModelData.DisabledAt : DateTime.UtcNow;
-            }
-            else
-            {
-                newModelData.DisabledAt = null;
-            }
-
-            // Price
-            if (root.TryGetProperty("price", out var priceElement) && decimal.TryParse(priceElement.ToString(), out var price))
-            {
-                newModelData.Price = price;
-            }
-
-            // Price Token Unit
-            if (root.TryGetProperty("priceTokenUnit", out var priceTokenUnitElement) && int.TryParse(priceTokenUnitElement.ToString(), out var priceTokenUnit))
-            {
-                newModelData.PriceTokenUnit = priceTokenUnit;
-            }
-
-            // Available Vector Dimensions
-            if (root.TryGetProperty("availableVectorDimensions", out var dimensionsElement) && dimensionsElement.ValueKind == JsonValueKind.Array)
-            {
-                newModelData.AvailableVectorDimensions = new List<int>();
-                foreach (var dimElement in dimensionsElement.EnumerateArray())
+                if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
                 {
-                    if (dimElement.TryGetInt32(out int dim))
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:CHANGES_DATA_NOT_FOUND",
+                        "Changes data not found or is empty"
+                    );
+                }
+
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
+                if (changesJsonElement == null)
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:JSON_PARSE_ERROR",
+                        "Failed to parse changes JSON"
+                    );
+                }
+
+                var root = changesJsonElement.RootElement;
+
+                // Model Name
+                if (root.TryGetProperty("name", out var nameElement) && nameElement.ValueKind == JsonValueKind.String)
+                {
+                    string? name = nameElement.GetString();
+                    if (string.IsNullOrEmpty(name))
                     {
-                        newModelData.AvailableVectorDimensions.Add(dim);
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:EMPTY_NAME",
+                            "Model name is empty"
+                        );
+                    }
+                    newModelData.Name = name;
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:NAME_NOT_FOUND",
+                        "Model name is required"
+                    );
+                }
+
+                // Disabled State
+                if (root.TryGetProperty("disabled", out var disabledElement))
+                {
+                    bool isDisabled = disabledElement.GetBoolean();
+                    if (isDisabled)
+                    {
+                        newModelData.DisabledAt = (postType == "edit" && oldModelData?.DisabledAt != null)
+                            ? oldModelData.DisabledAt
+                            : DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        newModelData.DisabledAt = null;
                     }
                 }
-            }
-
-            // Saving new data to database
-            if (postType == "new")
-            {
-                var addResult = await _embeddingProviderRepository.AddModelAsync(provider.Id, newModelData);
-                if (!addResult.IsAcknowledged || addResult.ModifiedCount == 0)
+                else
                 {
-                    return result.SetFailureResult("AddUpdateProviderModel:4", "Failed to add model");
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:DISABLED_STATE_NOT_FOUND",
+                        "Disabled state not found"
+                    );
                 }
-            }
-            else if (postType == "edit")
-            {
-                var editResult = await _embeddingProviderRepository.UpdateModelAsync(provider.Id, newModelData);
-                if (!editResult.IsAcknowledged || editResult.ModifiedCount == 0)
-                {
-                    return result.SetFailureResult("AddUpdateProviderModel:5", "Failed to edit model or no changes detected");
-                }
-            }
 
-            return result.SetSuccessResult(newModelData);
+                // Price
+                if (root.TryGetProperty("price", out var priceElement))
+                {
+                    if (decimal.TryParse(priceElement.ToString(), out var price))
+                    {
+                        newModelData.Price = price;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_PRICE",
+                            "Invalid price format"
+                        );
+                    }
+                }
+
+                // Price Token Unit
+                if (root.TryGetProperty("priceTokenUnit", out var priceTokenUnitElement))
+                {
+                    if (int.TryParse(priceTokenUnitElement.ToString(), out var priceTokenUnit))
+                    {
+                        newModelData.PriceTokenUnit = priceTokenUnit;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_PRICE_TOKEN_UNIT",
+                            "Invalid price token unit format"
+                        );
+                    }
+                }
+
+                // Available Vector Dimensions
+                if (root.TryGetProperty("availableVectorDimensions", out var dimensionsElement) && dimensionsElement.ValueKind == JsonValueKind.Array)
+                {
+                    newModelData.AvailableVectorDimensions = new List<int>();
+                    foreach (var dimElement in dimensionsElement.EnumerateArray())
+                    {
+                        if (dimElement.TryGetInt32(out int dim))
+                        {
+                            newModelData.AvailableVectorDimensions.Add(dim);
+                        }
+                    }
+                }
+
+                // Save to database
+                bool updateSuccess;
+                if (postType == "new")
+                {
+                    var addResult = await _embeddingProviderRepository.AddModelAsync(provider.Id, newModelData);
+                    updateSuccess = addResult.IsAcknowledged && addResult.ModifiedCount > 0;
+                }
+                else
+                {
+                    var updateResult = await _embeddingProviderRepository.UpdateModelAsync(provider.Id, newModelData);
+                    updateSuccess = updateResult.IsAcknowledged && updateResult.ModifiedCount > 0;
+                }
+
+                if (!updateSuccess)
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:DB_UPDATE_FAILED",
+                        $"Failed to {postType} model in database"
+                    );
+                }
+
+                return result.SetSuccessResult(newModelData);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "AddUpdateProviderModel:EXCEPTION",
+                    $"Error processing model data: {ex.Message}"
+                );
+            }
         }
 
-        public async Task<FunctionReturnResult<EmbeddingProviderData?>> UpdateProvider(EmbeddingProviderData provider, IFormCollection formData, IntegrationsManager integrationsManager)
+        public async Task<FunctionReturnResult<EmbeddingProviderData?>> UpdateProvider(
+            EmbeddingProviderData provider,
+            IFormCollection formData,
+            IntegrationsManager integrationsManager)
         {
             var result = new FunctionReturnResult<EmbeddingProviderData?>();
 
             try
             {
-                if (!formData.TryGetValue("changes", out var changesJsonString))
+                if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
                 {
-                    result.Code = "UpdateProvider:1";
-                    result.Message = "Changes data not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:CHANGES_DATA_NOT_FOUND",
+                        "Changes data not found"
+                    );
                 }
 
-                var changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString);
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
                 if (changesJsonElement == null)
                 {
-                    result.Code = "UpdateProvider:2";
-                    result.Message = "Unable to parse changes json string.";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:JSON_PARSE_ERROR",
+                        "Unable to parse changes json string"
+                    );
                 }
 
+                var root = changesJsonElement.RootElement;
                 var newProviderData = new EmbeddingProviderData
                 {
                     Id = provider.Id,
-                    Models = provider.Models // Maintain existing models
+                    Models = provider.Models
                 };
 
                 // Handle disabled state
-                if (!changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
+                if (root.TryGetProperty("disabled", out var disabledElement))
                 {
-                    result.Code = "UpdateProvider:3";
-                    result.Message = "Provider disabled state not found";
-                    return result;
-                }
-
-                bool disabled = disabledElement.GetBoolean();
-                if (disabled)
-                {
-                    if (provider.DisabledAt != null)
-                    {
-                        newProviderData.DisabledAt = provider.DisabledAt;
-                    }
-                    else
-                    {
-                        newProviderData.DisabledAt = DateTime.UtcNow;
-                    }
+                    bool disabled = disabledElement.GetBoolean();
+                    newProviderData.DisabledAt = disabled ? (provider.DisabledAt ?? DateTime.UtcNow) : null;
                 }
                 else
                 {
-                    newProviderData.DisabledAt = null;
+                    return result.SetFailureResult(
+                        "UpdateProvider:DISABLED_STATE_NOT_FOUND",
+                        "Provider disabled state not found"
+                    );
                 }
 
                 // Handle integration selection
-                if (!changesJsonElement.RootElement.TryGetProperty("integrationId", out var integrationIdElement))
+                if (root.TryGetProperty("integrationId", out var integrationIdElement))
                 {
-                    result.Code = "UpdateProvider:4";
-                    result.Message = "Integration ID not found";
-                    return result;
-                }
+                    string? integrationId = integrationIdElement.GetString();
 
-                string? integrationId = integrationIdElement.GetString();
-                if (string.IsNullOrEmpty(integrationId))
+                    if (string.IsNullOrEmpty(integrationId))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:MISSING_INTEGRATION_ID",
+                            "Integration ID is required"
+                        );
+                    }
+
+                    // Validate integration exists and is Embedding type
+                    var integration = await integrationsManager.getIntegrationData(integrationId);
+                    if (integration.Data == null || !integration.Success)
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:SELECTED_INTEGRATION_NOT_FOUND",
+                            "Selected integration not found"
+                        );
+                    }
+
+                    if (!integration.Data.Type.Contains("Embedding"))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:INVALID_INTEGRATION",
+                            "Selected integration is not an Embedding integration"
+                        );
+                    }
+
+                    newProviderData.IntegrationId = integrationId;
+                }
+                else
                 {
-                    result.Code = "UpdateProvider:5";
-                    result.Message = "Integration ID is required";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:INTEGRATION_ID_NOT_FOUND",
+                        "Integration ID not found in changes"
+                    );
                 }
-
-                // Validate that integration exists
-                var integration = await integrationsManager.getIntegrationData(integrationId);
-                if (integration == null || !integration.Success)
-                {
-                    result.Code = "UpdateProvider:6";
-                    result.Message = "Selected integration not found";
-                    return result;
-                }
-
-                // Validate integration type includes LLM
-                if (!integration.Data.Type.Contains("Embedding"))
-                {
-                    result.Code = "UpdateProvider:7";
-                    result.Message = "Selected integration is not an Embedding integration";
-                    return result;
-                }
-
-                newProviderData.IntegrationId = integrationId;
 
                 // Handle integration fields
-                if (changesJsonElement.RootElement.TryGetProperty("userIntegrationFields", out var fieldsElement))
+                if (root.TryGetProperty("userIntegrationFields", out var fieldsElement))
                 {
-                    newProviderData.UserIntegrationFields = new List<ProviderFieldBase>();
+                    var availableModelIds = newProviderData.Models.Select(m => m.Id).ToList();
 
-                    foreach (var fieldElement in fieldsElement.EnumerateArray())
+                    // Use the centralized helper for parsing and validation
+                    var parseResult = ProviderIntegrationFieldsHelper.ParseAndValidateFields(fieldsElement, availableModelIds);
+
+                    if (!parseResult.Success || parseResult.Data == null)
                     {
-                        var field = new ProviderFieldBase
-                        {
-                            Id = fieldElement.GetProperty("id").GetString() ?? "",
-                            Name = fieldElement.GetProperty("name").GetString() ?? "",
-                            Type = fieldElement.GetProperty("type").GetString() ?? "",
-                            Tooltip = fieldElement.GetProperty("tooltip").GetString() ?? "",
-                            Placeholder = fieldElement.GetProperty("placeholder").GetString() ?? "",
-                            DefaultValue = fieldElement.GetProperty("defaultValue").GetString() ?? "",
-                            Required = fieldElement.GetProperty("required").GetBoolean(),
-                            IsEncrypted = fieldElement.GetProperty("isEncrypted").GetBoolean()
-                        };
-
-                        // Handle options for select type
-                        if (field.Type == "select" && fieldElement.TryGetProperty("options", out var optionsElement))
-                        {
-                            field.Options = new List<ProviderFieldOption>();
-                            foreach (var optionElement in optionsElement.EnumerateArray())
-                            {
-                                field.Options.Add(new ProviderFieldOption
-                                {
-                                    Key = optionElement.GetProperty("key").GetString() ?? "",
-                                    Value = optionElement.GetProperty("value").GetString() ?? "",
-                                    IsDefault = optionElement.GetProperty("isDefault").GetBoolean()
-                                });
-                            }
-                        }
-
-                        newProviderData.UserIntegrationFields.Add(field);
+                        return result.SetFailureResult(
+                            $"UpdateProvider:{parseResult.Code}",
+                            parseResult.Message
+                        );
                     }
+
+                    newProviderData.UserIntegrationFields = parseResult.Data;
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "UpdateProvider:USER_INTEGRATION_FIELDS_NOT_FOUND",
+                        "User integration fields not found"
+                    );
                 }
 
                 // Save to database
                 var updateResult = await _embeddingProviderRepository.UpdateProviderAsync(newProviderData);
                 if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
                 {
-                    result.Code = "UpdateProvider:8";
-                    result.Message = "Failed to update provider";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:UPDATE_FAILED",
+                        "Failed to update provider"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = newProviderData;
+                return result.SetSuccessResult(newProviderData);
             }
             catch (Exception ex)
             {
-                result.Code = "UpdateProvider:9";
-                result.Message = "Error processing provider update: " + ex.Message;
+                return result.SetFailureResult(
+                    "UpdateProvider:EXCEPTION",
+                    $"Error processing provider update: {ex.Message}"
+                );
             }
-
-            return result;
         }
 
         public async Task<FunctionReturnResult<EmbeddingProviderData?>> GetProviderDataByIntegration(string integrationType)
@@ -455,45 +471,70 @@ namespace IqraInfrastructure.Managers.Embedding
 
                 if (providerData == null)
                 {
-                    result.Code = "GetProviderDataByIntegration:1";
-                    result.Message = "Provider not find by integration type";
-                    return result;
+                    return result.SetFailureResult(
+                        "GetProviderDataByIntegration:NOT_FOUND",
+                        "Provider not found by integration type"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = providerData;
+                return result.SetSuccessResult(providerData);
             }
             catch (Exception ex)
             {
-                result.Code = "GetProviderDataByIntegration:2";
-                result.Message = "Failed to get provider data: " + ex.Message;
+                return result.SetFailureResult(
+                    "GetProviderDataByIntegration:EXCEPTION",
+                    $"Failed to get provider data: {ex.Message}"
+                );
             }
-
-            return result;
         }
 
-        public async Task<FunctionReturnResult<IEmbeddingService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData)
+        public async Task<FunctionReturnResult<IEmbeddingService?>> BuildProviderServiceByIntegration(
+            BusinessAppIntegration integrationData,
+            BusinessAppAgentIntegrationData agentIntegrationData)
         {
             var result = new FunctionReturnResult<IEmbeddingService?>();
+
             try
             {
                 var providerDataResult = await _embeddingProviderRepository.GetProviderDataByIntegration(integrationData.Type);
                 if (providerDataResult == null)
                 {
-                    return result.SetFailureResult("BuildProviderService:1", $"Embedding provider not found for integration type {integrationData.Type}");
+                    return result.SetFailureResult(
+                        "BuildProviderServiceByIntegration:PROVIDER_NOT_FOUND",
+                        $"Embedding provider not found for integration type {integrationData.Type}"
+                    );
                 }
 
-                string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                string model = (string)agentIntegrationData.FieldValues["model"];
+                // --- Helper functions for safe extraction ---
+                string GetString(string key, string defaultValue = "")
+                {
+                    return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
+                        ? val.ToString()! : defaultValue;
+                }
+
+                int GetInt(string key, int defaultValue)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (int.TryParse(val.ToString(), out int parsed)) return parsed;
+                        return Convert.ToInt32(val);
+                    }
+                    return defaultValue;
+                }
+                // ---------------------------------------------
 
                 switch (providerDataResult.Id)
                 {
                     case InterfaceEmbeddingProviderEnum.GoogleGemini:
                         {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            string model = GetString("model");
+                            int vectorDimension = GetInt("model_vector_dimension", 0);
+
                             var config = new GoogleGeminiEmbeddingServiceConfig()
                             {
                                 Model = model,
-                                VectorDimension = (int)agentIntegrationData.FieldValues["model_vector_dimension"]
+                                VectorDimension = vectorDimension
                             };
 
                             var service = new GoogleGeminiEmbeddingService(_loggerFactory.CreateLogger<GoogleGeminiEmbeddingService>(), apiKey, config);
@@ -501,14 +542,22 @@ namespace IqraInfrastructure.Managers.Embedding
                         }
 
                     default:
-                        _logger.LogError("Business app Embedding provider {ProviderType} not supported for building service", providerDataResult.Id);
-                        return result.SetFailureResult("BuildProviderService:2", $"Business app Embedding provider {providerDataResult.Id} not supported");
+                        {
+                            _logger.LogError("Business app Embedding provider {ProviderType} not supported for building service", providerDataResult.Id);
+                            return result.SetFailureResult(
+                                "BuildProviderServiceByIntegration:NOT_SUPPORTED",
+                                $"Business app Embedding provider {providerDataResult.Id} not supported"
+                            );
+                        }
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to build embedding provider service");
-                return result.SetFailureResult("BuildProviderService:EXCEPTION", $"Failed to build provider service: {ex.Message}");
+                return result.SetFailureResult(
+                    "BuildProviderServiceByIntegration:EXCEPTION",
+                    $"Failed to build provider service: {ex.Message}"
+                );
             }
         }
     }

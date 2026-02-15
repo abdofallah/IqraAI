@@ -723,7 +723,7 @@ function fillKnowledgeBaseManagerTab() {
 
     // Embedding
     const embeddingConfig = kbData.configuration.embedding;
-    knowledgeBaseEmbeddingIntegrationManager.load(embeddingConfig);
+    knowledgeBaseEmbeddingIntegrationManager.load(embeddingConfig, BusinessFullData.businessApp.integrations);
     knowledgeBaseEmbeddingIntegrationManager.disable();
 
     // Retrival
@@ -736,14 +736,14 @@ function fillKnowledgeBaseManagerTab() {
         vectorRerankModelSwitch.prop('checked', retrievalConfig.rerank.enabled).trigger('change');
 
         if (retrievalConfig.rerank.enabled) {
-            vectorRerankIntegrationManager.load(retrievalConfig.rerank.integration);
+            vectorRerankIntegrationManager.load(retrievalConfig.rerank.integration, BusinessFullData.businessApp.integrations);
         }
     }
     else if (retrievalConfig.type.value === KnowledgeBaseRetrievalType.FullTextSearch) {
         fulltextTopKInput.val(retrievalConfig.topK);
         fulltextRerankModelSwitch.prop('checked', retrievalConfig.rerank.enabled).trigger('change');
         if (retrievalConfig.rerank.enabled) {
-            fulltextRerankIntegrationManager.load(retrievalConfig.rerank.integration);
+            fulltextRerankIntegrationManager.load(retrievalConfig.rerank.integration, BusinessFullData.businessApp.integrations);
         }
     }
     else if (retrievalConfig.type.value === KnowledgeBaseRetrievalType.HybirdSearch) {
@@ -753,7 +753,7 @@ function fillKnowledgeBaseManagerTab() {
 
         if (retrievalConfig.mode.value === KnowledgeBaseHybridRetrievalMode.RerankModel) {
             hybridRerankModelRadio.prop('checked', true).trigger('change');
-            hybridRerankIntegrationManager.load(retrievalConfig.rerankIntegration);
+            hybridRerankIntegrationManager.load(retrievalConfig.rerankIntegration, BusinessFullData.businessApp.integrations);
         }
         else
         {

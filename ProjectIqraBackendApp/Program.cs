@@ -99,9 +99,9 @@ namespace ProjectIqraBackendApp
                 Id = appConfig["Server:Id"],
                 RegionId = appConfig["Server:RegionId"],
                 ExpectedMaxConcurrentCalls = int.Parse(appConfig["Server:ExpectedMaxConcurrentCalls"]),
-                NetworkInterfaceName = appConfig["Server:NetworkInterfaceName"],
-                MaxNetworkDownloadMbps = int.Parse(appConfig["Server:MaxNetworkDownloadMbps"]),
-                MaxNetworkUploadMbps = int.Parse(appConfig["Server:MaxNetworkUploadMbps"]),
+                NetworkInterfaceName = appConfig["Hardware:NetworkInterfaceName"],
+                MaxNetworkDownloadMbps = int.Parse(appConfig["Hardware:MaxNetworkDownloadMbps"]),
+                MaxNetworkUploadMbps = int.Parse(appConfig["Hardware:MaxNetworkUploadMbps"]),
                 ApiKey = appConfig["Server:ApiKey"],
                 WebhookTokenSecret = appConfig["Server:WebhookTokenSecret"],
                 IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
@@ -880,8 +880,7 @@ namespace ProjectIqraBackendApp
             {
                 return new SystemPromptGenerator(
                     sp.GetRequiredService<ILogger<SystemPromptGenerator>>(),
-                    sp.GetRequiredService<LanguagesManager>(),
-                    sp.GetRequiredService<LLMProviderManager>()
+                    sp.GetRequiredService<LanguagesManager>()
                 );
             });
             builder.Services.AddSingleton<BackendCallProcessorManager>((sp) =>

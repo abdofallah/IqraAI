@@ -42,6 +42,7 @@ function SaveBusinessIntegration(formData, onSuccess, onError) {
 		},
 	});
 }
+
 function DeleteBusinessIntegration(integrationId, onSuccess, onError) {
     return $.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/integrations/${integrationId}/delete`,

@@ -1,47 +1,47 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM;
-using IqraCore.Entities.ProviderBase;
 using IqraCore.Interfaces.AI;
-using IqraCore.Utilities;
-using IqraInfrastructure.Repositories.LLM;
+using IqraInfrastructure.Helpers.Provider;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
+using IqraInfrastructure.Managers.LLM.Providers;
+using IqraInfrastructure.Repositories.LLM;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Text.Json;
-using IqraCore.Entities.Business;
-using IqraInfrastructure.Managers.LLM.Providers;
-using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.LLM
 {
     public class LLMProviderManager
     {
-        private ILoggerFactory _loggerFactory;
-        private ILogger<LLMProviderManager> _logger;
-
+        private readonly ILogger<LLMProviderManager> _logger;
         private readonly LLMProviderRepository _llmProviderRepository;
         private readonly LanguagesManager _languagesManager;
         private readonly IntegrationsManager _integrationsManager;
 
         private Dictionary<InterfaceLLMProviderEnum, Type> _llmProviderClasses = new Dictionary<InterfaceLLMProviderEnum, Type>();
 
-        public LLMProviderManager(ILoggerFactory loggerFactory, LLMProviderRepository llmProviderRepository, LanguagesManager languagesManager, IntegrationsManager integrationsManager)
+        public LLMProviderManager(
+            ILoggerFactory loggerFactory,
+            LLMProviderRepository llmProviderRepository,
+            LanguagesManager languagesManager,
+            IntegrationsManager integrationsManager)
         {
-            _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<LLMProviderManager>();
-
             _llmProviderRepository = llmProviderRepository;
             _languagesManager = languagesManager;
             _integrationsManager = integrationsManager;
 
-            InitializeProvidersAsync().Wait();
+            InitializeProvidersAsync().GetAwaiter().GetResult();
         }
 
         private async Task InitializeProvidersAsync()
         {
-            foreach (InterfaceLLMProviderEnum providerEnum in Enum.GetValues(typeof(InterfaceLLMProviderEnum)))
+            var allEnums = Enum.GetValues(typeof(InterfaceLLMProviderEnum));
+            foreach (InterfaceLLMProviderEnum providerEnum in allEnums)
             {
                 if (providerEnum == InterfaceLLMProviderEnum.Unknown)
                     continue;
@@ -50,19 +50,14 @@ namespace IqraInfrastructure.Managers.LLM
 
                 if (provider == null)
                 {
-                    provider = new LLMProviderData
+                    var addResult = await AddProvider(providerEnum);
+                    if (!addResult.Success)
                     {
-                        Id = providerEnum,
-                        DisabledAt = DateTime.UtcNow
-                    };
+                        throw new Exception($"Failed to add llm provider: {providerEnum}: [{addResult.Code}] {addResult.Message}");
+                    }
+                }
 
-                    await AddProvider(provider);
-                }
-                
-                if (provider.DisabledAt == null)
-                {
-                    RegisterProviderService(providerEnum);
-                }
+                RegisterProviderService(providerEnum);
             }
         }
 
@@ -80,198 +75,100 @@ namespace IqraInfrastructure.Managers.LLM
                 var getProviderTypeMethod = type.GetMethod("GetProviderTypeStatic", BindingFlags.Static | BindingFlags.Public);
                 if (getProviderTypeMethod != null)
                 {
-                    var returnedProviderEnum = (InterfaceLLMProviderEnum)getProviderTypeMethod.Invoke(null, null);
+                    var returnedProviderEnum = (InterfaceLLMProviderEnum)getProviderTypeMethod.Invoke(null, null)!;
                     if (returnedProviderEnum == providerEnum)
                     {
                         _llmProviderClasses[providerEnum] = type;
                         return;
                     }
                 }
+                else
+                {
+                    throw new Exception($"No GetProviderTypeStatic method found in type: {type.Name}");
+                }
             }
 
-            throw new Exception($"No matching IAIService implementation found for provider: {providerEnum}");
+            throw new Exception($"No matching ILLMService implementation found for provider: {providerEnum}");
         }
 
         public async Task<FunctionReturnResult<List<LLMProviderData>?>> GetProviderList(int page, int pageSize)
         {
             var result = new FunctionReturnResult<List<LLMProviderData>?>();
 
-            var providerList = await _llmProviderRepository.GetProviderListAsync(page, pageSize);
-            if (providerList == null)
-            {
-                result.Code = "GetProviderList:1";
-                result.Message = "No providers found";
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = providerList;
-            return result;
-        }
-
-        public async Task<FunctionReturnResult<LLMProviderData>> AddProvider(LLMProviderData providerData)
-        {
-            var result = new FunctionReturnResult<LLMProviderData>();
-
-            if (providerData.Id == InterfaceLLMProviderEnum.Unknown)
-            {
-                result.Code = "AddProvider:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
-
-            var existingProvider = await _llmProviderRepository.GetProviderAsync(providerData.Id);
-            if (existingProvider != null)
-            {
-                result.Code = "AddProvider:2";
-                result.Message = "Provider already exists";
-                return result;
-            }
-
-            providerData.DisabledAt = DateTime.UtcNow;
-
-            await _llmProviderRepository.AddProviderAsync(providerData);
-
-            result.Success = true;
-            result.Data = providerData;
-            return result;
-        }
-
-        public async Task<FunctionReturnResult> DisableProvider(InterfaceLLMProviderEnum providerId)
-        {
-            var result = new FunctionReturnResult();
-
-            if (providerId == InterfaceLLMProviderEnum.Unknown)
-            {
-                result.Code = "DisableProvider:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
-
-            var updateResult = await _llmProviderRepository.DisableProviderAsync(providerId);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
-            {
-                result.Code = "DisableProvider:2";
-                result.Message = "Provider not found or already disabled";
-                return result;
-            }
-
-            _llmProviderClasses.Remove(providerId);
-
-            result.Success = true;
-            return result;
-        }
-
-        public async Task<FunctionReturnResult> EnableProvider(InterfaceLLMProviderEnum providerId)
-        {
-            var result = new FunctionReturnResult();
-
-            if (providerId == InterfaceLLMProviderEnum.Unknown)
-            {
-                result.Code = "EnableProvider:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
-
-            var updateResult = await _llmProviderRepository.EnableProviderAsync(providerId);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
-            {
-                result.Code = "EnableProvider:2";
-                result.Message = "Provider not found or already enabled";
-                return result;
-            }
-
             try
             {
-                RegisterProviderService(providerId);
+                var providerList = await _llmProviderRepository.GetProviderListAsync(page, pageSize);
+                if (providerList == null)
+                {
+                    return result.SetFailureResult(
+                        "GetProviderList:NOT_FOUND",
+                        "No providers found"
+                    );
+                }
+
+                return result.SetSuccessResult(providerList);
             }
             catch (Exception ex)
             {
-                result.Code = "EnableProvider:3";
-                result.Message = $"Failed to register provider service: {ex.Message}";
-                return result;
+                return result.SetFailureResult(
+                    "GetProviderList:EXCEPTION",
+                    $"Failed to get provider list: {ex.Message}"
+                );
             }
-
-            result.Success = true;
-            return result;
         }
 
-        public async Task<FunctionReturnResult> AddModel(InterfaceLLMProviderEnum providerId, LLMProviderModelData modelData)
+        public async Task<FunctionReturnResult<LLMProviderData>> AddProvider(InterfaceLLMProviderEnum providerId)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<LLMProviderData>();
 
-            if (providerId == InterfaceLLMProviderEnum.Unknown)
+            try
             {
-                result.Code = "AddModel:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
+                var providerData = new LLMProviderData()
+                {
+                    Id = providerId,
+                    DisabledAt = DateTime.UtcNow
+                };
 
-            var updateResult = await _llmProviderRepository.AddModelAsync(providerId, modelData);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
+                if (providerData.Id == InterfaceLLMProviderEnum.Unknown)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:INVALID_ID",
+                        "Invalid provider ID"
+                    );
+                }
+
+                var existingProvider = await _llmProviderRepository.GetProviderAsync(providerData.Id);
+                if (existingProvider != null)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:EXISTS",
+                        "Provider already exists"
+                    );
+                }
+
+                var success = await _llmProviderRepository.AddProviderAsync(providerData);
+                if (!success)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:FAILED",
+                        "Failed to add provider to database"
+                    );
+                }
+
+                return result.SetSuccessResult(providerData);
+            }
+            catch (Exception ex)
             {
-                result.Code = "AddModel:2";
-                result.Message = "Provider not found or model already exists";
-                return result;
+                return result.SetFailureResult(
+                    "AddProvider:EXCEPTION",
+                    $"Failed to add provider: {ex.Message}"
+                );
             }
-
-            result.Success = true;
-            return result;
-        }
-
-        public async Task<FunctionReturnResult> UpdateModelPromptTemplates(InterfaceLLMProviderEnum providerId, string modelId, Dictionary<string, string> promptTemplates)
-        {
-            var result = new FunctionReturnResult();
-
-            if (providerId == InterfaceLLMProviderEnum.Unknown)
-            {
-                result.Code = "UpdateModelPromptTemplates:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
-
-            var updateResult = await _llmProviderRepository.UpdateModelPromptTemplatesAsync(providerId, modelId, promptTemplates);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
-            {
-                result.Code = "UpdateModelPromptTemplates:2";
-                result.Message = "Provider or model not found";
-                return result;
-            }
-
-            result.Success = true;
-            return result;
-        }
-
-        public async Task<FunctionReturnResult> DisableModel(InterfaceLLMProviderEnum providerId, string modelId)
-        {
-            var result = new FunctionReturnResult();
-
-            if (providerId == InterfaceLLMProviderEnum.Unknown)
-            {
-                result.Code = "DisableModel:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
-
-            var updateResult = await _llmProviderRepository.DisableModelAsync(providerId, modelId);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
-            {
-                result.Code = "DisableModel:2";
-                result.Message = "Provider or model not found";
-                return result;
-            }
-
-            result.Success = true;
-            return result;
         }
 
         public Type? GetProviderService(InterfaceLLMProviderEnum providerId)
         {
-            if (_llmProviderClasses.TryGetValue(providerId, out var service))
-            {
-                return service;
-            }
-            return null;
+            return _llmProviderClasses.TryGetValue(providerId, out var service) ? service : null;
         }
 
         public async Task<LLMProviderData?> GetProviderData(InterfaceLLMProviderEnum providerId)
@@ -279,362 +176,412 @@ namespace IqraInfrastructure.Managers.LLM
             return await _llmProviderRepository.GetProviderAsync(providerId);
         }
 
-        public async Task<FunctionReturnResult<LLMProviderModelData?>> AddUpdateProviderModel(LLMProviderData provider, string modelId, string postType, LLMProviderModelData? oldModelData, IFormCollection formData)
+        public async Task<FunctionReturnResult<LLMProviderModelData?>> AddUpdateProviderModel(
+            LLMProviderData provider,
+            string modelId,
+            string postType,
+            LLMProviderModelData? oldModelData,
+            IFormCollection formData)
         {
             var result = new FunctionReturnResult<LLMProviderModelData?>();
 
-            var newModelData = new LLMProviderModelData()
-            {
-                Id = modelId
-            };
-
-            if (!formData.TryGetValue("changes", out var changesJsonString))
-            {
-                result.Code = "AddUpdateProviderModel:1";
-                result.Message = "Changes data not found";
-                return result;
-            }
-
-            if (string.IsNullOrEmpty(changesJsonString))
-            {
-                result.Code = "AddUpdateProviderModel:2";
-                result.Message = "Changes data is empty";
-                return result;
-            }
-
-            JsonDocument changesJsonElement;
             try
             {
-                changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString);
-            }
-            catch (JsonException)
-            {
-                result.Code = "AddUpdateProviderModel:3";
-                result.Message = "Invalid JSON format for changes";
-                return result;
-            }
-
-            if (changesJsonElement == null)
-            {
-                result.Code = "AddUpdateProviderModel:3";
-                result.Message = "Failed to parse changes JSON";
-                return result;
-            }
-
-            // Model Name
-            if (!changesJsonElement.RootElement.TryGetProperty("name", out var modelNameElement))
-            {
-                result.Code = "AddUpdateProviderModel:4";
-                result.Message = "Model name not found";
-                return result;
-            }
-            string? modelName = modelNameElement.GetString();
-            if (string.IsNullOrEmpty(modelName))
-            {
-                result.Code = "AddUpdateProviderModel:5";
-                result.Message = "Model name is empty";
-                return result;
-            }
-            newModelData.Name = modelName;
-
-            // Disabled
-            if (changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
-            {
-                bool isDisabled = disabledElement.GetBoolean();
-                if (isDisabled)
+                var newModelData = new LLMProviderModelData()
                 {
-                    if (postType == "edit" && oldModelData?.DisabledAt != null)
+                    Id = modelId
+                };
+
+                if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:CHANGES_DATA_NOT_FOUND",
+                        "Changes data not found"
+                    );
+                }
+
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
+                if (changesJsonElement == null)
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:JSON_PARSE_ERROR",
+                        "Failed to parse changes JSON"
+                    );
+                }
+
+                var root = changesJsonElement.RootElement;
+
+                // Model Name
+                if (root.TryGetProperty("name", out var modelNameElement))
+                {
+                    string? modelName = modelNameElement.GetString();
+                    if (string.IsNullOrEmpty(modelName))
                     {
-                        newModelData.DisabledAt = oldModelData.DisabledAt;
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:EMPTY_NAME",
+                            "Model name is empty"
+                        );
+                    }
+                    newModelData.Name = modelName;
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:NAME_NOT_FOUND",
+                        "Model name not found"
+                    );
+                }
+
+                // Disabled State
+                if (root.TryGetProperty("disabled", out var disabledElement))
+                {
+                    bool isDisabled = disabledElement.GetBoolean();
+                    if (isDisabled)
+                    {
+                        newModelData.DisabledAt = (postType == "edit" && oldModelData?.DisabledAt != null)
+                            ? oldModelData.DisabledAt
+                            : DateTime.UtcNow;
                     }
                     else
                     {
-                        newModelData.DisabledAt = DateTime.UtcNow;
+                        newModelData.DisabledAt = null;
                     }
                 }
                 else
                 {
-                    newModelData.DisabledAt = null;
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:DISABLED_STATE_NOT_FOUND",
+                        "Disabled state not found"
+                    );
                 }
-            }
 
-            // Input Price
-            if (changesJsonElement.RootElement.TryGetProperty("inputPrice", out var inputPriceElement))
-            {
-                if (decimal.TryParse(inputPriceElement.GetString(), out decimal inputPrice))
+                // Input Price
+                if (root.TryGetProperty("inputPrice", out var inputPriceElement))
                 {
-                    newModelData.InputPrice = inputPrice;
+                    if (decimal.TryParse(inputPriceElement.GetString(), out decimal inputPrice))
+                    {
+                        newModelData.InputPrice = inputPrice;
+                    }
+                    else if (inputPriceElement.TryGetDecimal(out decimal decimalInput))
+                    {
+                        newModelData.InputPrice = decimalInput;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_INPUT_PRICE",
+                            "Invalid input price"
+                        );
+                    }
                 }
                 else
                 {
-                    result.Code = "AddUpdateProviderModel:6";
-                    result.Message = "Invalid input price";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:INPUT_PRICE_NOT_FOUND",
+                        "Input price not found"
+                    );
                 }
-            }
 
-            // Input Price Token Unit
-            if (changesJsonElement.RootElement.TryGetProperty("inputPriceTokenUnit", out var inputPriceTokenUnitElement))
-            {
-                if (int.TryParse(inputPriceTokenUnitElement.GetString(), out int inputPriceTokenUnit))
+                // Input Price Token Unit
+                if (root.TryGetProperty("inputPriceTokenUnit", out var inputPriceTokenUnitElement))
                 {
-                    newModelData.InputPriceTokenUnit = inputPriceTokenUnit;
+                    if (int.TryParse(inputPriceTokenUnitElement.GetString(), out int inputPriceTokenUnit))
+                    {
+                        newModelData.InputPriceTokenUnit = inputPriceTokenUnit;
+                    }
+                    else if (inputPriceTokenUnitElement.TryGetInt32(out int intInputToken))
+                    {
+                        newModelData.InputPriceTokenUnit = intInputToken;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_INPUT_TOKEN_UNIT",
+                            "Invalid input price token unit"
+                        );
+                    }
                 }
                 else
                 {
-                    result.Code = "AddUpdateProviderModel:7";
-                    result.Message = "Invalid input price token unit";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:INPUT_TOKEN_UNIT_NOT_FOUND",
+                        "Input price token unit not found"
+                    );
                 }
-            }
 
-            // Output Price
-            if (changesJsonElement.RootElement.TryGetProperty("outputPrice", out var outputPriceElement))
-            {
-                if (decimal.TryParse(outputPriceElement.GetString(), out decimal outputPrice))
+                // Output Price
+                if (root.TryGetProperty("outputPrice", out var outputPriceElement))
                 {
-                    newModelData.OutputPrice = outputPrice;
+                    if (decimal.TryParse(outputPriceElement.GetString(), out decimal outputPrice))
+                    {
+                        newModelData.OutputPrice = outputPrice;
+                    }
+                    else if (outputPriceElement.TryGetDecimal(out decimal decimalOutput))
+                    {
+                        newModelData.OutputPrice = decimalOutput;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_OUTPUT_PRICE",
+                            "Invalid output price"
+                        );
+                    }
                 }
                 else
                 {
-                    result.Code = "AddUpdateProviderModel:8";
-                    result.Message = "Invalid output price";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:OUTPUT_PRICE_NOT_FOUND",
+                        "Output price not found"
+                    );
                 }
-            }
 
-            // Output Price Token Unit
-            if (changesJsonElement.RootElement.TryGetProperty("outputPriceTokenUnit", out var outputPriceTokenUnitElement))
-            {
-                if (int.TryParse(outputPriceTokenUnitElement.GetString(), out int outputPriceTokenUnit))
+                // Output Price Token Unit
+                if (root.TryGetProperty("outputPriceTokenUnit", out var outputPriceTokenUnitElement))
                 {
-                    newModelData.OutputPriceTokenUnit = outputPriceTokenUnit;
+                    if (int.TryParse(outputPriceTokenUnitElement.GetString(), out int outputPriceTokenUnit))
+                    {
+                        newModelData.OutputPriceTokenUnit = outputPriceTokenUnit;
+                    }
+                    else if (outputPriceTokenUnitElement.TryGetInt32(out int intOutputToken))
+                    {
+                        newModelData.OutputPriceTokenUnit = intOutputToken;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_OUTPUT_TOKEN_UNIT",
+                            "Invalid output price token unit"
+                        );
+                    }
                 }
                 else
                 {
-                    result.Code = "AddUpdateProviderModel:9";
-                    result.Message = "Invalid output price token unit";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:OUTPUT_TOKEN_UNIT_NOT_FOUND",
+                        "Output price token unit not found"
+                    );
                 }
-            }
 
-            // Max Input Token Length
-            if (changesJsonElement.RootElement.TryGetProperty("maxInputTokenLength", out var maxInputTokenLengthElement))
-            {
-                if (int.TryParse(maxInputTokenLengthElement.GetString(), out int maxInputTokenLength))
+                // Max Input Token Length
+                if (root.TryGetProperty("maxInputTokenLength", out var maxInputTokenLengthElement))
                 {
-                    newModelData.MaxInputTokenLength = maxInputTokenLength;
+                    if (int.TryParse(maxInputTokenLengthElement.GetString(), out int maxInputTokenLength))
+                    {
+                        newModelData.MaxInputTokenLength = maxInputTokenLength;
+                    }
+                    else if (maxInputTokenLengthElement.TryGetInt32(out int intMaxInput))
+                    {
+                        newModelData.MaxInputTokenLength = intMaxInput;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_MAX_INPUT_LENGTH",
+                            "Invalid max input token length"
+                        );
+                    }
                 }
                 else
                 {
-                    result.Code = "AddUpdateProviderModel:10";
-                    result.Message = "Invalid max input token length";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:MAX_INPUT_LENGTH_NOT_FOUND",
+                        "Max input token length not found"
+                    );
                 }
-            }
 
-            // Max Output Token Length
-            if (changesJsonElement.RootElement.TryGetProperty("maxOutputTokenLength", out var maxOutputTokenLengthElement))
-            {
-                if (int.TryParse(maxOutputTokenLengthElement.GetString(), out int maxOutputTokenLength))
+                // Max Output Token Length
+                if (root.TryGetProperty("maxOutputTokenLength", out var maxOutputTokenLengthElement))
                 {
-                    newModelData.MaxOutputTokenLength = maxOutputTokenLength;
+                    if (int.TryParse(maxOutputTokenLengthElement.GetString(), out int maxOutputTokenLength))
+                    {
+                        newModelData.MaxOutputTokenLength = maxOutputTokenLength;
+                    }
+                    else if (maxOutputTokenLengthElement.TryGetInt32(out int intMaxOutput))
+                    {
+                        newModelData.MaxOutputTokenLength = intMaxOutput;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_MAX_OUTPUT_LENGTH",
+                            "Invalid max output token length"
+                        );
+                    }
                 }
                 else
                 {
-                    result.Code = "AddUpdateProviderModel:11";
-                    result.Message = "Invalid max output token length";
-                    return result;
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:MAX_OUTPUT_LENGTH_NOT_FOUND",
+                        "Max output token length not found"
+                    );
                 }
-            }
 
-            // Prompts
-            var appLanguages = await _languagesManager.GetAllLanguagesList();
-            var promptValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
-                appLanguages.Data,
-                changesJsonElement.RootElement,
-                "promptTemplates",
-                newModelData.PromptTemplates
-            );
-
-            if (!promptValidationResult.Success)
-            {
-                result.Code = "AddUpdateProviderModel:" + promptValidationResult.Code;
-                result.Message = promptValidationResult.Message;
-                return result;
-            }
-
-            // Saving new data to database
-            if (postType == "new")
-            {
-                var addResult = await _llmProviderRepository.AddModelAsync(provider.Id, newModelData);
-                if (!addResult.IsAcknowledged || addResult.ModifiedCount == 0)
+                // Save to database
+                bool updateSuccess;
+                if (postType == "new")
                 {
-                    result.Code = "AddUpdateProviderModel:13";
-                    result.Message = "Failed to add model";
-                    return result;
+                    var addResult = await _llmProviderRepository.AddModelAsync(provider.Id, newModelData);
+                    updateSuccess = addResult.IsAcknowledged && addResult.ModifiedCount > 0;
                 }
-            }
-            else if (postType == "edit")
-            {
-                var editResult = await _llmProviderRepository.UpdateModelAsync(provider.Id, newModelData);
-                if (!editResult.IsAcknowledged || editResult.ModifiedCount == 0)
+                else
                 {
-                    result.Code = "AddUpdateProviderModel:14";
-                    result.Message = "Failed to edit model";
-                    return result;
+                    var updateResult = await _llmProviderRepository.UpdateModelAsync(provider.Id, newModelData);
+                    updateSuccess = updateResult.IsAcknowledged && updateResult.ModifiedCount > 0;
                 }
-            }
 
-            result.Data = newModelData;
-            result.Success = true;
-            return result;
+                if (!updateSuccess)
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:DB_UPDATE_FAILED",
+                        $"Failed to {postType} model in database"
+                    );
+                }
+
+                return result.SetSuccessResult(newModelData);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "AddUpdateProviderModel:EXCEPTION",
+                    $"Error processing model data: {ex.Message}"
+                );
+            }
         }
 
-        public async Task<FunctionReturnResult<LLMProviderData?>> UpdateProvider(LLMProviderData provider, IFormCollection formData, IntegrationsManager integrationsManager)
+        public async Task<FunctionReturnResult<LLMProviderData?>> UpdateProvider(
+            LLMProviderData provider,
+            IFormCollection formData,
+            IntegrationsManager integrationsManager)
         {
             var result = new FunctionReturnResult<LLMProviderData?>();
 
             try
             {
-                if (!formData.TryGetValue("changes", out var changesJsonString))
+                if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
                 {
-                    result.Code = "UpdateProvider:1";
-                    result.Message = "Changes data not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:CHANGES_DATA_NOT_FOUND",
+                        "Changes data not found"
+                    );
                 }
 
-                var changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString);
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
                 if (changesJsonElement == null)
                 {
-                    result.Code = "UpdateProvider:2";
-                    result.Message = "Unable to parse changes json string.";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:JSON_PARSE_ERROR",
+                        "Unable to parse changes json string"
+                    );
                 }
 
+                var root = changesJsonElement.RootElement;
                 var newProviderData = new LLMProviderData
                 {
                     Id = provider.Id,
-                    Models = provider.Models // Maintain existing models
+                    Models = provider.Models
                 };
 
                 // Handle disabled state
-                if (!changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
+                if (root.TryGetProperty("disabled", out var disabledElement))
                 {
-                    result.Code = "UpdateProvider:3";
-                    result.Message = "Provider disabled state not found";
-                    return result;
-                }
-
-                bool disabled = disabledElement.GetBoolean();
-                if (disabled)
-                {
-                    if (provider.DisabledAt != null)
-                    {
-                        newProviderData.DisabledAt = provider.DisabledAt;
-                    }
-                    else
-                    {
-                        newProviderData.DisabledAt = DateTime.UtcNow;
-                    }
+                    bool disabled = disabledElement.GetBoolean();
+                    newProviderData.DisabledAt = disabled ? (provider.DisabledAt ?? DateTime.UtcNow) : null;
                 }
                 else
                 {
-                    newProviderData.DisabledAt = null;
+                    return result.SetFailureResult(
+                        "UpdateProvider:DISABLED_STATE_NOT_FOUND",
+                        "Provider disabled state not found"
+                    );
                 }
 
                 // Handle integration selection
-                if (!changesJsonElement.RootElement.TryGetProperty("integrationId", out var integrationIdElement))
+                if (root.TryGetProperty("integrationId", out var integrationIdElement))
                 {
-                    result.Code = "UpdateProvider:4";
-                    result.Message = "Integration ID not found";
-                    return result;
-                }
+                    string? integrationId = integrationIdElement.GetString();
 
-                string? integrationId = integrationIdElement.GetString();
-                if (string.IsNullOrEmpty(integrationId))
+                    if (string.IsNullOrEmpty(integrationId))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:MISSING_INTEGRATION_ID",
+                            "Integration ID is required"
+                        );
+                    }
+
+                    // Validate integration exists and is LLM type
+                    var integration = await integrationsManager.getIntegrationData(integrationId);
+                    if (integration.Data == null || !integration.Success)
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:SELECTED_INTEGRATION_NOT_FOUND",
+                            "Selected integration not found"
+                        );
+                    }
+
+                    if (!integration.Data.Type.Contains("LLM"))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:INVALID_INTEGRATION",
+                            "Selected integration is not an LLM integration"
+                        );
+                    }
+
+                    newProviderData.IntegrationId = integrationId;
+                }
+                else
                 {
-                    result.Code = "UpdateProvider:5";
-                    result.Message = "Integration ID is required";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:INTEGRATION_ID_NOT_FOUND",
+                        "Integration ID not found in changes"
+                    );
                 }
-
-                // Validate that integration exists
-                var integration = await integrationsManager.getIntegrationData(integrationId);
-                if (integration == null || !integration.Success)
-                {
-                    result.Code = "UpdateProvider:6";
-                    result.Message = "Selected integration not found";
-                    return result;
-                }
-
-                // Validate integration type includes LLM
-                if (!integration.Data.Type.Contains("LLM"))
-                {
-                    result.Code = "UpdateProvider:7";
-                    result.Message = "Selected integration is not an LLM integration";
-                    return result;
-                }
-
-                newProviderData.IntegrationId = integrationId;
 
                 // Handle integration fields
-                if (changesJsonElement.RootElement.TryGetProperty("userIntegrationFields", out var fieldsElement))
+                if (root.TryGetProperty("userIntegrationFields", out var fieldsElement))
                 {
-                    newProviderData.UserIntegrationFields = new List<ProviderFieldBase>();
+                    var availableModelIds = newProviderData.Models.Select(m => m.Id).ToList();
 
-                    foreach (var fieldElement in fieldsElement.EnumerateArray())
+                    // Use the centralized helper for parsing and validation
+                    var parseResult = ProviderIntegrationFieldsHelper.ParseAndValidateFields(fieldsElement, availableModelIds);
+
+                    if (!parseResult.Success || parseResult.Data == null)
                     {
-                        var field = new ProviderFieldBase
-                        {
-                            Id = fieldElement.GetProperty("id").GetString() ?? "",
-                            Name = fieldElement.GetProperty("name").GetString() ?? "",
-                            Type = fieldElement.GetProperty("type").GetString() ?? "",
-                            Tooltip = fieldElement.GetProperty("tooltip").GetString() ?? "",
-                            Placeholder = fieldElement.GetProperty("placeholder").GetString() ?? "",
-                            DefaultValue = fieldElement.GetProperty("defaultValue").GetString() ?? "",
-                            Required = fieldElement.GetProperty("required").GetBoolean(),
-                            IsEncrypted = fieldElement.GetProperty("isEncrypted").GetBoolean()
-                        };
-
-                        // Handle options for select type
-                        if (field.Type == "select" && fieldElement.TryGetProperty("options", out var optionsElement))
-                        {
-                            field.Options = new List<ProviderFieldOption>();
-                            foreach (var optionElement in optionsElement.EnumerateArray())
-                            {
-                                field.Options.Add(new ProviderFieldOption
-                                {
-                                    Key = optionElement.GetProperty("key").GetString() ?? "",
-                                    Value = optionElement.GetProperty("value").GetString() ?? "",
-                                    IsDefault = optionElement.GetProperty("isDefault").GetBoolean()
-                                });
-                            }
-                        }
-
-                        newProviderData.UserIntegrationFields.Add(field);
+                        return result.SetFailureResult(
+                            $"UpdateProvider:{parseResult.Code}",
+                            parseResult.Message
+                        );
                     }
+
+                    newProviderData.UserIntegrationFields = parseResult.Data;
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "UpdateProvider:USER_INTEGRATION_FIELDS_NOT_FOUND",
+                        "User integration fields not found"
+                    );
                 }
 
                 // Save to database
                 var updateResult = await _llmProviderRepository.UpdateProviderAsync(newProviderData);
                 if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
                 {
-                    result.Code = "UpdateProvider:8";
-                    result.Message = "Failed to update provider";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:UPDATE_FAILED",
+                        "Failed to update provider"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = newProviderData;
+                return result.SetSuccessResult(newProviderData);
             }
             catch (Exception ex)
             {
-                result.Code = "UpdateProvider:9";
-                result.Message = "Error processing provider update: " + ex.Message;
+                return result.SetFailureResult(
+                    "UpdateProvider:EXCEPTION",
+                    $"Error processing provider update: {ex.Message}"
+                );
             }
-
-            return result;
         }
 
         public async Task<FunctionReturnResult<LLMProviderData?>> GetProviderDataByIntegration(string integrationType)
@@ -646,70 +593,109 @@ namespace IqraInfrastructure.Managers.LLM
                 var providerData = await _llmProviderRepository.GetProviderDataByIntegration(integrationType);
 
                 if (providerData == null)
-                {          
-                    result.Code = "GetProviderDataByIntegration:1";
-                    result.Message = "Provider not find by integration type";
-                    return result;
+                {
+                    return result.SetFailureResult(
+                        "GetProviderDataByIntegration:NOT_FOUND",
+                        "Provider not found by integration type"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = providerData;
+                return result.SetSuccessResult(providerData);
             }
             catch (Exception ex)
             {
-                result.Code = "GetProviderDataByIntegration:2";
-                result.Message = "Failed to get provider data: " + ex.Message;
+                return result.SetFailureResult(
+                    "GetProviderDataByIntegration:EXCEPTION",
+                    $"Failed to get provider data: {ex.Message}"
+                );
             }
-
-            return result;
         }
 
-        public async Task<FunctionReturnResult<ILLMService?>> BuildProviderServiceByIntegration(ILoggerFactory loggerFactory, BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
+        public async Task<FunctionReturnResult<ILLMService?>> BuildProviderServiceByIntegration(
+            ILoggerFactory loggerFactory,
+            BusinessAppIntegration integrationData,
+            BusinessAppAgentIntegrationData agentIntegrationData,
+            Dictionary<string, string> metaData)
         {
             var result = new FunctionReturnResult<ILLMService?>();
 
             try
             {
                 var llmProviderData = await GetProviderDataByIntegration(integrationData.Type);
-                if (!llmProviderData.Success)
+                if (!llmProviderData.Success || llmProviderData.Data == null)
                 {
-                    return result.SetFailureResult("BuildProviderServiceByIntegration:1", $"Provider not find by integration type");
+                    return result.SetFailureResult(
+                        "BuildProviderServiceByIntegration:PROVIDER_NOT_FOUND",
+                        "Provider not found by integration type"
+                    );
                 }
+
+                // --- Helper functions for safe extraction ---
+                string GetString(string key, string defaultValue = "")
+                {
+                    return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
+                        ? val.ToString()! : defaultValue;
+                }
+                // ---------------------------------------------
 
                 switch (llmProviderData.Data.Id)
                 {
                     case InterfaceLLMProviderEnum.AnthropicClaude:
-                        return result.SetSuccessResult(new AnthropicClaudeStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
+                        {
+                            var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            var model = GetString("model");
+                            return result.SetSuccessResult(new AnthropicClaudeStreamingLLMService(apiKey, model));
+                        }
 
                     case InterfaceLLMProviderEnum.OpenAIGPT:
                         {
-                            var model = (string)agentIntegrationData.FieldValues["model"];
                             var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            var model = GetString("model");
                             var endpoint = "https://api.openai.com/v1";
-                            if (integrationData.Fields.TryGetValue("endpoint", out var endpointValue) && !string.IsNullOrEmpty(endpointValue) && Uri.IsWellFormedUriString(endpointValue, UriKind.Absolute))
+
+                            // Check if endpoint override exists in integration config
+                            if (integrationData.Fields.TryGetValue("endpoint", out var endpointValue) &&
+                                !string.IsNullOrEmpty(endpointValue) &&
+                                Uri.IsWellFormedUriString(endpointValue, UriKind.Absolute))
                             {
                                 endpoint = endpointValue;
                             }
 
-                            return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"], endpoint));
+                            return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(apiKey, model, endpoint));
                         }
 
                     case InterfaceLLMProviderEnum.GoogleAIGemini:
-                        return result.SetSuccessResult(new GoogleAIGeminiStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
+                        {
+                            var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            var model = GetString("model");
+                            return result.SetSuccessResult(new GoogleAIGeminiStreamingLLMService(apiKey, model));
+                        }
 
                     case InterfaceLLMProviderEnum.GroqCloud:
-                        return result.SetSuccessResult(new GroqCloudStreamingLLMService(loggerFactory.CreateLogger<GroqCloudStreamingLLMService>(), _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
+                        {
+                            var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            var model = GetString("model");
+                            var logger = loggerFactory.CreateLogger<GroqCloudStreamingLLMService>();
+                            return result.SetSuccessResult(new GroqCloudStreamingLLMService(logger, apiKey, model));
+                        }
 
                     default:
-                        _logger.LogError("Business app LLM provider {ProviderType} not supported", llmProviderData.Data.Id);
-                        return result.SetFailureResult("BuildProviderServiceByIntegration:2", $"Business app LLM provider {llmProviderData.Data.Id} not supported");
+                        {
+                            _logger.LogError("Business app LLM provider {ProviderType} not supported", llmProviderData.Data.Id);
+                            return result.SetFailureResult(
+                                "BuildProviderServiceByIntegration:NOT_SUPPORTED",
+                                $"Business app LLM provider {llmProviderData.Data.Id} not supported"
+                            );
+                        }
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to build provider service");
-                
-                return result.SetFailureResult("BuildProviderServiceByIntegration:EXCEPTION", $"Failed to build provider service: {ex.Message}");
+                return result.SetFailureResult(
+                    "BuildProviderServiceByIntegration:EXCEPTION",
+                    $"Failed to build provider service: {ex.Message}"
+                );
             }
         }
     }

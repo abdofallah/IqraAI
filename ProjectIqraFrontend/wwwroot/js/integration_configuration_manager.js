@@ -39,12 +39,7 @@ class IntegrationConfigurationManager {
 
 		// --- State Variables ---
 		this.data = this.options.isLanguageBound ? {} : this.options.allowMultiple ? [] : null;
-		this.filteredIntegrations = this.options.allIntegrations.filter((integration) => {
-			const typeData = SpecificationIntegrationsListData.find((it) => it.id === integration.type);
-			const type = this.options.integrationType;
-			// Handle aliases like SPEECH2TEXT for STT
-			return typeData.type.includes(type) || (type === "STT" && typeData.type.includes("SPEECH2TEXT")) || (type === "TTS" && typeData.type.includes("TEXT2SPEECH"));
-		});
+		this.updateAllIntegrations(this.options.allIntegrations);
 
 		// --- Modal State Variables ---
 		this.currentConfig = {
@@ -72,9 +67,13 @@ class IntegrationConfigurationManager {
 	/**
 	 * Loads initial integration data into the manager and renders the UI.
 	 * @param {object|Array|null} data - The initial configuration data.
+	 * @param {Array} [businessIntegrations] - The global array of all available business integrations.
 	 */
-	load(data) {
+	load(data, businessIntegrations = undefined) {
 		this.data = structuredClone(data); // Deep copy to prevent reference issues
+		if (businessIntegrations) {
+			this.updateAllIntegrations(businessIntegrations);
+		}
 		this._render();
 	}
 
@@ -164,6 +163,17 @@ class IntegrationConfigurationManager {
 	getSelectElements() {
 		return this.container.find('select');
 	}
+
+	updateAllIntegrations(allIntegrations) {
+		this.options.allIntegrations = allIntegrations;
+
+        this.filteredIntegrations = this.options.allIntegrations.filter((integration) => {
+            const typeData = SpecificationIntegrationsListData.find((it) => it.id === integration.type);
+            const type = this.options.integrationType;
+            // Handle aliases like SPEECH2TEXT for STT
+            return typeData.type.includes(type) || (type === "STT" && typeData.type.includes("SPEECH2TEXT")) || (type === "TTS" && typeData.type.includes("TEXT2SPEECH"));
+        });
+    }
 
 
 	// =================================================================

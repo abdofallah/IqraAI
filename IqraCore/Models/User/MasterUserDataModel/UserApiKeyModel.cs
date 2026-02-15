@@ -12,6 +12,7 @@ namespace IqraCore.Models.User.MasterUserDataModel
             CreatedUtc = userApiKey.CreatedUtc;
             LastUsedUtc = userApiKey.LastUsedUtc;
             RestrictedToBusinessIds = userApiKey.RestrictedToBusinessIds;
+            AllowUserManagementApiRequests = userApiKey.AllowUserManagementApiRequests;
         }
 
         public string Id { get; set; }
@@ -24,5 +25,7 @@ namespace IqraCore.Models.User.MasterUserDataModel
         public DateTime? LastUsedUtc { get; set; }
 
         public List<long> RestrictedToBusinessIds { get; set; }
+
+        public bool AllowUserManagementApiRequests { get; set; }
     }
 }

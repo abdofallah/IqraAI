@@ -23,9 +23,18 @@ namespace IqraInfrastructure.Repositories.STT
             _sttProviderCollection = database.GetCollection<STTProviderData>(CollectionName);
         }
 
-        public async Task AddProviderAsync(STTProviderData providerData)
+        public async Task<bool> AddProviderAsync(STTProviderData providerData)
         {
-            await _sttProviderCollection.InsertOneAsync(providerData);
+            try
+            {
+                await _sttProviderCollection.InsertOneAsync(providerData);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return false;
+            }
         }
 
         public async Task<STTProviderData?> GetProviderAsync(InterfaceSTTProviderEnum id)

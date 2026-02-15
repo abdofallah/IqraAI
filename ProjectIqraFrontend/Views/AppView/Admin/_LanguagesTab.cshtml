@@ -1,14 +1,16 @@
 ﻿<div class="main-container fade w-100 d-none" id="languages-tab">
-    <h3 class="fw-bold tab-title"><i class='fa-regular fa-language nav_icon'></i> <span>Languages</span></h3>
-    <div class="inner-container">
-        <!-- Manager Inner Tabs -->
-        <div class="mb-3">
-            <ul class="nav w-100 fade show" id="languages-inner-tab" role="tablist">
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link active" id="languages-list-tab" data-bs-toggle="pill" data-bs-target="#languages-list" type="button" role="tab" aria-controls="languages-list" aria-selected="true">List</button>
-                </li>
-            </ul>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="languages-manage-breadcrumb">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-language nav_icon'></i> <span>Languages</span></h3>
+
+    <div class="inner-header-container mb-3">     
+        <!-- List Header -->
+        <ul class="nav w-100 fade show" id="languages-inner-header" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="languages-list-tab" data-bs-toggle="pill" data-bs-target="#languages-list" type="button" role="tab" aria-controls="languages-list" aria-selected="true">List</button>
+            </li>
+        </ul>
+
+        <div class="w-100 fade d-none" id="languages-manager-inner-header">
+            <nav class="mb-3" aria-label="breadcrumb" id="languages-manage-breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item">
                         <a href="#" id="switchBackToLanguagesListTabFromManageTab">Languages</a>
@@ -16,13 +18,31 @@
                     <li class="breadcrumb-item active" aria-current="page"><span id="currentManageLanguageName">Language</span></li>
                 </ol>
             </nav>
+
+            <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                <ul class="nav" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="languages-manager-general-tab" data-bs-toggle="pill" data-bs-target="#languages-manager-general" type="button" role="tab" aria-controls="languages-manager-general" aria-selected="true">General</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="languages-manager-prompts-tab" data-bs-toggle="pill" data-bs-target="#languages-manager-prompts" type="button" role="tab" aria-controls="languages-manager-prompts" aria-selected="true">Prompts</button>
+                    </li>
+                </ul>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLanguagesButton">
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
         </div>
+    </div>
+
+    <div class="inner-container">
+        
         <!-- Tab Content -->
         <div class="tab-content" id="languages-tab-content">
 
             <!-- List -->
             <div class="tab-pane fade w-100 show active" id="languages-list" role="tabpanel" aria-labelledby="languages-list-tab" tabindex="0">
-
                 <!-- Table Tab -->
                 <div class="fade w-100 show" id="languagesListTableTab">
                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
@@ -59,19 +79,6 @@
                 <!-- Manage Tab -->
                 <div class="fade w-100 d-none" id="languagesManageTab">
 
-                    <!-- Manager Inner Tabs -->
-                    <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                        <ul class="nav fade show" id="languages-manager-inner-tab" role="tablist">
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="languages-manager-general-tab" data-bs-toggle="pill" data-bs-target="#languages-manager-general" type="button" role="tab" aria-controls="languages-manager-general" aria-selected="true">General</button>
-                            </li>
-                        </ul>
-                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLanguagesButton">
-                            <i class='fa-regular fa-floppy-disk'></i>
-                            <span> Save</span>
-                        </button>
-                    </div>
-
                     <!-- Tab Content -->
                     <div class="tab-content" id="languages-manager-manage-tab-content">
                         <!-- General -->
@@ -88,9 +95,178 @@
                                 <label class="form-label" for="manageLanguagesNameInput">Name</label>
                                 <input type="text" class="form-control" id="manageLanguagesNameInput" placeholder="Language Name">
                             </div>
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" role="switch" id="manageLanguagesDisabledInput" checked>
-                                <label class="form-check-label" for="manageLanguagesDisabledInput">Disabled</label>
+                            <!-- Status Control Card -->
+                            <div class="card bg-dark border-secondary mt-4">
+                                <div class="card-body">
+                                    <h6 class="card-title text-danger mb-3">Status Controls</h6>
+
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1 text-secondary">Disable Language</h6>
+                                            <p class="text-muted small mb-0">Completely disables this language for all users.</p>
+
+                                            <!-- Reason Display (Visible when Disabled) -->
+                                            <div class="mt-2 d-none" id="manageLanguagesDisabledReasonContainer">
+                                                <div class="small text-info mb-1">
+                                                    <i class="fa-solid fa-globe me-1"></i> Public: <span id="manageLanguagesPublicReasonDisplay" class="text-white">...</span>
+                                                </div>
+                                                <div class="small text-warning">
+                                                    <i class="fa-solid fa-lock me-1"></i> Private: <span id="manageLanguagesPrivateReasonDisplay" class="text-white">...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="manageLanguagesDisabledInput" style="width: 3em; height: 1.5em;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Prompts Tab Content -->
+                        <div class="tab-pane fade w-100" id="languages-manager-prompts" role="tabpanel" aria-labelledby="languages-manager-prompts-tab" tabindex="0">
+                            <div class="row g-0">
+                                <!-- Internal Vertical Navigation -->
+                                <div class="col-md-3 border-end border-secondary pe-3">
+                                    <div class="nav flex-column nav-pills" id="languages-prompts-vertical-tab" role="tablist" aria-orientation="vertical">
+
+                                        <button class="nav-link active text-start mb-1" id="prompt-cat-conversation-tab" data-bs-toggle="pill" data-bs-target="#prompt-cat-conversation" type="button" role="tab">
+                                            <i class="fa-regular fa-comments me-2"></i> Conversation
+                                        </button>
+
+                                        <button class="nav-link text-start mb-1" id="prompt-cat-verification-tab" data-bs-toggle="pill" data-bs-target="#prompt-cat-verification" type="button" role="tab">
+                                            <i class="fa-regular fa-shield-check me-2"></i> Verification
+                                        </button>
+
+                                        <button class="nav-link text-start mb-1" id="prompt-cat-rag-tab" data-bs-toggle="pill" data-bs-target="#prompt-cat-rag" type="button" role="tab">
+                                            <i class="fa-regular fa-books me-2"></i> Knowledge Base
+                                        </button>
+
+                                        <button class="nav-link text-start" id="prompt-cat-analysis-tab" data-bs-toggle="pill" data-bs-target="#prompt-cat-analysis" type="button" role="tab">
+                                            <i class="fa-regular fa-chart-mixed me-2"></i> Post Analysis
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Internal Content Fields -->
+                                <div class="col-md-9 ps-4">
+                                    <div class="tab-content" id="languages-prompts-vertical-tabContent">
+
+                                        <!-- 1. Conversation Flow -->
+                                        <div class="tab-pane fade show active" id="prompt-cat-conversation" role="tabpanel" tabindex="0">
+                                            <h6 class="text-white mb-3 border-bottom border-secondary pb-2">Core Conversation Prompts</h6>
+
+                                            <div class="mb-4">
+                                                <label class="form-label text-info">Warmup Prompt</label>
+                                                <div class="form-text text-white-50 mb-1 small">Used to initialize the LLM context before the first user turn.</div>
+                                                <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_ConversationWarmup" rows="4"></textarea>
+                                            </div>
+
+                                            <div class="mb-4">
+                                                <label class="form-label text-info">Base System Prompt</label>
+                                                <div class="form-text text-white-50 mb-1 small">The core personality and instruction set for the agent.</div>
+                                                <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_ConversationBase" rows="10"></textarea>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label text-info">Failed Generation Fallback</label>
+                                                <div class="form-text text-white-50 mb-1 small">Used if the LLM fails to generate a valid response structure.</div>
+                                                <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_ConversationFailed" rows="3"></textarea>
+                                            </div>
+                                        </div>
+
+                                        <!-- 2. Verification -->
+                                        <div class="tab-pane fade" id="prompt-cat-verification" role="tabpanel" tabindex="0">
+                                            <h6 class="text-white mb-3 border-bottom border-secondary pb-2">AI Verification Logic</h6>
+
+                                            <div class="mb-4">
+                                                <label class="form-label text-warning">Turn-End Detection</label>
+                                                <div class="form-text text-white-50 mb-1 small">Determines if the user has finished their sentence.</div>
+                                                <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_VerifTurnEnd" rows="5"></textarea>
+                                            </div>
+
+                                            <div class="mb-4">
+                                                <label class="form-label text-warning">Interruption Logic</label>
+                                                <div class="form-text text-white-50 mb-1 small">Determines if user audio is a valid interruption vs background noise.</div>
+                                                <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_VerifInterruption" rows="5"></textarea>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label text-warning">Voicemail Detection</label>
+                                                <div class="form-text text-white-50 mb-1 small">Analyzes initial audio to detect answering machines.</div>
+                                                <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_VerifVoicemail" rows="5"></textarea>
+                                            </div>
+                                        </div>
+
+                                        <!-- 3. RAG -->
+                                        <div class="tab-pane fade" id="prompt-cat-rag" role="tabpanel" tabindex="0">
+                                            <h6 class="text-white mb-3 border-bottom border-secondary pb-2">Retrieval Augmented Generation</h6>
+
+                                            <div class="mb-4">
+                                                <label class="form-label text-success">Query Classifier</label>
+                                                <div class="form-text text-white-50 mb-1 small">Decides if the user's input requires a Knowledge Base lookup.</div>
+                                                <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_RagClassifier" rows="5"></textarea>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label text-success">Query Refinement</label>
+                                                <div class="form-text text-white-50 mb-1 small">Rewrites conversational input into an optimized search query.</div>
+                                                <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_RagRefinement" rows="5"></textarea>
+                                            </div>
+                                        </div>
+
+                                        <!-- 4. Post Analysis -->
+                                        <div class="tab-pane fade" id="prompt-cat-analysis" role="tabpanel" tabindex="0">
+                                            <h6 class="text-white mb-3 border-bottom border-secondary pb-2">Post-Call Analytics</h6>
+
+                                            <!-- Summary -->
+                                            <div class="card bg-dark border-secondary mb-3">
+                                                <div class="card-body p-3">
+                                                    <h6 class="card-title text-primary small text-uppercase">Summary Generation</h6>
+                                                    <div class="mb-2">
+                                                        <label class="form-label small">System Prompt</label>
+                                                        <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_AnalysisSummary" rows="3"></textarea>
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label small">User Query Format</label>
+                                                        <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_AnalysisSummaryQuery" rows="2"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Tags -->
+                                            <div class="card bg-dark border-secondary mb-3">
+                                                <div class="card-body p-3">
+                                                    <h6 class="card-title text-primary small text-uppercase">Tag Classification</h6>
+                                                    <div class="mb-2">
+                                                        <label class="form-label small">System Prompt</label>
+                                                        <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_AnalysisTags" rows="3"></textarea>
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label small">User Query Format</label>
+                                                        <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_AnalysisTagsQuery" rows="2"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Data Extraction -->
+                                            <div class="card bg-dark border-secondary">
+                                                <div class="card-body p-3">
+                                                    <h6 class="card-title text-primary small text-uppercase">Data Extraction</h6>
+                                                    <div class="mb-2">
+                                                        <label class="form-label small">System Prompt</label>
+                                                        <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_AnalysisExtract" rows="3"></textarea>
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label small">User Query Format</label>
+                                                        <textarea class="form-control font-monospace form-control-sm" id="manageLanguagesPrompt_AnalysisExtractQuery" rows="2"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -99,6 +275,33 @@
 
             </div>
 
+        </div>
+    </div>
+
+    <!-- Modal: Language Status Reason -->
+    <div class="modal fade" id="languageStatusReasonModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title">Disable Language</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Please provide a reason for disabling this language.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Public Reason <i class="fa-solid fa-globe text-muted ms-1" title="Visible to users"></i></label>
+                        <input type="text" class="form-control" id="languageStatusPublicReason" placeholder="e.g., Under Maintenance">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Private Reason <i class="fa-solid fa-lock text-muted ms-1" title="Internal only"></i></label>
+                        <input type="text" class="form-control" id="languageStatusPrivateReason" placeholder="e.g., Incomplete prompts">
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="languageStatusConfirmButton">Disable Language</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

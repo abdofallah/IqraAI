@@ -64,7 +64,7 @@ namespace ProjectIqraFrontend.Controllers
 
             try
             {
-                var getLanguagesListResult = await _languagesManager.GetAllLanguagesList();
+                var getLanguagesListResult = await _languagesManager.GetAllLanguagesList(withPrompts: false);
                 if (!getLanguagesListResult.Success)
                 {
                     return result.SetFailureResult(

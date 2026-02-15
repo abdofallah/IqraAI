@@ -15,6 +15,7 @@ const apiKeysTableBody = apiKeysTab.find("#api-keys-table tbody");
 const addApiKeyModal = $("#addApiKeyModal");
 const addApiKeyNameInput = addApiKeyModal.find("#addApiKeyNameInput");
 const apiKeyUnrestrictedAccessCheck = addApiKeyModal.find("#apiKeyUnrestrictedAccessCheck");
+const addApiKeyUserManagementAccess = addApiKeyModal.find("#addApiKeyUserManagementAccess");
 const apiKeyBusinessListContainer = addApiKeyModal.find("#apiKeyBusinessListContainer");
 const createApiKeyConfirmButton = addApiKeyModal.find("#createApiKeyConfirmButton");
 const createApiKeyButtonSpinner = createApiKeyConfirmButton.find(".save-button-spinner");
@@ -240,12 +241,31 @@ function InitApiKeysTab() {
         const isUnrestricted = apiKeyUnrestrictedAccessCheck.is(':checked');
         createApiKeyConfirmButton.prop("disabled", true);
         createApiKeyButtonSpinner.removeClass("d-none");
+        const isUserManagementAccessEnabled = addApiKeyUserManagementAccess.is(':checked');
 
         const formData = new FormData();
         formData.append("FriendlyName", friendlyName);
+        formData.append("AllowUserManagementApiRequests", isUserManagementAccessEnabled);
+
+        var enabledBusinessesApi = [];
         if (!isUnrestricted) {
             apiKeyBusinessListContainer.find('input:checked').each(function () {
-                formData.append('RestrictedBusinessIds[]', $(this).val());
+                enabledBusinessesApi.push($(this).val());
+            });
+
+            if (enabledBusinessesApi.length === 0) {
+                AlertManager.createAlert({
+                    type: "danger",
+                    message: "Please select at least one business to restrict access to.",
+                    timeout: 5000
+                });
+                createApiKeyConfirmButton.prop("disabled", false);
+                createApiKeyButtonSpinner.addClass("d-none");
+                return;
+            }
+
+            enabledBusinessesApi.forEach((businessId) => {
+                formData.append('RestrictedBusinessIds[]', businessId);
             });
         }
 
@@ -332,8 +352,9 @@ function InitApiKeysTab() {
     });
 
     addApiKeyModal.on("hidden.bs.modal", () => {
-        addApiKeyNameInput.val("");
+        addApiKeyNameInput.val("").trigger('change');
         apiKeyUnrestrictedAccessCheck.prop('checked', false).trigger('change');
+        addApiKeyUserManagementAccess.prop('checked', false).trigger('change');
         ValidateAddApiKeyModal(true);
     });
 

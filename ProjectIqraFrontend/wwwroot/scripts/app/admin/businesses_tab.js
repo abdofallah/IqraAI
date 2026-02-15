@@ -1,3 +1,4 @@
+/** Dynamic Variables **/
 var BusinessesTabListTabPage = 0;
 var BusinessesTabListTabPageSize = 30;
 
@@ -5,21 +6,28 @@ var CurrentBusinessesList = null;
 
 var CurrentManageBusinessId = null;
 
+/** Element Variables **/
 const businessesTab = $("#business-tab");
 
+// Headers
+
+// List Header
+const businessInnerHeader = businessesTab.find("#businesses-inner-header");
+
+// Manager Header
+const businessesManagerHeader = businessesTab.find("#businesses-manager-inner-header");
+const switchBackToBusinessesListTabFromManageTab = businessesManagerHeader.find("#switchBackToBusinessesListTabFromManageTab");
+const currentManageBusinessName = businessesManagerHeader.find("#currentManageBusinessName");
+
+// List Tab
 const businessesListTableTab = businessesTab.find("#businessesListTableTab");
+const addNewBusinessButton = businessesListTableTab.find("#addNewBusinessButton");
+const businessesListTable = businessesListTableTab.find("table");
+
+// Manager Tab
 const businessesManageTab = businessesTab.find("#businessesManageTab");
 
-const addNewBusinessButton = businessesTab.find("#addNewBusinessButton");
-
 const businessesManageGeneralTab = businessesManageTab.find("#businesses-manage-general-tab");
-
-const businessInnerTab = businessesTab.find("#business-inner-tab");
-const businessesManageBreadcrumb = businessesTab.find("#businesses-manage-breadcrumb");
-const switchBackToBusinessesListTabFromManageTab = businessesTab.find("#switchBackToBusinessesListTabFromManageTab");
-const currentManageBusinessName = businessesTab.find("#currentManageBusinessName");
-
-const businessesListTable = businessesListTableTab.find("table");
 
 // General Information
 const manageBusinessNameInput = businessesManageTab.find("#manageBusinessNameInput");
@@ -182,39 +190,43 @@ function ResetAndEmptyBusinessManageTabData() {
 }
 
 function ShowBusinessManageTab() {
-	businessInnerTab.removeClass("show");
+	businessInnerHeader.removeClass("show");
 	businessesListTableTab.removeClass("show");
 
 	setTimeout(() => {
-		businessInnerTab.addClass("d-none");
+		businessInnerHeader.addClass("d-none");
 		businessesListTableTab.addClass("d-none");
 
-		businessesManageBreadcrumb.removeClass("d-none");
+		businessesManagerHeader.removeClass("d-none");
 		businessesManageTab.removeClass("d-none");
 
 		businessesManageGeneralTab.click();
 
 		setTimeout(() => {
-			businessesManageBreadcrumb.addClass("show");
+			businessesManagerHeader.addClass("show");
 			businessesManageTab.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
 function ShowBusinessListTab() {
-	businessesManageBreadcrumb.removeClass("show");
+	businessesManagerHeader.removeClass("show");
 	businessesManageTab.removeClass("show");
 
 	setTimeout(() => {
-		businessesManageBreadcrumb.addClass("d-none");
+		businessesManagerHeader.addClass("d-none");
 		businessesManageTab.addClass("d-none");
 
-		businessInnerTab.removeClass("d-none");
+		businessInnerHeader.removeClass("d-none");
 		businessesListTableTab.removeClass("d-none");
 
 		setTimeout(() => {
-			businessInnerTab.addClass("show");
+			businessInnerHeader.addClass("show");
 			businessesListTableTab.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }

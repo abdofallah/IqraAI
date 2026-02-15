@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.User;
 using IqraCore.Interfaces.Validation;
 using IqraCore.Models.User;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers.App.User
@@ -9,11 +9,11 @@ namespace ProjectIqraFrontend.Controllers.App.User
     public class UserApiKeyController : ControllerBase
     {
         private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
-        private readonly UserApiKeyManager _userApiKeyManager;
+        private readonly IUserApiKeyManager _userApiKeyManager;
 
         public UserApiKeyController(
             ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
-            UserApiKeyManager userApiKeyManager
+            IUserApiKeyManager userApiKeyManager
         ) {
             _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _userApiKeyManager = userApiKeyManager;
@@ -70,7 +70,16 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     restrictedBusinessIds.Add(parsedId);
                 }
 
-                var creationResult = await _userApiKeyManager.CreateUserApiKeyAsync(userData, friendlyName, restrictedBusinessIds);
+                string? allowUserManagementApiRequestsValue = formData["AllowUserManagementApiRequests"];
+                if (string.IsNullOrWhiteSpace(allowUserManagementApiRequestsValue) || !bool.TryParse(allowUserManagementApiRequestsValue, out bool allowUserManagementApiRequests))
+                {
+                    return result.SetFailureResult(
+                        "CreateUserApiKey:INVALID_ALLOW_USER_MANAGEMENT_API_REQUESTS",
+                        "Invalid or missing value for allowUserManagementApiRequests."
+                    );
+                }
+
+                var creationResult = await _userApiKeyManager.CreateUserApiKeyAsync(userData, friendlyName, allowUserManagementApiRequests, restrictedBusinessIds);
                 if (!creationResult.Success)
                 {
                     return result.SetFailureResult(

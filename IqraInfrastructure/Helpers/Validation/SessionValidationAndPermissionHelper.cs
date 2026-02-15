@@ -1,26 +1,27 @@
 ﻿using IqraCore.Cloud.Entities.WhiteLabel;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
+using IqraCore.Entities.Validation;
 using IqraCore.Entities.WhiteLabel;
+using IqraCore.Interfaces.User;
 using IqraCore.Interfaces.Validation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.User;
 using Microsoft.AspNetCore.Http;
-using IqraCore.Entities.Validation;
 
 namespace IqraInfrastructure.Helpers.Validation
 {
     public class SessionValidationAndPermissionHelper : ISessionValidationAndPermissionHelper
     {
-        private readonly UserApiKeyManager _userApiKeyManager;
+        private readonly IUserApiKeyManager _userApiKeyManager;
         public readonly UserManager _userManager;
         public readonly BusinessManager _businessManager;
         public readonly UserRepository _userRepository;
         public readonly IUserBusinessPermissionHelper _userBusinessPermissionHelper;
 
         public SessionValidationAndPermissionHelper(
-            UserApiKeyManager userApiKeyManager,
+            IUserApiKeyManager userApiKeyManager,
             UserManager userManager,
             BusinessManager businessManager,
             UserRepository userRepository,
@@ -32,6 +33,11 @@ namespace IqraInfrastructure.Helpers.Validation
             _businessManager = businessManager;
             _userRepository = userRepository;
             _userBusinessPermissionHelper = userBusinessPermissionHelper;
+        }
+
+        public virtual async Task<UserData?> GetUserDataAsync(string email)
+        {
+            return await _userManager.GetFullUserByEmail(email);
         }
 
         public async Task<FunctionReturnResult<string?>> ValidateUserSessionAsync(HttpRequest Request)
@@ -91,7 +97,7 @@ namespace IqraInfrastructure.Helpers.Validation
             userEmail = validateUserSessionResult.Data!;
 
             // Get and validate user
-            UserData? userData = await _userManager.GetFullUserByEmail(userEmail);
+            UserData? userData = await GetUserDataAsync(userEmail);
             if (userData == null)
             {
                 return result.SetFailureResult("ValidateUserSessionWithPermissions:USER_DATA_NOT_FOUND", "User not found");
@@ -216,6 +222,7 @@ namespace IqraInfrastructure.Helpers.Validation
 
         public virtual async Task<FunctionReturnResult<ValidateUserResult?>> ValidateUserAPIWithPermissions(
             HttpRequest Request,
+            bool checkUserApiAccessManagementRestriction = false,
             // User Permissions
             bool checkUserIsAdmin = false,
             bool checkUserDisabled = true,
@@ -227,8 +234,7 @@ namespace IqraInfrastructure.Helpers.Validation
             // User WhiteLabel Permissions
             bool checkUserWhiteLabelDisabled = false,
             bool checkUserWhiteLabelEditingDisabled = false
-        )
-        {
+        ) {
             var result = new FunctionReturnResult<ValidateUserResult?>();
 
             // Validate session
@@ -245,6 +251,14 @@ namespace IqraInfrastructure.Helpers.Validation
             }
             var userData = apiKeyValidaiton.Data!.User!;
             var userApiKeyData = apiKeyValidaiton.Data!.ApiKey!;
+
+            if (checkUserApiAccessManagementRestriction && !userApiKeyData.AllowUserManagementApiRequests)
+            {
+                return result.SetFailureResult(
+                    "ValidateUserAPIWithPermissions:API_ACCESS_MANAGEMENT_RESTRICTION",
+                    "API user endpoints access management restriction"
+                );
+            }
 
             // Validate User Permissions
             var validatePermission = ValidateUserPermissions(
@@ -279,6 +293,7 @@ namespace IqraInfrastructure.Helpers.Validation
         public virtual async Task<FunctionReturnResult<ValidateUserAndBusinessResult?>> ValidateUserAPIAndBusinessWithPermissions(
             HttpRequest Request,
             long businessId,
+            bool checkUserApiAccessManagementRestriction = false,             
             bool checkAPIKeyBusinessRestriction = true,
             // User Permissions
             bool checkUserIsAdmin = false,
@@ -300,6 +315,7 @@ namespace IqraInfrastructure.Helpers.Validation
 
             var userSessionValidationResult = await ValidateUserAPIWithPermissions(
                 Request: Request,
+                checkUserApiAccessManagementRestriction: checkUserApiAccessManagementRestriction,
                 // User Permissions
                 checkUserIsAdmin: checkUserIsAdmin,
                 checkUserDisabled: checkUserDisabled,

@@ -1,9 +1,9 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
-using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.Rerank;
 using IqraCore.Interfaces.AI;
+using IqraInfrastructure.Helpers.Provider;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Rerank.Providers;
 using IqraInfrastructure.Repositories.Rerank;
@@ -24,7 +24,10 @@ namespace IqraInfrastructure.Managers.Rerank
 
         private readonly Dictionary<InterfaceRerankProviderEnum, Type> _rerankProviderClasses = new();
 
-        public RerankProviderManager(ILoggerFactory loggerFactory, RerankProviderRepository rerankProviderRepository, IntegrationsManager integrationsManager)
+        public RerankProviderManager(
+            ILoggerFactory loggerFactory,
+            RerankProviderRepository rerankProviderRepository,
+            IntegrationsManager integrationsManager)
         {
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<RerankProviderManager>();
@@ -32,7 +35,7 @@ namespace IqraInfrastructure.Managers.Rerank
             _rerankProviderRepository = rerankProviderRepository;
             _integrationsManager = integrationsManager;
 
-            InitializeProvidersAsync().Wait();
+            InitializeProvidersAsync().GetAwaiter().GetResult();
         }
 
         private async Task InitializeProvidersAsync()
@@ -46,18 +49,14 @@ namespace IqraInfrastructure.Managers.Rerank
 
                 if (provider == null)
                 {
-                    provider = new RerankProviderData
+                    var addResult = await AddProvider(providerEnum);
+                    if (!addResult.Success)
                     {
-                        Id = providerEnum,
-                        DisabledAt = DateTime.UtcNow
-                    };
-                    await _rerankProviderRepository.AddProviderAsync(provider);
+                        throw new Exception($"Failed to add rerank provider: {providerEnum}: [{addResult.Code}] {addResult.Message}");
+                    }
                 }
 
-                if (provider.DisabledAt == null)
-                {
-                    RegisterProviderService(providerEnum);
-                }
+                RegisterProviderService(providerEnum);
             }
         }
 
@@ -83,7 +82,89 @@ namespace IqraInfrastructure.Managers.Rerank
                     }
                 }
             }
+
+            // Warning only as service implementation might not exist yet
             _logger.LogWarning("No matching IRerankService implementation found for provider: {Provider}", providerEnum);
+        }
+
+        public async Task<FunctionReturnResult<List<RerankProviderData>?>> GetProviderList(int page, int pageSize)
+        {
+            var result = new FunctionReturnResult<List<RerankProviderData>?>();
+
+            try
+            {
+                var providerList = await _rerankProviderRepository.GetProviderListAsync(page, pageSize);
+                if (providerList == null)
+                {
+                    return result.SetFailureResult(
+                        "GetProviderList:NOT_FOUND",
+                        "No providers found"
+                    );
+                }
+
+                return result.SetSuccessResult(providerList);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetProviderList:EXCEPTION",
+                    $"Failed to get provider list: {ex.Message}"
+                );
+            }
+        }
+
+        public async Task<FunctionReturnResult<RerankProviderData>> AddProvider(InterfaceRerankProviderEnum providerId)
+        {
+            var result = new FunctionReturnResult<RerankProviderData>();
+
+            try
+            {
+                var providerData = new RerankProviderData()
+                {
+                    Id = providerId,
+                    DisabledAt = DateTime.UtcNow
+                };
+
+                if (providerData.Id == InterfaceRerankProviderEnum.Unknown)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:INVALID_ID",
+                        "Invalid provider ID"
+                    );
+                }
+
+                var existingProvider = await _rerankProviderRepository.GetProviderAsync(providerData.Id);
+                if (existingProvider != null)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:EXISTS",
+                        "Provider already exists"
+                    );
+                }
+
+                var success = await _rerankProviderRepository.AddProviderAsync(providerData);
+                if (!success)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:FAILED",
+                        "Failed to add provider"
+                    );
+                }
+
+                return result.SetSuccessResult(providerData);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "AddProvider:EXCEPTION",
+                    $"Failed to add provider: {ex.Message}"
+                );
+            }
+        }
+
+        public Type? GetProviderService(InterfaceRerankProviderEnum providerId)
+        {
+            return _rerankProviderClasses.TryGetValue(providerId, out var service) ? service : null;
         }
 
         public async Task<RerankProviderData?> GetProviderData(InterfaceRerankProviderEnum providerId)
@@ -91,217 +172,279 @@ namespace IqraInfrastructure.Managers.Rerank
             return await _rerankProviderRepository.GetProviderAsync(providerId);
         }
 
-        public async Task<FunctionReturnResult<List<RerankProviderData>?>> GetProviderList(int page, int pageSize)
+        public async Task<FunctionReturnResult<RerankProviderModelData?>> AddUpdateProviderModel(
+            RerankProviderData provider,
+            string modelId,
+            string postType,
+            RerankProviderModelData? oldModelData,
+            IFormCollection formData)
         {
-            var result = new FunctionReturnResult<List<RerankProviderData>?>();
-            var providerList = await _rerankProviderRepository.GetProviderListAsync(page, pageSize);
-            if (providerList == null)
-            {
-                return result.SetFailureResult("GetProviderList:1", "No providers found");
-            }
+            var result = new FunctionReturnResult<RerankProviderModelData?>();
 
-            result.Success = true;
-            result.Data = providerList;
-            return result;
+            try
+            {
+                var newModelData = new RerankProviderModelData { Id = modelId };
+
+                if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:CHANGES_DATA_NOT_FOUND",
+                        "Changes data not found or is empty"
+                    );
+                }
+
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
+                if (changesJsonElement == null)
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:JSON_PARSE_ERROR",
+                        "Failed to parse changes JSON"
+                    );
+                }
+
+                var root = changesJsonElement.RootElement;
+
+                // Model Name
+                if (root.TryGetProperty("name", out var nameElement) && nameElement.ValueKind == JsonValueKind.String)
+                {
+                    string? name = nameElement.GetString();
+                    if (string.IsNullOrEmpty(name))
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:EMPTY_NAME",
+                            "Model name is empty"
+                        );
+                    }
+                    newModelData.Name = name;
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:NAME_NOT_FOUND",
+                        "Model name is required"
+                    );
+                }
+
+                // Disabled State
+                if (root.TryGetProperty("disabled", out var disabledElement))
+                {
+                    bool isDisabled = disabledElement.GetBoolean();
+                    if (isDisabled)
+                    {
+                        newModelData.DisabledAt = (postType == "edit" && oldModelData?.DisabledAt != null)
+                            ? oldModelData.DisabledAt
+                            : DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        newModelData.DisabledAt = null;
+                    }
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:DISABLED_STATE_NOT_FOUND",
+                        "Disabled state not found"
+                    );
+                }
+
+                // Price
+                if (root.TryGetProperty("price", out var priceElement))
+                {
+                    if (decimal.TryParse(priceElement.ToString(), out var price))
+                    {
+                        newModelData.Price = price;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_PRICE",
+                            "Invalid price format"
+                        );
+                    }
+                }
+
+                // Price Token Unit
+                if (root.TryGetProperty("priceTokenUnit", out var priceTokenUnitElement))
+                {
+                    if (int.TryParse(priceTokenUnitElement.ToString(), out var priceTokenUnit))
+                    {
+                        newModelData.PriceTokenUnit = priceTokenUnit;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_PRICE_TOKEN_UNIT",
+                            "Invalid price token unit format"
+                        );
+                    }
+                }
+
+                // Save to database
+                bool updateSuccess;
+                if (postType == "new")
+                {
+                    var addResult = await _rerankProviderRepository.AddModelAsync(provider.Id, newModelData);
+                    updateSuccess = addResult.IsAcknowledged && addResult.ModifiedCount > 0;
+                }
+                else
+                {
+                    var updateResult = await _rerankProviderRepository.UpdateModelAsync(provider.Id, newModelData);
+                    updateSuccess = updateResult.IsAcknowledged && updateResult.ModifiedCount > 0;
+                }
+
+                if (!updateSuccess)
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:DB_UPDATE_FAILED",
+                        $"Failed to {postType} model in database"
+                    );
+                }
+
+                return result.SetSuccessResult(newModelData);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "AddUpdateProviderModel:EXCEPTION",
+                    $"Error processing model data: {ex.Message}"
+                );
+            }
         }
 
-        public async Task<FunctionReturnResult<RerankProviderData?>> UpdateProvider(RerankProviderData provider, IFormCollection formData, IntegrationsManager integrationsManager)
+        public async Task<FunctionReturnResult<RerankProviderData?>> UpdateProvider(
+            RerankProviderData provider,
+            IFormCollection formData,
+            IntegrationsManager integrationsManager)
         {
             var result = new FunctionReturnResult<RerankProviderData?>();
 
             try
             {
-                if (!formData.TryGetValue("changes", out var changesJsonString))
+                if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
                 {
-                    result.Code = "UpdateProvider:1";
-                    result.Message = "Changes data not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:CHANGES_DATA_NOT_FOUND",
+                        "Changes data not found"
+                    );
                 }
 
-                var changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString);
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
                 if (changesJsonElement == null)
                 {
-                    result.Code = "UpdateProvider:2";
-                    result.Message = "Unable to parse changes json string.";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:JSON_PARSE_ERROR",
+                        "Unable to parse changes json string"
+                    );
                 }
 
+                var root = changesJsonElement.RootElement;
                 var newProviderData = new RerankProviderData
                 {
                     Id = provider.Id,
-                    Models = provider.Models // Maintain existing models
+                    Models = provider.Models
                 };
 
                 // Handle disabled state
-                if (!changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
+                if (root.TryGetProperty("disabled", out var disabledElement))
                 {
-                    result.Code = "UpdateProvider:3";
-                    result.Message = "Provider disabled state not found";
-                    return result;
-                }
-
-                bool disabled = disabledElement.GetBoolean();
-                if (disabled)
-                {
-                    if (provider.DisabledAt != null)
-                    {
-                        newProviderData.DisabledAt = provider.DisabledAt;
-                    }
-                    else
-                    {
-                        newProviderData.DisabledAt = DateTime.UtcNow;
-                    }
+                    bool disabled = disabledElement.GetBoolean();
+                    newProviderData.DisabledAt = disabled ? (provider.DisabledAt ?? DateTime.UtcNow) : null;
                 }
                 else
                 {
-                    newProviderData.DisabledAt = null;
+                    return result.SetFailureResult(
+                        "UpdateProvider:DISABLED_STATE_NOT_FOUND",
+                        "Provider disabled state not found"
+                    );
                 }
 
                 // Handle integration selection
-                if (!changesJsonElement.RootElement.TryGetProperty("integrationId", out var integrationIdElement))
+                if (root.TryGetProperty("integrationId", out var integrationIdElement))
                 {
-                    result.Code = "UpdateProvider:4";
-                    result.Message = "Integration ID not found";
-                    return result;
-                }
+                    string? integrationId = integrationIdElement.GetString();
 
-                string? integrationId = integrationIdElement.GetString();
-                if (string.IsNullOrEmpty(integrationId))
+                    if (string.IsNullOrEmpty(integrationId))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:MISSING_INTEGRATION_ID",
+                            "Integration ID is required"
+                        );
+                    }
+
+                    // Validate integration exists and is Rerank type
+                    var integration = await integrationsManager.getIntegrationData(integrationId);
+                    if (integration.Data == null || !integration.Success)
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:SELECTED_INTEGRATION_NOT_FOUND",
+                            "Selected integration not found"
+                        );
+                    }
+
+                    if (!integration.Data.Type.Contains("Rerank"))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:INVALID_INTEGRATION",
+                            "Selected integration is not an Rerank integration"
+                        );
+                    }
+
+                    newProviderData.IntegrationId = integrationId;
+                }
+                else
                 {
-                    result.Code = "UpdateProvider:5";
-                    result.Message = "Integration ID is required";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:INTEGRATION_ID_NOT_FOUND",
+                        "Integration ID not found in changes"
+                    );
                 }
-
-                // Validate that integration exists
-                var integration = await integrationsManager.getIntegrationData(integrationId);
-                if (integration == null || !integration.Success)
-                {
-                    result.Code = "UpdateProvider:6";
-                    result.Message = "Selected integration not found";
-                    return result;
-                }
-
-                // Validate integration type includes LLM
-                if (!integration.Data.Type.Contains("Rerank"))
-                {
-                    result.Code = "UpdateProvider:7";
-                    result.Message = "Selected integration is not an Rerank integration";
-                    return result;
-                }
-
-                newProviderData.IntegrationId = integrationId;
 
                 // Handle integration fields
-                if (changesJsonElement.RootElement.TryGetProperty("userIntegrationFields", out var fieldsElement))
+                if (root.TryGetProperty("userIntegrationFields", out var fieldsElement))
                 {
-                    newProviderData.UserIntegrationFields = new List<ProviderFieldBase>();
+                    var availableModelIds = newProviderData.Models.Select(m => m.Id).ToList();
 
-                    foreach (var fieldElement in fieldsElement.EnumerateArray())
+                    // Use the centralized helper for parsing and validation
+                    var parseResult = ProviderIntegrationFieldsHelper.ParseAndValidateFields(fieldsElement, availableModelIds);
+
+                    if (!parseResult.Success || parseResult.Data == null)
                     {
-                        var field = new ProviderFieldBase
-                        {
-                            Id = fieldElement.GetProperty("id").GetString() ?? "",
-                            Name = fieldElement.GetProperty("name").GetString() ?? "",
-                            Type = fieldElement.GetProperty("type").GetString() ?? "",
-                            Tooltip = fieldElement.GetProperty("tooltip").GetString() ?? "",
-                            Placeholder = fieldElement.GetProperty("placeholder").GetString() ?? "",
-                            DefaultValue = fieldElement.GetProperty("defaultValue").GetString() ?? "",
-                            Required = fieldElement.GetProperty("required").GetBoolean(),
-                            IsEncrypted = fieldElement.GetProperty("isEncrypted").GetBoolean()
-                        };
-
-                        // Handle options for select type
-                        if (field.Type == "select" && fieldElement.TryGetProperty("options", out var optionsElement))
-                        {
-                            field.Options = new List<ProviderFieldOption>();
-                            foreach (var optionElement in optionsElement.EnumerateArray())
-                            {
-                                field.Options.Add(new ProviderFieldOption
-                                {
-                                    Key = optionElement.GetProperty("key").GetString() ?? "",
-                                    Value = optionElement.GetProperty("value").GetString() ?? "",
-                                    IsDefault = optionElement.GetProperty("isDefault").GetBoolean()
-                                });
-                            }
-                        }
-
-                        newProviderData.UserIntegrationFields.Add(field);
+                        return result.SetFailureResult(
+                            $"UpdateProvider:{parseResult.Code}",
+                            parseResult.Message
+                        );
                     }
+
+                    newProviderData.UserIntegrationFields = parseResult.Data;
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "UpdateProvider:USER_INTEGRATION_FIELDS_NOT_FOUND",
+                        "User integration fields not found"
+                    );
                 }
 
                 // Save to database
                 var updateResult = await _rerankProviderRepository.UpdateProviderAsync(newProviderData);
                 if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
                 {
-                    result.Code = "UpdateProvider:8";
-                    result.Message = "Failed to update provider";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:UPDATE_FAILED",
+                        "Failed to update provider"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = newProviderData;
+                return result.SetSuccessResult(newProviderData);
             }
             catch (Exception ex)
             {
-                result.Code = "UpdateProvider:9";
-                result.Message = "Error processing provider update: " + ex.Message;
+                return result.SetFailureResult(
+                    "UpdateProvider:EXCEPTION",
+                    $"Error processing provider update: {ex.Message}"
+                );
             }
-
-            return result;
-        }
-
-        public async Task<FunctionReturnResult<RerankProviderModelData?>> AddUpdateProviderModel(RerankProviderData provider, string modelId, string postType, RerankProviderModelData? oldModelData, IFormCollection formData)
-        {
-            var result = new FunctionReturnResult<RerankProviderModelData?>();
-
-            var newModelData = new RerankProviderModelData { Id = modelId };
-
-            if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
-            {
-                return result.SetFailureResult("AddUpdateProviderModel:1", "Changes data not found or is empty");
-            }
-
-            var root = JsonDocument.Parse(changesJsonString).RootElement;
-
-            if (!root.TryGetProperty("name", out var nameElement) || string.IsNullOrEmpty(nameElement.GetString()))
-            {
-                return result.SetFailureResult("AddUpdateProviderModel:2", "Model name is required");
-            }
-            newModelData.Name = nameElement.GetString()!;
-
-            if (root.TryGetProperty("disabled", out var disabledElement) && disabledElement.GetBoolean())
-            {
-                newModelData.DisabledAt = (postType == "edit" && oldModelData?.DisabledAt != null) ? oldModelData.DisabledAt : DateTime.UtcNow;
-            }
-
-            if (root.TryGetProperty("price", out var priceElement) && decimal.TryParse(priceElement.ToString(), out var price))
-            {
-                newModelData.Price = price;
-            }
-            if (root.TryGetProperty("priceTokenUnit", out var unitElement) && int.TryParse(unitElement.ToString(), out var unit))
-            {
-                newModelData.PriceTokenUnit = unit;
-            }
-
-            if (postType == "new")
-            {
-                var addResult = await _rerankProviderRepository.AddModelAsync(provider.Id, newModelData);
-                if (!addResult.IsAcknowledged || addResult.ModifiedCount == 0)
-                {
-                    return result.SetFailureResult("AddUpdateProviderModel:3", "Failed to add model");
-                }
-            }
-            else if (postType == "edit")
-            {
-                var editResult = await _rerankProviderRepository.UpdateModelAsync(provider.Id, newModelData);
-                if (!editResult.IsAcknowledged || editResult.ModifiedCount == 0)
-                {
-                    return result.SetFailureResult("AddUpdateProviderModel:4", "Failed to edit model or no changes detected");
-                }
-            }
-
-            return result.SetSuccessResult(newModelData);
         }
 
         public async Task<FunctionReturnResult<RerankProviderData?>> GetProviderDataByIntegration(string integrationType)
@@ -314,52 +457,77 @@ namespace IqraInfrastructure.Managers.Rerank
 
                 if (providerData == null)
                 {
-                    result.Code = "GetProviderDataByIntegration:1";
-                    result.Message = "Provider not find by integration type";
-                    return result;
+                    return result.SetFailureResult(
+                        "GetProviderDataByIntegration:NOT_FOUND",
+                        "Provider not found by integration type"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = providerData;
+                return result.SetSuccessResult(providerData);
             }
             catch (Exception ex)
             {
-                result.Code = "GetProviderDataByIntegration:2";
-                result.Message = "Failed to get provider data: " + ex.Message;
+                return result.SetFailureResult(
+                    "GetProviderDataByIntegration:EXCEPTION",
+                    $"Failed to get provider data: {ex.Message}"
+                );
             }
-
-            return result;
         }
 
-        public async Task<FunctionReturnResult<IRerankService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
+        public async Task<FunctionReturnResult<IRerankService?>> BuildProviderServiceByIntegration(
+            BusinessAppIntegration integrationData,
+            BusinessAppAgentIntegrationData agentIntegrationData,
+            Dictionary<string, string> metaData)
         {
             var result = new FunctionReturnResult<IRerankService?>();
+
             try
             {
                 var providerDataResult = await _rerankProviderRepository.GetProviderDataByIntegration(integrationData.Type);
                 if (providerDataResult == null)
                 {
-                    return result.SetFailureResult("BuildProviderService:1", $"Rerank provider not found for integration type {integrationData.Type}");
+                    return result.SetFailureResult(
+                        "BuildProviderServiceByIntegration:PROVIDER_NOT_FOUND",
+                        $"Rerank provider not found for integration type {integrationData.Type}"
+                    );
                 }
 
-                string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                string model = (string)agentIntegrationData.FieldValues["model"];
+                // --- Helper functions for safe extraction ---
+                string GetString(string key, string defaultValue = "")
+                {
+                    return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
+                        ? val.ToString()! : defaultValue;
+                }
+                // ---------------------------------------------
 
                 switch (providerDataResult.Id)
                 {
                     case InterfaceRerankProviderEnum.GoogleGemini:
-                        var logger = _loggerFactory.CreateLogger<GoogleGeminiRerankService>();
-                        return result.SetSuccessResult(new GoogleGeminiRerankService(logger, apiKey, model));
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            string model = GetString("model");
+
+                            var logger = _loggerFactory.CreateLogger<GoogleGeminiRerankService>();
+                            return result.SetSuccessResult(new GoogleGeminiRerankService(logger, apiKey, model));
+                        }
 
                     default:
-                        _logger.LogError("Business app Rerank provider {ProviderType} not supported for building service", providerDataResult.Id);
-                        return result.SetFailureResult("BuildProviderService:2", $"Business app Rerank provider {providerDataResult.Id} not supported");
+                        {
+                            _logger.LogError("Business app Rerank provider {ProviderType} not supported for building service", providerDataResult.Id);
+                            return result.SetFailureResult(
+                                "BuildProviderServiceByIntegration:NOT_SUPPORTED",
+                                $"Business app Rerank provider {providerDataResult.Id} not supported"
+                            );
+                        }
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to build rerank provider service");
-                return result.SetFailureResult("BuildProviderService:EXCEPTION", $"Failed to build provider service: {ex.Message}");
+                return result.SetFailureResult(
+                    "BuildProviderServiceByIntegration:EXCEPTION",
+                    $"Failed to build provider service: {ex.Message}"
+                );
             }
         }
     }

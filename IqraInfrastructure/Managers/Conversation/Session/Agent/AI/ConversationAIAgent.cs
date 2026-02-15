@@ -240,7 +240,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // Populate Initial State
                 _agentState.BusinessApp = businessAppData;
                 _agentState.CurrentSessionContext = contextData;
+
                 _agentState.CurrentLanguageCode = contextData.Language.DefaultLanguageCode; // Initial language
+                var currentLanguageData = await _langaugesManager.GetLanguageByCode(contextData.Language.DefaultLanguageCode, withPrompts: true);
+                if (currentLanguageData == null)
+                {
+                    _logger.LogError("Agent {AgentId}: Language {LanguageCode} not found", _agentState.AgentId, contextData.Language.DefaultLanguageCode);
+                    throw new InvalidOperationException($"Language {contextData.Language.DefaultLanguageCode} not found");
+                }
+                _agentState.CurrentLanguageData = currentLanguageData.Data!;
+
                 _agentState.BusinessAppAgent = businessAppData.Agents.Find(a => a.Id == contextData.Agent.SelectedAgentId);
                 if (_agentState.BusinessAppAgent == null)
                 {
@@ -560,7 +569,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             if (!_agentState.IsInitialized) return; // Should not happen
 
+            // Get new language data
+            var currentLanguageData = await _langaugesManager.GetLanguageByCode(newLanguageCode, withPrompts: true);
+            if (currentLanguageData == null)
+            {
+                _logger.LogError("Agent {AgentId}: Change to Language {LanguageCode} not found", _agentState.AgentId, newLanguageCode);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs($"Failed to switch language: Language {newLanguageCode} not found"));
+                await ShutdownAsync("Failed to switch language: Language not found");
+                return;
+            }
+
             // Update State
+            _agentState.CurrentLanguageData = currentLanguageData.Data!;
             _agentState.CurrentLanguageCode = newLanguageCode;
             _agentState.IsAcceptingSTTAudio = false;
             _agentState.IsSTTProcessingPaused = true;

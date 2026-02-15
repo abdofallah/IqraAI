@@ -8,6 +8,7 @@ namespace IqraCore.Models.Specification
         public string CountryRegion { get; set; }
         public string CountryCode { get; set; }
         public DateTime? DisabledAt { get; set; }
+        public string? DisabledReason { get; set; }
 
         public List<RegionServerViewModel> Servers { get; set; }
 
@@ -18,6 +19,7 @@ namespace IqraCore.Models.Specification
             model.CountryRegion = entity.RegionId;
             model.CountryCode = entity.CountryCode;
             model.DisabledAt = entity.DisabledAt;
+            model.DisabledReason = entity.PublicDisabledReason;
 
             model.Servers = new List<RegionServerViewModel>();
             foreach (var server in entity.Servers)
@@ -39,6 +41,7 @@ namespace IqraCore.Models.Specification
                     UseSSL = server.UseSSL,
                     SIPPort = server.SIPPort,
                     DisabledAt = server.DisabledAt,
+                    DisabledReason = server.PublicDisabledReason,
                     IsDevelopmentServer = server.IsDevelopmentServer
                 };
 
@@ -57,6 +60,8 @@ namespace IqraCore.Models.Specification
         public int SIPPort { get; set; }
 
         public DateTime? DisabledAt { get; set; }
+        public string? DisabledReason { get; set; }
+
         public bool IsDevelopmentServer { get; set; }
     }
 }

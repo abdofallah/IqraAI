@@ -14,7 +14,7 @@ namespace IqraCore.Interfaces.AI
         event EventHandler<object> OnRecoginizingCancelled;
 
         string GetProviderFullName();
-        InterfaceSTTProviderEnum GetProviderType();
+        InterfaceSTTProviderEnum GetProviderType() => GetProviderTypeStatic();
         static InterfaceSTTProviderEnum GetProviderTypeStatic()
         {
             return InterfaceSTTProviderEnum.Unknown;

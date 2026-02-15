@@ -2,6 +2,7 @@
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Turn;
+using IqraCore.Entities.Languages;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.VAD.Silero;
 
@@ -19,6 +20,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         // Language
         public string CurrentLanguageCode { get; set; } = string.Empty;
+        public LanguagesData? CurrentLanguageData { get; set; } = null;
         public bool IsAwaitingLanguageSelectionInput { get; set; } = false;
 
         // Integration & Service Instances (Managed possibly by handlers, but accessible here)

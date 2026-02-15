@@ -76,6 +76,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting.Systemd;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using MongoDB.Driver;
+using Namotion.Reflection;
 using ProjectIqraFrontend.Middlewares;
 using ProjectIqraFrontend.Transformer;
 using Scalar.AspNetCore;
@@ -145,7 +146,7 @@ namespace ProjectIqraFrontend
             }
 
             // Hosted Services
-            SetupHostedServices(builder);
+            SetupHostedServices(builder, appConfig);
 
             // HTTP Client
             builder.Services.AddHttpContextAccessor();
@@ -276,12 +277,22 @@ namespace ProjectIqraFrontend
                 logger.LogInformation("Iqra Frontend Bootstrapping...");
 
                 // Make sure no other frontend node is running
-                var metricsManager = scope.ServiceProvider.GetRequiredService<ServerMetricsManager>();
-                var frontendAlreadyRunning = await metricsManager.CheckAnyFrontendNodeRunning();
-                if (frontendAlreadyRunning)
+                var IgnoreMultiInstanceCheckup = false;
+# if DEBUG // DEBUG ONLY do not use in production
+                if (appConfig["IgnoreMultiInstanceCheckup"]?.ToLower() == "true")
                 {
-                    throw new Exception("Server Metrics Manager found that a frontend node is already running.\nThis could be a false positive too, but it's better to be safe than sorry.\n\nGiven the redis database takes 30seconds to clear previous running frontend status, if the issue presits for more than a minute, there must be another frontend node running.");
+                    IgnoreMultiInstanceCheckup = true;
                 }
+# endif
+                if (!IgnoreMultiInstanceCheckup)
+                {
+                    var metricsManager = scope.ServiceProvider.GetRequiredService<ServerMetricsManager>();
+                    var frontendAlreadyRunning = await metricsManager.CheckAnyFrontendNodeRunning();
+                    if (frontendAlreadyRunning)
+                    {
+                        throw new Exception("Server Metrics Manager found that a frontend node is already running.\nThis could be a false positive too, but it's better to be safe than sorry.\n\nGiven the redis database takes 30seconds to clear previous running frontend status, if the issue presits for more than a minute, there must be another frontend node running.");
+                    }
+                }  
 
                 // Perform Initial Startup Integrity Check
                 var startupIntregity = scope.ServiceProvider.GetRequiredService<StartupIntegrityCheckService>();
@@ -641,7 +652,7 @@ namespace ProjectIqraFrontend
                 builder.Services.AddSingleton<ISessionValidationAndPermissionHelper, SessionValidationAndPermissionHelper>((sp) =>
                 {
                     return new SessionValidationAndPermissionHelper(
-                        sp.GetRequiredService<UserApiKeyManager>(),
+                        sp.GetRequiredService<IUserApiKeyManager>(),
                         sp.GetRequiredService<UserManager>(),
                         sp.GetRequiredService<BusinessManager>(),
                         sp.GetRequiredService<UserRepository>(),
@@ -652,6 +663,15 @@ namespace ProjectIqraFrontend
                 builder.Services.AddSingleton<IUserUsageValidationManager, UserUsageValidationManager>((sp) =>
                 {
                     return new UserUsageValidationManager();
+                });
+
+                builder.Services.AddSingleton<IUserApiKeyManager, UserApiKeyManager>((sp) =>
+                {
+                    return new UserApiKeyManager(
+                        sp.GetRequiredService<ILogger<UserApiKeyManager>>(),
+                        sp.GetRequiredService<UserRepository>(),
+                        sp.GetRequiredService<UserApiKeyProcessor>()
+                    );
                 });
             }
 
@@ -889,15 +909,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<UserUsageRepository>()
                 );
             });
-            
-            builder.Services.AddSingleton<UserApiKeyManager>((sp) =>
-            {
-                return new UserApiKeyManager(
-                    sp.GetRequiredService<ILogger<UserApiKeyManager>>(),
-                    sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<UserApiKeyProcessor>()
-                );
-            });
+
             builder.Services.AddSingleton<UserApiKeyProcessor>((sp) =>
             {
                 AES256EncryptionService userApiKeyEncryptionService = new AES256EncryptionService(
@@ -1069,7 +1081,7 @@ namespace ProjectIqraFrontend
             });
         }
 
-        private static void SetupHostedServices(WebApplicationBuilder builder)
+        private static void SetupHostedServices(WebApplicationBuilder builder, IConfiguration appConfig)
         {
             builder.Services.AddHostedService<NodeStateOrchestratorService>((sp) =>
             {
@@ -1083,12 +1095,21 @@ namespace ProjectIqraFrontend
 
             builder.Services.AddHostedService<ServerMetricsMonitorService>((sp) =>
             {
+                var DoNotLogInstanceStatus = false;
+# if DEBUG // DEBUG ONLY do not use in production
+                if (appConfig["DoNotLogInstanceStatus"]?.ToLower() == "true")
+                {
+                    DoNotLogInstanceStatus = true;
+                }
+# endif 
+
                 return new ServerMetricsMonitorService(
                     sp,
                     sp.GetRequiredService<ILogger<ServerMetricsMonitorService>>(),
                     AppNodeTypeEnum.Frontend,
                     sp.GetRequiredService<ServerMetricsMonitor>(),
-                    sp.GetRequiredService<NodeLifecycleManager>()
+                    sp.GetRequiredService<NodeLifecycleManager>(),
+                    DoNotLogInstanceStatus
                 );
             });
         }

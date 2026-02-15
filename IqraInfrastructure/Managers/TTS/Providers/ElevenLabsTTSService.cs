@@ -1,4 +1,7 @@
 ﻿using ElevenLabs;
+using ElevenLabs.Models;
+using ElevenLabs.TextToSpeech;
+using ElevenLabs.Voices;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
@@ -26,16 +29,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private ElevenLabsClient _client;
 
-        private VoiceResponseModel? _voiceData;
-        private ModelResponseModel? _modelData;
+        private Voice? _voiceData;
+        private Model? _modelData;
 
-        private VoiceSettingsResponseModel _voiceSettings;
+        private VoiceSettings _voiceSettings;
 
-        private TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat _outputFormat;
-        private BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization _applyTextNormalization;
-        private List<PronunciationDictionaryVersionLocatorRequestModel> _pronunciationDictionaryId;
-
-        private List<string> _previousRequestIds = new List<string>();   
+        private OutputFormat _outputFormat;
+        private TextNormalization _applyTextNormalization;
+        private List<PronunciationDictionaryLocator> _pronunciationDictionaryId;
 
         public ElevenLabsTTSService(ILogger<ElevenLabsTTSService> logger, string apiKey, ElevenLabsConfig config)
         {
@@ -45,31 +46,31 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             
             _serviceConfig = config;
 
-            _voiceSettings = new VoiceSettingsResponseModel();
+            _voiceSettings = new VoiceSettings();
             if (_serviceConfig.Stability.HasValue) _voiceSettings.Stability = _serviceConfig.Stability.Value;
             if (_serviceConfig.SimilarityBoost.HasValue) _voiceSettings.SimilarityBoost = _serviceConfig.SimilarityBoost.Value;
             if (_serviceConfig.Style.HasValue) _voiceSettings.Style = _serviceConfig.Style.Value;
-            if (_serviceConfig.UseSpeakerBoost.HasValue) _voiceSettings.UseSpeakerBoost = _serviceConfig.UseSpeakerBoost.Value;
+            if (_serviceConfig.UseSpeakerBoost.HasValue) _voiceSettings.SpeakerBoost = _serviceConfig.UseSpeakerBoost.Value;
             if (_serviceConfig.Speed.HasValue) _voiceSettings.Speed = _serviceConfig.Speed.Value;
 
-            _pronunciationDictionaryId = new List<PronunciationDictionaryVersionLocatorRequestModel>();
+            _pronunciationDictionaryId = new List<PronunciationDictionaryLocator>();
             if (!string.IsNullOrEmpty(_serviceConfig.PronunciationDictionaryId))
             {
-                _pronunciationDictionaryId.Add(new PronunciationDictionaryVersionLocatorRequestModel() { PronunciationDictionaryId = _serviceConfig.PronunciationDictionaryId });
+                _pronunciationDictionaryId.Add(new PronunciationDictionaryLocator(_serviceConfig.PronunciationDictionaryId, null));
             }
             if (!string.IsNullOrEmpty(_serviceConfig.ApplyTextNormalization))
             {
                 if (_serviceConfig.ApplyTextNormalization == "on")
                 {
-                    _applyTextNormalization = BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization.On;
+                    _applyTextNormalization = TextNormalization.On;
                 }
                 else if (_serviceConfig.ApplyTextNormalization == "off")
                 {
-                    _applyTextNormalization = BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization.Off;
+                    _applyTextNormalization = TextNormalization.Off;
                 }
                 else if (_serviceConfig.ApplyTextNormalization == "auto")
                 {
-                    _applyTextNormalization = BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization.Auto;
+                    _applyTextNormalization = TextNormalization.Auto;
                 }
             }
         }
@@ -82,18 +83,18 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             {
                 _client = new ElevenLabsClient(_apiKey);
 
-                var userSubscriptionResult = await _client.User.GetUserSubscriptionAsync();
-                if (userSubscriptionResult.Status != SubscriptionStatusType.Active && userSubscriptionResult.Status != SubscriptionStatusType.Free)
+                var userSubscriptionResult = await _client.UserEndpoint.GetSubscriptionInfoAsync();
+                if (userSubscriptionResult.Status != "active" && userSubscriptionResult.Status != "free" && userSubscriptionResult.Status != "trialing")
                 {
                     return result.SetFailureResult(
-                        "CheckAccount:SUBSCRIPTION_NOT_ACTIVE",
+                        "Initialize:SUBSCRIPTION_NOT_ACTIVE",
                         $"Elevenlabs user scubrption is not active. Current status: {userSubscriptionResult.Status.ToString()}"
                     );
                 }
                 if (userSubscriptionResult.CharacterCount >= userSubscriptionResult.CharacterLimit)
                 {
                     return result.SetFailureResult(
-                        "CheckAccount:CHARACTER_LIMIT_REACHED",
+                        "Initialize:CHARACTER_LIMIT_REACHED",
                         $"Elevenlabs total character has been reached. Current count: {userSubscriptionResult.CharacterCount}/{userSubscriptionResult.CharacterLimit}"
                     );
                 }
@@ -120,10 +121,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                                         _optimalElevenLabsFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
                                         _optimalElevenLabsFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample; 
 
-                _voiceData = _client.Voices.GetVoicesByVoiceIdAsync(_serviceConfig.VoiceId).GetAwaiter().GetResult();
+                _voiceData = _client.VoicesEndpoint.GetVoiceAsync(_serviceConfig.VoiceId, true).GetAwaiter().GetResult();
 
-                var allModels = _client.Models.GetModelsAsync().GetAwaiter().GetResult().ToList();
-                _modelData = allModels.Find(d => d.ModelId == _serviceConfig.ModelId);
+                var allModels = _client.ModelsEndpoint.GetModelsAsync().GetAwaiter().GetResult().ToList();
+                _modelData = allModels.Find(d => d.Id == _serviceConfig.ModelId);
                 if (_modelData == null) throw new Exception("Model not found");
 
                 return result.SetSuccessResult();
@@ -139,25 +140,16 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var request = new BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPost(text, _modelData.ModelId, null, _voiceSettings, _pronunciationDictionaryId, null, null, null, _previousRequestIds, null, _applyTextNormalization, null);
+            var request = new TextToSpeechRequest(_voiceData, text, null, _voiceSettings, _outputFormat, _modelData, null, null, null, null, null, false, null, _pronunciationDictionaryId, _applyTextNormalization, null);
 
             try
             {
-                var result = await _client.TextToSpeech.CreateTextToSpeechByVoiceIdWithTimestampsAsync(_voiceData.VoiceId, request, null, null, _outputFormat, null, cancellationToken);
-                
-                if (!string.IsNullOrEmpty(result.Item2))
-                {
-                    //_previousRequestIds.Add(result.Item2);
-                }
-                if (_previousRequestIds.Count >= 3)
-                {
-                    _previousRequestIds.RemoveAt(0);
-                }
+                var result = await _client.TextToSpeechEndpoint.TextToSpeechAsync(request, null, cancellationToken);
 
-                byte[] sourceAudioData = Convert.FromBase64String(result.Item1.AudioBase64);
+                byte[] sourceAudioData = result.ClipData.ToArray();
 
-                var duration = result.Item1.Alignment != null && result.Item1.Alignment.CharacterEndTimesSeconds.Any()
-                    ? TimeSpan.FromSeconds(result.Item1.Alignment.CharacterEndTimesSeconds.Last())
+                var duration = result.TimestampedTranscriptCharacters != null && result.TimestampedTranscriptCharacters.Any()
+                    ? TimeSpan.FromSeconds(result.TimestampedTranscriptCharacters.Last().EndTime)
                     : AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalElevenLabsFormat);
 
                 if (_audioConversationNeeded)
@@ -214,7 +206,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         // STATIC
         private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> ElevenLabsSupportedFormats;
-        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat> FormatMap;
+        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), OutputFormat> FormatMap;
 
         static ElevenLabsTTSService()
         {
@@ -229,16 +221,16 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             };
             ElevenLabsSupportedFormats = supportedFormats.AsReadOnly();
 
-            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat>
+            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), OutputFormat>
             {
-                { (AudioEncodingTypeEnum.PCM, 8000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm8000 },
-                { (AudioEncodingTypeEnum.PCM, 16000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm16000 },
-                { (AudioEncodingTypeEnum.PCM, 22050, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm22050 },
-                { (AudioEncodingTypeEnum.PCM, 24000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm24000 },
-                { (AudioEncodingTypeEnum.PCM, 44100, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm44100 },
-                { (AudioEncodingTypeEnum.PCM, 48000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm48000 },
+                { (AudioEncodingTypeEnum.PCM, 8000, 16), OutputFormat.PCM_8000 },
+                { (AudioEncodingTypeEnum.PCM, 16000, 16), OutputFormat.PCM_16000 },
+                { (AudioEncodingTypeEnum.PCM, 22050, 16), OutputFormat.PCM_22050 },
+                { (AudioEncodingTypeEnum.PCM, 24000, 16), OutputFormat.PCM_24000 },
+                { (AudioEncodingTypeEnum.PCM, 44100, 16), OutputFormat.PCM_44100 },
+                { (AudioEncodingTypeEnum.PCM, 48000, 16), OutputFormat.PCM_48000 },
             };
-            FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat>(formatMap);
+            FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), OutputFormat>(formatMap);
         }
     }
 }

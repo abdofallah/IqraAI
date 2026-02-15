@@ -1,3 +1,4 @@
+/** Dynamic Variables **/
 var CurrentManageUserBusinesses = [];
 
 var CurrentManageAddUserBusinessesSearched = [];
@@ -14,21 +15,25 @@ var UsersTabAddBusinessModalListPageSize = 30;
 
 var IsEditUserAllowed = false;
 
-var CurrentUserBillingData = null;
-var CurrentUserFinancialTransactions = [];
-
+/** Element Variables **/
 const usersTab = $("#users-tab");
 
-const usersListTable = usersTab.find("#usersListTable");
+// Headers
 
+// List Header
+const usersInnerHeader = usersTab.find("#users-inner-header");
+
+// Manager Header
+const usersManagerInnerHeader = usersTab.find("#users-manager-inner-header");
+const switchBackToUsersListTabFromManageTab = usersManagerInnerHeader.find("#switchBackToUsersListTabFromManageTab");
+const currentManageUserName = usersManagerInnerHeader.find("#currentManageUserName");
+
+// List Tab
 const usersListTableTab = usersTab.find("#usersListTableTab");
+const usersListTable = usersListTableTab.find("#usersListTable");
+
+// Manager Tab
 const usersManageTab = usersTab.find("#usersManageTab");
-
-const usersInnerTab = usersTab.find("#users-inner-tab");
-const usersManageBreadcrumb = usersTab.find("#users-manage-breadcrumb");
-
-const switchBackToUsersListTabFromManageTab = usersTab.find("#switchBackToUsersListTabFromManageTab");
-const currentManageUserName = usersTab.find("#currentManageUserName");
 
 const addUserBusinessModal = usersTab.find("#addUserBusinessModal");
 const addUserBusinessModalListTable = usersTab.find("#addUserBusinessModalListTable");
@@ -62,36 +67,6 @@ const usersManageDisableDeleteBusinessReasonInput = usersManageTab.find("#usersM
 
 const usersManageDisableAddBusinessInput = usersManageTab.find("#usersManageDisableAddBusinessInput");
 const usersManageDisableAddBusinessReasonInput = usersManageTab.find("#usersManageDisableAddBusinessReasonInput");
-
-const usersManageBillingTabButton = usersManageTab.find("#users-manage-billing-tab-button");
-const usersManageBillingContent = usersManageTab.find("#users-manage-billing-content"); 
-
-const userManageCurrentPlanSelect = usersManageBillingContent.find("#userManageCurrentPlanSelect");
-const userManageCreditBalanceInput = usersManageBillingContent.find("#userManageCreditBalanceInput");
-const adjustUserCreditButton = usersManageBillingContent.find("#adjustUserCreditButton");
-const userManagePlanBaseConcurrencyDisplay = usersManageBillingContent.find("#userManagePlanBaseConcurrencyDisplay");
-const userManagePurchasedConcurrencyInput = usersManageBillingContent.find("#userManagePurchasedConcurrencyInput");
-const userManageTotalConcurrencyDisplay = usersManageBillingContent.find("#userManageTotalConcurrencyDisplay");
-const userManageLastConcurrencyFeeBilledAtInput = usersManageBillingContent.find("#userManageLastConcurrencyFeeBilledAtInput");
-const userManageNextConcurrencyFeeBillingDateInput = usersManageBillingContent.find("#userManageNextConcurrencyFeeBillingDateInput");
-
-const userManageAutoRefillStatusToggle = usersManageBillingContent.find("#userManageAutoRefillStatusToggle");
-const userManageAutoRefillDetails = usersManageBillingContent.find("#userManageAutoRefillDetails");
-const userManageAutoRefillThresholdInput = userManageAutoRefillDetails.find("#userManageAutoRefillThresholdInput");
-const userManageAutoRefillAmountInput = userManageAutoRefillDetails.find("#userManageAutoRefillAmountInput");
-const userManageAutoRefillPaymentMethodSelect = userManageAutoRefillDetails.find("#userManageAutoRefillPaymentMethodSelect");
-const userManageAutoRefillLastAttemptDisplay = userManageAutoRefillDetails.find("#userManageAutoRefillLastAttemptDisplay");
-
-const userBillingHistoryTable = usersManageBillingContent.find("#userBillingHistoryTable");
-
-const adjustCreditModal = $("#adjustCreditModal");
-const adjustCreditUserName = adjustCreditModal.find("#adjustCreditUserName");
-const adjustCreditCurrentBalance = adjustCreditModal.find("#adjustCreditCurrentBalance");
-const adjustCreditUserEmailInput = adjustCreditModal.find("#adjustCreditUserEmailInput");
-const adjustmentTypeSelect = adjustCreditModal.find("#adjustmentTypeSelect");
-const adjustmentAmountInput = adjustCreditModal.find("#adjustmentAmountInput");
-const adjustmentReasonInput = adjustCreditModal.find("#adjustmentReasonInput");
-const confirmCreditAdjustmentButton = adjustCreditModal.find("#confirmCreditAdjustmentButton");
 
 // API Functions
 function FetchUsersFromAPI(page, pageSize, successCallback, errorCallback) {
@@ -162,39 +137,6 @@ function FetchUserBusinessesFromAPI(userEmail, businessIds, successCallback, err
 	});
 }
 
-function FetchUserTransactionsFromAPI(email, page, pageSize, successCallback, errorCallback) {
-	$.ajax({
-		url: '/app/admin/user/transactions',
-		type: 'POST',
-		dataType: "json",
-		data: { email: email, page: page, pageSize: pageSize },
-		success: (response) => {
-			if (!response.success) { errorCallback(response); return; }
-			successCallback(response.data);
-		},
-		error: (error) => { errorCallback(error); }
-	});
-}
-
-function AdjustUserCreditAPI(userEmail, adjustmentType, amount, reason, successCallback, errorCallback) {
-	$.ajax({
-		url: '/app/admin/user/credit/adjust',
-		type: 'POST',
-		dataType: "json",
-		data: {
-			email: userEmail,
-			transactionType: adjustmentType, // Ensure this matches backend enum/string
-			amount: amount,
-			description: reason
-		},
-		success: (response) => {
-			if (!response.success) { errorCallback(response); return; }
-			successCallback(response);
-		},
-		error: (error) => { errorCallback(error); }
-	});
-}
-
 // Functions
 function CreateUsersListTableElement(userData) {
 	let element = $(`<tr>
@@ -231,42 +173,11 @@ function CreateUserManageBusinessesTableElement(businessData, isNew = false) {
 	return element;
 }
 
-function CreateUserBillingHistoryRowElement(transaction) {
-	const amountClass = transaction.amount >= 0 ? "text-success" : "text-danger";
-	const amountFormatted = `${transaction.amount >= 0 ? '+' : ''}${parseFloat(transaction.amount).toFixed(2)}`;
-	return $(`
-        <tr>
-            <td>${new Date(transaction.timestamp).toLocaleString()}</td>
-            <td>${transaction.type.replace(/([A-Z])/g, ' $1').trim()}</td> {/* Add spaces to enum */}
-            <td>${transaction.description || '-'}</td>
-            <td class="${amountClass}">${amountFormatted}</td>
-            <td>${parseFloat(transaction.balanceAfter).toFixed(2)}</td>
-        </tr>
-    `);
-}
-
 function ResetAndEmptyUsersManageTabData() {
 	usersManageTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
 	usersManageTab.find("input[type=checkbox]").prop("checked", false).change();
 	usersManageTab.find("table tbody").empty();
 	usersManageTab.attr("user-email", "");
-
-	userManageCurrentPlanSelect.val("");
-	userManageCreditBalanceInput.val("0.00");
-	userManagePlanBaseConcurrencyDisplay.val("N/A");
-	userManagePurchasedConcurrencyInput.val("0");
-	userManageTotalConcurrencyDisplay.val("N/A");
-	userManageLastConcurrencyFeeBilledAtInput.val("N/A");
-	userManageNextConcurrencyFeeBillingDateInput.val("N/A");
-
-	userManageAutoRefillStatusToggle.prop("checked", false).change();
-	userManageAutoRefillThresholdInput.val("");
-	userManageAutoRefillAmountInput.val("");
-	userManageAutoRefillPaymentMethodSelect.val("");
-	userManageAutoRefillLastAttemptDisplay.val("N/A");
-	userManageAutoRefillDetails.addClass("d-none");
-
-	userBillingHistoryTable.find("tbody").empty().append('<tr><td colspan="5" class="text-center">No transactions found.</td></tr>');
 
 	// Data
 	CurrentManageUserBusinesses = [];
@@ -282,30 +193,9 @@ function ResetAndEmptyUsersManageTabData() {
 
 	IsEditUserAllowed = false;
 
-	CurrentUserBillingData = null;
-	CurrentUserFinancialTransactions = [];
-}
-
-function UpdateUserConcurrencyDisplays() {
-	const selectedPlanId = userManageCurrentPlanSelect.val();
-	const purchasedConcurrency = parseInt(userManagePurchasedConcurrencyInput.val()) || 0;
-	let planBaseConcurrency = 0;
-
-	if (selectedPlanId && CurrentPlansList.length > 0) {
-		const plan = CurrentPlansList.find(p => p.id === selectedPlanId);
-		if (plan) {
-			// Determine base concurrency from the correct part of the plan object
-			if (plan.pricingModel === "StandardPayAsYouGo" && plan.standardPlan) {
-				planBaseConcurrency = plan.standardPlan.baseConcurrency || 0;
-			} else if (plan.pricingModel === "VolumeBasedTiered" && plan.volumeTieredPlan) {
-				planBaseConcurrency = plan.volumeTieredPlan.baseConcurrency || 0;
-			} else if (plan.pricingModel === "FixedPricePackage" && plan.fixedPackagePlan) {
-				planBaseConcurrency = plan.fixedPackagePlan.includedConcurrency || 0;
-			}
-		}
+	if (IsCloudVersion) {
+		ResetAndEmptyUsersManageBillingTabData();
 	}
-	userManagePlanBaseConcurrencyDisplay.val(planBaseConcurrency > 0 ? planBaseConcurrency : (selectedPlanId ? "0" : "N/A"));
-	userManageTotalConcurrencyDisplay.val(planBaseConcurrency + purchasedConcurrency);
 }
 
 function FillUserManageTab(userData, userBusinessesData) {
@@ -345,111 +235,47 @@ function FillUserManageTab(userData, userBusinessesData) {
 	}
 
 	// Billing
-	CurrentUserBillingData = userData.billing;
-	PopulateUserBillingFields(CurrentUserBillingData);
-
-	// Billing Transacitons
-	FetchUserTransactionsFromAPI(userData.email, 0, 100, // page, pageSize (adjust as needed)
-		(transactions) => {
-			CurrentUserFinancialTransactions = transactions;
-			userBillingHistoryTable.find("tbody").empty();
-			if (transactions && transactions.length > 0) {
-				transactions.forEach(tx => {
-					userBillingHistoryTable.find("tbody").append(CreateUserBillingHistoryRowElement(tx));
-				});
-			} else {
-				userBillingHistoryTable.find("tbody").append('<tr><td colspan="5" class="text-center">No transactions found.</td></tr>');
-			}
-		},
-		(error) => {
-			userBillingHistoryTable.find("tbody").empty().append('<tr><td colspan="5" class="text-center text-danger">Error loading transactions.</td></tr>');
-			console.error("Error fetching user transactions:", error);
-		}
-	);
-}
-
-function PopulateUserBillingFields(billingData) {
-	if (!billingData) return;
-
-	userManageCurrentPlanSelect.val(billingData.currentPlanId || "");
-	userManageCreditBalanceInput.val(parseFloat(billingData.creditBalance || 0).toFixed(2));
-	userManagePurchasedConcurrencyInput.val(billingData.purchasedAdditionalConcurrencySlots || 0);
-
-	userManageLastConcurrencyFeeBilledAtInput.val(billingData.lastConcurrencyFeeBilledAt ? new Date(billingData.lastConcurrencyFeeBilledAt).toLocaleString() : "N/A");
-	userManageNextConcurrencyFeeBillingDateInput.val(billingData.nextConcurrencyFeeBillingDate ? new Date(billingData.nextConcurrencyFeeBillingDate).toLocaleDateString() : "N/A");
-
-	UpdateUserConcurrencyDisplays(); // Call this after plan and purchased concurrency are set
-
-	if (billingData.autoRefill) {
-		const autoRefillEnabled = billingData.autoRefill.status === "Enabled"; // Assuming "Enabled" string from enum
-		userManageAutoRefillStatusToggle.prop("checked", autoRefillEnabled).change(); // .change() triggers handler
-		if (autoRefillEnabled) {
-			userManageAutoRefillThresholdInput.val(parseFloat(billingData.autoRefill.refillWhenBalanceBelow || 0).toFixed(2));
-			userManageAutoRefillAmountInput.val(parseFloat(billingData.autoRefill.refillAmount || 0).toFixed(2));
-			// TODO: Populate userManageAutoRefillPaymentMethodSelect with user's payment methods and select billingData.autoRefill.defaultPaymentMethodId
-			userManageAutoRefillLastAttemptDisplay.val(
-				billingData.autoRefill.lastAttemptTimestamp
-					? `${new Date(billingData.autoRefill.lastAttemptTimestamp).toLocaleString()} - ${billingData.autoRefill.lastAttemptStatusMessage || 'Unknown'}`
-					: "N/A"
-			);
-		}
+	if (IsCloudVersion) {
+		FillUserManageBillingTab(userData);
 	}
 }
 
-function CollectUserBillingFormData() {
-	if (!CurrentUserBillingData) CurrentUserBillingData = {}; // Ensure object exists
-
-	const billingFormData = {
-		// currentPlanId: userManageCurrentPlanSelect.val() || null, // Plan is set by admin directly
-		// creditBalance: parseFloat(userManageCreditBalanceInput.val()), // Balance adjusted via modal
-		purchasedAdditionalConcurrencySlots: parseInt(userManagePurchasedConcurrencyInput.val()) || 0,
-		autoRefill: {
-			status: userManageAutoRefillStatusToggle.is(":checked") ? "Enabled" : "Disabled",
-			refillWhenBalanceBelow: userManageAutoRefillStatusToggle.is(":checked") ? parseFloat(userManageAutoRefillThresholdInput.val()) : null,
-			refillAmount: userManageAutoRefillStatusToggle.is(":checked") ? parseFloat(userManageAutoRefillAmountInput.val()) : null,
-			defaultPaymentMethodId: userManageAutoRefillStatusToggle.is(":checked") ? userManageAutoRefillPaymentMethodSelect.val() : null,
-			// lastAttemptTimestamp and lastAttemptStatusMessage are read-only from server
-		}
-	};
-	// Only send planId if it changed, or if it's a new user assignment.
-	// For simplicity, we can send it always, backend can decide if it needs update.
-	billingFormData.currentPlanId = userManageCurrentPlanSelect.val() || null;
-
-	return billingFormData;
-}
-
 function ShowUserManageTab() {
-	usersInnerTab.removeClass("show");
+	usersInnerHeader.removeClass("show");
 	usersListTableTab.removeClass("show");
 	setTimeout(() => {
-		usersInnerTab.addClass("d-none");
+		usersInnerHeader.addClass("d-none");
 		usersListTableTab.addClass("d-none");
 
-		usersManageBreadcrumb.removeClass("d-none");
+		usersManagerInnerHeader.removeClass("d-none");
 		usersManageTab.removeClass("d-none");
 
 		usersManageGeneralTab.click();
 
 		setTimeout(() => {
-			usersManageBreadcrumb.addClass("show");
+			usersManagerInnerHeader.addClass("show");
 			usersManageTab.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
 function ShowUserListTab() {
-	usersManageBreadcrumb.removeClass("show");
+	usersManagerInnerHeader.removeClass("show");
 	usersManageTab.removeClass("show");
 	setTimeout(() => {
-		usersManageBreadcrumb.addClass("d-none");
+		usersManagerInnerHeader.addClass("d-none");
 		usersManageTab.addClass("d-none");
 
-		usersInnerTab.removeClass("d-none");
+		usersInnerHeader.removeClass("d-none");
 		usersListTableTab.removeClass("d-none");
 
 		setTimeout(() => {
-			usersInnerTab.addClass("show");
+			usersInnerHeader.addClass("show");
 			usersListTableTab.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
@@ -464,86 +290,7 @@ function CreateAddUserBusinessListTableElement(businessData, disabled = false) {
 	return element;
 }
 
-// Event Handlers
-function initUsersBillingTabEventHandlers() {
-	userManageCurrentPlanSelect.on("change", function () {
-		UpdateUserConcurrencyDisplays();
-	});
-
-	userManagePurchasedConcurrencyInput.on("input", function () {
-		UpdateUserConcurrencyDisplays();
-	});
-
-	userManageAutoRefillStatusToggle.on("change", function () {
-		if ($(this).is(":checked")) {
-			userManageAutoRefillDetails.removeClass("d-none");
-			// TODO: Potentially fetch user's payment methods for userManageAutoRefillPaymentMethodSelect
-		} else {
-			userManageAutoRefillDetails.addClass("d-none");
-		}
-	});
-
-	adjustUserCreditButton.on("click", function () {
-		if (!CurrentManageUserEmail || CurrentManageUserEmail === "new") {
-			AlertManager.createAlert({ type: "info", message: "Please save the user before adjusting credit.", timeout: 3000 });
-			return;
-		}
-		adjustCreditUserName.text(usersManageFirstNameInput.val() + " " + usersManageLastNameInput.val() || CurrentManageUserEmail);
-		adjustCreditCurrentBalance.text(userManageCreditBalanceInput.val());
-		adjustCreditUserEmailInput.val(CurrentManageUserEmail);
-		adjustmentTypeSelect.val("ManualCreditAdjustment"); // Default
-		adjustmentAmountInput.val("");
-		adjustmentReasonInput.val("");
-		adjustCreditModal.modal("show");
-	});
-
-	confirmCreditAdjustmentButton.on("click", function () {
-		const userEmail = adjustCreditUserEmailInput.val();
-		const type = adjustmentTypeSelect.val();
-		const amount = parseFloat(adjustmentAmountInput.val());
-		const reason = adjustmentReasonInput.val().trim();
-
-		if (isNaN(amount) || amount <= 0) {
-			AlertManager.createAlert({ type: "warning", message: "Please enter a valid positive amount.", source: adjustCreditModal });
-			adjustmentAmountInput.addClass("is-invalid");
-			return;
-		}
-		adjustmentAmountInput.removeClass("is-invalid");
-		if (!reason) {
-			AlertManager.createAlert({ type: "warning", message: "Reason for adjustment is required.", source: adjustCreditModal });
-			adjustmentReasonInput.addClass("is-invalid");
-			return;
-		}
-		adjustmentReasonInput.removeClass("is-invalid");
-
-		$(this).prop("disabled", true).find(".fa-regular").toggleClass("fa-check fa-spinner fa-spin");
-
-		AdjustUserCreditAPI(userEmail, type, amount, reason,
-			(response) => {
-				AlertManager.createAlert({ type: "success", message: response.message || "Credit adjusted successfully!", timeout: 3000 });
-				userManageCreditBalanceInput.val(parseFloat(response.newBalance).toFixed(2));
-				// Refresh transaction history
-				FetchUserTransactionsFromAPI(userEmail, 0, 100, (transactions) => {
-					CurrentUserFinancialTransactions = transactions;
-					userBillingHistoryTable.find("tbody").empty();
-					if (transactions && transactions.length > 0) {
-						transactions.forEach(tx => { userBillingHistoryTable.find("tbody").append(CreateUserBillingHistoryRowElement(tx)); });
-					} else {
-						userBillingHistoryTable.find("tbody").append('<tr><td colspan="5" class="text-center">No transactions found.</td></tr>');
-					}
-				}, (err) => console.error("Error refreshing transactions:", err));
-				adjustCreditModal.modal("hide");
-			},
-			(error) => {
-				AlertManager.createAlert({ type: "danger", message: error.message || "Failed to adjust credit.", source: adjustCreditModal });
-			}
-		).always(() => {
-			$(this).prop("disabled", false).find(".fa-regular").toggleClass("fa-check fa-spinner fa-spin");
-		});
-	});
-}
-
-
+// Init
 function initUsersTab() {
 	$(document).on("click", "#users-tab #usersListTable tr td button[button-type=edit-user]", (event) => {
 		event.preventDefault();
@@ -812,12 +559,14 @@ function initUsersTab() {
 		}
 	});
 
+	if (IsCloudVersion) {
+		initUsersManageBillingTab();
+	}
+
 	// Init
 	CurrentUsersList.forEach((userData) => {
 		usersListTable.append(CreateUsersListTableElement(userData));
 	});
 
 	IsEditUserAllowed = true;
-
-	initUsersBillingTabEventHandlers();
 }

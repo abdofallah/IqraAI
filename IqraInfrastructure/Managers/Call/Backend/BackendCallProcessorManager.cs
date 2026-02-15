@@ -775,6 +775,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
                     _campaignActionExecutorService,
                     _serviceProvider.GetRequiredService<LLMProviderManager>(),
+                    _serviceProvider.GetRequiredService<LanguagesManager>(),
 
                     queueData: queueData
                 );

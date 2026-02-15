@@ -15,11 +15,11 @@ using IqraCore.Entities.TTS.Providers.HumeAI;
 using IqraCore.Entities.TTS.Providers.Minimax;
 using IqraCore.Entities.TTS.Providers.MurfAI;
 using IqraCore.Entities.TTS.Providers.Neuphonic;
-using IqraCore.Entities.TTS.Providers.PlayHt;
 using IqraCore.Entities.TTS.Providers.ResembleAI;
 using IqraCore.Entities.TTS.Providers.Speechify;
 using IqraCore.Entities.TTS.Providers.ZyphraZonos;
 using IqraCore.Interfaces.AI;
+using IqraInfrastructure.Helpers.Provider;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.TTS.Providers;
 using IqraInfrastructure.Repositories.TTS;
@@ -33,20 +33,21 @@ namespace IqraInfrastructure.Managers.TTS
     public class TTSProviderManager
     {
         private readonly ILogger<TTSProviderManager> _logger;
-
         private readonly TTSProviderRepository _ttsProviderRepository;
         private readonly IntegrationsManager _integrationsManager;
 
         private Dictionary<InterfaceTTSProviderEnum, Type> _ttsProviderClasses = new Dictionary<InterfaceTTSProviderEnum, Type>();
 
-        public TTSProviderManager(ILogger<TTSProviderManager> logger, TTSProviderRepository ttsProviderRepository, IntegrationsManager integrationsManager)
+        public TTSProviderManager(
+            ILogger<TTSProviderManager> logger,
+            TTSProviderRepository ttsProviderRepository,
+            IntegrationsManager integrationsManager)
         {
             _logger = logger;
-
             _ttsProviderRepository = ttsProviderRepository;
             _integrationsManager = integrationsManager;
 
-            InitializeProvidersAsync().Wait();
+            InitializeProvidersAsync().GetAwaiter().GetResult();
         }
 
         private async Task InitializeProvidersAsync()
@@ -57,21 +58,16 @@ namespace IqraInfrastructure.Managers.TTS
                     continue;
 
                 var provider = await _ttsProviderRepository.GetProviderAsync(providerEnum);
-
                 if (provider == null)
                 {
-                    await AddProvider(new TTSProviderData
+                    var addResult = await AddProvider(providerEnum);
+                    if (!addResult.Success)
                     {
-                        Id = providerEnum,
-                        DisabledAt = DateTime.UtcNow,
-                        Models = new List<TTSProviderSpeakerData>(),
-                        UserIntegrationFields = new List<ProviderFieldBase>()
-                    });
+                        throw new Exception($"Failed to add tts provider: {providerEnum}: [{addResult.Code}] {addResult.Message}");
+                    }
                 }
-                else if (provider.DisabledAt == null)
-                {
-                    RegisterProviderService(providerEnum);
-                }
+
+                RegisterProviderService(providerEnum);
             }
         }
 
@@ -89,7 +85,7 @@ namespace IqraInfrastructure.Managers.TTS
                 var getProviderTypeMethod = type.GetMethod("GetProviderTypeStatic", BindingFlags.Public | BindingFlags.Static);
                 if (getProviderTypeMethod != null)
                 {
-                    var returnedProviderEnum = (InterfaceTTSProviderEnum)getProviderTypeMethod.Invoke(null, null);
+                    var returnedProviderEnum = (InterfaceTTSProviderEnum)getProviderTypeMethod.Invoke(null, null)!;
                     if (returnedProviderEnum == providerEnum)
                     {
                         _ttsProviderClasses[providerEnum] = type;
@@ -105,226 +101,85 @@ namespace IqraInfrastructure.Managers.TTS
         {
             var result = new FunctionReturnResult<List<TTSProviderData>?>();
 
-            var providerList = await _ttsProviderRepository.GetProviderListAsync(page, pageSize);
-            if (providerList == null)
+            try
             {
-                result.Code = "GetProviderList:1";
-                result.Message = "No providers found";
-                return result;
-            }
+                var providerList = await _ttsProviderRepository.GetProviderListAsync(page, pageSize);
+                if (providerList == null)
+                {
+                    return result.SetFailureResult(
+                        "GetProviderList:NOT_FOUND",
+                        "No providers found"
+                    );
+                }
 
-            result.Success = true;
-            result.Data = providerList;
-            return result;
+                return result.SetSuccessResult(providerList);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetProviderList:EXCEPTION",
+                    $"Failed to get provider list: {ex.Message}"
+                );
+            }
         }
 
-        public async Task<FunctionReturnResult<TTSProviderData>> AddProvider(TTSProviderData providerData)
+        public async Task<FunctionReturnResult<TTSProviderData>> AddProvider(InterfaceTTSProviderEnum providerId)
         {
             var result = new FunctionReturnResult<TTSProviderData>();
 
-            if (providerData.Id == InterfaceTTSProviderEnum.Unknown)
+            try
             {
-                result.Code = "AddProvider:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
+                var providerData = new TTSProviderData()
+                {
+                    Id = providerId,
+                    DisabledAt = DateTime.UtcNow,
+                };
 
-            var existingProvider = await _ttsProviderRepository.GetProviderAsync(providerData.Id);
-            if (existingProvider != null)
+                if (providerData.Id == InterfaceTTSProviderEnum.Unknown)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:INVALID_ID",
+                        "Invalid provider ID"
+                    );
+                }
+
+                var existingProvider = await _ttsProviderRepository.GetProviderAsync(providerData.Id);
+                if (existingProvider != null)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:EXISTS",
+                        "Provider already exists"
+                    );
+                }
+
+                var success = await _ttsProviderRepository.AddProviderAsync(providerData);
+                if (!success)
+                {
+                    return result.SetFailureResult(
+                        "AddProvider:FAILED",
+                        "Failed to add provider"
+                    );
+                }
+
+                return result.SetSuccessResult(providerData);
+            }
+            catch (Exception ex)
             {
-                result.Code = "AddProvider:2";
-                result.Message = "Provider already exists";
-                return result;
+                return result.SetFailureResult(
+                    "AddProvider:EXCEPTION",
+                    $"Failed to add provider: {ex.Message}"
+                );
             }
-
-            providerData.DisabledAt = DateTime.UtcNow;
-            await _ttsProviderRepository.AddProviderAsync(providerData);
-
-            result.Success = true;
-            result.Data = providerData;
-            return result;
         }
 
         public Type? GetProviderService(InterfaceTTSProviderEnum providerId)
         {
-            if (_ttsProviderClasses.TryGetValue(providerId, out var service))
-            {
-                return service;
-            }
-            return null;
+            return _ttsProviderClasses.TryGetValue(providerId, out var service) ? service : null;
         }
 
         public async Task<TTSProviderData?> GetProviderData(InterfaceTTSProviderEnum providerId)
         {
             return await _ttsProviderRepository.GetProviderAsync(providerId);
-        }
-
-        public async Task<FunctionReturnResult<TTSProviderSpeakerData?>> AddUpdateProviderSpeaker(
-            TTSProviderData provider,
-            string speakerId,
-            string postType,
-            TTSProviderSpeakerData? oldSpeakerData,
-            IFormCollection formData)
-        {
-            var result = new FunctionReturnResult<TTSProviderSpeakerData?>();
-
-            if (!formData.TryGetValue("changes", out var changesJsonString))
-            {
-                result.Code = "AddUpdateProviderSpeaker:1";
-                result.Message = "Changes data not found";
-                return result;
-            }
-
-            try
-            {
-                var changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
-                if (changesJsonElement == null)
-                {
-                    result.Code = "AddUpdateProviderSpeaker:2";
-                    result.Message = "Failed to parse changes JSON";
-                    return result;
-                }
-
-                var newSpeakerData = new TTSProviderSpeakerData
-                {
-                    Id = speakerId,
-                    DisabledAt = oldSpeakerData?.DisabledAt
-                };
-
-                // Parse and validate name
-                if (!changesJsonElement.RootElement.TryGetProperty("name", out var nameElement))
-                {
-                    result.Code = "AddUpdateProviderSpeaker:3";
-                    result.Message = "Speaker name not found";
-                    return result;
-                }
-                newSpeakerData.Name = nameElement.GetString() ?? "";
-
-                // Parse and validate price settings
-                if (!changesJsonElement.RootElement.TryGetProperty("pricePerUnit", out var priceElement) ||
-                    !decimal.TryParse(priceElement.GetString(), out decimal price))
-                {
-                    result.Code = "AddUpdateProviderSpeaker:4";
-                    result.Message = "Invalid price";
-                    return result;
-                }
-                newSpeakerData.PricePerUnit = price;
-
-                if (!changesJsonElement.RootElement.TryGetProperty("priceUnit", out var priceUnitElement))
-                {
-                    result.Code = "AddUpdateProviderSpeaker:5";
-                    result.Message = "Price unit not found";
-                    return result;
-                }
-                newSpeakerData.PriceUnit = priceUnitElement.GetString() ?? "";
-
-                // Parse speaker characteristics
-                if (!changesJsonElement.RootElement.TryGetProperty("gender", out var genderElement))
-                {
-                    result.Code = "AddUpdateProviderSpeaker:6";
-                    result.Message = "Gender not found";
-                    return result;
-                }
-                newSpeakerData.Gender = genderElement.GetString() ?? "";
-
-                if (!changesJsonElement.RootElement.TryGetProperty("ageGroup", out var ageGroupElement))
-                {
-                    result.Code = "AddUpdateProviderSpeaker:7";
-                    result.Message = "Age group not found";
-                    return result;
-                }
-                newSpeakerData.AgeGroup = ageGroupElement.GetString() ?? "";
-
-                // Parse personality traits
-                if (changesJsonElement.RootElement.TryGetProperty("personality", out var personalityElement))
-                {
-                    newSpeakerData.Personality = new List<string>();
-                    foreach (var trait in personalityElement.EnumerateArray())
-                    {
-                        newSpeakerData.Personality.Add(trait.GetString() ?? "");
-                    }
-                }
-
-                // Parse language settings
-                if (!changesJsonElement.RootElement.TryGetProperty("isMultilingual", out var multilingualElement))
-                {
-                    result.Code = "AddUpdateProviderSpeaker:8";
-                    result.Message = "Multilingual setting not found";
-                    return result;
-                }
-                newSpeakerData.IsMultilingual = multilingualElement.GetBoolean();
-
-                if (!changesJsonElement.RootElement.TryGetProperty("supportedLanguages", out var languagesElement))
-                {
-                    result.Code = "AddUpdateProviderSpeaker:9";
-                    result.Message = "Supported languages not found";
-                    return result;
-                }
-
-                newSpeakerData.SupportedLanguages = new List<string>();
-                foreach (var language in languagesElement.EnumerateArray())
-                {
-                    newSpeakerData.SupportedLanguages.Add(language.GetString() ?? "");
-                }
-
-                // Parse speaking styles
-                if (!changesJsonElement.RootElement.TryGetProperty("speakingStyles", out var stylesElement))
-                {
-                    result.Code = "AddUpdateProviderSpeaker:10";
-                    result.Message = "Speaking styles not found";
-                    return result;
-                }
-
-                newSpeakerData.SpeakingStyles = new List<TTSProviderSpeakingStyleData>();
-                foreach (var styleElement in stylesElement.EnumerateArray())
-                {
-                    var style = new TTSProviderSpeakingStyleData
-                    {
-                        Id = styleElement.GetProperty("id").GetString() ?? "",
-                        Name = styleElement.GetProperty("name").GetString() ?? "",
-                        PreviewUrl = styleElement.GetProperty("previewUrl").GetString() ?? "",
-                        IsDefault = styleElement.GetProperty("isDefault").GetBoolean()
-                    };
-                    newSpeakerData.SpeakingStyles.Add(style);
-                }
-
-                // Validate there's exactly one default style
-                if (newSpeakerData.SpeakingStyles.Count(s => s.IsDefault) != 1)
-                {
-                    result.Code = "AddUpdateProviderSpeaker:11";
-                    result.Message = "Exactly one speaking style must be set as default";
-                    return result;
-                }
-
-                // Handle disabled state
-                if (changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
-                {
-                    bool disabled = disabledElement.GetBoolean();
-                    newSpeakerData.DisabledAt = disabled ? DateTime.UtcNow : null;
-                }
-
-                // Save to database
-                var updateResult = postType == "new" ?
-                    await _ttsProviderRepository.AddSpeakerAsync(provider.Id, newSpeakerData) :
-                    await _ttsProviderRepository.UpdateSpeakerAsync(provider.Id, newSpeakerData);
-
-                if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
-                {
-                    result.Code = "AddUpdateProviderSpeaker:12";
-                    result.Message = $"Failed to {postType} speaker";
-                    return result;
-                }
-
-                result.Success = true;
-                result.Data = newSpeakerData;
-            }
-            catch (Exception ex)
-            {
-                result.Code = "AddUpdateProviderSpeaker:13";
-                result.Message = "Error processing speaker data: " + ex.Message;
-            }
-
-            return result;
         }
 
         public async Task<FunctionReturnResult<TTSProviderData?>> UpdateProvider(
@@ -336,21 +191,24 @@ namespace IqraInfrastructure.Managers.TTS
 
             try
             {
-                if (!formData.TryGetValue("changes", out var changesJsonString))
+                if (!formData.TryGetValue("changes", out var changesJsonString) || string.IsNullOrEmpty(changesJsonString))
                 {
-                    result.Code = "UpdateProvider:1";
-                    result.Message = "Changes data not found";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:CHANGES_DATA_NOT_FOUND",
+                        "Changes data not found"
+                    );
                 }
 
-                var changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
                 if (changesJsonElement == null)
                 {
-                    result.Code = "UpdateProvider:2";
-                    result.Message = "Unable to parse changes json string";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:JSON_PARSE_ERROR",
+                        "Unable to parse changes json string"
+                    );
                 }
 
+                var root = changesJsonElement.RootElement;
                 var newProviderData = new TTSProviderData
                 {
                     Id = provider.Id,
@@ -358,108 +216,267 @@ namespace IqraInfrastructure.Managers.TTS
                 };
 
                 // Handle disabled state
-                if (!changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
+                if (root.TryGetProperty("disabled", out var disabledElement))
                 {
-                    result.Code = "UpdateProvider:3";
-                    result.Message = "Provider disabled state not found";
-                    return result;
+                    bool disabled = disabledElement.GetBoolean();
+                    newProviderData.DisabledAt = disabled ? (provider.DisabledAt ?? DateTime.UtcNow) : null;
                 }
-
-                bool disabled = disabledElement.GetBoolean();
-                newProviderData.DisabledAt = disabled ?
-                    (provider.DisabledAt ?? DateTime.UtcNow) :
-                    null;
+                else
+                {
+                    return result.SetFailureResult(
+                        "UpdateProvider:DISABLED_STATE_NOT_FOUND",
+                        "Provider disabled state not found"
+                    );
+                }
 
                 // Handle integration selection
-                if (!changesJsonElement.RootElement.TryGetProperty("integrationId", out var integrationIdElement))
+                if (root.TryGetProperty("integrationId", out var integrationIdElement))
                 {
-                    result.Code = "UpdateProvider:4";
-                    result.Message = "Integration ID not found";
-                    return result;
-                }
+                    string? integrationId = integrationIdElement.GetString();
 
-                string? integrationId = integrationIdElement.GetString();
-                if (string.IsNullOrEmpty(integrationId))
+                    if (string.IsNullOrEmpty(integrationId))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:MISSING_INTEGRATION_ID",
+                            "Integration ID is required"
+                        );
+                    }
+
+                    // Validate integration exists and is TTS type
+                    var integration = await integrationsManager.getIntegrationData(integrationId);
+                    if (integration.Data == null || !integration.Success)
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:SELECTED_INTEGRATION_NOT_FOUND",
+                            "Selected integration not found"
+                        );
+                    }
+
+                    if (!integration.Data.Type.Contains("TTS") && !integration.Data.Type.Contains("TEXT2SPEECH"))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateProvider:INVALID_INTEGRATION",
+                            "Selected integration is not a TTS integration"
+                        );
+                    }
+
+                    newProviderData.IntegrationId = integrationId;
+                }
+                else
                 {
-                    result.Code = "UpdateProvider:5";
-                    result.Message = "Integration ID is required";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:INTEGRATION_ID_NOT_FOUND",
+                        "Integration ID not found in changes"
+                    );
                 }
-
-                // Validate integration exists and is TTS type
-                var integration = await integrationsManager.getIntegrationData(integrationId);
-                if (integration == null || !integration.Success)
-                {
-                    result.Code = "UpdateProvider:6";
-                    result.Message = "Selected integration not found";
-                    return result;
-                }
-
-                if (!integration.Data.Type.Contains("TTS") && !integration.Data.Type.Contains("TEXT2SPEECH"))
-                {
-                    result.Code = "UpdateProvider:7";
-                    result.Message = "Selected integration is not a TTS integration";
-                    return result;
-                }
-
-                newProviderData.IntegrationId = integrationId;
 
                 // Handle integration fields
-                if (changesJsonElement.RootElement.TryGetProperty("userIntegrationFields", out var fieldsElement))
+                if (root.TryGetProperty("userIntegrationFields", out var fieldsElement))
                 {
-                    newProviderData.UserIntegrationFields = new List<ProviderFieldBase>();
+                    var availableModelIds = newProviderData.Models.Select(m => m.Id).ToList();
 
-                    foreach (var fieldElement in fieldsElement.EnumerateArray())
+                    // Use the centralized helper for parsing and validation
+                    var parseResult = ProviderIntegrationFieldsHelper.ParseAndValidateFields(fieldsElement, availableModelIds);
+
+                    if (!parseResult.Success || parseResult.Data == null)
                     {
-                        var field = new ProviderFieldBase
-                        {
-                            Id = fieldElement.GetProperty("id").GetString() ?? "",
-                            Name = fieldElement.GetProperty("name").GetString() ?? "",
-                            Type = fieldElement.GetProperty("type").GetString() ?? "",
-                            Tooltip = fieldElement.GetProperty("tooltip").GetString() ?? "",
-                            Placeholder = fieldElement.GetProperty("placeholder").GetString() ?? "",
-                            DefaultValue = fieldElement.GetProperty("defaultValue").GetString() ?? "",
-                            Required = fieldElement.GetProperty("required").GetBoolean(),
-                            IsEncrypted = fieldElement.GetProperty("isEncrypted").GetBoolean()
-                        };
-
-                        if (field.Type == "select" && fieldElement.TryGetProperty("options", out var optionsElement))
-                        {
-                            field.Options = new List<ProviderFieldOption>();
-                            foreach (var optionElement in optionsElement.EnumerateArray())
-                            {
-                                field.Options.Add(new ProviderFieldOption
-                                {
-                                    Key = optionElement.GetProperty("key").GetString() ?? "",
-                                    Value = optionElement.GetProperty("value").GetString() ?? "",
-                                    IsDefault = optionElement.GetProperty("isDefault").GetBoolean()
-                                });
-                            }
-                        }
-
-                        newProviderData.UserIntegrationFields.Add(field);
+                        return result.SetFailureResult(
+                            $"UpdateProvider:{parseResult.Code}",
+                            parseResult.Message
+                        );
                     }
+
+                    newProviderData.UserIntegrationFields = parseResult.Data;
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "UpdateProvider:USER_INTEGRATION_FIELDS_NOT_FOUND",
+                        "User integration fields not found"
+                    );
                 }
 
                 // Save to database
                 var updateResult = await _ttsProviderRepository.UpdateProviderAsync(newProviderData);
                 if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
                 {
-                    result.Code = "UpdateProvider:8";
-                    result.Message = "Failed to update provider";
-                    return result;
+                    return result.SetFailureResult(
+                        "UpdateProvider:UPDATE_FAILED",
+                        "Failed to update provider"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = newProviderData;
+                return result.SetSuccessResult(newProviderData);
             }
             catch (Exception ex)
             {
-                result.Code = "UpdateProvider:9";
-                result.Message = "Error processing provider update: " + ex.Message;
+                return result.SetFailureResult(
+                    "UpdateProvider:EXCEPTION",
+                    $"Error processing provider update: {ex.Message}"
+                );
             }
+        }
 
-            return result;
+        public async Task<FunctionReturnResult<TTSProviderModelData?>> AddUpdateProviderModel(
+            TTSProviderData provider,
+            string modelId,
+            string postType,
+            TTSProviderModelData? oldModelData,
+            IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<TTSProviderModelData?>();
+
+            try
+            {
+                if (!formData.TryGetValue("changes", out var changesJsonString))
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:CHANGES_DATA_NOT_FOUND",
+                        "Changes data not found"
+                    );
+                }
+
+                JsonDocument? changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString.ToString());
+                if (changesJsonElement == null)
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:JSON_PARSE_ERROR",
+                        "Failed to parse changes JSON"
+                    );
+                }
+
+                var root = changesJsonElement.RootElement;
+                var newModelData = new TTSProviderModelData
+                {
+                    Id = modelId,
+                };
+
+                // Model Name
+                if (root.TryGetProperty("name", out var modelNameElement))
+                {
+                    string? modelName = modelNameElement.GetString();
+                    if (string.IsNullOrEmpty(modelName))
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:EMPTY_NAME",
+                            "Model name is empty"
+                        );
+                    }
+                    newModelData.Name = modelName;
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:NAME_NOT_FOUND",
+                        "Model name not found"
+                    );
+                }
+
+                // Disabled State
+                if (root.TryGetProperty("disabled", out var disabledElement))
+                {
+                    bool isDisabled = disabledElement.GetBoolean();
+                    if (isDisabled)
+                    {
+                        newModelData.DisabledAt = (postType == "edit" && oldModelData?.DisabledAt != null)
+                            ? oldModelData.DisabledAt
+                            : DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        newModelData.DisabledAt = null;
+                    }
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:DISABLED_STATE_NOT_FOUND",
+                        "Disabled state not found"
+                    );
+                }
+
+                // Price Per Unit
+                if (root.TryGetProperty("pricePerUnit", out var priceElement))
+                {
+                    // Use string parsing for safety with decimals in JSON
+                    if (decimal.TryParse(priceElement.GetString(), out decimal price))
+                    {
+                        newModelData.PricePerUnit = price;
+                    }
+                    else if (priceElement.TryGetDecimal(out decimal decimalVal))
+                    {
+                        newModelData.PricePerUnit = decimalVal;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:INVALID_PRICE",
+                            "Invalid price format"
+                        );
+                    }
+                }
+
+                // Price Unit
+                if (root.TryGetProperty("priceUnit", out var priceUnitElement))
+                {
+                    string? priceUnit = priceUnitElement.GetString();
+                    if (string.IsNullOrEmpty(priceUnit))
+                    {
+                        return result.SetFailureResult(
+                            "AddUpdateProviderModel:EMPTY_PRICE_UNIT",
+                            "Price unit is required"
+                        );
+                    }
+                    newModelData.PriceUnit = priceUnit;
+                }
+
+                // Supported Languages
+                if (root.TryGetProperty("supportedLanguages", out var languagesElement) && languagesElement.ValueKind == JsonValueKind.Array)
+                {
+                    newModelData.SupportedLanguages = new List<string>();
+                    foreach (var language in languagesElement.EnumerateArray())
+                    {
+                        newModelData.SupportedLanguages.Add(language.GetString() ?? "");
+                    }
+                }
+                else
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:LANGUAGES_NOT_FOUND",
+                        "Supported languages not found or invalid format"
+                    );
+                }
+
+                // Save to database
+                bool updateSuccess;
+                if (postType == "new")
+                {
+                    var addResult = await _ttsProviderRepository.AddModelAsync(provider.Id, newModelData);
+                    updateSuccess = addResult.IsAcknowledged && addResult.ModifiedCount > 0;
+                }
+                else
+                {
+                    var updateResult = await _ttsProviderRepository.UpdateModelAsync(provider.Id, newModelData);
+                    updateSuccess = updateResult.IsAcknowledged && updateResult.ModifiedCount > 0;
+                }
+
+                if (!updateSuccess)
+                {
+                    return result.SetFailureResult(
+                        "AddUpdateProviderModel:DB_UPDATE_FAILED",
+                        $"Failed to {postType} model in database"
+                    );
+                }
+
+                return result.SetSuccessResult(newModelData);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "AddUpdateProviderModel:EXCEPTION",
+                    $"Error processing model data: {ex.Message}"
+                );
+            }
         }
 
         public async Task<FunctionReturnResult<TTSProviderData?>> GetProviderDataByIntegration(string integrationType)
@@ -472,37 +489,96 @@ namespace IqraInfrastructure.Managers.TTS
 
                 if (providerData == null)
                 {
-                    result.Code = "GetProviderDataByIntegration:1";
-                    result.Message = "Provider not find by integration type";
-                    return result;
+                    return result.SetFailureResult(
+                        "GetProviderDataByIntegration:NOT_FOUND",
+                        "Provider not found by integration type"
+                    );
                 }
 
-                result.Success = true;
-                result.Data = providerData;
+                return result.SetSuccessResult(providerData);
             }
             catch (Exception ex)
             {
-                result.Code = "GetProviderDataByIntegration:2";
-                result.Message = "Failed to get provider data: " + ex.Message;
+                return result.SetFailureResult(
+                    "GetProviderDataByIntegration:EXCEPTION",
+                    $"Failed to get provider data: {ex.Message}"
+                );
             }
-
-            return result;
         }
 
-        public async Task<FunctionReturnResult<ITTSService?>> BuildProviderServiceByIntegration(ILoggerFactory loggerFactory, BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, int targetSampleRate, int targetBitsPerSample, AudioEncodingTypeEnum targetAudioEncoding)
+        public async Task<FunctionReturnResult<ITTSService?>> BuildProviderServiceByIntegration(
+            ILoggerFactory loggerFactory,
+            BusinessAppIntegration integrationData,
+            BusinessAppAgentIntegrationData agentIntegrationData,
+            int targetSampleRate,
+            int targetBitsPerSample,
+            AudioEncodingTypeEnum targetAudioEncoding)
         {
             var result = new FunctionReturnResult<ITTSService?>();
 
             try
             {
                 var ttsProviderData = await GetProviderDataByIntegration(integrationData.Type);
-                if (!ttsProviderData.Success)
+                if (!ttsProviderData.Success || ttsProviderData.Data == null)
                 {
                     return result.SetFailureResult(
                         "BuildProviderServiceByIntegration:RETRIEVE_PROVIDER_DATA_FAILED",
                         "Failed to retrieve provider data by integration type"
                     );
                 }
+
+                // --- Helper functions for safe extraction ---
+                string GetString(string key, string defaultValue = "")
+                {
+                    return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
+                        ? val.ToString()! : defaultValue;
+                }
+
+                int GetInt(string key, int defaultValue)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (int.TryParse(val.ToString(), out int parsed)) return parsed;
+                        return Convert.ToInt32(val);
+                    }
+                    return defaultValue;
+                }
+
+                float GetFloat(string key, float defaultValue = 0f)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (float.TryParse(val.ToString(), out float parsed)) return parsed;
+                        return Convert.ToSingle(val);
+                    }
+                    return defaultValue;
+                }
+
+                bool GetBool(string key, bool defaultValue)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        var s = val.ToString()!.ToLower();
+                        if (s == "on" || s == "yes" || s == "true") return true;
+                        if (s == "off" || s == "no" || s == "false") return false;
+                    }
+                    return defaultValue;
+                }
+
+                List<string> GetList(string key)
+                {
+                    var list = new List<string>();
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        var s = val.ToString();
+                        if (!string.IsNullOrWhiteSpace(s))
+                        {
+                            list.AddRange(s.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)));
+                        }
+                    }
+                    return list;
+                }
+                // ---------------------------------------------
 
                 switch (ttsProviderData.Data.Id)
                 {
@@ -518,8 +594,8 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new AzureSpeechConfig
                             {
-                                Language = (string)agentIntegrationData.FieldValues["speaker_language"],
-                                VoiceName = (string)agentIntegrationData.FieldValues["speaker"],
+                                Language = GetString("speaker_language"),
+                                VoiceName = GetString("speaker"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -535,21 +611,21 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new ElevenLabsConfig
                             {
-                                ModelId = (string)agentIntegrationData.FieldValues["model_id"],
-                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
-                                Stability = Convert.ToSingle(agentIntegrationData.FieldValues["stability"]),
-                                SimilarityBoost = Convert.ToSingle(agentIntegrationData.FieldValues["similarityBoost"]),
-                                Style = Convert.ToSingle(agentIntegrationData.FieldValues["style"]),
-                                UseSpeakerBoost = Convert.ToBoolean(agentIntegrationData.FieldValues["speakerBoost"]),
-                                Speed = Convert.ToSingle(agentIntegrationData.FieldValues["speed"]),
-                                PronunciationDictionaryId = (string)agentIntegrationData.FieldValues["pronunciationDictionaryId"],
-                                ApplyTextNormalization = (string)agentIntegrationData.FieldValues["applyTextNormalization"],
+                                ModelId = GetString("model_id"),
+                                VoiceId = GetString("voice_id"),
+                                Stability = GetFloat("stability"),
+                                SimilarityBoost = GetFloat("similarityBoost"),
+                                Style = GetFloat("style"),
+                                UseSpeakerBoost = GetBool("speakerBoost", true),
+                                Speed = GetFloat("speed", 1.0f),
+                                PronunciationDictionaryId = GetString("pronunciationDictionaryId"),
+                                ApplyTextNormalization = GetString("applyTextNormalization", "auto"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new ElevenLabsTTSService(loggerFactory.CreateLogger<ElevenLabsTTSService>(), apiKey, config); // Assuming constructor is updated
+                            var service = new ElevenLabsTTSService(loggerFactory.CreateLogger<ElevenLabsTTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -560,9 +636,9 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new GoogleConfig
                             {
-                                LanguageCode = (string)agentIntegrationData.FieldValues["language_code"],
-                                VoiceName = (string)agentIntegrationData.FieldValues["voice_name"],
-                                SpeakingRate = (float)(double)agentIntegrationData.FieldValues["speaking_rate"],
+                                LanguageCode = GetString("language_code"),
+                                VoiceName = GetString("voice_name"),
+                                SpeakingRate = GetFloat("speaking_rate", 1.0f),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -578,10 +654,10 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new CartesiaConfig
                             {
-                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
-                                ModelId = (string)agentIntegrationData.FieldValues["model_id"],
-                                LanguageCode = (string)agentIntegrationData.FieldValues["language_code"],
-                                PronunciationDictIds = ((string)agentIntegrationData.FieldValues["pronunciationDictIds"]).Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
+                                VoiceId = GetString("voice_id"),
+                                ModelId = GetString("model_id"),
+                                LanguageCode = GetString("language_code"),
+                                PronunciationDictIds = GetList("pronunciationDictIds"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -597,8 +673,8 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new FishAudioConfig
                             {
-                                ReferenceId = (string)agentIntegrationData.FieldValues["reference_id"],
-                                Model = (string)agentIntegrationData.FieldValues["model"],
+                                ReferenceId = GetString("reference_id"),
+                                Model = GetString("model"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -614,7 +690,7 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new DeepgramConfig
                             {
-                                ModelId = (string)agentIntegrationData.FieldValues["model_id"],
+                                ModelId = GetString("model_id"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -630,11 +706,10 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new MinimaxConfig
                             {
-                                ModelId = (string)agentIntegrationData.FieldValues["model_id"],
-                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
-                                VoiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"],
-                                LanguageBoost = (string)agentIntegrationData.FieldValues["language_boost"],
-                                //PronunciationDict = (string)agentIntegrationData.FieldValues["pronunciation_dict"],
+                                ModelId = GetString("model_id"),
+                                VoiceId = GetString("voice_id"),
+                                VoiceSpeed = GetFloat("voice_speed", 1.0f),
+                                LanguageBoost = GetString("language_boost"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -650,10 +725,10 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new HumeAiConfig
                             {
-                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
-                                VoiceProvider = (string)agentIntegrationData.FieldValues["voice_provider"],
-                                VoiceDescription = (string)agentIntegrationData.FieldValues["voice_description"],
-                                VoiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"],
+                                VoiceId = GetString("voice_id"),
+                                VoiceProvider = GetString("voice_provider"),
+                                VoiceDescription = GetString("voice_description"),
+                                VoiceSpeed = GetFloat("voice_speed", 1.0f),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -669,11 +744,11 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new SpeechifyConfig
                             {
-                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
-                                Model = (string)agentIntegrationData.FieldValues["model"],
-                                Language = (string)agentIntegrationData.FieldValues["language"],
-                                LoudnessNormalization = bool.Parse((string)agentIntegrationData.FieldValues["loudness_normalization"]),
-                                TextNormalization = bool.Parse((string)agentIntegrationData.FieldValues["text_normalization"]),
+                                VoiceId = GetString("voice_id"),
+                                Model = GetString("model"),
+                                Language = GetString("language"),
+                                LoudnessNormalization = GetBool("loudness_normalization", true),
+                                TextNormalization = GetBool("text_normalization", true),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -689,13 +764,13 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new MurfAiConfig
                             {
-                                Model = (string)agentIntegrationData.FieldValues["model"],
-                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
-                                MultiNativeLocale = (string)agentIntegrationData.FieldValues["multi_native_locale"],
-                                PronunciationDictionaryString = (string)agentIntegrationData.FieldValues["pronunciation_dictionary"],
-                                Rate = (int)(long)agentIntegrationData.FieldValues["rate"], // JSON deserializes numbers to long by default
-                                Style = (string)agentIntegrationData.FieldValues["style"],
-                                Variation = (int)(long)agentIntegrationData.FieldValues["variation"],
+                                Model = GetString("model"),
+                                VoiceId = GetString("voice_id"),
+                                MultiNativeLocale = GetString("multi_native_locale"),
+                                PronunciationDictionaryString = GetString("pronunciation_dictionary"),
+                                Rate = GetInt("rate", 0),
+                                Style = GetString("style"),
+                                Variation = GetInt("variation", 0),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -709,21 +784,26 @@ namespace IqraInfrastructure.Managers.TTS
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
-                            // Emotion dictionary needs to be parsed
-                            var emotionDict = ((string)agentIntegrationData.FieldValues["emotion"])
-                                .Split(';', StringSplitOptions.RemoveEmptyEntries)
-                                .Select(part => part.Split(':'))
-                                .Where(parts => parts.Length == 2)
-                                .ToDictionary(parts => parts[0], parts => float.Parse(parts[1]));
+                            // Handle Emotion Dictionary Parsing
+                            string emotionStr = GetString("emotion");
+                            var emotionDict = new Dictionary<string, float>();
+                            if (!string.IsNullOrEmpty(emotionStr))
+                            {
+                                emotionDict = emotionStr
+                                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                                    .Select(part => part.Split(':'))
+                                    .Where(parts => parts.Length == 2 && float.TryParse(parts[1], out _))
+                                    .ToDictionary(parts => parts[0].Trim(), parts => float.Parse(parts[1]));
+                            }
 
                             var config = new ZyphraZonosConfig
                             {
-                                Model = (string)agentIntegrationData.FieldValues["model"],
-                                DefaultVoiceName = (string)agentIntegrationData.FieldValues["default_voice_name"],
-                                SpeakingRate = (int)(long)agentIntegrationData.FieldValues["speaking_rate"],
-                                LanguageIsoCode = (string)agentIntegrationData.FieldValues["language_iso_code"],
+                                Model = GetString("model"),
+                                DefaultVoiceName = GetString("default_voice_name"),
+                                SpeakingRate = GetInt("speaking_rate", 1),
+                                LanguageIsoCode = GetString("language_iso_code"),
                                 Emotion = emotionDict,
-                                Vqscore = (float)(double)agentIntegrationData.FieldValues["vqscore"],
+                                Vqscore = GetFloat("vqscore", 0.78f),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -741,7 +821,7 @@ namespace IqraInfrastructure.Managers.TTS
                             var config = new ResembleAiConfig
                             {
                                 ProjectUuid = projectUuid,
-                                VoiceUuid = (string)agentIntegrationData.FieldValues["voice_uuid"],
+                                VoiceUuid = GetString("voice_uuid"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -757,8 +837,8 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new HamsaAiConfig
                             {
-                                Speaker = (string)agentIntegrationData.FieldValues["speaker"],
-                                Dialect = (string)agentIntegrationData.FieldValues["dialect"],
+                                Speaker = GetString("speaker"),
+                                Dialect = GetString("dialect"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -774,10 +854,10 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new NeuphonicConfig
                             {
-                                LanguageCode = (string)agentIntegrationData.FieldValues["lang_code"],
-                                Model = (string)agentIntegrationData.FieldValues["model"],
-                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
-                                Speed = (float)(double)agentIntegrationData.FieldValues["speed"],
+                                LanguageCode = GetString("lang_code"),
+                                Model = GetString("model"),
+                                VoiceId = GetString("voice_id"),
+                                Speed = GetFloat("speed", 1.0f),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -792,7 +872,7 @@ namespace IqraInfrastructure.Managers.TTS
                             _logger.LogError("Business app TTS provider {ProviderType} not supported", ttsProviderData.Data.Id);
                             return result.SetFailureResult(
                                 "BuildProviderServiceByIntegration:NOT_SUPPORTED",
-                                ("Provider not supported: " + ttsProviderData.Data.Id)
+                                $"Provider {ttsProviderData.Data.Id} not supported"
                             );
                         }
                 }
@@ -801,9 +881,9 @@ namespace IqraInfrastructure.Managers.TTS
             {
                 return result.SetFailureResult(
                     "BuildProviderServiceByIntegration:EXCEPTION",
-                    ("Failed to build provider service: " + ex.Message)
+                    $"Failed to build provider service: {ex.Message}"
                 );
-            }    
+            }
         }
     }
 }

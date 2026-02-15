@@ -111,14 +111,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         }
 
         // Warmup Initalization
-        private const string PromptGenFailEndCallMessage = "ONLY RESPOND WITH: execute_system_function: end_call: \"Failed to generate base system prompt\", \"I am sorry, we are currently not able to handle your call due to an error occuring. Good bye!\"";
         private async Task GenerateAndSetBaseSystemPromptAsync()
         {
             var systemPromptResult = await _systemPromptGenerator.GenerateInitialSystemPrompt(
                _agentState.BusinessApp!,
                _agentState.BusinessAppAgent!,
                _agentState.CurrentSessionContext!,
-               _agentState.CurrentLanguageCode,
+               _agentState.CurrentLanguageData!,
                _agentState.LLMService!.GetProviderType(),
                _agentState.LLMService!.GetModel()
             );
@@ -126,29 +125,28 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (!systemPromptResult.Success || systemPromptResult.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Error generating system prompt: {Code} {Message}", _agentState.AgentId, systemPromptResult.Code, systemPromptResult.Message);
-                // TODO: Raise error? Fallback to a default prompt?
-                _agentState.LLMService!.SetSystemPrompt(PromptGenFailEndCallMessage);
+                // Fallback to a default prompt forcing end call
+                _agentState.LLMService!.SetSystemPrompt(_agentState.CurrentLanguageData!.Prompts.FailedConversationBasePromptGenerationPrompt);
                 return;
             }
-            else
-            {
-                var sessionInformationResult = await _systemPromptGenerator.FillSessionInformationInPrompt(
-                _agentState.LLMBaseSystemPrompt,
+
+
+            var sessionInformationResult = await _systemPromptGenerator.FillSessionInformationInPrompt(
+                null, // TODO get from current language prompts
                 _agentState.CurrentSessionContext!,
                 _agentState.BusinessAppAgent!,
                 _agentState.CurrentLanguageCode);
-                if (!sessionInformationResult.Success || sessionInformationResult.Data == null)
-                {
-                    _logger.LogError("Agent {AgentId}: Error generating system prompt: {Code} {Message}", _agentState.AgentId, sessionInformationResult.Code, sessionInformationResult.Message);
-                    // raise error add log todo
-                    _agentState.LLMService!.SetSystemPrompt(PromptGenFailEndCallMessage);
-                    return;
-                }
+            if (!sessionInformationResult.Success || sessionInformationResult.Data == null)
+            {
+                _logger.LogError("Agent {AgentId}: Error generating system prompt: {Code} {Message}", _agentState.AgentId, sessionInformationResult.Code, sessionInformationResult.Message);
+                // Fallback to a default prompt forcing end call
+                _agentState.LLMService!.SetSystemPrompt(_agentState.CurrentLanguageData!.Prompts.FailedConversationBasePromptGenerationPrompt);
+                return;
+            }
 
-                _agentState.LLMBaseSystemPrompt = systemPromptResult.Data + Environment.NewLine + Environment.NewLine + sessionInformationResult.Data;
-                _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
-                _logger.LogDebug("Agent {AgentId}: Generated base system prompt: {Prompt}", _agentState.AgentId, _agentState.LLMBaseSystemPrompt);
-            }        
+            _agentState.LLMBaseSystemPrompt = systemPromptResult.Data + Environment.NewLine + Environment.NewLine + sessionInformationResult.Data;
+            _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
+            _logger.LogDebug("Agent {AgentId}: Generated base system prompt: {Prompt}", _agentState.AgentId, _agentState.LLMBaseSystemPrompt);
         }
         private async Task WarmupLLMAsync()
         {
@@ -157,7 +155,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             string openingMessage = "response_from_system: Call has started.";
             _agentState.LLMService!.AddUserMessage(openingMessage);
-            _agentState.LLMService!.SetSystemPrompt("RESPOND WITH ```execute_system_function: acknowledge(\"Call Start\")``` if call has started.");
+            _agentState.LLMService!.SetSystemPrompt(_agentState.CurrentLanguageData!.Prompts.ConversationWarmupLLMPrompt);
 
             bool hasFinishedWarmingUp = false;
             bool successWarmup = false;

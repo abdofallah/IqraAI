@@ -1,17 +1,17 @@
 ﻿<div class="main-container fade w-100 d-none" id="stt-provider-tab">
-    <h3 class="fw-bold tab-title">
-        <i class='fa-regular fa-microphone nav_icon'></i>
-        <span>STT Provider</span>
-    </h3>
-    <div class="inner-container">
-        <!-- Manager Inner Tabs -->
-        <div class="mb-3">
-            <ul class="nav w-100 fade show" id="stt-provider-inner-tab" role="tablist">
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link active" id="stt-provider-list-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-list" type="button" role="tab" aria-controls="stt-provider-list" aria-selected="true">List</button>
-                </li>
-            </ul>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="stt-provider-manage-breadcrumb">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-microphone nav_icon'></i> <span>STT Provider</span></h3>
+    
+    <div class="inner-header-container mb-3">
+        <!-- Inner Header -->
+        <ul class="nav w-100 fade show" id="stt-provider-inner-header" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="stt-provider-list-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-list" type="button" role="tab" aria-controls="stt-provider-list" aria-selected="true">List</button>
+            </li>
+        </ul>
+
+        <!-- Manager Inner Header -->
+        <div class="w-100 fade d-none" id="stt-provider-manager-inner-header">       
+            <nav class="mb-3" aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item">
                         <a href="#" id="switchBackToSTTProviderListTabFromManageTab">Providers</a>
@@ -21,7 +21,28 @@
                     </li>
                 </ol>
             </nav>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="stt-provider-model-manager-breadcrumb">
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <ul class="nav fade show" id="stt-provider-manager-inner-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="stt-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-general" type="button" role="tab" aria-controls="stt-provider-manager-general" aria-selected="true">General</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="stt-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-models" type="button" role="tab" aria-controls="stt-provider-manager-models" aria-selected="true">Models</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="stt-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-integrations" type="button" role="tab" aria-controls="stt-provider-manager-integrations" aria-selected="false">Integrations</button>
+                    </li>
+                </ul>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageSTTProviderButton" disabled>
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Manager Model Header -->
+        <div class="w-100 fade d-none" id="stt-provider-manager-model-inner-header">
+            <nav aria-label="breadcrumb">
                 <div class="d-flex flex-row align-items-center justify-content-between">
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item" aria-current="page">
@@ -41,7 +62,9 @@
                 </div>
             </nav>
         </div>
-
+    </div>
+    
+    <div class="inner-container">
         <!-- Tab Content -->
         <div class="tab-content" id="stt-provider-tab-content">
             <!-- List -->
@@ -75,25 +98,6 @@
 
                 <!-- Provider Manage Tab -->
                 <div class="fade w-100 d-none" id="sttProviderManageTab">
-                    <!-- Manager Inner Tabs -->
-                    <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="stt-provider-manager-inner-tab-container">
-                        <ul class="nav fade show" id="stt-provider-manager-inner-tab" role="tablist">
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="stt-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-general" type="button" role="tab" aria-controls="stt-provider-manager-general" aria-selected="true">General</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="stt-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-models" type="button" role="tab" aria-controls="stt-provider-manager-models" aria-selected="true">Models</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="stt-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-integrations" type="button" role="tab" aria-controls="stt-provider-manager-integrations" aria-selected="false">Integrations</button>
-                            </li>
-                        </ul>
-                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageSTTProviderButton" disabled>
-                            <i class='fa-regular fa-floppy-disk'></i>
-                            <span> Save</span>
-                        </button>
-                    </div>
-
                     <!-- Tab Content -->
                     <div class="tab-content" id="stt-provider-manager-manage-tab-content">
                         <!-- General Tab -->

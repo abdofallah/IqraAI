@@ -2,19 +2,31 @@
 let CurrentTTSProviderType = null;
 let CurrentTTSProviderData = null;
 
-let CurrentTTSProviderSpeakerType = null;
-let CurrentTTSProviderSpeakerData = null;
+let CurrentTTSProviderModelType = null;
+let CurrentTTSProviderModelData = null;
 
 let IsSavingTTSProviderTab = false;
 
 /** Elements Variables **/
 const TTSProviderTab = $("#tts-provider-tab");
 
-const ttsProviderInnerTab = TTSProviderTab.find("#tts-provider-inner-tab");
-const ttsProviderManageBreadcrumb = TTSProviderTab.find("#tts-provider-manage-breadcrumb");
+// Headers
 
-const switchBackToTTSProviderListTabFromManageTab = ttsProviderManageBreadcrumb.find("#switchBackToTTSProviderListTabFromManageTab");
-const currentManageTTSProviderName = ttsProviderManageBreadcrumb.find("#currentManageTTSProviderName");
+// List Header
+const ttsProviderListHeader = TTSProviderTab.find("#tts-provider-list-inner-header");
+
+// Manager Header
+const ttsProviderManagerHeader = TTSProviderTab.find("#tts-provider-manager-inner-header");
+const switchBackToTTSProviderListTabFromManageTab = ttsProviderManagerHeader.find("#switchBackToTTSProviderListTabFromManageTab");
+const currentManageTTSProviderName = ttsProviderManagerHeader.find("#currentManageTTSProviderName");
+const saveManageTTSProviderButton = ttsProviderManagerHeader.find("#saveManageTTSProviderButton");
+
+// Manager Model Header
+const ttsProviderManagerModelHeader = TTSProviderTab.find("#tts-provider-manager-model-inner-header");
+const currentManageModelTTSProviderName = ttsProviderManagerModelHeader.find("#currentManageModelTTSProviderName");
+const currentManageTTSProviderModelName = ttsProviderManagerModelHeader.find("#currentManageTTSProviderModelName");
+const switchBackToTTSProviderManagerModelsListTabFromModelTab = ttsProviderManagerModelHeader.find("#switchBackToTTSProviderManagerModelsListTabFromModelTab");
+const saveManageTTSProviderModelButton = ttsProviderManagerModelHeader.find("#saveManageTTSProviderModelButton");
 
 // Provider List Elements
 const TTSProviderListTableTab = TTSProviderTab.find("#ttsProviderListTableTab");
@@ -24,42 +36,29 @@ const searchTTSProviderButton = TTSProviderListTableTab.find("#searchTTSProvider
 
 // Provider Manage Elements
 const TTSProviderManageTab = TTSProviderTab.find("#ttsProviderManageTab");
-const ttsProviderManagerInnerTabContainer = TTSProviderManageTab.find("#tts-provider-manager-inner-tab-container");
-const ttsProviderManagerInnerTab = ttsProviderManagerInnerTabContainer.find("#tts-provider-manager-inner-tab");
-const saveManageTTSProviderButton = ttsProviderManagerInnerTabContainer.find("#saveManageTTSProviderButton");
 
 // Provider General Tab Elements
 const manageTTSProviderIdInput = TTSProviderManageTab.find("#manageTTSProviderIdInput");
 const manageTTSProviderIntegrationSelect = TTSProviderManageTab.find("#manageTTSProviderIntegrationSelect");
 const manageTTSProviderDisabledInput = TTSProviderManageTab.find("#manageTTSProviderDisabledInput");
 
-// Speaker Management Elements
-const ttsProviderManagerSpeakersListTab = TTSProviderManageTab.find("#ttsProviderManagerSpeakersListTab");
-const ttsProviderSpeakerListTable = ttsProviderManagerSpeakersListTab.find("#ttsProviderSpeakerListTable");
-const addNewTTSProviderSpeakerButton = ttsProviderManagerSpeakersListTab.find("#addNewTTSProviderSpeakerButton");
-const searchTTSProviderSpeakerInput = ttsProviderManagerSpeakersListTab.find("input[aria-label='Speaker Name or Id']");
-const searchTTSProviderSpeakerButton = ttsProviderManagerSpeakersListTab.find("#searchTTSProviderSpeakerButton");
+// Model Management Elements
+const ttsProviderManagerModelsListTab = TTSProviderManageTab.find("#ttsProviderManagerModelsListTab");
+const ttsProviderModelListTable = ttsProviderManagerModelsListTab.find("#ttsProviderModelListTable");
+const addNewTTSProviderModelButton = ttsProviderManagerModelsListTab.find("#addNewTTSProviderModelButton");
+const searchTTSProviderModelInput = ttsProviderManagerModelsListTab.find("input[aria-label='Model Name or Id']");
+const searchTTSProviderModelButton = ttsProviderManagerModelsListTab.find("#searchTTSProviderModelButton");
 
-// Speaker Manage Elements
-const ttsProviderSpeakerManagerBreadcrumb = TTSProviderTab.find("#tts-provider-speaker-manager-breadcrumb");
-const currentManageSpeakerTTSProviderName = ttsProviderSpeakerManagerBreadcrumb.find("#currentManageSpeakerTTSProviderName");
-const currentManageTTSProviderSpeakerName = ttsProviderSpeakerManagerBreadcrumb.find("#currentManageTTSProviderSpeakerName");
-const switchBackToTTSProviderManagerSpeakersListTabFromSpeakerTab = ttsProviderSpeakerManagerBreadcrumb.find("#switchBackToTTSProviderManagerSpeakersListTabFromSpeakerTab");
-const saveManageTTSProviderSpeakerButton = ttsProviderSpeakerManagerBreadcrumb.find("#saveManageTTSProviderSpeakerButton");
-
-const ttsProviderManagerSpeakerManageTab = TTSProviderManageTab.find("#ttsProviderManagerSpeakerManageTab");
-const manageTTSProviderSpeakerIdInput = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerIdInput");
-const manageTTSProviderSpeakerNameInput = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerNameInput");
-const manageTTSProviderSpeakerPriceInput = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerPriceInput");
-const manageTTSProviderSpeakerPriceUnitInput = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerPriceUnitInput");
-const manageTTSProviderSpeakerGenderSelect = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerGenderSelect");
-const manageTTSProviderSpeakerAgeGroupSelect = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerAgeGroupSelect");
-const manageTTSProviderSpeakerPersonalitySelect = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerPersonalitySelect");
-const manageTTSProviderSpeakerMultilingualInput = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerMultilingualInput");
-const manageTTSProviderSpeakerLanguagesContainer = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerLanguagesContainer");
-const manageTTSProviderSpeakerStylesContainer = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerStylesContainer");
-const addNewSpeakingStyleButton = ttsProviderManagerSpeakerManageTab.find("#addNewSpeakingStyleButton");
-const manageTTSProviderSpeakerDisabledInput = ttsProviderManagerSpeakerManageTab.find("#manageTTSProviderSpeakerDisabledInput");
+// Model Manage Elements
+const ttsProviderManagerModelManageTab = TTSProviderManageTab.find("#ttsProviderManagerModelManageTab");
+const manageTTSProviderModelIdInput = ttsProviderManagerModelManageTab.find("#manageTTSProviderModelIdInput");
+const manageTTSProviderModelNameInput = ttsProviderManagerModelManageTab.find("#manageTTSProviderModelNameInput");
+const manageTTSProviderModelPriceInput = ttsProviderManagerModelManageTab.find("#manageTTSProviderModelPriceInput");
+const manageTTSProviderModelPriceUnitInput = ttsProviderManagerModelManageTab.find("#manageTTSProviderModelPriceUnitInput");
+const manageTTSProviderModelMultilingualInput = ttsProviderManagerModelManageTab.find("#manageTTSProviderModelMultilingualInput");
+const manageTTSProviderModelLanguagesContainer = ttsProviderManagerModelManageTab.find("#manageTTSProviderModelLanguagesContainer");
+const addNewSpeakingStyleButton = ttsProviderManagerModelManageTab.find("#addNewSpeakingStyleButton");
+const manageTTSProviderModelDisabledInput = ttsProviderManagerModelManageTab.find("#manageTTSProviderModelDisabledInput");
 
 // Integration Fields Elements
 const ttsProviderIntegrationsTab = $("#tts-provider-manager-integrations");
@@ -89,9 +88,9 @@ function SaveTTSProviderData(formData, successCallback, errorCallback) {
 	});
 }
 
-function SaveTTSProviderSpeakerData(formData, successCallback, errorCallback) {
+function SaveTTSProviderModelData(formData, successCallback, errorCallback) {
 	$.ajax({
-		url: "/app/admin/ttsproviders/speaker/save",
+		url: "/app/admin/ttsproviders/model/save",
 		type: "POST",
 		data: formData,
 		processData: false,
@@ -158,36 +157,40 @@ function CreateTTSProviderListTableElement(ttsProviderData) {
 
 function ShowTTSProviderManageTab() {
 	TTSProviderListTableTab.removeClass("show");
-	ttsProviderInnerTab.removeClass("show");
+	ttsProviderListHeader.removeClass("show");
 
 	setTimeout(() => {
 		TTSProviderListTableTab.addClass("d-none");
-		ttsProviderInnerTab.addClass("d-none");
+		ttsProviderListHeader.addClass("d-none");
 
 		TTSProviderManageTab.removeClass("d-none");
-		ttsProviderManageBreadcrumb.removeClass("d-none");
+		ttsProviderManagerHeader.removeClass("d-none");
 
 		setTimeout(() => {
 			TTSProviderManageTab.addClass("show");
-			ttsProviderManageBreadcrumb.addClass("show");
+			ttsProviderManagerHeader.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
 function ShowTTSProviderListTab() {
 	TTSProviderManageTab.removeClass("show");
-	ttsProviderManageBreadcrumb.removeClass("show");
+	ttsProviderManagerHeader.removeClass("show");
 
 	setTimeout(() => {
 		TTSProviderManageTab.addClass("d-none");
-		ttsProviderManageBreadcrumb.addClass("d-none");
+		ttsProviderManagerHeader.addClass("d-none");
 
 		TTSProviderListTableTab.removeClass("d-none");
-		ttsProviderInnerTab.removeClass("d-none");
+		ttsProviderListHeader.removeClass("d-none");
 
 		setTimeout(() => {
 			TTSProviderListTableTab.addClass("show");
-			ttsProviderInnerTab.addClass("show");
+			ttsProviderListHeader.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
@@ -200,13 +203,13 @@ function FillTTSProviderManageTab(providerData) {
 	// Fill integration select
 	fillTTSProviderIntegrationSelect();
 
-	// Fill speakers table
+	// Fill models table
 	if (providerData.models.length != 0) {
-		providerData.models.forEach((speakerData) => {
-			ttsProviderSpeakerListTable.find("tbody").append(CreateTTSProviderSpeakerListTableElement(speakerData));
+		providerData.models.forEach((modelData) => {
+			ttsProviderModelListTable.find("tbody").append(CreateTTSProviderModelListTableElement(modelData));
 		});
 	} else {
-		ttsProviderSpeakerListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="8">No speakers</td></tr>');
+		ttsProviderModelListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No models</td></tr>');
 	}
 
 	// Fill integration fields
@@ -216,7 +219,7 @@ function FillTTSProviderManageTab(providerData) {
 function ResetAndEmptyTTSProvidersManageTab() {
 	manageTTSProviderIdInput.val("");
 	manageTTSProviderDisabledInput.prop("checked", false).change();
-	ttsProviderSpeakerListTable.find("tbody").empty();
+	ttsProviderModelListTable.find("tbody").empty();
 	manageTTSProviderIntegrationSelect.val("").change();
 
 	// Reset integration fields
@@ -645,25 +648,20 @@ function ValidateTTSProviderIntegrationFieldsTab(onlyRemove = true) {
 	};
 }
 
-/** Speaker Management Functions **/
-function CreateTTSProviderSpeakerListTableElement(speakerData) {
-	let disabledData = speakerData.disabledAt ? `<span class="badge bg-danger">${speakerData.disabledAt}</span>` : "-";
+/** Model Management Functions **/
+function CreateTTSProviderModelListTableElement(modelData) {
+	let disabledData = modelData.disabledAt ? `<span class="badge bg-danger">${modelData.disabledAt}</span>` : "-";
 
-	let languagesCount = speakerData.supportedLanguages ? `${speakerData.supportedLanguages.length} ${speakerData.isMultilingual ? "(Multilingual)" : ""}` : "0";
-
-	let stylesCount = speakerData.speakingStyles ? speakerData.speakingStyles.length : 0;
+	let languagesCount = modelData.supportedLanguages ? `${modelData.supportedLanguages.length} ${modelData.isMultilingual ? "(Multilingual)" : ""}` : "0";
 
 	let element = $(`
         <tr>
-            <td>${speakerData.id}</td>
-            <td>${speakerData.name}</td>
+            <td>${modelData.id}</td>
+            <td>${modelData.name}</td>
             <td>${languagesCount}</td>
-            <td>${speakerData.gender || "-"}</td>
-            <td>${speakerData.ageGroup || "-"}</td>
-            <td>${stylesCount} styles</td>
             <td>${disabledData}</td>
             <td>
-                <button class="btn btn-info btn-sm" speaker-id="${speakerData.id}" button-type="edit-tts-provider-speaker">
+                <button class="btn btn-info btn-sm" model-id="${modelData.id}" button-type="edit-tts-provider-model">
                     <i class="fa-regular fa-eye"></i>
                 </button>
             </td>
@@ -673,7 +671,7 @@ function CreateTTSProviderSpeakerListTableElement(speakerData) {
 	return element;
 }
 
-function CreateDefaultTTSProviderSpeakerObject() {
+function CreateDefaultTTSProviderModelObject() {
 	return {
 		id: "",
 		name: "",
@@ -689,49 +687,49 @@ function CreateDefaultTTSProviderSpeakerObject() {
 	};
 }
 
-function ShowTTSProviderSpeakerManageTab() {
-	ttsProviderManagerSpeakersListTab.removeClass("show");
-	ttsProviderManagerInnerTabContainer.removeClass("show");
-	ttsProviderManageBreadcrumb.removeClass("show");
+function ShowTTSProviderModelManageTab() {
+	ttsProviderManagerModelsListTab.removeClass("show");
+	ttsProviderManagerHeader.removeClass("show");
 
 	setTimeout(() => {
-		ttsProviderManagerSpeakersListTab.addClass("d-none");
-		ttsProviderManagerInnerTabContainer.addClass("d-none");
-		ttsProviderManageBreadcrumb.addClass("d-none");
+		ttsProviderManagerModelsListTab.addClass("d-none");
+		ttsProviderManagerHeader.addClass("d-none");
 
-		ttsProviderManagerSpeakerManageTab.removeClass("d-none");
-		ttsProviderSpeakerManagerBreadcrumb.removeClass("d-none");
+		ttsProviderManagerModelManageTab.removeClass("d-none");
+		ttsProviderManagerModelHeader.removeClass("d-none");
 
 		setTimeout(() => {
-			ttsProviderManagerSpeakerManageTab.addClass("show");
-			ttsProviderSpeakerManagerBreadcrumb.addClass("show");
+			ttsProviderManagerModelManageTab.addClass("show");
+			ttsProviderManagerModelHeader.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
-function ShowTTSProviderSpeakerListTab() {
-	ttsProviderManagerSpeakerManageTab.removeClass("show");
-	ttsProviderSpeakerManagerBreadcrumb.removeClass("show");
+function ShowTTSProviderModelListTab() {
+	ttsProviderManagerModelManageTab.removeClass("show");
+	ttsProviderManagerModelHeader.removeClass("show");
 
 	setTimeout(() => {
-		ttsProviderManagerSpeakerManageTab.addClass("d-none");
-		ttsProviderSpeakerManagerBreadcrumb.addClass("d-none");
+		ttsProviderManagerModelManageTab.addClass("d-none");
+		ttsProviderManagerModelHeader.addClass("d-none");
 
-		ttsProviderManagerSpeakersListTab.removeClass("d-none");
-		ttsProviderManagerInnerTabContainer.removeClass("d-none");
-		ttsProviderManageBreadcrumb.removeClass("d-none");
+		ttsProviderManagerModelsListTab.removeClass("d-none");
+		ttsProviderManagerHeader.removeClass("d-none");
 
 		setTimeout(() => {
-			ttsProviderManagerSpeakersListTab.addClass("show");
-			ttsProviderManagerInnerTabContainer.addClass("show");
-			ttsProviderManageBreadcrumb.addClass("show");
+			ttsProviderManagerModelsListTab.addClass("show");
+			ttsProviderManagerHeader.addClass("show");
+
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
-function FillTTSProviderSpeakerManageTab(speakerData) {
+function FillTTSProviderModelManageTab(modelData) {
 	function GenerateLanguageCheckboxes(selectedLanguages = []) {
-		manageTTSProviderSpeakerLanguagesContainer.empty();
+		manageTTSProviderModelLanguagesContainer.empty();
 
 		CurrentLanguagesList.forEach((language) => {
 			const isChecked = selectedLanguages.includes(language.id);
@@ -746,64 +744,34 @@ function FillTTSProviderSpeakerManageTab(speakerData) {
 				</div>
 			`);
 
-			// Add change handler for single language mode
-			checkbox.find("input").on("change", () => {
-				const isMultilingual = manageTTSProviderSpeakerMultilingualInput.is(":checked");
-
-				if (!isMultilingual && $(this).is(":checked")) {
-					// Uncheck all other checkboxes
-					manageTTSProviderSpeakerLanguagesContainer.find('input[type="checkbox"]').not(this).prop("checked", false);
-				}
-				CheckTTSProviderSpeakerManageTabHasChanges(true);
-			});
-
-			manageTTSProviderSpeakerLanguagesContainer.append(checkbox);
+			manageTTSProviderModelLanguagesContainer.append(checkbox);
 		});
 	}
 
-	manageTTSProviderSpeakerIdInput.val(speakerData.id);
-	manageTTSProviderSpeakerNameInput.val(speakerData.name);
-	manageTTSProviderSpeakerPriceInput.val(speakerData.pricePerUnit);
-	manageTTSProviderSpeakerPriceUnitInput.val(speakerData.priceUnit);
-	manageTTSProviderSpeakerGenderSelect.val(speakerData.gender);
-	manageTTSProviderSpeakerAgeGroupSelect.val(speakerData.ageGroup);
-
-	// Handle personality multi-select
-	manageTTSProviderSpeakerPersonalitySelect.val(speakerData.personality || []);
-
-	manageTTSProviderSpeakerMultilingualInput.prop("checked", speakerData.isMultilingual);
-	manageTTSProviderSpeakerDisabledInput.prop("checked", speakerData.disabledAt != null);
+	manageTTSProviderModelIdInput.val(modelData.id);
+	manageTTSProviderModelNameInput.val(modelData.name);
+	manageTTSProviderModelPriceInput.val(modelData.pricePerUnit);
+	manageTTSProviderModelPriceUnitInput.val(modelData.priceUnit);
+	manageTTSProviderModelDisabledInput.prop("checked", modelData.disabledAt != null);
 
 	// Generate language checkboxes
-	GenerateLanguageCheckboxes(speakerData.supportedLanguages || []);
-
-	// Fill speaking styles
-	manageTTSProviderSpeakerStylesContainer.empty();
-	if (speakerData.speakingStyles && speakerData.speakingStyles.length > 0) {
-		speakerData.speakingStyles.forEach((style) => {
-			AddSpeakingStyle(style);
-		});
-	}
+	GenerateLanguageCheckboxes(modelData.supportedLanguages || []);
 }
 
-function ResetAndEmptyTTSProviderSpeakerManageTab() {
-	manageTTSProviderSpeakerIdInput.val("").removeClass("is-invalid");
-	manageTTSProviderSpeakerNameInput.val("").removeClass("is-invalid");
-	manageTTSProviderSpeakerPriceInput.val("").removeClass("is-invalid");
-	manageTTSProviderSpeakerPriceUnitInput.val("").removeClass("is-invalid");
-	manageTTSProviderSpeakerGenderSelect.val("").removeClass("is-invalid");
-	manageTTSProviderSpeakerAgeGroupSelect.val("").removeClass("is-invalid");
-	manageTTSProviderSpeakerPersonalitySelect.val([]).removeClass("is-invalid");
-	manageTTSProviderSpeakerMultilingualInput.prop("checked", false);
-	manageTTSProviderSpeakerDisabledInput.prop("checked", false);
+function ResetAndEmptyTTSProviderModelManageTab() {
+	manageTTSProviderModelIdInput.val("").removeClass("is-invalid");
+	manageTTSProviderModelNameInput.val("").removeClass("is-invalid");
+	manageTTSProviderModelPriceInput.val("").removeClass("is-invalid");
+	manageTTSProviderModelPriceUnitInput.val("").removeClass("is-invalid");
+	manageTTSProviderModelMultilingualInput.prop("checked", false);
+	manageTTSProviderModelDisabledInput.prop("checked", false);
 
-	manageTTSProviderSpeakerLanguagesContainer.empty();
-	manageTTSProviderSpeakerStylesContainer.empty();
+	manageTTSProviderModelLanguagesContainer.empty();
 
-	saveManageTTSProviderSpeakerButton.prop("disabled", true);
+	saveManageTTSProviderModelButton.prop("disabled", true);
 }
 
-function CheckTTSProviderSpeakerManageTabHasChanges(enableDisableButton = true) {
+function CheckTTSProviderModelManageTabHasChanges(enableDisableButton = true) {
 	function arraysEqual(arr1, arr2) {
 		if (!arr1 || !arr2) return false;
 		if (arr1.length !== arr2.length) return false;
@@ -818,82 +786,48 @@ function CheckTTSProviderSpeakerManageTabHasChanges(enableDisableButton = true) 
 	let hasChanges = false;
 
 	// Check basic information
-	changes.id = manageTTSProviderSpeakerIdInput.val().trim();
-	if (changes.id !== CurrentTTSProviderSpeakerData.id) {
+	changes.id = manageTTSProviderModelIdInput.val().trim();
+	if (changes.id !== CurrentTTSProviderModelData.id) {
 		hasChanges = true;
 	}
 
-	changes.name = manageTTSProviderSpeakerNameInput.val().trim();
-	if (changes.name !== CurrentTTSProviderSpeakerData.name) {
+	changes.name = manageTTSProviderModelNameInput.val().trim();
+	if (changes.name !== CurrentTTSProviderModelData.name) {
 		hasChanges = true;
 	}
 
 	// Check price settings
-	changes.pricePerUnit = manageTTSProviderSpeakerPriceInput.val();
-	if (changes.pricePerUnit !== CurrentTTSProviderSpeakerData.pricePerUnit) {
+	changes.pricePerUnit = manageTTSProviderModelPriceInput.val();
+	if (changes.pricePerUnit !== CurrentTTSProviderModelData.pricePerUnit) {
 		hasChanges = true;
 	}
 
-	changes.priceUnit = manageTTSProviderSpeakerPriceUnitInput.val().trim();
-	if (changes.priceUnit !== CurrentTTSProviderSpeakerData.priceUnit) {
-		hasChanges = true;
-	}
-
-	// Check characteristics
-	changes.gender = manageTTSProviderSpeakerGenderSelect.val();
-	if (changes.gender !== CurrentTTSProviderSpeakerData.gender) {
-		hasChanges = true;
-	}
-
-	changes.ageGroup = manageTTSProviderSpeakerAgeGroupSelect.val();
-	if (changes.ageGroup !== CurrentTTSProviderSpeakerData.ageGroup) {
-		hasChanges = true;
-	}
-
-	changes.personality = manageTTSProviderSpeakerPersonalitySelect.val();
-	if (!arraysEqual(changes.personality, CurrentTTSProviderSpeakerData.personality)) {
+	changes.priceUnit = manageTTSProviderModelPriceUnitInput.val().trim();
+	if (changes.priceUnit !== CurrentTTSProviderModelData.priceUnit) {
 		hasChanges = true;
 	}
 
 	// Check language settings
-	changes.isMultilingual = manageTTSProviderSpeakerMultilingualInput.is(":checked");
-	if (changes.isMultilingual !== CurrentTTSProviderSpeakerData.isMultilingual) {
-		hasChanges = true;
-	}
-
 	changes.supportedLanguages = [];
-	manageTTSProviderSpeakerLanguagesContainer.find('input[type="checkbox"]:checked').each(function () {
+	manageTTSProviderModelLanguagesContainer.find('input[type="checkbox"]:checked').each(function () {
 		changes.supportedLanguages.push($(this).val());
 	});
-	if (!arraysEqual(changes.supportedLanguages, CurrentTTSProviderSpeakerData.supportedLanguages)) {
+	if (!arraysEqual(changes.supportedLanguages, CurrentTTSProviderModelData.supportedLanguages)) {
 		hasChanges = true;
 	}
 
-	// Check speaking styles
-	changes.speakingStyles = [];
-	manageTTSProviderSpeakerStylesContainer.find(".speaking-style").each(function () {
-		const style = $(this);
-		const styleData = {
-			id: style.find(".style-id-input").val().trim(),
-			name: style.find(".style-name-input").val().trim(),
-			previewUrl: style.find(".style-preview-url-input").val().trim(),
-			isDefault: style.find(".style-default-check").is(":checked"),
-		};
-		changes.speakingStyles.push(styleData);
-	});
-
-	if (!speakingStylesAreEqual(changes.speakingStyles, CurrentTTSProviderSpeakerData.speakingStyles)) {
+	if (!speakingStylesAreEqual(changes.speakingStyles, CurrentTTSProviderModelData.speakingStyles)) {
 		hasChanges = true;
 	}
 
 	// Check disabled state
-	changes.disabled = manageTTSProviderSpeakerDisabledInput.prop("checked");
-	if (changes.disabled === (CurrentTTSProviderSpeakerData.disabledAt === null)) {
+	changes.disabled = manageTTSProviderModelDisabledInput.prop("checked");
+	if (changes.disabled === (CurrentTTSProviderModelData.disabledAt === null)) {
 		hasChanges = true;
 	}
 
 	if (enableDisableButton) {
-		saveManageTTSProviderSpeakerButton.prop("disabled", !hasChanges);
+		saveManageTTSProviderModelButton.prop("disabled", !hasChanges);
 	}
 
 	return {
@@ -902,179 +836,64 @@ function CheckTTSProviderSpeakerManageTabHasChanges(enableDisableButton = true) 
 	};
 }
 
-function ValidateTTSProviderSpeakerManageTabFields(onlyRemove = true) {
+function ValidateTTSProviderModelManageTabFields(onlyRemove = true) {
 	const errors = [];
 	let validated = true;
 
 	// Validate ID
-	const speakerId = manageTTSProviderSpeakerIdInput.val().trim();
-	if (!speakerId) {
+	const modelId = manageTTSProviderModelIdInput.val().trim();
+	if (!modelId) {
 		validated = false;
-		errors.push("Speaker ID is required");
-		if (!onlyRemove) manageTTSProviderSpeakerIdInput.addClass("is-invalid");
+		errors.push("Model ID is required");
+		if (!onlyRemove) manageTTSProviderModelIdInput.addClass("is-invalid");
 	} else {
-		manageTTSProviderSpeakerIdInput.removeClass("is-invalid");
+		manageTTSProviderModelIdInput.removeClass("is-invalid");
 	}
 
 	// Validate Name
-	const speakerName = manageTTSProviderSpeakerNameInput.val().trim();
-	if (!speakerName) {
+	const modelName = manageTTSProviderModelNameInput.val().trim();
+	if (!modelName) {
 		validated = false;
-		errors.push("Speaker name is required");
-		if (!onlyRemove) manageTTSProviderSpeakerNameInput.addClass("is-invalid");
+		errors.push("Model name is required");
+		if (!onlyRemove) manageTTSProviderModelNameInput.addClass("is-invalid");
 	} else {
-		manageTTSProviderSpeakerNameInput.removeClass("is-invalid");
+		manageTTSProviderModelNameInput.removeClass("is-invalid");
 	}
 
 	// Validate Price
-	const price = manageTTSProviderSpeakerPriceInput.val();
+	const price = manageTTSProviderModelPriceInput.val();
 	if (!price || isNaN(price) || parseFloat(price) <= 0) {
 		validated = false;
 		errors.push("Valid price is required");
-		if (!onlyRemove) manageTTSProviderSpeakerPriceInput.addClass("is-invalid");
+		if (!onlyRemove) manageTTSProviderModelPriceInput.addClass("is-invalid");
 	} else {
-		manageTTSProviderSpeakerPriceInput.removeClass("is-invalid");
+		manageTTSProviderModelPriceInput.removeClass("is-invalid");
 	}
 
 	// Validate Price Unit
-	const priceUnit = manageTTSProviderSpeakerPriceUnitInput.val().trim();
+	const priceUnit = manageTTSProviderModelPriceUnitInput.val().trim();
 	if (!priceUnit) {
 		validated = false;
 		errors.push("Price unit is required");
-		if (!onlyRemove) manageTTSProviderSpeakerPriceUnitInput.addClass("is-invalid");
+		if (!onlyRemove) manageTTSProviderModelPriceUnitInput.addClass("is-invalid");
 	} else {
-		manageTTSProviderSpeakerPriceUnitInput.removeClass("is-invalid");
-	}
-
-	// Validate Gender
-	const gender = manageTTSProviderSpeakerGenderSelect.val();
-	if (!gender) {
-		validated = false;
-		errors.push("Gender selection is required");
-		if (!onlyRemove) manageTTSProviderSpeakerGenderSelect.addClass("is-invalid");
-	} else {
-		manageTTSProviderSpeakerGenderSelect.removeClass("is-invalid");
-	}
-
-	// Validate Age Group
-	const ageGroup = manageTTSProviderSpeakerAgeGroupSelect.val();
-	if (!ageGroup) {
-		validated = false;
-		errors.push("Age group selection is required");
-		if (!onlyRemove) manageTTSProviderSpeakerAgeGroupSelect.addClass("is-invalid");
-	} else {
-		manageTTSProviderSpeakerAgeGroupSelect.removeClass("is-invalid");
+		manageTTSProviderModelPriceUnitInput.removeClass("is-invalid");
 	}
 
 	// Validate Languages
-	const selectedLanguages = manageTTSProviderSpeakerLanguagesContainer.find('input[type="checkbox"]:checked').length;
+	const selectedLanguages = manageTTSProviderModelLanguagesContainer.find('input[type="checkbox"]:checked').length;
 	if (selectedLanguages === 0) {
 		validated = false;
 		errors.push("At least one language must be selected");
-		if (!onlyRemove) manageTTSProviderSpeakerLanguagesContainer.addClass("is-invalid");
+		if (!onlyRemove) manageTTSProviderModelLanguagesContainer.addClass("is-invalid");
 	} else {
-		manageTTSProviderSpeakerLanguagesContainer.removeClass("is-invalid");
-	}
-
-	// Validate Speaking Styles
-	const speakingStyles = manageTTSProviderSpeakerStylesContainer.find(".speaking-style");
-	if (speakingStyles.length === 0) {
-		validated = false;
-		errors.push("At least one speaking style is required");
-	} else {
-		let hasDefault = false;
-		speakingStyles.each(function (index) {
-			const style = $(this);
-			const styleId = style.find(".style-id-input").val().trim();
-			const styleName = style.find(".style-name-input").val().trim();
-			const previewUrl = style.find(".style-preview-url-input").val().trim();
-
-			if (!styleId || !styleName || !previewUrl) {
-				validated = false;
-				errors.push(`Speaking style ${index + 1}: All fields are required`);
-				if (!onlyRemove) {
-					if (!styleId) style.find(".style-id-input").addClass("is-invalid");
-					if (!styleName) style.find(".style-name-input").addClass("is-invalid");
-					if (!previewUrl) style.find(".style-preview-url-input").addClass("is-invalid");
-				}
-			} else {
-				style.find("input").removeClass("is-invalid");
-			}
-
-			if (style.find(".style-default-check").is(":checked")) {
-				hasDefault = true;
-			}
-		});
-
-		if (!hasDefault) {
-			validated = false;
-			errors.push("At least one speaking style must be set as default");
-		}
+		manageTTSProviderModelLanguagesContainer.removeClass("is-invalid");
 	}
 
 	return {
 		validated: validated,
 		errors: errors,
 	};
-}
-
-/** Speaking Styles Functions **/
-function AddSpeakingStyle(styleData = null) {
-	const styleElement = $(`
-        <div class="card mb-3 speaking-style">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <h6 class="card-title mb-0">Speaking Style</h6>
-                    <button type="button" class="btn btn-danger btn-sm remove-style-button">
-                        <i class="fa-regular fa-trash"></i>
-                    </button>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Style ID</label>
-                        <input type="text" class="form-control style-id-input" placeholder="Style ID" 
-                               value="${styleData?.id || ""}">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Style Name</label>
-                        <input type="text" class="form-control style-name-input" placeholder="Style Name" 
-                               value="${styleData?.name || ""}">
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Preview URL</label>
-                    <input type="url" class="form-control style-preview-url-input" placeholder="Preview URL" 
-                           value="${styleData?.previewUrl || ""}">
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input style-default-check" type="checkbox" 
-                           ${styleData?.isDefault ? "checked" : ""}>
-                    <label class="form-check-label">Default Style</label>
-                </div>
-            </div>
-        </div>
-    `);
-
-	manageTTSProviderSpeakerStylesContainer.append(styleElement);
-	CheckTTSProviderSpeakerManageTabHasChanges(true);
-}
-
-/** Helper Functions **/
-
-function speakingStylesAreEqual(styles1, styles2) {
-	if (!styles1 || !styles2) return false;
-	if (styles1.length !== styles2.length) return false;
-
-	for (let i = 0; i < styles1.length; i++) {
-		const style1 = styles1[i];
-		const style2 = styles2[i];
-
-		if (style1.id !== style2.id || style1.name !== style2.name || style1.previewUrl !== style2.previewUrl || style1.isDefault !== style2.isDefault) {
-			return false;
-		}
-	}
-
-	return true;
 }
 
 /** Initialize **/
@@ -1185,65 +1004,49 @@ $(document).ready(() => {
 		);
 	});
 
-	// Speaker List Events
-	addNewTTSProviderSpeakerButton.on("click", (event) => {
+	// Model List Events
+	addNewTTSProviderModelButton.on("click", (event) => {
 		event.preventDefault();
 
-		CurrentTTSProviderSpeakerData = CreateDefaultTTSProviderSpeakerObject();
+		CurrentTTSProviderModelData = CreateDefaultTTSProviderModelObject();
 
-		currentManageSpeakerTTSProviderName.text(CurrentTTSProviderData.id.name);
-		currentManageTTSProviderSpeakerName.text("New Speaker");
+		currentManageModelTTSProviderName.text(CurrentTTSProviderData.id.name);
+		currentManageTTSProviderModelName.text("New Model");
 
-		ResetAndEmptyTTSProviderSpeakerManageTab();
-		FillTTSProviderSpeakerManageTab(CurrentTTSProviderSpeakerData);
+		ResetAndEmptyTTSProviderModelManageTab();
+		FillTTSProviderModelManageTab(CurrentTTSProviderModelData);
 
-		CurrentTTSProviderSpeakerType = "new";
-		ShowTTSProviderSpeakerManageTab();
+		CurrentTTSProviderModelType = "new";
+		ShowTTSProviderModelManageTab();
 	});
 
-	ttsProviderSpeakerListTable.on("click", "button[button-type=edit-tts-provider-speaker]", (event) => {
+	ttsProviderModelListTable.on("click", "button[button-type=edit-tts-provider-Model]", (event) => {
 		event.preventDefault();
 
-		let speakerId = $(event.currentTarget).attr("speaker-id");
-		CurrentTTSProviderSpeakerData = CurrentTTSProviderData.models.find((speaker) => speaker.id === speakerId);
+		let modelId = $(event.currentTarget).attr("model-id");
+		CurrentTTSProviderModelData = CurrentTTSProviderData.models.find((model) => model.id === modelId);
 
-		currentManageSpeakerTTSProviderName.text(CurrentTTSProviderData.id.name);
-		currentManageTTSProviderSpeakerName.text(CurrentTTSProviderSpeakerData.name);
+		currentManageModelTTSProviderName.text(CurrentTTSProviderData.id.name);
+		currentManageTTSProviderModelName.text(CurrentTTSProviderModelData.name);
 
-		ResetAndEmptyTTSProviderSpeakerManageTab();
-		FillTTSProviderSpeakerManageTab(CurrentTTSProviderSpeakerData);
+		ResetAndEmptyTTSProviderModelManageTab();
+		FillTTSProviderModelManageTab(CurrentTTSProviderModelData);
 
-		CurrentTTSProviderSpeakerType = "edit";
-		ShowTTSProviderSpeakerManageTab();
+		CurrentTTSProviderModelType = "edit";
+		ShowTTSProviderModelManageTab();
 	});
 
-	// Speaker Form Events
-	switchBackToTTSProviderManagerSpeakersListTabFromSpeakerTab.on("click", (event) => {
+	// Model Form Events
+	switchBackToTTSProviderManagerModelsListTabFromModelTab.on("click", (event) => {
 		event.preventDefault();
-		CurrentTTSProviderSpeakerType = null;
-		ShowTTSProviderSpeakerListTab();
+		CurrentTTSProviderModelType = null;
+		ShowTTSProviderModelListTab();
 	});
 
 	// Form input change handlers
-	ttsProviderManagerSpeakerManageTab.on("input change", "input, select", () => {
-		if (CurrentTTSProviderSpeakerType === null) return;
-		CheckTTSProviderSpeakerManageTabHasChanges(true);
-	});
-
-	// Multilingual toggle handler
-	manageTTSProviderSpeakerMultilingualInput.on("change", function () {
-		const isMultilingual = $(this).is(":checked");
-		const languageCheckboxes = manageTTSProviderSpeakerLanguagesContainer.find('input[type="checkbox"]');
-
-		if (!isMultilingual) {
-			// If switching to single language, uncheck all except the first checked one
-			const checkedBoxes = languageCheckboxes.filter(":checked");
-			if (checkedBoxes.length > 1) {
-				checkedBoxes.not(":first").prop("checked", false);
-			}
-		}
-
-		CheckTTSProviderSpeakerManageTabHasChanges(true);
+	ttsProviderManagerModelManageTab.on("input change", "input, select", () => {
+		if (CurrentTTSProviderModelType === null) return;
+		CheckTTSProviderModelManageTabHasChanges(true);
 	});
 
 	// Speaking Styles Events
@@ -1252,58 +1055,12 @@ $(document).ready(() => {
 		AddSpeakingStyle();
 	});
 
-	manageTTSProviderSpeakerStylesContainer.on("click", ".remove-style-button", function (event) {
-		event.preventDefault();
-		$(this).closest(".speaking-style").remove();
-		CheckTTSProviderSpeakerManageTabHasChanges(true);
-	});
-
-	// Handle default style selection
-	manageTTSProviderSpeakerStylesContainer.on("change", ".style-default-check", function () {
-		if ($(this).is(":checked")) {
-			// Uncheck other default checkboxes
-			manageTTSProviderSpeakerStylesContainer.find(".style-default-check").not(this).prop("checked", false);
-		}
-		CheckTTSProviderSpeakerManageTabHasChanges(true);
-	});
-
-	// Preview URL audio player
-	manageTTSProviderSpeakerStylesContainer.on("change", ".style-preview-url-input", function () {
-		function isValidUrl(string) {
-			try {
-				new URL(string);
-				return true;
-			} catch (_) {
-				return false;
-			}
-		}
-
-		const url = $(this).val().trim();
-		const audioPlayer = $(this).siblings(".audio-preview");
-
-		if (url && isValidUrl(url)) {
-			if (audioPlayer.length === 0) {
-				$(this).after(`
-                    <audio controls class="audio-preview mt-2 w-100">
-                        <source src="${url}" type="audio/mpeg">
-                        Your browser does not support the audio element.
-                    </audio>
-                `);
-			} else {
-				audioPlayer.find("source").attr("src", url);
-				audioPlayer[0].load();
-			}
-		} else {
-			audioPlayer.remove();
-		}
-	});
-
-	// Save Speaker Button Handler
-	saveManageTTSProviderSpeakerButton.on("click", (event) => {
+	// Save Model Button Handler
+	saveManageTTSProviderModelButton.on("click", (event) => {
 		event.preventDefault();
 		if (IsSavingTTSProviderTab) return;
 
-		const validationResult = ValidateTTSProviderSpeakerManageTabFields(false);
+		const validationResult = ValidateTTSProviderModelManageTabFields(false);
 		if (!validationResult.validated) {
 			AlertManager.createAlert({
 				type: "danger",
@@ -1313,89 +1070,89 @@ $(document).ready(() => {
 			return;
 		}
 
-		const changes = CheckTTSProviderSpeakerManageTabHasChanges(false);
+		const changes = CheckTTSProviderModelManageTabHasChanges(false);
 		if (!changes.hasChanges) return;
 
 		IsSavingTTSProviderTab = true;
-		saveManageTTSProviderSpeakerButton.prop("disabled", true);
+		saveManageTTSProviderModelButton.prop("disabled", true);
 
 		const formData = new FormData();
 		formData.append("providerId", CurrentTTSProviderData.id.value);
-		formData.append("speakerId", changes.changes.id);
-		formData.append("postType", CurrentTTSProviderSpeakerType);
+		formData.append("modelId", changes.changes.id);
+		formData.append("postType", CurrentTTSProviderModelType);
 		formData.append("changes", JSON.stringify(changes.changes));
 
-		SaveTTSProviderSpeakerData(
+		SaveTTSProviderModelData(
 			formData,
 			(saveResponse) => {
 				if (saveResponse.success) {
-					// Update the current speaker data
-					CurrentTTSProviderSpeakerData = saveResponse.data;
+					// Update the current model data
+					CurrentTTSProviderModelData = saveResponse.data;
 
-					// Update the speakers list in the provider data
-					const speakerIndex = CurrentTTSProviderData.models.findIndex((s) => s.id === CurrentTTSProviderSpeakerData.id);
+					// Update the models list in the provider data
+					const modelIndex = CurrentTTSProviderData.models.findIndex((s) => s.id === CurrentTTSProviderModelData.id);
 
-					if (speakerIndex !== -1) {
-						CurrentTTSProviderData.models[speakerIndex] = CurrentTTSProviderSpeakerData;
+					if (modelIndex !== -1) {
+						CurrentTTSProviderData.models[modelIndex] = CurrentTTSProviderModelData;
 					} else {
-						CurrentTTSProviderData.models.push(CurrentTTSProviderSpeakerData);
+						CurrentTTSProviderData.models.push(CurrentTTSProviderModelData);
 					}
 
-					// Update the speakers table
-					const speakerRow = ttsProviderSpeakerListTable.find(`tr button[speaker-id="${CurrentTTSProviderSpeakerData.id}"]`).closest("tr");
+					// Update the models table
+					const modelRow = ttsProviderModelListTable.find(`tr button[model-id="${CurrentTTSProviderModelData.id}"]`).closest("tr");
 
-					if (speakerRow.length) {
-						speakerRow.replaceWith($(CreateTTSProviderSpeakerListTableElement(CurrentTTSProviderSpeakerData)));
+					if (modelRow.length) {
+						modelRow.replaceWith($(CreateTTSProviderModelListTableElement(CurrentTTSProviderModelData)));
 					} else {
-						ttsProviderSpeakerListTable.find("tbody tr[tr-type='none-notice']").remove();
-						ttsProviderSpeakerListTable.find("tbody").append($(CreateTTSProviderSpeakerListTableElement(CurrentTTSProviderSpeakerData)));
+						ttsProviderModelListTable.find("tbody tr[tr-type='none-notice']").remove();
+						ttsProviderModelListTable.find("tbody").append($(CreateTTSProviderModelListTableElement(CurrentTTSProviderModelData)));
 					}
 
 					AlertManager.createAlert({
 						type: "success",
-						message: "TTS provider speaker saved successfully.",
+						message: "TTS provider model saved successfully.",
 						timeout: 6000,
 					});
 
-					ShowTTSProviderSpeakerListTab();
+					ShowTTSProviderModelListTab();
 				} else {
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occurred while saving TTS provider speaker.",
+						message: "Error occurred while saving TTS provider model.",
 						timeout: 6000,
 					});
 				}
 
-				saveManageTTSProviderSpeakerButton.prop("disabled", false);
+				saveManageTTSProviderModelButton.prop("disabled", false);
 				IsSavingTTSProviderTab = false;
 			},
 			(error, isUnsuccessful) => {
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occurred while saving TTS provider speaker.",
+					message: "Error occurred while saving TTS provider model.",
 					timeout: 6000,
 				});
 				console.error("Save error:", error);
 
-				saveManageTTSProviderSpeakerButton.prop("disabled", false);
+				saveManageTTSProviderModelButton.prop("disabled", false);
 				IsSavingTTSProviderTab = false;
 			},
 		);
 	});
 
 	// Search functionality
-	searchTTSProviderSpeakerButton.on("click", (event) => {
+	searchTTSProviderModelButton.on("click", (event) => {
 		event.preventDefault();
-		const searchTerm = searchTTSProviderSpeakerInput.val().toLowerCase().trim();
+		const searchTerm = searchTTSProviderModelInput.val().toLowerCase().trim();
 
-		ttsProviderSpeakerListTable.find("tbody tr").each(function () {
+		ttsProviderModelListTable.find("tbody tr").each(function () {
 			const row = $(this);
 			if (row.attr("tr-type") === "none-notice") return;
 
-			const speakerId = row.find("td:first").text().toLowerCase();
-			const speakerName = row.find("td:eq(1)").text().toLowerCase();
+			const modelId = row.find("td:first").text().toLowerCase();
+			const modelName = row.find("td:eq(1)").text().toLowerCase();
 
-			if (speakerId.includes(searchTerm) || speakerName.includes(searchTerm)) {
+			if (modelId.includes(searchTerm) || modelName.includes(searchTerm)) {
 				row.show();
 			} else {
 				row.hide();

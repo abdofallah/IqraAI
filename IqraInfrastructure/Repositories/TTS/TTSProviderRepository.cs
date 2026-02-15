@@ -23,9 +23,18 @@ namespace IqraInfrastructure.Repositories.TTS
             _ttsProviderCollection = database.GetCollection<TTSProviderData>(CollectionName);
         }
 
-        public async Task AddProviderAsync(TTSProviderData providerData)
+        public async Task<bool> AddProviderAsync(TTSProviderData providerData)
         {
-            await _ttsProviderCollection.InsertOneAsync(providerData);
+            try
+            {
+                await _ttsProviderCollection.InsertOneAsync(providerData);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding tts provider");
+                return false;
+            }
         }
 
         public async Task<TTSProviderData?> GetProviderAsync(InterfaceTTSProviderEnum id)
@@ -68,97 +77,21 @@ namespace IqraInfrastructure.Repositories.TTS
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
 
-        public async Task<UpdateResult> AddSpeakerAsync(InterfaceTTSProviderEnum providerId, TTSProviderSpeakerData speakerData)
+        public async Task<UpdateResult> AddModelAsync(InterfaceTTSProviderEnum providerId, TTSProviderModelData modelData)
         {
             var filter = Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId);
-            var update = Builders<TTSProviderData>.Update.Push(x => x.Models, speakerData);
+            var update = Builders<TTSProviderData>.Update.Push(x => x.Models, modelData);
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
 
-        public async Task<UpdateResult> UpdateSpeakerAsync(InterfaceTTSProviderEnum providerId, TTSProviderSpeakerData speakerData)
+        public async Task<UpdateResult> UpdateModelAsync(InterfaceTTSProviderEnum providerId, TTSProviderModelData modelData)
         {
             var filter = Builders<TTSProviderData>.Filter.And(
                 Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerData.Id)
+                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == modelData.Id)
             );
 
-            var update = Builders<TTSProviderData>.Update.Set(x => x.Models.FirstMatchingElement(), speakerData);
-            return await _ttsProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<UpdateResult> DisableSpeakerAsync(InterfaceTTSProviderEnum providerId, string speakerId)
-        {
-            var filter = Builders<TTSProviderData>.Filter.And(
-                Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerId)
-            );
-
-            var update = Builders<TTSProviderData>.Update
-                .Set(x => x.Models.FirstMatchingElement().DisabledAt, DateTime.UtcNow);
-            return await _ttsProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<UpdateResult> EnableSpeakerAsync(InterfaceTTSProviderEnum providerId, string speakerId)
-        {
-            var filter = Builders<TTSProviderData>.Filter.And(
-                Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerId)
-            );
-
-            var update = Builders<TTSProviderData>.Update
-                .Set(x => x.Models.FirstMatchingElement().DisabledAt, null);
-            return await _ttsProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<TTSProviderSpeakerData?> GetSpeakerAsync(InterfaceTTSProviderEnum providerId, string speakerId)
-        {
-            var provider = await _ttsProviderCollection
-                .Find(x => x.Id == providerId)
-                .FirstOrDefaultAsync();
-
-            return provider?.Models.FirstOrDefault(s => s.Id == speakerId);
-        }
-
-        public async Task<UpdateResult> UpdateSpeakerLanguagesAsync(
-            InterfaceTTSProviderEnum providerId,
-            string speakerId,
-            List<string> supportedLanguages,
-            bool isMultilingual)
-        {
-            var filter = Builders<TTSProviderData>.Filter.And(
-                Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerId)
-            );
-
-            var update = Builders<TTSProviderData>.Update
-                .Set(x => x.Models.FirstMatchingElement().SupportedLanguages, supportedLanguages)
-                .Set(x => x.Models.FirstMatchingElement().IsMultilingual, isMultilingual);
-
-            return await _ttsProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<UpdateResult> UpdateSpeakingStylesAsync(
-            InterfaceTTSProviderEnum providerId,
-            string speakerId,
-            List<TTSProviderSpeakingStyleData> speakingStyles)
-        {
-            var filter = Builders<TTSProviderData>.Filter.And(
-                Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerId)
-            );
-
-            var update = Builders<TTSProviderData>.Update
-                .Set(x => x.Models.FirstMatchingElement().SpeakingStyles, speakingStyles);
-
-            return await _ttsProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<UpdateResult> RemoveSpeakerAsync(InterfaceTTSProviderEnum providerId, string speakerId)
-        {
-            var filter = Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId);
-            var update = Builders<TTSProviderData>.Update
-                .PullFilter(x => x.Models, s => s.Id == speakerId);
-
+            var update = Builders<TTSProviderData>.Update.Set(x => x.Models.FirstMatchingElement(), modelData);
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
 

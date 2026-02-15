@@ -4,12 +4,14 @@ using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.PostAnalysis;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Languages;
 using IqraCore.Entities.WebSession;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Helpers;
 using IqraInfrastructure.Helpers.Conversation;
 using IqraInfrastructure.Helpers.Json;
 using IqraInfrastructure.Managers.Conversation.Session.Logger;
+using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using IqraInfrastructure.Repositories.Conversation;
@@ -27,20 +29,27 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
         private readonly ILogger<ConversationSessionPostAnalysisService> _logger;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly LLMProviderManager _llmProviderManager;
+        private readonly LanguagesManager _languagesManager;
 
         public ConversationSessionPostAnalysisService(
             SessionLoggerFactory loggerFactory,
             ConversationStateRepository conversationStateRepository,
-            LLMProviderManager llmProviderManager
+            LLMProviderManager llmProviderManager,
+            LanguagesManager languagesManager
         ) {
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<ConversationSessionPostAnalysisService>();
             _conversationStateRepository = conversationStateRepository;
             _llmProviderManager = llmProviderManager;
+            _languagesManager = languagesManager;
         }
 
-        public async Task PerformTelephonyOutboundSessionPostCallAnalysis(string sessionId, BusinessApp businessAppData, OutboundCallQueueData callQueueData, BusinessAppTelephonyCampaign campaignData)
-        {
+        public async Task PerformTelephonyOutboundSessionPostCallAnalysis(
+            string sessionId,
+            BusinessApp businessAppData,
+            OutboundCallQueueData callQueueData,
+            BusinessAppTelephonyCampaign campaignData
+        ) {
             try
             {
                 // Initital Checks
@@ -116,7 +125,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 }
                 var promptContext = promptContextResult.Data!;
 
-                await ProcessPostAnalysisTasks(sessionId, businessAppData, postAnalysisData, promptContext);
+                var defaultLanguageDataResult = await _languagesManager.GetLanguageByCode(campaignData.Agent.Language, withPrompts: true);
+                if (!defaultLanguageDataResult.Success)
+                {
+                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
+
+                    _logger.LogError("Failed to get default language data for post call analysis for post analysis ID {PostAnalysisId}", postAnalysisId);
+                    return;
+                }
+
+                await ProcessPostAnalysisTasks(sessionId, businessAppData, postAnalysisData, promptContext, defaultLanguageDataResult.Data!);
             }
             catch (Exception ex)
             {
@@ -201,7 +219,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 }
                 var promptContext = promptContextResult.Data!;
 
-                await ProcessPostAnalysisTasks(sessionId, businessAppData, postAnalysisData, promptContext);
+                var defaultLanguageDataResult = await _languagesManager.GetLanguageByCode(routeData.Language.DefaultLanguageCode, withPrompts: true);
+                if (!defaultLanguageDataResult.Success)
+                {
+                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
+
+                    _logger.LogError("Failed to get default language data for post call analysis for post analysis ID {PostAnalysisId}", postAnalysisId);
+                    return;
+                }
+
+                await ProcessPostAnalysisTasks(sessionId, businessAppData, postAnalysisData, promptContext, defaultLanguageDataResult.Data!);
             }
             catch (Exception ex)
             {
@@ -286,7 +313,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 }
                 var promptContext = promptContextResult.Data!;
 
-                await ProcessPostAnalysisTasks(sessionId, businessAppData, postAnalysisData, promptContext);
+                var defaultLanguageDataResult = await _languagesManager.GetLanguageByCode(campaignData.Agent.Language, withPrompts: true);
+                if (!defaultLanguageDataResult.Success)
+                {
+                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
+
+                    _logger.LogError("Failed to get default language data for post call analysis for post analysis ID {PostAnalysisId}", postAnalysisId);
+                    return;
+                }
+
+                await ProcessPostAnalysisTasks(sessionId, businessAppData, postAnalysisData, promptContext, defaultLanguageDataResult.Data!);
             }
             catch (Exception ex)
             {
@@ -295,7 +331,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
             }
         }
 
-        private async Task ProcessPostAnalysisTasks(string sessionId, BusinessApp businessAppData, BusinessAppPostAnalysis postAnalysisData, string promptContext)
+        private async Task ProcessPostAnalysisTasks(string sessionId, BusinessApp businessAppData, BusinessAppPostAnalysis postAnalysisData, string promptContext, LanguagesData defaultLanguageData)
         {
             // Run Processing Tasks
             Task<FunctionReturnResult<ConversationSummaryGenerationResultData?>>? summaryGenerationTask = null;
@@ -303,17 +339,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
             Task<FunctionReturnResult<List<ConversationPostAnalsysisExtractionFieldResultData>?>>? extractionTask = null;
             if (postAnalysisData.Summary.IsActive)
             {
-                summaryGenerationTask = PerformConversationSummaryGeneration(sessionId, businessAppData, postAnalysisData, promptContext);
+                summaryGenerationTask = PerformConversationSummaryGeneration(sessionId, businessAppData, postAnalysisData, promptContext, defaultLanguageData);
                 _logger.LogDebug("Generating summary for post analysis ID {PostAnalysisId}", postAnalysisData.Id);
             }
             if (postAnalysisData.Tagging.IsActive)
             {
-                taggingTask = PerformConversationTagging(sessionId, businessAppData, postAnalysisData, promptContext);
+                taggingTask = PerformConversationTagging(sessionId, businessAppData, postAnalysisData, promptContext, defaultLanguageData);
                 _logger.LogDebug("Generating tagging for post analysis ID {PostAnalysisId}", postAnalysisData.Id);
             }
             if (postAnalysisData.Extraction.IsActive)
             {
-                extractionTask = PerformConversationExtraction(sessionId, businessAppData, postAnalysisData, promptContext);
+                extractionTask = PerformConversationExtraction(sessionId, businessAppData, postAnalysisData, promptContext, defaultLanguageData);
                 _logger.LogDebug("Generating extraction for post analysis ID {PostAnalysisId}", postAnalysisData.Id);
             }
             await Task.WhenAll(summaryGenerationTask ?? Task.CompletedTask, taggingTask ?? Task.CompletedTask, extractionTask ?? Task.CompletedTask);
@@ -384,8 +420,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
         }
 
         // Processing
-        private async Task<FunctionReturnResult<ConversationSummaryGenerationResultData?>> PerformConversationSummaryGeneration(string sessionId, BusinessApp businessAppData, BusinessAppPostAnalysis postAnalysisData, string context)
-        {
+        private async Task<FunctionReturnResult<ConversationSummaryGenerationResultData?>> PerformConversationSummaryGeneration(
+            string sessionId,
+            BusinessApp businessAppData,
+            BusinessAppPostAnalysis postAnalysisData,
+            string context,
+            LanguagesData defaultLanguageData
+        ) {
             var result = new FunctionReturnResult<ConversationSummaryGenerationResultData?>();
 
             try
@@ -401,29 +442,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 var llmService = llmServiceResult.Data!;
 
                 // --- Refined System Prompt ---
-                var systemPrompt = $@"You are an expert AI assistant. Your task is to analyze the provided conversation context and generate a concise, accurate summary.
-
-Follow these user-provided guidelines for constructing the summary:
-<guidelines>
-{postAnalysisData.Summary.Prompt}
-</guidelines>
-
-You MUST respond with a JSON object enclosed in a ```json code block.
-The JSON object must have two keys: ""Thinking"" and ""Summary"".
-- ""Thinking"": Briefly explain your reasoning and the thought process behind the summary you are about to write.
-- ""Summary"": The final generated summary based on the conversation and the guidelines.
-
-Example Response Format:
-```json
-{{
-    ""Thinking"": ""The user expressed frustration about a billing error. The agent successfully identified the issue, apologized, and provided a clear resolution path. The summary should capture these key points."",
-    ""Summary"": ""The customer called regarding an incorrect charge on their recent invoice. The agent investigated the issue, confirmed a billing system error, and processed a credit for the overcharged amount. The customer was satisfied with the resolution.""
-}}
-```";
+                var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisSummaryGenerationPrompt.Replace("{{USER_DEFINED_SUMMARY_PROMPT}}", postAnalysisData.Summary.Prompt);
+                var promptQuery = defaultLanguageData.Prompts.PostAnalaysisSummaryGenerationPromptQuery.Replace("{{CONTEXT}}", context);
 
                 llmService.SetSystemPrompt(systemPrompt);
                 llmService.SetMaxTokens(10000);
-                llmService.AddUserMessage($"{context}\n\nGenerate the summary in the specified JSON format.");
+                llmService.AddUserMessage(promptQuery);
 
                 StringBuilder responseBuilder = new StringBuilder();
                 bool isStreamingEnded = false;
@@ -535,8 +559,13 @@ Example Response Format:
                 );
             }
         }
-        private async Task<FunctionReturnResult<List<ConversationPostAnalsysisTaggingResultData>?>> PerformConversationTagging(string sessionId, BusinessApp businessAppData, BusinessAppPostAnalysis postAnalysisData, string context)
-        {
+        private async Task<FunctionReturnResult<List<ConversationPostAnalsysisTaggingResultData>?>> PerformConversationTagging(
+            string sessionId,
+            BusinessApp businessAppData,
+            BusinessAppPostAnalysis postAnalysisData,
+            string context,
+            LanguagesData defaultLanguageData
+        ) {
             var result = new FunctionReturnResult<List<ConversationPostAnalsysisTaggingResultData>?>();
 
             try
@@ -561,117 +590,12 @@ Example Response Format:
                 string tagDefinitionsJson = GenerateTagDefinitionsForPrompt(postAnalysisData.Tagging.Tags);
 
                 // --- 2. Construct the detailed system prompt ---
-                var systemPrompt = $@"You are an expert conversation classification AI. Your task is to analyze a conversation and classify it by selecting the most appropriate tags from a predefined hierarchical structure.
-
-Here are the available tag categories and their sub-tags, including their descriptions, IDs, and rules, in JSON format:
-<available_tags>
-{tagDefinitionsJson}
-</available_tags>
-
----
-**CRITICAL RULES & LOGIC**
----
-
-**MAIN DIRECTIVE: A parent category should ONLY be included in the final JSON output IF you select one or more of its sub-tags.**
-
-Follow these rules with absolute precision:
-1.  **Analyze the Conversation**: First, understand the context of the conversation.
-2.  **Select Sub-Tags**: Based on the context, decide which specific sub-tags are relevant from the `<available_tags>`.
-3.  **Construct the Output**:
-    - For each parent category where you selected at least one sub-tag, create a parent object in your response.
-    - Nest the selected sub-tag(s) within that parent's `SubTags` array.
-4.  **Handle Required Categories (`IsRequired: true`)**: For these categories, you MUST find and select at least one relevant sub-tag. Therefore, these parent categories will almost always appear in your output.
-5.  **Handle Optional Categories (`IsRequired: false`)**: For these categories, you should ONLY include the parent category in your output IF you find a relevant sub-tag to select. If no sub-tags are relevant, **OMIT the entire parent category from your response.** Do not include it with an empty `SubTags` array.
-6.  **Single vs. Multiple Choices (`AllowMultiple`)**: If `AllowMultiple: false`, you must select exactly one sub-tag for that level. If `AllowMultiple: true`, you may select one or more. This rule applies at each level of the hierarchy.
-7.  **IDs and Thinking**:
-    - The `TagId` for the parent object must be the ID of the category. The `Thinking` should justify why this entire category is relevant.
-    - The `TagId` for the nested object must be the ID of the specific sub-tag you chose. The `Thinking` should justify why you chose that specific sub-tag.
-
----
-**EXAMPLE SCENARIO**
----
-
-**Example Available Tags:**
-```json
-[
-  {{
-    ""Id"": ""call-outcome-id"", ""Name"": ""Call Outcome"", ""Rules"": {{ ""IsRequired"": true, ""AllowMultiple"": false }},
-    ""SubTags"": [
-      {{ ""Id"": ""resolved-id"", ""Name"": ""Resolved"" }},
-      {{ ""Id"": ""escalated-id"", ""Name"": ""Escalated"" }}
-    ]
-  }},
-  {{
-    ""Id"": ""features-mentioned-id"", ""Name"": ""Features Mentioned"", ""Rules"": {{ ""IsRequired"": false, ""AllowMultiple"": true }},
-    ""SubTags"": [
-      {{ ""Id"": ""dashboard-feature-id"", ""Name"": ""Dashboard"" }},
-      {{ ""Id"": ""reporting-feature-id"", ""Name"": ""Reporting"" }}
-    ]
-  }}
-]
-```
-
-**Example Conversation Context:** ""Hi, I was having trouble with the main dashboard page, but your previous agent fixed it for me. Thanks for the great support!""
-
-**Correct JSON Response:**
-```json
-{{
-  ""appliedTags"": [
-    {{
-      ""Thinking"": ""The call had a clear resolution, so the 'Call Outcome' category is relevant."",
-      ""TagId"": ""call-outcome-id"",
-      ""SubTags"": [
-        {{
-          ""Thinking"": ""The user stated their problem was 'fixed', which directly maps to the 'Resolved' sub-tag."",
-          ""TagId"": ""resolved-id"",
-          ""SubTags"": []
-        }}
-      ]
-    }},
-    {{
-      ""Thinking"": ""The user explicitly mentioned a product feature, making the 'Features Mentioned' category relevant."",
-      ""TagId"": ""features-mentioned-id"",
-      ""SubTags"": [
-        {{
-          ""Thinking"": ""The user specifically mentioned the 'dashboard page', corresponding to the 'Dashboard' sub-tag."",
-          ""TagId"": ""dashboard-feature-id"",
-          ""SubTags"": []
-        }}
-      ]
-    }}
-  ]
-}}
-```
-
-**INCORRECT Response (What NOT to do):**
-```json
-// THIS IS WRONG.
-{{
-  ""appliedTags"": [
-    {{
-      ""Thinking"": ""The call was resolved."",
-      ""TagId"": ""resolved-id"", // WRONG: This is a sub-tag ID at the top level.
-      ""SubTags"": []
-    }},
-    {{
-      ""Thinking"": ""A feature was mentioned."",
-      ""TagId"": ""features-mentioned-id"", // Partially correct, but...
-      ""SubTags"": [] // WRONG: A relevant sub-tag was available but not selected and nested.
-    }}
-  ]
-}}
-```
-
----
-**END OF EXAMPLE**
----
-
-You MUST now analyze the real conversation context and provide the classification in the specified JSON format, following all the rules and the logic demonstrated in the example.
-";
+                var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisTagsClassificationPrompt.Replace("{{TAG_DEFINITIONS_JSON}}", tagDefinitionsJson);
+                var promptQuery = defaultLanguageData.Prompts.PostAnalaysisTagsClassificationPromptQuery.Replace("{{CONTEXT}}", context);        
 
                 llmService.SetSystemPrompt(systemPrompt);
                 llmService.SetMaxTokens(10000);
-                llmService.AddUserMessage($"{context}\n\nAnalyze the conversation and provide the classification in the specified JSON format.");
+                llmService.AddUserMessage(promptQuery);
 
                 // --- 3. Full streaming & processing logic ---
                 StringBuilder responseBuilder = new StringBuilder();
@@ -786,8 +710,13 @@ You MUST now analyze the real conversation context and provide the classificatio
                 );
             }
         }
-        private async Task<FunctionReturnResult<List<ConversationPostAnalsysisExtractionFieldResultData>?>> PerformConversationExtraction(string sessionId, BusinessApp businessAppData, BusinessAppPostAnalysis postAnalysisData, string context)
-        {
+        private async Task<FunctionReturnResult<List<ConversationPostAnalsysisExtractionFieldResultData>?>> PerformConversationExtraction(
+            string sessionId,
+            BusinessApp businessAppData,
+            BusinessAppPostAnalysis postAnalysisData,
+            string context,
+            LanguagesData defaultLanguageData
+        ) {
             var result = new FunctionReturnResult<List<ConversationPostAnalsysisExtractionFieldResultData>?>();
 
             try
@@ -812,108 +741,12 @@ You MUST now analyze the real conversation context and provide the classificatio
                 string fieldDefinitionsJson = GenerateFieldDefinitionsForPrompt(postAnalysisData.Extraction.Fields);
 
                 // --- 2. Construct the highly detailed system prompt ---
-                var systemPrompt = $@"You are a highly precise AI data extraction engine. Your task is to analyze a conversation and extract specific pieces of information into a structured JSON format based on a provided schema.
-
-Here is the schema of fields you must extract. Adhere to it STRICTLY:
-<extraction_schema>
-{fieldDefinitionsJson}
-</extraction_schema>
-
----
-**CRITICAL INSTRUCTIONS FOR EXTRACTION**
----
-
-1.  **Analyze the Conversation**: Read the entire conversation context to find the values for each field defined in the schema.
-2.  **Adhere to Data Types**: You MUST respect the `dataType` for each field:
-    - `String`: Extract the text as a string.
-    - `Boolean`: The value must be either `true` or `false`.
-    - `Number`: The value must be a valid integer or decimal number.
-    - `DateTime`: The value must be a string in ISO 8601 format: `YYYY-MM-DDTHH:MM:SSZ`.
-    - `Enum`: The value MUST be one of the exact strings provided in the `options` array.
-3.  **Follow Field Rules**:
-    - `isRequired: true`: You MUST provide a value. If not explicitly stated, make the most logical inference from the context.
-    - `isEmptyOrNullAllowed: true`: If the information for an optional field is not found, you MUST use `null` as the `FieldValue`.
-4.  **Execute Conditional Logic (Most Important Rule)**:
-    - **IF** you extract a value for a parent field, **THEN** you must immediately check its `conditionalRules`.
-    - **IF** the extracted value meets a rule's `condition` (e.g., `FieldValue` is `true` and the condition `operator` is `Equals` and `value` is `""true""`), you **MUST** then proceed to extract all the `fieldsToExtract` defined within that specific rule. This process is recursive.
-5.  **Use Correct IDs**: ONLY use the `FieldId` provided in the schema. Do not invent your own.
-
----
-**EXAMPLE SCENARIO**
----
-
-**Example Extraction Schema (`<extraction_schema>`):**
-```json
-[
-  {{
-    ""Id"": ""is-interested-id"", ""KeyName"": ""isInterested"", ""Description"": ""Did the customer express interest in proceeding?"",
-    ""IsRequired"": true, ""DataType"": 1,
-    ""ConditionalRules"": [
-      {{
-        ""Condition"": {{ ""Operator"": 0, ""Value"": ""true"" }},
-        ""FieldsToExtract"": [
-          {{ ""Id"": ""contact-method-id"", ""KeyName"": ""contactMethod"", ""IsRequired"": true, ""DataType"": 4, ""Options"": [""Email"", ""Phone Call"", ""WhatsApp""] }},
-          {{ ""Id"": ""email-address-id"", ""KeyName"": ""emailAddress"", ""IsRequired"": false, ""IsEmptyOrNullAllowed"": true, ""DataType"": 0 }}
-        ]
-      }}
-    ]
-  }},
-  {{
-    ""Id"": ""source-campaign-id"", ""KeyName"": ""sourceCampaign"", ""Description"": ""Was a source campaign mentioned?"",
-    ""IsRequired"": false, ""IsEmptyOrNullAllowed"": true, ""DataType"": 0
-  }}
-]
-```
-
-**Example Conversation Context:** ""Yes, that sounds very interesting. Could you please send me more information? My email is info@example.com.""
-
-**Correct JSON Response:**
-```json
-{{
-  ""extractedFields"": [
-    {{
-      ""Thinking"": ""The user said 'sounds very interesting' and asked for more info, which clearly indicates interest."",
-      ""FieldId"": ""is-interested-id"",
-      ""FieldValue"": true,
-      ""ConditionalExtractedFields"": [
-        {{
-          ""Thinking"": ""The user requested information be sent and then provided an email address, so the contact method is 'Email'."",
-          ""FieldId"": ""contact-method-id"",
-          ""FieldValue"": ""Email"",
-          ""ConditionalExtractedFields"": []
-        }},
-        {{
-          ""Thinking"": ""The user explicitly stated their email is 'info@example.com'."",
-          ""FieldId"": ""email-address-id"",
-          ""FieldValue"": ""info@example.com"",
-          ""ConditionalExtractedFields"": []
-        }}
-      ]
-    }},
-    {{
-      ""Thinking"": ""No marketing campaign or source was mentioned in the conversation."",
-      ""FieldId"": ""source-campaign-id"",
-      ""FieldValue"": null,
-      ""ConditionalExtractedFields"": []
-    }}
-  ]
-}}
-```
-**Explanation of the Correct Response:**
-- The top-level field `is-interested-id` was extracted as `true`.
-- **Because** its value was `true`, the conditional rule was triggered, and the AI proceeded to extract the nested fields `contact-method-id` and `email-address-id`.
-- The second top-level field, `source-campaign-id`, was optional and its information was not present in the conversation. Therefore, it was correctly included with a `FieldValue` of `null` as per the rule `isEmptyOrNullAllowed: true`.
-
----
-**END OF EXAMPLE**
----
-
-You MUST now analyze the real conversation context and provide the extraction in the specified JSON format, following all rules and the logic demonstrated in the example.
-";
+                var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisDataExtractionPrompt.Replace("{{FIELD_DEFINITIONS_JSON}}", fieldDefinitionsJson);
+                var queryPrompt = defaultLanguageData.Prompts.PostAnalaysisDataExtractionPromptQuery.Replace("{{CONTEXT}}", context);
 
                 llmService.SetSystemPrompt(systemPrompt);
                 llmService.SetMaxTokens(10000);
-                llmService.AddUserMessage($"{context}\n\nPerform the extraction based on the schema and rules, providing the output in the specified JSON format.");
+                llmService.AddUserMessage(queryPrompt);
 
                 // --- 3. Full streaming & processing logic ---
                 StringBuilder responseBuilder = new StringBuilder();

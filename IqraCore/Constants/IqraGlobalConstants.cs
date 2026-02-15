@@ -3,7 +3,7 @@
     public class IqraGlobalConstants
     {
         // Semantic Versioning
-        public const string CurrentAppVersion = "1.0.0";
+        public const string CurrentAppVersion = "0.1.0";
 
         // Configuration Keys
         public const string RemoteUpdateManifestUrl = "https://raw.githubusercontent.com/abdofallah/IqraAI/main/.app/updates.json";

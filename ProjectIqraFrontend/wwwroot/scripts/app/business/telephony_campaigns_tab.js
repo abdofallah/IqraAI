@@ -2014,8 +2014,8 @@ function fillTelephonyCampaignVoicemailTab() {
     telephonyCampaignVoicemailVADMaxSpeechDurationMSInput.val(data.voiceMailMessageVADMaxSpeechDurationMS);
 
     telephonyCampaignVoicemailAdvancedVerificationCheck.prop('checked', data.onVoiceMailMessageDetectVerifySTTAndLLM).change();
-    if (telephonyCampaignVoicemailSTTIntegrationManager) telephonyCampaignVoicemailSTTIntegrationManager.load(data.transcribeVoiceMessageSTT);
-    if (telephonyCampaignVoicemailLLMIntegrationManager) telephonyCampaignVoicemailLLMIntegrationManager.load(data.verifyVoiceMessageLLM);
+    if (telephonyCampaignVoicemailSTTIntegrationManager) telephonyCampaignVoicemailSTTIntegrationManager.load(data.transcribeVoiceMessageSTT, BusinessFullData.businessApp.integrations);
+    if (telephonyCampaignVoicemailLLMIntegrationManager) telephonyCampaignVoicemailLLMIntegrationManager.load(data.verifyVoiceMessageLLM, BusinessFullData.businessApp.integrations);
 
     telephonyCampaignStopAgentOnMLCheck.prop('checked', data.stopSpeakingAgentAfterMlCheckSuccess);
     telephonyCampaignStopAgentOnVADCheck.prop('checked', data.stopSpeakingAgentAfterVadSilence);

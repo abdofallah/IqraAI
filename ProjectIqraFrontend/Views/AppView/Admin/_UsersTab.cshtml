@@ -1,17 +1,24 @@
-﻿<div class="main-container fade w-100 d-none" id="users-tab">
-    <h3 class="fw-bold tab-title"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
-    <div class="inner-container">
-        <!-- Manager Inner Tabs -->
-        <div class="mb-3">
-            <ul class="nav w-100 fade show" id="users-inner-tab" role="tablist">
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link disabled" id="users-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-analytics" type="button" role="tab" aria-controls="users-analytics" aria-selected="true">Analytics</button>
-                </li>
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link active" id="users-list-tab" data-bs-toggle="pill" data-bs-target="#users-list" type="button" role="tab" aria-controls="users-list" aria-selected="true">List</button>
-                </li>
-            </ul>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="users-manage-breadcrumb">
+﻿@using IqraCore.Entities.Server.Configuration
+@inject FrontendAppConfig FrontendAppConfig
+
+<div class="main-container fade w-100 d-none" id="users-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
+
+    <div class="inner-header-container mb-3">
+        
+        <!-- List Header -->
+        <ul class="nav w-100 fade show" id="users-inner-header" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link disabled" id="users-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-analytics" type="button" role="tab" aria-controls="users-analytics" aria-selected="true">Analytics</button>
+            </li>
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="users-list-tab" data-bs-toggle="pill" data-bs-target="#users-list" type="button" role="tab" aria-controls="users-list" aria-selected="true">List</button>
+            </li>
+        </ul>
+
+        <!-- Manager Header -->
+        <div class="w-100 fade d-none" id="users-manager-inner-header">
+            <nav class="mb-3" aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item">
                         <a href="#" id="switchBackToUsersListTabFromManageTab">Users</a>
@@ -19,7 +26,43 @@
                     <li class="breadcrumb-item active" aria-current="page"><span id="currentManageUserName">User</span></li>
                 </ol>
             </nav>
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <ul class="nav" id="users-manage-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="users-manage-general-tab" data-bs-toggle="pill" data-bs-target="#users-manage-general" type="button" role="tab" aria-controls="users-manage-general" aria-selected="true">General</button>
+                    </li>
+                    @{
+                        if (FrontendAppConfig.IsCloudVersion)
+                        {
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="users-manage-billing-tab-button" data-bs-toggle="pill" data-bs-target="#users-manage-billing-content" type="button" role="tab" aria-controls="users-manage-billing-content" aria-selected="false">Billing</button>
+                            </li>
+                        }
+                    }
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="users-manage-actions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-actions" type="button" role="tab" aria-controls="users-manage-actions" aria-selected="true">Actions</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="users-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-permissions" type="button" role="tab" aria-controls="users-manage-permissions" aria-selected="true">Permissions</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="users-manage-businesses-tab" data-bs-toggle="pill" data-bs-target="#users-manage-businesses" type="button" role="tab" aria-controls="users-manage-businesses" aria-selected="true">Businesses</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link disabled" id="users-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-manage-analytics" type="button" role="tab" aria-controls="users-manage-analytics" aria-selected="true">Analytics</button>
+                    </li>
+                </ul>
+
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="usersManageSaveButton">
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
         </div>
+    </div>
+
+    <div class="inner-container">
+        
         <!-- Tab Content -->
         <div class="tab-content w-100" id="users-inner-tabContent">
             <!-- Analytics -->
@@ -60,34 +103,6 @@
                 </div>
                 <!-- Users Manage Tab -->
                 <div class="fade w-100 d-none" id="usersManageTab">
-                    <!-- Header Tab -->
-                    <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
-                        <ul class="nav" id="users-manage-tab" role="tablist">
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="users-manage-general-tab" data-bs-toggle="pill" data-bs-target="#users-manage-general" type="button" role="tab" aria-controls="users-manage-general" aria-selected="true">General</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="users-manage-billing-tab-button" data-bs-toggle="pill" data-bs-target="#users-manage-billing-content" type="button" role="tab" aria-controls="users-manage-billing-content" aria-selected="false">Billing</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="users-manage-actions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-actions" type="button" role="tab" aria-controls="users-manage-actions" aria-selected="true">Actions</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="users-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-permissions" type="button" role="tab" aria-controls="users-manage-permissions" aria-selected="true">Permissions</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="users-manage-businesses-tab" data-bs-toggle="pill" data-bs-target="#users-manage-businesses" type="button" role="tab" aria-controls="users-manage-businesses" aria-selected="true">Businesses</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link disabled" id="users-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-manage-analytics" type="button" role="tab" aria-controls="users-manage-analytics" aria-selected="true">Analytics</button>
-                            </li>
-                        </ul>
-
-                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="usersManageSaveButton">
-                            <i class='fa-regular fa-floppy-disk'></i>
-                            <span> Save</span>
-                        </button>
-                    </div>
                     <!-- Tab Content -->
                     <div class="tab-content w-100" id="users-manage-tabContent">
                         <!-- General -->
@@ -110,96 +125,12 @@
                             </div>
                         </div>
                         <!-- Billing -->
-                        <div class="tab-pane fade w-100" id="users-manage-billing-content" role="tabpanel" aria-labelledby="users-manage-billing-tab-button" tabindex="0">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h4>Plan & Credits</h4>
-                                    <div class="mb-3">
-                                        <label for="userManageCurrentPlanSelect" class="form-label">Current Plan</label>
-                                        <select class="form-select" id="userManageCurrentPlanSelect" name="Billing.CurrentPlanId">
-                                            <option value="">-- No Plan Assigned --</option>
-                                            <!-- Options will be populated by JS with available PlanDefinitions (ID as value, Name as text) -->
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="userManageCreditBalanceInput" class="form-label">Credit Balance</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">$</span>
-                                            <input type="number" step="0.01" class="form-control" id="userManageCreditBalanceInput" name="Billing.CreditBalance" placeholder="0.00">
-                                            <button class="btn btn-outline-secondary" type="button" id="adjustUserCreditButton" data-bs-toggle="modal" data-bs-target="#adjustCreditModal">Adjust</button>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Plan Base Concurrency</label>
-                                        <input type="text" class="form-control" id="userManagePlanBaseConcurrencyDisplay" placeholder="N/A" disabled readonly>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="userManagePurchasedConcurrencyInput" class="form-label">Purchased Additional Concurrency Slots</label>
-                                        <input type="number" class="form-control" id="userManagePurchasedConcurrencyInput" name="Billing.PurchasedAdditionalConcurrencySlots" placeholder="0">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Total Owned Concurrency Slots</label>
-                                        <input type="text" class="form-control" id="userManageTotalConcurrencyDisplay" placeholder="N/A" disabled readonly>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="userManageLastConcurrencyFeeBilledAtInput" class="form-label">Last Concurrency Fee Billed At</label>
-                                        <input type="text" class="form-control" id="userManageLastConcurrencyFeeBilledAtInput" name="Billing.LastConcurrencyFeeBilledAt" placeholder="N/A" disabled readonly>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="userManageNextConcurrencyFeeBillingDateInput" class="form-label">Next Concurrency Fee Billing Date</label>
-                                        <input type="text" class="form-control" id="userManageNextConcurrencyFeeBillingDateInput" name="Billing.NextConcurrencyFeeBillingDate" placeholder="N/A" disabled readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h4>Auto-Refill Settings</h4>
-                                    <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="userManageAutoRefillStatusToggle" name="Billing.AutoRefill.StatusBoolean"> <!-- JS will convert to enum -->
-                                        <label class="form-check-label" for="userManageAutoRefillStatusToggle">Enable Auto-Refill</label>
-                                    </div>
-                                    <div id="userManageAutoRefillDetails" class="d-none">
-                                        <!-- Show only if toggle is on -->
-                                        <div class="mb-3">
-                                            <label for="userManageAutoRefillThresholdInput" class="form-label">Refill When Balance Below</label>
-                                            <input type="number" step="0.01" class="form-control" id="userManageAutoRefillThresholdInput" name="Billing.AutoRefill.RefillWhenBalanceBelow" placeholder="e.g., 10.00">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="userManageAutoRefillAmountInput" class="form-label">Refill Amount</label>
-                                            <input type="number" step="0.01" class="form-control" id="userManageAutoRefillAmountInput" name="Billing.AutoRefill.RefillAmount" placeholder="e.g., 50.00">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="userManageAutoRefillPaymentMethodSelect" class="form-label">Default Payment Method</label>
-                                            <select class="form-select" id="userManageAutoRefillPaymentMethodSelect" name="Billing.AutoRefill.DefaultPaymentMethodId">
-                                                <option value="">-- Select Payment Method --</option>
-                                                <!-- Options populated by JS with user's saved payment methods -->
-                                            </select>
-                                            <!-- We'll need another section (perhaps under User Profile in user-facing dashboard) to manage UserPaymentMethods -->
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Last Auto-Refill Attempt</label>
-                                            <input type="text" class="form-control" id="userManageAutoRefillLastAttemptDisplay" placeholder="N/A" disabled readonly>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <hr>
-                            <h4>Billing History (Transactions)</h4>
-                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                                <table class="table table-sm" id="userBillingHistoryTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Type</th>
-                                            <th>Description</th>
-                                            <th>Amount</th>
-                                            <th>Balance After</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Dynamically generated transaction rows for this user -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        @{
+                            if (FrontendAppConfig.IsCloudVersion)
+                            {
+                                <partial name="_UsersTab/ManagerBillingTab.cshtml" />
+                            }
+                        }
                         <!-- Actions -->
                         <div class="tab-pane fade w-100" id="users-manage-actions" role="tabpanel" aria-labelledby="users-manage-actions-tab" tabindex="0">
                             <div class="mb-3">

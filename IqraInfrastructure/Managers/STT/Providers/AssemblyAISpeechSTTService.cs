@@ -1,7 +1,11 @@
 ﻿using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.AI;
+using IqraInfrastructure.Helpers.Audio;
+using IqraInfrastructure.Managers.TTS.Helpers;
+using System.Collections.ObjectModel;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -10,31 +14,33 @@ using System.Web;
 
 namespace IqraInfrastructure.Managers.STT.Providers
 {
-    public enum AssemblyAIEncoding
-    {
-        pcm_s16le,
-        pcm_mulaw
-    }
-
     public class AssemblyAISpeechSTTService : ISTTService
     {
         private readonly string _apiKey;
 
-        private readonly int _inputSampleRate;
-        private readonly int _inputBitsPerSample;
-        private readonly AudioEncodingTypeEnum _inputAudioEncodingType;
+        // The format coming FROM the platform/user
+        private readonly TTSProviderAvailableAudioFormat _inputAudioDetails;
 
-        private AssemblyAIEncoding _audioEncoding;
+        // AssemblyAI Configuration
         private readonly bool _formatTurns;
         private readonly float _endOfTurnConfidenceThreshold;
         private readonly int _minEndOfTurnSilenceWhenConfident;
         private readonly int _maxTurnSilence;
+        private readonly double _vadThreshold;
+        private readonly string[] _keytermsPrompt;
+        private readonly string _speechModel;
 
+        // Internal State
         private ClientWebSocket _webSocketClient;
         private CancellationTokenSource _cancellationTokenSource;
 
-        private event EventHandler<string> _transcriptionResultReceived;
+        // Conversion / Format State
+        private TTSProviderAvailableAudioFormat _optimalAssemblyFormat;
+        private bool _audioConversionNeeded = false;
+        private AudioRequestDetails _targetProviderFormatDetails;
 
+        // Events
+        private event EventHandler<string> _transcriptionResultReceived;
         public event EventHandler<string> TranscriptionResultReceived
         {
             add { _transcriptionResultReceived += value; }
@@ -46,24 +52,27 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public AssemblyAISpeechSTTService(
             string apiKey,
-            int inputSampleRate,
-            int inputBitsPerSample,
-            AudioEncodingTypeEnum inputAudioEncodingType,
             bool formatTurns,
             float endOfTurnConfidenceThreshold,
             int minEndOfTurnSilenceWhenConfident,
-            int maxTurnSilence)
+            int maxTurnSilence,
+            double vadThreshold,
+            string[] keytermsPrompt,
+            string speechModel,
+            TTSProviderAvailableAudioFormat inputAudioDetails
+        )
         {
             _apiKey = apiKey;
 
-            _inputSampleRate = inputSampleRate;
-            _inputBitsPerSample = inputBitsPerSample;
-            _inputAudioEncodingType = inputAudioEncodingType;
+            _inputAudioDetails = inputAudioDetails;
 
             _formatTurns = formatTurns;
             _endOfTurnConfidenceThreshold = endOfTurnConfidenceThreshold;
             _minEndOfTurnSilenceWhenConfident = minEndOfTurnSilenceWhenConfident;
             _maxTurnSilence = maxTurnSilence;
+            _vadThreshold = vadThreshold;
+            _keytermsPrompt = keytermsPrompt;
+            _speechModel = speechModel;
         }
 
         public async Task<FunctionReturnResult> Initialize()
@@ -72,31 +81,42 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
             try
             {
-                switch (_inputAudioEncodingType)
+                // Determine Optimal Format
+                var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(
+                    new AudioRequestDetails()
+                    {
+                        RequestedEncoding = _inputAudioDetails.Encoding,
+                        RequestedBitsPerSample = _inputAudioDetails.BitsPerSample,
+                        RequestedSampleRateHz = _inputAudioDetails.SampleRateHz
+                    },
+                    AssemblyAISupportedFormats
+                );
+
+                _optimalAssemblyFormat = bestFallbackOrder.FirstOrDefault() ?? throw new NotSupportedException(
+                     $"AssemblyAI STT does not support any format that can be reasonably converted from the input format: " +
+                     $"{_inputAudioDetails.Encoding} @ {_inputAudioDetails.SampleRateHz}Hz");
+
+                // Check if conversion is needed
+                _audioConversionNeeded = _optimalAssemblyFormat.Encoding != _inputAudioDetails.Encoding ||
+                                         _optimalAssemblyFormat.SampleRateHz != _inputAudioDetails.SampleRateHz ||
+                                         _optimalAssemblyFormat.BitsPerSample != _inputAudioDetails.BitsPerSample;
+
+                if (_audioConversionNeeded)
                 {
-                    case AudioEncodingTypeEnum.PCM:
-                        if (_inputBitsPerSample == 16)
-                        {
-                            _audioEncoding = AssemblyAIEncoding.pcm_s16le;
-                        }
-                        else
-                        {
-                            throw new ArgumentException($"Invalid bits per sample: {_inputBitsPerSample}");
-                        }
-
-                        break;
-
-                    case AudioEncodingTypeEnum.MULAW:
-                        _audioEncoding = AssemblyAIEncoding.pcm_mulaw;
-                        break;
-
-                    default:
-                        throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+                    _targetProviderFormatDetails = new AudioRequestDetails
+                    {
+                        RequestedEncoding = _optimalAssemblyFormat.Encoding,
+                        RequestedSampleRateHz = _optimalAssemblyFormat.SampleRateHz,
+                        RequestedBitsPerSample = _optimalAssemblyFormat.BitsPerSample
+                    };
                 }
 
+                // Prepare WebSocket Client
                 _webSocketClient = new ClientWebSocket();
                 _webSocketClient.Options.SetRequestHeader("Authorization", _apiKey);
                 _cancellationTokenSource = new CancellationTokenSource();
+
+                return result.SetSuccessResult();
             }
             catch (Exception ex)
             {
@@ -105,8 +125,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
                     $"Internal error: {ex.Message}"
                 );
             }
-
-            return result.SetSuccessResult();
         }
 
         public void StartTranscription()
@@ -119,12 +137,18 @@ namespace IqraInfrastructure.Managers.STT.Providers
             var uriBuilder = new UriBuilder("wss://streaming.assemblyai.com/v3/ws");
             var query = HttpUtility.ParseQueryString(string.Empty);
 
-            query["sample_rate"] = _inputSampleRate.ToString();
-            query["encoding"] = _audioEncoding.ToString();
+            // Important: We tell AssemblyAI the format of the data we are *sending* (the converted format), 
+            // not necessarily the original input format.
+            query["sample_rate"] = _optimalAssemblyFormat.SampleRateHz.ToString();
+            query["encoding"] = "pcm_s16le";
+
             query["format_turns"] = _formatTurns.ToString().ToLower();
             query["end_of_turn_confidence_threshold"] = _endOfTurnConfidenceThreshold.ToString();
             query["min_end_of_turn_silence_when_confident"] = _minEndOfTurnSilenceWhenConfident.ToString();
             query["max_turn_silence"] = _maxTurnSilence.ToString();
+            query["vad_threshold"] = _vadThreshold.ToString();
+            query["keyterms_prompt"] = string.Join(",", _keytermsPrompt);
+            query["speech_model"] = _speechModel;
 
             uriBuilder.Query = query.ToString();
 
@@ -155,11 +179,10 @@ namespace IqraInfrastructure.Managers.STT.Providers
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine("AssemblyAI listening task cancelled."); // todo logger
+                // Task cancelled
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"AssemblyAI Error: {ex.Message}"); // todo logger
                 OnRecoginizingCancelled?.Invoke(this, ex);
             }
         }
@@ -174,12 +197,12 @@ namespace IqraInfrastructure.Managers.STT.Providers
             switch (messageType)
             {
                 case "Begin":
-                    Console.WriteLine($"AssemblyAI session started: {json}"); // todo logger
+                    // Session started
                     break;
 
                 case "Turn":
                     var turn = JsonSerializer.Deserialize<AssemblyAITurnMessage>(json);
-                    if (turn == null || string.IsNullOrWhiteSpace(turn.Transcript) && !turn.EndOfTurn) return; // Allow empty final turns
+                    if (turn == null || (string.IsNullOrWhiteSpace(turn.Transcript) && !turn.EndOfTurn)) return;
 
                     if (turn.EndOfTurn)
                     {
@@ -187,7 +210,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
                         {
                             break;
                         }
-
                         _transcriptionResultReceived?.Invoke(this, turn.Transcript ?? string.Empty);
                     }
                     else
@@ -197,7 +219,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
                     break;
 
                 case "Termination":
-                    Console.WriteLine($"AssemblyAI session terminated: {json}"); // todo logger
+                    // Session terminated
                     break;
             }
         }
@@ -209,41 +231,68 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public async Task StopTranscriptionAsync()
         {
-            if (_webSocketClient?.State == WebSocketState.Open)
+            try
             {
-                var terminateMessage = JsonSerializer.Serialize(new { type = "Terminate" });
-                var messageBuffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(terminateMessage));
-                await _webSocketClient.SendAsync(messageBuffer, WebSocketMessageType.Text, true, CancellationToken.None);
-                await Task.Delay(200);
-                await _webSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "Client requested termination", CancellationToken.None);
+                if (_webSocketClient?.State == WebSocketState.Open)
+                {
+                    var terminateMessage = JsonSerializer.Serialize(new { type = "Terminate" });
+                    var messageBuffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(terminateMessage));
+                    await _webSocketClient.SendAsync(messageBuffer, WebSocketMessageType.Text, true, CancellationToken.None);
+
+                    await Task.Delay(200); // Give server time to ack
+                    await _webSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "Client requested termination", CancellationToken.None);
+                }
             }
+            catch { /* Ignore close errors */ }
+
             _cancellationTokenSource?.Cancel();
             _webSocketClient?.Dispose();
         }
 
         public void WriteTranscriptionAudioData(byte[] data)
         {
-            if (_webSocketClient?.State == WebSocketState.Open)
+            if (_webSocketClient?.State != WebSocketState.Open) return;
+
+            // Fire and forget send
+            _ = Task.Run(async () =>
             {
-                _webSocketClient.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Binary, true, CancellationToken.None)
-                    .GetAwaiter().GetResult();
-            }
+                try
+                {
+                    byte[] dataToSend = data;
+
+                    // CONVERSION LOGIC
+                    if (_audioConversionNeeded)
+                    {
+                        var (convertedData, _) = AudioConversationHelper.Convert(
+                           data,
+                           _inputAudioDetails,
+                           _targetProviderFormatDetails,
+                           false // Mono
+                       );
+
+                        if (convertedData != null)
+                        {
+                            dataToSend = convertedData;
+                        }
+                    }
+
+                    await _webSocketClient.SendAsync(new ArraySegment<byte>(dataToSend), WebSocketMessageType.Binary, true, _cancellationTokenSource?.Token ?? CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+                    {
+                        OnRecoginizingCancelled?.Invoke(this, ex);
+                    }
+                }
+            });
         }
 
-        public string GetProviderFullName()
-        {
-            return "AssemblyAI";
-        }
+        public string GetProviderFullName() => "AssemblyAI";
 
-        public InterfaceSTTProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
+        public InterfaceSTTProviderEnum GetProviderType() => GetProviderTypeStatic();
 
-        public static InterfaceSTTProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceSTTProviderEnum.AssemblyAI;
-        }
+        public static InterfaceSTTProviderEnum GetProviderTypeStatic() => InterfaceSTTProviderEnum.AssemblyAI;
 
         private record AssemblyAITurnMessage(
             [property: JsonPropertyName("type")] string Type,
@@ -251,5 +300,25 @@ namespace IqraInfrastructure.Managers.STT.Providers
             [property: JsonPropertyName("turn_is_formatted")] bool TurnIsFormatted,
             [property: JsonPropertyName("end_of_turn")] bool EndOfTurn
         );
+
+        // STATIC CONFIGURATION
+        // AssemblyAI supports "Any" sample rate, but we list the standard ones here so our Fallback Selector
+        // can explicitly match standard audio formats (16-bit PCM) closest to the user's input.
+        private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> AssemblyAISupportedFormats;
+
+        static AssemblyAISpeechSTTService()
+        {
+            var supportedFormats = new List<TTSProviderAvailableAudioFormat>
+            {
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 8000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 22050, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 24000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 32000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 44100, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 48000, BitsPerSample = 16 }
+            };
+            AssemblyAISupportedFormats = supportedFormats.AsReadOnly();
+        }
     }
 }

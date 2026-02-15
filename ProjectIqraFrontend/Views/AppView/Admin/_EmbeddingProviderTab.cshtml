@@ -1,14 +1,17 @@
 ﻿<div class="main-container fade w-100 d-none" id="embedding-provider-tab">
-    <h3 class="fw-bold tab-title"><i class='fa-regular fa-atom-simple nav_icon'></i> <span>Embedding Provider</span></h3>
-    <div class="inner-container">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-atom-simple nav_icon'></i> <span>Embedding Provider</span></h3>
+
+    <div class="inner-header-container mb-3">
+        <!-- Header -->
+        <ul class="nav w-100 fade show" id="embedding-provider-inner-header" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="embedding-provider-list-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-list" type="button" role="tab" aria-controls="embedding-provider-list" aria-selected="true">List</button>
+            </li>
+        </ul>
+
         <!-- Manager Inner Tabs -->
-        <div class="mb-3">
-            <ul class="nav w-100 fade show" id="embedding-provider-inner-tab" role="tablist">
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link active" id="embedding-provider-list-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-list" type="button" role="tab" aria-controls="embedding-provider-list" aria-selected="true">List</button>
-                </li>
-            </ul>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="embedding-provider-manage-breadcrumb">
+        <div class="w-100 fade d-none" id="embedding-provider-manager-inner-header">      
+            <nav class="mb-3" aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item">
                         <a href="#" id="switchBackToEmbeddingProviderListTabFromManageTab">Providers</a>
@@ -16,22 +19,52 @@
                     <li class="breadcrumb-item active" aria-current="page"><span id="currentManageEmbeddingProviderName">Provider</span></li>
                 </ol>
             </nav>
-            <nav class="w-100 fade d-none" aria-label="breadcrumb" id="embedding-provider-model-manager-breadcrumb">
-                <div class="d-flex flex-row align-items-center justify-content-between">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item" aria-current="page"><span id="currentManageModelEmbeddingProviderName">Provider</span></li>
-                        <li class="breadcrumb-item">
-                            <a href="#" id="switchBackToEmbeddingProviderManagerModelsListTabFromModelTab">Models</a>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page"><span id="currentManageEmbeddingProviderModelName">Model</span></li>
-                    </ol>
-                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageEmbeddingProviderModelButton">
-                        <i class='fa-regular fa-floppy-disk'></i>
-                        <span> Save</span>
-                    </button>
-                </div>
-            </nav>
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <ul class="nav fade show" id="embedding-provider-manager-inner-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="embedding-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-manager-general" type="button" role="tab" aria-controls="embedding-provider-manager-general" aria-selected="true">General</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="embedding-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-manager-models" type="button" role="tab" aria-controls="embedding-provider-manager-models" aria-selected="true">Models</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="embedding-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-manager-integrations" type="button" role="tab" aria-controls="embedding-provider-manager-integrations" aria-selected="false">Integrations</button>
+                    </li>
+                </ul>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageEmbeddingProviderButton" disabled>
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
         </div>
+
+        <!-- Manager Model Header -->
+        <div class="w-100 fade d-none" id="embedding-provider-model-manager-inner-header">
+            <nav class="mb-3" aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item" aria-current="page"><span id="currentManageModelEmbeddingProviderName">Provider</span></li>
+                    <li class="breadcrumb-item">
+                        <a href="#" id="switchBackToEmbeddingProviderManagerModelsListTabFromModelTab">Models</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page"><span id="currentManageEmbeddingProviderModelName">Model</span></li>
+                </ol>
+            </nav>
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <ul class="nav" id="embedding-provider-model-manager-inner-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="embedding-provider-model-manager-general-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-model-manager-general" type="button" role="tab" aria-controls="embedding-provider-model-manager-general" aria-selected="true">General</button>
+                    </li>
+                </ul>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageEmbeddingProviderModelButton">
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="inner-container">
+        
         <!-- Tab Content -->
         <div class="tab-content" id="embedding-provider-tab-content">
 
@@ -64,30 +97,10 @@
 
                 <!-- Provider Manage Tab -->
                 <div class="fade w-100 d-none" id="embeddingProviderManageTab">
-                    <!-- Manager Inner Tabs -->
-                    <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="embedding-provider-manager-inner-tab-container">
-                        <ul class="nav fade show" id="embedding-provider-manager-inner-tab" role="tablist">
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="embedding-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-manager-general" type="button" role="tab" aria-controls="embedding-provider-manager-general" aria-selected="true">General</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="embedding-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-manager-models" type="button" role="tab" aria-controls="embedding-provider-manager-models" aria-selected="true">Models</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="embedding-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-manager-integrations" type="button" role="tab" aria-controls="embedding-provider-manager-integrations" aria-selected="false">Integrations</button>
-                            </li>
-                        </ul>
-                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageEmbeddingProviderButton" disabled>
-                            <i class='fa-regular fa-floppy-disk'></i>
-                            <span> Save</span>
-                        </button>
-                    </div>
-
                     <!-- Tab Content -->
                     <div class="tab-content" id="embedding-provider-manager-manage-tab-content">
                         <!-- General -->
                         <div class="tab-pane fade w-100 show active" id="embedding-provider-manager-general" role="tabpanel" aria-labelledby="embedding-provider-manager-general-tab" tabindex="0">
-                            <!-- This section is identical in structure to the LLM one -->
                             <div class="mb-3">
                                 <label class="form-label" for="manageEmbeddingProviderIdInput">Identifer</label>
                                 <input type="text" class="form-control" id="manageEmbeddingProviderIdInput" placeholder="Identifer" disabled>
@@ -134,16 +147,8 @@
                                 </table>
                             </div>
 
-                            <!-- Manage Tab - REBUILT FOR EMBEDDING MODELS -->
+                            <!-- Manage Tab -->
                             <div class="fade w-100 d-none" id="embeddingProviderManagerModelManageTab">
-                                <!-- Manager Inner Tabs (Simplified) -->
-                                <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                                    <ul class="nav" id="embedding-provider-model-manager-inner-tab" role="tablist">
-                                        <li class="nav-item me-2" role="presentation">
-                                            <button class="nav-link active" id="embedding-provider-model-manager-general-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-model-manager-general" type="button" role="tab" aria-controls="embedding-provider-model-manager-general" aria-selected="true">General</button>
-                                        </li>
-                                    </ul>
-                                </div>
                                 <!-- Tab Content -->
                                 <div class="tab-content" id="embedding-provider-model-manager-manage-tab-content">
                                     <!-- General -->
@@ -180,7 +185,6 @@
 
                         <!-- Integrations -->
                         <div class="tab-pane fade w-100" id="embedding-provider-manager-integrations" role="tabpanel" aria-labelledby="embedding-provider-manager-integrations-tab" tabindex="0">
-                            <!-- This section is identical in structure to the LLM one -->
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 200px" class="me-4">
                                     <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewEmbeddingProviderIntegrationFieldButton">

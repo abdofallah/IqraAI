@@ -21,9 +21,18 @@ namespace IqraInfrastructure.Repositories.Rerank
             _rerankProviderCollection = database.GetCollection<RerankProviderData>(CollectionName);
         }
 
-        public async Task AddProviderAsync(RerankProviderData providerData)
+        public async Task<bool> AddProviderAsync(RerankProviderData providerData)
         {
-            await _rerankProviderCollection.InsertOneAsync(providerData);
+            try
+            {
+                await _rerankProviderCollection.InsertOneAsync(providerData);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return false;
+            }
         }
 
         public async Task<RerankProviderData?> GetProviderAsync(InterfaceRerankProviderEnum id)
@@ -35,20 +44,6 @@ namespace IqraInfrastructure.Repositories.Rerank
         {
             var filter = Builders<RerankProviderData>.Filter.Eq(x => x.Id, providerData.Id);
             return await _rerankProviderCollection.ReplaceOneAsync(filter, providerData);
-        }
-
-        public async Task<UpdateResult> DisableProviderAsync(InterfaceRerankProviderEnum id)
-        {
-            var filter = Builders<RerankProviderData>.Filter.Eq(x => x.Id, id);
-            var update = Builders<RerankProviderData>.Update.Set(x => x.DisabledAt, DateTime.UtcNow);
-            return await _rerankProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<UpdateResult> EnableProviderAsync(InterfaceRerankProviderEnum id)
-        {
-            var filter = Builders<RerankProviderData>.Filter.Eq(x => x.Id, id);
-            var update = Builders<RerankProviderData>.Update.Set(x => x.DisabledAt, null);
-            return await _rerankProviderCollection.UpdateOneAsync(filter, update);
         }
 
         public async Task<List<RerankProviderData>?> GetProviderListAsync(int page, int pageSize)
@@ -75,16 +70,6 @@ namespace IqraInfrastructure.Repositories.Rerank
                 Builders<RerankProviderData>.Filter.ElemMatch(x => x.Models, m => m.Id == modelData.Id)
             );
             var update = Builders<RerankProviderData>.Update.Set(x => x.Models.FirstMatchingElement(), modelData);
-            return await _rerankProviderCollection.UpdateOneAsync(filter, update);
-        }
-
-        public async Task<UpdateResult> DisableModelAsync(InterfaceRerankProviderEnum providerId, string modelId)
-        {
-            var filter = Builders<RerankProviderData>.Filter.And(
-                Builders<RerankProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<RerankProviderData>.Filter.ElemMatch(x => x.Models, m => m.Id == modelId)
-            );
-            var update = Builders<RerankProviderData>.Update.Set(x => x.Models.FirstMatchingElement().DisabledAt, DateTime.UtcNow);
             return await _rerankProviderCollection.UpdateOneAsync(filter, update);
         }
 

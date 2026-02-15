@@ -181,7 +181,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var llmConfig = _ragConfig.SearchStrategy.LLMClassifier?.LLMIntegration;
             _classifierLlmService = await BuildLlmServiceAsync(
                 llmConfig,
-                "You are a search query classifier. Analyze the user's query and the conversation history. Decide if a search in a knowledge base is likely to yield a relevant answer. Respond with ONLY the word 'SEARCH' or 'SKIP'.",
+                _agentState.CurrentLanguageData!.Prompts.RagQueryClassifierPrompt,
                 cancellationToken
             );
             if (_classifierLlmService == null)
@@ -194,7 +194,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var llmConfig = _ragConfig.Refinement.LLMIntegration;
             _refinementLlmService = await BuildLlmServiceAsync(
                 llmConfig,
-                "You are a query refinement expert. Rewrite a user's query into multiple, effective search queries. Generate a JSON array of strings. Do not include any other text or explanation.",
+                _agentState.CurrentLanguageData!.Prompts.RagQueryRefinementPrompt,
                 cancellationToken
             );
             if (_refinementLlmService == null)

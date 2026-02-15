@@ -2,8 +2,6 @@
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.CalCom.Models;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.FlowApp.Apps.CalCom.Actions
