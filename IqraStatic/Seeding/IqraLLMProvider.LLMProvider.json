@@ -1,0 +1,1729 @@
+[{
+  "_id": 1,
+  "DisabledAt": null,
+  "IntegrationId": "openai",
+  "Models": [
+    {
+      "_id": "gpt-5.2",
+      "DisabledAt": null,
+      "Name": "GPT-5.2 (Latest)",
+      "InputPrice": {
+        "$numberDecimal": "1.75"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "14.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5.1",
+      "DisabledAt": null,
+      "Name": "GPT-5.1",
+      "InputPrice": {
+        "$numberDecimal": "1.25"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "10.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5",
+      "DisabledAt": null,
+      "Name": "GPT-5",
+      "InputPrice": {
+        "$numberDecimal": "1.25"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "10.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5-mini",
+      "DisabledAt": null,
+      "Name": "GPT-5 Mini",
+      "InputPrice": {
+        "$numberDecimal": "0.25"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "2.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5-nano",
+      "DisabledAt": null,
+      "Name": "GPT-5 Nano",
+      "InputPrice": {
+        "$numberDecimal": "0.05"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.40"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5.2-codex",
+      "DisabledAt": null,
+      "Name": "GPT-5.2 Codex",
+      "InputPrice": {
+        "$numberDecimal": "1.75"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "14.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5.1-codex",
+      "DisabledAt": null,
+      "Name": "GPT-5.1 Codex",
+      "InputPrice": {
+        "$numberDecimal": "1.25"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "10.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5.1-codex-max",
+      "DisabledAt": null,
+      "Name": "GPT-5.1 Codex Max",
+      "InputPrice": {
+        "$numberDecimal": "1.25"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "10.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 2000000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5-codex",
+      "DisabledAt": null,
+      "Name": "GPT-5 Codex",
+      "InputPrice": {
+        "$numberDecimal": "1.25"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "10.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5.2-pro",
+      "DisabledAt": null,
+      "Name": "GPT-5.2 Pro",
+      "InputPrice": {
+        "$numberDecimal": "21.00"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "168.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-5-pro",
+      "DisabledAt": null,
+      "Name": "GPT-5 Pro",
+      "InputPrice": {
+        "$numberDecimal": "15.00"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "120.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 400000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "o3-deep-research",
+      "DisabledAt": null,
+      "Name": "o3 Deep Research",
+      "InputPrice": {
+        "$numberDecimal": "10.00"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "40.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 100000
+    },
+    {
+      "_id": "o4-mini-deep-research",
+      "DisabledAt": null,
+      "Name": "o4 Mini Deep Research",
+      "InputPrice": {
+        "$numberDecimal": "2.00"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "8.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 100000
+    },
+    {
+      "_id": "o3-pro",
+      "DisabledAt": null,
+      "Name": "o3 Pro",
+      "InputPrice": {
+        "$numberDecimal": "20.00"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "80.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 100000
+    },
+    {
+      "_id": "o3",
+      "DisabledAt": null,
+      "Name": "o3",
+      "InputPrice": {
+        "$numberDecimal": "2.00"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "8.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 100000
+    },
+    {
+      "_id": "o4-mini",
+      "DisabledAt": null,
+      "Name": "o4 Mini",
+      "InputPrice": {
+        "$numberDecimal": "1.10"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "4.40"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 100000
+    },
+    {
+      "_id": "gpt-4.1",
+      "DisabledAt": null,
+      "Name": "GPT-4.1",
+      "InputPrice": {
+        "$numberDecimal": "2.00"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "8.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1000000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-4.1-mini",
+      "DisabledAt": null,
+      "Name": "GPT-4.1 Mini",
+      "InputPrice": {
+        "$numberDecimal": "0.40"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "1.60"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1000000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "gpt-4.1-nano",
+      "DisabledAt": null,
+      "Name": "GPT-4.1 Nano",
+      "InputPrice": {
+        "$numberDecimal": "0.10"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.40"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1000000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "o1-pro",
+      "DisabledAt": null,
+      "Name": "o1 Pro",
+      "InputPrice": {
+        "$numberDecimal": "150.00"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "600.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 100000
+    },
+    {
+      "_id": "o3-mini",
+      "DisabledAt": null,
+      "Name": "o3 Mini",
+      "InputPrice": {
+        "$numberDecimal": "1.10"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "4.40"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 100000
+    },
+    {
+      "_id": "o1",
+      "DisabledAt": null,
+      "Name": "o1",
+      "InputPrice": {
+        "$numberDecimal": "15.00"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "60.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 100000
+    },
+    {
+      "_id": "gpt-4o",
+      "DisabledAt": null,
+      "Name": "GPT-4o",
+      "InputPrice": {
+        "$numberDecimal": "2.50"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "10.00"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 128000,
+      "MaxOutputTokenLength": 16384
+    },
+    {
+      "_id": "gpt-4o-mini",
+      "DisabledAt": null,
+      "Name": "GPT-4o Mini",
+      "InputPrice": {
+        "$numberDecimal": "0.15"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.60"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 128000,
+      "MaxOutputTokenLength": 16384
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the OpenAI model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "max_tokens",
+      "Name": "Max Output Tokens",
+      "Type": "number",
+      "Tooltip": "Limits generated tokens. Minimum 200 enforced.",
+      "Placeholder": "e.g. 1024",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 200,
+      "MaxNumberValue": 128000,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Controls randomness (0.0 to 2.0).",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "top_p",
+      "Name": "Top P",
+      "Type": "double_number",
+      "Tooltip": "Nucleus sampling (0.0 to 1.0).",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "service_tier",
+      "Name": "Service Tier",
+      "Type": "select",
+      "Tooltip": "Latency tier. 'Flex' is cheaper but slower. 'Priority' is faster but more expensive.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "default",
+          "Value": "Default",
+          "IsDefault": true
+        },
+        {
+          "Key": "flex",
+          "Value": "Flex",
+          "IsDefault": false
+        },
+        {
+          "Key": "priority",
+          "Value": "Priority",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "gpt-5.2",
+          "gpt-5.1",
+          "gpt-5",
+          "gpt-5-mini",
+          "gpt-5-nano",
+          "gpt-5.2-codex",
+          "gpt-5.1-codex",
+          "gpt-5.1-codex-max",
+          "gpt-5-codex",
+          "o3",
+          "o4-mini",
+          "gpt-4.1",
+          "gpt-4.1-mini",
+          "gpt-4.1-nano",
+          "gpt-4o",
+          "gpt-4o-mini"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "reasoning_effort",
+      "Name": "Reasoning Effort",
+      "Type": "select",
+      "Tooltip": "Controls reasoning depth for o-series/reasoning models.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "minimal",
+          "Value": "Minimal",
+          "IsDefault": false
+        },
+        {
+          "Key": "low",
+          "Value": "Low",
+          "IsDefault": false
+        },
+        {
+          "Key": "medium",
+          "Value": "Medium",
+          "IsDefault": true
+        },
+        {
+          "Key": "high",
+          "Value": "High",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "o1",
+          "o1-pro",
+          "o3",
+          "o3-pro",
+          "o3-mini",
+          "o4-mini",
+          "o3-deep-research",
+          "o4-mini-deep-research"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "reasoning_summary",
+      "Name": "Reasoning Summary Verbosity",
+      "Type": "select",
+      "Tooltip": "Controls detail level of reasoning output.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "auto",
+          "Value": "Auto",
+          "IsDefault": true
+        },
+        {
+          "Key": "concise",
+          "Value": "Concise",
+          "IsDefault": false
+        },
+        {
+          "Key": "detailed",
+          "Value": "Detailed",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "o1",
+          "o1-pro",
+          "o3",
+          "o3-pro",
+          "o3-mini",
+          "o4-mini",
+          "o3-deep-research",
+          "o4-mini-deep-research"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    }
+  ]
+},
+{
+  "_id": 2,
+  "DisabledAt": null,
+  "IntegrationId": "anthropic_claude",
+  "Models": [
+    {
+      "_id": "claude-opus-4-6",
+      "DisabledAt": null,
+      "Name": "Claude Opus 4.6 (Latest)",
+      "InputPrice": {
+        "$numberDecimal": "5"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "25"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 128000
+    },
+    {
+      "_id": "claude-sonnet-4-5-20250929",
+      "DisabledAt": null,
+      "Name": "Claude Sonnet 4.5",
+      "InputPrice": {
+        "$numberDecimal": "3"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "15"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 64000
+    },
+    {
+      "_id": "claude-haiku-4-5-20251001",
+      "DisabledAt": null,
+      "Name": "Claude Haiku 4.5",
+      "InputPrice": {
+        "$numberDecimal": "1"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "5"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 64000
+    },
+    {
+      "_id": "claude-3-7-sonnet-20250219",
+      "DisabledAt": null,
+      "Name": "Claude 3.7 Sonnet",
+      "InputPrice": {
+        "$numberDecimal": "3"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "15"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 64000
+    },
+    {
+      "_id": "claude-3-5-sonnet-20241022",
+      "DisabledAt": null,
+      "Name": "Claude 3.5 Sonnet (Legacy)",
+      "InputPrice": {
+        "$numberDecimal": "3"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "15"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 8192
+    },
+    {
+      "_id": "claude-3-5-haiku-20241022",
+      "DisabledAt": null,
+      "Name": "Claude 3.5 Haiku (Legacy)",
+      "InputPrice": {
+        "$numberDecimal": "0.8"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "4"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 8192
+    },
+    {
+      "_id": "claude-3-opus-20240229",
+      "DisabledAt": null,
+      "Name": "Claude 3 Opus (Legacy)",
+      "InputPrice": {
+        "$numberDecimal": "15"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "75"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 200000,
+      "MaxOutputTokenLength": 4096
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Anthropic Claude model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "claude-opus-4-6",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "max_tokens",
+      "Name": "Max Output Tokens",
+      "Type": "number",
+      "Tooltip": "The maximum number of tokens to generate before stopping. Minimum 200 enforced by system.",
+      "Placeholder": "e.g. 1024",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 200,
+      "MaxNumberValue": 128000,
+      "ModelCondition": null
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Amount of randomness (0.0 to 1.0). Closer to 0.0 is analytical, 1.0 is creative.",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "top_p",
+      "Name": "Top P",
+      "Type": "double_number",
+      "Tooltip": "Nucleus sampling (0.0 to 1.0). Recommended to modify either Temperature or Top P, not both.",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "top_k",
+      "Name": "Top K",
+      "Type": "number",
+      "Tooltip": "Only sample from the top K options for each subsequent token.",
+      "Placeholder": "e.g. 5",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "ModelCondition": null
+    },
+    {
+      "_id": "thinking_enabled",
+      "Name": "Extended Thinking",
+      "Type": "select",
+      "Tooltip": "Enables Claude's extended thinking process (requires minimum 1024 budget tokens).",
+      "Placeholder": "Select",
+      "DefaultValue": "off",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "claude-3-7-sonnet-20250219",
+          "claude-opus-4-6",
+          "claude-sonnet-4-5-20250929",
+          "claude-haiku-4-5-20251001"
+        ]
+      }
+    },
+    {
+      "_id": "thinking_budget_tokens",
+      "Name": "Thinking Budget Tokens",
+      "Type": "number",
+      "Tooltip": "Tokens allocated for thinking. Must be >= 1024 and less than max_tokens.",
+      "Placeholder": "e.g. 2048",
+      "DefaultValue": "1024",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 1024,
+      "MaxNumberValue": 128000,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "claude-3-7-sonnet-20250219",
+          "claude-opus-4-6",
+          "claude-sonnet-4-5-20250929",
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "FieldConditions": [
+        {
+          "FieldId": "thinking_enabled",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "on"
+        }
+      ]
+    },
+    {
+      "_id": "inference_geo",
+      "Name": "Inference Geo",
+      "Type": "text",
+      "Tooltip": "Specifies geographic region (e.g. 'us', 'eu'). Leave empty for default.",
+      "Placeholder": "e.g. us",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "StringRegex": "^[a-z]{2}$",
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 3,
+  "DisabledAt": null,
+  "IntegrationId": "google_ai_gemini",
+  "Models": [
+    {
+      "_id": "gemini-2.0-flash",
+      "DisabledAt": null,
+      "Name": "Gemini 2.0 Flash",
+      "InputPrice": {
+        "$numberDecimal": "0.1"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.4"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1048576,
+      "MaxOutputTokenLength": 8192
+    },
+    {
+      "_id": "gemini-2.0-flash-lite",
+      "DisabledAt": null,
+      "Name": "Gemini 2.0 Flash-Lite",
+      "InputPrice": {
+        "$numberDecimal": "0.075"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.3"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1048576,
+      "MaxOutputTokenLength": 8192
+    },
+    {
+      "_id": "gemini-2.5-flash",
+      "DisabledAt": null,
+      "Name": "Gemini 2.5 Flash",
+      "InputPrice": {
+        "$numberDecimal": "0.3"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "2.5"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1048576,
+      "MaxOutputTokenLength": 65536
+    },
+    {
+      "_id": "gemini-2.5-pro",
+      "DisabledAt": null,
+      "Name": "Gemini 2.5 Pro",
+      "InputPrice": {
+        "$numberDecimal": "1.25"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "10"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1048576,
+      "MaxOutputTokenLength": 65536
+    },
+    {
+      "_id": "gemini-2.5-flash-lite",
+      "DisabledAt": null,
+      "Name": "Gemini 2.5 Flash-Lite",
+      "InputPrice": {
+        "$numberDecimal": "1.25"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "10"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1048576,
+      "MaxOutputTokenLength": 65536
+    },
+    {
+      "_id": "gemini-3-flash-preview",
+      "DisabledAt": null,
+      "Name": "Gemini 3 Flash (Preview)",
+      "InputPrice": {
+        "$numberDecimal": "0.1"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.4"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1048576,
+      "MaxOutputTokenLength": 65536
+    },
+    {
+      "_id": "gemini-3-pro-preview",
+      "DisabledAt": null,
+      "Name": "Gemini 3 Pro (Preview)",
+      "InputPrice": {
+        "$numberDecimal": "1.25"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "10"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 1048576,
+      "MaxOutputTokenLength": 65536
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Google Gemini model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "gemini-2.0-flash",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "max_output_tokens",
+      "Name": "Max Output Tokens",
+      "Type": "number",
+      "Tooltip": "Limits the number of tokens generated. Minimum 200 enforced.",
+      "Placeholder": "e.g. 1024",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 200,
+      "MaxNumberValue": 1048576,
+      "ModelCondition": null
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Controls randomness (0.0 to 2.0).",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "top_p",
+      "Name": "Top P",
+      "Type": "double_number",
+      "Tooltip": "Nucleus sampling (0.0 to 1.0).",
+      "Placeholder": "0.95",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "top_k",
+      "Name": "Top K",
+      "Type": "number",
+      "Tooltip": "Maximum number of tokens to consider when sampling.",
+      "Placeholder": "e.g. 40",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "ModelCondition": null
+    },
+    {
+      "_id": "seed",
+      "Name": "Seed",
+      "Type": "number",
+      "Tooltip": "Integer for deterministic sampling.",
+      "Placeholder": "e.g. 12345",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "presence_penalty",
+      "Name": "Presence Penalty",
+      "Type": "double_number",
+      "Tooltip": "Penalizes new tokens based on whether they appear in the text so far.",
+      "Placeholder": "0.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -2,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "frequency_penalty",
+      "Name": "Frequency Penalty",
+      "Type": "double_number",
+      "Tooltip": "Penalizes new tokens based on their existing frequency in the text so far.",
+      "Placeholder": "0.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -2,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "enable_affective_dialog",
+      "Name": "Affective Dialog",
+      "Type": "select",
+      "Tooltip": "If enabled, the model will detect emotions and adapt its responses accordingly.",
+      "Placeholder": "Select",
+      "DefaultValue": "off",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "thinking_include_thoughts",
+      "Name": "Include Thoughts",
+      "Type": "select",
+      "Tooltip": "Whether to return the model's thinking process (for supported models).",
+      "Placeholder": "Select",
+      "DefaultValue": "off",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "gemini-2.5-flash",
+          "gemini-2.5-pro",
+          "gemini-3-pro-preview",
+          "gemini-3-flash-preview"
+        ]
+      }
+    },
+    {
+      "_id": "thinking_budget",
+      "Name": "Thinking Budget",
+      "Type": "number",
+      "Tooltip": "Token budget for thinking.",
+      "Placeholder": "e.g. 1024",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 1,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "gemini-2.5-flash",
+          "gemini-2.5-pro",
+          "gemini-3-pro-preview",
+          "gemini-3-flash-preview"
+        ]
+      },
+      "FieldConditions": [
+        {
+          "FieldId": "thinking_include_thoughts",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "on"
+        }
+      ]
+    },
+    {
+      "_id": "routing_preference",
+      "Name": "Routing Preference",
+      "Type": "select",
+      "Tooltip": "Automated routing strategy.",
+      "Placeholder": "Select",
+      "DefaultValue": "balanced",
+      "Options": [
+        {
+          "Key": "balanced",
+          "Value": "Balanced",
+          "IsDefault": true
+        },
+        {
+          "Key": "prioritize_quality",
+          "Value": "Prioritize Quality",
+          "IsDefault": false
+        },
+        {
+          "Key": "prioritize_cost",
+          "Value": "Prioritize Cost",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 4,
+  "DisabledAt": null,
+  "IntegrationId": "groqcloud",
+  "Models": [
+    {
+      "_id": "llama-3.3-70b-versatile",
+      "DisabledAt": null,
+      "Name": "Llama 3.3 70B Versatile",
+      "InputPrice": {
+        "$numberDecimal": "0.59"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.79"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 131072,
+      "MaxOutputTokenLength": 32768
+    },
+    {
+      "_id": "llama-3.1-8b-instant",
+      "DisabledAt": null,
+      "Name": "Llama 3.1 8B Instant",
+      "InputPrice": {
+        "$numberDecimal": "0.05"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.08"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 131072,
+      "MaxOutputTokenLength": 131072
+    },
+    {
+      "_id": "openai/gpt-oss-120b",
+      "DisabledAt": null,
+      "Name": "OpenAI GPT-OSS 120B",
+      "InputPrice": {
+        "$numberDecimal": "0.15"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.60"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 131072,
+      "MaxOutputTokenLength": 65536
+    },
+    {
+      "_id": "openai/gpt-oss-20b",
+      "DisabledAt": null,
+      "Name": "OpenAI GPT-OSS 20B",
+      "InputPrice": {
+        "$numberDecimal": "0.075"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.30"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 131072,
+      "MaxOutputTokenLength": 65536
+    },
+    {
+      "_id": "qwen/qwen3-32b",
+      "DisabledAt": null,
+      "Name": "Qwen 3 32B",
+      "InputPrice": {
+        "$numberDecimal": "0.29"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.59"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 131072,
+      "MaxOutputTokenLength": 40960
+    },
+    {
+      "_id": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "DisabledAt": null,
+      "Name": "Llama 4 Scout 17B (Preview)",
+      "InputPrice": {
+        "$numberDecimal": "0.11"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.34"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 131072,
+      "MaxOutputTokenLength": 8192
+    },
+    {
+      "_id": "meta-llama/llama-4-maverick-17b-128e-instruct",
+      "DisabledAt": null,
+      "Name": "Llama 4 Maverick 17B (Preview)",
+      "InputPrice": {
+        "$numberDecimal": "0.20"
+      },
+      "InputPriceTokenUnit": 1000000,
+      "OutputPrice": {
+        "$numberDecimal": "0.60"
+      },
+      "OutputPriceTokenUnit": 1000000,
+      "MaxInputTokenLength": 131072,
+      "MaxOutputTokenLength": 8192
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the GroqCloud model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Controls randomness (0.0 to 2.0). Higher values = more random, Lower = more deterministic.",
+      "Placeholder": "0.7",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "top_p",
+      "Name": "Top P",
+      "Type": "double_number",
+      "Tooltip": "Nucleus sampling (0.0 to 1.0). Controls diversity via probability mass.",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "max_completion_tokens",
+      "Name": "Max Completion Tokens",
+      "Type": "number",
+      "Tooltip": "Limits the number of tokens generated. Leave empty for model default.",
+      "Placeholder": "e.g. 1024",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 200,
+      "MaxNumberValue": 131072,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "seed",
+      "Name": "Seed",
+      "Type": "number",
+      "Tooltip": "Integer for deterministic sampling (best effort).",
+      "Placeholder": "e.g. 12345",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "service_tier",
+      "Name": "Service Tier",
+      "Type": "select",
+      "Tooltip": "Select the service tier for the request.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "auto",
+          "Value": "Auto",
+          "IsDefault": true
+        },
+        {
+          "Key": "on_demand",
+          "Value": "On Demand",
+          "IsDefault": false
+        },
+        {
+          "Key": "flex",
+          "Value": "Flex",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "include_reasoning",
+      "Name": "Include Reasoning",
+      "Type": "select",
+      "Tooltip": "Whether to return the model's reasoning steps.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "reasoning_format",
+      "Name": "Reasoning Format",
+      "Type": "select",
+      "Tooltip": "Specifies how reasoning tokens are output.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "hidden",
+          "Value": "Hidden",
+          "IsDefault": false
+        },
+        {
+          "Key": "raw",
+          "Value": "Raw",
+          "IsDefault": true
+        },
+        {
+          "Key": "parsed",
+          "Value": "Parsed",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": [
+        {
+          "FieldId": "include_reasoning",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "on"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "reasoning_effort",
+      "Name": "Reasoning Effort",
+      "Type": "select",
+      "Tooltip": "Controls reasoning effort level. (Qwen/GPT-OSS models only)",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "default",
+          "Value": "Default",
+          "IsDefault": true
+        },
+        {
+          "Key": "none",
+          "Value": "None",
+          "IsDefault": false
+        },
+        {
+          "Key": "low",
+          "Value": "Low",
+          "IsDefault": false
+        },
+        {
+          "Key": "medium",
+          "Value": "Medium",
+          "IsDefault": false
+        },
+        {
+          "Key": "high",
+          "Value": "High",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "qwen/qwen3-32b",
+          "openai/gpt-oss-20b",
+          "openai/gpt-oss-120b"
+        ]
+      },
+      "FieldConditions": [
+        {
+          "FieldId": "include_reasoning",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "on"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    }
+  ]
+},
+{
+  "_id": 5,
+  "DisabledAt": null,
+  "IntegrationId": "azure_ai_inference",
+  "Models": [],
+  "UserIntegrationFields": [
+    {
+      "_id": "model_deployment_name",
+      "Name": "Model Deployment Name",
+      "Type": "text",
+      "Tooltip": "The specific model name deployed in your Azure AI Foundry resource (e.g., 'Mistral-large', 'Llama-3-70b').",
+      "Placeholder": "e.g. gpt-4o",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "max_tokens",
+      "Name": "Max Output Tokens",
+      "Type": "number",
+      "Tooltip": "Limits generated tokens. Minimum 200 enforced.",
+      "Placeholder": "e.g. 1024",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 200,
+      "MaxNumberValue": 128000,
+      "ModelCondition": null
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Controls randomness (0.0 to 1.0).",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "nucleus_sampling_factor",
+      "Name": "Nucleus Sampling (Top P)",
+      "Type": "double_number",
+      "Tooltip": "Alternative to temperature (0.0 to 1.0).",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "seed",
+      "Name": "Seed",
+      "Type": "number",
+      "Tooltip": "Integer for deterministic sampling.",
+      "Placeholder": "e.g. 12345",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "presence_penalty",
+      "Name": "Presence Penalty",
+      "Type": "double_number",
+      "Tooltip": "Supported range [-2, 2].",
+      "Placeholder": "0.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -2,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "frequency_penalty",
+      "Name": "Frequency Penalty",
+      "Type": "double_number",
+      "Tooltip": "Supported range [-2, 2].",
+      "Placeholder": "0.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -2,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "additional_properties",
+      "Name": "Additional Properties (JSON)",
+      "Type": "text",
+      "Tooltip": "Custom JSON configuration for model-specific parameters (e.g., {\"extra_param\": \"value\"}).",
+      "Placeholder": "{\"key\": \"value\"}",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+}]

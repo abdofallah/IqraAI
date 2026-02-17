@@ -10,7 +10,7 @@ let IsSavingSTTProviderTab = false;
 let sttFieldsHelper = null;
 
 /** Elements Variables **/
-const STTProviderTab = $("#stt-provider-tab");
+const STTProviderTab = $("#stt-provider-tab"); 
 
 // Headers
 const sttProviderInnerHeader = STTProviderTab.find("#stt-provider-inner-header");
@@ -529,7 +529,6 @@ function fillSTTProviderIntegrationSelect() {
 }
 
 
-
 /** Event Handlers **/
 $(document).ready(() => {
 	// Provider List Events
@@ -633,6 +632,10 @@ $(document).ready(() => {
 			(saveResponse) => {
 				if (saveResponse.success) {
 					CurrentSTTProviderData = saveResponse.data;
+
+					if (sttFieldsHelper) {
+						sttFieldsHelper.updateInitialData(CurrentSTTProviderData.userIntegrationFields);
+					}
 
 					const providerIndex = CurrentSTTProvidersList.findIndex((p) => p.id.value === CurrentSTTProviderData.id.value);
 					if (providerIndex !== -1) {

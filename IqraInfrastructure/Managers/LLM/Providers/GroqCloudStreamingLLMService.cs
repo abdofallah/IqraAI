@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM.Providers.GroqCloud;
-using IqraCore.Interfaces.AI;    
+using IqraCore.Interfaces.AI;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using System.Text;
@@ -10,24 +10,31 @@ using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.LLM.Providers
 {
+    public class GroqCloudConfig
+    {
+        public string Model { get; set; } = "";
+        public float? Temperature { get; set; }
+        public float? TopP { get; set; }
+        public int? MaxCompletionTokens { get; set; }
+        public int? Seed { get; set; }
+        public string? ServiceTier { get; set; }
+        public bool IncludeReasoning { get; set; }
+        public string? ReasoningFormat { get; set; }
+        public string? ReasoningEffort { get; set; }
+    }
+
     public class GroqCloudStreamingLLMService : ILLMService
     {
         private readonly ILogger<GroqCloudStreamingLLMService> _logger;
-
         private readonly HttpClient _httpClient;
         private readonly CancellationTokenSource _cts;
-
         private readonly string _apiKey;
 
-        // Configuration
-        private int _maxTokens;
-        private string _model;
-        private float _temperature;
-        private float _topP;
+        // Config
+        private GroqCloudConfig _config;
 
         // Session Data
         private string _systemPrompt;
-        private List<GroqCloudMessage> _initialMessages;
         private List<GroqCloudMessage> _messagesMemory;
         private object _messageLock = new();
 
@@ -42,27 +49,25 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
-        // Consider using IHttpClientFactory in a real application
-        public GroqCloudStreamingLLMService(ILogger<GroqCloudStreamingLLMService> logger, string apiKey, string model)
+        public GroqCloudStreamingLLMService(ILogger<GroqCloudStreamingLLMService> logger, string apiKey, GroqCloudConfig config)
         {
             _logger = logger;
             _cts = new();
-
             _apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
-            _model = model ?? throw new ArgumentNullException(nameof(model));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+
+            // Validate minimum tokens safeguard
+            if (_config.MaxCompletionTokens.HasValue && _config.MaxCompletionTokens.Value < 200)
+            {
+                _config.MaxCompletionTokens = 200; // Enforce platform minimum
+            }
 
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
-            _maxTokens = 1024; // Default, make dynamic
-            _temperature = 0.7f; // Default, make dynamic (use float)
-            _topP = 1.0f; // Default, make dynamic
-
-            _initialMessages = new List<GroqCloudMessage>();
             _messagesMemory = new List<GroqCloudMessage>();
-
-            _systemPrompt = "You are Iqra. A helpful AI Assistant."; // Default
+            _systemPrompt = "You are Iqra. A helpful AI Assistant.";
         }
 
         public async Task ProcessInputAsync(CancellationToken cancellationToken, string? beforeMessageContext = null, string? afterMessageContext = null)
@@ -74,49 +79,47 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             {
                 finalMessages.Add(new GroqCloudMessage("system", _systemPrompt));
             }
-            finalMessages.AddRange(_initialMessages);
             finalMessages.AddRange(_messagesMemory);
 
-            if (!string.IsNullOrEmpty(beforeMessageContext) && !string.IsNullOrEmpty(afterMessageContext))
+            // Context Injection Logic
+            if (!string.IsNullOrEmpty(beforeMessageContext) || !string.IsNullOrEmpty(afterMessageContext))
             {
                 var lastMessage = finalMessages.LastOrDefault();
                 if (lastMessage != null && lastMessage.Role == "user")
                 {
-                    var newText = "";
+                    var newText = lastMessage.Content;
+                    if (!string.IsNullOrEmpty(beforeMessageContext)) newText = beforeMessageContext + "\n\n" + newText;
+                    if (!string.IsNullOrEmpty(afterMessageContext)) newText = newText + "\n\n" + afterMessageContext;
 
-                    var textData = lastMessage.Content;
-                    if (!string.IsNullOrEmpty(beforeMessageContext))
-                    {
-                        newText = beforeMessageContext + "\n\n" + textData;
-                    }
-                    if (!string.IsNullOrEmpty(afterMessageContext))
-                    {
-                        newText = newText + "\n\n" + afterMessageContext;
-                    }
-
-                    var newUserMessage = new GroqCloudMessage("user", newText);
                     finalMessages.RemoveAt(finalMessages.Count - 1);
-                    finalMessages.Add(newUserMessage);
+                    finalMessages.Add(new GroqCloudMessage("user", newText));
                 }
             }
 
             if (!finalMessages.Any(m => m.Role == "user"))
             {
-                // Handle case where there are no user messages if necessary
-                // For now, assume AddUserMessage was called before ProcessInputAsync
                 _logger.LogWarning("No user messages found for Groq request.");
-                return; // Or throw an exception
+                return;
             }
 
-            var requestPayload = new GroqCloudRequest(
-                Model: _model,
-                Messages: finalMessages,
-                Temperature: _temperature,
-                MaxCompletionTokens: _maxTokens,
-                MaxTokens: _maxTokens, // TODO
-                TopP: _topP,
-                Stream: true
-            );
+            var requestPayload = new GroqCloudRequest()
+            {
+                Model = _config.Model,
+                Messages = finalMessages,
+                Temperature = _config.Temperature,
+                TopP = _config.TopP,
+                MaxCompletionTokens = _config.MaxCompletionTokens,
+                Seed = _config.Seed,
+                ServiceTier = _config.ServiceTier,        
+                Stream = true
+            };
+
+            if (_config.IncludeReasoning && !string.IsNullOrEmpty(_config.ReasoningFormat) && !string.IsNullOrEmpty(_config.ReasoningEffort))
+            {
+                requestPayload.IncludeReasoning = _config.IncludeReasoning;
+                requestPayload.ReasoningFormat = _config.ReasoningFormat;
+                requestPayload.ReasoningEffort = _config.ReasoningEffort;
+            }
 
             var jsonPayload = JsonSerializer.Serialize(requestPayload, requestJsonOptions);
             using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions")
@@ -127,7 +130,12 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             try
             {
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, combinedCancellationToken);
-                response.EnsureSuccessStatusCode();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Groq API Error: {response.StatusCode} - {errorContent}");
+                }
 
                 using var responseStream = await response.Content.ReadAsStreamAsync(combinedCancellationToken);
                 using var reader = new StreamReader(responseStream);
@@ -139,40 +147,30 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                     if (line.StartsWith("data: "))
                     {
                         var dataJson = line.Substring("data: ".Length).Trim();
-
-                        if (dataJson.Equals("[DONE]", StringComparison.OrdinalIgnoreCase))
-                        {
-                            break; // End of stream signal
-                        }
+                        if (dataJson.Equals("[DONE]", StringComparison.OrdinalIgnoreCase)) break;
 
                         try
                         {
                             var chunk = JsonSerializer.Deserialize<GroqCloudStreamChunk>(dataJson);
                             if (chunk != null)
                             {
-                                MessageStreamed?.Invoke(this, new ConversationAgentEventLLMStreamed(chunk)); // Pass the entire chunk object
+                                MessageStreamed?.Invoke(this, new ConversationAgentEventLLMStreamed(chunk));
                             }
                         }
                         catch (JsonException jsonEx)
                         {
-                            _logger.LogError($"Error deserializing Groq stream chunk: {jsonEx.Message}. JSON: {dataJson}");
-                            // Decide how to handle malformed chunks (e.g., log, skip, raise error event)
+                            _logger.LogError($"Error deserializing Groq stream chunk: {jsonEx.Message}");
                         }
                     }
-
-                    // Ignore empty lines or lines not starting with "data: " (like comments ':') / TODO CHECK IF NEEDED
                 }
             }
             catch (OperationCanceledException) when (combinedCancellationToken.IsCancellationRequested)
             {
-                MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled()
-                {
-                    Type = ConversationAgentEventLLMStreamCancelledTypeEnum.OperationCancelled
-                });
+                MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled() { Type = ConversationAgentEventLLMStreamCancelledTypeEnum.OperationCancelled });
             }
             catch (HttpRequestException httpEx)
             {
-                _logger.LogError($"Error calling Groq API: {httpEx.Message} (StatusCode: {httpEx.StatusCode})");
+                _logger.LogError($"Error calling Groq API: {httpEx.Message}");
                 MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled()
                 {
                     Type = ConversationAgentEventLLMStreamCancelledTypeEnum.HttpRequestNotSuccess,
@@ -191,43 +189,23 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             }
         }
 
-        public void SetModel(string model)
-        {
-            _model = model;
-        }
+        // Interface methods implementation
+        public void SetModel(string model) => _config.Model = model;
 
-        public void SetTemperature(decimal temperature)
-        {
-            // Groq API uses float/number between 0 and 2. Clamp and convert.
-            _temperature = (float)Math.Max(0.0m, Math.Min(2.0m, temperature));
-        }
+        // These setters might need updating if interface changes, keeping for compatibility
+        public void SetTemperature(decimal temperature) => _config.Temperature = (float)temperature;
+        public void SetMaxTokens(int maxTokens) => _config.MaxCompletionTokens = maxTokens;
 
-        public void SetMaxTokens(int maxTokens)
-        {
-            _maxTokens = maxTokens;
-        }
-
-        public void SetSystemPrompt(string systemPrompt)
-        {
-            _systemPrompt = systemPrompt;
-        }
+        public void SetSystemPrompt(string systemPrompt) => _systemPrompt = systemPrompt;
 
         public void AddUserMessage(string message)
         {
             lock (_messageLock)
             {
-                if (_messagesMemory.Count > 0)
-                {
-                    var lastMessage = _messagesMemory[_messagesMemory.Count - 1];
-
-                    if (lastMessage.Role == "user")
-                    {
-                        _messagesMemory[_messagesMemory.Count - 1] = new GroqCloudMessage("user", (lastMessage.Content + "\n" + message));
-                        return;
-                    }
-                }
-
-                _messagesMemory.Add(new GroqCloudMessage("user", message));
+                if (_messagesMemory.Count > 0 && _messagesMemory.Last().Role == "user")
+                    _messagesMemory[_messagesMemory.Count - 1] = new GroqCloudMessage("user", _messagesMemory.Last().Content + "\n" + message);
+                else
+                    _messagesMemory.Add(new GroqCloudMessage("user", message));
             }
         }
 
@@ -235,18 +213,10 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         {
             lock (_messageLock)
             {
-                if (_messagesMemory.Count > 0)
-                {
-                    var lastMessage = _messagesMemory[_messagesMemory.Count - 1];
-
-                    if (lastMessage.Role == "assistant")
-                    {
-                        _messagesMemory[_messagesMemory.Count - 1] = new GroqCloudMessage("assistant", (lastMessage.Content + "\n" + message));
-                        return;
-                    }
-                }
-
-                _messagesMemory.Add(new GroqCloudMessage("assistant", message));
+                if (_messagesMemory.Count > 0 && _messagesMemory.Last().Role == "assistant")
+                    _messagesMemory[_messagesMemory.Count - 1] = new GroqCloudMessage("assistant", _messagesMemory.Last().Content + "\n" + message);
+                else
+                    _messagesMemory.Add(new GroqCloudMessage("assistant", message));
             }
         }
 
@@ -255,56 +225,21 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             lock (_messageLock)
             {
                 if (index >= 0 && index < _messagesMemory.Count)
-                {
-                    var existing = _messagesMemory[index];
-                    _messagesMemory[index] = new GroqCloudMessage(existing.Role, message);
-                }
-                else
-                {
-                    // todo add logger
-                    Console.WriteLine($"Warning: EditMessage index {index} out of bounds for Groq message memory.");
-                }
+                    _messagesMemory[index] = new GroqCloudMessage(_messagesMemory[index].Role, message);
             }
         }
 
-        public void ClearMessages()
-        {
-            lock (_messageLock)
-            {
-                _messagesMemory.Clear();
-            }
-        }
-
-        public string GetModel()
-        {
-            return _model;
-        }
-
-        public string GetProviderFullName()
-        {
-            return "GroqCloud";
-        }
-
-        public InterfaceLLMProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
-
-        public static InterfaceLLMProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceLLMProviderEnum.GroqCloud;
-        }
+        public void ClearMessages() { lock (_messageLock) _messagesMemory.Clear(); }
+        public string GetModel() => _config.Model;
+        public string GetProviderFullName() => "GroqCloud";
+        public InterfaceLLMProviderEnum GetProviderType() => GetProviderTypeStatic();
+        public static InterfaceLLMProviderEnum GetProviderTypeStatic() => InterfaceLLMProviderEnum.GroqCloud;
 
         public void Dispose()
         {
             ClearMessageStreamed();
-
             _cts?.Cancel();
-
-            // todo check if task ProcessInputAsync ended
-
             _httpClient.Dispose();
-
             _cts?.Dispose();
         }
     }

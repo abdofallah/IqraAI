@@ -11,17 +11,22 @@ using System.Collections.ObjectModel;
 
 namespace IqraInfrastructure.Managers.STT.Providers
 {
+    public class ElevenLabsSTTConfig
+    {
+        public string ModelId { get; set; }
+        public string? LanguageCode { get; set; }
+        public double? VADSilenceThresholdSeconds { get; set; }
+        public double? VADThreshold { get; set; }
+        public int? MinSpeechDurationMS { get; set; }
+        public int? MinSilenceDurationMS { get; set; }
+    }
+
     public class ElevenLabsSTTService : ISTTService
     {
         private readonly string _apiKey;
-        private readonly string _modelId;
-        private readonly TTSProviderAvailableAudioFormat _inputAudioDetails;
+        private readonly ElevenLabsSTTConfig _config;
 
-        private readonly string _languageCode;
-        private readonly double _vadSilenceThresholdSeconds;
-        private readonly double _vadThreshold;
-        private readonly int _minSpeechDurationMS;
-        private readonly int _minSilenceDurationMS;
+        private readonly TTSProviderAvailableAudioFormat _inputAudioDetails;
 
         private ElevenLabsClient _client;
         private SpeechToTextSession _session;
@@ -38,21 +43,11 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public ElevenLabsSTTService(
             string apiKey,
-            string modelId,
-            string languageCode,
-            double vadSilenceThresholdSeconds,
-            double vadThreshold,
-            int minSpeechDurationMS,
-            int minSilenceDurationMS,
+            ElevenLabsSTTConfig config,
             TTSProviderAvailableAudioFormat inputAudioDetails
         ) {
             _apiKey = apiKey;
-            _modelId = modelId;
-            _languageCode = languageCode;
-            _vadSilenceThresholdSeconds = vadSilenceThresholdSeconds;
-            _vadThreshold = vadThreshold;
-            _minSpeechDurationMS = minSpeechDurationMS;
-            _minSilenceDurationMS = minSilenceDurationMS;
+            _config = config;
             _inputAudioDetails = inputAudioDetails;
         }
 
@@ -121,9 +116,9 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
                 // Verify Model Exists
                 var allModels = await _client.ModelsEndpoint.GetModelsAsync();
-                if (allModels.All(d => d.Id != _modelId))
+                if (allModels.All(d => d.Id != _config.ModelId))
                 {
-                    throw new Exception($"Model {_modelId} not found in ElevenLabs available models.");
+                    throw new Exception($"Model {_config.ModelId} not found in ElevenLabs available models.");
                 }
 
                 return result.SetSuccessResult();
@@ -145,16 +140,16 @@ namespace IqraInfrastructure.Managers.STT.Providers
                 {
                     var config = new SpeechToTextSessionConfiguration
                     {
-                        ModelId = _modelId,
+                        ModelId = _config.ModelId,
                         AudioFormat = _elevenLabsApiFormatEnum,
                         CommitStrategy = CommitStrategy.Vad,
                         IncludeTimestamps = false,
                         IncludeLanguageDetection = false,
-                        LanguageCode = _languageCode,
-                        VadSilenceThresholdSecs = _vadSilenceThresholdSeconds,
-                        VadThreshold = _vadThreshold,
-                        MinSpeechDurationMs = _minSpeechDurationMS,
-                        MinSilenceDurationMs = _minSilenceDurationMS,
+                        LanguageCode = _config.LanguageCode,
+                        VadSilenceThresholdSecs = _config.VADSilenceThresholdSeconds,
+                        VadThreshold = _config.VADThreshold,
+                        MinSpeechDurationMs = _config.MinSpeechDurationMS,
+                        MinSilenceDurationMs = _config.MinSilenceDurationMS,
                         EnableLogging = false
                     };
 

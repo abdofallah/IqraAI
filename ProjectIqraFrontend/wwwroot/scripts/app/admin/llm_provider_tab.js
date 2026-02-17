@@ -7,6 +7,8 @@ let CurrentManageLLMProviderModelData = null;
 
 let IsSavingLLMProviderTab = false;
 
+let llmFieldsHelper = null;
+
 /** Elements Variables **/
 const LLMProviderTab = $("#llm-provider-tab");
 
@@ -174,8 +176,13 @@ function ResetAndEmptyLLMProvidersManageTab() {
 	manageLLMProviderIdInput.val("");
 	manageLLMProviderDisabledInput.prop("checked", false).change();
 	llmProviderModelListTable.find("tbody").empty();
+	manageLLMProviderIntegrationSelect.val("").change();
 
 	llmProviderManagerGeneralTabButton.click();
+
+	// Reset Helper
+	llmProviderIntegrationFieldsList.empty();
+	llmFieldsHelper = null;
 }
 
 function ShowLLMProviderManageTab() {
@@ -254,6 +261,18 @@ function FillLLMProviderManageTab(llmProviderData) {
 	} else {
 		llmProviderModelListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="4">No models</td></tr>');
 	}
+
+	// Initialize Integration Fields Helper
+	llmFieldsHelper = new ProviderIntegrationsFieldHelper(
+		llmProviderIntegrationFieldsList,
+		addNewLLMProviderIntegrationFieldButton,
+		llmProviderData.userIntegrationFields,
+		() => {
+			// Callback when fields change
+			CheckLLMProviderManageTabHasChanges(true);
+		}
+	);
+	llmFieldsHelper.render();
 }
 
 function ShowLLMProviderModelManageTab() {
@@ -371,11 +390,10 @@ function CheckLLMProviderManageTabHasChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
-	// Check integration fields
-	const integrationFieldsChanges = CheckLLMProviderIntegrationFieldsTabHasChanges();
-	if (integrationFieldsChanges.hasChanges) {
+	// Check integration fields via Helper
+	changes.userIntegrationFields = llmFieldsHelper.getData();
+	if (llmFieldsHelper.hasChanges()) {
 		hasChanges = true;
-		changes.userIntegrationFields = integrationFieldsChanges.changes;
 	}
 
 	if (enableDisableButton) {
@@ -551,10 +569,10 @@ function ValidateLLMProviderManageTab(onlyRemove = true) {
 	}
 
 	// Integration Tab
-	const integrationValidation = ValidateLLMProviderIntegrationFieldsTab(onlyRemove);
-	if (!integrationValidation.validated) {
+	const fieldValidation = llmFieldsHelper.validate(onlyRemove);
+	if (!fieldValidation.validated) {
 		validated = false;
-		errors.push(...integrationValidation.errors);
+		errors.push(...fieldValidation.errors);
 	}
 
 	return {
@@ -580,331 +598,7 @@ function fillLLMProviderIntegrationSelect() {
 }
 
 // Integration Functions
-function createLLMProviderIntegrationFieldElement(fieldData = null) {
-	const fieldId = fieldData?.id || generateUniqueId();
 
-	return `
-                <div class="card mb-3 integration-field" data-field-id="${fieldId}">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <h6 class="card-title mb-0">Field</h6>
-                            <button type="button" class="btn btn-danger btn-sm remove-field-button">
-                                <i class="fa-regular fa-trash"></i>
-                            </button>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Field ID</label>
-                                <input type="text" class="form-control field-id-input" 
-                                    placeholder="Field ID" value="${fieldData?.id || ""}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Name</label>
-                                <input type="text" class="form-control field-name-input" 
-                                    placeholder="Field Name" value="${fieldData?.name || ""}">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Type</label>
-                                <select class="form-select field-type-select">
-                                    <option value="text" ${fieldData?.type === "text" ? "selected" : ""}>Text</option>
-                                    <option value="number" ${fieldData?.type === "number" ? "selected" : ""}>Number</option>
-									<option value="double_number" ${fieldData?.type === "double_number" ? "selected" : ""}>Double Number</option>
-                                    <option value="select" ${fieldData?.type === "select" ? "selected" : ""}>Select</option>
-                                    <option value="models" ${fieldData?.type === "models" ? "selected" : ""}>Models</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tooltip</label>
-                                <input type="text" class="form-control field-tooltip-input" 
-                                    placeholder="Field Tooltip" value="${fieldData?.tooltip || ""}">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Placeholder</label>
-                                <input type="text" class="form-control field-placeholder-input" 
-                                    placeholder="Field Placeholder" value="${fieldData?.placeholder || ""}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Default Value</label>
-                                <input type="text" class="form-control field-default-value-input" 
-                                    placeholder="Default Value" value="${fieldData?.defaultValue || ""}"
-                                    ${fieldData?.type === "select" || fieldData?.type === "models" ? "disabled" : ""}>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input field-required-check" type="checkbox" 
-                                        ${fieldData?.required ? "checked" : ""}>
-                                    <label class="form-check-label">Required</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input field-encrypted-check" type="checkbox"
-                                        ${fieldData?.isEncrypted ? "checked" : ""}>
-                                    <label class="form-check-label">Encrypted</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="field-options-container ${fieldData?.type === "select" ? "" : "d-none"} mt-3">
-                            <label class="form-label">Options</label>
-                            <div class="field-options-list">
-                                ${fieldData?.options?.map((option) => createLLMIntegrationFieldOptionElement(option)).join("") || ""}
-                            </div>
-                            <button type="button" class="btn btn-outline-primary btn-sm mt-2 add-option-button">
-                                <i class="fa-regular fa-plus"></i> Add Option
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-}
-
-function createLLMIntegrationFieldOptionElement(optionData = null) {
-	return `
-                <div class="input-group mb-2 field-option">
-                    <input type="text" class="form-control option-key-input" placeholder="Option Key"
-                        value="${optionData?.key || ""}">
-                    <input type="text" class="form-control option-value-input" placeholder="Option Value"
-                        value="${optionData?.value || ""}">
-                    <div class="input-group-text">
-                        <input class="form-check-input option-default-check mt-0" type="radio" name="defaultOption" ${optionData?.isDefault ? "checked" : ""}>
-                        <label class="ms-2">Default?</label>
-                    </div>
-                    <button class="btn btn-outline-danger remove-option-button" type="button">
-                        <i class="fa-regular fa-trash"></i>
-                    </button>
-                </div>
-            `;
-}
-
-function fillIntegrationFields() {
-	llmProviderIntegrationFieldsList.empty();
-
-	if (CurrentManageLLMProviderData.userIntegrationFields.length === 0) {
-		llmProviderIntegrationFieldsList.append(`
-                    <div class="text-center p-5">
-                        <p class="text-muted mb-0">No integration fields defined</p>
-                    </div>
-                `);
-		return;
-	}
-
-	CurrentManageLLMProviderData.userIntegrationFields.forEach((field) => {
-		llmProviderIntegrationFieldsList.append($(createLLMProviderIntegrationFieldElement(field)));
-	});
-}
-
-function CheckLLMProviderIntegrationFieldsTabHasChanges() {
-	let changes = [];
-	let hasChanges = false;
-
-	// Collect all current fields
-	llmProviderIntegrationFieldsList.find(".integration-field").each(function () {
-		const field = $(this);
-		const fieldData = {
-			id: field.find(".field-id-input").val().trim(),
-			name: field.find(".field-name-input").val().trim(),
-			type: field.find(".field-type-select").val(),
-			tooltip: field.find(".field-tooltip-input").val().trim(),
-			placeholder: field.find(".field-placeholder-input").val().trim(),
-			defaultValue: field.find(".field-default-value-input").val().trim(),
-			required: field.find(".field-required-check").is(":checked"),
-			isEncrypted: field.find(".field-encrypted-check").is(":checked"),
-		};
-
-		if (fieldData.type === "select") {
-			fieldData.options = [];
-			field.find(".field-option").each(function () {
-				const option = $(this);
-				fieldData.options.push({
-					key: option.find(".option-key-input").val().trim(),
-					value: option.find(".option-value-input").val().trim(),
-					isDefault: option.find(".option-default-check").is(":checked"),
-				});
-			});
-		}
-
-		changes.push(fieldData);
-	});
-
-	// Compare with original data
-	if (changes.length !== CurrentManageLLMProviderData.userIntegrationFields.length) {
-		hasChanges = true;
-	} else {
-		for (let i = 0; i < changes.length; i++) {
-			const newField = changes[i];
-			const oldField = CurrentManageLLMProviderData.userIntegrationFields[i];
-
-			if (
-				newField.id !== oldField.id ||
-				newField.name !== oldField.name ||
-				newField.type !== oldField.type ||
-				newField.tooltip !== oldField.tooltip ||
-				newField.placeholder !== oldField.placeholder ||
-				newField.defaultValue !== oldField.defaultValue ||
-				newField.required !== oldField.required ||
-				newField.isEncrypted !== oldField.isEncrypted
-			) {
-				hasChanges = true;
-				break;
-			}
-
-			if (newField.type === "select") {
-				if (!oldField.options || newField.options.length !== oldField.options.length) {
-					hasChanges = true;
-					break;
-				}
-
-				for (let j = 0; j < newField.options.length; j++) {
-					const newOption = newField.options[j];
-					const oldOption = oldField.options[j];
-
-					if (newOption.key !== oldOption.key || newOption.value !== oldOption.value || newOption.isDefault !== oldOption.isDefault) {
-						hasChanges = true;
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	return {
-		hasChanges: hasChanges,
-		changes: changes,
-	};
-}
-
-function ValidateLLMProviderIntegrationFieldsTab(onlyRemove = true) {
-	const errors = [];
-	let validated = true;
-
-	// Get all fields
-	llmProviderIntegrationFieldsList.find(".integration-field").each(function (index) {
-		const field = $(this);
-
-		// Validate Field ID
-		const fieldId = field.find(".field-id-input").val().trim();
-		if (!fieldId) {
-			validated = false;
-			errors.push(`Field ${index + 1}: ID is required`);
-			if (!onlyRemove) {
-				field.find(".field-id-input").addClass("is-invalid");
-			}
-		} else {
-			field.find(".field-id-input").removeClass("is-invalid");
-		}
-
-		// Validate Field Name
-		const fieldName = field.find(".field-name-input").val().trim();
-		if (!fieldName) {
-			validated = false;
-			errors.push(`Field ${index + 1}: Name is required`);
-			if (!onlyRemove) {
-				field.find(".field-name-input").addClass("is-invalid");
-			}
-		} else {
-			field.find(".field-name-input").removeClass("is-invalid");
-		}
-
-		// Get field type for specific validations
-		const fieldType = field.find(".field-type-select").val();
-
-		// Validate Select Options
-		if (fieldType === "select") {
-			const options = field.find(".field-option");
-			if (options.length === 0) {
-				validated = false;
-				errors.push(`Field ${index + 1}: Select type must have at least one option`);
-			} else {
-				let hasDefault = false;
-				options.each(function (optIndex) {
-					const option = $(this);
-					const key = option.find(".option-key-input").val().trim();
-					const value = option.find(".option-value-input").val().trim();
-
-					if (!key || !value) {
-						validated = false;
-						errors.push(`Field ${index + 1}, Option ${optIndex + 1}: Key and Value are required`);
-						if (!onlyRemove) {
-							if (!key) option.find(".option-key-input").addClass("is-invalid");
-							if (!value) option.find(".option-value-input").addClass("is-invalid");
-						}
-					} else {
-						option.find(".option-key-input").removeClass("is-invalid");
-						option.find(".option-value-input").removeClass("is-invalid");
-					}
-
-					if (option.find(".option-default-check").is(":checked")) {
-						hasDefault = true;
-					}
-				});
-
-				if (!hasDefault) {
-					validated = false;
-					errors.push(`Field ${index + 1}: Select type must have a default option selected`);
-				}
-			}
-		}
-
-		// Validate Default Value for non-select/models types
-		if (fieldType !== "select" && fieldType !== "models") {
-			const defaultValue = field.find(".field-default-value-input").val().trim();
-			const isRequired = field.find(".field-required-check").is(":checked");
-
-			if (isRequired && !defaultValue) {
-				validated = false;
-				errors.push(`Field ${index + 1}: Default value is required for required fields`);
-				if (!onlyRemove) {
-					field.find(".field-default-value-input").addClass("is-invalid");
-				}
-			} else {
-				field.find(".field-default-value-input").removeClass("is-invalid");
-			}
-
-			// Additional validation for number type
-			if (fieldType === "number" && defaultValue) {
-				if (isNaN(defaultValue)) {
-					validated = false;
-					errors.push(`Field ${index + 1}: Default value must be a valid number`);
-					if (!onlyRemove) {
-						field.find(".field-default-value-input").addClass("is-invalid");
-					}
-				} else {
-					field.find(".field-default-value-input").removeClass("is-invalid");
-				}
-			}
-		}
-
-		// Check for duplicate IDs
-		const currentId = field.find(".field-id-input").val().trim();
-		if (currentId) {
-			const duplicateFields = llmProviderIntegrationFieldsList
-				.find(".integration-field")
-				.not(field)
-				.filter(function () {
-					return $(this).find(".field-id-input").val().trim() === currentId;
-				});
-
-			if (duplicateFields.length > 0) {
-				validated = false;
-				errors.push(`Field ${index + 1}: Duplicate Field ID "${currentId}"`);
-				if (!onlyRemove) {
-					field.find(".field-id-input").addClass("is-invalid");
-				}
-			}
-		}
-	});
-
-	return {
-		validated: validated,
-		errors: errors,
-	};
-}
 
 /** Initalizer **/
 
@@ -912,13 +606,6 @@ $(document).ready(() => {
 	// Event Handlers
 
 	llmProviderManagerGeneral.on("input change", "input, textarea, select", (event) => {
-		if (CurrentManageLLMProviderType == null) return;
-
-		CheckLLMProviderManageTabHasChanges(true);
-		ValidateLLMProviderIntegrationFieldsTab(true);
-	});
-
-	llmProviderIntegrationsTab.on("input change", "input, textarea, select", (event) => {
 		if (CurrentManageLLMProviderType == null) return;
 
 		CheckLLMProviderManageTabHasChanges(true);
@@ -963,6 +650,10 @@ $(document).ready(() => {
 				if (saveResponse.success) {
 					// Update current data
 					CurrentManageLLMProviderData = saveResponse.data;
+
+					if (llmFieldsHelper) {
+						llmFieldsHelper.updateInitialData(CurrentManageLLMProviderData.userIntegrationFields);
+					}
 
 					// Update providers list
 					let providerIndex = CurrentLLMProvidersList.findIndex((p) => p.id.value === CurrentManageLLMProviderData.id.value);
@@ -1143,7 +834,6 @@ $(document).ready(() => {
 		ResetAndEmptyLLMProvidersManageTab();
 
 		FillLLMProviderManageTab(CurrentManageLLMProviderData);
-		fillIntegrationFields();
 
 		CurrentManageLLMProviderType = "edit";
 
@@ -1183,43 +873,6 @@ $(document).ready(() => {
 
 	// Integration Event Handlers
 
-	// Add new integration field
-	addNewLLMProviderIntegrationFieldButton.on("click", (event) => {
-		event.preventDefault();
-		llmProviderIntegrationFieldsList.find(".text-center").remove(); // Remove "no fields" message
-		llmProviderIntegrationFieldsList.append($(createLLMProviderIntegrationFieldElement()));
-
-		CheckLLMProviderManageTabHasChanges(true);
-	});
-
-	// Handle field type changes
-	llmProviderIntegrationsTab.on("change", ".field-type-select", function () {
-		const field = $(this).closest(".integration-field");
-		const optionsContainer = field.find(".field-options-container");
-		const defaultValueInput = field.find(".field-default-value-input");
-
-		const selectedType = $(this).val();
-		if (selectedType === "select") {
-			optionsContainer.removeClass("d-none");
-			defaultValueInput.prop("disabled", true).val("");
-		} else if (selectedType === "models") {
-			optionsContainer.addClass("d-none");
-			defaultValueInput.prop("disabled", true).val("");
-		} else {
-			optionsContainer.addClass("d-none");
-			defaultValueInput.prop("disabled", false);
-		}
-	});
-
-	// Handle field removal
-	llmProviderIntegrationsTab.on("click", ".remove-field-button", function () {
-		$(this).closest(".integration-field").remove();
-		if (llmProviderIntegrationFieldsList.children().length === 0) {
-			fillIntegrationFields(); // This will add the "no fields" message
-		}
-
-		CheckLLMProviderManageTabHasChanges(true);
-	});
 
 	// INIT
 

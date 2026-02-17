@@ -1,5 +1,4 @@
-﻿using Hume.Core.Async;
-using IqraCore.Entities.FlowApp;
+﻿using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.CalCom.Models;

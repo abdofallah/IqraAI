@@ -7,21 +7,34 @@ using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.LLM.Providers
 {
+    public class GoogleAIGeminiConfig
+    {
+        public string Model { get; set; } = "";
+        public double? Temperature { get; set; }
+        public double? TopP { get; set; }
+        public int? TopK { get; set; }
+        public int? MaxOutputTokens { get; set; }
+        public int? Seed { get; set; }
+        public double? PresencePenalty { get; set; }
+        public double? FrequencyPenalty { get; set; }
+        public bool? EnableAffectiveDialog { get; set; }
+
+        // Thinking
+        public bool? ThinkingIncludeThoughts { get; set; }
+        public int? ThinkingBudget { get; set; }
+
+        // Routing
+        public string? RoutingPreference { get; set; } // "balanced", "prioritize_quality", "prioritize_cost"
+    }
+
     public class GoogleAIGeminiStreamingLLMService : ILLMService
     {
         private readonly ILogger<GoogleAIGeminiStreamingLLMService> _logger;
-
         private readonly GoogleAi _client;
         private readonly CancellationTokenSource _cts;
 
-        // Config
-        private int _maxTokens;
-        private string _modelId;
-        private float _temperature;
-
-        // Session Data
+        private GoogleAIGeminiConfig _config;
         private GenerativeModel _googleModel;
-
         private Content _systemInstruction;
         private List<Content> _initialMessages;
         private List<Content> _messagesMemory;
@@ -31,18 +44,20 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public event EventHandler<ConversationAgentEventLLMStreamCancelled> MessageStreamedCancelled;
 
-        public GoogleAIGeminiStreamingLLMService(string apiKey, string modelId)
+        public GoogleAIGeminiStreamingLLMService(ILogger<GoogleAIGeminiStreamingLLMService> logger, string apiKey, GoogleAIGeminiConfig config)
         {
-            _logger = null; // todo
+            _logger = logger;
+            _config = config ?? throw new ArgumentNullException(nameof(config));
             _cts = new();
 
-            _modelId = modelId;
-
-            _maxTokens = 1024; // todo make dynamic
-            _temperature = 1; // todo make dyanmic
+            // Enforce minimum tokens
+            if (_config.MaxOutputTokens.HasValue && _config.MaxOutputTokens.Value < 200)
+            {
+                _config.MaxOutputTokens = 200;
+            }
 
             _client = new GoogleAi(apiKey);
-            _googleModel = _client.CreateGenerativeModel(_modelId);
+            _googleModel = _client.CreateGenerativeModel(_config.Model);
 
             _initialMessages = new List<Content>();
             _messagesMemory = new List<Content>();
@@ -54,7 +69,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
             var finalMessages = _initialMessages.Concat(_messagesMemory).ToList();
 
-            if (!string.IsNullOrEmpty(beforeMessageContext) && !string.IsNullOrEmpty(afterMessageContext))
+            if (!string.IsNullOrEmpty(beforeMessageContext) || !string.IsNullOrEmpty(afterMessageContext))
             {
                 var lastMessage = finalMessages.LastOrDefault();
                 if (lastMessage != null && lastMessage.Role == "user")
@@ -62,31 +77,50 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                     var lastMessageWithText = lastMessage.Parts.Find(x => !string.IsNullOrEmpty(x.Text));
                     if (lastMessageWithText != null)
                     {
-                        var newText = "";
+                        var newText = lastMessageWithText.Text;
+                        if (!string.IsNullOrEmpty(beforeMessageContext)) newText = beforeMessageContext + "\n\n" + newText;
+                        if (!string.IsNullOrEmpty(afterMessageContext)) newText = newText + "\n\n" + afterMessageContext;
 
-                        var textData = lastMessageWithText.Text;
-                        if (!string.IsNullOrEmpty(beforeMessageContext))
-                        {
-                            newText = beforeMessageContext + "\n\n" + textData;
-                        }
-                        if (!string.IsNullOrEmpty(afterMessageContext))
-                        {
-                            newText = newText + "\n\n" + afterMessageContext;
-                        }
-
-                        var newUserMessage = MakeContent("user", newText);
                         finalMessages.RemoveAt(finalMessages.Count - 1);
-                        finalMessages.Add(newUserMessage);
+                        finalMessages.Add(MakeContent("user", newText));
                     }
                 }
             }
-            
 
             var generationConfig = new GenerationConfig
             {
-                Temperature = _temperature,
-                MaxOutputTokens = _maxTokens,
+                Temperature = _config.Temperature,
+                TopP = _config.TopP,
+                TopK = _config.TopK,
+                MaxOutputTokens = _config.MaxOutputTokens,
+                Seed = _config.Seed,
+                PresencePenalty = _config.PresencePenalty,
+                FrequencyPenalty = _config.FrequencyPenalty,
+                EnableAffectiveDialog = _config.EnableAffectiveDialog,
             };
+
+            // Map Thinking Config
+            if (_config.ThinkingIncludeThoughts == true && _config.ThinkingBudget.HasValue)
+            {
+                generationConfig.ThinkingConfig = new ThinkingConfig
+                {
+                    IncludeThoughts = true,
+                    ThinkingBudget = _config.ThinkingBudget
+                };
+            }
+
+            // Map Routing Config
+            if (!string.IsNullOrEmpty(_config.RoutingPreference))
+            {
+                ModelRoutingPreference pref = ModelRoutingPreference.BALANCED;
+                if (_config.RoutingPreference == "prioritize_quality") pref = ModelRoutingPreference.PRIORITIZE_QUALITY;
+                else if (_config.RoutingPreference == "prioritize_cost") pref = ModelRoutingPreference.PRIORITIZE_COST;
+
+                generationConfig.RoutingConfig = new RoutingConfig
+                {
+                    AutoMode = new AutoRoutingMode { ModelRoutingPreference = pref }
+                };
+            }
 
             var request = new GenerateContentRequest
             {
@@ -102,89 +136,44 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                     MessageStreamed?.Invoke(this, new ConversationAgentEventLLMStreamed(response));
                 }
             }
-            catch (OperationCanceledException ex)
+            catch (OperationCanceledException)
             {
-                MessageStreamedCancelled?.Invoke(this, null);
+                MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled { Type = ConversationAgentEventLLMStreamCancelledTypeEnum.OperationCancelled });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error processing Gemini stream: {ex.Message}");
-                // TODO: Replace with proper logging
+                _logger?.LogError(ex, "Google Gemini Stream Error");
+                MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled { Type = ConversationAgentEventLLMStreamCancelledTypeEnum.InternalExceptionError, ResponseMessage = ex.Message });
             }
         }
 
-        public void SetModel(string modelId)
-        {
-            _modelId = modelId;
-        }
-
-        public void SetTemperature(decimal temperature)
-        {
-            _temperature = (float)temperature;
-        }
-
-        public void SetMaxTokens(int maxTokens)
-        {
-            _maxTokens = maxTokens;
-        }
+        public void SetModel(string modelId) { _config.Model = modelId; _googleModel = _client.CreateGenerativeModel(modelId); }
+        public void SetTemperature(decimal temperature) => _config.Temperature = (double)temperature;
+        public void SetMaxTokens(int maxTokens) => _config.MaxOutputTokens = maxTokens;
 
         public void SetSystemPrompt(string systemPrompt)
         {
-            if (!string.IsNullOrWhiteSpace(systemPrompt))
-            {
-                _systemInstruction = new Content { Parts = { MakeTextPart(systemPrompt) } };
-            }
-            else
-            {
-                _systemInstruction = null;
-            }
+            if (!string.IsNullOrWhiteSpace(systemPrompt)) _systemInstruction = new Content { Parts = { MakeTextPart(systemPrompt) } };
+            else _systemInstruction = null;
         }
 
-         public void AddUserMessage(string message)
-        {
-            _messagesMemory.Add(MakeContent("user", message));
-        }
-
-        public void AddAssistantMessage(string message)
-        {
-             _messagesMemory.Add(MakeContent("model", message));
-        }
+        public void AddUserMessage(string message) => _messagesMemory.Add(MakeContent("user", message));
+        public void AddAssistantMessage(string message) => _messagesMemory.Add(MakeContent("model", message));
 
         public void EditMessage(int index, string message)
         {
             if (index >= 0 && index < _messagesMemory.Count)
             {
-                var existingContent = _messagesMemory[index];
-                if (existingContent.Role.Equals("model", StringComparison.OrdinalIgnoreCase))
-                {
+                if (_messagesMemory[index].Role.Equals("model", StringComparison.OrdinalIgnoreCase))
                     _messagesMemory[index] = MakeContent("model", message);
-                }
             }
         }
 
-        public void ClearMessages()
-        {
-            _messagesMemory.Clear();
-        }
-        public string GetModel()
-        {
-            return _modelId;
-        }
-
-        public string GetProviderFullName()
-        {
-            return "Google Gemini";
-        }
-
-        public InterfaceLLMProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
-
-        public static InterfaceLLMProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceLLMProviderEnum.GoogleAIGemini;
-        }
+        public void ClearMessages() => _messagesMemory.Clear();
+        public string GetModel() => _config.Model;
+        public string GetProviderFullName() => "Google Gemini";
+        public InterfaceLLMProviderEnum GetProviderType() => GetProviderTypeStatic();
+        public static InterfaceLLMProviderEnum GetProviderTypeStatic() => InterfaceLLMProviderEnum.GoogleAIGemini;
 
         // HELPERS
         private static Part MakeTextPart(string text) => new Part { Text = text };
@@ -193,11 +182,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public void Dispose()
         {
             ClearMessageStreamed();
-
             _cts?.Cancel();
-
-            // todo check if task ProcessInputAsync ended
-
             _cts?.Dispose();
         }
     }

@@ -528,13 +528,13 @@ namespace IqraInfrastructure.Managers.TTS
                 }
 
                 // --- Helper functions for safe extraction ---
-                string GetString(string key, string defaultValue = "")
+                string? GetString(string key, string? defaultValue = null)
                 {
                     return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
                         ? val.ToString()! : defaultValue;
                 }
 
-                int GetInt(string key, int defaultValue)
+                int? GetInt(string key, int? defaultValue = null)
                 {
                     if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
                     {
@@ -544,7 +544,27 @@ namespace IqraInfrastructure.Managers.TTS
                     return defaultValue;
                 }
 
-                float GetFloat(string key, float defaultValue = 0f)
+                long? GetLong(string key, long? defaultValue = null)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (long.TryParse(val.ToString(), out long parsed)) return parsed;
+                        return Convert.ToInt64(val);
+                    }
+                    return defaultValue;
+                }
+
+                double? GetDouble(string key, double? defaultValue = null)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (double.TryParse(val.ToString(), out double parsed)) return parsed;
+                        return Convert.ToDouble(val);
+                    }
+                    return defaultValue;
+                }
+
+                float? GetFloat(string key, float? defaultValue = null)
                 {
                     if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
                     {
@@ -565,18 +585,17 @@ namespace IqraInfrastructure.Managers.TTS
                     return defaultValue;
                 }
 
-                List<string> GetList(string key)
+                List<string>? GetList(string key, List<string>? defaultValue = null)
                 {
-                    var list = new List<string>();
                     if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
                     {
                         var s = val.ToString();
                         if (!string.IsNullOrWhiteSpace(s))
                         {
-                            list.AddRange(s.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)));
+                            return s.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)).ToList();
                         }
                     }
-                    return list;
+                    return defaultValue;
                 }
                 // ---------------------------------------------
 
@@ -594,8 +613,8 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new AzureSpeechConfig
                             {
-                                Language = GetString("speaker_language"),
-                                VoiceName = GetString("speaker"),
+                                Language = GetString("speaker_language")!,
+                                VoiceName = GetString("speaker")!,
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -611,8 +630,8 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new ElevenLabsConfig
                             {
-                                ModelId = GetString("model_id"),
-                                VoiceId = GetString("voice_id"),
+                                ModelId = GetString("model_id")!,
+                                VoiceId = GetString("voice_id")!,
                                 Stability = GetFloat("stability"),
                                 SimilarityBoost = GetFloat("similarityBoost"),
                                 Style = GetFloat("style"),
@@ -636,9 +655,9 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new GoogleConfig
                             {
-                                LanguageCode = GetString("language_code"),
-                                VoiceName = GetString("voice_name"),
-                                SpeakingRate = GetFloat("speaking_rate", 1.0f),
+                                LanguageCode = GetString("language_code")!,
+                                VoiceName = GetString("voice_name")!,
+                                SpeakingRate = (double)GetDouble("speaking_rate")!,
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -654,9 +673,9 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new CartesiaConfig
                             {
-                                VoiceId = GetString("voice_id"),
-                                ModelId = GetString("model_id"),
-                                LanguageCode = GetString("language_code"),
+                                VoiceId = GetString("voice_id")!,
+                                ModelId = GetString("model_id")!,
+                                LanguageCode = GetString("language_code")!,
                                 PronunciationDictIds = GetList("pronunciationDictIds"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
@@ -674,7 +693,7 @@ namespace IqraInfrastructure.Managers.TTS
                             var config = new FishAudioConfig
                             {
                                 ReferenceId = GetString("reference_id"),
-                                Model = GetString("model"),
+                                Model = GetString("model")!,
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -690,7 +709,7 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new DeepgramConfig
                             {
-                                ModelId = GetString("model_id"),
+                                ModelId = GetString("model_id")!,
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -706,9 +725,9 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new MinimaxConfig
                             {
-                                ModelId = GetString("model_id"),
-                                VoiceId = GetString("voice_id"),
-                                VoiceSpeed = GetFloat("voice_speed", 1.0f),
+                                ModelId = GetString("model_id")!,
+                                VoiceId = GetString("voice_id")!,
+                                VoiceSpeed = (float)GetFloat("voice_speed")!,
                                 LanguageBoost = GetString("language_boost"),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
@@ -728,7 +747,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 VoiceId = GetString("voice_id"),
                                 VoiceProvider = GetString("voice_provider"),
                                 VoiceDescription = GetString("voice_description"),
-                                VoiceSpeed = GetFloat("voice_speed", 1.0f),
+                                VoiceSpeed = (float)GetFloat("voice_speed", 1.0f),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -745,7 +764,7 @@ namespace IqraInfrastructure.Managers.TTS
                             var config = new SpeechifyConfig
                             {
                                 VoiceId = GetString("voice_id"),
-                                Model = GetString("model"),
+                                Model = GetString("model")!,
                                 Language = GetString("language"),
                                 LoudnessNormalization = GetBool("loudness_normalization", true),
                                 TextNormalization = GetBool("text_normalization", true),
@@ -768,9 +787,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 VoiceId = GetString("voice_id"),
                                 MultiNativeLocale = GetString("multi_native_locale"),
                                 PronunciationDictionaryString = GetString("pronunciation_dictionary"),
-                                Rate = GetInt("rate", 0),
+                                Rate = (int)GetInt("rate", 0),
                                 Style = GetString("style"),
-                                Variation = GetInt("variation", 0),
+                                Variation = (int)GetInt("variation", 0),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -800,10 +819,10 @@ namespace IqraInfrastructure.Managers.TTS
                             {
                                 Model = GetString("model"),
                                 DefaultVoiceName = GetString("default_voice_name"),
-                                SpeakingRate = GetInt("speaking_rate", 1),
+                                SpeakingRate = (int)GetInt("speaking_rate", 1),
                                 LanguageIsoCode = GetString("language_iso_code"),
                                 Emotion = emotionDict,
-                                Vqscore = GetFloat("vqscore", 0.78f),
+                                Vqscore = (float)GetFloat("vqscore", 0.78f),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -857,7 +876,7 @@ namespace IqraInfrastructure.Managers.TTS
                                 LanguageCode = GetString("lang_code"),
                                 Model = GetString("model"),
                                 VoiceId = GetString("voice_id"),
-                                Speed = GetFloat("speed", 1.0f),
+                                Speed = (float)GetFloat("speed", 1.0f),
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding

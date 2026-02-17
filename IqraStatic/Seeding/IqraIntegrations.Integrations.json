@@ -1,0 +1,706 @@
+[{
+  "_id": "anthropic_claude",
+  "Name": "Anthropic Claude",
+  "Description": "Anthropic Claude",
+  "DisabledAt": null,
+  "Type": [
+    "LLM"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "bc2bba28e40bce71.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "assemblyai",
+  "Name": "AssemblyAI",
+  "Description": "AssemblyAI",
+  "DisabledAt": null,
+  "Type": [
+    "STT"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://www.assemblyai.com/dashboard/api-keys"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "0637a71ee99056ae.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "deepgram",
+  "Name": "Deepgram",
+  "Description": "Deepgram",
+  "DisabledAt": null,
+  "Type": [
+    "STT"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://developers.deepgram.com/docs/create-additional-api-keys"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "0d8f43c80c209af7.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "elevenlabs",
+  "Name": "ElevenLabs",
+  "Description": "ElevenLabs",
+  "DisabledAt": null,
+  "Type": [
+    "TTS",
+    "STT"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://elevenlabs.io/app/settings/api-keys"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "f18b5356afc61c75.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "google_ai_gemini",
+  "Name": "Google AI Gemini",
+  "Description": "Google Gemini by Google AI",
+  "DisabledAt": null,
+  "Type": [
+    "LLM",
+    "Embedding"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Generative Language API's Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://aistudio.google.com/apikey"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "d04a688ed7d16aac.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "groqcloud",
+  "Name": "GroqCloud",
+  "Description": "GroqCloud",
+  "DisabledAt": null,
+  "Type": [
+    "LLM"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://console.groq.com/keys"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "6da2f1209d7daf68.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "hamsa",
+  "Name": "Hamsa",
+  "Description": "Hamsa",
+  "DisabledAt": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://dashboard.tryhamsa.com/apikeys"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "ac515ea6800e1955.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "microsoftazure",
+  "Name": "Microsoft Azure",
+  "Description": "Microsoft Azure",
+  "DisabledAt": null,
+  "Type": [
+    "TTS",
+    "STT"
+  ],
+  "Fields": [
+    {
+      "_id": "tenant_id",
+      "Name": "Directory Tenant ID",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Entra Directory Tenant Id",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "client_id",
+      "Name": "App Client Id",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Entra Directory App Client Id",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "client_secret",
+      "Name": "App Client Secret",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Entra Directory App Client Secret",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    },
+    {
+      "_id": "subscription_id",
+      "Name": "Subscription Id",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Subscription Id",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "resource_group_name",
+      "Name": "Resource Group Name",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Subscription Resource Group Name",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "speech_resource_name",
+      "Name": "Resource Group Speech Resource Name",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Subscription Resource Group Speech Resource Name",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "resource_region",
+      "Name": "Resource Group Region Name",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Subscription Resource Group Region Name",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "32a2cecc5c65f93f.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "modemtel",
+  "Name": "ModemTel",
+  "Description": "ModemTel",
+  "DisabledAt": null,
+  "Type": [
+    "Phone Numbers",
+    "Voice Call",
+    "Messaging"
+  ],
+  "Fields": [
+    {
+      "_id": "endpoint",
+      "Name": "Endpoint",
+      "Type": "text",
+      "Tooltip": "Enter the endpoint url where ModemTel is hosted",
+      "Placeholder": "Enter Endpoint URL",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "apikey",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your Account API Key",
+    "Uri": "https://www.modemtel.com"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "1162e4602227ad94.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "neuphonic",
+  "Name": "Neuphonic",
+  "Description": "Neuphonic",
+  "DisabledAt": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://app.neuphonic.com/apikey"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "12e2d5ceaa8f7d3c.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "resembleai",
+  "Name": "Resemble.AI",
+  "Description": "Resemble.AI",
+  "DisabledAt": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    },
+    {
+      "_id": "project_uuid",
+      "Name": "Project UUID",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your project uuid",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://app.resemble.ai/account/api"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "2d5cb622542e87f4.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "twilio",
+  "Name": "Twilio",
+  "Description": "Twilio",
+  "DisabledAt": null,
+  "Type": [
+    "Phone Numbers",
+    "Voice Call",
+    "Messaging"
+  ],
+  "Fields": [
+    {
+      "_id": "sid",
+      "Name": "Account SID",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account SID",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "auth",
+      "Name": "Account Auth Token",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account Auth Token",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your Account SID & Auth Token",
+    "Uri": "https://help.twilio.com/articles/14726256820123-What-is-a-Twilio-Account-SID-and-where-can-I-find-it"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "706793984085cafe.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "zyphra",
+  "Name": "Zyphra",
+  "Description": "Zyphra",
+  "DisabledAt": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://playground.zyphra.com/settings/api-keys"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "51efb9c8f7a917f0.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "sip_trunking",
+  "Name": "Sip Trunking",
+  "Description": "Sip Trunking",
+  "DisabledAt": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "a62b6e053bf92ed6.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "Type": [
+    "Phone Numbers",
+    "Voice Call",
+    "Messaging"
+  ],
+  "Fields": [
+    {
+      "_id": "host",
+      "Name": "SIP Domain / Proxy",
+      "Type": "text",
+      "Tooltip": "The IP address or FQDN of the provider's SIP gateway (e.g., sip.telnyx.com or 192.168.1.50). Used for Outbound calls.",
+      "Placeholder": "Enter SIP Domain",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "port",
+      "Name": "SIP Port",
+      "Type": "number",
+      "Tooltip": "The port the carrier listens on. Usually 5060 (UDP/TCP) or 5061 (TLS).",
+      "Placeholder": "Enter SIP Port",
+      "DefaultValue": "5060",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "transport",
+      "Name": "Transport Protocol",
+      "Type": "select",
+      "Tooltip": "",
+      "Placeholder": "Options: UDP, TCP, TLS. Determines how we send packets.",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "UDP",
+          "Value": "UDP",
+          "IsDefault": false
+        },
+        {
+          "Key": "TCP",
+          "Value": "TCP",
+          "IsDefault": false
+        },
+        {
+          "Key": "TLS",
+          "Value": "TLS",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "username",
+      "Name": "SIP Username",
+      "Type": "text",
+      "Tooltip": "Required if the carrier uses Digest Authentication for outbound calls.",
+      "Placeholder": "Enter SIP Username",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "password",
+      "Name": "SIP Password",
+      "Type": "text",
+      "Tooltip": "The password for Digest Authentication.",
+      "Placeholder": "Enter SIP Password",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": true
+    },
+    {
+      "_id": "realm",
+      "Name": "SIP Realm",
+      "Type": "text",
+      "Tooltip": "Optional. Sometimes required by strict PBXs. Usually same as Host.",
+      "Placeholder": "Enter SIP Realm",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "register",
+      "Name": "Enable Registration",
+      "Type": "select",
+      "Tooltip": "If checked, our Backend will periodically send REGISTER requests to the carrier. (Useful if the carrier requires it to know our IP).",
+      "Placeholder": "Select Registration Enabled",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "No",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "Yes",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "acl",
+      "Name": "Allowed Source IPs",
+      "Type": "text",
+      "Tooltip": "Comma-separated list of IPs (CIDR preferred). Global whitelist for this Trunk.",
+      "Placeholder": "Enter Comma Seperated ACL",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "codecs",
+      "Name": "Preferred Codecs",
+      "Type": "text",
+      "Tooltip": "Prioritized list of codecs for negotiation.",
+      "Placeholder": "Enter Comma Seperated Ordered Audio Codecs",
+      "DefaultValue": "OPUS,PCMU,PCMA,PCM,G722,G729",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "cal_com",
+  "Name": "Cal.com",
+  "Description": "Cal.com",
+  "DisabledAt": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "9b1aa5cec5aac51c.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ApiKey",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get Cal.com API Key?",
+    "Uri": "https://cal.com/docs/api-reference/v2/introduction#1-api-key"
+  }
+},
+{
+  "_id": "openai",
+  "Name": "OpenAI",
+  "Description": "OpenAI",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "66dc8f56dc8ead75.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "LLM"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+}]

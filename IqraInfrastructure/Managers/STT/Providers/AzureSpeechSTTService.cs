@@ -5,7 +5,7 @@ using Azure.ResourceManager.Resources.Models;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
-using IqraCore.Entities.TTS; // Sharing the format struct
+using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.TTS.Helpers;
@@ -15,6 +15,15 @@ using System.Collections.ObjectModel;
 
 namespace IqraInfrastructure.Managers.STT.Providers
 {
+    public class AzureSpeechSTTConfig
+    {
+        public string Language { get; set; }
+        public List<string>? ContinuousLanguageIdentificationIds { get; set; }
+        public bool SpeakerDiarization { get; set; }
+        public List<string>? PhrasesList { get; set; }
+        public int SilenceTimeout { get; set; }
+    }
+
     public class AzureSpeechSTTService : ISTTService
     {
         private readonly string _tenantId;
@@ -24,7 +33,8 @@ namespace IqraInfrastructure.Managers.STT.Providers
         private readonly string _resourceGroupName;
         private readonly string _speechResourceName;
         private readonly string _region;
-        private readonly string _language;
+
+        private readonly AzureSpeechSTTConfig _config;
 
         private ArmClient _azureClient;
         private SpeechRecognizer _recognizer;
@@ -38,11 +48,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
         private bool _audioConversionNeeded = false;
         private AudioRequestDetails _targetProviderFormatDetails;
 
-        private List<string> _continousLanguageIdentificationIds;
-        private bool _speakerDiarization;
-        private List<string> _phrasesList;
-        private readonly int _silenceTimeout;
-
         private event EventHandler<string> _transcriptionResultReceived;
 
         public event EventHandler<string> TranscriptionResultReceived
@@ -54,7 +59,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
         public event EventHandler<string> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
 
-        // UPDATED CONSTRUCTOR: Takes AudioRequestDetails (or similar) instead of raw ints
         public AzureSpeechSTTService(
             string tenantId,
             string clientId,
@@ -63,12 +67,8 @@ namespace IqraInfrastructure.Managers.STT.Providers
             string resourceGroupName,
             string speechResourceName,
             string region,
-            string language,
-            List<string> continousLanguageIdentificationIds,
-            bool speakerDiarization,
-            List<string> phrasesList,
-            int silenceTimeout,
-            TTSProviderAvailableAudioFormat inputAudioDetails // Updated to object
+            AzureSpeechSTTConfig config,
+            TTSProviderAvailableAudioFormat inputAudioDetails
         )
         {
             _tenantId = tenantId;
@@ -78,14 +78,10 @@ namespace IqraInfrastructure.Managers.STT.Providers
             _resourceGroupName = resourceGroupName;
             _speechResourceName = speechResourceName;
             _region = region;
-            _language = language;
+
+            _config = config;
 
             _inputAudioDetails = inputAudioDetails;
-
-            _continousLanguageIdentificationIds = continousLanguageIdentificationIds;
-            _speakerDiarization = speakerDiarization;
-            _phrasesList = phrasesList;
-            _silenceTimeout = silenceTimeout;
         }
 
         public async Task<FunctionReturnResult> Initialize()
@@ -94,7 +90,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
             try
             {
-                // 1. Authenticate (Existing Logic)
+                // 1. Authenticate
                 var azureCredientals = new ClientSecretCredential(_tenantId, _clientId, _clientSecret);
                 _azureClient = new ArmClient(azureCredientals);
 
@@ -114,8 +110,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
                     return result.SetFailureResult("Initialize:KEY_NOT_FOUND", "Could not retrieve a valid key.");
                 }
 
-                // 2. Determine Optimal Format (NEW LOGIC)
-                // We check what the user provided against what Azure supports (defined in static list below)
+                // 2. Determine Optimal Format
                 var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(
                     new AudioRequestDetails()
                     {
@@ -147,13 +142,11 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
                 // 4. Configure Speech Config
                 var speechConfig = SpeechConfig.FromSubscription(retrievedKey, _region);
-                speechConfig.SpeechRecognitionLanguage = _language;
-                speechConfig.SetProperty(PropertyId.SpeechServiceResponse_DiarizeIntermediateResults, _speakerDiarization ? "true" : "false");
-                speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, _silenceTimeout.ToString());
+                speechConfig.SpeechRecognitionLanguage = _config.Language;
+                speechConfig.SetProperty(PropertyId.SpeechServiceResponse_DiarizeIntermediateResults, _config.SpeakerDiarization ? "true" : "false");
+                speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, _config.SilenceTimeout.ToString());
 
-                // 5. Configure Audio Stream (NEW LOGIC)
-                // We initialize the stream using the OPTIMAL format we selected, not necessarily the raw input.
-                // Azure expects standard PCM. 
+                // 5. Configure Audio Stream
                 var audioFormat = AudioStreamFormat.GetWaveFormatPCM(
                     (uint)_optimalAzureFormat.SampleRateHz,
                     (byte)_optimalAzureFormat.BitsPerSample,
@@ -164,10 +157,10 @@ namespace IqraInfrastructure.Managers.STT.Providers
                 var audioConfig = AudioConfig.FromStreamInput(_pushStream);
 
                 // 6. Initialize Recognizer
-                if (_continousLanguageIdentificationIds.Count > 0)
+                if (_config.ContinuousLanguageIdentificationIds != null && _config.ContinuousLanguageIdentificationIds.Count > 0)
                 {
                     speechConfig.SetProperty(PropertyId.SpeechServiceConnection_LanguageIdMode, "Continuous");
-                    var autoDetectSourceLanguageConfig = AutoDetectSourceLanguageConfig.FromLanguages(_continousLanguageIdentificationIds.ToArray());
+                    var autoDetectSourceLanguageConfig = AutoDetectSourceLanguageConfig.FromLanguages(_config.ContinuousLanguageIdentificationIds.ToArray());
                     _recognizer = new SpeechRecognizer(speechConfig, autoDetectSourceLanguageConfig, audioConfig);
                 }
                 else
@@ -175,7 +168,14 @@ namespace IqraInfrastructure.Managers.STT.Providers
                     _recognizer = new SpeechRecognizer(speechConfig, audioConfig);
                 }
 
-                AddPhraseList();
+                if (_config.PhrasesList != null && _config.PhrasesList.Count > 0)
+                {
+                    var phraseList = PhraseListGrammar.FromRecognizer(_recognizer);
+                    foreach (var phrase in _config.PhrasesList)
+                    {
+                        phraseList.AddPhrase(phrase);
+                    }
+                }
 
                 // Events
                 _recognizer.Recognizing += OnRecognizing;
@@ -190,17 +190,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
             catch (Exception ex)
             {
                 return result.SetFailureResult("Initialize:EXCEPTION", $"Internal error: {ex.Message}");
-            }
-        }
-
-        private void AddPhraseList()
-        {
-            if (_phrasesList == null || !_phrasesList.Any()) return;
-
-            var phraseList = PhraseListGrammar.FromRecognizer(_recognizer);
-            foreach (var phrase in _phrasesList)
-            {
-                phraseList.AddPhrase(phrase);
             }
         }
 
@@ -226,13 +215,10 @@ namespace IqraInfrastructure.Managers.STT.Providers
         {
             if (_pushStream == null) return;
 
-            // NEW LOGIC: Convert audio if the input doesn't match the stream configuration
             if (_audioConversionNeeded)
             {
                 try
                 {
-                    // Convert sync or async? PushStream.Write is synchronous.
-                    // Ideally, conversion happens efficiently.
                     var (convertedData, _) = AudioConversationHelper.Convert(
                         data,
                         _inputAudioDetails,
@@ -249,8 +235,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Audio Conversion Failed: {ex.Message}");
-                    // Fallback to writing original data or dropping? 
-                    // Writing wrong format usually results in static noise for Azure.
                     return;
                 }
             }
@@ -259,7 +243,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
             _pushStream.Write(data);
         }
 
-        // ... Event Handlers (OnRecognizing, OnRecognized, etc. remain the same) ...
 
         private void OnRecognizing(object? sender, SpeechRecognitionEventArgs e)
         {
@@ -304,7 +287,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
             var supportedFormats = new List<TTSProviderAvailableAudioFormat>
             {
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 8000, BitsPerSample = 16 },
-                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 16 }, // Azure Standard
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 22050, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 24000, BitsPerSample = 16 },
                 new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 32000, BitsPerSample = 16 },

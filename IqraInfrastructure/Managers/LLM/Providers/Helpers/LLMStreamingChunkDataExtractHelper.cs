@@ -29,8 +29,10 @@ namespace IqraInfrastructure.Managers.LLM.Providers.Helpers
                     }
                 }
             }
-            else if (providerType == InterfaceLLMProviderEnum.OpenAIGPT || providerType == InterfaceLLMProviderEnum.AzureOpenAI)
+            else if (providerType == InterfaceLLMProviderEnum.OpenAIGPT)
             {
+                throw new NotImplementedException("NEED TO USE RESPONSES FROM OPENAI SDK");
+
                 var response = (OpenAI.Chat.StreamingChatCompletionUpdate)responseObject;
                 var messageContentPart = (OpenAI.Chat.ChatMessageContentPart)response.ContentUpdate.FirstOrDefault();
 

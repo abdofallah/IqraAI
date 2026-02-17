@@ -1,0 +1,1149 @@
+[{
+  "_id": 1,
+  "DisabledAt": null,
+  "IntegrationId": "microsoftazure",
+  "Models": [],
+  "UserIntegrationFields": [
+    {
+      "_id": "langauge_id",
+      "Name": "Default Language Id",
+      "Type": "text",
+      "Tooltip": "Enter the BCP-47 language code (e.g., en-US, ar-SA).",
+      "Placeholder": "en-US",
+      "DefaultValue": "en-US",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "StringRegex": "^[a-z]{2,3}(-[a-zA-Z0-9]+)?$",
+      "ModelCondition": null
+    },
+    {
+      "_id": "continous_language_identification_ids",
+      "Name": "Continuous Identification Languages",
+      "Type": "text",
+      "Tooltip": "Add up to 10 language codes to enable multi-language detection (e.g., en-US, fr-FR).",
+      "Placeholder": "Add a language code",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": true,
+      "MaxArrayCount": 10,
+      "StringRegex": "^[a-z]{2,3}(-[a-zA-Z0-9]+)?$",
+      "ModelCondition": null
+    },
+    {
+      "_id": "speaker_diarization",
+      "Name": "Speaker Diarization",
+      "Type": "select",
+      "Tooltip": "Differentiate between speakers in the audio.",
+      "Placeholder": "Select",
+      "DefaultValue": "off",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "phrases_list",
+      "Name": "Phrases List",
+      "Type": "text",
+      "Tooltip": "Improve accuracy for specific words, names, or locations.",
+      "Placeholder": "Type and press enter to add",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": true,
+      "MaxArrayCount": 500,
+      "ModelCondition": null
+    },
+    {
+      "_id": "silence_timeout",
+      "Name": "Silence Timeout (ms)",
+      "Type": "number",
+      "Tooltip": "Milliseconds of silence before considering the phrase complete.",
+      "Placeholder": "100",
+      "DefaultValue": "100",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 50,
+      "MaxNumberValue": 5000,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 2,
+  "DisabledAt": null,
+  "IntegrationId": "deepgram",
+  "Models": [
+    {
+      "_id": "flux-general-en",
+      "DisabledAt": null,
+      "Name": "Flux (General English)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0077"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-3",
+      "DisabledAt": null,
+      "Name": "Nova-3 (General)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0077"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-3-medical",
+      "DisabledAt": null,
+      "Name": "Nova-3 (Medical)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0077"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2",
+      "DisabledAt": null,
+      "Name": "Nova-2 (General)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-meeting",
+      "DisabledAt": null,
+      "Name": "Nova-2 (Meeting)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-phonecall",
+      "DisabledAt": null,
+      "Name": "Nova-2 (Phonecall)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-finance",
+      "DisabledAt": null,
+      "Name": "Nova-2 (Finance)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-conversationalai",
+      "DisabledAt": null,
+      "Name": "Nova-2 (Conversational AI)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-voicemail",
+      "DisabledAt": null,
+      "Name": "Nova-2 (Voicemail)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-video",
+      "DisabledAt": null,
+      "Name": "Nova-2 (Video)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-medical",
+      "DisabledAt": null,
+      "Name": "Nova-2 (Medical)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-drivethru",
+      "DisabledAt": null,
+      "Name": "Nova-2 (Drive-thru)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-automotive",
+      "DisabledAt": null,
+      "Name": "Nova-2 (Automotive)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-2-atc",
+      "DisabledAt": null,
+      "Name": "Nova-2 (ATC)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova",
+      "DisabledAt": null,
+      "Name": "Nova-1 (Legacy)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-phonecall",
+      "DisabledAt": null,
+      "Name": "Nova-1 (Phonecall)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "nova-medical",
+      "DisabledAt": null,
+      "Name": "Nova-1 (Medical)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "enhanced",
+      "DisabledAt": null,
+      "Name": "Enhanced (General)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0165"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "multi"
+      ]
+    },
+    {
+      "_id": "enhanced-meeting",
+      "DisabledAt": null,
+      "Name": "Enhanced (Meeting)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0165"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "enhanced-phonecall",
+      "DisabledAt": null,
+      "Name": "Enhanced (Phonecall)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0165"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "enhanced-finance",
+      "DisabledAt": null,
+      "Name": "Enhanced (Finance)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0165"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "base",
+      "DisabledAt": null,
+      "Name": "Base (General)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0145"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "multi"
+      ]
+    },
+    {
+      "_id": "base-meeting",
+      "DisabledAt": null,
+      "Name": "Base (Meeting)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0145"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "base-phonecall",
+      "DisabledAt": null,
+      "Name": "Base (Phonecall)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0145"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "base-finance",
+      "DisabledAt": null,
+      "Name": "Base (Finance)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0145"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "base-conversationalai",
+      "DisabledAt": null,
+      "Name": "Base (Conversational AI)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0145"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "base-voicemail",
+      "DisabledAt": null,
+      "Name": "Base (Voicemail)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0145"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "base-video",
+      "DisabledAt": null,
+      "Name": "Base (Video)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0145"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "whisper-large",
+      "DisabledAt": null,
+      "Name": "Whisper Cloud (Large)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "ar",
+        "en"
+      ]
+    },
+    {
+      "_id": "whisper-medium",
+      "DisabledAt": null,
+      "Name": "Whisper Cloud (Medium)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "ar",
+        "en"
+      ]
+    },
+    {
+      "_id": "whisper-small",
+      "DisabledAt": null,
+      "Name": "Whisper Cloud (Small)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "ar",
+        "en"
+      ]
+    },
+    {
+      "_id": "whisper-base",
+      "DisabledAt": null,
+      "Name": "Whisper Cloud (Base)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "ar",
+        "en"
+      ]
+    },
+    {
+      "_id": "whisper-tiny",
+      "DisabledAt": null,
+      "Name": "Whisper Cloud (Tiny)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0058"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "ar",
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "language",
+      "Name": "Language",
+      "Type": "text",
+      "Tooltip": "Specify the BCP-47 language tag (e.g. 'en-US', 'es', 'multi'). For Flux, use 'en'.",
+      "Placeholder": "e.g., en-US",
+      "DefaultValue": "en",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "^([a-z]{2,3}(-[a-zA-Z0-9]+)?|multi)$",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the transcription model.",
+      "Placeholder": "Select a model",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "silence_timeout",
+      "Name": "Silence Timeout (ms)",
+      "Type": "number",
+      "Tooltip": "Duration of silence (ms) to determine end of speech. Maps to 'endpointing' for Standard models and 'eot_timeout_ms' for Flux.",
+      "Placeholder": "300",
+      "DefaultValue": "300",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 500,
+      "MaxNumberValue": 10000,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "keywords_list",
+      "Name": "Keywords / Keyterms",
+      "Type": "text",
+      "Tooltip": "Specific words to boost accuracy. Maps to 'keywords' for Nova-2/Legacy and 'keyterm' for Nova-3/Flux.",
+      "Placeholder": "Type and press enter to add",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": true,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": 100
+    },
+    {
+      "_id": "speaker_diarization",
+      "Name": "Speaker Diarization",
+      "Type": "select",
+      "Tooltip": "Identifies different speakers.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "flux-general-en"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "punctuate",
+      "Name": "Punctuation",
+      "Type": "select",
+      "Tooltip": "Adds punctuation and capitalization.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": false
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": true
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "flux-general-en"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "smart_format",
+      "Name": "Smart Formatting",
+      "Type": "select",
+      "Tooltip": "Formats dates, times, and currency.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": false
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": true
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "flux-general-en"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "filler_words",
+      "Name": "Include Filler Words",
+      "Type": "select",
+      "Tooltip": "Includes 'uh' and 'um'.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "flux-general-en"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "profanity_filter",
+      "Name": "Profanity Filter",
+      "Type": "select",
+      "Tooltip": "Filters profanity.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "flux-general-en"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "flux_eot_threshold",
+      "Name": "End of Turn Threshold",
+      "Type": "double_number",
+      "Tooltip": "Confidence (0.5 - 0.9) required to trigger EndOfTurn. Higher = slower but more accurate turn detection.",
+      "Placeholder": "0.7",
+      "DefaultValue": "0.7",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "flux-general-en"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": 0.5,
+      "MaxNumberValue": 0.9,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "flux_eager_eot_threshold",
+      "Name": "Eager End of Turn Threshold",
+      "Type": "double_number",
+      "Tooltip": "Confidence (0.3 - 0.9) required to trigger EagerEndOfTurn. Used to prepare Agent LLM responses early. Must be <= End of Turn Threshold.",
+      "Placeholder": "0.4",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "flux-general-en"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": 0.3,
+      "MaxNumberValue": 0.9,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    }
+  ]
+},
+{
+  "_id": 3,
+  "DisabledAt": null,
+  "IntegrationId": "assemblyai",
+  "Models": [
+    {
+      "_id": "universal-streaming-multilingual",
+      "DisabledAt": null,
+      "Name": "Universal Streaming (Multilingual)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0025"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "ar",
+        "en"
+      ]
+    },
+    {
+      "_id": "universal-streaming-english",
+      "DisabledAt": null,
+      "Name": "Universal Streaming (English)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0025"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "format_turns",
+      "Name": "Format Turns",
+      "Type": "select",
+      "Tooltip": "When enabled, the service returns transcripts with speaker labels and timestamps.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "end_of_turn_confidence_threshold",
+      "Name": "End-of-Turn Confidence Threshold",
+      "Type": "double_number",
+      "Tooltip": "Confidence score (0.0 - 1.0) required to decide a turn has ended.",
+      "Placeholder": "0.4",
+      "DefaultValue": "0.4",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "min_end_of_turn_silence_when_confident",
+      "Name": "Min End-of-Turn Silence (ms)",
+      "Type": "number",
+      "Tooltip": "Minimum silence required to trigger end of turn when confidence is high.",
+      "Placeholder": "400",
+      "DefaultValue": "400",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 50,
+      "MaxNumberValue": 5000,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "max_turn_silence",
+      "Name": "Max Turn Silence (ms)",
+      "Type": "number",
+      "Tooltip": "Maximum silence allowed before forcing a turn end.",
+      "Placeholder": "1280",
+      "DefaultValue": "1280",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 100,
+      "MaxNumberValue": 10000,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "vad_threshold",
+      "Name": "VAD Threshold",
+      "Type": "double_number",
+      "Tooltip": "Confidence threshold (0.0 - 1.0) for classifying audio as silence.",
+      "Placeholder": "0.4",
+      "DefaultValue": "0.4",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "speech_model",
+      "Name": "Speech Model",
+      "Type": "models",
+      "Tooltip": "Select the underlying acoustic model.",
+      "Placeholder": "Select Speech Model",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "keyterms_prompt",
+      "Name": "Keyterm Prompts",
+      "Type": "text",
+      "Tooltip": "Add words or phrases to improve recognition accuracy (Boost).",
+      "Placeholder": "Type and press enter to add",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": true,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": 100
+    }
+  ]
+},
+{
+  "_id": 4,
+  "DisabledAt": null,
+  "IntegrationId": "elevenlabs",
+  "Models": [
+    {
+      "_id": "scribe_v2",
+      "DisabledAt": null,
+      "Name": "Scribe v2 (Realtime)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0084"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "ar",
+        "en"
+      ]
+    },
+    {
+      "_id": "scribe_v1",
+      "DisabledAt": null,
+      "Name": "Scribe v1 (Legacy)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.0084"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model_id",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the ElevenLabs transcription model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "language_code",
+      "Name": "Language Code",
+      "Type": "text",
+      "Tooltip": "ISO 639-1 (e.g., 'en') or ISO 639-3 (e.g., 'eng') language code. Leave empty for auto-detection.",
+      "Placeholder": "e.g., en",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "^[a-z]{2,3}$",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "vad_silence_threshold",
+      "Name": "VAD Silence Threshold (s)",
+      "Type": "double_number",
+      "Tooltip": "Duration of silence in seconds required to automatically commit the transcript (end of turn).",
+      "Placeholder": "1.5",
+      "DefaultValue": "1.5",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0.1,
+      "MaxNumberValue": 10,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "vad_threshold",
+      "Name": "VAD Sensitivity Threshold",
+      "Type": "double_number",
+      "Tooltip": "Confidence threshold (0.0 to 1.0) for determining speech activity. Higher values require louder/clearer speech to trigger.",
+      "Placeholder": "0.4",
+      "DefaultValue": "0.4",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "min_speech_duration_ms",
+      "Name": "Min Speech Duration (ms)",
+      "Type": "number",
+      "Tooltip": "Minimum duration of audio in milliseconds to be classified as valid speech.",
+      "Placeholder": "100",
+      "DefaultValue": "100",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 50,
+      "MaxNumberValue": 5000,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "min_silence_duration_ms",
+      "Name": "Min Silence Duration (ms)",
+      "Type": "number",
+      "Tooltip": "Minimum duration of silence in milliseconds required to separate speech chunks.",
+      "Placeholder": "100",
+      "DefaultValue": "100",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 50,
+      "MaxNumberValue": 5000,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    }
+  ]
+}]

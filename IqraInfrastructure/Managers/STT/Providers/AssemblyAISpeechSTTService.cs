@@ -14,21 +14,24 @@ using System.Web;
 
 namespace IqraInfrastructure.Managers.STT.Providers
 {
+    public class AssemblyAISpeechSTTConfig
+    {
+        public string SpeechModel { get; set; }
+        public bool FormatTurns { get; set; }
+        public float? EndOfTurnConfidenceThreshold { get; set; }
+        public int? MinEndOfTurnSilenceWhenConfident { get; set; }
+        public int? MaxTurnSilence { get; set; }
+        public double? VADThreshold { get; set; }
+        public List<string>? KeytermsPrompt { get; set; }
+    }
+
     public class AssemblyAISpeechSTTService : ISTTService
     {
         private readonly string _apiKey;
+        private readonly AssemblyAISpeechSTTConfig _config;
 
         // The format coming FROM the platform/user
         private readonly TTSProviderAvailableAudioFormat _inputAudioDetails;
-
-        // AssemblyAI Configuration
-        private readonly bool _formatTurns;
-        private readonly float _endOfTurnConfidenceThreshold;
-        private readonly int _minEndOfTurnSilenceWhenConfident;
-        private readonly int _maxTurnSilence;
-        private readonly double _vadThreshold;
-        private readonly string[] _keytermsPrompt;
-        private readonly string _speechModel;
 
         // Internal State
         private ClientWebSocket _webSocketClient;
@@ -52,27 +55,14 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public AssemblyAISpeechSTTService(
             string apiKey,
-            bool formatTurns,
-            float endOfTurnConfidenceThreshold,
-            int minEndOfTurnSilenceWhenConfident,
-            int maxTurnSilence,
-            double vadThreshold,
-            string[] keytermsPrompt,
-            string speechModel,
+            AssemblyAISpeechSTTConfig config,
             TTSProviderAvailableAudioFormat inputAudioDetails
         )
         {
             _apiKey = apiKey;
+            _config = config;
 
             _inputAudioDetails = inputAudioDetails;
-
-            _formatTurns = formatTurns;
-            _endOfTurnConfidenceThreshold = endOfTurnConfidenceThreshold;
-            _minEndOfTurnSilenceWhenConfident = minEndOfTurnSilenceWhenConfident;
-            _maxTurnSilence = maxTurnSilence;
-            _vadThreshold = vadThreshold;
-            _keytermsPrompt = keytermsPrompt;
-            _speechModel = speechModel;
         }
 
         public async Task<FunctionReturnResult> Initialize()
@@ -137,18 +127,19 @@ namespace IqraInfrastructure.Managers.STT.Providers
             var uriBuilder = new UriBuilder("wss://streaming.assemblyai.com/v3/ws");
             var query = HttpUtility.ParseQueryString(string.Empty);
 
-            // Important: We tell AssemblyAI the format of the data we are *sending* (the converted format), 
-            // not necessarily the original input format.
             query["sample_rate"] = _optimalAssemblyFormat.SampleRateHz.ToString();
             query["encoding"] = "pcm_s16le";
 
-            query["format_turns"] = _formatTurns.ToString().ToLower();
-            query["end_of_turn_confidence_threshold"] = _endOfTurnConfidenceThreshold.ToString();
-            query["min_end_of_turn_silence_when_confident"] = _minEndOfTurnSilenceWhenConfident.ToString();
-            query["max_turn_silence"] = _maxTurnSilence.ToString();
-            query["vad_threshold"] = _vadThreshold.ToString();
-            query["keyterms_prompt"] = string.Join(",", _keytermsPrompt);
-            query["speech_model"] = _speechModel;
+            query["speech_model"] = _config.SpeechModel;
+            query["format_turns"] = _config.FormatTurns.ToString().ToLower();
+            query["end_of_turn_confidence_threshold"] = _config.EndOfTurnConfidenceThreshold.ToString();
+            query["min_end_of_turn_silence_when_confident"] = _config.MinEndOfTurnSilenceWhenConfident.ToString();
+            query["max_turn_silence"] = _config.MaxTurnSilence.ToString();
+            query["vad_threshold"] = _config.VADThreshold.ToString();
+            if (_config.KeytermsPrompt != null && _config.KeytermsPrompt.Any())
+            {
+                query["keyterms_prompt"] = string.Join(",", _config.KeytermsPrompt);
+            }
 
             uriBuilder.Query = query.ToString();
 
@@ -206,7 +197,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
                     if (turn.EndOfTurn)
                     {
-                        if (_formatTurns && !turn.TurnIsFormatted)
+                        if (_config.FormatTurns && !turn.TurnIsFormatted)
                         {
                             break;
                         }

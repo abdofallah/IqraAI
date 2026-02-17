@@ -6,7 +6,7 @@
         public const string CurrentAppVersion = "0.1.0";
 
         // Configuration Keys
-        public const string RemoteUpdateManifestUrl = "https://raw.githubusercontent.com/abdofallah/IqraAI/main/.app/updates.json";
+        public const string RemoteUpdateManifestUrl = "https://raw.githubusercontent.com/abdofallah/IqraAI/refs/heads/master/.app/updates.json";
 
         // Telemetry Configuration
         public const string TelemetryEndpoint = "https://umami.badal.om/api/send";

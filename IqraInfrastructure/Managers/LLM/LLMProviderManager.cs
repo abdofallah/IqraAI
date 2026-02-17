@@ -631,10 +631,71 @@ namespace IqraInfrastructure.Managers.LLM
                 }
 
                 // --- Helper functions for safe extraction ---
-                string GetString(string key, string defaultValue = "")
+                string? GetString(string key, string? defaultValue = null)
                 {
                     return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
                         ? val.ToString()! : defaultValue;
+                }
+
+                int? GetInt(string key, int? defaultValue = null)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (int.TryParse(val.ToString(), out int parsed)) return parsed;
+                        return Convert.ToInt32(val);
+                    }
+                    return defaultValue;
+                }
+
+                long? GetLong(string key, long? defaultValue = null)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (long.TryParse(val.ToString(), out long parsed)) return parsed;
+                        return Convert.ToInt64(val);
+                    }
+                    return defaultValue;
+                }
+
+                double? GetDouble(string key, double? defaultValue = null)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (double.TryParse(val.ToString(), out double parsed)) return parsed;
+                        return Convert.ToDouble(val);
+                    }
+                    return defaultValue;
+                }
+
+                decimal? GetDecimal(string key, decimal? defaultValue = null)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (decimal.TryParse(val.ToString(), out decimal parsed)) return parsed;
+                        return Convert.ToDecimal(val);
+                    }
+                    return defaultValue;
+                }
+
+                float? GetFloat(string key, float? defaultValue = null)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (float.TryParse(val.ToString(), out float parsed)) return parsed;
+                        return Convert.ToSingle(val);
+                    }
+                    return defaultValue;
+                }
+
+                bool GetBool(string key, bool defaultValue)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        var s = val.ToString()!.ToLower();
+                        if (s == "on" || s == "yes" || s == "true") return true;
+                        if (s == "off" || s == "no" || s == "false") return false;
+                    }
+                    return defaultValue;
                 }
                 // ---------------------------------------------
 
@@ -643,17 +704,28 @@ namespace IqraInfrastructure.Managers.LLM
                     case InterfaceLLMProviderEnum.AnthropicClaude:
                         {
                             var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            var model = GetString("model");
-                            return result.SetSuccessResult(new AnthropicClaudeStreamingLLMService(apiKey, model));
+
+                            var config = new AnthropicClaudeConfig
+                            {
+                                Model = GetString("model")!,
+                                MaxTokens = GetInt("max_tokens"),
+                                Temperature = GetDecimal("temperature"),
+                                TopP = GetDecimal("top_p"),
+                                TopK = GetInt("top_k"),
+                                ThinkingEnabled = GetBool("thinking_enabled", false),
+                                ThinkingBudgetTokens = GetInt("thinking_budget_tokens"),
+                                InferenceGeo = GetString("inference_geo")
+                            };
+
+                            var logger = loggerFactory.CreateLogger<AnthropicClaudeStreamingLLMService>();
+                            return result.SetSuccessResult(new AnthropicClaudeStreamingLLMService(logger, apiKey, config));
                         }
 
                     case InterfaceLLMProviderEnum.OpenAIGPT:
                         {
                             var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            var model = GetString("model");
                             var endpoint = "https://api.openai.com/v1";
 
-                            // Check if endpoint override exists in integration config
                             if (integrationData.Fields.TryGetValue("endpoint", out var endpointValue) &&
                                 !string.IsNullOrEmpty(endpointValue) &&
                                 Uri.IsWellFormedUriString(endpointValue, UriKind.Absolute))
@@ -661,22 +733,85 @@ namespace IqraInfrastructure.Managers.LLM
                                 endpoint = endpointValue;
                             }
 
-                            return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(apiKey, model, endpoint));
+                            var config = new OpenAIGPTConfig
+                            {
+                                Model = GetString("model")!,
+                                MaxTokens = GetInt("max_tokens"),
+                                Temperature = GetFloat("temperature"),
+                                TopP = GetFloat("top_p"),
+                                ServiceTier = GetString("service_tier"),
+                                ReasoningEffort = GetString("reasoning_effort"),
+                                ReasoningSummary = GetString("reasoning_summary")
+                            };
+
+                            var logger = loggerFactory.CreateLogger<OpenAIGPTStreamingLLMService>();
+                            return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(logger, apiKey, endpoint, config));
                         }
 
                     case InterfaceLLMProviderEnum.GoogleAIGemini:
                         {
                             var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            var model = GetString("model");
-                            return result.SetSuccessResult(new GoogleAIGeminiStreamingLLMService(apiKey, model));
+
+                            var config = new GoogleAIGeminiConfig
+                            {
+                                Model = GetString("model")!,
+                                MaxOutputTokens = GetInt("max_output_tokens"),
+                                Temperature = GetDouble("temperature"),
+                                TopP = GetDouble("top_p"),
+                                TopK = GetInt("top_k"),
+                                Seed = GetInt("seed"),
+                                PresencePenalty = GetDouble("presence_penalty"),
+                                FrequencyPenalty = GetDouble("frequency_penalty"),
+                                EnableAffectiveDialog = GetBool("enable_affective_dialog", false),
+                                ThinkingIncludeThoughts = GetBool("thinking_include_thoughts", false),
+                                ThinkingBudget = GetInt("thinking_budget"),
+                                RoutingPreference = GetString("routing_preference")
+                            };
+
+                            var logger = loggerFactory.CreateLogger<GoogleAIGeminiStreamingLLMService>();
+                            return result.SetSuccessResult(new GoogleAIGeminiStreamingLLMService(logger, apiKey, config));
                         }
 
                     case InterfaceLLMProviderEnum.GroqCloud:
                         {
                             var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            var model = GetString("model");
+
+                            var config = new GroqCloudConfig
+                            {
+                                Model = GetString("model")!,
+                                Temperature = GetFloat("temperature"),
+                                TopP = GetFloat("top_p"),
+                                MaxCompletionTokens = GetInt("max_completion_tokens"),
+                                Seed = GetInt("seed"),
+                                ServiceTier = GetString("service_tier", "auto"),
+                                IncludeReasoning = GetBool("include_reasoning", false),
+                                ReasoningFormat = GetString("reasoning_format"),
+                                ReasoningEffort = GetString("reasoning_effort")
+                            };
+
                             var logger = loggerFactory.CreateLogger<GroqCloudStreamingLLMService>();
-                            return result.SetSuccessResult(new GroqCloudStreamingLLMService(logger, apiKey, model));
+                            return result.SetSuccessResult(new GroqCloudStreamingLLMService(logger, apiKey, config));
+                        }
+
+                    case InterfaceLLMProviderEnum.AzureAIInference:
+                        {
+                            string endpoint = integrationData.Fields["endpoint"];
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+
+                            var config = new AzureAIInferenceConfig
+                            {
+                                ModelDeploymentName = GetString("model_deployment_name")!,
+                                MaxTokens = GetInt("max_tokens"),
+                                Temperature = GetFloat("temperature"),
+                                NucleusSamplingFactor = GetFloat("nucleus_sampling_factor"),
+                                Seed = GetLong("seed"),
+                                PresencePenalty = GetFloat("presence_penalty"),
+                                FrequencyPenalty = GetFloat("frequency_penalty"),
+                                AdditionalPropertiesJson = GetString("additional_properties")
+                            };
+
+                            var logger = loggerFactory.CreateLogger<AzureAIInferenceStreamingLLM>();
+                            return result.SetSuccessResult(new AzureAIInferenceStreamingLLM(logger, endpoint, apiKey, config));
                         }
 
                     default:

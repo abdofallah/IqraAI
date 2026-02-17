@@ -4,24 +4,29 @@ using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using Microsoft.Extensions.Logging;
-
+using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.LLM.Providers
 {
+    public class AzureAIInferenceConfig
+    {
+        public string ModelDeploymentName { get; set; } = "";
+        public float? Temperature { get; set; }
+        public float? NucleusSamplingFactor { get; set; } // Top P
+        public int? MaxTokens { get; set; }
+        public long? Seed { get; set; }
+        public float? PresencePenalty { get; set; }
+        public float? FrequencyPenalty { get; set; }
+        public string? AdditionalPropertiesJson { get; set; }
+    }
+
     public class AzureAIInferenceStreamingLLM : ILLMService
     {
         private readonly ILogger<AzureAIInferenceStreamingLLM> _logger;
-
         private readonly ChatCompletionsClient _client;
         private readonly CancellationTokenSource _cts;
 
-        // Config
-        private int _maxTokens;
-        private string _model;
-        private float _temperature;
-        private float _topP;
-
-        // Session Data
+        private AzureAIInferenceConfig _config;
         private string _systemPrompt;
         private List<ChatRequestMessage> _initialMessages;
         private List<ChatRequestMessage> _messagesMemory;
@@ -31,22 +36,23 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public event EventHandler<ConversationAgentEventLLMStreamCancelled> MessageStreamedCancelled;
 
-        public AzureAIInferenceStreamingLLM(string resourceEndpoint, string resounseAPIKey, string modelDeploymentName)
+        public AzureAIInferenceStreamingLLM(ILogger<AzureAIInferenceStreamingLLM> logger, string resourceEndpoint, string resourceApiKey, AzureAIInferenceConfig config)
         {
-            _logger = null; // todo
+            _logger = logger;
+            _config = config ?? throw new ArgumentNullException(nameof(config));
             _cts = new();
 
-            _client = new ChatCompletionsClient(new Uri(resourceEndpoint), new AzureKeyCredential(resounseAPIKey));
+            // Enforce minimum tokens
+            if (!_config.MaxTokens.HasValue || _config.MaxTokens.Value < 200)
+            {
+                _config.MaxTokens = 200;
+            }
 
-            _maxTokens = 1024; // todo make dynamic
-            _temperature = 1; // todo make dynamic
-            _topP = 1; // todo make dynamic
-
-            _model = modelDeploymentName;
+            _client = new ChatCompletionsClient(new Uri(resourceEndpoint), new AzureKeyCredential(resourceApiKey));
 
             _initialMessages = new List<ChatRequestMessage>();
             _messagesMemory = new List<ChatRequestMessage>();
-            _systemPrompt = "You are Iqra. A helpful AI Assitant.";
+            _systemPrompt = "You are Iqra. A helpful AI Assistant.";
         }
 
         public async Task ProcessInputAsync(CancellationToken cancellationToken, string? beforeMessageContext = null, string? afterMessageContext = null)
@@ -80,21 +86,44 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                     finalMessages.Add(newUserMessage);
                 }
             }
-            
 
-            var parameters = new ChatCompletionsOptions()
+
+            var options = new ChatCompletionsOptions()
             {
                 Messages = finalMessages,
-                Temperature = _temperature,
-                Model = _model,
-                MaxTokens = _maxTokens,
-                NucleusSamplingFactor = _topP,
+                Model = _config.ModelDeploymentName,
+                MaxTokens = _config.MaxTokens,
+                Temperature = _config.Temperature,
+                NucleusSamplingFactor = _config.NucleusSamplingFactor,
+                PresencePenalty = _config.PresencePenalty,
+                FrequencyPenalty = _config.FrequencyPenalty,
+                Seed = _config.Seed,
                 ResponseFormat = ChatCompletionsResponseFormat.CreateTextFormat()
             };
 
+            if (!string.IsNullOrWhiteSpace(_config.AdditionalPropertiesJson))
+            {
+                try
+                {
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(_config.AdditionalPropertiesJson);
+                    if (dict != null)
+                    {
+                        foreach (var kvp in dict)
+                        {
+                            // Convert object to BinaryData for SDK
+                            options.AdditionalProperties[kvp.Key] = BinaryData.FromObjectAsJson(kvp.Value);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning($"Failed to parse Additional Properties JSON: {ex.Message}");
+                }
+            }
+
             try
             {
-                StreamingResponse<StreamingChatCompletionsUpdate> completionResult = await _client.CompleteStreamingAsync(parameters, combinedCancellationToken);
+                StreamingResponse<StreamingChatCompletionsUpdate> completionResult = await _client.CompleteStreamingAsync(options, combinedCancellationToken);
 
                 await foreach (var completion in completionResult)
                 {
@@ -105,37 +134,20 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             {
                 if (!(ex is TaskCanceledException || ex is OperationCanceledException))
                 {
-                    MessageStreamedCancelled?.Invoke(this, null);
-                    // TODO IMPLEMENT LOGGER
-                    Console.WriteLine("ProcessInputAsync Cancelled");
+                    _logger?.LogError(ex, "Azure AI Inference Stream Error");
+                    MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled { Type = ConversationAgentEventLLMStreamCancelledTypeEnum.InternalExceptionError, ResponseMessage = ex.Message });
                 }
                 else
                 {
-                    // TODO IMPLEMENT LOGGER
-                    Console.WriteLine(ex.Message);
+                    MessageStreamedCancelled?.Invoke(this, new ConversationAgentEventLLMStreamCancelled { Type = ConversationAgentEventLLMStreamCancelledTypeEnum.OperationCancelled });
                 }
             }
         }
 
-        public void SetModel(string model)
-        {
-            _model = model;
-        }
-
-        public void SetTemperature(decimal temperature)
-        {
-            _temperature = (float)temperature;
-        }
-
-        public void SetMaxTokens(int maxTokens)
-        {
-            _maxTokens = maxTokens;
-        }
-
-        public void SetSystemPrompt(string systemPrompt)
-        {
-            _systemPrompt = systemPrompt;
-        }
+        public void SetModel(string model) => _config.ModelDeploymentName = model;
+        public void SetTemperature(decimal temperature) => _config.Temperature = (float)temperature;
+        public void SetMaxTokens(int maxTokens) => _config.MaxTokens = maxTokens;
+        public void SetSystemPrompt(string systemPrompt) => _systemPrompt = systemPrompt;
 
         public void AddUserMessage(string message)
         {
@@ -155,41 +167,23 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         {
             if (index >= 0 && index < _messagesMemory.Count)
             {
-                _messagesMemory[index] = new ChatRequestSystemMessage(message);
+                var oldMsg = _messagesMemory[index];
+                if (oldMsg is ChatRequestUserMessage) _messagesMemory[index] = new ChatRequestUserMessage(message);
+                else if (oldMsg is ChatRequestAssistantMessage) _messagesMemory[index] = new ChatRequestAssistantMessage(message);
+                else if (oldMsg is ChatRequestSystemMessage) _messagesMemory[index] = new ChatRequestSystemMessage(message);
             }
         }
-        public void ClearMessages()
-        {
-            _messagesMemory.Clear();
-        }
 
-        public string GetModel()
-        {
-            return _model;
-        }
-        public string GetProviderFullName()
-        {
-            return "Azure AI Inference";
-        }
-
-        public InterfaceLLMProviderEnum GetProviderType()
-        {
-            return GetProviderTypeStatic();
-        }
-
-        public static InterfaceLLMProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceLLMProviderEnum.AzureAIInference;
-        }
+        public void ClearMessages() => _messagesMemory.Clear();
+        public string GetModel() => _config.ModelDeploymentName;
+        public string GetProviderFullName() => "Azure AI Inference";
+        public InterfaceLLMProviderEnum GetProviderType() => GetProviderTypeStatic();
+        public static InterfaceLLMProviderEnum GetProviderTypeStatic() => InterfaceLLMProviderEnum.AzureAIInference;
 
         public void Dispose()
         {
             ClearMessageStreamed();
-
             _cts?.Cancel();
-
-            // todo check if task ProcessInputAsync ended
-
             _cts?.Dispose();
         }
     }

@@ -17,25 +17,30 @@ using System.Web;
 
 namespace IqraInfrastructure.Managers.STT.Providers
 {
+    public class DeepgramSTTConfig
+    {
+        public string Model { get; set; }
+        public string Language { get; set; }
+        public int SilenceTimeout { get; set; }
+        public List<string>? KeywordsList { get; set; }
+
+        // V1 (Standard/Nova) Config
+        public bool SpeakerDiarization { get; set; }
+        public bool Punctuate { get; set; }
+        public bool SmartFormat { get; set; }
+        public bool FillerWords { get; set; }
+        public bool ProfanityFilter { get; set; }
+
+        // V2 (Flux) Config
+        public double? FluxEotThreshold { get; set; }
+    }
+
     public class DeepgramSTTService : ISTTService
     {
         private readonly string _apiKey;
 
-        // Common Config
-        private readonly string _model;
-        private readonly string _language;
-        private readonly List<string> _keywordsList;
-        private readonly int _silenceTimeout;
-
-        // V1 (Standard/Nova) Config
-        private readonly bool _speakerDiarization;
-        private readonly bool _punctuate;
-        private readonly bool _smartFormat;
-        private readonly bool _fillerWords;
-        private readonly bool _profanityFilter;
-
-        // V2 (Flux) Config
-        private readonly double _fluxEotThreshold;
+        // Config
+        private readonly DeepgramSTTConfig _config;
 
         // Input Audio Format
         private readonly TTSProviderAvailableAudioFormat _inputAudioDetails;
@@ -56,38 +61,17 @@ namespace IqraInfrastructure.Managers.STT.Providers
         public event EventHandler<string> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
 
-        private bool IsFluxModel => _model.StartsWith("flux");
+        private bool IsFluxModel => _config.Model.StartsWith("flux");
 
         public DeepgramSTTService(
             string apiKey,
-            string language,
-            string model,
-            List<string> keywordsList,
-            int silenceTimeout,
-            bool speakerDiarization,
-            bool punctuate,
-            bool smartFormat,
-            bool fillerWords,
-            bool profanityFilter,
-            double fluxEotThreshold,
+            DeepgramSTTConfig config,
             TTSProviderAvailableAudioFormat inputAudioDetails
         )
         {
             _apiKey = apiKey;
-            _language = language;
-            _model = model;
-            _keywordsList = keywordsList;
-            _silenceTimeout = silenceTimeout;
-
-            // V1 Flags
-            _speakerDiarization = speakerDiarization;
-            _punctuate = punctuate;
-            _smartFormat = smartFormat;
-            _fillerWords = fillerWords;
-            _profanityFilter = profanityFilter;
-
-            // V2 Params
-            _fluxEotThreshold = fluxEotThreshold;
+            
+            _config = config;
 
             _inputAudioDetails = inputAudioDetails;
         }
@@ -187,23 +171,23 @@ namespace IqraInfrastructure.Managers.STT.Providers
                 // Build Schema with V1 Flags
                 var liveSchema = new LiveSchema()
                 {
-                    Model = _model,
-                    Language = _language,
+                    Model = _config.Model,
+                    Language = _config.Language,
                     Encoding = _deepgramEncodingString,
                     SampleRate = _optimalDeepgramFormat.SampleRateHz,
                     Channels = 1,
                     InterimResults = true,
-                    SmartFormat = _smartFormat,
-                    Punctuate = _punctuate,
-                    Diarize = _speakerDiarization,
-                    FillerWords = _fillerWords,
-                    ProfanityFilter = _profanityFilter,
-                    EndPointing = _silenceTimeout.ToString()
+                    SmartFormat = _config.SmartFormat,
+                    Punctuate = _config.Punctuate,
+                    Diarize = _config.SpeakerDiarization,
+                    FillerWords = _config.FillerWords,
+                    ProfanityFilter = _config.ProfanityFilter,
+                    EndPointing = _config.SilenceTimeout.ToString()
                 };
 
                 // Handle Keyterms/Keywords
-                if (_model.Contains("nova-3")) liveSchema.Keyterm = _keywordsList;
-                else liveSchema.Keywords = _keywordsList;
+                if (_config.Model.Contains("nova-3")) liveSchema.Keyterm = _config.KeywordsList;
+                else liveSchema.Keywords = _config.KeywordsList;
 
                 _v1Client.Connect(liveSchema).Wait();
             }
@@ -223,15 +207,15 @@ namespace IqraInfrastructure.Managers.STT.Providers
                 var uriBuilder = new UriBuilder("wss://api.deepgram.com/v2/listen");
                 var query = HttpUtility.ParseQueryString(string.Empty);
 
-                query["model"] = _model;
+                query["model"] = _config.Model;
                 query["encoding"] = _deepgramEncodingString;
                 query["sample_rate"] = _optimalDeepgramFormat.SampleRateHz.ToString();
-                query["eot_threshold"] = _fluxEotThreshold.ToString();
-                query["eot_timeout_ms"] = _silenceTimeout.ToString();
+                query["eot_threshold"] = _config.FluxEotThreshold.ToString();
+                query["eot_timeout_ms"] = _config.SilenceTimeout.ToString();
 
-                if (_keywordsList != null && _keywordsList.Any())
+                if (_config.KeywordsList != null && _config.KeywordsList.Any())
                 {
-                    foreach (var k in _keywordsList) query.Add("keyterm", k);
+                    foreach (var k in _config.KeywordsList) query.Add("keyterm", k);
                 }
 
                 uriBuilder.Query = query.ToString();

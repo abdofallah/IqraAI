@@ -519,13 +519,13 @@ namespace IqraInfrastructure.Managers.STT
                 };
 
                 // --- Helper functions for safe extraction ---
-                string GetString(string key, string defaultValue = "")
+                string? GetString(string key, string? defaultValue = null)
                 {
                     return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
                         ? val.ToString()! : defaultValue;
                 }
 
-                int GetInt(string key, int defaultValue)
+                int? GetInt(string key, int? defaultValue = null)
                 {
                     if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
                     {
@@ -535,12 +535,32 @@ namespace IqraInfrastructure.Managers.STT
                     return defaultValue;
                 }
 
-                double GetDouble(string key, double defaultValue)
+                long? GetLong(string key, long? defaultValue = null)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (long.TryParse(val.ToString(), out long parsed)) return parsed;
+                        return Convert.ToInt64(val);
+                    }
+                    return defaultValue;
+                }
+
+                double? GetDouble(string key, double? defaultValue = null)
                 {
                     if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
                     {
                         if (double.TryParse(val.ToString(), out double parsed)) return parsed;
                         return Convert.ToDouble(val);
+                    }
+                    return defaultValue;
+                }
+
+                float? GetFloat(string key, float? defaultValue = null)
+                {
+                    if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
+                    {
+                        if (float.TryParse(val.ToString(), out float parsed)) return parsed;
+                        return Convert.ToSingle(val);
                     }
                     return defaultValue;
                 }
@@ -556,18 +576,17 @@ namespace IqraInfrastructure.Managers.STT
                     return defaultValue;
                 }
 
-                List<string> GetList(string key)
+                List<string>? GetList(string key, List<string>? defaultValue = null)
                 {
-                    var list = new List<string>();
                     if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
                     {
                         var s = val.ToString();
                         if (!string.IsNullOrWhiteSpace(s))
                         {
-                            list.AddRange(s.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)));
+                            return s.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)).ToList();
                         }
                     }
-                    return list;
+                    return defaultValue;
                 }
                 // ---------------------------------------------
 
@@ -583,11 +602,14 @@ namespace IqraInfrastructure.Managers.STT
                             string speechResourceName = integrationData.Fields["speech_resource_name"];
                             string resourceRegion = integrationData.Fields["resource_region"];
 
-                            string languageId = GetString("langauge_id", "en-US");
-                            int silenceTimeout = GetInt("silence_timeout", 100);
-                            bool speakerDiarization = GetBool("speaker_diarization", false);
-                            List<string> continousLanguageIdentificationIds = GetList("continous_language_identification_ids");
-                            List<string> phrasesList = GetList("phrases_list");
+                            var config = new AzureSpeechSTTConfig()
+                            {
+                                Language = GetString("langauge_id")!,
+                                ContinuousLanguageIdentificationIds = GetList("continous_language_identification_ids"),
+                                SpeakerDiarization = GetBool("speaker_diarization", false),
+                                PhrasesList = GetList("phrases_list"),
+                                SilenceTimeout = (int)GetInt("silence_timeout")!,
+                            };
 
                             var azureSTTService = new AzureSpeechSTTService(
                                 tenantId,
@@ -597,11 +619,7 @@ namespace IqraInfrastructure.Managers.STT
                                 resourceGroupName,
                                 speechResourceName,
                                 resourceRegion,
-                                languageId,
-                                continousLanguageIdentificationIds,
-                                speakerDiarization,
-                                phrasesList,
-                                silenceTimeout,
+                                config,
                                 ttsAudioFormat
                             );
 
@@ -612,33 +630,23 @@ namespace IqraInfrastructure.Managers.STT
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
-                            string language = GetString("language", "en");
-                            string model = GetString("model", "nova-3");
-                            int silenceTimeout = GetInt("silence_timeout", 300);
-                            List<string> keywordsList = GetList("keywords_list");
-
-                            // V1 Boolean Flags
-                            bool speakerDiarization = GetBool("speaker_diarization", false);
-                            bool punctuate = GetBool("punctuate", true);
-                            bool smartFormat = GetBool("smart_format", true);
-                            bool fillerWords = GetBool("filler_words", false);
-                            bool profanityFilter = GetBool("profanity_filter", false);
-
-                            // V2 Flux Params
-                            double fluxEotThreshold = GetDouble("flux_eot_threshold", 0.7);
+                            DeepgramSTTConfig config = new DeepgramSTTConfig()
+                            {
+                                Model = GetString("model")!,
+                                Language = GetString("language")!,
+                                KeywordsList = GetList("keywords_list"),
+                                SilenceTimeout = (int)GetInt("silence_timeout")!,
+                                SpeakerDiarization = GetBool("speaker_diarization", false),
+                                Punctuate = GetBool("punctuate", true),
+                                SmartFormat = GetBool("smart_format", false),
+                                FillerWords = GetBool("filler_words", true),
+                                ProfanityFilter = GetBool("profanity_filter", false),
+                                FluxEotThreshold = GetDouble("flux_eot_threshold")
+                            };
 
                             var deepgramSTTService = new DeepgramSTTService(
                                 apiKey,
-                                language,
-                                model,
-                                keywordsList,
-                                silenceTimeout,
-                                speakerDiarization,
-                                punctuate,
-                                smartFormat,
-                                fillerWords,
-                                profanityFilter,
-                                fluxEotThreshold,
+                                config,
                                 ttsAudioFormat
                             );
 
@@ -649,24 +657,20 @@ namespace IqraInfrastructure.Managers.STT
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
-                            bool formatTurns = GetBool("format_turns", false);
-                            float endOfTurnConfidenceThreshold = (float)GetDouble("end_of_turn_confidence_threshold", 0.4);
-                            int minEndOfTurnSilenceWhenConfident = GetInt("min_end_of_turn_silence_when_confident", 400);
-                            int maxTurnSilence = GetInt("max_turn_silence", 1280);
-                            double vadThreshold = GetDouble("vad_threshold", 0.4);
-                            string speechModel = GetString("speech_model", "universal-streaming-english");
-
-                            string[] keyterms = GetList("keyterms_prompt").ToArray();
+                            AssemblyAISpeechSTTConfig config = new AssemblyAISpeechSTTConfig()
+                            {
+                                SpeechModel = GetString("speech_model")!,
+                                FormatTurns = GetBool("format_turns", false),
+                                EndOfTurnConfidenceThreshold = GetFloat("end_of_turn_confidence_threshold"),
+                                MinEndOfTurnSilenceWhenConfident = GetInt("min_end_of_turn_silence_when_confident"),
+                                MaxTurnSilence = GetInt("max_turn_silence"),
+                                VADThreshold = GetDouble("vad_threshold"),
+                                KeytermsPrompt = GetList("keyterms_prompt")
+                            };
 
                             var assemblySTTService = new AssemblyAISpeechSTTService(
                                 apiKey,
-                                formatTurns,
-                                endOfTurnConfidenceThreshold,
-                                minEndOfTurnSilenceWhenConfident,
-                                maxTurnSilence,
-                                vadThreshold,
-                                keyterms,
-                                speechModel,
+                                config,
                                 ttsAudioFormat
                             );
 
@@ -677,22 +681,19 @@ namespace IqraInfrastructure.Managers.STT
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
-                            string modelId = GetString("model_id", "scribe_v2");
-                            string languageCode = GetString("language_code", "");
-
-                            double vadSilenceThreshold = GetDouble("vad_silence_threshold", 1.5);
-                            double vadThreshold = GetDouble("vad_threshold", 0.4);
-                            int minSpeechDuration = GetInt("min_speech_duration_ms", 100);
-                            int minSilenceDuration = GetInt("min_silence_duration_ms", 100);
+                            ElevenLabsSTTConfig config = new ElevenLabsSTTConfig()
+                            {
+                                ModelId = GetString("model_id")!,
+                                LanguageCode = GetString("language_code", ""),
+                                VADSilenceThresholdSeconds = GetDouble("vad_silence_threshold"),
+                                VADThreshold = GetDouble("vad_threshold"),
+                                MinSpeechDurationMS = GetInt("min_speech_duration_ms"),
+                                MinSilenceDurationMS = GetInt("min_silence_duration_ms")
+                            };
 
                             var elevenLabsService = new ElevenLabsSTTService(
                                 apiKey,
-                                modelId,
-                                languageCode,
-                                vadSilenceThreshold,
-                                vadThreshold,
-                                minSpeechDuration,
-                                minSilenceDuration,
+                                config,
                                 ttsAudioFormat
                             );
 
