@@ -101,7 +101,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     VoiceId = _serviceConfig.VoiceId,
                     Text = text,
-                    OutputFormat = _selectedApiFormat.FormatString
+                    OutputFormat = _selectedApiFormat.FormatString,
+                    PhraseReplacementConfigId = _serviceConfig.PhraseReplacementConfigId
                 };
 
                 string jsonPayload = JsonSerializer.Serialize(requestPayload);
@@ -119,7 +120,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                byte[] sourceAudioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                byte[] sourceAudioData;
+                using (var ms = new MemoryStream())
+                {
+                    using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    await stream.CopyToAsync(ms, cancellationToken);
+                    sourceAudioData = ms.ToArray();
+                }
 
                 if (sourceAudioData.Length == 0)
                 {

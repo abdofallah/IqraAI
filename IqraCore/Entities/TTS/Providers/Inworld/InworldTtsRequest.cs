@@ -17,9 +17,11 @@ namespace IqraCore.Entities.TTS.Providers.Inworld
         public InworldAudioConfig AudioConfig { get; set; }
 
         [JsonPropertyName("temperature")]
-        public double Temperature { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public double? Temperature { get; set; }
 
         [JsonPropertyName("applyTextNormalization")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ApplyTextNormalization { get; set; }
     }
 
@@ -32,6 +34,7 @@ namespace IqraCore.Entities.TTS.Providers.Inworld
         public int SampleRateHertz { get; set; }
 
         [JsonPropertyName("speakingRate")]
-        public double SpeakingRate { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public double? SpeakingRate { get; set; }
     }
 }

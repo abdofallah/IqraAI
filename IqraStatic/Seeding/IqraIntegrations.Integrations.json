@@ -59,12 +59,176 @@
   }
 },
 {
+  "_id": "groqcloud",
+  "Name": "GroqCloud",
+  "Description": "GroqCloud",
+  "DisabledAt": null,
+  "Type": [
+    "LLM"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://console.groq.com/keys"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "6da2f1209d7daf68.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "hamsa",
+  "Name": "Hamsa",
+  "Description": "Hamsa",
+  "DisabledAt": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://dashboard.tryhamsa.com/apikeys"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "ac515ea6800e1955.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "modemtel",
+  "Name": "ModemTel",
+  "Description": "ModemTel",
+  "DisabledAt": null,
+  "Type": [
+    "Phone Numbers",
+    "Voice Call",
+    "Messaging"
+  ],
+  "Fields": [
+    {
+      "_id": "endpoint",
+      "Name": "Endpoint",
+      "Type": "text",
+      "Tooltip": "Enter the endpoint url where ModemTel is hosted",
+      "Placeholder": "Enter Endpoint URL",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "apikey",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your Account API Key",
+    "Uri": "https://www.modemtel.com"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "1162e4602227ad94.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "neuphonic",
+  "Name": "Neuphonic",
+  "Description": "Neuphonic",
+  "DisabledAt": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://app.neuphonic.com/apikey"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "12e2d5ceaa8f7d3c.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
+  "_id": "zyphra",
+  "Name": "Zyphra",
+  "Description": "Zyphra",
+  "DisabledAt": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your API Key",
+    "Uri": "https://playground.zyphra.com/settings/api-keys"
+  },
+  "LogoS3StorageLink": {
+    "ObjectName": "51efb9c8f7a917f0.webp",
+    "OriginRegion": "US-EAST"
+  }
+},
+{
   "_id": "deepgram",
   "Name": "Deepgram",
   "Description": "Deepgram",
   "DisabledAt": null,
   "Type": [
-    "STT"
+    "STT",
+    "TTS"
   ],
   "Fields": [
     {
@@ -147,66 +311,6 @@
   },
   "LogoS3StorageLink": {
     "ObjectName": "d04a688ed7d16aac.webp",
-    "OriginRegion": "US-EAST"
-  }
-},
-{
-  "_id": "groqcloud",
-  "Name": "GroqCloud",
-  "Description": "GroqCloud",
-  "DisabledAt": null,
-  "Type": [
-    "LLM"
-  ],
-  "Fields": [
-    {
-      "_id": "api_key",
-      "Name": "API Key",
-      "Type": "text",
-      "Tooltip": "",
-      "Placeholder": "Enter your Account API Key",
-      "DefaultValue": "",
-      "Options": null,
-      "Required": true,
-      "IsEncrypted": true
-    }
-  ],
-  "Help": {
-    "Text": "How to get your API Key",
-    "Uri": "https://console.groq.com/keys"
-  },
-  "LogoS3StorageLink": {
-    "ObjectName": "6da2f1209d7daf68.webp",
-    "OriginRegion": "US-EAST"
-  }
-},
-{
-  "_id": "hamsa",
-  "Name": "Hamsa",
-  "Description": "Hamsa",
-  "DisabledAt": null,
-  "Type": [
-    "TTS"
-  ],
-  "Fields": [
-    {
-      "_id": "api_key",
-      "Name": "API Key",
-      "Type": "text",
-      "Tooltip": "",
-      "Placeholder": "Enter your account API Key",
-      "DefaultValue": "",
-      "Options": null,
-      "Required": true,
-      "IsEncrypted": true
-    }
-  ],
-  "Help": {
-    "Text": "How to get your API Key",
-    "Uri": "https://dashboard.tryhamsa.com/apikeys"
-  },
-  "LogoS3StorageLink": {
-    "ObjectName": "ac515ea6800e1955.webp",
     "OriginRegion": "US-EAST"
   }
 },
@@ -308,79 +412,6 @@
   }
 },
 {
-  "_id": "modemtel",
-  "Name": "ModemTel",
-  "Description": "ModemTel",
-  "DisabledAt": null,
-  "Type": [
-    "Phone Numbers",
-    "Voice Call",
-    "Messaging"
-  ],
-  "Fields": [
-    {
-      "_id": "endpoint",
-      "Name": "Endpoint",
-      "Type": "text",
-      "Tooltip": "Enter the endpoint url where ModemTel is hosted",
-      "Placeholder": "Enter Endpoint URL",
-      "DefaultValue": "",
-      "Options": null,
-      "Required": true,
-      "IsEncrypted": false
-    },
-    {
-      "_id": "apikey",
-      "Name": "API Key",
-      "Type": "text",
-      "Tooltip": "",
-      "Placeholder": "Enter Account API Key",
-      "DefaultValue": "",
-      "Options": null,
-      "Required": true,
-      "IsEncrypted": true
-    }
-  ],
-  "Help": {
-    "Text": "How to get your Account API Key",
-    "Uri": "https://www.modemtel.com"
-  },
-  "LogoS3StorageLink": {
-    "ObjectName": "1162e4602227ad94.webp",
-    "OriginRegion": "US-EAST"
-  }
-},
-{
-  "_id": "neuphonic",
-  "Name": "Neuphonic",
-  "Description": "Neuphonic",
-  "DisabledAt": null,
-  "Type": [
-    "TTS"
-  ],
-  "Fields": [
-    {
-      "_id": "api_key",
-      "Name": "API Key",
-      "Type": "text",
-      "Tooltip": "",
-      "Placeholder": "Enter your account API Key",
-      "DefaultValue": "",
-      "Options": null,
-      "Required": true,
-      "IsEncrypted": true
-    }
-  ],
-  "Help": {
-    "Text": "How to get your API Key",
-    "Uri": "https://app.neuphonic.com/apikey"
-  },
-  "LogoS3StorageLink": {
-    "ObjectName": "12e2d5ceaa8f7d3c.webp",
-    "OriginRegion": "US-EAST"
-  }
-},
-{
   "_id": "resembleai",
   "Name": "Resemble.AI",
   "Description": "Resemble.AI",
@@ -408,7 +439,7 @@
       "Placeholder": "Enter your project uuid",
       "DefaultValue": "",
       "Options": null,
-      "Required": true,
+      "Required": false,
       "IsEncrypted": false
     }
   ],
@@ -461,36 +492,6 @@
   },
   "LogoS3StorageLink": {
     "ObjectName": "706793984085cafe.webp",
-    "OriginRegion": "US-EAST"
-  }
-},
-{
-  "_id": "zyphra",
-  "Name": "Zyphra",
-  "Description": "Zyphra",
-  "DisabledAt": null,
-  "Type": [
-    "TTS"
-  ],
-  "Fields": [
-    {
-      "_id": "api_key",
-      "Name": "API Key",
-      "Type": "text",
-      "Tooltip": "",
-      "Placeholder": "Enter your Account API Key",
-      "DefaultValue": "",
-      "Options": null,
-      "Required": true,
-      "IsEncrypted": true
-    }
-  ],
-  "Help": {
-    "Text": "How to get your API Key",
-    "Uri": "https://playground.zyphra.com/settings/api-keys"
-  },
-  "LogoS3StorageLink": {
-    "ObjectName": "51efb9c8f7a917f0.webp",
     "OriginRegion": "US-EAST"
   }
 },
@@ -685,6 +686,336 @@
   "PresignedLogoUrl": null,
   "Type": [
     "LLM"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "google_cloud_speech",
+  "Name": "Google Cloud Speech",
+  "Description": "Google Cloud Speech",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "39a99adcfb81f197.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "service_account_key_json",
+      "Name": "Service Account Key Json",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter Service Account Key Json",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "cartesia",
+  "Name": "Cartesia",
+  "Description": "Cartesia",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "723abf765ca79b73.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "fish_audio",
+  "Name": "Fish Audio",
+  "Description": "Fish Audio",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "db2ced6f1b0fadd6.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "minimax",
+  "Name": "Minimax",
+  "Description": "Minimax",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "b718f162464b685d.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "humeai",
+  "Name": "Hume AI",
+  "Description": "Hume AI",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "28cf653506469683.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "inworld_ai",
+  "Name": "Inworld AI",
+  "Description": "Inworld AI",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "1814f58799069cc2.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key (Base64)",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Base64 API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "speechify",
+  "Name": "Speechify",
+  "Description": "Speechify",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "7d7ceabaaa5ebc06.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "murf_ai",
+  "Name": "Murf AI",
+  "Description": "Murf AI",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "cd6bab54a3206160.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "upliftai",
+  "Name": "Uplift AI",
+  "Description": "Uplift AI",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "a8570121d5945f79.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
+  ],
+  "Fields": [
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "",
+    "Uri": ""
+  }
+},
+{
+  "_id": "rime_ai",
+  "Name": "Rime AI",
+  "Description": "Rime AI",
+  "DisabledAt": null,
+  "PrivateDisabledReason": null,
+  "PublicDisabledReason": null,
+  "LogoS3StorageLink": {
+    "ObjectName": "ce4be36941055a35.webp",
+    "OriginRegion": "US-EAST"
+  },
+  "PresignedLogoUrl": null,
+  "Type": [
+    "TTS"
   ],
   "Fields": [
     {

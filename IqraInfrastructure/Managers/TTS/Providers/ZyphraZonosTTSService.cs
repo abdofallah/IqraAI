@@ -98,19 +98,40 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             try
             {
+                bool isHybrid = _serviceConfig.Model.Contains("hybrid");
+
                 var requestPayload = new ZyphraTtsRequest
                 {
                     Text = text,
                     Model = _serviceConfig.Model,
-                    MimeType = _selectedApiFormat.MimeType, // e.g. "audio/wav"
+                    MimeType = _selectedApiFormat.MimeType,
                     SpeakingRate = _serviceConfig.SpeakingRate,
                     LanguageIsoCode = !string.IsNullOrEmpty(_serviceConfig.LanguageIsoCode) ? _serviceConfig.LanguageIsoCode : null,
                     DefaultVoiceName = !string.IsNullOrEmpty(_serviceConfig.DefaultVoiceName) ? _serviceConfig.DefaultVoiceName : null,
-                    VoiceName = _serviceConfig.DefaultVoiceName,
-                    Emotion = _serviceConfig.Emotion,
                     Vqscore = _serviceConfig.Vqscore,
-                    SpeakerNoised = _serviceConfig.SpeakerNoised
+                    Fmax = _serviceConfig.Fmax
                 };
+
+                if (isHybrid)
+                {
+                    requestPayload.SpeakerNoised = _serviceConfig.SpeakerNoised;
+                }
+                else
+                {
+                    requestPayload.PitchStd = _serviceConfig.PitchStd;
+
+                    if (!string.IsNullOrWhiteSpace(_serviceConfig.EmotionJson))
+                    {
+                        try
+                        {
+                            requestPayload.Emotion = JsonSerializer.Deserialize<Dictionary<string, float>>(_serviceConfig.EmotionJson);
+                        }
+                        catch (JsonException ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to parse Emotion JSON for Zyphra. Ignoring emotions.");
+                        }
+                    }
+                }
 
                 string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
 

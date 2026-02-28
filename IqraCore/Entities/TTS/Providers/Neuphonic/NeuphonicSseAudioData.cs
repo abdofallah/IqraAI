@@ -9,8 +9,5 @@ namespace IqraCore.Entities.TTS.Providers.Neuphonic
 
         [JsonPropertyName("text")]
         public string? Text { get; set; }
-
-        [JsonPropertyName("sampling_rate")]
-        public int? SamplingRate { get; set; }
     }
 }

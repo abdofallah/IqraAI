@@ -110,7 +110,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     {
                         AudioEncoding = _selectedApiFormat.EncodingString,
                         SampleRateHertz = _selectedApiFormat.SampleRate,
-                        SpeakingRate = _serviceConfig.Speed,
+                        SpeakingRate = _serviceConfig.Speed
                     }
                 };
 
@@ -150,13 +150,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                if (string.IsNullOrEmpty(apiResponse?.Result?.AudioContent))
+                if (string.IsNullOrEmpty(apiResponse?.AudioContent))
                 {
                     _logger.LogWarning("Inworld returned success but no audio content.");
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                byte[] sourceAudioData = Convert.FromBase64String(apiResponse.Result.AudioContent);
+                byte[] sourceAudioData = Convert.FromBase64String(apiResponse.AudioContent);
 
                 var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalInworldFormat);
 

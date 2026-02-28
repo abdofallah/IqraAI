@@ -36,14 +36,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private OutputFormat _outputFormat;
         private TextNormalization _applyTextNormalization;
-        private List<PronunciationDictionaryLocator> _pronunciationDictionaryId;
+        private List<PronunciationDictionaryLocator> _pronunciationDictionaries;
+
+        private string? _previousRequestId;
 
         public ElevenLabsTTSService(ILogger<ElevenLabsTTSService> logger, string apiKey, ElevenLabsConfig config)
         {
             _logger = logger;
-
-            _apiKey = apiKey;
-            
+            _apiKey = apiKey;        
             _serviceConfig = config;
 
             _voiceSettings = new VoiceSettings();
@@ -53,25 +53,20 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             if (_serviceConfig.UseSpeakerBoost.HasValue) _voiceSettings.SpeakerBoost = _serviceConfig.UseSpeakerBoost.Value;
             if (_serviceConfig.Speed.HasValue) _voiceSettings.Speed = _serviceConfig.Speed.Value;
 
-            _pronunciationDictionaryId = new List<PronunciationDictionaryLocator>();
-            if (!string.IsNullOrEmpty(_serviceConfig.PronunciationDictionaryId))
+            _pronunciationDictionaries = new List<PronunciationDictionaryLocator>();
+            if (_serviceConfig.PronunciationDictionaryIds != null)
             {
-                _pronunciationDictionaryId.Add(new PronunciationDictionaryLocator(_serviceConfig.PronunciationDictionaryId, null));
+                foreach (var id in _serviceConfig.PronunciationDictionaryIds)
+                {
+                    _pronunciationDictionaries.Add(new PronunciationDictionaryLocator(id, null));
+                }
             }
+
+            _applyTextNormalization = TextNormalization.Auto;
             if (!string.IsNullOrEmpty(_serviceConfig.ApplyTextNormalization))
             {
-                if (_serviceConfig.ApplyTextNormalization == "on")
-                {
-                    _applyTextNormalization = TextNormalization.On;
-                }
-                else if (_serviceConfig.ApplyTextNormalization == "off")
-                {
-                    _applyTextNormalization = TextNormalization.Off;
-                }
-                else if (_serviceConfig.ApplyTextNormalization == "auto")
-                {
-                    _applyTextNormalization = TextNormalization.Auto;
-                }
+                if (_serviceConfig.ApplyTextNormalization.ToLower() == "on") _applyTextNormalization = TextNormalization.On;
+                else if (_serviceConfig.ApplyTextNormalization.ToLower() == "off") _applyTextNormalization = TextNormalization.Off;
             }
         }
 
@@ -140,11 +135,22 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var request = new TextToSpeechRequest(_voiceData, text, null, _voiceSettings, _outputFormat, _modelData, null, null, null, null, null, false, null, _pronunciationDictionaryId, _applyTextNormalization, null);
+            string[]? previousIds = null;
+            if (_serviceConfig.UsePreviousRequestIds && !string.IsNullOrEmpty(_previousRequestId))
+            {
+                previousIds = new List<string> { _previousRequestId }.ToArray();
+            }
+
+            var request = new TextToSpeechRequest(_voiceData, text, null, _voiceSettings, _outputFormat, _modelData, null, null, previousIds, null, _serviceConfig.LanguageCode, false, null, _pronunciationDictionaries, _applyTextNormalization, null);
 
             try
             {
                 var result = await _client.TextToSpeechEndpoint.TextToSpeechAsync(request, null, cancellationToken);
+
+                if (_serviceConfig.UsePreviousRequestIds)
+                {
+                    _previousRequestId = result.Id;
+                }
 
                 byte[] sourceAudioData = result.ClipData.ToArray();
 

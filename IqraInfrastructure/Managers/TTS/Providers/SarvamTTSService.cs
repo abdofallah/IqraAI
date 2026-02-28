@@ -105,20 +105,34 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 var connectUri = new Uri($"{WsUrl}?model={_serviceConfig.Model}&send_completion_event=true");
                 await ws.ConnectAsync(connectUri, cancellationToken);
 
+                var isV3 = _serviceConfig.Model.Contains("v3");
+
+                var configData = new SarvamConfigData
+                {
+                    TargetLanguageCode = _serviceConfig.TargetLanguageCode,
+                    Speaker = _serviceConfig.Speaker,
+                    SpeechSampleRate = _selectedApiFormat.SampleRate.ToString(),
+                    OutputAudioCodec = "linear16" // linear16 translates to PCM
+                };
+
+                // Apply model-specific settings
+                if (isV3)
+                {
+                    configData.Temperature = _serviceConfig.Temperature;
+                    configData.Pace = _serviceConfig.PaceV3;
+                }
+                else
+                {
+                    configData.Pitch = _serviceConfig.Pitch;
+                    configData.Loudness = _serviceConfig.Loudness;
+                    configData.Pace = _serviceConfig.PaceV2;
+                    configData.EnablePreprocessing = _serviceConfig.EnablePreprocessing;
+                }
+
                 var configMsg = new SarvamWsMessage<SarvamConfigData>
                 {
                     Type = "config",
-                    Data = new SarvamConfigData
-                    {
-                        TargetLanguageCode = _serviceConfig.TargetLanguageCode,
-                        Speaker = _serviceConfig.Speaker,
-                        SpeechSampleRate = _selectedApiFormat.SampleRate,
-                        OutputAudioCodec = "linear16",
-                        EnablePreprocessing = _serviceConfig.EnablePreprocessing,
-                        Pitch = _serviceConfig.Pitch,
-                        Pace = _serviceConfig.Pace,
-                        Loudness = _serviceConfig.Loudness
-                    }
+                    Data = configData
                 };
                 await SendJsonAsync(ws, configMsg, cancellationToken);
 

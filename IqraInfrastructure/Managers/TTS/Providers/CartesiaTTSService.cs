@@ -1,5 +1,4 @@
-﻿using ElevenLabs;
-using IqraCore.Entities.Helper.Audio;
+﻿using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS;
@@ -100,6 +99,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             try
             {
+                bool isSonic3 = _serviceConfig.ModelId.Contains("sonic-3");
+
                 var requestPayload = new
                 {
                     model_id = _serviceConfig.ModelId,
@@ -112,15 +113,16 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                         sample_rate = _selectedApiFormat.SampleRate
                     },
                     language = _serviceConfig.LanguageCode,
-                    pronunciation_dict_ids = _serviceConfig.PronunciationDictIds?.Count > 0 ? _serviceConfig.PronunciationDictIds : null,
+
+                    pronunciation_dict_id = isSonic3 && !string.IsNullOrWhiteSpace(_serviceConfig.PronunciationDictId) ? _serviceConfig.PronunciationDictId : null,
 
                     // Sonic-3 specific generation config
-                    generation_config = new
+                    generation_config = isSonic3 ? new
                     {
-                        volume = _serviceConfig.Volume ?? 1.0,
-                        speed = _serviceConfig.Speed ?? 1.0,
+                        volume = _serviceConfig.Volume,
+                        speed = _serviceConfig.Speed,
                         emotion = !string.IsNullOrEmpty(_serviceConfig.Emotion) ? _serviceConfig.Emotion : null
-                    }
+                    } : null
                 };
 
                 var jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });

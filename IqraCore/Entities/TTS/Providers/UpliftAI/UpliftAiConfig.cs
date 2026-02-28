@@ -8,6 +8,7 @@ namespace IqraCore.Entities.TTS.Providers.UpliftAI
         public int ConfigVersion => 1;
 
         public string VoiceId { get; set; }
+        public string? PhraseReplacementConfigId { get; set; }
 
         // Audio Target
         public int TargetSampleRate { get; set; }

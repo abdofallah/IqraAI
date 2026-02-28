@@ -211,11 +211,19 @@ function FillTTSProviderManageTab(providerData) {
 			ttsProviderModelListTable.find("tbody").append(CreateTTSProviderModelListTableElement(modelData));
 		});
 	} else {
-		ttsProviderModelListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No models</td></tr>');
+		ttsProviderModelListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="8">No models</td></tr>');
 	}
 
-	// Fill integration fields
-	fillTTSProviderIntegrationFields();
+	// Initialize Helper
+	ttsFieldsHelper = new ProviderIntegrationsFieldHelper(
+		ttsProviderIntegrationFieldsList,
+		addNewTTSProviderIntegrationFieldButton,
+		providerData.userIntegrationFields,
+		() => {
+			CheckTTSProviderManageTabHasChanges(true);
+		}
+	);
+	ttsFieldsHelper.render();
 }
 
 function ResetAndEmptyTTSProvidersManageTab() {
@@ -226,45 +234,13 @@ function ResetAndEmptyTTSProvidersManageTab() {
 
 	// Reset integration fields
 	ttsProviderIntegrationFieldsList.empty();
+	ttsFieldsHelper = null;
 
 	// Reset any validation states
 	TTSProviderManageTab.find(".is-invalid").removeClass("is-invalid");
 }
 
 function CheckTTSProviderManageTabHasChanges(enableDisableButton = true) {
-	function fieldsAreEqual(field1, field2) {
-		if (
-			field1.id !== field2.id ||
-			field1.name !== field2.name ||
-			field1.type !== field2.type ||
-			field1.tooltip !== field2.tooltip ||
-			field1.placeholder !== field2.placeholder ||
-			field1.defaultValue !== field2.defaultValue ||
-			field1.required !== field2.required ||
-			field1.isEncrypted !== field2.isEncrypted
-		) {
-			return false;
-		}
-
-		// Compare options if type is select
-		if (field1.type === "select") {
-			if (!field1.options || !field2.options || field1.options.length !== field2.options.length) {
-				return false;
-			}
-
-			for (let i = 0; i < field1.options.length; i++) {
-				const option1 = field1.options[i];
-				const option2 = field2.options[i];
-
-				if (option1.key !== option2.key || option1.value !== option2.value || option1.isDefault !== option2.isDefault) {
-					return false;
-				}
-			}
-		}
-
-		return true;
-	}
-
 	let changes = {};
 	let hasChanges = false;
 
@@ -280,54 +256,10 @@ function CheckTTSProviderManageTabHasChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
-	// Check integration fields
-	const integrationFieldsData = [];
-	ttsProviderIntegrationFieldsList.find(".integration-field").each(function () {
-		const field = $(this);
-		const fieldData = {
-			id: field.find(".field-id-input").val().trim(),
-			name: field.find(".field-name-input").val().trim(),
-			type: field.find(".field-type-select").val(),
-			tooltip: field.find(".field-tooltip-input").val().trim(),
-			placeholder: field.find(".field-placeholder-input").val().trim(),
-			defaultValue: field.find(".field-default-value-input").val().trim(),
-			required: field.find(".field-required-check").is(":checked"),
-			isEncrypted: field.find(".field-encrypted-check").is(":checked"),
-		};
-
-		// Handle options for select type
-		if (fieldData.type === "select") {
-			fieldData.options = [];
-			field.find(".field-option").each(function () {
-				const option = $(this);
-				fieldData.options.push({
-					key: option.find(".option-key-input").val().trim(),
-					value: option.find(".option-value-input").val().trim(),
-					isDefault: option.find(".option-default-check").is(":checked"),
-				});
-			});
-		}
-
-		integrationFieldsData.push(fieldData);
-	});
-
 	// Compare integration fields
-	if (integrationFieldsData.length !== CurrentTTSProviderData.userIntegrationFields.length) {
+	changes.userIntegrationFields = ttsFieldsHelper.getData();
+	if (ttsFieldsHelper.hasChanges()) {
 		hasChanges = true;
-	} else {
-		for (let i = 0; i < integrationFieldsData.length; i++) {
-			const newField = integrationFieldsData[i];
-			const oldField = CurrentTTSProviderData.userIntegrationFields[i];
-
-			if (!fieldsAreEqual(newField, oldField)) {
-				hasChanges = true;
-				break;
-			}
-		}
-	}
-
-	if (hasChanges) {
-		changes.userIntegrationFields = integrationFieldsData;
 	}
 
 	if (enableDisableButton) {
@@ -357,10 +289,10 @@ function ValidateTTSProviderManageTab(onlyRemove = true) {
 	}
 
 	// Integration Tab
-	const integrationValidation = ValidateTTSProviderIntegrationFieldsTab(onlyRemove);
-	if (!integrationValidation.validated) {
+	const fieldValidation = ttsFieldsHelper.validate(onlyRemove);
+	if (!fieldValidation.validated) {
 		validated = false;
-		errors.push(...integrationValidation.errors);
+		errors.push(...fieldValidation.errors);
 	}
 
 	return {
@@ -759,7 +691,7 @@ $(document).ready(() => {
 		ShowTTSProviderModelManageTab();
 	});
 
-	ttsProviderModelListTable.on("click", "button[button-type=edit-tts-provider-Model]", (event) => {
+	ttsProviderModelListTable.on("click", "button[button-type=edit-tts-provider-model]", (event) => {
 		event.preventDefault();
 
 		let modelId = $(event.currentTarget).attr("model-id");
@@ -827,6 +759,10 @@ $(document).ready(() => {
 				if (saveResponse.success) {
 					// Update the current model data
 					CurrentTTSProviderModelData = saveResponse.data;
+
+					if (ttsFieldsHelper) {
+						ttsFieldsHelper.updateInitialData(CurrentTTSProviderModelData.userIntegrationFields);
+					}
 
 					// Update the models list in the provider data
 					const modelIndex = CurrentTTSProviderData.models.findIndex((s) => s.id === CurrentTTSProviderModelData.id);
@@ -897,60 +833,6 @@ $(document).ready(() => {
 				row.hide();
 			}
 		});
-	});
-
-	// Add new integration field
-	addNewTTSProviderIntegrationFieldButton.on("click", (event) => {
-		event.preventDefault();
-		ttsProviderIntegrationFieldsList.find(".text-center").remove();
-		ttsProviderIntegrationFieldsList.append($(createTTSProviderIntegrationFieldElement()));
-		CheckTTSProviderManageTabHasChanges(true);
-	});
-
-	// Handle field type changes
-	ttsProviderIntegrationsTab.on("change", ".field-type-select", function () {
-		const field = $(this).closest(".integration-field");
-		const optionsContainer = field.find(".field-options-container");
-		const defaultValueInput = field.find(".field-default-value-input");
-
-		const selectedType = $(this).val();
-		if (selectedType === "select") {
-			optionsContainer.removeClass("d-none");
-			defaultValueInput.prop("disabled", true).val("");
-		} else if (selectedType === "models") {
-			optionsContainer.addClass("d-none");
-			defaultValueInput.prop("disabled", true).val("");
-		} else {
-			optionsContainer.addClass("d-none");
-			defaultValueInput.prop("disabled", false);
-		}
-
-		CheckTTSProviderManageTabHasChanges(true);
-	});
-
-	// Handle field removal
-	ttsProviderIntegrationsTab.on("click", ".remove-field-button", function () {
-		$(this).closest(".integration-field").remove();
-		if (ttsProviderIntegrationFieldsList.children().length === 0) {
-			fillTTSProviderIntegrationFields();
-		}
-		CheckTTSProviderManageTabHasChanges(true);
-	});
-
-	// Handle option management
-	ttsProviderIntegrationsTab.on("click", ".add-option-button", function () {
-		$(this).siblings(".field-options-list").append($(createTTSIntegrationFieldOptionElement()));
-		CheckTTSProviderManageTabHasChanges(true);
-	});
-
-	ttsProviderIntegrationsTab.on("click", ".remove-option-button", function () {
-		$(this).closest(".field-option").remove();
-		CheckTTSProviderManageTabHasChanges(true);
-	});
-
-	// Handle input changes
-	ttsProviderIntegrationsTab.on("input change", "input, select", () => {
-		CheckTTSProviderManageTabHasChanges(true);
 	});
 
 	// Initialize provider list

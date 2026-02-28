@@ -2,7 +2,6 @@
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
-using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.AzureSpeech;
 using IqraCore.Entities.TTS.Providers.Cartesia;
@@ -12,11 +11,15 @@ using IqraCore.Entities.TTS.Providers.FishAudio;
 using IqraCore.Entities.TTS.Providers.Google;
 using IqraCore.Entities.TTS.Providers.Hamsa;
 using IqraCore.Entities.TTS.Providers.HumeAI;
+using IqraCore.Entities.TTS.Providers.Inworld;
 using IqraCore.Entities.TTS.Providers.Minimax;
 using IqraCore.Entities.TTS.Providers.MurfAI;
 using IqraCore.Entities.TTS.Providers.Neuphonic;
 using IqraCore.Entities.TTS.Providers.ResembleAI;
+using IqraCore.Entities.TTS.Providers.Rime;
+using IqraCore.Entities.TTS.Providers.Sarvam;
 using IqraCore.Entities.TTS.Providers.Speechify;
+using IqraCore.Entities.TTS.Providers.UpliftAI;
 using IqraCore.Entities.TTS.Providers.ZyphraZonos;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Helpers.Provider;
@@ -632,13 +635,16 @@ namespace IqraInfrastructure.Managers.TTS
                             {
                                 ModelId = GetString("model_id")!,
                                 VoiceId = GetString("voice_id")!,
+                                LanguageCode = GetString("language_code"),
                                 Stability = GetFloat("stability"),
                                 SimilarityBoost = GetFloat("similarityBoost"),
                                 Style = GetFloat("style"),
-                                UseSpeakerBoost = GetBool("speakerBoost", true),
-                                Speed = GetFloat("speed", 1.0f),
-                                PronunciationDictionaryId = GetString("pronunciationDictionaryId"),
-                                ApplyTextNormalization = GetString("applyTextNormalization", "auto"),
+                                UseSpeakerBoost = GetBool("speakerBoost", false),
+                                Speed = GetFloat("speed"),
+                                PronunciationDictionaryIds = GetList("pronunciationDictionaryId"),
+                                ApplyTextNormalization = GetString("applyTextNormalization"),
+                                UsePreviousRequestIds = GetBool("use_previous_request_ids", false),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -651,19 +657,29 @@ namespace IqraInfrastructure.Managers.TTS
                     case InterfaceTTSProviderEnum.GoogleCloudTextToSpeech:
                         {
                             string serviceAccountKeyJson = _integrationsManager.DecryptField(integrationData.EncryptedFields["service_account_key_json"]);
-                            string projectId = integrationData.Fields["project_id"];
 
-                            var config = new GoogleConfig
+                            var config = new GoogleTTSConfig
                             {
+                                ModelType = GetString("model_type")!,
                                 LanguageCode = GetString("language_code")!,
-                                VoiceName = GetString("voice_name")!,
-                                SpeakingRate = (double)GetDouble("speaking_rate")!,
+                                // gemini
+                                GeminiModelId = GetString("model_id"),
+                                Prompt = GetString("prompt"),
+                                // chirp
+                                VoiceName = GetString("voice_name"),
+                                UseCustomVoiceKey = GetBool("use_custom_voice_key", false),
+                                VoiceCloningKey = GetString("voice_cloning_key"),
+                                // common
+                                CustomPronunciationsJson = GetString("custom_pronunciations"),
+                                SpeakingRate = GetDouble("speaking_rate"),
+                                Pitch = GetDouble("pitch"),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new GoogleTTSService(loggerFactory.CreateLogger<GoogleTTSService>(), projectId, serviceAccountKeyJson, config);
+                            var service = new GoogleTTSService(loggerFactory.CreateLogger<GoogleTTSService>(), serviceAccountKeyJson, config);
                             return result.SetSuccessResult(service);
                         }
 
@@ -673,10 +689,14 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new CartesiaConfig
                             {
-                                VoiceId = GetString("voice_id")!,
                                 ModelId = GetString("model_id")!,
+                                VoiceId = GetString("voice_id")!,
                                 LanguageCode = GetString("language_code")!,
-                                PronunciationDictIds = GetList("pronunciationDictIds"),
+                                Volume = GetDouble("volume"),
+                                Speed = GetDouble("speed"),
+                                Emotion = GetString("emotion"),
+                                PronunciationDictId = GetString("pronunciation_dict_id"),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -692,8 +712,18 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new FishAudioConfig
                             {
-                                ReferenceId = GetString("reference_id"),
                                 Model = GetString("model")!,
+                                ReferenceId = GetString("reference_id")!,
+                                Temperature = GetFloat("temperature"),
+                                TopP = GetFloat("top_p"),
+                                Speed = GetFloat("speed"),
+                                Volume = GetFloat("volume"),
+                                Latency = GetString("latency"),
+                                Normalize = GetBool("normalize", true),
+                                RepetitionPenalty = GetFloat("repetition_penalty"),
+                                ChunkLength = GetInt("chunk_length"),
+                                MaxNewTokens = GetInt("max_new_tokens"),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -706,16 +736,20 @@ namespace IqraInfrastructure.Managers.TTS
                     case InterfaceTTSProviderEnum.DeepgramTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            bool mipOptOut = GetBool("mip_opt_out", false);
 
                             var config = new DeepgramConfig
                             {
-                                ModelId = GetString("model_id")!,
+                                ModelFamily = GetString("model_family")!,
+                                VoiceName = GetString("voice_name")!,
+                                LanguageCode = GetString("language_code")!,
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
                             };
 
-                            var service = new DeepgramTTSService(loggerFactory.CreateLogger<DeepgramTTSService>(), apiKey, config);
+                            var service = new DeepgramTTSService(loggerFactory.CreateLogger<DeepgramTTSService>(), apiKey, config, mipOptOut);
                             return result.SetSuccessResult(service);
                         }
 
@@ -727,8 +761,18 @@ namespace IqraInfrastructure.Managers.TTS
                             {
                                 ModelId = GetString("model_id")!,
                                 VoiceId = GetString("voice_id")!,
-                                VoiceSpeed = (float)GetFloat("voice_speed")!,
-                                LanguageBoost = GetString("language_boost"),
+                                LanguageBoost = GetString("language_boost")!,
+                                VoiceSpeed = GetFloat("voice_speed"),
+                                VoiceVolume = GetFloat("voice_volume"),
+                                VoicePitch = GetInt("voice_pitch"),
+                                VoiceEmotions = GetString("voice_emotions"),
+                                VoiceTextNormalization = GetBool("text_normalization", false),
+                                PronunciationDictTones = GetList("pronunciation_dict_tones"),
+                                VoiceModifyPitch = GetInt("voice_modify_pitch"),
+                                VoiceModifyIntensity = GetInt("voice_modify_intensity"),
+                                VoiceModifyTimbre = GetInt("voice_modify_timbre"),
+                                VoiceModifySoundEffects = GetString("voice_modify_sound_effects"),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -744,10 +788,13 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new HumeAiConfig
                             {
+                                ModelVersion = (int)GetInt("model_version")!,
                                 VoiceId = GetString("voice_id"),
                                 VoiceProvider = GetString("voice_provider"),
                                 VoiceDescription = GetString("voice_description"),
-                                VoiceSpeed = (float)GetFloat("voice_speed", 1.0f),
+                                VoiceSpeed = GetFloat("voice_speed"),
+                                InstantMode = GetBool("instant_mode", true),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -757,17 +804,39 @@ namespace IqraInfrastructure.Managers.TTS
                             return result.SetSuccessResult(service);
                         }
 
+                    case InterfaceTTSProviderEnum.InworldTextToSpeech:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+
+                            var config = new InworldConfig
+                            {
+                                Model = GetString("model")!,
+                                VoiceName = GetString("voice_name")!,
+                                Speed = GetDouble("speed"),
+                                Temperature = GetDouble("temperature"),
+                                ApplyTextNormalization = GetString("apply_text_normalization"),
+
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
+                            };
+
+                            var service = new InworldTTSService(loggerFactory.CreateLogger<InworldTTSService>(), apiKey, config);
+                            return result.SetSuccessResult(service);
+                        }
+
                     case InterfaceTTSProviderEnum.SpeechifyTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
                             var config = new SpeechifyConfig
                             {
-                                VoiceId = GetString("voice_id"),
                                 Model = GetString("model")!,
+                                VoiceId = GetString("voice_id")!,
                                 Language = GetString("language"),
-                                LoudnessNormalization = GetBool("loudness_normalization", true),
+                                LoudnessNormalization = GetBool("loudness_normalization", false),
                                 TextNormalization = GetBool("text_normalization", true),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -783,13 +852,16 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new MurfAiConfig
                             {
-                                Model = GetString("model"),
-                                VoiceId = GetString("voice_id"),
+                                Model = GetString("model")!,
+                                Region = GetString("region")!,
+                                VoiceId = GetString("voice_id")!,
                                 MultiNativeLocale = GetString("multi_native_locale"),
-                                PronunciationDictionaryString = GetString("pronunciation_dictionary"),
-                                Rate = (int)GetInt("rate", 0),
                                 Style = GetString("style"),
-                                Variation = (int)GetInt("variation", 0),
+                                Rate = GetInt("rate"),
+                                Pitch = GetInt("pitch"),
+                                Variation = GetInt("variation"),
+                                PronunciationDictionaryJson = GetString("pronunciation_dictionary"),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -803,26 +875,20 @@ namespace IqraInfrastructure.Managers.TTS
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
-                            // Handle Emotion Dictionary Parsing
-                            string emotionStr = GetString("emotion");
-                            var emotionDict = new Dictionary<string, float>();
-                            if (!string.IsNullOrEmpty(emotionStr))
-                            {
-                                emotionDict = emotionStr
-                                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
-                                    .Select(part => part.Split(':'))
-                                    .Where(parts => parts.Length == 2 && float.TryParse(parts[1], out _))
-                                    .ToDictionary(parts => parts[0].Trim(), parts => float.Parse(parts[1]));
-                            }
-
                             var config = new ZyphraZonosConfig
                             {
-                                Model = GetString("model"),
-                                DefaultVoiceName = GetString("default_voice_name"),
-                                SpeakingRate = (int)GetInt("speaking_rate", 1),
-                                LanguageIsoCode = GetString("language_iso_code"),
-                                Emotion = emotionDict,
-                                Vqscore = (float)GetFloat("vqscore", 0.78f),
+                                Model = GetString("model")!,
+                                DefaultVoiceName = GetString("default_voice_name")!,
+                                LanguageIsoCode = GetString("language_iso_code")!,
+                                SpeakingRate = GetInt("speaking_rate"),
+                                Vqscore = GetFloat("vqscore"),
+                                Fmax = GetFloat("fmax"),
+
+                                // Model-specific fields
+                                EmotionJson = GetString("emotion"),
+                                PitchStd = GetFloat("pitch_std"),
+                                SpeakerNoised = GetBool("speaker_noised", false),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -832,32 +898,15 @@ namespace IqraInfrastructure.Managers.TTS
                             return result.SetSuccessResult(service);
                         }
 
-                    case InterfaceTTSProviderEnum.ResembleAITextToSpeech:
-                        {
-                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string projectUuid = integrationData.Fields["project_uuid"];
-
-                            var config = new ResembleAiConfig
-                            {
-                                ProjectUuid = projectUuid,
-                                VoiceUuid = GetString("voice_uuid"),
-                                TargetSampleRate = targetSampleRate,
-                                TargetBitsPerSample = targetBitsPerSample,
-                                TargetEncodingType = targetAudioEncoding
-                            };
-
-                            var service = new ResembleAITTSService(loggerFactory.CreateLogger<ResembleAITTSService>(), apiKey, config);
-                            return result.SetSuccessResult(service);
-                        }
-
                     case InterfaceTTSProviderEnum.HamsaAITextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
                             var config = new HamsaAiConfig
                             {
-                                Speaker = GetString("speaker"),
-                                Dialect = GetString("dialect"),
+                                Speaker = GetString("speaker")!,
+                                Dialect = GetString("dialect")!,
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
@@ -873,16 +922,112 @@ namespace IqraInfrastructure.Managers.TTS
 
                             var config = new NeuphonicConfig
                             {
-                                LanguageCode = GetString("lang_code"),
-                                Model = GetString("model"),
-                                VoiceId = GetString("voice_id"),
-                                Speed = (float)GetFloat("speed", 1.0f),
+                                LanguageCode = GetString("lang_code")!,
+                                VoiceId = GetString("voice_id")!,
+                                Speed = GetFloat("speed"),
+                                Temperature = GetFloat("temperature"),
+
                                 TargetSampleRate = targetSampleRate,
                                 TargetBitsPerSample = targetBitsPerSample,
                                 TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new NeuphonicTTSService(loggerFactory.CreateLogger<NeuphonicTTSService>(), apiKey, config);
+                            return result.SetSuccessResult(service);
+                        }
+
+                    case InterfaceTTSProviderEnum.ResembleAITextToSpeech:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            string? projectUuid = integrationData.Fields.TryGetValue("project_uuid", out var projectUuidValue) ? projectUuidValue : null;
+
+                            var config = new ResembleAiConfig
+                            {
+                                Model = GetString("model")!,
+                                VoiceUuid = GetString("voice_uuid")!,
+                                UseHd = GetBool("use_hd", false),
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
+                            };
+
+                            var service = new ResembleAITTSService(loggerFactory.CreateLogger<ResembleAITTSService>(), projectUuid, apiKey, config);
+                            return result.SetSuccessResult(service);
+                        }
+
+                    case InterfaceTTSProviderEnum.UpliftAITextToSpeech:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+
+                            var config = new UpliftAiConfig
+                            {
+                                VoiceId = GetString("voice_id")!,
+                                PhraseReplacementConfigId = GetString("phrase_replacement_config_id"),
+
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
+                            };
+
+                            var service = new UpliftAITTSService(loggerFactory.CreateLogger<UpliftAITTSService>(), apiKey, config);
+                            return result.SetSuccessResult(service);
+                        }
+
+                    case InterfaceTTSProviderEnum.SarvamTextToSpeech:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+
+                            var config = new SarvamConfig
+                            {
+                                Model = GetString("model")!,
+                                TargetLanguageCode = GetString("target_language_code")!,
+                                Speaker = GetString("speaker")!,
+                                Pitch = GetFloat("pitch"),
+                                Loudness = GetFloat("loudness"),
+                                EnablePreprocessing = GetBool("enable_preprocessing", false),
+                                PaceV2 = GetFloat("pace_v2"),
+                                PaceV3 = GetFloat("pace_v3"),
+                                Temperature = GetFloat("temperature"),
+
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
+                            };
+
+                            var service = new SarvamTTSService(loggerFactory.CreateLogger<SarvamTTSService>(), apiKey, config);
+                            return result.SetSuccessResult(service);
+                        }
+
+                    case InterfaceTTSProviderEnum.RimeTextToSpeech:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+
+                            var config = new RimeConfig
+                            {
+                                ModelId = GetString("model_id")!,
+                                Speaker = GetString("speaker")!,
+                                Lang = GetString("lang")!,
+                                SpeedAlpha = GetDouble("speed_alpha"),
+
+                                // Arcana
+                                MaxTokens = GetInt("max_tokens"),
+                                RepetitionPenalty = GetDouble("repetition_penalty"),
+                                Temperature = GetDouble("temperature"),
+                                TopP = GetDouble("top_p"),
+
+                                // Mist
+                                PauseBetweenBrackets = GetBool("pause_between_brackets", false),
+                                PhonemizeBetweenBrackets = GetBool("phonemize_between_brackets", false),
+                                InlineSpeedAlpha = GetString("inline_speed_alpha"),
+                                NoTextNormalization = GetBool("no_text_normalization", false),
+                                SaveOovs = GetBool("save_oovs", false),
+
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
+                            };
+
+                            var service = new RimeTTSService(loggerFactory.CreateLogger<RimeTTSService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 

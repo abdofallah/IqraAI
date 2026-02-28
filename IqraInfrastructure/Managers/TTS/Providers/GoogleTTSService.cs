@@ -14,15 +14,15 @@ using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.TTS.Helpers;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class GoogleTTSService : ITTSService
     {
         private readonly ILogger<GoogleTTSService> _logger;
-        private readonly string _projectId;
         private readonly string _serviceAccountKeyJson;
-        private readonly GoogleConfig _serviceConfig;
+        private readonly GoogleTTSConfig _serviceConfig;
 
         // Clients
         private TextToSpeechClient? _ttsClient;
@@ -30,6 +30,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         // Request Objects
         private VoiceSelectionParams _voiceSelectionParams;
         private AudioConfig _audioConfig;
+        private CustomPronunciations? _customPronunciations;
 
         // State
         private AudioRequestDetails _finalUserRequest;
@@ -37,10 +38,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private GoogleOutputFormatDefinition _selectedApiFormat;
         private bool _audioConversationNeeded = false;
 
-        public GoogleTTSService(ILogger<GoogleTTSService> logger, string projectId, string serviceAccountKeyJson, GoogleConfig config)
+        public GoogleTTSService(ILogger<GoogleTTSService> logger, string serviceAccountKeyJson, GoogleTTSConfig config)
         {
             _logger = logger;
-            _projectId = projectId;
             _serviceAccountKeyJson = serviceAccountKeyJson;
             _serviceConfig = config;
         }
@@ -87,17 +87,81 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
                 _voiceSelectionParams = new VoiceSelectionParams
                 {
-                    LanguageCode = _serviceConfig.LanguageCode,
-                    Name = _serviceConfig.VoiceName
+                    LanguageCode = _serviceConfig.LanguageCode
                 };
+
+                if (_serviceConfig.ModelType == "gemini")
+                {
+                    if (string.IsNullOrEmpty(_serviceConfig.GeminiModelId)) throw new Exception("Gemini Model ID is required for Gemini Engine Type.");
+                    _voiceSelectionParams.ModelName = _serviceConfig.GeminiModelId;
+                }
+                else
+                {
+                    // Standard / Chirp
+                    if (_serviceConfig.UseCustomVoiceKey)
+                    {
+                        if (!string.IsNullOrEmpty(_serviceConfig.VoiceCloningKey))
+                        {
+                            _voiceSelectionParams.VoiceClone = new VoiceCloneParams { VoiceCloningKey = _serviceConfig.VoiceCloningKey };
+                        }
+                        else
+                        {
+                            throw new Exception("Voice Cloning Key is required for custom voice cloning.");
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(_serviceConfig.VoiceName))
+                    {
+                        _voiceSelectionParams.Name = _serviceConfig.VoiceName;
+                    }
+                    else
+                    {
+                        throw new Exception("Voice Name is required for standard models.");
+                    }
+                }
 
                 _audioConfig = new AudioConfig
                 {
                     AudioEncoding = _selectedApiFormat.Encoding,
-                    SampleRateHertz = _selectedApiFormat.SampleRate,
-                    SpeakingRate = _serviceConfig.SpeakingRate,
-                    Pitch = _serviceConfig.Pitch
+                    SampleRateHertz = _selectedApiFormat.SampleRate
                 };
+
+                if (_serviceConfig.SpeakingRate.HasValue)
+                {
+                    _audioConfig.SpeakingRate = _serviceConfig.SpeakingRate.Value;
+                }
+                if (_serviceConfig.Pitch.HasValue)
+                {
+                    _audioConfig.Pitch = _serviceConfig.Pitch.Value;
+                }
+
+                if (!string.IsNullOrWhiteSpace(_serviceConfig.CustomPronunciationsJson))
+                {
+                    try
+                    {
+                        var jsonDoc = JsonDocument.Parse(_serviceConfig.CustomPronunciationsJson);
+                        if (jsonDoc.RootElement.ValueKind == JsonValueKind.Array)
+                        {
+                            _customPronunciations = new CustomPronunciations();
+                            foreach (var item in jsonDoc.RootElement.EnumerateArray())
+                            {
+                                var phrase = item.GetProperty("phrase").GetString() ?? "";
+                                var encodingInt = item.GetProperty("phoneticEncoding").GetInt32();
+                                var pronunciation = item.GetProperty("pronunciation").GetString() ?? "";
+
+                                _customPronunciations.Pronunciations.Add(new CustomPronunciationParams
+                                {
+                                    Phrase = phrase,
+                                    PhoneticEncoding = (CustomPronunciationParams.Types.PhoneticEncoding)encodingInt,
+                                    Pronunciation = pronunciation
+                                });
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"Failed to parse custom pronunciations JSON: {ex.Message}");
+                    }
+                }
 
                 return result.SetSuccessResult();
             }
@@ -117,13 +181,16 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 scopes.AddRange(CloudBillingClient.DefaultScopes);
                 scopes.AddRange(TextToSpeechClient.DefaultScopes);
 
-                var credential = GoogleCredential
-                    .FromJson(_serviceAccountKeyJson)
+                var serviceAccountCreds = CredentialFactory
+                    .FromJson<ServiceAccountCredential>(_serviceAccountKeyJson);
+
+                var credential = serviceAccountCreds
+                    .ToGoogleCredential()
                     .CreateScoped(scopes)
                     .ToChannelCredentials();
 
                 var projectsClient = new ProjectsClientBuilder { ChannelCredentials = credential }.Build();
-                var projectInfo = await projectsClient.GetProjectAsync($"projects/{_projectId}");
+                var projectInfo = await projectsClient.GetProjectAsync($"projects/{serviceAccountCreds.ProjectId}");
 
                 if (projectInfo == null)
                 {
@@ -131,7 +198,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 }
 
                 var billingClient = new CloudBillingClientBuilder { ChannelCredentials = credential }.Build();
-                var billingInfo = await billingClient.GetProjectBillingInfoAsync($"projects/{_projectId}");
+                var billingInfo = await billingClient.GetProjectBillingInfoAsync($"projects/{serviceAccountCreds.ProjectId}");
 
                 if (!billingInfo.BillingEnabled)
                 {
@@ -141,7 +208,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 _ttsClient = new TextToSpeechClientBuilder
                 {
                     ChannelCredentials = credential,
-                    QuotaProject = _projectId
+                    QuotaProject = serviceAccountCreds.ProjectId
                 }.Build();
 
                 return result.SetSuccessResult();
@@ -159,6 +226,16 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             if (string.IsNullOrEmpty(text)) return (Array.Empty<byte>(), TimeSpan.Zero);
 
             var input = new SynthesisInput { Text = text };
+
+            if (_serviceConfig.ModelType == "gemini" && !string.IsNullOrWhiteSpace(_serviceConfig.Prompt))
+            {
+                // Assign style instructions for Gemini TTS
+                input.Prompt = _serviceConfig.Prompt;
+            }
+            if (_customPronunciations != null)
+            {
+                input.CustomPronunciations = _customPronunciations;
+            }
 
             try
             {

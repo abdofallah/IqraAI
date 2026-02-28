@@ -1,0 +1,3354 @@
+[{
+  "_id": 1,
+  "DisabledAt": null,
+  "IntegrationId": "microsoftazure",
+  "Models": [],
+  "UserIntegrationFields": [
+    {
+      "_id": "speaker",
+      "Name": "Speaker ID",
+      "Type": "text",
+      "Tooltip": "Enter the Azure Voice name (e.g. en-US-AvaMultilingualNeural).",
+      "Placeholder": "e.g. en-US-AvaMultilingualNeural",
+      "DefaultValue": "en-US-AvaMultilingualNeural",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "StringRegex": "^[a-zA-Z0-9-]+$",
+      "ModelCondition": null
+    },
+    {
+      "_id": "speaker_language",
+      "Name": "Speaker Language Code",
+      "Type": "text",
+      "Tooltip": "Enter the BCP-47 language code (e.g. en-US).",
+      "Placeholder": "e.g. en-US",
+      "DefaultValue": "en-US",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "StringRegex": "^[a-z]{2,3}(-[a-zA-Z0-9]+)?$",
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 2,
+  "DisabledAt": null,
+  "IntegrationId": "elevenlabs",
+  "Models": [
+    {
+      "_id": "eleven_flash_v2_5",
+      "DisabledAt": null,
+      "Name": "Eleven Flash v2.5 (Turbo)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.09"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "eleven_multilingual_v2",
+      "DisabledAt": null,
+      "Name": "Eleven Multilingual v2",
+      "PricePerUnit": {
+        "$numberDecimal": "0.18"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "eleven_turbo_v2_5",
+      "DisabledAt": null,
+      "Name": "Eleven Turbo v2.5",
+      "PricePerUnit": {
+        "$numberDecimal": "0.09"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "eleven_turbo_v2",
+      "DisabledAt": null,
+      "Name": "Eleven Turbo v2",
+      "PricePerUnit": {
+        "$numberDecimal": "0.09"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "eleven_flash_v2",
+      "DisabledAt": null,
+      "Name": "Eleven Flash v2",
+      "PricePerUnit": {
+        "$numberDecimal": "0.09"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "eleven_monolingual_v1",
+      "DisabledAt": null,
+      "Name": "Eleven English v1 (Legacy)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.18"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "eleven_multilingual_v1",
+      "DisabledAt": null,
+      "Name": "Eleven Multilingual v1 (Legacy)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.18"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model_id",
+      "Name": "Model ID",
+      "Type": "models",
+      "Tooltip": "Select the ElevenLabs Model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "voice_id",
+      "Name": "Voice ID",
+      "Type": "text",
+      "Tooltip": "Enter the ElevenLabs Voice ID.",
+      "Placeholder": "21m00Tcm4TlvDq8ikWAM",
+      "DefaultValue": "21m00Tcm4TlvDq8ikWAM",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "language_code",
+      "Name": "Language Code",
+      "Type": "text",
+      "Tooltip": "ISO 639-1 language code (e.g. 'en', 'es'). Optional.",
+      "Placeholder": "en",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "^[a-z]{2}$",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "stability",
+      "Name": "Stability",
+      "Type": "double_number",
+      "Tooltip": "Stability of the voice (0.0 to 1.0).",
+      "Placeholder": "0.5",
+      "DefaultValue": "0.5",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "similarityBoost",
+      "Name": "Similarity Boost",
+      "Type": "double_number",
+      "Tooltip": "Clarity + Similarity enhancement (0.0 to 1.0).",
+      "Placeholder": "0.75",
+      "DefaultValue": "0.75",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "style",
+      "Name": "Style Exaggeration",
+      "Type": "double_number",
+      "Tooltip": "Style exaggeration (0.0 to 1.0).",
+      "Placeholder": "0.0",
+      "DefaultValue": "0.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "eleven_multilingual_v2"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "use_speaker_boost",
+      "Name": "Use Speaker Boost",
+      "Type": "select",
+      "Tooltip": "Boosts the similarity to the original speaker.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "true",
+          "Value": "True",
+          "IsDefault": true
+        },
+        {
+          "Key": "false",
+          "Value": "False",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "eleven_multilingual_v2"
+        ]
+      },
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "speed",
+      "Name": "Speed",
+      "Type": "double_number",
+      "Tooltip": "Voice speed multiplier (0.7 to 1.2 is safe range).",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0.5,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "pronunciationDictionaryId",
+      "Name": "Pronunciation Dictionaries",
+      "Type": "text",
+      "Tooltip": "List of Pronunciation Dictionary IDs.",
+      "Placeholder": "Enter IDs",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": true,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": 3
+    },
+    {
+      "_id": "applyTextNormalization",
+      "Name": "Apply Text Normalization",
+      "Type": "select",
+      "Tooltip": "Controls automatic text normalization.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "auto",
+          "Value": "Auto",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        },
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "use_previous_request_ids",
+      "Name": "Use Context History",
+      "Type": "select",
+      "Tooltip": "Uses previous generation IDs for continuity (experimental).",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    }
+  ]
+},
+{
+  "_id": 4,
+  "DisabledAt": null,
+  "IntegrationId": "cartesia",
+  "Models": [
+    {
+      "_id": "sonic-3",
+      "DisabledAt": null,
+      "Name": "Sonic 3 (Latest)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.009"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "sonic-3-2026-01-12",
+      "DisabledAt": null,
+      "Name": "Sonic 3 (2026-01-12)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.009"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "sonic-3-2025-10-27",
+      "DisabledAt": null,
+      "Name": "Sonic 3 (2025-10-27)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.009"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "sonic-2",
+      "DisabledAt": null,
+      "Name": "Sonic 2 (Stable)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.009"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "sonic-turbo-2025-03-07",
+      "DisabledAt": null,
+      "Name": "Sonic Turbo (Low Latency)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.009"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model_id",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Cartesia TTS model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "sonic-3",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_id",
+      "Name": "Voice ID",
+      "Type": "text",
+      "Tooltip": "The UUID of the voice you want to use.",
+      "Placeholder": "e.g. f786b574-daa5-4673-aa0c-cbe3e8534c02",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "language_code",
+      "Name": "Language Code",
+      "Type": "text",
+      "Tooltip": "Language code (e.g. 'en', 'ar').",
+      "Placeholder": "e.g. en",
+      "DefaultValue": "en",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "StringRegex": "^(en|ar)$",
+      "ModelCondition": null
+    },
+    {
+      "_id": "volume",
+      "Name": "Volume",
+      "Type": "double_number",
+      "Tooltip": "Adjust volume (0.5x to 2.0x). (Sonic 3 only)",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.5,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "sonic-3",
+          "sonic-3-2026-01-12",
+          "sonic-3-2025-10-27"
+        ]
+      }
+    },
+    {
+      "_id": "speed",
+      "Name": "Speed",
+      "Type": "double_number",
+      "Tooltip": "Adjust speed (0.6x to 1.5x). (Sonic 3 only)",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.6,
+      "MaxNumberValue": 1.5,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "sonic-3",
+          "sonic-3-2026-01-12",
+          "sonic-3-2025-10-27"
+        ]
+      }
+    },
+    {
+      "_id": "emotion",
+      "Name": "Emotion",
+      "Type": "select",
+      "Tooltip": "Guide the emotion of the generated speech. (Sonic 3 only)",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "",
+          "Value": "Default / Inherit",
+          "IsDefault": true
+        },
+        {
+          "Key": "neutral",
+          "Value": "Neutral",
+          "IsDefault": false
+        },
+        {
+          "Key": "happy",
+          "Value": "Happy",
+          "IsDefault": false
+        },
+        {
+          "Key": "sad",
+          "Value": "Sad",
+          "IsDefault": false
+        },
+        {
+          "Key": "angry",
+          "Value": "Angry",
+          "IsDefault": false
+        },
+        {
+          "Key": "calm",
+          "Value": "Calm",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "sonic-3",
+          "sonic-3-2026-01-12",
+          "sonic-3-2025-10-27"
+        ]
+      }
+    },
+    {
+      "_id": "pronunciation_dict_id",
+      "Name": "Pronunciation Dictionary ID",
+      "Type": "text",
+      "Tooltip": "UUID of the pronunciation dictionary. (Sonic 3 only)",
+      "Placeholder": "UUID",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "sonic-3",
+          "sonic-3-2026-01-12",
+          "sonic-3-2025-10-27"
+        ]
+      }
+    }
+  ]
+},
+{
+  "_id": 5,
+  "DisabledAt": null,
+  "IntegrationId": "fish_audio",
+  "Models": [
+    {
+      "_id": "s1",
+      "DisabledAt": null,
+      "Name": "Fish Audio S1 (Flagship)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Fish Audio model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "s1",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "reference_id",
+      "Name": "Reference Voice ID",
+      "Type": "text",
+      "Tooltip": "Voice model ID from the Fish Audio library or your custom models.",
+      "Placeholder": "e.g. 8ef4a238714b45718ce04243307c57a7",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Controls expressiveness (0.0 to 1.0). Higher is more varied, lower is more consistent.",
+      "Placeholder": "0.7",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "top_p",
+      "Name": "Top P",
+      "Type": "double_number",
+      "Tooltip": "Controls diversity via nucleus sampling (0.0 to 1.0).",
+      "Placeholder": "0.7",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "speed",
+      "Name": "Speaking Speed",
+      "Type": "double_number",
+      "Tooltip": "Speaking rate multiplier (0.5 to 2.0). 1.0 = normal.",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.5,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "volume",
+      "Name": "Volume (dB)",
+      "Type": "double_number",
+      "Tooltip": "Volume adjustment in decibels. 0 = no change, positive = louder, negative = quieter.",
+      "Placeholder": "0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "DecimalPlaces": 1,
+      "ModelCondition": null
+    },
+    {
+      "_id": "latency",
+      "Name": "Latency Mode",
+      "Type": "select",
+      "Tooltip": "Latency-quality trade-off.",
+      "Placeholder": "Select",
+      "DefaultValue": "normal",
+      "Options": [
+        {
+          "Key": "normal",
+          "Value": "Normal (Best Quality)",
+          "IsDefault": true
+        },
+        {
+          "Key": "balanced",
+          "Value": "Balanced",
+          "IsDefault": false
+        },
+        {
+          "Key": "low",
+          "Value": "Low (Lowest Latency)",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "normalize",
+      "Name": "Normalize Text",
+      "Type": "select",
+      "Tooltip": "Normalizes text for English and Chinese, improving stability for numbers.",
+      "Placeholder": "Select",
+      "DefaultValue": "true",
+      "Options": [
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": true
+        },
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "repetition_penalty",
+      "Name": "Repetition Penalty",
+      "Type": "double_number",
+      "Tooltip": "Penalty for repeating audio patterns. Values above 1.0 reduce repetition.",
+      "Placeholder": "1.2",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.1,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "chunk_length",
+      "Name": "Chunk Length",
+      "Type": "number",
+      "Tooltip": "Text segment size for processing (100 to 300).",
+      "Placeholder": "e.g. 200",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 100,
+      "MaxNumberValue": 300,
+      "ModelCondition": null
+    },
+    {
+      "_id": "max_new_tokens",
+      "Name": "Max New Tokens",
+      "Type": "number",
+      "Tooltip": "Maximum audio tokens to generate per text chunk.",
+      "Placeholder": "e.g. 1024",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 10,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 7,
+  "DisabledAt": null,
+  "IntegrationId": "minimax",
+  "Models": [
+    {
+      "_id": "speech-2.8-hd",
+      "Name": "Speech 2.8 HD",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "speech-2.8-turbo",
+      "Name": "Speech 2.8 Turbo",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "speech-2.6-hd",
+      "Name": "Speech 2.6 HD",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "speech-2.6-turbo",
+      "Name": "Speech 2.6 Turbo",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "speech-02-hd",
+      "Name": "Speech 02 HD",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "speech-02-turbo",
+      "Name": "Speech 02 Turbo",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "speech-01-hd",
+      "Name": "Speech 01 HD",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "speech-01-turbo",
+      "Name": "Speech 01 Turbo",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model_id",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the MiniMax TTS model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "speech-2.8-hd",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_id",
+      "Name": "Voice ID",
+      "Type": "text",
+      "Tooltip": "The ID of the target voice (e.g. 'English_Graceful_Lady').",
+      "Placeholder": "e.g. English_Graceful_Lady",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "language_boost",
+      "Name": "Language Boost",
+      "Type": "text",
+      "Tooltip": "Language hint for the model. Use 'auto' or a specific language like 'English' or 'Arabic'.",
+      "Placeholder": "e.g. auto",
+      "DefaultValue": "auto",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_speed",
+      "Name": "Voice Speed",
+      "Type": "double_number",
+      "Tooltip": "Speech speed. Range: [0.5, 2.0].",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.5,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_volume",
+      "Name": "Voice Volume",
+      "Type": "double_number",
+      "Tooltip": "Speech volume. Range: (0, 10].",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.1,
+      "MaxNumberValue": 10,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_pitch",
+      "Name": "Voice Pitch",
+      "Type": "number",
+      "Tooltip": "Speech pitch adjustment. Range: [-12, 12].",
+      "Placeholder": "0",
+      "DefaultValue": "0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -12,
+      "MaxNumberValue": 12,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_emotions",
+      "Name": "Emotion",
+      "Type": "text",
+      "Tooltip": "Emotion control (e.g. 'happy', 'sad', 'fluent', 'whisper'). Leave empty for auto.",
+      "Placeholder": "e.g. happy",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "text_normalization",
+      "Name": "Text Normalization",
+      "Type": "select",
+      "Tooltip": "Enable text normalization for better digit-reading.",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "pronunciation_dict_tones",
+      "Name": "Pronunciation Dictionary (Tones)",
+      "Type": "text",
+      "Tooltip": "Defines pronunciation rules. e.g. 'omg/oh my god'.",
+      "Placeholder": "Type and press enter to add",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": true,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_modify_pitch",
+      "Name": "Modify: Pitch (Deepen/Brighten)",
+      "Type": "number",
+      "Tooltip": "Deepen (-100) to Brighten (100).",
+      "Placeholder": "0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -100,
+      "MaxNumberValue": 100,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_modify_intensity",
+      "Name": "Modify: Intensity (Strong/Soft)",
+      "Type": "number",
+      "Tooltip": "Strong (-100) to Soft (100).",
+      "Placeholder": "0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -100,
+      "MaxNumberValue": 100,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_modify_timbre",
+      "Name": "Modify: Timbre (Full/Crisp)",
+      "Type": "number",
+      "Tooltip": "Full (-100) to Crisp (100).",
+      "Placeholder": "0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -100,
+      "MaxNumberValue": 100,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_modify_sound_effects",
+      "Name": "Modify: Sound Effect",
+      "Type": "select",
+      "Tooltip": "Apply a sound effect.",
+      "Placeholder": "Select",
+      "DefaultValue": "none",
+      "Options": [
+        {
+          "Key": "none",
+          "Value": "None",
+          "IsDefault": true
+        },
+        {
+          "Key": "spacious_echo",
+          "Value": "Spacious Echo",
+          "IsDefault": false
+        },
+        {
+          "Key": "auditorium_echo",
+          "Value": "Auditorium Echo",
+          "IsDefault": false
+        },
+        {
+          "Key": "lofi_telephone",
+          "Value": "Lo-Fi Telephone",
+          "IsDefault": false
+        },
+        {
+          "Key": "robotic",
+          "Value": "Robotic",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 8,
+  "DisabledAt": null,
+  "IntegrationId": "humeai",
+  "Models": [
+    {
+      "_id": "2",
+      "DisabledAt": null,
+      "Name": "Octave 2 (Latest/Preview)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "1",
+      "DisabledAt": null,
+      "Name": "Octave 1",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "es"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model_version",
+      "Name": "Model Version",
+      "Type": "models",
+      "Tooltip": "Select the Octave model version.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "2",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_id",
+      "Name": "Voice ID / Name",
+      "Type": "text",
+      "Tooltip": "The ID or Name of the voice. Required for Octave 2.",
+      "Placeholder": "e.g. Kora",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_provider",
+      "Name": "Voice Provider",
+      "Type": "select",
+      "Tooltip": "Source of the voice. 'Hume AI' for Voice Library presets, 'Custom' for cloned voices.",
+      "Placeholder": "Select",
+      "DefaultValue": "HUME_AI",
+      "Options": [
+        {
+          "Key": "HUME_AI",
+          "Value": "Hume AI (Presets)",
+          "IsDefault": true
+        },
+        {
+          "Key": "CUSTOM_VOICE",
+          "Value": "Custom Voice (Clones)",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_description",
+      "Name": "Voice Description (Prompt)",
+      "Type": "text",
+      "Tooltip": "If voice is provided, acts as acting directions. If no voice is provided (Octave 1 only), generates a new voice based on prompt.",
+      "Placeholder": "e.g. A calm, empathetic female voice.",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_speed",
+      "Name": "Voice Speed",
+      "Type": "double_number",
+      "Tooltip": "Speed multiplier. Range [0.75, 1.5].",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.5,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "instant_mode",
+      "Name": "Instant Mode",
+      "Type": "select",
+      "Tooltip": "When enabled, streams audio as quickly as possible. Disable if generating multiple candidates.",
+      "Placeholder": "Select",
+      "DefaultValue": "true",
+      "Options": [
+        {
+          "Key": "true",
+          "Value": "Enabled (Low Latency)",
+          "IsDefault": true
+        },
+        {
+          "Key": "false",
+          "Value": "Disabled",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 9,
+  "DisabledAt": null,
+  "IntegrationId": "inworld_ai",
+  "Models": [
+    {
+      "_id": "inworld-tts-1.5-max",
+      "DisabledAt": null,
+      "Name": "Inworld TTS 1.5 Max (Flagship)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "inworld-tts-1.5-mini",
+      "DisabledAt": null,
+      "Name": "Inworld TTS 1.5 Mini (Fastest)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "inworld-tts-1-max",
+      "DisabledAt": null,
+      "Name": "Inworld TTS Max (Legacy)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "inworld-tts-1",
+      "DisabledAt": null,
+      "Name": "Inworld TTS (Legacy)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Inworld TTS model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "inworld-tts-1.5-max",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_name",
+      "Name": "Voice ID",
+      "Type": "text",
+      "Tooltip": "The ID of the voice to use for synthesizing speech (e.g. 'Dennis').",
+      "Placeholder": "e.g. Dennis",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "speed",
+      "Name": "Speaking Rate",
+      "Type": "double_number",
+      "Tooltip": "Speaking rate/speed, in the range [0.5, 1.5]. Default is 1.0.",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.5,
+      "MaxNumberValue": 1.5,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Determines randomness (0.0 to 2.0). Default is 1.1.",
+      "Placeholder": "1.1",
+      "DefaultValue": "1.1",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.1,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "apply_text_normalization",
+      "Name": "Apply Text Normalization",
+      "Type": "select",
+      "Tooltip": "Automatically expands and standardizes numbers, dates, times, and abbreviations.",
+      "Placeholder": "Select",
+      "DefaultValue": "APPLY_TEXT_NORMALIZATION_UNSPECIFIED",
+      "Options": [
+        {
+          "Key": "APPLY_TEXT_NORMALIZATION_UNSPECIFIED",
+          "Value": "Auto (Default)",
+          "IsDefault": true
+        },
+        {
+          "Key": "ON",
+          "Value": "On",
+          "IsDefault": false
+        },
+        {
+          "Key": "OFF",
+          "Value": "Off",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 11,
+  "DisabledAt": null,
+  "IntegrationId": "murf_ai",
+  "Models": [
+    {
+      "_id": "FALCON",
+      "DisabledAt": null,
+      "Name": "Falcon (Ultra-fast Streaming)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "GEN2",
+      "DisabledAt": null,
+      "Name": "Gen2 (Studio-quality Customization)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.015"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Murf AI TTS model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "FALCON",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "region",
+      "Name": "Region (Data Residency)",
+      "Type": "select",
+      "Tooltip": "Select the region to route the request to. Use Global for best-effort low latency, or specific regions for data residency.",
+      "Placeholder": "Select",
+      "DefaultValue": "global",
+      "Options": [
+        {
+          "Key": "global",
+          "Value": "Global (Auto-route to nearest)",
+          "IsDefault": true
+        },
+        {
+          "Key": "us-east",
+          "Value": "US East",
+          "IsDefault": false
+        },
+        {
+          "Key": "us-west",
+          "Value": "US West",
+          "IsDefault": false
+        },
+        {
+          "Key": "in",
+          "Value": "India",
+          "IsDefault": false
+        },
+        {
+          "Key": "ca",
+          "Value": "Canada",
+          "IsDefault": false
+        },
+        {
+          "Key": "kr",
+          "Value": "South Korea",
+          "IsDefault": false
+        },
+        {
+          "Key": "me",
+          "Value": "UAE",
+          "IsDefault": false
+        },
+        {
+          "Key": "jp",
+          "Value": "Japan",
+          "IsDefault": false
+        },
+        {
+          "Key": "au",
+          "Value": "Australia",
+          "IsDefault": false
+        },
+        {
+          "Key": "eu-central",
+          "Value": "EU Central",
+          "IsDefault": false
+        },
+        {
+          "Key": "uk",
+          "Value": "UK",
+          "IsDefault": false
+        },
+        {
+          "Key": "sa-east",
+          "Value": "South America (São Paulo)",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_id",
+      "Name": "Voice ID",
+      "Type": "text",
+      "Tooltip": "The ID or name of the voice actor (e.g., 'en-US-natalie' or 'natalie').",
+      "Placeholder": "e.g. Matthew",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "multi_native_locale",
+      "Name": "Multi-Native Locale",
+      "Type": "text",
+      "Tooltip": "Enable a voice to speak in multiple languages natively (e.g. 'en-US', 'fr-FR').",
+      "Placeholder": "e.g. en-US",
+      "DefaultValue": "en-US",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "StringRegex": "^([a-z]{2}-[A-Z]{2})?$",
+      "ModelCondition": null
+    },
+    {
+      "_id": "style",
+      "Name": "Style",
+      "Type": "text",
+      "Tooltip": "The voice style (e.g. 'Angry', 'Sad'). Varies per voice.",
+      "Placeholder": "e.g. Angry",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "rate",
+      "Name": "Speaking Rate",
+      "Type": "number",
+      "Tooltip": "Speed of the voiceover. Range: -50 to 50.",
+      "Placeholder": "0",
+      "DefaultValue": "0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -50,
+      "MaxNumberValue": 50,
+      "ModelCondition": null
+    },
+    {
+      "_id": "pitch",
+      "Name": "Pitch",
+      "Type": "number",
+      "Tooltip": "Pitch of the voiceover. Range: -50 to 50.",
+      "Placeholder": "0",
+      "DefaultValue": "0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -50,
+      "MaxNumberValue": 50,
+      "ModelCondition": null
+    },
+    {
+      "_id": "variation",
+      "Name": "Variation",
+      "Type": "number",
+      "Tooltip": "Adds dynamic changes in pause, pitch, and speed. Range: 0 to 5.",
+      "Placeholder": "1",
+      "DefaultValue": "1",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 5,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "GEN2"
+        ]
+      }
+    },
+    {
+      "_id": "pronunciation_dictionary",
+      "Name": "Pronunciation Dictionary (JSON)",
+      "Type": "text",
+      "Tooltip": "Define custom pronunciations in JSON format. E.g. {\"live\":{\"type\":\"IPA\",\"pronunciation\":\"laɪv\"}}",
+      "Placeholder": "e.g. {\"word\":{\"type\":\"SAY_AS\",\"pronunciation\":\"new word\"}}",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 13,
+  "DisabledAt": null,
+  "IntegrationId": "hamsa",
+  "Models": [],
+  "UserIntegrationFields": [
+    {
+      "_id": "speaker",
+      "Name": "Speaker Name",
+      "Type": "text",
+      "Tooltip": "e.g., Khadija, Amjad, Salma, or a Cloned Voice ID.",
+      "Placeholder": "e.g., Khadija",
+      "DefaultValue": "Khadija",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "dialect",
+      "Name": "Dialect",
+      "Type": "select",
+      "Tooltip": "The Arabic dialect associated with the speaker.",
+      "Placeholder": "Select Dialect",
+      "DefaultValue": "uae",
+      "Options": [
+        {
+          "Key": "ksa",
+          "Value": "Saudi (KSA)",
+          "IsDefault": false
+        },
+        {
+          "Key": "uae",
+          "Value": "Emirati (UAE)",
+          "IsDefault": true
+        },
+        {
+          "Key": "egy",
+          "Value": "Egyptian (EGY)",
+          "IsDefault": false
+        },
+        {
+          "Key": "pls",
+          "Value": "Palestinian (PLS)",
+          "IsDefault": false
+        },
+        {
+          "Key": "syr",
+          "Value": "Syrian (SYR)",
+          "IsDefault": false
+        },
+        {
+          "Key": "irq",
+          "Value": "Iraqi (IRQ)",
+          "IsDefault": false
+        },
+        {
+          "Key": "jor",
+          "Value": "Jordanian (JOR)",
+          "IsDefault": false
+        },
+        {
+          "Key": "leb",
+          "Value": "Lebanese (LEB)",
+          "IsDefault": false
+        },
+        {
+          "Key": "bah",
+          "Value": "Bahraini (BAH)",
+          "IsDefault": false
+        },
+        {
+          "Key": "qat",
+          "Value": "Qatari (QAT)",
+          "IsDefault": false
+        },
+        {
+          "Key": "msa",
+          "Value": "Modern Standard Arabic (MSA)",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 15,
+  "DisabledAt": null,
+  "IntegrationId": "resembleai",
+  "Models": [
+    {
+      "_id": "tts-v4",
+      "DisabledAt": null,
+      "Name": "Chatterbox (v4)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "tts-v4-turbo",
+      "DisabledAt": null,
+      "Name": "Chatterbox Turbo (Low Latency)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "voice_uuid",
+      "Name": "Voice UUID",
+      "Type": "text",
+      "Tooltip": "The UUID of the voice to use for synthesis.",
+      "Placeholder": "e.g. 55592656",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Resemble AI synthesis model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "tts-v4",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "use_hd",
+      "Name": "Use HD",
+      "Type": "select",
+      "Tooltip": "Enables higher-definition synthesis with a small latency trade-off.",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 3,
+  "DisabledAt": null,
+  "IntegrationId": "google_cloud_speech",
+  "Models": [
+    {
+      "_id": "gemini-2.5-flash-tts",
+      "DisabledAt": null,
+      "Name": "Gemini 2.5 Flash TTS",
+      "PricePerUnit": {
+        "$numberDecimal": "0.00"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "gemini-2.5-flash-lite-preview-tts",
+      "DisabledAt": null,
+      "Name": "Gemini 2.5 Flash Lite TTS (Preview)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.00"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "gemini-2.5-pro-tts",
+      "DisabledAt": null,
+      "Name": "Gemini 2.5 Pro TTS",
+      "PricePerUnit": {
+        "$numberDecimal": "0.00"
+      },
+      "PriceUnit": "1k chars",
+      "SupportedLanguages": [
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model_type",
+      "Name": "Engine Type",
+      "Type": "select",
+      "Tooltip": "Select between Standard/Chirp voices or the new Gemini TTS models.",
+      "Placeholder": "Select Engine",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "standard",
+          "Value": "Standard / Chirp Voices",
+          "IsDefault": true
+        },
+        {
+          "Key": "gemini",
+          "Value": "Gemini TTS",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "model_id",
+      "Name": "Gemini Model",
+      "Type": "models",
+      "Tooltip": "Select the specific Gemini TTS model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": [
+        {
+          "FieldId": "model_type",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "gemini"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "use_custom_voice_key",
+      "Name": "Use Custom Voice Clone?",
+      "Type": "select",
+      "Tooltip": "Select 'Yes' if you want to use a generated Voice Cloning Key instead of a standard voice name.",
+      "Placeholder": "Select",
+      "DefaultValue": "",
+      "Options": [
+        {
+          "Key": "no",
+          "Value": "No",
+          "IsDefault": true
+        },
+        {
+          "Key": "yes",
+          "Value": "Yes",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": [
+        {
+          "FieldId": "model_type",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "standard"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "voice_cloning_key",
+      "Name": "Voice Cloning Key",
+      "Type": "text",
+      "Tooltip": "Enter the custom voice cloning key.",
+      "Placeholder": "Enter key...",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": [
+        {
+          "FieldId": "model_type",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "standard"
+        },
+        {
+          "FieldId": "use_custom_voice_key",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "yes"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "voice_name",
+      "Name": "Voice Name",
+      "Type": "text",
+      "Tooltip": "Standard voice name (e.g., 'en-US-Journey-F').",
+      "Placeholder": "e.g. en-US-Journey-F",
+      "DefaultValue": "en-US-Journey-F",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": [
+        {
+          "FieldId": "model_type",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "standard"
+        },
+        {
+          "FieldId": "use_custom_voice_key",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "yes"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "language_code",
+      "Name": "Language Code",
+      "Type": "text",
+      "Tooltip": "BCP-47 language tag (e.g. 'en-US').",
+      "Placeholder": "e.g. en-US",
+      "DefaultValue": "en-US",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "^[a-z]{2,3}(-[a-zA-Z0-9]+)?$",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "prompt",
+      "Name": "Style Instructions (Prompt)",
+      "Type": "text",
+      "Tooltip": "System instruction to guide the tone/style (only for Gemini TTS).",
+      "Placeholder": "e.g. Speak excitedly...",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": [
+        {
+          "FieldId": "model_type",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "gemini"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "speaking_rate",
+      "Name": "Speaking Rate",
+      "Type": "double_number",
+      "Tooltip": "Speaking speed [0.25, 2.0]. Default is 1.0.",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0.25,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "pitch",
+      "Name": "Pitch",
+      "Type": "double_number",
+      "Tooltip": "Speaking pitch [-20.0, 20.0]. Default is 0.0.",
+      "Placeholder": "0.0",
+      "DefaultValue": "0.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": -20,
+      "MaxNumberValue": 20,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "custom_pronunciations",
+      "Name": "Custom Pronunciations (JSON Array)",
+      "Type": "text",
+      "Tooltip": "Provide a JSON array of objects: [{",
+      "Placeholder": "[{...}]",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    }
+  ]
+},
+{
+  "_id": 6,
+  "DisabledAt": null,
+  "IntegrationId": "deepgram",
+  "Models": [
+    {
+      "_id": "aura",
+      "DisabledAt": null,
+      "Name": "Aura (v1)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.015"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "aura-2",
+      "DisabledAt": null,
+      "Name": "Aura 2 (v2)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.015"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "es"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model_family",
+      "Name": "Model Family",
+      "Type": "models",
+      "Tooltip": "Select the Deepgram TTS model generation.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "aura-2",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_name",
+      "Name": "Voice Name",
+      "Type": "text",
+      "Tooltip": "The name of the voice (e.g., 'asteria', 'luna', 'nestor').",
+      "Placeholder": "e.g. asteria",
+      "DefaultValue": "asteria",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "language_code",
+      "Name": "Language Code",
+      "Type": "text",
+      "Tooltip": "The 2-letter language code (e.g., 'en', 'es'). Must match supported languages for the voice.",
+      "Placeholder": "e.g. en",
+      "DefaultValue": "en",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "StringRegex": "^[a-z]{2}$",
+      "ModelCondition": null
+    },
+    {
+      "_id": "mip_opt_out",
+      "Name": "MIP Opt-Out",
+      "Type": "select",
+      "Tooltip": "Opt out of the Deepgram Model Improvement Program.",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "False (Allow Training)",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "True (Opt-Out)",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 10,
+  "DisabledAt": null,
+  "IntegrationId": "speechify",
+  "Models": [
+    {
+      "_id": "simba-english",
+      "DisabledAt": null,
+      "Name": "Simba English",
+      "PricePerUnit": {
+        "$numberDecimal": "0.015"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "simba-multilingual",
+      "DisabledAt": null,
+      "Name": "Simba Multilingual",
+      "PricePerUnit": {
+        "$numberDecimal": "0.015"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Speechify synthesis model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "simba-english",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_id",
+      "Name": "Voice ID",
+      "Type": "text",
+      "Tooltip": "The ID of the voice to be used for synthesizing speech.",
+      "Placeholder": "e.g. henry",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "language",
+      "Name": "Language Locale",
+      "Type": "text",
+      "Tooltip": "ISO 639-1 language and ISO 3166-1 region code (e.g. 'en-US'). Leave empty for auto-detection in mixed texts.",
+      "Placeholder": "e.g. en-US",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "StringRegex": "^([a-z]{2}-[A-Z]{2})?$",
+      "ModelCondition": null
+    },
+    {
+      "_id": "loudness_normalization",
+      "Name": "Loudness Normalization",
+      "Type": "select",
+      "Tooltip": "Normalizes audio loudness to standard level (-14 LUFS). May increase latency.",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off (Default)",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On (Standardized LUFS)",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "text_normalization",
+      "Name": "Text Normalization",
+      "Type": "select",
+      "Tooltip": "Transforms numbers, dates, etc. into words (e.g. '55' -> 'fifty five').",
+      "Placeholder": "Select",
+      "DefaultValue": "true",
+      "Options": [
+        {
+          "Key": "true",
+          "Value": "On (Default)",
+          "IsDefault": true
+        },
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 12,
+  "DisabledAt": null,
+  "IntegrationId": "zyphra",
+  "Models": [
+    {
+      "_id": "zonos-v0.1-transformer",
+      "DisabledAt": null,
+      "Name": "Zonos v0.1 Transformer (Default)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en-us",
+        "fr-fr",
+        "de",
+        "cmn",
+        "ko",
+        "ja"
+      ]
+    },
+    {
+      "_id": "zonos-v0.1-hybrid",
+      "DisabledAt": null,
+      "Name": "Zonos v0.1 Hybrid (Best for JP)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en-us",
+        "fr-fr",
+        "de",
+        "cmn",
+        "ko",
+        "ja"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Zyphra TTS model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "zonos-v0.1-transformer",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "language_iso_code",
+      "Name": "Language Code",
+      "Type": "text",
+      "Tooltip": "Language code (e.g., 'en-us', 'fr-fr', 'de', 'ja', 'ko', 'cmn').",
+      "Placeholder": "e.g. en-us",
+      "DefaultValue": "en-us",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "default_voice_name",
+      "Name": "Default Voice Name",
+      "Type": "select",
+      "Tooltip": "Select a pre-defined standard voice.",
+      "Placeholder": "Select",
+      "DefaultValue": "american_female",
+      "Options": [
+        {
+          "Key": "american_female",
+          "Value": "American Female",
+          "IsDefault": true
+        },
+        {
+          "Key": "american_male",
+          "Value": "American Male",
+          "IsDefault": false
+        },
+        {
+          "Key": "british_female",
+          "Value": "British Female",
+          "IsDefault": false
+        },
+        {
+          "Key": "british_male",
+          "Value": "British Male",
+          "IsDefault": false
+        },
+        {
+          "Key": "anime_girl",
+          "Value": "Anime Girl",
+          "IsDefault": false
+        },
+        {
+          "Key": "energetic_boy",
+          "Value": "Energetic Boy",
+          "IsDefault": false
+        },
+        {
+          "Key": "energetic_girl",
+          "Value": "Energetic Girl",
+          "IsDefault": false
+        },
+        {
+          "Key": "japanese_female",
+          "Value": "Japanese Female",
+          "IsDefault": false
+        },
+        {
+          "Key": "japanese_male",
+          "Value": "Japanese Male",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "speaking_rate",
+      "Name": "Speaking Rate",
+      "Type": "number",
+      "Tooltip": "Speed of speech (5 to 35). Default: 15. Note: +3 applied automatically for Japanese.",
+      "Placeholder": "15",
+      "DefaultValue": "15",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 5,
+      "MaxNumberValue": 35,
+      "ModelCondition": null
+    },
+    {
+      "_id": "vqscore",
+      "Name": "Quality Score (vqscore)",
+      "Type": "double_number",
+      "Tooltip": "Controls voice quality vs. speaker similarity (0.6 to 0.8). Default: 0.78.",
+      "Placeholder": "0.78",
+      "DefaultValue": "0.78",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.6,
+      "MaxNumberValue": 0.8,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "fmax",
+      "Name": "Max Frequency (fmax)",
+      "Type": "double_number",
+      "Tooltip": "Maximum frequency for audio generation. Default: 22050.",
+      "Placeholder": "22050",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "emotion",
+      "Name": "Emotions (JSON)",
+      "Type": "text",
+      "Tooltip": "JSON object defining emotional weights (0.0 to 1.0). e.g., {\"happiness\": 0.8, \"sadness\": 0.05}. Transformer model only.",
+      "Placeholder": "{\"happiness\": 0.8}",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "zonos-v0.1-transformer"
+        ]
+      }
+    },
+    {
+      "_id": "pitch_std",
+      "Name": "Pitch Std Deviation",
+      "Type": "double_number",
+      "Tooltip": "Pitch standard deviation (0 to 100). Default: 45.0. Transformer model only.",
+      "Placeholder": "45.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 100,
+      "DecimalPlaces": 1,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "zonos-v0.1-transformer"
+        ]
+      }
+    },
+    {
+      "_id": "speaker_noised",
+      "Name": "Speaker Noised",
+      "Type": "select",
+      "Tooltip": "Denoises reference audio to improve voice stability. Hybrid model only.",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "False",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "True",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "zonos-v0.1-hybrid"
+        ]
+      }
+    }
+  ]
+},
+{
+  "_id": 14,
+  "DisabledAt": null,
+  "IntegrationId": "neuphonic",
+  "Models": [],
+  "UserIntegrationFields": [
+    {
+      "_id": "lang_code",
+      "Name": "Language Code",
+      "Type": "text",
+      "Tooltip": "Language code (e.g., 'en', 'es', 'de', 'nl', 'hi').",
+      "Placeholder": "e.g. en",
+      "DefaultValue": "en",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "StringRegex": "^[a-z]{2}$",
+      "ModelCondition": null
+    },
+    {
+      "_id": "voice_id",
+      "Name": "Voice ID",
+      "Type": "text",
+      "Tooltip": "The UUID of the desired voice. This implicitly selects the underlying model.",
+      "Placeholder": "e.g. 8e9c4bc8-3979-48ab-8626-df53befc2090",
+      "DefaultValue": "e564ba7e-aa8d-46a2-96a8-8dffedade48f",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "speed",
+      "Name": "Voice Speed",
+      "Type": "double_number",
+      "Tooltip": "Playback speed. Snaps to 0.7 (slow), 1.0 (normal), or 1.5 (fast).",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.5,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Randomness introduced into the model (0.0 to 1.0).",
+      "Placeholder": "0.7",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 16,
+  "DisabledAt": null,
+  "IntegrationId": "upliftai",
+  "Models": [],
+  "UserIntegrationFields": [
+    {
+      "_id": "voice_id",
+      "Name": "Voice Profile",
+      "Type": "text",
+      "Tooltip": "Select the Pakistani voice profile.",
+      "Placeholder": "Select Voice",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "phrase_replacement_config_id",
+      "Name": "Phrase Replacement Config ID",
+      "Type": "text",
+      "Tooltip": "Optional ID of a phrase replacement configuration to apply (for custom pronunciations).",
+      "Placeholder": "e.g. prc_123456",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 17,
+  "DisabledAt": null,
+  "IntegrationId": "sarvamai",
+  "Models": [
+    {
+      "_id": "bulbul:v2",
+      "DisabledAt": null,
+      "Name": "Bulbul v2",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "bulbul:v3-beta",
+      "DisabledAt": null,
+      "Name": "Bulbul v3 Beta",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Sarvam TTS model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "bulbul:v2",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "target_language_code",
+      "Name": "Target Language Code",
+      "Type": "select",
+      "Tooltip": "The language of the text in BCP-47 format.",
+      "Placeholder": "Select Language",
+      "DefaultValue": "hi-IN",
+      "Options": [
+        {
+          "Key": "hi-IN",
+          "Value": "Hindi",
+          "IsDefault": true
+        },
+        {
+          "Key": "bn-IN",
+          "Value": "Bengali",
+          "IsDefault": false
+        },
+        {
+          "Key": "en-IN",
+          "Value": "English (India)",
+          "IsDefault": false
+        },
+        {
+          "Key": "gu-IN",
+          "Value": "Gujarati",
+          "IsDefault": false
+        },
+        {
+          "Key": "kn-IN",
+          "Value": "Kannada",
+          "IsDefault": false
+        },
+        {
+          "Key": "ml-IN",
+          "Value": "Malayalam",
+          "IsDefault": false
+        },
+        {
+          "Key": "mr-IN",
+          "Value": "Marathi",
+          "IsDefault": false
+        },
+        {
+          "Key": "od-IN",
+          "Value": "Odia",
+          "IsDefault": false
+        },
+        {
+          "Key": "pa-IN",
+          "Value": "Punjabi",
+          "IsDefault": false
+        },
+        {
+          "Key": "ta-IN",
+          "Value": "Tamil",
+          "IsDefault": false
+        },
+        {
+          "Key": "te-IN",
+          "Value": "Telugu",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "speaker",
+      "Name": "Speaker Name",
+      "Type": "text",
+      "Tooltip": "The speaker voice to be used. (Ensure compatibility with model version).",
+      "Placeholder": "e.g. anushka",
+      "DefaultValue": "anushka",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "pitch",
+      "Name": "Pitch",
+      "Type": "double_number",
+      "Tooltip": "Controls the pitch (-0.75 to 0.75). (v2 only)",
+      "Placeholder": "0.0",
+      "DefaultValue": "0.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": -0.75,
+      "MaxNumberValue": 0.75,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "bulbul:v2"
+        ]
+      }
+    },
+    {
+      "_id": "loudness",
+      "Name": "Loudness",
+      "Type": "double_number",
+      "Tooltip": "Controls the loudness (0.3 to 3.0). (v2 only)",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.3,
+      "MaxNumberValue": 3,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "bulbul:v2"
+        ]
+      }
+    },
+    {
+      "_id": "enable_preprocessing",
+      "Name": "Enable Preprocessing",
+      "Type": "select",
+      "Tooltip": "Normalization of English words and numeric entities. (v2 only - v3 is always true)",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "bulbul:v2"
+        ]
+      }
+    },
+    {
+      "_id": "pace_v2",
+      "Name": "Pace",
+      "Type": "double_number",
+      "Tooltip": "Controls the speed (0.3 to 3.0).",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.3,
+      "MaxNumberValue": 3,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "bulbul:v2"
+        ]
+      }
+    },
+    {
+      "_id": "pace_v3",
+      "Name": "Pace",
+      "Type": "double_number",
+      "Tooltip": "Controls the speed (0.5 to 2.0).",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.5,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "bulbul:v3-beta"
+        ]
+      }
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Controls randomness (0.01 to 1.0). (v3-beta only)",
+      "Placeholder": "0.6",
+      "DefaultValue": "0.6",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.01,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "bulbul:v3-beta"
+        ]
+      }
+    }
+  ]
+},
+{
+  "_id": 18,
+  "DisabledAt": null,
+  "IntegrationId": "rime_ai",
+  "Models": [
+    {
+      "_id": "arcana",
+      "DisabledAt": null,
+      "Name": "Arcana (Flagship)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en",
+        "ar"
+      ]
+    },
+    {
+      "_id": "mistv2",
+      "DisabledAt": null,
+      "Name": "Mist v2 (High Precision)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    },
+    {
+      "_id": "mist",
+      "DisabledAt": null,
+      "Name": "Mist v1 (Legacy)",
+      "PricePerUnit": {
+        "$numberDecimal": "0.01"
+      },
+      "PriceUnit": "per min",
+      "SupportedLanguages": [
+        "en"
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model_id",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Rime AI TTS model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "arcana",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "speaker",
+      "Name": "Speaker Name",
+      "Type": "text",
+      "Tooltip": "The name of the voice (e.g. 'astra'). Must match model support.",
+      "Placeholder": "e.g. astra",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "lang",
+      "Name": "Language",
+      "Type": "select",
+      "Tooltip": "Language code. Must match the language spoken by the provided speaker.",
+      "Placeholder": "Select",
+      "DefaultValue": "eng",
+      "Options": [
+        {
+          "Key": "eng",
+          "Value": "English",
+          "IsDefault": true
+        },
+        {
+          "Key": "spa",
+          "Value": "Spanish",
+          "IsDefault": false
+        },
+        {
+          "Key": "ara",
+          "Value": "Arabic",
+          "IsDefault": false
+        },
+        {
+          "Key": "fra",
+          "Value": "French",
+          "IsDefault": false
+        },
+        {
+          "Key": "ger",
+          "Value": "German",
+          "IsDefault": false
+        },
+        {
+          "Key": "hin",
+          "Value": "Hindi",
+          "IsDefault": false
+        },
+        {
+          "Key": "jpn",
+          "Value": "Japanese",
+          "IsDefault": false
+        },
+        {
+          "Key": "por",
+          "Value": "Portuguese",
+          "IsDefault": false
+        },
+        {
+          "Key": "heb",
+          "Value": "Hebrew",
+          "IsDefault": false
+        },
+        {
+          "Key": "tam",
+          "Value": "Tamil",
+          "IsDefault": false
+        }
+      ],
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "speed_alpha",
+      "Name": "Speed Alpha",
+      "Type": "double_number",
+      "Tooltip": "Adjusts the speed of speech. Lower than 1.0 is faster. Higher than 1.0 is slower.",
+      "Placeholder": "1.0",
+      "DefaultValue": "1.0",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.1,
+      "MaxNumberValue": 3,
+      "DecimalPlaces": 2,
+      "ModelCondition": null
+    },
+    {
+      "_id": "max_tokens",
+      "Name": "Max Tokens",
+      "Type": "number",
+      "Tooltip": "The max tokens. Range is 200 to 5000.",
+      "Placeholder": "1200",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 200,
+      "MaxNumberValue": 5000,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "arcana"
+        ]
+      }
+    },
+    {
+      "_id": "repetition_penalty",
+      "Name": "Repetition Penalty",
+      "Type": "double_number",
+      "Tooltip": "Penalizes new tokens based on prior text. Typical range 1 to 2.",
+      "Placeholder": "1.5",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0.1,
+      "MaxNumberValue": 5,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "arcana"
+        ]
+      }
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Controls randomness. Range 0 to 1.",
+      "Placeholder": "0.5",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "arcana"
+        ]
+      }
+    },
+    {
+      "_id": "top_p",
+      "Name": "Top P",
+      "Type": "double_number",
+      "Tooltip": "Controls cumulative probability. Range 0 to 1.",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "arcana"
+        ]
+      }
+    },
+    {
+      "_id": "pause_between_brackets",
+      "Name": "Pause Between Brackets",
+      "Type": "select",
+      "Tooltip": "Adds pauses between words enclosed in angle brackets. e.g. <200>",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "mist",
+          "mistv2"
+        ]
+      }
+    },
+    {
+      "_id": "phonemize_between_brackets",
+      "Name": "Phonemize Between Brackets",
+      "Type": "select",
+      "Tooltip": "Specify phonemes for a word enclosed in curly brackets.",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "mist",
+          "mistv2"
+        ]
+      }
+    },
+    {
+      "_id": "inline_speed_alpha",
+      "Name": "Inline Speed Alpha",
+      "Type": "text",
+      "Tooltip": "Comma-separated list of speed values applied to words in square brackets.",
+      "Placeholder": "e.g. 0.5, 3",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "mist",
+          "mistv2"
+        ]
+      }
+    },
+    {
+      "_id": "no_text_normalization",
+      "Name": "Skip Text Normalization",
+      "Type": "select",
+      "Tooltip": "Skips text normalization to reduce latency (may cause mispronunciation of digits).",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "mist",
+          "mistv2"
+        ]
+      }
+    },
+    {
+      "_id": "save_oovs",
+      "Name": "Save OOVs",
+      "Type": "select",
+      "Tooltip": "Save out-of-vocabulary words to dashboard.",
+      "Placeholder": "Select",
+      "DefaultValue": "false",
+      "Options": [
+        {
+          "Key": "false",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "true",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": {
+        "Type": 0,
+        "Models": [
+          "mist",
+          "mistv2"
+        ]
+      }
+    }
+  ]
+}]

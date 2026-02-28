@@ -15,6 +15,10 @@ namespace IqraCore.Entities.TTS.Providers.Sarvam
     // Config Data
     public class SarvamConfigData
     {
+        [JsonPropertyName("model")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Model { get; set; }
+
         [JsonPropertyName("target_language_code")]
         public string TargetLanguageCode { get; set; }
 
@@ -22,22 +26,31 @@ namespace IqraCore.Entities.TTS.Providers.Sarvam
         public string Speaker { get; set; }
 
         [JsonPropertyName("speech_sample_rate")]
-        public int SpeechSampleRate { get; set; }
+        public string SpeechSampleRate { get; set; }
 
         [JsonPropertyName("output_audio_codec")]
-        public string OutputAudioCodec { get; set; } = "linear16"; // We force linear16
+        public string OutputAudioCodec { get; set; }
 
-        [JsonPropertyName("enable_preprocessing")]
-        public bool EnablePreprocessing { get; set; }
-
+        // Optional parameters (some model specific)
         [JsonPropertyName("pitch")]
-        public double Pitch { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? Pitch { get; set; }
 
         [JsonPropertyName("pace")]
-        public double Pace { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? Pace { get; set; }
 
         [JsonPropertyName("loudness")]
-        public double Loudness { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? Loudness { get; set; }
+
+        [JsonPropertyName("temperature")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? Temperature { get; set; }
+
+        [JsonPropertyName("enable_preprocessing")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? EnablePreprocessing { get; set; }
     }
 
     // Text Data

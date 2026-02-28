@@ -147,14 +147,32 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             if (string.IsNullOrEmpty(text)) return (Array.Empty<byte>(), TimeSpan.Zero);
 
+            FishAudioProsody? prosody = null;
+            if (_serviceConfig.Speed.HasValue || _serviceConfig.Volume.HasValue)
+            {
+                prosody = new FishAudioProsody
+                {
+                    Speed = _serviceConfig.Speed ?? 1.0f,
+                    Volume = _serviceConfig.Volume ?? 0.0f
+                };
+            }
+
             var requestPayload = new FishAudioTTSRequest
             {
                 Text = text,
                 ReferenceId = _serviceConfig.ReferenceId,
                 Format = _selectedApiFormat.FormatString,
                 SampleRate = _selectedApiFormat.SampleRateHz,
-                Normalize = true,
-                Latency = "normal"
+
+                // Optional Parameters
+                Temperature = _serviceConfig.Temperature,
+                TopP = _serviceConfig.TopP,
+                Prosody = prosody,
+                Latency = _serviceConfig.Latency,
+                Normalize = _serviceConfig.Normalize,
+                RepetitionPenalty = _serviceConfig.RepetitionPenalty,
+                ChunkLength = _serviceConfig.ChunkLength,
+                MaxNewTokens = _serviceConfig.MaxNewTokens
             };
 
             byte[] messagePackData = MessagePackSerializer.Serialize(requestPayload);

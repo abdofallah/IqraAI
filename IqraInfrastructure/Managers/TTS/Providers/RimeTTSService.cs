@@ -106,17 +106,19 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     ModelId = _serviceConfig.ModelId,
                     Lang = _serviceConfig.Lang,
                     SamplingRate = _selectedApiFormat.SampleRate,
+                    SpeedAlpha = _serviceConfig.SpeedAlpha,
 
-                    RepetitionPenalty = _serviceConfig.ModelId == "arcana" ? _serviceConfig.RepetitionPenalty : null,
-                    Temperature = _serviceConfig.ModelId == "arcana" ? _serviceConfig.Temperature : null,
-                    TopP = _serviceConfig.ModelId == "arcana" ? _serviceConfig.TopP : null,
-                    MaxTokens = _serviceConfig.ModelId == "arcana" ? _serviceConfig.MaxTokens : null,
+                    // Optional fields (will be excluded from JSON if null)
+                    RepetitionPenalty = _serviceConfig.RepetitionPenalty,
+                    Temperature = _serviceConfig.Temperature,
+                    TopP = _serviceConfig.TopP,
+                    MaxTokens = _serviceConfig.MaxTokens,
 
-                    SpeedAlpha = _serviceConfig.ModelId != "arcana" ? _serviceConfig.SpeedAlpha : null,
-                    NoTextNormalization = _serviceConfig.ModelId != "arcana" ? _serviceConfig.NoTextNormalization : null,
-                    PauseBetweenBrackets = _serviceConfig.ModelId != "arcana" ? _serviceConfig.PauseBetweenBrackets : null,
-                    PhonemizeBetweenBrackets = _serviceConfig.ModelId != "arcana" ? _serviceConfig.PhonemizeBetweenBrackets : null,
-                    InlineSpeedAlpha = _serviceConfig.ModelId != "arcana" ? _serviceConfig.InlineSpeedAlpha : null
+                    NoTextNormalization = _serviceConfig.NoTextNormalization,
+                    PauseBetweenBrackets = _serviceConfig.PauseBetweenBrackets,
+                    PhonemizeBetweenBrackets = _serviceConfig.PhonemizeBetweenBrackets,
+                    InlineSpeedAlpha = _serviceConfig.InlineSpeedAlpha,
+                    SaveOovs = _serviceConfig.SaveOovs
                 };
 
                 string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
@@ -134,7 +136,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                byte[] sourceAudioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                byte[] sourceAudioData;
+                using (var ms = new MemoryStream())
+                {
+                    using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    await stream.CopyToAsync(ms, cancellationToken);
+                    sourceAudioData = ms.ToArray();
+                }
 
                 if (sourceAudioData.Length == 0)
                 {

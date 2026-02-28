@@ -114,18 +114,32 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                         Speed = _serviceConfig.VoiceSpeed,
                         Vol = _serviceConfig.VoiceVolume,
                         Pitch = _serviceConfig.VoicePitch,
-                        Emotion = _serviceConfig.VoiceEmotions,
-                        TextNormalization = _serviceConfig.VoiceTextNormalization,
-                        LatexRead = _serviceConfig.VoiceLatexRead
+                        Emotion = !string.IsNullOrWhiteSpace(_serviceConfig.VoiceEmotions) ? _serviceConfig.VoiceEmotions : null,
+                        TextNormalization = _serviceConfig.VoiceTextNormalization
                     },
-                    PronunciationDict = _serviceConfig.PronunciationDict,
                     AudioSetting = new MinimaxAudioSetting
                     {
                         SampleRate = _selectedApiFormat.SampleRate,
                         Format = _selectedApiFormat.FormatString,
                         Channel = 1
+                    },
+                    VoiceModify = new MinimaxVoiceModify
+                    {
+                        Pitch = _serviceConfig.VoiceModifyPitch,
+                        Intensity = _serviceConfig.VoiceModifyIntensity,
+                        Timbre = _serviceConfig.VoiceModifyTimbre,
+                        SoundEffects = _serviceConfig.VoiceModifySoundEffects != "none" ? _serviceConfig.VoiceModifySoundEffects : null
                     }
                 };
+
+                // Map Pronunciation Dictionary
+                if (_serviceConfig.PronunciationDictTones != null && _serviceConfig.PronunciationDictTones.Any())
+                {
+                    requestPayload.PronunciationDict = new MinimaxPronunciationDict
+                    {
+                        Tone = _serviceConfig.PronunciationDictTones
+                    };
+                }
 
                 var jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
 

@@ -22,15 +22,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly ILogger<MurfAITTSService> _logger;
         private readonly string _apiKey;
         private readonly MurfAiConfig _serviceConfig;
-
-        private const string ApiUrl = "https://api.murf.ai/v1/speech/generate";
+        private readonly string _apiUrl;
 
         // State
         private AudioRequestDetails _finalUserRequest;
         private TTSProviderAvailableAudioFormat _optimalMurfFormat;
         private MurfOutputFormatDefinition _selectedApiFormat;
         private bool _audioConversationNeeded = false;
-        private Dictionary<string, MurfPronunciationEntry>? _pronunciationDict;
+        private Dictionary<string, MurfPronunciationDetail>? _pronunciationDict;
 
         public MurfAITTSService(ILogger<MurfAITTSService> logger, string apiKey, MurfAiConfig config)
         {
@@ -38,22 +37,18 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _apiKey = apiKey;
             _serviceConfig = config;
 
+            _apiUrl = $"https://{_serviceConfig.Region}.api.murf.ai/v1/speech/stream";
+
             // Parse Pronunciation Dictionary once
-            if (!string.IsNullOrWhiteSpace(_serviceConfig.PronunciationDictionaryString))
+            if (!string.IsNullOrWhiteSpace(_serviceConfig.PronunciationDictionaryJson))
             {
-                _pronunciationDict = new Dictionary<string, MurfPronunciationEntry>();
-                var lines = _serviceConfig.PronunciationDictionaryString.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var line in lines)
+                try
                 {
-                    var parts = line.Split(';');
-                    if (parts.Length >= 3)
-                    {
-                        _pronunciationDict[parts[0].Trim()] = new MurfPronunciationEntry
-                        {
-                            Type = parts[1].Trim(),
-                            Pronunciation = parts[2].Trim()
-                        };
-                    }
+                    _pronunciationDict = JsonSerializer.Deserialize<Dictionary<string, MurfPronunciationDetail>>(_serviceConfig.PronunciationDictionaryJson);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Failed to parse Murf pronunciation dictionary JSON: {Msg}", ex.Message);
                 }
             }
         }
@@ -119,66 +114,53 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             try
             {
-                var requestPayload = new MurfTtsRequest
+                var requestPayload = new MurfStreamTtsRequest
                 {
                     Text = text,
                     VoiceId = _serviceConfig.VoiceId,
-                    Style = _serviceConfig.Style,
+                    Model = _serviceConfig.Model,
+                    MultiNativeLocale = string.IsNullOrWhiteSpace(_serviceConfig.MultiNativeLocale) ? null : _serviceConfig.MultiNativeLocale,
+                    Style = string.IsNullOrWhiteSpace(_serviceConfig.Style) ? null : _serviceConfig.Style,
                     Rate = _serviceConfig.Rate,
                     Pitch = _serviceConfig.Pitch,
+                    Variation = _serviceConfig.Model == "GEN2" ? _serviceConfig.Variation : null,
                     SampleRate = _selectedApiFormat.SampleRate,
-                    Format = "PCM",
+                    Format = "PCM", // Or WAV depending on API strictness for streaming
                     ChannelType = "MONO",
-                    EncodeAsBase64 = true,
-                    Variation = _serviceConfig.Variation,
-                    ModelVersion = _serviceConfig.Model,
                     PronunciationDictionary = _pronunciationDict
                 };
 
                 string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
 
-                using var request = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+                using var request = new HttpRequestMessage(HttpMethod.Post, _apiUrl);
                 request.Headers.Add("api-key", _apiKey);
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
-                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    try
-                    {
-                        var errorResp = JsonSerializer.Deserialize<MurfTtsResponse>(responseBody);
-                        if (!string.IsNullOrEmpty(errorResp?.ErrorMessage))
-                        {
-                            _logger.LogError("Murf API Error: {Msg}", errorResp.ErrorMessage);
-                        }
-                    }
-                    catch { _logger.LogError("Murf HTTP Error {Code}: {Body}", response.StatusCode, responseBody); }
-
+                    var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogError("Murf HTTP Error {Code}: {Body}", response.StatusCode, errorBody);
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                var ttsResponse = JsonSerializer.Deserialize<MurfTtsResponse>(responseBody);
-
-                if (string.IsNullOrEmpty(ttsResponse?.EncodedAudio))
+                // Streaming endpoint returns raw audio bytes directly
+                byte[] sourceAudioData;
+                using (var ms = new MemoryStream())
                 {
-                    _logger.LogError("Murf returned success but no audio.");
+                    await response.Content.CopyToAsync(ms, cancellationToken);
+                    sourceAudioData = ms.ToArray();
+                }
+
+                if (sourceAudioData == null || sourceAudioData.Length == 0)
+                {
+                    _logger.LogError("Murf returned success but stream was empty.");
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                byte[] sourceAudioData = Convert.FromBase64String(ttsResponse.EncodedAudio);
-
-                TimeSpan duration;
-                if (ttsResponse.AudioLengthInSeconds.HasValue)
-                {
-                    duration = TimeSpan.FromSeconds(ttsResponse.AudioLengthInSeconds.Value);
-                }
-                else
-                {
-                    duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalMurfFormat);
-                }
+                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalMurfFormat);
 
                 if (_audioConversationNeeded)
                 {

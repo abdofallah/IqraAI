@@ -9,11 +9,10 @@ namespace IqraCore.Entities.TTS.Providers.Inworld
 
         public string Model { get; set; }
         public string VoiceName { get; set; } 
-        public string LanguageCode { get; set; }
 
-        public double Temperature { get; set; }
-        public double Pitch { get; set; }
-        public double Speed { get; set; }
+        public double? Temperature { get; set; }
+        public double? Speed { get; set; }
+        public string? ApplyTextNormalization { get; set; }
 
         public int TargetSampleRate { get; set; }
         public int TargetBitsPerSample { get; set; }

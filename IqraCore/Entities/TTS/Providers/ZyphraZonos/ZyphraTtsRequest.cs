@@ -5,47 +5,38 @@ namespace IqraCore.Entities.TTS.Providers.ZyphraZonos
     public class ZyphraTtsRequest
     {
         [JsonPropertyName("text")]
-        public string Text { get; set; } = string.Empty;
+        public string Text { get; set; }
 
         [JsonPropertyName("model")]
-        public string Model { get; set; } = "zonos-v0.1-transformer"; // Default
+        public string Model { get; set; }
 
         [JsonPropertyName("mime_type")]
-        public string MimeType { get; set; } = "audio/wav"; // Request WAV
+        public string MimeType { get; set; }
 
-        // Optional parameters
         [JsonPropertyName("speaking_rate")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? SpeakingRate { get; set; } // 5 to 35
+        public int? SpeakingRate { get; set; }
 
         [JsonPropertyName("language_iso_code")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? LanguageIsoCode { get; set; } // e.g., "en-us"
+        public string? LanguageIsoCode { get; set; }
 
-        [JsonPropertyName("default_voice_name")] // Use default voices
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("default_voice_name")]
         public string? DefaultVoiceName { get; set; }
 
-        [JsonPropertyName("voice_name")] // Use custom trained voices
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? VoiceName { get; set; }
+        [JsonPropertyName("fmax")]
+        public float? Fmax { get; set; }
 
-        // Transformer model specific
+        [JsonPropertyName("vqscore")]
+        public float? Vqscore { get; set; }
+
+        // Transformer
         [JsonPropertyName("emotion")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Dictionary<string, float>? Emotion { get; set; }
 
         [JsonPropertyName("pitchStd")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public double? PitchStd { get; set; }
+        public float? PitchStd { get; set; }
 
-        // Hybrid model specific
-        [JsonPropertyName("vqscore")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public double? Vqscore { get; set; }
-
+        // Hybrid
         [JsonPropertyName("speaker_noised")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public bool SpeakerNoised { get; set; }
+        public bool? SpeakerNoised { get; set; }
     }
 }

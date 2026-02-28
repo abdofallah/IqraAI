@@ -5,24 +5,21 @@ namespace IqraCore.Entities.TTS.Providers.Minimax
     public class MinimaxVoiceSetting
     {
         [JsonPropertyName("voice_id")]
-        public string VoiceId { get; set; } = string.Empty;
+        public string VoiceId { get; set; }
 
         [JsonPropertyName("speed")]
-        public double Speed { get; set; } = 1.0;
+        public float? Speed { get; set; }
 
         [JsonPropertyName("vol")]
-        public double Vol { get; set; } = 1.0;
+        public float? Vol { get; set; }
 
         [JsonPropertyName("pitch")]
-        public int Pitch { get; set; } = 0;
+        public int? Pitch { get; set; }
 
         [JsonPropertyName("emotion")]
-        public List<string> Emotion { get; set; } = new List<string>();
+        public string? Emotion { get; set; }
 
         [JsonPropertyName("text_normalization")]
-        public bool TextNormalization { get; set; } = false;
-        
-        [JsonPropertyName("latex_read")]
-        public bool LatexRead { get; set; } = false;
+        public bool TextNormalization { get; set; }
     }
 }

@@ -10,19 +10,20 @@ namespace IqraCore.Entities.TTS.Providers.Rime
         public string ModelId { get; set; }
         public string Speaker { get; set; }
         public string Lang { get; set; }
+        public double? SpeedAlpha { get; set; }
 
-        // Arcana Specific
-        public float? RepetitionPenalty { get; set; }
-        public float? Temperature { get; set; }
-        public float? TopP { get; set; }
+        // Arcana Only
         public int? MaxTokens { get; set; }
+        public double? RepetitionPenalty { get; set; }
+        public double? Temperature { get; set; }
+        public double? TopP { get; set; }
 
-        // Mist Specific
-        public float? SpeedAlpha { get; set; } // 1.0 default
-        public string? InlineSpeedAlpha { get; set; }
-        public bool? NoTextNormalization { get; set; }
+        // Mist Only
         public bool? PauseBetweenBrackets { get; set; }
         public bool? PhonemizeBetweenBrackets { get; set; }
+        public string? InlineSpeedAlpha { get; set; }
+        public bool? NoTextNormalization { get; set; }
+        public bool? SaveOovs { get; set; }
 
         // Audio Target
         public int TargetSampleRate { get; set; }

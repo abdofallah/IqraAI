@@ -158,7 +158,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     NumGenerations = 1,
                     StripHeaders = true,
                     SplitUtterances = false,
-                    Version = _modelOctaveVersion
+                    Version = _modelOctaveVersion,
+                    InstantMode = _serviceConfig.InstantMode
                 };
 
                 if (!string.IsNullOrEmpty(_lastGenerationId))

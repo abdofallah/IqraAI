@@ -1,4 +1,5 @@
-﻿using Deepgram.Clients.Interfaces.v1;
+﻿using Amazon.Runtime.Internal.Transform;
+using Deepgram.Clients.Interfaces.v1;
 using Deepgram.Models.Speak.v1.REST;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
@@ -19,6 +20,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly ILogger<DeepgramTTSService> _logger;
         private readonly string _apiKey;
         private readonly DeepgramConfig _serviceConfig;
+        private readonly bool _mipOptOut;
 
         // Clients
         private ISpeakRESTClient? _speakClient;
@@ -30,11 +32,12 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private DeepgramOutputFormatDefinition _selectedApiFormat;
         private bool _audioConversationNeeded = false;
 
-        public DeepgramTTSService(ILogger<DeepgramTTSService> logger, string apiKey, DeepgramConfig config)
+        public DeepgramTTSService(ILogger<DeepgramTTSService> logger, string apiKey, DeepgramConfig config, bool mipOptOut)
         {
             _logger = logger;
             _apiKey = apiKey;
             _serviceConfig = config;
+            _mipOptOut = mipOptOut;
         }
 
         public async Task<FunctionReturnResult> Initialize()
@@ -141,10 +144,12 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             var textSource = new TextSource(text);
 
+            string combinedModel = $"{_serviceConfig.ModelFamily}-{_serviceConfig.VoiceName}-{_serviceConfig.LanguageCode}".ToLower();
+
             // Build Schema from our pre-calculated mappings
             var speakSchema = new SpeakSchema()
             {
-                Model = _serviceConfig.ModelId,
+                Model = combinedModel,
                 Encoding = _selectedApiFormat.Encoding,
                 Container = _selectedApiFormat.Container, // 'none' for raw PCM
                 SampleRate = _selectedApiFormat.SampleRate.ToString(),
@@ -156,7 +161,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             try
             {
                 // Call Deepgram SDK
-                SyncResponse response = await _speakClient.ToStream(textSource, speakSchema, cts);
+                SyncResponse response = await _speakClient.ToStream(textSource, speakSchema, cts, new Dictionary<string, string>() { { "mip_opt_out", _mipOptOut.ToString() } });
 
                 if (response?.Stream != null)
                 {

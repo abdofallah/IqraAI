@@ -12,6 +12,7 @@ using System.Collections.ObjectModel;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
@@ -20,10 +21,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private static readonly HttpClient _httpClient = new();
         private readonly ILogger<ResembleAITTSService> _logger;
         private readonly string _apiKey;
+        private readonly string _projectUuid;
         private readonly ResembleAiConfig _serviceConfig;
 
         // Endpoints
-        private const string SynthesisUrl = "https://f.cluster.resemble.ai/synthesize";
+        private const string StreamingSynthesisUrl = "https://f.cluster.resemble.ai/stream";
         private const string AccountApiUrl = "https://app.resemble.ai/api/v2";
 
         // State
@@ -32,10 +34,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private ResembleOutputFormatDefinition _selectedApiFormat;
         private bool _audioConversationNeeded = false;
 
-        public ResembleAITTSService(ILogger<ResembleAITTSService> logger, string apiKey, ResembleAiConfig config)
+        public ResembleAITTSService(ILogger<ResembleAITTSService> logger, string projectUuid, string apiKey, ResembleAiConfig config)
         {
             _logger = logger;
             _apiKey = apiKey;
+            _projectUuid = projectUuid;
             _serviceConfig = config;
         }
 
@@ -131,18 +134,19 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 var requestPayload = new ResembleTtsApiRequest
                 {
                     VoiceUuid = _serviceConfig.VoiceUuid,
-                    ProjectUuid = _serviceConfig.ProjectUuid,
                     Data = text,
+                    ProjectUuid = _projectUuid,
+                    Model = _serviceConfig.Model,
                     SampleRate = _selectedApiFormat.SampleRate,
                     Precision = _selectedApiFormat.Precision,
+                    UseHd = _serviceConfig.UseHd,
                     OutputFormat = "wav"
                 };
 
-                string jsonPayload = JsonSerializer.Serialize(requestPayload);
+                string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
 
-                using var request = new HttpRequestMessage(HttpMethod.Post, SynthesisUrl);
+                using var request = new HttpRequestMessage(HttpMethod.Post, StreamingSynthesisUrl);
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-                request.Headers.Add("Accept-Encoding", "gzip");
                 request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
@@ -154,26 +158,21 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                var responseBodyString = await response.Content.ReadAsStringAsync(cancellationToken);
-                var ttsResponse = JsonSerializer.Deserialize<ResembleTTSApiResponse>(responseBodyString);
-
-                if (ttsResponse == null || !ttsResponse.Success || string.IsNullOrEmpty(ttsResponse.AudioContent))
+                byte[] sourceAudioData;
+                using (var ms = new MemoryStream())
                 {
-                    _logger.LogError("Resemble returned success=false or no audio: {Msg}", ttsResponse?.Message);
+                    using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    await stream.CopyToAsync(ms, cancellationToken);
+                    sourceAudioData = ms.ToArray();
+                }
+
+                if (sourceAudioData.Length == 0)
+                {
+                    _logger.LogWarning("Resemble returned empty stream.");
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                byte[] sourceAudioData = Convert.FromBase64String(ttsResponse.AudioContent);
-
-                TimeSpan duration;
-                if (ttsResponse.Duration.HasValue)
-                {
-                    duration = TimeSpan.FromSeconds(ttsResponse.Duration.Value);
-                }
-                else
-                {
-                    duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalResembleFormat);
-                }
+                var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalResembleFormat);
 
                 if (_audioConversationNeeded)
                 {

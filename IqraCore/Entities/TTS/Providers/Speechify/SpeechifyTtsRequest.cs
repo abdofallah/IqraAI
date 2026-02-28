@@ -10,16 +10,16 @@ namespace IqraCore.Entities.TTS.Providers.Speechify
         [JsonPropertyName("voice_id")]
         public string VoiceId { get; set; } = string.Empty;
 
+
+        [JsonPropertyName("model")]
+        public string Model { get; set; } = string.Empty;
+
         [JsonPropertyName("audio_format")]
         public string AudioFormat { get; set; } = "wav"; // Request WAV
 
         [JsonPropertyName("language")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Language { get; set; }
-
-        [JsonPropertyName("model")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Model { get; set; } // e.g., "simba-english"
 
         [JsonPropertyName("options")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

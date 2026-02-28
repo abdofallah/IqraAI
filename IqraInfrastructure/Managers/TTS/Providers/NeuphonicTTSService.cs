@@ -110,8 +110,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 VoiceId = _serviceConfig.VoiceId,
                 SamplingRate = _selectedApiFormat.SampleRate,
                 Speed = _serviceConfig.Speed,
-                Encoding = "pcm_linear",
-                Model = _serviceConfig.Model
+                Temperature = _serviceConfig.Temperature,
+                Encoding = "pcm_linear"
             };
 
             string jsonPayload = JsonSerializer.Serialize(apiRequestPayload, _jsonSerializerOptions);
@@ -142,26 +142,39 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     if (cancellationToken.IsCancellationRequested) break;
 
+                    line = line.Trim();
+
+                    if (string.IsNullOrEmpty(line)) continue;
+
+                    // Skip event type declarations if they send them (e.g. "event: message")
+                    if (line.StartsWith("event:")) continue;
+
                     if (line.StartsWith("data:"))
                     {
                         var json = line.Substring(5).Trim();
-                        // SSE often sends "data: [DONE]" to signal end
+
                         if (json == "[DONE]") break;
+                        if (string.IsNullOrEmpty(json)) continue;
 
                         try
                         {
                             var sseEventPayload = JsonSerializer.Deserialize<NeuphonicSseEventPayload>(json, _jsonSerializerOptions);
 
-                            // Check for success (200) and data presence
-                            if (sseEventPayload?.StatusCode == 200 && !string.IsNullOrEmpty(sseEventPayload?.AudioDetails?.Audio))
+                            if (sseEventPayload?.Errors != null && sseEventPayload.Errors.Any())
                             {
-                                byte[] audioChunk = Convert.FromBase64String(sseEventPayload.AudioDetails.Audio);
+                                _logger.LogError("Neuphonic SSE Error: {Errors}", string.Join(", ", sseEventPayload.Errors));
+                                break; // Stop processing on error
+                            }
+
+                            if (sseEventPayload?.StatusCode == 200 && !string.IsNullOrEmpty(sseEventPayload?.Data?.Audio))
+                            {
+                                byte[] audioChunk = Convert.FromBase64String(sseEventPayload.Data.Audio);
                                 accumulatedAudioBytes.AddRange(audioChunk);
                             }
                         }
-                        catch (Exception ex)
+                        catch (JsonException ex)
                         {
-                            _logger.LogWarning("Neuphonic SSE Parse Error: {Message}", ex.Message);
+                            _logger.LogWarning("Neuphonic SSE Parse Error: {Message}. Raw JSON: {Json}", ex.Message, json);
                         }
                     }
                 }

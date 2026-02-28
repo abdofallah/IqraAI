@@ -23,7 +23,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private readonly ILogger<HamsaAITTSService> _logger;
         private readonly string _apiKey;
-        private const string ApiUrl = "https://api.tryhamsa.com/v1/realtime/tts";
+        private const string ApiUrl = "https://api.tryhamsa.com/v1/realtime/tts-stream";
         private readonly HamsaAiConfig _serviceConfig;
 
         // State
@@ -114,7 +114,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             try
             {
-                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -123,7 +123,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
 
-                byte[] sourceAudioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                byte[] sourceAudioData;
+                using (var ms = new MemoryStream())
+                {
+                    using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    await stream.CopyToAsync(ms, cancellationToken);
+                    sourceAudioData = ms.ToArray();
+                }
 
                 var duration = AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalHamsaFormat);
 

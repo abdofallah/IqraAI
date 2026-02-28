@@ -14,12 +14,12 @@ namespace IqraCore.Entities.TTS.Providers.Neuphonic
         public int SamplingRate { get; set; }
 
         [JsonPropertyName("speed")]
-        public float Speed { get; set; }
+        public float? Speed { get; set; }
+
+        [JsonPropertyName("temperature")]
+        public float? Temperature { get; set; }
 
         [JsonPropertyName("encoding")]
         public string Encoding { get; set; }
-
-        [JsonPropertyName("model")]
-        public string Model { get; set; }
     }
 }
