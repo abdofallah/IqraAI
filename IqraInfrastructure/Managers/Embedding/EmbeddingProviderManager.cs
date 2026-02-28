@@ -506,13 +506,13 @@ namespace IqraInfrastructure.Managers.Embedding
                 }
 
                 // --- Helper functions for safe extraction ---
-                string GetString(string key, string defaultValue = "")
+                string? GetString(string key, string? defaultValue = null)
                 {
                     return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
                         ? val.ToString()! : defaultValue;
                 }
 
-                int GetInt(string key, int defaultValue)
+                int? GetInt(string key, int? defaultValue = null)
                 {
                     if (agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null)
                     {
@@ -528,13 +528,11 @@ namespace IqraInfrastructure.Managers.Embedding
                     case InterfaceEmbeddingProviderEnum.GoogleGemini:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string model = GetString("model");
-                            int vectorDimension = GetInt("model_vector_dimension", 0);
 
                             var config = new GoogleGeminiEmbeddingServiceConfig()
                             {
-                                Model = model,
-                                VectorDimension = vectorDimension
+                                Model = GetString("model")!,
+                                VectorDimension = (int)GetInt("model_vector_dimension")!
                             };
 
                             var service = new GoogleGeminiEmbeddingService(_loggerFactory.CreateLogger<GoogleGeminiEmbeddingService>(), apiKey, config);

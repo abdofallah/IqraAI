@@ -493,7 +493,7 @@ namespace IqraInfrastructure.Managers.Rerank
                 }
 
                 // --- Helper functions for safe extraction ---
-                string GetString(string key, string defaultValue = "")
+                string? GetString(string key, string? defaultValue = null)
                 {
                     return agentIntegrationData.FieldValues.TryGetValue(key, out var val) && val != null
                         ? val.ToString()! : defaultValue;
@@ -505,7 +505,7 @@ namespace IqraInfrastructure.Managers.Rerank
                     case InterfaceRerankProviderEnum.GoogleGemini:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string model = GetString("model");
+                            string model = GetString("model")!;
 
                             var logger = _loggerFactory.CreateLogger<GoogleGeminiRerankService>();
                             return result.SetSuccessResult(new GoogleGeminiRerankService(logger, apiKey, model));

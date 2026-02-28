@@ -6,6 +6,10 @@
     // The Region Identifier (e.g., "us-east-1", "eu-central") this proxy acts as the Gateway for. 
     // Incoming calls to numbers associated with this region are routed here.
     "RegionId": "<region_identifier>", 
+    // The Cluster Handshake Token. 
+    // This string MUST match the 'API Secret' you entered in the Admin Dashboard when registering this Proxy Server.
+    // It is used to authenticate internal HTTP requests between the Proxy and the Backend/Frontend.
+    "ApiKey": "<api_key>"
     "OutboundProcessing": {
       // How frequently (in seconds) the Proxy checks the Redis/Mongo queue for pending outbound calls.
       "PollingIntervalSeconds": 5,
@@ -17,6 +21,14 @@
       "ScheduleWindowMinutes": 1
     }
   },
+
+  "Hardware": {
+    // CRITICAL: The OS-level name of the network interface to bind for RTP Audio (UDP).
+    // Linux: Run `ip addr` (e.g., "eth0", "ens5").
+    // Windows: Run `ipconfig` (e.g., "Ethernet", "vEthernet (WSL)").
+    "NetworkInterfaceName": "<network_interface_name>"
+  },
+
   "Cors": {
     // A list of allowed origins (URLs) that can make browser-based requests to this Proxy. 
     // This should include your Frontend Admin Dashboard URL.
@@ -25,12 +37,11 @@
     ]
   },
   
-  // SHARED CONFIGURATION: This block must match the Frontend/Backend/Processor configuration.
-  "RedisDatabase": {
-    // The connection string to your Redis instance (e.g., "localhost:6379,password=...").
-    "ConnectionString": "<redis_connection_string>",
-    "ServerLiveStatusChannelDatabaseIndex": 7,
-    "DistributedLockDatabaseIndex": 8
+  // SHARED CONFIGURATION: This block must be identical across Frontend, Proxy, Backend, and Processor apps.
+  "RedisDatabase": { 
+    // The connection to your Redis instance
+    "Endpoint": "localhost:6379",
+    "Password": "" // leave blank if no password
   },
 
   // SHARED CONFIGURATION: This block must match the Frontend/Backend/Processor configuration.
@@ -43,13 +54,6 @@
   "Integrations": {
     // The 32-character AES Key used to decrypt third-party API Keys (e.g. Twilio) needed to validate incoming webhooks.
     "EncryptionKey": "<integration_encryption_key>"
-  },
-
-  "Security": {
-    // The Cluster Handshake Token. 
-    // This string MUST match the 'API Secret' you entered in the Admin Dashboard when registering this Proxy Server.
-    // It is used to authenticate internal HTTP requests between the Proxy and the Backend/Frontend.
-    "ApiKey": "<cluster_api_secret_token>" 
   },
 
   "Logging": {

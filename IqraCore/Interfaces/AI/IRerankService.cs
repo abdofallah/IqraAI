@@ -1,4 +1,6 @@
-﻿namespace IqraCore.Interfaces.AI
+﻿using IqraCore.Entities.Interfaces;
+
+namespace IqraCore.Interfaces.AI
 {
     // Represents a single document after reranking
     public class RerankedDocument
@@ -19,5 +21,11 @@
     public interface IRerankService : IDisposable
     {
         Task<RerankResult> RerankAsync(string query, List<string> documents, int topN);
+
+        InterfaceRerankProviderEnum GetProviderType();
+        static InterfaceEmbeddingProviderEnum GetProviderTypeStatic()
+        {
+            return InterfaceEmbeddingProviderEnum.Unknown;
+        }
     }
 }

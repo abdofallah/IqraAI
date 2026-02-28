@@ -1,4 +1,14 @@
 {
+  // url where the dashboard is hosted without trailing slash (currently used for email links)
+  "URL": "https://app.iqra.bot", 
+
+  "Hardware": {
+    // CRITICAL: The OS-level name of the network interface to bind for RTP Audio (UDP).
+    // Linux: Run `ip addr` (e.g., "eth0", "ens5").
+    // Windows: Run `ipconfig` (e.g., "Ethernet", "vEthernet (WSL)").
+    "NetworkInterfaceName": "<network_interface_name>"
+  },
+
   "S3Storage": {
     // The ID of the Region (created in Admin Dashboard) where default assets (logos, recordings) are stored.
     "DefaultStorageRegionId": "<default_region_id>" 
@@ -6,14 +16,9 @@
 
   // SHARED CONFIGURATION: This block must be identical across Frontend, Proxy, Backend, and Processor apps.
   "RedisDatabase": { 
-    // The connection string to your Redis instance (e.g., "localhost:6379,password=...").
-    "ConnectionString": "localhost:6379", 
-    "UserSessionDatabaseIndex": 5,
-    "RAGCollectionsLoadedDatabaseIndex": 10,
-    "ServerLiveStatusChannelDatabaseIndex": 7,
-    "DistributedLockDatabaseIndex": 8,
-    "WhiteLabelDomainContextCache": 6,
-    "WhiteLabelCustomerSessionDatabaseIndex": 65
+    // The connection to your Redis instance
+    "Endpoint": "localhost:6379",
+    "Password": "" // leave blank if no password
   },
 
   // SHARED CONFIGURATION: This block must be identical across Frontend, Proxy, Backend, and Processor apps.

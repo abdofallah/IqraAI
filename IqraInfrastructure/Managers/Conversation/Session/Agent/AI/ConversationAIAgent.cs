@@ -625,7 +625,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     }
 
                     // Format for LLM history, synthesize raw text
-                    string llmHistoryMessage = "response_to_customer: " + openingMessage;
+                    string llmHistoryMessage = "response_to_user: " + openingMessage;
                     _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
 
                     turn.Status = ConversationTurnStatus.AgentRespondingSpeech;
@@ -735,8 +735,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     ToolExecution = new ConversationTurnToolExecutionData()
                     {
                         ToolType = ConversationTurnAgentToolType.System,
-                        ToolName = "end_call",
-                        RawLLMInput = $"execute_system_function: \"end_call\": \"{failureReason}\", \"{failureMessage}\", null",
+                        ToolName = "end_conversation",
+                        RawLLMInput = $"execute_system_function: \"end_conversation\": \"{failureReason}\", \"{failureMessage}\", null",
                         ReasonForExecution = failureReason
                     }
                 },
@@ -839,7 +839,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async void OnAgentResponsePlaybackComplete(object? sender, ConversationTurn turn)
         {
             var currentTurnText = string.Join(" ", turn.Response.SpokenSegments.Select(x => x.Text).ToArray());
-            _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
+            _agentState.LLMService!.AddAssistantMessage($"response_to_user: {currentTurnText}");
 
             _logger.LogDebug("Agent {AgentId}: Agent response playback complete for turn {TurnId} with text \"{TurnText}...\".", _agentState.AgentId, turn.Id, (currentTurnText.Length > 100 ? currentTurnText.Substring(0, 100) : currentTurnText));
 
@@ -980,7 +980,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             await _audioOutputHandler.InterruptCurrentTurnSegment();
 
             var currentTurnText = string.Join(" ", interruptedTurn.Response.SpokenSegments.Select(x => x.Text).ToArray());
-            _agentState.LLMService!.AddAssistantMessage($"response_to_customer: {currentTurnText}");
+            _agentState.LLMService!.AddAssistantMessage($"response_to_user: {currentTurnText}");
 
             _logger.LogDebug("Agent {AgentId}: Interrupted turn {TurnId} with text \"{TurnText}...\".", AgentId, interruptedTurn.Id, (currentTurnText.Length > 100 ? currentTurnText.Substring(0, 100) : currentTurnText));
 

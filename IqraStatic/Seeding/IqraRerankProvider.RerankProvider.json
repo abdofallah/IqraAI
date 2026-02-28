@@ -1,0 +1,67 @@
+[{
+  "_id": 1,
+  "DisabledAt": null,
+  "IntegrationId": "google_ai_gemini",
+  "Models": [
+    {
+      "_id": "gemini-embedding-001",
+      "DisabledAt": null,
+      "Name": "gemini-embedding-001",
+      "Price": {
+        "$numberDecimal": "0.15"
+      },
+      "PriceTokenUnit": 1000000
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Google Gemini model for semantic reranking.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "gemini-embedding-001",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 2,
+  "DisabledAt": {
+    "$date": "2025-09-23T14:00:06.851Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+},
+{
+  "_id": 3,
+  "DisabledAt": {
+    "$date": "2025-09-23T14:00:07.215Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+},
+{
+  "_id": 4,
+  "DisabledAt": {
+    "$date": "2025-09-23T14:00:07.579Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+},
+{
+  "_id": 5,
+  "DisabledAt": {
+    "$date": "2025-09-23T14:00:07.945Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+}]

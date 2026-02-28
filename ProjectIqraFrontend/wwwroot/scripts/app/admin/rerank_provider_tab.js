@@ -7,6 +7,8 @@ let CurrentManageRerankProviderModelData = null;
 
 let IsSavingRerankProviderTab = false;
 
+let rerankFieldsHelper = null;
+
 /** Elements Variables **/
 const RerankProviderTab = $("#rerank-provider-tab");
 
@@ -143,7 +145,13 @@ function ResetAndEmptyRerankProvidersManageTab() {
     manageRerankProviderIdInput.val("");
     manageRerankProviderDisabledInput.prop("checked", false).change();
     rerankProviderModelListTable.find("tbody").empty();
+    manageRerankProviderIntegrationSelect.val("").change();
+
     rerankProviderManagerGeneralTab.click();
+
+    // Reset Helper
+    rerankProviderIntegrationFieldsList.empty();
+    rerankFieldsHelper = null;
 }
 
 function ShowRerankProviderManageTab() {
@@ -203,7 +211,9 @@ function CreateRerankProviderModelListTableElement(modelData) {
 function FillRerankProviderManageTab(providerData) {
     manageRerankProviderIdInput.val(providerData.id.name);
     manageRerankProviderDisabledInput.prop("checked", providerData.disabledAt != null);
+
     fillRerankProviderIntegrationSelect();
+
     rerankProviderModelListTable.find("tbody").empty();
     if (providerData.models.length > 0) {
         providerData.models.forEach((modelData) => {
@@ -212,6 +222,18 @@ function FillRerankProviderManageTab(providerData) {
     } else {
         rerankProviderModelListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="4">No models</td></tr>');
     }
+
+    // Initialize Integration Fields Helper
+    rerankFieldsHelper = new ProviderIntegrationsFieldHelper(
+        rerankProviderIntegrationFieldsList,
+        addNewRerankProviderIntegrationFieldButton,
+        providerData.userIntegrationFields,
+        () => {
+            // Callback when fields change
+            CheckRerankProviderManageTabHasChanges(true);
+        }
+    );
+    rerankFieldsHelper.render();
 }
 
 function ShowRerankProviderModelManageTab() {
@@ -271,10 +293,9 @@ function CheckRerankProviderManageTabHasChanges(enableDisableButton = true) {
     }
 
     // Check integration fields
-    const integrationFieldsChanges = CheckRerankProviderIntegrationFieldsTabHasChanges();
-    if (integrationFieldsChanges.hasChanges) {
-        hasChanges = true;
-        changes.userIntegrationFields = integrationFieldsChanges.changes;
+    changes.userIntegrationFields = rerankFieldsHelper.getData();
+    if (rerankFieldsHelper.hasChanges()) {
+        hasChanges = true;      
     }
 
     if (enableDisableButton) {
@@ -304,10 +325,12 @@ function ValidateRerankProviderManageTab(onlyRemove = true) {
     }
 
     // Integration Tab
-    const integrationValidation = ValidateRerankProviderIntegrationFieldsTab(onlyRemove);
-    if (!integrationValidation.validated) {
-        validated = false;
-        errors.push(...integrationValidation.errors);
+    if (rerankFieldsHelper) {
+        const fieldValidation = rerankFieldsHelper.validate(onlyRemove);
+        if (!fieldValidation.validated) {
+            validated = false;
+            errors.push(...fieldValidation.errors);
+        }
     }
 
     return {
@@ -328,260 +351,6 @@ function fillRerankProviderIntegrationSelect() {
         );
     });
 }
-
-/** Integration Functions **/
-
-function createRerankProviderIntegrationFieldElement(fieldData = null) {
-    const fieldId = fieldData?.id || generateUniqueId();
-    return `
-        <div class="card mb-3 integration-field" data-field-id="${fieldId}">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <h6 class="card-title mb-0">Field</h6>
-                    <button type="button" class="btn btn-danger btn-sm remove-field-button">
-                        <i class="fa-regular fa-trash"></i>
-                    </button>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Field ID</label>
-                        <input type="text" class="form-control field-id-input" placeholder="Field ID" value="${fieldData?.id || ""}">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-control field-name-input" placeholder="Field Name" value="${fieldData?.name || ""}">
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Type</label>
-                        <select class="form-select field-type-select">
-                            <option value="text" ${fieldData?.type === "text" ? "selected" : ""}>Text</option>
-                            <option value="number" ${fieldData?.type === "number" ? "selected" : ""}>Number</option>
-                            <option value="double_number" ${fieldData?.type === "double_number" ? "selected" : ""}>Double Number</option>
-                            <option value="select" ${fieldData?.type === "select" ? "selected" : ""}>Select</option>
-                            <option value="models" ${fieldData?.type === "models" ? "selected" : ""}>Models</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Tooltip</label>
-                        <input type="text" class="form-control field-tooltip-input" placeholder="Field Tooltip" value="${fieldData?.tooltip || ""}">
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Placeholder</label>
-                        <input type="text" class="form-control field-placeholder-input" placeholder="Field Placeholder" value="${fieldData?.placeholder || ""}">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Default Value</label>
-                        <input type="text" class="form-control field-default-value-input" placeholder="Default Value" value="${fieldData?.defaultValue || ""}"
-                            ${fieldData?.type === "select" || fieldData?.type === "models" ? "disabled" : ""}>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-check">
-                            <input class="form-check-input field-required-check" type="checkbox" ${fieldData?.required ? "checked" : ""}>
-                            <label class="form-check-label">Required</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-check">
-                            <input class="form-check-input field-encrypted-check" type="checkbox" ${fieldData?.isEncrypted ? "checked" : ""}>
-                            <label class="form-check-label">Encrypted</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="field-options-container ${fieldData?.type === "select" ? "" : "d-none"} mt-3">
-                    <label class="form-label">Options</label>
-                    <div class="field-options-list">
-                        ${fieldData?.options?.map((option) => createRerankIntegrationFieldOptionElement(option)).join("") || ""}
-                    </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm mt-2 add-option-button">
-                        <i class="fa-regular fa-plus"></i> Add Option
-                    </button>
-                </div>
-            </div>
-        </div>`;
-}
-
-function createRerankIntegrationFieldOptionElement(optionData = null) {
-    return `
-        <div class="input-group mb-2 field-option">
-            <input type="text" class="form-control option-key-input" placeholder="Option Key" value="${optionData?.key || ""}">
-            <input type="text" class="form-control option-value-input" placeholder="Option Value" value="${optionData?.value || ""}">
-            <div class="input-group-text">
-                <input class="form-check-input option-default-check mt-0" type="radio" name="defaultOption" ${optionData?.isDefault ? "checked" : ""}>
-                <label class="ms-2">Default?</label>
-            </div>
-            <button class="btn btn-outline-danger remove-option-button" type="button">
-                <i class="fa-regular fa-trash"></i>
-            </button>
-        </div>`;
-}
-
-function fillRerankIntegrationFields() {
-    rerankProviderIntegrationFieldsList.empty();
-    if (CurrentManageRerankProviderData.userIntegrationFields.length === 0) {
-        rerankProviderIntegrationFieldsList.append(`<div class="text-center p-5"><p class="text-muted mb-0">No integration fields defined</p></div>`);
-        return;
-    }
-    CurrentManageRerankProviderData.userIntegrationFields.forEach((field) => {
-        rerankProviderIntegrationFieldsList.append($(createRerankProviderIntegrationFieldElement(field)));
-    });
-}
-
-function CheckRerankProviderIntegrationFieldsTabHasChanges() {
-    let changes = [];
-    let hasChanges = false;
-    rerankProviderIntegrationFieldsList.find(".integration-field").each(function () {
-        const field = $(this);
-        const fieldData = {
-            id: field.find(".field-id-input").val().trim(),
-            name: field.find(".field-name-input").val().trim(),
-            type: field.find(".field-type-select").val(),
-            tooltip: field.find(".field-tooltip-input").val().trim(),
-            placeholder: field.find(".field-placeholder-input").val().trim(),
-            defaultValue: field.find(".field-default-value-input").val().trim(),
-            required: field.find(".field-required-check").is(":checked"),
-            isEncrypted: field.find(".field-encrypted-check").is(":checked"),
-        };
-        if (fieldData.type === "select") {
-            fieldData.options = [];
-            field.find(".field-option").each(function () {
-                const option = $(this);
-                fieldData.options.push({
-                    key: option.find(".option-key-input").val().trim(),
-                    value: option.find(".option-value-input").val().trim(),
-                    isDefault: option.find(".option-default-check").is(":checked")
-                });
-            });
-        }
-        changes.push(fieldData);
-    });
-    if (changes.length !== CurrentManageRerankProviderData.userIntegrationFields.length) {
-        hasChanges = true;
-    } else {
-        for (let i = 0; i < changes.length; i++) {
-            const newField = changes[i];
-            const oldField = CurrentManageRerankProviderData.userIntegrationFields[i];
-            if (newField.id !== oldField.id || newField.name !== oldField.name || newField.type !== oldField.type || newField.tooltip !== oldField.tooltip || newField.placeholder !== oldField.placeholder || newField.defaultValue !== oldField.defaultValue || newField.required !== oldField.required || newField.isEncrypted !== oldField.isEncrypted) {
-                hasChanges = true;
-                break;
-            }
-            if (newField.type === "select") {
-                if (!oldField.options || newField.options.length !== oldField.options.length) {
-                    hasChanges = true;
-                    break;
-                }
-                for (let j = 0; j < newField.options.length; j++) {
-                    const newOption = newField.options[j];
-                    const oldOption = oldField.options[j];
-                    if (newOption.key !== oldOption.key || newOption.value !== oldOption.value || newOption.isDefault !== oldOption.isDefault) {
-                        hasChanges = true;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    return {
-        hasChanges: hasChanges,
-        changes: changes
-    };
-}
-
-function ValidateRerankProviderIntegrationFieldsTab(onlyRemove = true) {
-    const errors = [];
-    let validated = true;
-    rerankProviderIntegrationFieldsList.find(".integration-field").each(function (index) {
-        const field = $(this);
-        const fieldId = field.find(".field-id-input").val().trim();
-        if (!fieldId) {
-            validated = false;
-            errors.push(`Field ${index + 1}: ID is required`);
-            if (!onlyRemove) field.find(".field-id-input").addClass("is-invalid");
-        } else {
-            field.find(".field-id-input").removeClass("is-invalid");
-        }
-        const fieldName = field.find(".field-name-input").val().trim();
-        if (!fieldName) {
-            validated = false;
-            errors.push(`Field ${index + 1}: Name is required`);
-            if (!onlyRemove) field.find(".field-name-input").addClass("is-invalid");
-        } else {
-            field.find(".field-name-input").removeClass("is-invalid");
-        }
-        const fieldType = field.find(".field-type-select").val();
-        if (fieldType === "select") {
-            const options = field.find(".field-option");
-            if (options.length === 0) {
-                validated = false;
-                errors.push(`Field ${index + 1}: Select type must have at least one option`);
-            } else {
-                let hasDefault = false;
-                options.each(function (optIndex) {
-                    const option = $(this);
-                    const key = option.find(".option-key-input").val().trim();
-                    const value = option.find(".option-value-input").val().trim();
-                    if (!key || !value) {
-                        validated = false;
-                        errors.push(`Field ${index + 1}, Option ${optIndex + 1}: Key and Value are required`);
-                        if (!onlyRemove) {
-                            if (!key) option.find(".option-key-input").addClass("is-invalid");
-                            if (!value) option.find(".option-value-input").addClass("is-invalid");
-                        }
-                    } else {
-                        option.find(".option-key-input").removeClass("is-invalid");
-                        option.find(".option-value-input").removeClass("is-invalid");
-                    }
-                    if (option.find(".option-default-check").is(":checked")) hasDefault = true;
-                });
-                if (!hasDefault) {
-                    validated = false;
-                    errors.push(`Field ${index + 1}: Select type must have a default option selected`);
-                }
-            }
-        }
-        if (fieldType !== "select" && fieldType !== "models") {
-            const defaultValue = field.find(".field-default-value-input").val().trim();
-            const isRequired = field.find(".field-required-check").is(":checked");
-            if (isRequired && !defaultValue) {
-                validated = false;
-                errors.push(`Field ${index + 1}: Default value is required for required fields`);
-                if (!onlyRemove) field.find(".field-default-value-input").addClass("is-invalid");
-            } else {
-                field.find(".field-default-value-input").removeClass("is-invalid");
-            }
-            if (fieldType === "number" && defaultValue) {
-                if (isNaN(defaultValue)) {
-                    validated = false;
-                    errors.push(`Field ${index + 1}: Default value must be a valid number`);
-                    if (!onlyRemove) field.find(".field-default-value-input").addClass("is-invalid");
-                } else {
-                    field.find(".field-default-value-input").removeClass("is-invalid");
-                }
-            }
-        }
-        const currentId = field.find(".field-id-input").val().trim();
-        if (currentId) {
-            const duplicateFields = rerankProviderIntegrationFieldsList.find(".integration-field").not(field).filter(function () {
-                return $(this).find(".field-id-input").val().trim() === currentId;
-            });
-            if (duplicateFields.length > 0) {
-                validated = false;
-                errors.push(`Field ${index + 1}: Duplicate Field ID "${currentId}"`);
-                if (!onlyRemove) field.find(".field-id-input").addClass("is-invalid");
-            }
-        }
-    });
-    return {
-        validated: validated,
-        errors: errors
-    };
-}
-
 
 /** Model Specific Functions **/
 
@@ -685,10 +454,6 @@ $(document).ready(() => {
         if (CurrentManageRerankProviderType == null) return;
         CheckRerankProviderManageTabHasChanges(true);
     });
-    rerankProviderIntegrationsTab.on("input change", "input, select", (event) => {
-        if (CurrentManageRerankProviderType == null) return;
-        CheckRerankProviderManageTabHasChanges(true);
-    });
 
     saveManageRerankProviderButton.on("click", (event) => {
         event.preventDefault();
@@ -718,6 +483,11 @@ $(document).ready(() => {
             (saveResponse) => {
                 if (saveResponse.success) {
                     CurrentManageRerankProviderData = saveResponse.data;
+
+                    if (rerankFieldsHelper) {
+                        rerankFieldsHelper.updateInitialData(CurrentManageRerankProviderData.userIntegrationFields);
+                    }
+
                     let providerIndex = CurrentRerankProvidersList.findIndex((p) => p.id.value === CurrentManageRerankProviderData.id.value);
                     if (providerIndex !== -1) CurrentRerankProvidersList[providerIndex] = CurrentManageRerankProviderData;
 
@@ -759,7 +529,6 @@ $(document).ready(() => {
         currentManageRerankProviderName.text(CurrentManageRerankProviderData.id.name);
         ResetAndEmptyRerankProvidersManageTab();
         FillRerankProviderManageTab(CurrentManageRerankProviderData);
-        fillRerankIntegrationFields();
         CurrentManageRerankProviderType = "edit";
         ShowRerankProviderManageTab();
     });
@@ -875,38 +644,6 @@ $(document).ready(() => {
             }
         );
     });
-
-    // Integration Event Handlers
-    addNewRerankProviderIntegrationFieldButton.on("click", (event) => {
-        event.preventDefault();
-        rerankProviderIntegrationFieldsList.find(".text-center").remove();
-        rerankProviderIntegrationFieldsList.append($(createRerankProviderIntegrationFieldElement()));
-        CheckRerankProviderManageTabHasChanges(true);
-    });
-    rerankProviderIntegrationsTab.on("change", ".field-type-select", function () {
-        const field = $(this).closest(".integration-field");
-        const optionsContainer = field.find(".field-options-container");
-        const defaultValueInput = field.find(".field-default-value-input");
-        const selectedType = $(this).val();
-        if (selectedType === "select") {
-            optionsContainer.removeClass("d-none");
-            defaultValueInput.prop("disabled", true).val("");
-        } else if (selectedType === "models") {
-            optionsContainer.addClass("d-none");
-            defaultValueInput.prop("disabled", true).val("");
-        } else {
-            optionsContainer.addClass("d-none");
-            defaultValueInput.prop("disabled", false);
-        }
-    });
-    rerankProviderIntegrationsTab.on("click", ".remove-field-button", function () {
-        $(this).closest(".integration-field").remove();
-        if (rerankProviderIntegrationFieldsList.children().length === 0) {
-            fillRerankIntegrationFields();
-        }
-        CheckRerankProviderManageTabHasChanges(true);
-    });
-
 
     // INIT
     FetchRerankProvidersFromAPI(

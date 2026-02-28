@@ -7,6 +7,8 @@ let CurrentManageEmbeddingProviderModelData = null;
 
 let IsSavingEmbeddingProviderTab = false;
 
+let embeddingFieldsHelper = null;
+
 /** Elements Variables **/
 const EmbeddingProviderTab = $("#embedding-provider-tab");
 
@@ -144,8 +146,13 @@ function ResetAndEmptyEmbeddingProvidersManageTab() {
     manageEmbeddingProviderIdInput.val("");
     manageEmbeddingProviderDisabledInput.prop("checked", false).change();
     embeddingProviderModelListTable.find("tbody").empty();
-    embeddingProviderIntegrationFieldsList.empty();
+    manageEmbeddingProviderIntegrationSelect.val("").change();
+
     embeddingProviderManagerGeneralTab.click();
+
+    // Reset Helper
+    embeddingProviderIntegrationFieldsList.empty();
+    embeddingFieldsHelper = null;
 }
 
 function ShowEmbeddingProviderManageTab() {
@@ -203,7 +210,9 @@ function CreateEmbeddingProviderModelListTableElement(modelData) {
 function FillEmbeddingProviderManageTab(providerData) {
     manageEmbeddingProviderIdInput.val(providerData.id.name);
     manageEmbeddingProviderDisabledInput.prop("checked", providerData.disabledAt != null);
+
     fillEmbeddingProviderIntegrationSelect();
+
     embeddingProviderModelListTable.find("tbody").empty();
     if (providerData.models.length > 0) {
         providerData.models.forEach((modelData) => {
@@ -212,6 +221,18 @@ function FillEmbeddingProviderManageTab(providerData) {
     } else {
         embeddingProviderModelListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="4">No models</td></tr>');
     }
+
+    // Initialize Integration Fields Helper
+    embeddingFieldsHelper = new ProviderIntegrationsFieldHelper(
+        embeddingProviderIntegrationFieldsList,
+        addNewEmbeddingProviderIntegrationFieldButton,
+        providerData.userIntegrationFields,
+        () => {
+            // Callback when fields change
+            CheckEmbeddingProviderManageTabHasChanges(true);
+        }
+    );
+    embeddingFieldsHelper.render();
 }
 
 function ShowEmbeddingProviderModelManageTab() {
@@ -269,10 +290,9 @@ function CheckEmbeddingProviderManageTabHasChanges(enableDisableButton = true) {
     }
 
     // Check integration fields
-    const integrationFieldsChanges = CheckEmbeddingProviderIntegrationFieldsTabHasChanges();
-    if (integrationFieldsChanges.hasChanges) {
+    changes.userIntegrationFields = embeddingFieldsHelper.getData();
+    if (embeddingFieldsHelper.hasChanges()) {
         hasChanges = true;
-        changes.userIntegrationFields = integrationFieldsChanges.changes;
     }
 
     if (enableDisableButton) {
@@ -301,11 +321,13 @@ function ValidateEmbeddingProviderManageTab(onlyRemove = true) {
         manageEmbeddingProviderIntegrationSelect.removeClass("is-invalid");
     }
 
-    // Integration Tab
-    const integrationValidation = ValidateEmbeddingProviderIntegrationFieldsTab(onlyRemove);
-    if (!integrationValidation.validated) {
-        validated = false;
-        errors.push(...integrationValidation.errors);
+    // Integration Tab via Helper
+    if (embeddingFieldsHelper) {
+        const fieldValidation = embeddingFieldsHelper.validate(onlyRemove);
+        if (!fieldValidation.validated) {
+            validated = false;
+            errors.push(...fieldValidation.errors);
+        }
     }
 
     return {
@@ -325,234 +347,6 @@ function fillEmbeddingProviderIntegrationSelect() {
             </option>`
         );
     });
-}
-
-function createEmbeddingProviderIntegrationFieldElement(fieldData = null) {
-    const fieldId = fieldData?.id || generateUniqueId();
-    return `
-        <div class="card mb-3 integration-field" data-field-id="${fieldId}">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <h6 class="card-title mb-0">Field</h6>
-                    <button type="button" class="btn btn-danger btn-sm remove-field-button">
-                        <i class="fa-regular fa-trash"></i>
-                    </button>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3"><label class="form-label">Field ID</label><input type="text" class="form-control field-id-input" placeholder="Field ID" value="${fieldData?.id || ""}"></div>
-                    <div class="col-md-6 mb-3"><label class="form-label">Name</label><input type="text" class="form-control field-name-input" placeholder="Field Name" value="${fieldData?.name || ""}"></div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3"><label class="form-label">Type</label>
-                    <select class="form-select field-type-select">
-                        <option value="text" ${fieldData?.type === "text" ? "selected" : ""}>Text</option>
-                        <option value="number" ${fieldData?.type === "number" ? "selected" : ""}>Number</option>
-                        <option value="double_number" ${fieldData?.type === "double_number" ? "selected" : ""}>Double Number</option>
-                        <option value="select" ${fieldData?.type === "select" ? "selected" : ""}>Select</option>
-                        <option value="models" ${fieldData?.type === "models" ? "selected" : ""}>Models</option>
-                        <option value="model_vector_dimensions" ${fieldData?.type === "model_vector_dimensions" ? "selected" : ""}>Model Vector Dimensions</option>
-                    </select>
-                </div>
-                <div class="col-md-6 mb-3"><label class="form-label">Tooltip</label><input type="text" class="form-control field-tooltip-input" placeholder="Field Tooltip" value="${fieldData?.tooltip || ""}"></div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3"><label class="form-label">Placeholder</label><input type="text" class="form-control field-placeholder-input" placeholder="Field Placeholder" value="${fieldData?.placeholder || ""}"></div>
-                    <div class="col-md-6 mb-3"><label class="form-label">Default Value</label><input type="text" class="form-control field-default-value-input" placeholder="Default Value" value="${fieldData?.defaultValue || ""}" ${fieldData?.type === "select" || fieldData?.type === "model_vector_dimensions" || fieldData?.type === "models" ? "disabled" : ""}></div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6"><div class="form-check"><input class="form-check-input field-required-check" type="checkbox" ${fieldData?.required ? "checked" : ""}><label class="form-check-label">Required</label></div></div>
-                    <div class="col-md-6"><div class="form-check"><input class="form-check-input field-encrypted-check" type="checkbox" ${fieldData?.isEncrypted ? "checked" : ""}><label class="form-check-label">Encrypted</label></div></div>
-                </div>
-                <div class="field-options-container ${fieldData?.type === "select" ? "" : "d-none"} mt-3">
-                    <label class="form-label">Options</label>
-                    <div class="field-options-list">${fieldData?.options?.map((option) => createEmbeddingIntegrationFieldOptionElement(option)).join("") || ""}</div>
-                    <button type="button" class="btn btn-outline-primary btn-sm mt-2 add-option-button"><i class="fa-regular fa-plus"></i> Add Option</button>
-                </div>
-            </div>
-        </div>`;
-}
-
-function createEmbeddingIntegrationFieldOptionElement(optionData = null) {
-    return `
-        <div class="input-group mb-2 field-option">
-            <input type="text" class="form-control option-key-input" placeholder="Option Key" value="${optionData?.key || ""}">
-            <input type="text" class="form-control option-value-input" placeholder="Option Value" value="${optionData?.value || ""}">
-            <div class="input-group-text"><input class="form-check-input option-default-check mt-0" type="radio" name="defaultOption" ${optionData?.isDefault ? "checked" : ""}><label class="ms-2">Default?</label></div>
-            <button class="btn btn-outline-danger remove-option-button" type="button"><i class="fa-regular fa-trash"></i></button>
-        </div>`;
-}
-
-function fillEmbeddingProviderIntegrationFields() {
-    embeddingProviderIntegrationFieldsList.empty();
-    if (CurrentManageEmbeddingProviderData.userIntegrationFields.length === 0) {
-        embeddingProviderIntegrationFieldsList.append(`<div class="text-center p-5"><p class="text-muted mb-0">No integration fields defined</p></div>`);
-        return;
-    }
-    CurrentManageEmbeddingProviderData.userIntegrationFields.forEach((field) => {
-        embeddingProviderIntegrationFieldsList.append($(createEmbeddingProviderIntegrationFieldElement(field)));
-    });
-}
-
-function CheckEmbeddingProviderIntegrationFieldsTabHasChanges() {
-    let changes = [];
-    let hasChanges = false;
-    embeddingProviderIntegrationFieldsList.find(".integration-field").each(function () {
-        const field = $(this);
-        const fieldData = {
-            id: field.find(".field-id-input").val().trim(),
-            name: field.find(".field-name-input").val().trim(),
-            type: field.find(".field-type-select").val(),
-            tooltip: field.find(".field-tooltip-input").val().trim(),
-            placeholder: field.find(".field-placeholder-input").val().trim(),
-            defaultValue: field.find(".field-default-value-input").val().trim(),
-            required: field.find(".field-required-check").is(":checked"),
-            isEncrypted: field.find(".field-encrypted-check").is(":checked"),
-        };
-        if (fieldData.type === "select") {
-            fieldData.options = [];
-            field.find(".field-option").each(function () {
-                const option = $(this);
-                fieldData.options.push({
-                    key: option.find(".option-key-input").val().trim(),
-                    value: option.find(".option-value-input").val().trim(),
-                    isDefault: option.find(".option-default-check").is(":checked")
-                });
-            });
-        }
-        changes.push(fieldData);
-    });
-    if (changes.length !== CurrentManageEmbeddingProviderData.userIntegrationFields.length) {
-        hasChanges = true;
-    } else {
-        for (let i = 0; i < changes.length; i++) {
-            const newField = changes[i];
-            const oldField = CurrentManageEmbeddingProviderData.userIntegrationFields[i];
-            if (newField.id !== oldField.id || newField.name !== oldField.name || newField.type !== oldField.type || newField.tooltip !== oldField.tooltip || newField.placeholder !== oldField.placeholder || newField.defaultValue !== oldField.defaultValue || newField.required !== oldField.required || newField.isEncrypted !== oldField.isEncrypted) {
-                hasChanges = true;
-                break;
-            }
-            if (newField.type === "select") {
-                if (!oldField.options || newField.options.length !== oldField.options.length) {
-                    hasChanges = true;
-                    break;
-                }
-                for (let j = 0; j < newField.options.length; j++) {
-                    const newOption = newField.options[j];
-                    const oldOption = oldField.options[j];
-                    if (newOption.key !== oldOption.key || newOption.value !== oldOption.value || newOption.isDefault !== oldOption.isDefault) {
-                        hasChanges = true;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    return {
-        hasChanges: hasChanges,
-        changes: changes
-    };
-}
-
-function ValidateEmbeddingProviderIntegrationFieldsTab(onlyRemove = true) {
-    const errors = [];
-    let validated = true;
-    embeddingProviderIntegrationFieldsList.find(".integration-field").each(function (index) {
-        const field = $(this);
-        const fieldId = field.find(".field-id-input").val().trim();
-        if (!fieldId) {
-            validated = false;
-            errors.push(`Field ${index + 1}: ID is required`);
-            if (!onlyRemove) {
-                field.find(".field-id-input").addClass("is-invalid");
-            }
-        } else {
-            field.find(".field-id-input").removeClass("is-invalid");
-        }
-        const fieldName = field.find(".field-name-input").val().trim();
-        if (!fieldName) {
-            validated = false;
-            errors.push(`Field ${index + 1}: Name is required`);
-            if (!onlyRemove) {
-                field.find(".field-name-input").addClass("is-invalid");
-            }
-        } else {
-            field.find(".field-name-input").removeClass("is-invalid");
-        }
-        const fieldType = field.find(".field-type-select").val();
-        if (fieldType === "select") {
-            const options = field.find(".field-option");
-            if (options.length === 0) {
-                validated = false;
-                errors.push(`Field ${index + 1}: Select type must have at least one option`);
-            } else {
-                let hasDefault = false;
-                options.each(function (optIndex) {
-                    const option = $(this);
-                    const key = option.find(".option-key-input").val().trim();
-                    const value = option.find(".option-value-input").val().trim();
-                    if (!key || !value) {
-                        validated = false;
-                        errors.push(`Field ${index + 1}, Option ${optIndex + 1}: Key and Value are required`);
-                        if (!onlyRemove) {
-                            if (!key) option.find(".option-key-input").addClass("is-invalid");
-                            if (!value) option.find(".option-value-input").addClass("is-invalid");
-                        }
-                    } else {
-                        option.find(".option-key-input").removeClass("is-invalid");
-                        option.find(".option-value-input").removeClass("is-invalid");
-                    }
-                    if (option.find(".option-default-check").is(":checked")) {
-                        hasDefault = true;
-                    }
-                });
-                if (!hasDefault) {
-                    validated = false;
-                    errors.push(`Field ${index + 1}: Select type must have a default option selected`);
-                }
-            }
-        }
-        if (fieldType !== "select" && fieldType !== "models" && fieldType !== "model_vector_dimensions") {
-            const defaultValue = field.find(".field-default-value-input").val().trim();
-            const isRequired = field.find(".field-required-check").is(":checked");
-            if (isRequired && !defaultValue) {
-                validated = false;
-                errors.push(`Field ${index + 1}: Default value is required for required fields`);
-                if (!onlyRemove) {
-                    field.find(".field-default-value-input").addClass("is-invalid");
-                }
-            } else {
-                field.find(".field-default-value-input").removeClass("is-invalid");
-            }
-            if (fieldType === "number" && defaultValue) {
-                if (isNaN(defaultValue)) {
-                    validated = false;
-                    errors.push(`Field ${index + 1}: Default value must be a valid number`);
-                    if (!onlyRemove) {
-                        field.find(".field-default-value-input").addClass("is-invalid");
-                    }
-                } else {
-                    field.find(".field-default-value-input").removeClass("is-invalid");
-                }
-            }
-        }
-        const currentId = field.find(".field-id-input").val().trim();
-        if (currentId) {
-            const duplicateFields = embeddingProviderIntegrationFieldsList.find(".integration-field").not(field).filter(function () {
-                return $(this).find(".field-id-input").val().trim() === currentId;
-            });
-            if (duplicateFields.length > 0) {
-                validated = false;
-                errors.push(`Field ${index + 1}: Duplicate Field ID "${currentId}"`);
-                if (!onlyRemove) {
-                    field.find(".field-id-input").addClass("is-invalid");
-                }
-            }
-        }
-    });
-    return {
-        validated: validated,
-        errors: errors
-    };
 }
 
 /** Model Specific Functions **/
@@ -688,12 +482,6 @@ $(document).ready(() => {
         ValidateEmbeddingProviderManageTab(true);
     });
 
-    embeddingProviderIntegrationsTab.on("input change", "input, select", () => {
-        if (CurrentManageEmbeddingProviderType == null) return;
-        CheckEmbeddingProviderManageTabHasChanges(true);
-        ValidateEmbeddingProviderIntegrationFieldsTab(true);
-    });
-
     saveManageEmbeddingProviderButton.on("click", (event) => {
         event.preventDefault();
         if (IsSavingEmbeddingProviderTab) return;
@@ -723,16 +511,24 @@ $(document).ready(() => {
             (saveResponse) => {
                 if (saveResponse.success) {
                     CurrentManageEmbeddingProviderData = saveResponse.data;
+
+                    if (embeddingFieldsHelper) {
+                        embeddingFieldsHelper.updateInitialData(CurrentManageEmbeddingProviderData.userIntegrationFields);
+                    }
+
                     let providerIndex = CurrentEmbeddingProvidersList.findIndex((p) => p.id.value === CurrentManageEmbeddingProviderData.id.value);
                     if (providerIndex !== -1) {
                         CurrentEmbeddingProvidersList[providerIndex] = CurrentManageEmbeddingProviderData;
                     }
+
                     EmbeddingProviderListTable.find(`tr button[provider-id="${CurrentManageEmbeddingProviderData.id.value}"]`).closest("tr").replaceWith($(CreateEmbeddingProviderListTableElement(CurrentManageEmbeddingProviderData)));
+
                     AlertManager.createAlert({
                         type: "success",
                         message: "Embedding provider data saved successfully.",
                         timeout: 6000
                     });
+
                     CheckEmbeddingProviderManageTabHasChanges();
                 } else {
                     AlertManager.createAlert({
@@ -863,7 +659,6 @@ $(document).ready(() => {
         currentManageEmbeddingProviderName.text(CurrentManageEmbeddingProviderData.id.name);
         ResetAndEmptyEmbeddingProvidersManageTab();
         FillEmbeddingProviderManageTab(CurrentManageEmbeddingProviderData);
-        fillEmbeddingProviderIntegrationFields(); // Fill integration fields with data
         CurrentManageEmbeddingProviderType = "edit";
         ShowEmbeddingProviderManageTab();
     });
@@ -889,39 +684,6 @@ $(document).ready(() => {
     embeddingProviderManagerModelManageTab.on("input change", "input", () => {
         if (CurrentManageEmbeddingProviderModelType == null) return;
         CheckEmbeddingProviderModelManageTabHasChanges(true);
-    });
-
-    // Integration Event Handlers
-    addNewEmbeddingProviderIntegrationFieldButton.on("click", (event) => {
-        event.preventDefault();
-        embeddingProviderIntegrationFieldsList.find(".text-center").remove();
-        embeddingProviderIntegrationFieldsList.append($(createEmbeddingProviderIntegrationFieldElement()));
-        CheckEmbeddingProviderManageTabHasChanges(true);
-    });
-
-    embeddingProviderIntegrationsTab.on("change", ".field-type-select", function () {
-        const field = $(this).closest(".integration-field");
-        const optionsContainer = field.find(".field-options-container");
-        const defaultValueInput = field.find(".field-default-value-input");
-        const selectedType = $(this).val();
-        if (selectedType === "select") {
-            optionsContainer.removeClass("d-none");
-            defaultValueInput.prop("disabled", true).val("");
-        } else if (selectedType === "models" || selectedType === "model_vector_dimensions") {
-            optionsContainer.addClass("d-none");
-            defaultValueInput.prop("disabled", true).val("");
-        } else {
-            optionsContainer.addClass("d-none");
-            defaultValueInput.prop("disabled", false);
-        }
-    });
-
-    embeddingProviderIntegrationsTab.on("click", ".remove-field-button", function () {
-        $(this).closest(".integration-field").remove();
-        if (embeddingProviderIntegrationFieldsList.children().length === 0) {
-            fillEmbeddingProviderIntegrationFields();
-        }
-        CheckEmbeddingProviderManageTabHasChanges(true);
     });
 
     // INIT

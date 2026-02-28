@@ -1,0 +1,115 @@
+[{
+  "_id": 1,
+  "DisabledAt": null,
+  "IntegrationId": "google_ai_gemini",
+  "Models": [
+    {
+      "_id": "gemini-embedding-001",
+      "DisabledAt": null,
+      "Name": "gemini-embedding-001",
+      "Price": {
+        "$numberDecimal": "0.15"
+      },
+      "PriceTokenUnit": 1000000,
+      "AvailableVectorDimensions": [
+        128,
+        256,
+        768,
+        1536,
+        2048,
+        3072
+      ]
+    }
+  ],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model",
+      "Type": "models",
+      "Tooltip": "Select the Google Gemini embedding model.",
+      "Placeholder": "Select Model",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    },
+    {
+      "_id": "model_vector_dimension",
+      "Name": "Vector Dimension",
+      "Type": "model_vector_dimensions",
+      "Tooltip": "Select the output dimensionality of the embedding. Lower dimensions use less storage and are faster, but may capture less semantic nuance.",
+      "Placeholder": "Select Vector Dimension",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null
+    }
+  ]
+},
+{
+  "_id": 2,
+  "DisabledAt": {
+    "$date": "2025-09-23T13:59:56.271Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+},
+{
+  "_id": 3,
+  "DisabledAt": {
+    "$date": "2025-09-23T13:59:56.819Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+},
+{
+  "_id": 4,
+  "DisabledAt": {
+    "$date": "2025-09-23T13:59:57.367Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+},
+{
+  "_id": 5,
+  "DisabledAt": {
+    "$date": "2025-09-23T13:59:57.918Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+},
+{
+  "_id": 6,
+  "DisabledAt": {
+    "$date": "2025-09-23T13:59:58.468Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+},
+{
+  "_id": 7,
+  "DisabledAt": {
+    "$date": "2025-09-23T13:59:59.018Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+},
+{
+  "_id": 8,
+  "DisabledAt": {
+    "$date": "2025-09-23T13:59:59.566Z"
+  },
+  "IntegrationId": "",
+  "Models": [],
+  "UserIntegrationFields": []
+}]

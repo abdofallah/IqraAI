@@ -208,7 +208,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public async Task ProcessUserTurnAsync(ConversationTurn turn, CancellationToken externalToken)
         {
             using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
-            string messageToSend = $"customer_query: {turn.UserInput!.TranscribedText}";
+            string messageToSend = $"user_query: {turn.UserInput!.TranscribedText}";
 
             _logger.LogDebug("ProcessUserTurnAsync: Processing turn {turnId} for Agent {AgentId} with messageToSend: {messageToSend}.", turn.Id, _agentState.AgentId, ((messageToSend.Length > 100) ? messageToSend.Substring(0, 100) : messageToSend));
 
@@ -318,7 +318,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 {
                     _logger.LogDebug("Agent {AgentId}: Text '{Text}' is eligible for caching and using cached result '{CachedQuery}'.", _agentState.AgentId, (turn.UserInput.TranscribedText!.Length > 100) ? turn.UserInput.TranscribedText!.Substring(0, 100) + "..." : turn.UserInput.TranscribedText!, (cacheableResult.cachedQuery.Length > 100) ? cacheableResult.cachedQuery.Substring(0, 100) + "..." : cacheableResult.cachedQuery);
 
-                    OnLLMMessageStreamed(this, new ConversationAgentEventLLMStreamed($"response_to_customer: {cacheableResult.cachedQuery}", true));
+                    OnLLMMessageStreamed(this, new ConversationAgentEventLLMStreamed($"response_to_user: {cacheableResult.cachedQuery}", true));
                     return;
                 }
             }
@@ -467,7 +467,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (currentTurn.Response.Type == ConversationTurnAgentResponseType.NotSet)
                 {
                     var fullText = _responseBuffer.ToString().TrimStart();
-                    if (fullText.StartsWith("response_to_customer:"))
+                    if (fullText.StartsWith("response_to_user:"))
                     {
                         currentTurn.Response.Type = ConversationTurnAgentResponseType.Speech;
                         currentTurn.Status = ConversationTurnStatus.AgentRespondingSpeech;
@@ -514,7 +514,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         await CancelCurrentLLMTaskAsync();
 
                         _agentState.LLMService!.AddAssistantMessage($"{fullText}...");
-                        _agentState.LLMService.AddUserMessage($"response_from_system: Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.");
+                        _agentState.LLMService.AddUserMessage($"response_from_system: Invalid response type received. Please start with 'response_to_user:', 'execute_system_function:', 'execute_custom_function:' or 'execute_flowapp_action:'.");
 
                         _logger.LogDebug("Agent {AgentId}: LLM response turn {TurnId} is an invalid type so retrying.", _agentState.AgentId, currentTurn.Id);
                         _llmTask = _agentState.LLMService!.ProcessInputAsync(currentCancelToken!.Value, currentBeforeContextMessage, null);
@@ -527,7 +527,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 {
                     if (_responseBuffer.Length > _currentResponseBufferReadPosition)
                     {
-                        string prefix = "response_to_customer:";
+                        string prefix = "response_to_user:";
                         if (_responseBuffer.Length > prefix.Length)
                         {
                             string unprocessedText = _responseBuffer.ToString().Substring(_currentResponseBufferReadPosition + prefix.Length);

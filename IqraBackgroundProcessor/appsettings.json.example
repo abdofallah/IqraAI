@@ -1,4 +1,11 @@
 {
+  "Hardware": {
+    // CRITICAL: The OS-level name of the network interface to bind for RTP Audio (UDP).
+    // Linux: Run `ip addr` (e.g., "eth0", "ens5").
+    // Windows: Run `ipconfig` (e.g., "Ethernet", "vEthernet (WSL)").
+    "NetworkInterfaceName": "<network_interface_name>"
+  },
+
   // SHARED CONFIGURATION: The ID of the default Region (e.g., "us-east-1") used for S3 operations.
   "S3Storage": {
     // This must match the DefaultStorageRegionId used in the Frontend App to ensure both apps look in the same bucket for assets.
@@ -10,6 +17,28 @@
     // The connection string to your MongoDB instance.
     // The processor needs Read/Write access to update conversation statuses and usage logs.
     "ConnectionString": "<mongodb_connection_string>"
+  },
+
+  "Security": {
+    // The Cluster Handshake Token.
+    // MUST match the 'API Secret' in the Admin Dashboard for the backend processor.
+    "ApiKey": "<api_key>"
+  },
+
+  // SHARED CONFIGURATION: This block must match the Frontend/Backend/Background configuration.
+  "Milvus": {
+    // URL for the Milvus Vector Database.
+    "Endpoint": "<milvus_endpoint>",
+    // Database name in Milvus.
+    "Database": "<milvus_database_name>",
+    // Milvus Username.
+    "Username": "<milvus_username>",
+    // Milvus Password.
+    "Password": "<milvus_password>",
+    // Interval (seconds) to check for expired vector collections.
+    "ExpiryCheckIntervalSeconds": 300,
+    // Timeout (minutes) to unload vector collections that haven't been queried.
+    "CollectionStaleTimeoutMinutes": 30
   },
 
   "Logging": {

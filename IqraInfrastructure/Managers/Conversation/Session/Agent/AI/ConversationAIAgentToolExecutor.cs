@@ -113,9 +113,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogDebug("Agent {AgentId}: Executing System Tool {ToolName} for turn {TurnId}.", _agentState.AgentId, toolName, turn.Id);
 
                 // Tool Specific Logic
-                if (toolName.Equals("end_call", StringComparison.OrdinalIgnoreCase))
+                if (toolName.Equals("end_conversation", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Format: end_call: string <reason>, string | null <message>, string | null <node_id>
+                    // Format: end_conversation: string <reason>, string | null <message>, string | null <node_id>
                     if (arguments.Count < 3)
                     {
                         await FinalizeAndReportToolResult(

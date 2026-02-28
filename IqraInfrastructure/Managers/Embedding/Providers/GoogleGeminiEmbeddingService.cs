@@ -35,11 +35,6 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        public static InterfaceEmbeddingProviderEnum GetProviderTypeStatic()
-        {
-            return InterfaceEmbeddingProviderEnum.GoogleGemini;
-        }
-
         public async Task<FunctionReturnResult<float[]?>> GenerateEmbeddingForTextAsync(string text)
         {
             var result = new FunctionReturnResult<float[]?>();  
@@ -75,10 +70,6 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
                             "API response was successful but did not contain embedding values."
                         );
                     }
-
-                    // NOTE: According to Gemini docs, if using smaller dimensions, the vector should be normalized.
-                    // The default 768-dim output from text-embedding-004 is already normalized.
-                    // This is left as an exercise if you plan to use other dimensions frequently.
 
                     return result.SetSuccessResult(embeddingResponse.Embedding.Values);
                 }
@@ -158,10 +149,6 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
                         );
                     }
 
-                    // NOTE: According to Gemini docs, if using smaller dimensions, the vector should be normalized.
-                    // The default 768-dim output from text-embedding-004 is already normalized.
-                    // This is left as an exercise if you plan to use other dimensions frequently.
-
                     var convertedData = embeddingResponse.Embeddings.Select(embedding => embedding.Values).ToList();
                     if (convertedData.Any(d => d == null || d.Length == 0))
                     {
@@ -211,6 +198,10 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
         public IEmbeddingConfig GetCacheableConfig()
         {
             return _config;
+        }
+        public static InterfaceEmbeddingProviderEnum GetProviderTypeStatic()
+        {
+            return InterfaceEmbeddingProviderEnum.GoogleGemini;
         }
 
         public InterfaceEmbeddingProviderEnum GetProviderType()

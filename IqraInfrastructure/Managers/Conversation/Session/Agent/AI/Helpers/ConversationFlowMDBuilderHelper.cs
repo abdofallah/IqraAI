@@ -172,11 +172,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             {
                 case BusinessAppAgentScriptNodeTypeENUM.UserQuery:
                     var userQueryNode = (BusinessAppScriptUserQueryNode)node;
-                    return $"customer_query: NodeId=\"{node.Id}\" CustomerQuery=\"{GetLocalizedString(userQueryNode.Query, _selectedLanguageCode, "Customer query")}\"";
+                    return $"user_query: NodeId=\"{node.Id}\" CustomerQuery=\"{GetLocalizedString(userQueryNode.Query, _selectedLanguageCode, "Customer query")}\"";
 
                 case BusinessAppAgentScriptNodeTypeENUM.AIResponse:
                     var aiResponseNode = (BusinessAppScriptAIResponseNode)node;
-                    return $"response_to_customer: NodeId=\"{node.Id}\" AgentResponse=\"{GetLocalizedString(aiResponseNode.Response, _selectedLanguageCode, "AI response")}\"";
+                    return $"response_to_user: NodeId=\"{node.Id}\" AgentResponse=\"{GetLocalizedString(aiResponseNode.Response, _selectedLanguageCode, "AI response")}\"";
 
                 case BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool:
                     {
@@ -253,7 +253,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                         var endCallNode = systemToolNode as BusinessAppScriptEndCallToolNode;
                         var messageToSpeak = endCallNode.Messages?[currentLanguage] ?? null;
 
-                        string originalFormat = $"end_call: \"reason for ending the call\", \"{(!string.IsNullOrEmpty(messageToSpeak) ? messageToSpeak : "null")}\", \"{nodeId}\"";
+                        string originalFormat = $"end_conversation: \"reason for ending the conversation\", \"{(!string.IsNullOrEmpty(messageToSpeak) ? messageToSpeak : "null")}\", \"{nodeId}\"";
                         return originalFormat;
                     }
                 case BusinessAppAgentScriptNodeSystemToolTypeENUM.ChangeLanguage:

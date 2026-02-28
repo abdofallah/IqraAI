@@ -634,6 +634,10 @@ $(document).ready(() => {
 				if (saveResponse.success) {
 					CurrentTTSProviderData = saveResponse.data;
 
+					if (ttsFieldsHelper) {
+						ttsFieldsHelper.updateInitialData(CurrentTTSProviderData.userIntegrationFields);
+					}
+
 					const providerIndex = CurrentTTSProvidersList.findIndex((p) => p.id.value === CurrentTTSProviderData.id.value);
 					if (providerIndex !== -1) {
 						CurrentTTSProvidersList[providerIndex] = CurrentTTSProviderData;
@@ -759,10 +763,6 @@ $(document).ready(() => {
 				if (saveResponse.success) {
 					// Update the current model data
 					CurrentTTSProviderModelData = saveResponse.data;
-
-					if (ttsFieldsHelper) {
-						ttsFieldsHelper.updateInitialData(CurrentTTSProviderModelData.userIntegrationFields);
-					}
 
 					// Update the models list in the provider data
 					const modelIndex = CurrentTTSProviderData.models.findIndex((s) => s.id === CurrentTTSProviderModelData.id);

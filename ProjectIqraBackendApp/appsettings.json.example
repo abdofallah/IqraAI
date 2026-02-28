@@ -7,6 +7,14 @@
     "RegionId": "<region_identifier>",
     // The maximum number of simultaneous calls this server should handle before the Load Balancer (Proxy) stops sending new traffic.
     "ExpectedMaxConcurrentCalls": 25,
+    // The Cluster Handshake Token.
+    // MUST match the 'API Secret' in the Admin Dashboard for the Region's Server.
+    "ApiKey": "<cluster_api_secret_token>",
+    // A strong random string used to sign payloads sent to Telephony Webhooks/Web Sessions URL for security verification.
+    "WebhookTokenSecret": "<webhook_payload_signing_key>"
+  },
+
+  "Hardware": {
     // CRITICAL: The OS-level name of the network interface to bind for RTP Audio (UDP).
     // Linux: Run `ip addr` (e.g., "eth0", "ens5").
     // Windows: Run `ipconfig` (e.g., "Ethernet", "vEthernet (WSL)").
@@ -14,12 +22,7 @@
     // Estimated download bandwidth available to this server (used for capacity planning).
     "MaxNetworkDownloadMbps": 200,
     // Estimated upload bandwidth available to this server (used for capacity planning).
-    "MaxNetworkUploadMbps": 50,
-    // The Cluster Handshake Token.
-    // MUST match the 'API Secret' in the Admin Dashboard for the Region's Server.
-    "ApiKey": "<cluster_api_secret_token>",
-    // A strong random string used to sign payloads sent to Telephony Webhooks/Web Sessions URL for security verification.
-    "WebhookTokenSecret": "<webhook_payload_signing_key>"
+    "MaxNetworkUploadMbps": 50
   },
 
   "Cors": {
@@ -29,15 +32,11 @@
     ]
   },
 
-  // SHARED CONFIGURATION: Global Redis for Cluster State.
-  "RedisDatabase": {
-    "ConnectionString": "<redis_connection_string>",
-    // Database Index used to track which RAG collections are currently loaded in memory.
-    "RAGCollectionsLoadedDatabaseIndex": 10,
-    // Database Index used for Server Heartbeats (Pub/Sub).
-    "ServerLiveStatusChannelDatabaseIndex": 7,
-    // Database Index used for Distributed Locks (RedLock).
-    "DistributedLockDatabaseIndex": 8
+  // SHARED CONFIGURATION: This block must be identical across Frontend, Proxy, Backend, and Processor apps.
+  "RedisDatabase": { 
+    // The connection to your Redis instance
+    "Endpoint": "localhost:6379",
+    "Password": "" // leave blank if no password
   },
 
   // BACKEND SPECIFIC: Local Redis for L1 Caching.
@@ -47,7 +46,7 @@
     "TTSAudioCacheIndex": 14
   },
 
-  // SHARED CONFIGURATION: This block must match the Frontend/Backend configuration.
+  // SHARED CONFIGURATION: This block must match the Frontend/Backend/Background configuration.
   "Milvus": {
     // URL for the Milvus Vector Database.
     "Endpoint": "<milvus_endpoint>",
@@ -70,7 +69,7 @@
 
   // SHARED CONFIGURATION: Decryption Keys.
   "Integrations": {
-    // AES Key to decrypt third-party API keys (OpenAI, Twilio) needed for execution.
+    // AES Key to decrypt third-party API keys needed for execution.
     "EncryptionKey": "<integration_encryption_key>"
   },
 
