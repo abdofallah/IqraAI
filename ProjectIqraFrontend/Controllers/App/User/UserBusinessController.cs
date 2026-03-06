@@ -194,10 +194,10 @@ namespace ProjectIqraFrontend.Controllers.App.User
 
                 using (var mongoSession = _mongoClient.StartSession())
                 {
+                    mongoSession.StartTransaction();
+
                     try
                     {
-                        mongoSession.StartTransaction();
-
                         var newBusinessResult = await _businessManager.AddBusiness(
                             userData.Email,
                             formData,

@@ -412,8 +412,8 @@ function createDefaultScriptObject() {
 	};
 
 	BusinessFullData.businessData.languages.forEach((language) => {
-		data.general.name[language.id] = "";
-		data.general.description[language.id] = "";
+		data.general.name[language] = "";
+		data.general.description[language] = "";
 	});
 
 	return data;
@@ -955,7 +955,7 @@ function checkScriptTabHasChanges(enableDisableButton = true, compileConversatio
 			if (!hasChanges) {
 				let descChanged = false;
 				BusinessFullData.businessData.languages.forEach(lang => {
-					if (currVar.description[lang.id] !== oldVar.description[lang.id]) {
+					if (currVar.description[lang] !== oldVar.description[lang]) {
 						descChanged = true;
 					}
 				});
@@ -2386,7 +2386,7 @@ function createNodeFromPreset(presetId, graph) {
 
 		// Initialize Multi-Language Speaking Field
 		const speakingBeforeExecution = {};
-		BusinessFullData.businessData.languages.forEach(l => speakingBeforeExecution[l.id] = "");
+		BusinessFullData.businessData.languages.forEach(l => speakingBeforeExecution[l] = "");
 
 		const nodeData = {
 			type: SCRIPT_NODE_TYPES.FLOW_APP,
@@ -2424,16 +2424,16 @@ function createNodeFromPreset(presetId, graph) {
 		nodeData.query = {};
 		nodeData.examples = {};
 		BusinessFullData.businessData.languages.forEach(l => {
-			nodeData.query[l.id] = "";
-			nodeData.examples[l.id] = [];
+			nodeData.query[l] = "";
+			nodeData.examples[l] = [];
 		});
 	}
 	else if (preset.shape === SCRIPT_NODE_TYPES.AI_RESPONSE) {
 		nodeData.response = {};
 		nodeData.examples = {};
 		BusinessFullData.businessData.languages.forEach(l => {
-			nodeData.response[l.id] = "";
-			nodeData.examples[l.id] = [];
+			nodeData.response[l] = "";
+			nodeData.examples[l] = [];
 		});
 	}
 	else if (preset.shape === SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
@@ -2443,17 +2443,17 @@ function createNodeFromPreset(presetId, graph) {
 		// Specific multi-lang inits for System Tools
 		if (preset.toolType === SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
 			nodeData.config.messages = {};
-			BusinessFullData.businessData.languages.forEach(l => nodeData.config.messages[l.id] = "");
+			BusinessFullData.businessData.languages.forEach(l => nodeData.config.messages[l] = "");
 		}
 		else if (preset.toolType === SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
 			nodeData.config.responseBeforeExecution = {};
-			BusinessFullData.businessData.languages.forEach(l => nodeData.config.responseBeforeExecution[l.id] = "");
+			BusinessFullData.businessData.languages.forEach(l => nodeData.config.responseBeforeExecution[l] = "");
 		}
 		else if (preset.toolType === SCRIPT_SYSTEM_TOOLS.END_CALL) {
 			// If type is with message (not default but possible in future presets)
 			if (nodeData.config.type === SCRIPT_END_CALL_SYSTEM_TOOL_TYPE.WITH_MESSAGE) {
 				nodeData.config.messages = {};
-				BusinessFullData.businessData.languages.forEach(l => nodeData.config.messages[l.id] = "");
+				BusinessFullData.businessData.languages.forEach(l => nodeData.config.messages[l] = "");
 			}
 		}
 	}
@@ -3576,8 +3576,13 @@ function initVariablesHandlers() {
 		// C. Validation: Description (All Languages)
 		let missingLang = null;
 		BusinessFullData.businessData.languages.forEach(lang => {
-			if (!NewVariableDescriptionMultiLangData[lang.id] || NewVariableDescriptionMultiLangData[lang.id].trim() === "") {
-				missingLang = lang.name;
+			if (!NewVariableDescriptionMultiLangData[lang] || NewVariableDescriptionMultiLangData[lang].trim() === "") {
+				var langData = SpecificationLanguagesListData.find(l => l.id === lang);
+				if (langData) {
+					missingLang = langData.name;
+				} else {
+                    missingLang = lang;
+				}
 			}
 		});
 
@@ -3616,7 +3621,7 @@ function initVariablesHandlers() {
 		variableOffcanvasEditableInput.prop("checked", false);
 
 		// Reset Description Data & Input
-		BusinessFullData.businessData.languages.forEach(l => NewVariableDescriptionMultiLangData[l.id] = "");
+		BusinessFullData.businessData.languages.forEach(l => NewVariableDescriptionMultiLangData[l] = "");
 		variableOffcanvasDescriptionInput.val("");
 
 		// Trigger UI refresh if needed

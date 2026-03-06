@@ -2,7 +2,7 @@
  * IntegrationConfigurationManager Class
  * A reusable component for selecting and configuring integrations like LLM, STT, and TTS.
  *
- * @version 1.1.0
+ * @version 2.0.0
  */
 class IntegrationConfigurationManager {
 	static _modalInstance = null;
@@ -13,15 +13,6 @@ class IntegrationConfigurationManager {
 	 * Creates an instance of IntegrationConfigurationManager.
 	 * @param {string} containerSelector - The CSS selector for the container div where the UI will be rendered.
 	 * @param {object} options - Configuration options for this manager instance.
-	 * @param {string} options.integrationType - The type of integration to manage ('LLM', 'STT', 'TTS').
-	 * @param {boolean} options.allowMultiple - If true, the user can add multiple integrations.
-	 * @param {boolean} options.isLanguageBound - If true, data is structured by language codes.
-	 * @param {object|null} options.languageDropdown - A reference to a language dropdown object that has an onLanguageChange method.
-	 * @param {Array} options.allIntegrations - The global array of all available business integrations.
-	 * @param {Array} options.providersData - The global array of provider-specific data (userIntegrationFields, models).
-	 * @param {string} options.modalSelector - The CSS selector for the shared configuration modal.
-	 * @param {function} [options.onSaveSuccessful] - Optional callback function to execute when data is successfully changed or saved.
-	 * @param {function} [options.onIntegrationChange] - Optional callback function to execute when integration changes.
 	 */
 	constructor(containerSelector, options) {
 		this.container = $(containerSelector);
@@ -33,7 +24,7 @@ class IntegrationConfigurationManager {
 		// --- Default options and merging with provided options ---
 		this.options = {
 			onSaveSuccessful: () => { },
-            onIntegrationChange: () => { },
+			onIntegrationChange: () => { },
 			...options,
 		};
 
@@ -43,15 +34,15 @@ class IntegrationConfigurationManager {
 
 		// --- Modal State Variables ---
 		this.currentConfig = {
-			integration: null, // The integration object from this.data being configured
-			provider: null, // The provider data for the integration
+			integration: null,
+			provider: null,
 		};
 
 		if (!IntegrationConfigurationManager._modalInstance) {
 			IntegrationConfigurationManager._modalElement = $(this.options.modalSelector);
 			if (IntegrationConfigurationManager._modalElement.length) {
 				IntegrationConfigurationManager._modalInstance = new bootstrap.Modal(IntegrationConfigurationManager._modalElement[0]);
-				this._attachSharedModalEventListeners(); // Attach listeners only ONCE
+				this._attachSharedModalEventListeners();
 			} else {
 				console.error(`Integration Modal with selector "${this.options.modalSelector}" not found.`);
 			}
@@ -64,56 +55,36 @@ class IntegrationConfigurationManager {
 	//  Public API Methods
 	// =================================================================
 
-	/**
-	 * Loads initial integration data into the manager and renders the UI.
-	 * @param {object|Array|null} data - The initial configuration data.
-	 * @param {Array} [businessIntegrations] - The global array of all available business integrations.
-	 */
 	load(data, businessIntegrations = undefined) {
-		this.data = structuredClone(data); // Deep copy to prevent reference issues
+		this.data = structuredClone(data);
 		if (businessIntegrations) {
 			this.updateAllIntegrations(businessIntegrations);
 		}
 		this._render();
 	}
 
-	/**
-	 * Retrieves the current, structured data from the manager.
-	 * @returns {object|Array|null} The current configuration data.
-	 */
 	getData() {
 		return this.data;
 	}
 
-	/**
-	 * Resets the manager to its initial, empty state and clears the UI.
-	 */
 	reset() {
 		this.data = this.options.isLanguageBound ? {} : this.options.allowMultiple ? [] : null;
 		this._render();
 	}
 
-	/**
-	 * Disable the manager, making it read-only and uneditable.
-	 */
-    disable() {
-        this._disable();
-    }
+	disable() {
+		this._disable();
+	}
 
-	/**
-	 * Public method to validate the configuration of all managed integrations.
-	 * Note: This checks the *configuration* of selected integrations, not whether an integration *has been* selected.
-	 * @returns {{isValid: boolean, errors: Array<string>}} An object containing the overall validation status and a list of all errors found.
-	 */
 	validate() {
 		const allErrors = [];
 		let isAllValid = true;
 
 		const processIntegration = (integration, context) => {
-			if (!integration || !integration.id) {
-				return; // Don't validate empty/unselected integrations
-			}
-			const validationResult = this._validateConfiguration(integration, false); // No UI errors from this public method
+			if (!integration || !integration.id) return;
+
+			// Pass the data object directly to validation
+			const validationResult = this._validateConfigurationData(integration);
 			if (!validationResult.isValid) {
 				isAllValid = false;
 				validationResult.errors.forEach(err => allErrors.push(`${context}${err}`));
@@ -134,7 +105,6 @@ class IntegrationConfigurationManager {
 				processIntegration(currentDataSet, context);
 			}
 		} else {
-			// This is the routing tab scenario
 			const currentDataSet = this.data;
 			if (this.options.allowMultiple) {
 				(currentDataSet || []).forEach((integration, index) => {
@@ -150,16 +120,9 @@ class IntegrationConfigurationManager {
 				}
 			}
 		}
-		return {
-			isValid: isAllValid,
-			errors: allErrors
-		};
+		return { isValid: isAllValid, errors: allErrors };
 	}
 
-	/**
-	 * Publicly exposes the select element(s) managed by this instance.
-	 * @returns {jQuery} A jQuery object containing the select element(s).
-	 */
 	getSelectElements() {
 		return this.container.find('select');
 	}
@@ -167,32 +130,22 @@ class IntegrationConfigurationManager {
 	updateAllIntegrations(allIntegrations) {
 		this.options.allIntegrations = allIntegrations;
 
-        this.filteredIntegrations = this.options.allIntegrations.filter((integration) => {
-            const typeData = SpecificationIntegrationsListData.find((it) => it.id === integration.type);
-            const type = this.options.integrationType;
-            // Handle aliases like SPEECH2TEXT for STT
-            return typeData.type.includes(type) || (type === "STT" && typeData.type.includes("SPEECH2TEXT")) || (type === "TTS" && typeData.type.includes("TEXT2SPEECH"));
-        });
-    }
-
+		this.filteredIntegrations = this.options.allIntegrations.filter((integration) => {
+			const typeData = SpecificationIntegrationsListData.find((it) => it.id === integration.type);
+			const type = this.options.integrationType;
+			return typeData.type.includes(type) || (type === "STT" && typeData.type.includes("SPEECH2TEXT")) || (type === "TTS" && typeData.type.includes("TEXT2SPEECH"));
+		});
+	}
 
 	// =================================================================
 	//  Private Initialization & Rendering Methods
 	// =================================================================
 
-	/**
-	 * Initializes event listeners.
-	 * @private
-	 */
 	_init() {
 		this._attachContainerEventListeners();
-		this._render(); // Initial render
+		this._render();
 	}
 
-	/**
-	 * Renders the entire UI for the component based on the current state.
-	 * @private
-	 */
 	_render() {
 		this.container.empty();
 		const currentDataSet = this._getCurrentDataSet();
@@ -204,27 +157,17 @@ class IntegrationConfigurationManager {
 					this.container.append(element);
 				});
 			}
-			// Always show 'Add' button for multiple-allowed contexts
 			const addButton = $(`<button class="btn btn-light mt-2"><i class="fa-regular fa-plus me-2"></i><span>Add Integration</span></button>`);
 			this.container.append(addButton);
 		} else {
-			// Single integration (select with configure button)
 			const element = this._createIntegrationElement(currentDataSet, 0);
 			this.container.append(element);
 		}
 
-		// Initialize tooltips for any new elements
 		const tooltipTriggerList = this.container.find('[data-bs-toggle="tooltip"]');
 		[...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 	}
 
-	/**
-	 * Creates the HTML for a single integration selection row.
-	 * @private
-	 * @param {object|null} integrationData - The data for the integration to render.
-	 * @param {number} index - The index of the integration in its array.
-	 * @returns {jQuery} A jQuery object representing the new element.
-	 */
 	_createIntegrationElement(integrationData, index) {
 		const selectId = `integration-manager-${this.options.integrationType}-${Date.now()}-${index}`;
 
@@ -250,13 +193,8 @@ class IntegrationConfigurationManager {
 		return $(elementHtml);
 	}
 
-	/**
-	 * Renders the configuration fields inside the modal.
-	 * @private
-	 */
 	_renderModalFields() {
 		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
-
 		fieldsContainer.empty();
 		if (!this.currentConfig.provider?.userIntegrationFields) return;
 
@@ -273,17 +211,14 @@ class IntegrationConfigurationManager {
 			}
 		});
 
+		// Initialize Visibility Logic based on current defaults/values
+		this._updateFieldVisibility();
+
 		// Init tooltips inside modal
 		const tooltips = fieldsContainer.find('[data-bs-toggle="tooltip"]');
 		tooltips.each((index, element) => new bootstrap.Tooltip(element));
 	}
 
-	/**
-	 * Creates the HTML for a single field within the configuration modal.
-	 * @private
-	 * @param {object} field - The field schema object.
-	 * @returns {jQuery} A jQuery object for the field.
-	 */
 	_createModalFieldElement(field) {
 		const currentValue = this.currentConfig.integration.fieldValues?.[field.id] ?? field.defaultValue ?? "";
 		let fieldHtml = "";
@@ -313,7 +248,7 @@ class IntegrationConfigurationManager {
 				break;
 
 			case "select": {
-				const options = field.options?.map(opt => `<option value="${opt.key}" ${currentValue === opt.key ? "selected" : ""}>${opt.value}</option>`).join("") || "";
+				const options = field.options?.map(opt => `<option value="${opt.key}" ${currentValue.toString() === opt.key.toString() ? "selected" : ""}>${opt.value}</option>`).join("") || "";
 				fieldHtml = `
 					<div class="mb-3 config-field" data-field-id="${field.id}">
 						${labelHtml}
@@ -336,17 +271,17 @@ class IntegrationConfigurationManager {
 				break;
 
 			case "model_vector_dimensions":
-                fieldHtml = `
+				fieldHtml = `
                     <div class="mb-3 config-field" data-field-id="${field.id}">
                         ${labelHtml}
                         <select class="form-select config-field-input">
                             <!-- Dynamically Generated on Models Change -->
                         </select>
                     </div>`;
-                break;
+				break;
 
 			case "boolean":
-				const isChecked = currentValue === true;
+				const isChecked = (currentValue === true || currentValue === "true" || currentValue === "on");
 				fieldHtml = `
                     <div class="mb-3 config-field form-check" data-field-id="${field.id}">
                         <input type="checkbox" class="form-check-input config-field-input" id="check-${field.id}" ${isChecked ? "checked" : ""}>
@@ -366,16 +301,12 @@ class IntegrationConfigurationManager {
 		return $(fieldHtml);
 	}
 
-	/**
-	 * Populates a "models" type select field with available models.
-	 * @private
-	 */
 	_populateModelsField(field, fieldElement) {
 		const provider = this.currentConfig.provider;
 		if (!provider?.models) return;
 
 		const selectElement = fieldElement.find('select');
-		const currentValue = this.currentConfig.integration.fieldValues?.[field.id];
+		const currentValue = this.currentConfig.integration.fieldValues?.[field.id] ?? field.defaultValue;
 
 		const enabledModels = provider.models.filter(model => model.disabledAt === null);
 		enabledModels.forEach(model => {
@@ -383,41 +314,37 @@ class IntegrationConfigurationManager {
 		});
 	}
 
-	/**
-	 * Populates a "models" type select field with available models.
-	 * @private
-	 */
 	_populateModelVectorDimensionsField(fieldElement) {
 		const provider = this.currentConfig.provider;
 		if (!provider?.models) return;
 
-		var currentSelected = this.currentConfig.integration.fieldValues?.['model_vector_dimension']; 
+		const fieldId = fieldElement.data("field-id");
+		var currentSelected = this.currentConfig.integration.fieldValues?.[fieldId];
 
 		const selectElement = fieldElement.find('select');
 		selectElement.empty();
 
-		const currentValue = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model'] select").val();
+		// Find the model field value from UI
+		const currentValue = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model'] select").val()
+			|| IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model_id'] select").val();
+
 		if (!currentValue) {
 			selectElement.append(`<option disabled selected>Select Model First</option>`);
-		}
-		else {
+		} else {
 			const currentModel = provider.models.find(model => model.id === currentValue);
-			if (!currentModel) return;
+			if (!currentModel || !currentModel.availableVectorDimensions) return;
 
 			selectElement.append(`<option ${!currentSelected ? "selected" : ""} disabled>Select Vector Dimension</option>`);
 			currentModel.availableVectorDimensions.forEach(vectorDimension => {
 				selectElement.append(`<option value="${vectorDimension}" ${currentSelected === vectorDimension.toString() ? "selected" : ""}>${vectorDimension}</option>`);
 			});
-		}		
+		}
 	}
 
 	// =================================================================
 	//  Private Event Handling Methods
 	// =================================================================
 
-	/**
-	 * Attaches event listeners for the integration items within this manager's container.
-	 */
 	_attachContainerEventListeners() {
 		this.container.on("change", "select", this._handleIntegrationSelect.bind(this));
 		this.container.on("click", 'button[button-type="configure"]', this._handleConfigureClick.bind(this));
@@ -433,15 +360,11 @@ class IntegrationConfigurationManager {
 			this._removeIntegration(index);
 		});
 
-		// Language dropdown listener remains instance-specific
 		if (this.options.isLanguageBound && this.options.languageDropdown) {
 			this.options.languageDropdown.onLanguageChange(() => this._render());
 		}
 	}
 
-	/**
-	 * This method is called only ONCE by the first instance created.
-	 */
 	_attachSharedModalEventListeners() {
 		const modalEl = IntegrationConfigurationManager._modalElement;
 		const saveButton = modalEl.find(".modal-footer button[button-type='save-integration-configuration']");
@@ -463,20 +386,28 @@ class IntegrationConfigurationManager {
 
 		modalEl.find(".modal-body div[div-type='integration-configuration-fields']").on("input change", ".config-field-input", (event) => {
 			if (IntegrationConfigurationManager._activeManager) {
-				// Embedding vector dimensions
-				if (IntegrationConfigurationManager._activeManager.options.integrationType == "Embedding") {
-					const parentField = $(event.currentTarget).parent();
-					const fieldId = parentField.attr("data-field-id");
+				const activeManager = IntegrationConfigurationManager._activeManager;
 
-					if (fieldId == "model") {
-						const vectorField = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model_vector_dimension']");
-						IntegrationConfigurationManager._activeManager._populateModelVectorDimensionsField(vectorField);
+				// Handle specific re-population logic (e.g., Vector Dimensions linked to Model)
+				const parentField = $(event.currentTarget).parent();
+				const fieldId = parentField.attr("data-field-id");
+
+				if (fieldId === "model" || fieldId === "model_id") {
+					const vectorField = modalEl.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model_vector_dimensions']");
+					if (vectorField.length) {
+						activeManager._populateModelVectorDimensionsField(vectorField);
 					}
 				}
 
-				// Changes
-				const changes = IntegrationConfigurationManager._activeManager._getModalChanges();
+				// Update visibility of dependent fields
+				activeManager._updateFieldVisibility();
+
+				// Evaluate changes
+				const changes = activeManager._getModalChanges();
 				saveButton.prop("disabled", !changes.hasChanges);
+
+				// Re-validate UI to clear/show errors instantly (optional, enhances UX)
+				activeManager._validateModalUI();
 			}
 		});
 	}
@@ -487,10 +418,8 @@ class IntegrationConfigurationManager {
 		const itemElement = select.closest(".integration-item");
 		const index = itemElement.data("index");
 
-		// Enable/disable configure button
 		itemElement.find('button[button-type="configure"]').prop("disabled", !integrationId);
 
-		// Get the relevant data array/object
 		let currentDataSet = this._getCurrentDataSet();
 
 		const newIntegrationData = {
@@ -498,7 +427,6 @@ class IntegrationConfigurationManager {
 			fieldValues: {},
 		};
 
-		// Set default values for the newly selected integration
 		if (integrationId) {
 			const integrationDefinition = this.options.allIntegrations.find(i => i.id === integrationId);
 			const provider = this.options.providersData.find(p => p.integrationId === integrationDefinition.type);
@@ -510,7 +438,6 @@ class IntegrationConfigurationManager {
 		}
 
 		if (this.options.allowMultiple) {
-			// Ensure the dataset exists before trying to assign to an index
 			if (!currentDataSet) {
 				currentDataSet = [];
 				if (this.options.isLanguageBound) {
@@ -520,7 +447,6 @@ class IntegrationConfigurationManager {
 			}
 			currentDataSet[index] = newIntegrationData;
 		} else {
-			// For single integration, the data itself is the object
 			this.data = integrationId ? newIntegrationData : null;
 		}
 
@@ -536,20 +462,16 @@ class IntegrationConfigurationManager {
 
 		if (!integrationId) return;
 
-		// --- Find the integration data and provider ---
 		const currentDataSet = this._getCurrentDataSet();
 		this.currentConfig.integration = this.options.allowMultiple ? currentDataSet[index] : currentDataSet;
 
 		const integrationDefinition = this.options.allIntegrations.find(i => i.id === integrationId);
-		if (!integrationDefinition) {
-			console.error("Integration definition not found for ID:", integrationId);
-			return;
-		}
+		if (!integrationDefinition) return;
 
 		this.currentConfig.provider = this.options.providersData.find(p => p.integrationId === integrationDefinition.type);
 		if (!this.currentConfig.provider) {
 			AlertManager.createAlert({
-				type: "error",
+				type: "danger",
 				message: `Provider configuration not found for integration type: ${integrationDefinition.type}`,
 				timeout: 4000
 			});
@@ -558,8 +480,8 @@ class IntegrationConfigurationManager {
 
 		IntegrationConfigurationManager._activeManager = this;
 
-		// --- Render and show modal ---
 		this._renderModalFields();
+
 		const saveButton = IntegrationConfigurationManager._modalElement.find(".modal-footer button[button-type='save-integration-configuration']");
 		saveButton.prop('disabled', true);
 
@@ -567,34 +489,30 @@ class IntegrationConfigurationManager {
 	}
 
 	_handleSaveConfiguration() {
-		const changes = this._getModalChanges();
-		const proposedIntegrationData = structuredClone(this.currentConfig.integration);
-		Object.assign(proposedIntegrationData.fieldValues, changes.changes);
-
-		const validation = this._validateConfiguration(proposedIntegrationData, true);
-
+		// 1. Validate the UI state first
+		const validation = this._validateModalUI();
 		if (!validation.isValid) {
 			AlertManager.createAlert({
 				type: 'danger',
 				message: `Validation Failed:<br>${validation.errors.join('<br>')}`,
 				timeout: 6000,
 			});
-			return false; // Return failure
+			return false;
 		}
 
-		Object.assign(this.currentConfig.integration.fieldValues, changes.changes);
+		// 2. Get the clean, compiled dataset containing ONLY visible fields
+		const changes = this._getModalChanges();
+
+		// 3. Completely replace old field values with the clean compiled set
+		this.currentConfig.integration.fieldValues = changes.compiledData;
+
 		this.options.onSaveSuccessful();
-        
 		return true;
 	}
 
-
 	_handleModalClose() {
-		// Reset temporary state for THIS instance
 		this.currentConfig = { integration: null, provider: null };
 		IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first().empty();
-
-		// Crucially, unset the active manager so the modal is "free" again.
 		IntegrationConfigurationManager._activeManager = null;
 	}
 
@@ -602,7 +520,6 @@ class IntegrationConfigurationManager {
 		let currentDataSet = this._getCurrentDataSet();
 		if (currentDataSet === null || currentDataSet === undefined) {
 			currentDataSet = [];
-			// Update the master data object if language bound
 			if (this.options.isLanguageBound) {
 				const langKey = this.options.languageDropdown.getSelectedLanguage().id;
 				this.data[langKey] = currentDataSet;
@@ -610,10 +527,7 @@ class IntegrationConfigurationManager {
 				this.data = currentDataSet;
 			}
 		}
-		currentDataSet.push({
-			id: null,
-			fieldValues: {}
-		});
+		currentDataSet.push({ id: null, fieldValues: {} });
 		this._render();
 		this.options.onIntegrationChange();
 	}
@@ -626,188 +540,382 @@ class IntegrationConfigurationManager {
 	}
 
 	// =================================================================
-	//  Private Helper & Validation Methods
+	//  Private Logic, Validation & Visibility Methods
 	// =================================================================
 
 	/**
-	 * Central validation logic for a single integration's configuration.
-	 * @private
-	 * @param {object} integration - The integration object to validate (e.g., { id: '...', fieldValues: {...} }).
-	 * @param {boolean} [showUIErrors=false] - If true, adds/removes 'is-invalid' classes in the modal.
-	 * @returns {{isValid: boolean, errors: Array<string>}}
+	 * Scrapes all raw values from the UI currently, regardless of visibility.
+	 * Used internally for condition evaluation.
 	 */
-	_validateConfiguration(integration, showUIErrors = false) {
+	_getRawUIValues() {
+		const rawValues = {};
 		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
+
+		fieldsContainer.find(".config-field").each((_, el) => {
+			const fieldId = $(el).data("field-id");
+			const input = $(el).find(".config-field-input");
+
+			if (input.is(':checkbox')) {
+				rawValues[fieldId] = input.is(':checked') ? "true" : "false";
+			} else {
+				rawValues[fieldId] = input.val() || "";
+			}
+		});
+
+		return rawValues;
+	}
+
+	/**
+	 * Evaluates Model and Field conditions to determine if a field should be shown.
+	 */
+	_isFieldVisible(fieldSchema, selectedModelId, rawValues) {
+		// Helper to handle custom JSON writer Enum format { name: "...", value: X }
+		const getEnumValue = (val) => (typeof val === 'object' && val !== null && 'value' in val) ? val.value : val;
+
+		// 1. Model Condition Check
+		if (fieldSchema.modelCondition && fieldSchema.modelCondition.models && fieldSchema.modelCondition.models.length > 0) {
+			const contains = fieldSchema.modelCondition.models.includes(selectedModelId);
+			const conditionType = getEnumValue(fieldSchema.modelCondition.type);
+
+			if (conditionType === 0 && !contains) return false; // Include 
+			if (conditionType === 1 && contains) return false;  // Exclude
+		}
+
+		// 2. Field Conditions Check
+		if (fieldSchema.fieldConditions && fieldSchema.fieldConditions.length > 0) {
+			for (const cond of fieldSchema.fieldConditions) {
+				const depVal = String(rawValues[cond.fieldId] || "").trim();
+				const condVal = String(cond.value || "").trim();
+
+				const condType = getEnumValue(cond.type);
+				const condVis = getEnumValue(cond.visibility);
+
+				let isMatch = false;
+
+				// Parse numbers for math operators, fallback to NaN if string (like "on")
+				const depNum = parseFloat(depVal);
+				const condNum = parseFloat(condVal);
+
+				switch (condType) {
+					case 0: isMatch = (depVal.toLowerCase() === condVal.toLowerCase()); break; // Equal
+					case 1: isMatch = (depVal.toLowerCase() !== condVal.toLowerCase()); break; // NotEqual
+					case 2: isMatch = (depVal.toLowerCase().includes(condVal.toLowerCase())); break; // Include
+					case 3: isMatch = (!depVal.toLowerCase().includes(condVal.toLowerCase())); break; // Exclude
+					case 4: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum > condNum); break; // GreaterThan
+					case 5: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum < condNum); break; // LessThan
+					case 6: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum >= condNum); break; // GreaterThanOrEqual
+					case 7: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum <= condNum); break; // LessThanOrEqual
+					case 8: isMatch = (depVal.toLowerCase().startsWith(condVal.toLowerCase())); break; // StartsWith
+					case 9: isMatch = (depVal.toLowerCase().endsWith(condVal.toLowerCase())); break; // EndsWith
+				}
+
+				if (condVis === 0 && !isMatch) return false; // Needs match to show
+				if (condVis === 1 && isMatch) return false;  // Hide if match
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Updates the DOM elements' visibility based on current inputs.
+	 */
+	_updateFieldVisibility() {
+		const rawValues = this._getRawUIValues();
+
+		// Determine selected model
+		let selectedModelId = "";
+		const modelFields = ["model", "model_id", "voice_id", "speech_model"];
+		for (const key of modelFields) {
+			if (rawValues[key]) {
+				selectedModelId = rawValues[key];
+				break;
+			}
+		}
+
+		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
+
+		this.currentConfig.provider.userIntegrationFields.forEach(fieldSchema => {
+			const isVisible = this._isFieldVisible(fieldSchema, selectedModelId, rawValues);
+			const fieldElement = fieldsContainer.find(`[data-field-id="${fieldSchema.id}"]`);
+
+			if (isVisible) {
+				fieldElement.removeClass("d-none");
+			} else {
+				fieldElement.addClass("d-none");
+			}
+		});
+	}
+
+	/**
+	 * Validates only the currently visible fields in the Modal UI.
+	 * Adds/Removes is-invalid classes.
+	 */
+	_validateModalUI() {
+		const rawValues = this._getRawUIValues();
+
+		let selectedModelId = "";
+		const modelFields = ["model", "model_id", "voice_id", "speech_model"];
+		for (const key of modelFields) {
+			if (rawValues[key]) {
+				selectedModelId = rawValues[key];
+				break;
+			}
+		}
+
+		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
+		fieldsContainer.find('.is-invalid').removeClass('is-invalid');
 
 		const errors = [];
 		let isValid = true;
 
-		const businessIntegrationData = this.options.allIntegrations.find(i => i.id === integration.id);
-		const provider = this.options.providersData.find(p => p.integrationId === businessIntegrationData.type);
-
-		if (!provider) {
-			return {
-				isValid: false,
-				errors: [`Provider configuration not found for integration '${businessIntegrationData.friendlyName}'.`]
-			};
-		}
-
-		// Clear previous errors if showing UI errors
-		if (showUIErrors) {
-			fieldsContainer.find('.is-invalid').removeClass('is-invalid');
-		}
-
-		provider.userIntegrationFields.forEach(field => {
-			const value = integration.fieldValues[field.id];
-			const fieldElement = fieldsContainer.find(`[data-field-id="${field.id}"]`);
-			const input = fieldElement.find(".config-field-input");
-
-			// Required field validation
-			if (field.required && (value === undefined || value === null || String(value).trim() === "")) {
-				isValid = false;
-				errors.push(`${field.name} is required.`);
-				if (showUIErrors) input.addClass('is-invalid');
+		this.currentConfig.provider.userIntegrationFields.forEach(field => {
+			// Skip validation for hidden fields
+			if (!this._isFieldVisible(field, selectedModelId, rawValues)) {
 				return;
 			}
 
-			// Type-specific validation (only if a value is present)
+			const fieldElement = fieldsContainer.find(`[data-field-id="${field.id}"]`);
+			const input = fieldElement.find(".config-field-input");
+			const rawVal = rawValues[field.id];
+
+			// 1. Required Check
+			if (field.required && (!rawVal || rawVal.trim() === "")) {
+				if (field.type !== "boolean") { // boolean is never technically empty in raw extraction (true/false)
+					isValid = false;
+					errors.push(`${field.name} is required.`);
+					input.addClass('is-invalid');
+					return;
+				}
+			}
+
+			// Skip further validation if empty and not required
+			if (!rawVal || rawVal.trim() === "") return;
+
+			// 2. Type & Constraints Check
+			switch (field.type) {
+				case "number":
+					const numVal = parseInt(rawVal, 10);
+					if (isNaN(numVal)) {
+						isValid = false; errors.push(`${field.name} must be a valid whole number.`); input.addClass('is-invalid');
+					} else {
+						if (field.minNumberValue !== null && numVal < field.minNumberValue) { isValid = false; errors.push(`${field.name} must be >= ${field.minNumberValue}.`); input.addClass('is-invalid'); }
+						if (field.maxNumberValue !== null && numVal > field.maxNumberValue) { isValid = false; errors.push(`${field.name} must be <= ${field.maxNumberValue}.`); input.addClass('is-invalid'); }
+					}
+					break;
+
+				case "double_number":
+					const dVal = parseFloat(rawVal);
+					if (isNaN(dVal)) {
+						isValid = false; errors.push(`${field.name} must be a valid decimal number.`); input.addClass('is-invalid');
+					} else {
+						if (field.minNumberValue !== null && dVal < field.minNumberValue) { isValid = false; errors.push(`${field.name} must be >= ${field.minNumberValue}.`); input.addClass('is-invalid'); }
+						if (field.maxNumberValue !== null && dVal > field.maxNumberValue) { isValid = false; errors.push(`${field.name} must be <= ${field.maxNumberValue}.`); input.addClass('is-invalid'); }
+					}
+					break;
+
+				case "text":
+				case "string":
+					if (field.stringRegex) {
+						try {
+							const regex = new RegExp(field.stringRegex);
+							if (!regex.test(rawVal)) {
+								isValid = false; errors.push(`Format for ${field.name} is invalid.`); input.addClass('is-invalid');
+							}
+						} catch (e) { console.error("Invalid regex in DB schema", e); }
+					}
+					break;
+
+				case "models":
+					const model = this.currentConfig.provider.models.find(m => m.id === rawVal);
+					if (!model) { isValid = false; errors.push(`${field.name}: Selected model is invalid.`); input.addClass('is-invalid'); }
+					else if (model.disabledAt !== null) { isValid = false; errors.push(`${field.name}: Selected model is disabled.`); input.addClass('is-invalid'); }
+					break;
+
+				case "model_vector_dimensions":
+					const dimInt = parseInt(rawVal, 10);
+					const vectorModel = this.currentConfig.provider.models.find(m => m.id === selectedModelId);
+					if (!vectorModel || !vectorModel.availableVectorDimensions || !vectorModel.availableVectorDimensions.includes(dimInt)) {
+						isValid = false; errors.push(`${field.name}: Invalid vector dimension for selected model.`); input.addClass('is-invalid');
+					}
+					break;
+
+				case "select":
+					if (field.options && !field.options.some(opt => String(opt.key) === rawVal)) {
+						isValid = false; errors.push(`${field.name}: Invalid option selected.`); input.addClass('is-invalid');
+					}
+					break;
+			}
+		});
+
+		return { isValid, errors };
+	}
+
+	/**
+	 * Retrieves structured data from the modal.
+	 * Ignores hidden fields entirely to ensure a clean JSON payload.
+	 */
+	_getModalChanges() {
+		const rawUI = this._getRawUIValues();
+
+		let selectedModelId = "";
+		const modelFields = ["model", "model_id", "voice_id", "speech_model"];
+		for (const key of modelFields) {
+			if (rawUI[key]) {
+				selectedModelId = rawUI[key];
+				break;
+			}
+		}
+
+		const proposedFieldValues = {};
+
+		this.currentConfig.provider.userIntegrationFields.forEach(fieldSchema => {
+			if (!this._isFieldVisible(fieldSchema, selectedModelId, rawUI)) {
+				return; // Skip hidden field completely
+			}
+
+			const rawVal = rawUI[fieldSchema.id];
+			let processedValue;
+
+			switch (fieldSchema.type) {
+				case 'boolean':
+					processedValue = (rawVal === "true");
+					break;
+
+				case 'number':
+					const intVal = parseInt(rawVal, 10);
+					processedValue = isNaN(intVal) ? rawVal : intVal;
+					break;
+
+				case 'double_number':
+					const floatVal = parseFloat(rawVal);
+					processedValue = isNaN(floatVal) ? rawVal : floatVal;
+					break;
+
+				default:
+					processedValue = rawVal || "";
+					break;
+			}
+
+			proposedFieldValues[fieldSchema.id] = processedValue;
+		});
+
+		// Deep comparison to detect changes
+		const hasChanges = !this._deepEqual(this.currentConfig.integration.fieldValues, proposedFieldValues);
+
+		return { hasChanges, compiledData: proposedFieldValues };
+	}
+
+	/**
+	 * Validates raw data objects entirely (used for public .validate() without UI elements).
+	 */
+	_validateConfigurationData(integration) {
+		const errors = [];
+		let isValid = true;
+
+		const businessIntegrationData = this.options.allIntegrations.find(i => i.id === integration.id);
+		if (!businessIntegrationData) return { isValid: false, errors: ["Business integration definition not found."] };
+
+		const provider = this.options.providersData.find(p => p.integrationId === businessIntegrationData.type);
+		if (!provider) return { isValid: false, errors: [`Provider configuration not found for integration '${businessIntegrationData.friendlyName}'.`] };
+
+		// Pre-pass for selected model
+		let selectedModelId = "";
+		const modelFields = ["model", "model_id", "voice_id", "speech_model"];
+		for (const key of modelFields) {
+			if (integration.fieldValues[key]) {
+				selectedModelId = String(integration.fieldValues[key]);
+				break;
+			}
+		}
+
+		provider.userIntegrationFields.forEach(field => {
+			// If it's conditionally hidden based on current data, skip validation.
+			// Note: For backend data validation, we mock the UI raw string format
+			const mockRawValues = {};
+			for (const [k, v] of Object.entries(integration.fieldValues)) mockRawValues[k] = String(v);
+
+			if (!this._isFieldVisible(field, selectedModelId, mockRawValues)) {
+				return;
+			}
+
+			const value = integration.fieldValues[field.id];
+
+			if (field.required && (value === undefined || value === null || String(value).trim() === "")) {
+				isValid = false; errors.push(`${field.name} is required.`); return;
+			}
+
 			if (value !== undefined && value !== null && String(value).trim() !== "") {
 				switch (field.type) {
 					case "number":
 					case "double_number":
-						if (isNaN(value)) {
-							isValid = false;
-							errors.push(`${field.name} must be a valid number.`);
-							if (showUIErrors) input.addClass('is-invalid');
+						if (isNaN(value)) { isValid = false; errors.push(`${field.name} must be a valid number.`); }
+						else {
+							const num = parseFloat(value);
+							if (field.minNumberValue !== null && num < field.minNumberValue) { isValid = false; errors.push(`${field.name} must be >= ${field.minNumberValue}.`); }
+							if (field.maxNumberValue !== null && num > field.maxNumberValue) { isValid = false; errors.push(`${field.name} must be <= ${field.maxNumberValue}.`); }
+						}
+						break;
+
+					case "text":
+					case "string":
+						if (field.stringRegex) {
+							try {
+								if (!new RegExp(field.stringRegex).test(String(value))) {
+									isValid = false; errors.push(`Format for ${field.name} is invalid.`);
+								}
+							} catch (e) { }
 						}
 						break;
 
 					case "models":
-						const model = provider.models.find(m => m.id === value);
-						if (!model) {
-							isValid = false;
-							errors.push(`${field.name}: Selected model is invalid.`);
-							if (showUIErrors) input.addClass('is-invalid');
-						} else if (model.disabledAt !== null) {
-							isValid = false;
-							errors.push(`${field.name}: Selected model is disabled.`);
-							if (showUIErrors) input.addClass('is-invalid');
-						}
+						const model = provider.models.find(m => m.id === String(value));
+						if (!model) { isValid = false; errors.push(`${field.name}: Selected model is invalid.`); }
+						else if (model.disabledAt !== null) { isValid = false; errors.push(`${field.name}: Selected model is disabled.`); }
 						break;
 
 					case "model_vector_dimensions":
-						// TODO
-						break;
-
-					case "select":
-						if (field.options && !field.options.some(opt => opt.key === value)) {
-							isValid = false;
-							errors.push(`${field.name}: Invalid option selected.`);
-							if (showUIErrors) input.addClass('is-invalid');
+						const dimInt = parseInt(value, 10);
+						const vectorModel = provider.models.find(m => m.id === selectedModelId);
+						if (!vectorModel || !vectorModel.availableVectorDimensions || !vectorModel.availableVectorDimensions.includes(dimInt)) {
+							isValid = false; errors.push(`${field.name}: Invalid vector dimension for selected model.`);
 						}
 						break;
 				}
 			}
 		});
 
-		return {
-			isValid,
-			errors
-		};
+		return { isValid, errors };
 	}
 
-
-	/**
-	 * Gets the relevant slice of data based on whether the manager is language-bound.
-	 * @private
-	 * @returns {Array|object|null} The data set for the current context.
-	 */
 	_getCurrentDataSet() {
 		if (this.options.isLanguageBound) {
-			if (!this.options.languageDropdown) {
-				console.error("IntegrationConfigurationManager is language-bound but no languageDropdown was provided.");
-				return [];
-			}
+			if (!this.options.languageDropdown) return [];
 			const langKey = this.options.languageDropdown.getSelectedLanguage().id;
 			return this.data[langKey] || [];
 		}
 		return this.data;
 	}
 
-	/**
-	 * Checks for changes within the configuration modal and performs type conversion.
-	 * @private
-	 * @returns {{hasChanges: boolean, changes: object}}
-	 */
-	_getModalChanges() {
-		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
-
-		const changes = {};
-		let hasChanges = false;
-
-		fieldsContainer.find(".config-field").each((_, el) => {
-			const fieldElement = $(el);
-			const fieldId = fieldElement.data("field-id");
-			const input = fieldElement.find(".config-field-input");
-
-			// Find the schema to know the expected type
-			const fieldSchema = this.currentConfig.provider.userIntegrationFields.find(f => f.id === fieldId);
-			if (!fieldSchema) return; // Should not happen
-
-			let processedValue;
-
-			// Perform type conversion based on the schema
-			switch (fieldSchema.type) {
-				case 'boolean':
-					processedValue = input.is(':checked');
-					break;
-
-				case 'number':
-					// For integers. parseFloat is used to handle empty/invalid strings gracefully.
-					const intValue = parseInt(input.val(), 10);
-					processedValue = isNaN(intValue) ? input.val() : intValue; // If not a valid int, keep original string for validation
-					break;
-
-				case 'double_number':
-					// For floating-point numbers
-					const floatValue = parseFloat(input.val());
-					processedValue = isNaN(floatValue) ? input.val() : floatValue; // If not a valid float, keep original string
-					break;
-
-				case 'string':
-				case 'text':
-				case 'select':
-				case 'models':
-				case 'model_vector_dimensions':
-				default:
-					// For all others, the value is a string
-					processedValue = input.val();
-					break;
-			}
-
-			// Retrieve the original value for comparison
-			const originalValue = this.currentConfig.integration.fieldValues?.[fieldId];
-			const defaultValue = fieldSchema.defaultValue ?? (fieldSchema.type === 'boolean' ? false : "");
-			const currentValue = originalValue ?? defaultValue;
-
-			// Assign the correctly-typed value to our changes object
-			changes[fieldId] = processedValue;
-
-			// Use a strict comparison, which now works correctly due to proper typing
-			if (processedValue !== currentValue) {
-				hasChanges = true;
-			}
-		});
-
-		return { hasChanges, changes };
+	_disable() {
+		this.container.find('button').prop('disabled', true);
+		this.container.find('select').prop('disabled', true);
 	}
 
-	/**
-	 * Disables the manager, making it read-only and uneditable.
-     * @private
-	 */
-	_disable() {
-        this.container.find('button').prop('disabled', true);
-        this.container.find('select').prop('disabled', true);
+	_deepEqual(obj1, obj2) {
+		if (obj1 === obj2) return true;
+		if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false;
+
+		const keys1 = Object.keys(obj1);
+		const keys2 = Object.keys(obj2);
+
+		if (keys1.length !== keys2.length) return false;
+
+		for (let key of keys1) {
+			if (!keys2.includes(key)) return false;
+			if (!this._deepEqual(obj1[key], obj2[key])) return false;
+		}
+
+		return true;
 	}
 }
