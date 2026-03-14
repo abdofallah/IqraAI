@@ -1,1 +1,0 @@
-vcpkg install ffmpeg:x64-windows

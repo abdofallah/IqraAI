@@ -1,9 +1,0 @@
-{
-  "solution": {
-    "path": "SIPSorcery.slnx",
-    "projects": [
-      "src\\SIPSorceryMedia.Windows\\SIPSorceryMedia.Windows.csproj",
-      "test\\VideoCaptureTest\\VideoCaptureTest.csproj"
-    ]
-  }
-}

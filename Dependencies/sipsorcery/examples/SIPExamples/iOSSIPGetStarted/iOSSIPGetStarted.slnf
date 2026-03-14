@@ -1,9 +1,0 @@
-﻿{
-  "solution": {
-    "path": "../../../SIPSorcery.slnx",
-    "projects": [
-    "src/SIPSorcery/SIPSorcery.csproj",
-    "src/SIPSorceryMedia.Abstractions/SIPSorceryMedia.Abstractions.csproj"
-    ]
-  }
-}

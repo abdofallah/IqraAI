@@ -1,8 +1,0 @@
-﻿{
-  "solution": {
-    "path": "../../SIPSorcery.slnx",
-    "projects": [
-    "examples/AzureExamples/TextToPcm/TextToPcm.csproj"
-    ]
-  }
-}
