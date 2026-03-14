@@ -509,9 +509,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             await _conversationStateRepository.AddClientInfoAsync(_sessionId, clientInfo);
 
+            _sessionMixer?.RegisterMixer(client.ClientId, _sessionMasterSampleRate, _sessionMasterBitsPerSample);
             await RecalculateAndApplyMasterAudioFormat();
-
-            _sessionMixer?.EnqueueInput(client.ClientId, new byte[0], _sessionMasterSampleRate, _sessionMasterBitsPerSample);
 
             // Notify event subscribers
             ClientAdded?.Invoke(this, new ConversationClientAddedEventArgs(client));
@@ -703,6 +702,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             await _conversationStateRepository.AddAgentInfoAsync(_sessionId, agentInfo);
 
+            _sessionMixer?.RegisterMixer(agent.AgentId, _sessionMasterSampleRate, _sessionMasterBitsPerSample);
+            await RecalculateAndApplyMasterAudioFormat();
+
             // Notify event subscribers
             AgentAdded?.Invoke(this, new ConversationAgentAddedEventArgs(agent));
 
@@ -800,7 +802,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 }
                 else if (IsWebInitiated)
                 {
-                    // TODO
+                    //_ = _campaignActionExecutorService.SendWebSessionCampaignAction(WebSessionData!.Id);
                 }
 
                 return result.SetSuccessResult();

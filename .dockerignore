@@ -1,0 +1,12 @@
+# Exclude git and VS folders
+**/.git
+**/.vs
+**/.vscode
+
+# Exclude build artifacts
+**/bin
+**/obj
+
+# EXCLUDE ALL APPSETTINGS
+**/appsettings.json
+**/appsettings.*.json

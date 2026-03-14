@@ -1,19 +1,15 @@
-﻿/**
+﻿/// <reference path="animate-images.umd.min.js" />
+/**
  * IntegrationConfigurationManager Class
  * A reusable component for selecting and configuring integrations like LLM, STT, and TTS.
  *
- * @version 2.0.0
+ * @version 2.1.0 (Added dynamic Array support)
  */
 class IntegrationConfigurationManager {
 	static _modalInstance = null;
 	static _modalElement = null;
 	static _activeManager = null;
 
-	/**
-	 * Creates an instance of IntegrationConfigurationManager.
-	 * @param {string} containerSelector - The CSS selector for the container div where the UI will be rendered.
-	 * @param {object} options - Configuration options for this manager instance.
-	 */
 	constructor(containerSelector, options) {
 		this.container = $(containerSelector);
 		if (this.container.length === 0) {
@@ -21,18 +17,15 @@ class IntegrationConfigurationManager {
 			return;
 		}
 
-		// --- Default options and merging with provided options ---
 		this.options = {
 			onSaveSuccessful: () => { },
 			onIntegrationChange: () => { },
 			...options,
 		};
 
-		// --- State Variables ---
 		this.data = this.options.isLanguageBound ? {} : this.options.allowMultiple ? [] : null;
 		this.updateAllIntegrations(this.options.allIntegrations);
 
-		// --- Modal State Variables ---
 		this.currentConfig = {
 			integration: null,
 			provider: null,
@@ -57,24 +50,18 @@ class IntegrationConfigurationManager {
 
 	load(data, businessIntegrations = undefined) {
 		this.data = structuredClone(data);
-		if (businessIntegrations) {
-			this.updateAllIntegrations(businessIntegrations);
-		}
+		if (businessIntegrations) this.updateAllIntegrations(businessIntegrations);
 		this._render();
 	}
 
-	getData() {
-		return this.data;
-	}
+	getData() { return this.data; }
 
 	reset() {
 		this.data = this.options.isLanguageBound ? {} : this.options.allowMultiple ? [] : null;
 		this._render();
 	}
 
-	disable() {
-		this._disable();
-	}
+	disable() { this._disable(); }
 
 	validate() {
 		const allErrors = [];
@@ -82,8 +69,6 @@ class IntegrationConfigurationManager {
 
 		const processIntegration = (integration, context) => {
 			if (!integration || !integration.id) return;
-
-			// Pass the data object directly to validation
 			const validationResult = this._validateConfigurationData(integration);
 			if (!validationResult.isValid) {
 				isAllValid = false;
@@ -123,13 +108,10 @@ class IntegrationConfigurationManager {
 		return { isValid: isAllValid, errors: allErrors };
 	}
 
-	getSelectElements() {
-		return this.container.find('select');
-	}
+	getSelectElements() { return this.container.find('select'); }
 
 	updateAllIntegrations(allIntegrations) {
 		this.options.allIntegrations = allIntegrations;
-
 		this.filteredIntegrations = this.options.allIntegrations.filter((integration) => {
 			const typeData = SpecificationIntegrationsListData.find((it) => it.id === integration.type);
 			const type = this.options.integrationType;
@@ -170,15 +152,13 @@ class IntegrationConfigurationManager {
 
 	_createIntegrationElement(integrationData, index) {
 		const selectId = `integration-manager-${this.options.integrationType}-${Date.now()}-${index}`;
-
 		let optionsHtml = '<option value="">Select Integration</option>';
 		this.filteredIntegrations.forEach((integration) => {
 			optionsHtml += `<option value="${integration.id}" ${integrationData?.id === integration.id ? "selected" : ""}>${integration.friendlyName}</option>`;
 		});
 
 		const isConfigureDisabled = !integrationData?.id;
-
-		const elementHtml = `
+		return $(`
             <div class="input-group integration-item" data-index="${index}">
                 ${this.options.allowMultiple ? `<span class="input-group-text"><i class="fa-regular fa-${index + 1}"></i></span>` : ""}
                 <select class="form-select" id="${selectId}">
@@ -189,8 +169,7 @@ class IntegrationConfigurationManager {
                 </button>
                 ${this.options.allowMultiple ? `<button class="btn btn-danger" button-type="remove"><i class="fa-regular fa-trash"></i></button>` : ""}
             </div>
-        `;
-		return $(elementHtml);
+        `);
 	}
 
 	_renderModalFields() {
@@ -202,26 +181,18 @@ class IntegrationConfigurationManager {
 			const fieldElement = this._createModalFieldElement(field);
 			fieldsContainer.append(fieldElement);
 
-			if (field.type === "models") {
-				this._populateModelsField(field, fieldElement);
-			}
-
-			if (field.type === "model_vector_dimensions") {
-				this._populateModelVectorDimensionsField(fieldElement);
-			}
+			if (field.type === "models") this._populateModelsField(field, fieldElement);
+			if (field.type === "model_vector_dimensions") this._populateModelVectorDimensionsField(fieldElement);
 		});
 
-		// Initialize Visibility Logic based on current defaults/values
 		this._updateFieldVisibility();
 
-		// Init tooltips inside modal
 		const tooltips = fieldsContainer.find('[data-bs-toggle="tooltip"]');
 		tooltips.each((index, element) => new bootstrap.Tooltip(element));
 	}
 
 	_createModalFieldElement(field) {
-		const currentValue = this.currentConfig.integration.fieldValues?.[field.id] ?? field.defaultValue ?? "";
-		let fieldHtml = "";
+		let currentValue = this.currentConfig.integration.fieldValues?.[field.id] ?? field.defaultValue ?? "";
 
 		const labelHtml = `
             <label class="form-label btn-ic-span-align">
@@ -232,85 +203,89 @@ class IntegrationConfigurationManager {
                     </a>` : ""}
             </label>`;
 
+		if (field.isArray) {
+			let valuesArray = [];
+			if (Array.isArray(currentValue)) valuesArray = currentValue;
+			else if (typeof currentValue === 'string' && currentValue.trim() !== '') valuesArray = currentValue.split(',').map(s => s.trim());
+
+			// Pre-fill min required elements if empty
+			const minCount = field.minArrayCount || 0;
+			if (valuesArray.length < minCount) {
+				for (let i = valuesArray.length; i < minCount; i++) valuesArray.push("");
+			}
+
+			const itemsHtml = valuesArray.map(val => this._createSingleInputHtml(field, val, true)).join("");
+			return $(`
+                <div class="mb-3 config-field array-field" data-field-id="${field.id}" data-is-array="true">
+                    ${labelHtml}
+                    <div class="array-items-container">
+                        ${itemsHtml}
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2 add-array-item-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Add Item
+                    </button>
+                </div>
+            `);
+		} else {
+			return $(`
+                <div class="mb-3 config-field" data-field-id="${field.id}" data-is-array="false">
+                    ${labelHtml}
+                    ${this._createSingleInputHtml(field, currentValue, false)}
+                </div>
+            `);
+		}
+	}
+
+	_createSingleInputHtml(field, val, isArrayItem = false) {
+		let inputHtml = "";
 		switch (field.type) {
 			case "text":
 			case "string":
 			case "number":
 			case "double_number":
-				fieldHtml = `
-					<div class="mb-3 config-field" data-field-id="${field.id}">
-						${labelHtml}
-						<input type="${field.isEncrypted ? 'password' : (field.type.includes('number') ? 'number' : 'text')}"
-							class="form-control config-field-input"
-							placeholder="${field.placeholder || ""}"
-							value="${currentValue}">
-					</div>`;
+				inputHtml = `<input type="${field.isEncrypted ? 'password' : (field.type.includes('number') ? 'number' : 'text')}" class="form-control config-field-input" placeholder="${field.placeholder || ""}" value="${val}">`;
 				break;
-
-			case "select": {
-				const options = field.options?.map(opt => `<option value="${opt.key}" ${currentValue.toString() === opt.key.toString() ? "selected" : ""}>${opt.value}</option>`).join("") || "";
-				fieldHtml = `
-					<div class="mb-3 config-field" data-field-id="${field.id}">
-						${labelHtml}
-						<select class="form-select config-field-input">
-							<option value="" disabled ${currentValue === "" ? "selected" : ""}>Select ${field.name}</option>
-							${options}
-						</select>
-					</div>`;
+			case "select":
+				const options = field.options?.map(opt => `<option value="${opt.key}" ${String(val) === String(opt.key) ? "selected" : ""}>${opt.value}</option>`).join("") || "";
+				inputHtml = `<select class="form-select config-field-input"><option value="" disabled ${val === "" ? "selected" : ""}>Select ${field.name}</option>${options}</select>`;
 				break;
-			}
-
 			case "models":
-				fieldHtml = `
-					<div class="mb-3 config-field" data-field-id="${field.id}">
-						${labelHtml}
-						<select class="form-select config-field-input">
-							<option value="" disabled ${!currentValue ? "selected" : ""}>Select ${field.name}</option>
-						</select>
-					</div>`;
-				break;
-
 			case "model_vector_dimensions":
-				fieldHtml = `
-                    <div class="mb-3 config-field" data-field-id="${field.id}">
-                        ${labelHtml}
-                        <select class="form-select config-field-input">
-                            <!-- Dynamically Generated on Models Change -->
-                        </select>
-                    </div>`;
+				// Populated later dynamically, using data attribute to remember what should be selected
+				inputHtml = `<select class="form-select config-field-input" data-selected-val="${val}"><option value="" disabled ${!val ? "selected" : ""}>Select ${field.name}</option></select>`;
 				break;
-
 			case "boolean":
-				const isChecked = (currentValue === true || currentValue === "true" || currentValue === "on");
-				fieldHtml = `
-                    <div class="mb-3 config-field form-check" data-field-id="${field.id}">
-                        <input type="checkbox" class="form-check-input config-field-input" id="check-${field.id}" ${isChecked ? "checked" : ""}>
-                        <label class="form-check-label" for="check-${field.id}">
-							<span class="btn-ic-span-align">
-								<span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
-								${field.tooltip ? `
-									<a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
-										<i class="fa-regular fa-circle-question"></i>
-									</a>` : ""}
-							</span>
-                        </label>
+				const isChecked = (val === true || val === "true" || val === "on");
+				const uid = Math.random().toString(36).substring(7);
+				inputHtml = `
+                    <div class="form-check form-switch mt-1">
+                        <input type="checkbox" class="form-check-input config-field-input" id="check-${uid}" ${isChecked ? "checked" : ""}>
+                        <label class="form-check-label" for="check-${uid}">Enable</label>
                     </div>`;
 				break;
 		}
 
-		return $(fieldHtml);
+		if (isArrayItem) {
+			return `
+                <div class="input-group mb-2 array-item">
+                    ${inputHtml}
+                    <button type="button" class="btn btn-outline-danger remove-array-item-btn"><i class="fa-solid fa-trash"></i></button>
+                </div>`;
+		}
+		return inputHtml;
 	}
 
 	_populateModelsField(field, fieldElement) {
 		const provider = this.currentConfig.provider;
 		if (!provider?.models) return;
-
-		const selectElement = fieldElement.find('select');
-		const currentValue = this.currentConfig.integration.fieldValues?.[field.id] ?? field.defaultValue;
-
 		const enabledModels = provider.models.filter(model => model.disabledAt === null);
-		enabledModels.forEach(model => {
-			selectElement.append(`<option value="${model.id}" ${currentValue === model.id ? "selected" : ""}>${model.name}</option>`);
+
+		fieldElement.find('select').each((_, sel) => {
+			const selectElement = $(sel);
+			const val = selectElement.attr('data-selected-val') || "";
+			enabledModels.forEach(model => {
+				selectElement.append(`<option value="${model.id}" ${val === model.id ? "selected" : ""}>${model.name}</option>`);
+			});
 		});
 	}
 
@@ -318,27 +293,27 @@ class IntegrationConfigurationManager {
 		const provider = this.currentConfig.provider;
 		if (!provider?.models) return;
 
-		const fieldId = fieldElement.data("field-id");
-		var currentSelected = this.currentConfig.integration.fieldValues?.[fieldId];
+		const modalEl = IntegrationConfigurationManager._modalElement;
+		const modelValue = modalEl.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model'] select").val()
+			|| modalEl.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model_id'] select").val();
 
-		const selectElement = fieldElement.find('select');
-		selectElement.empty();
+		fieldElement.find('select').each((_, sel) => {
+			const selectElement = $(sel);
+			const currentSelected = selectElement.attr('data-selected-val') || selectElement.val() || "";
+			selectElement.empty();
 
-		// Find the model field value from UI
-		const currentValue = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model'] select").val()
-			|| IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model_id'] select").val();
+			if (!modelValue) {
+				selectElement.append(`<option disabled selected>Select Model First</option>`);
+			} else {
+				const currentModel = provider.models.find(model => model.id === modelValue);
+				if (!currentModel || !currentModel.availableVectorDimensions) return;
 
-		if (!currentValue) {
-			selectElement.append(`<option disabled selected>Select Model First</option>`);
-		} else {
-			const currentModel = provider.models.find(model => model.id === currentValue);
-			if (!currentModel || !currentModel.availableVectorDimensions) return;
-
-			selectElement.append(`<option ${!currentSelected ? "selected" : ""} disabled>Select Vector Dimension</option>`);
-			currentModel.availableVectorDimensions.forEach(vectorDimension => {
-				selectElement.append(`<option value="${vectorDimension}" ${currentSelected === vectorDimension.toString() ? "selected" : ""}>${vectorDimension}</option>`);
-			});
-		}
+				selectElement.append(`<option ${!currentSelected ? "selected" : ""} disabled>Select Vector Dimension</option>`);
+				currentModel.availableVectorDimensions.forEach(dim => {
+					selectElement.append(`<option value="${dim}" ${currentSelected === dim.toString() ? "selected" : ""}>${dim}</option>`);
+				});
+			}
+		});
 	}
 
 	// =================================================================
@@ -372,9 +347,7 @@ class IntegrationConfigurationManager {
 		saveButton.on("click", () => {
 			if (IntegrationConfigurationManager._activeManager) {
 				const isSuccess = IntegrationConfigurationManager._activeManager._handleSaveConfiguration();
-				if (isSuccess) {
-					IntegrationConfigurationManager._modalInstance.hide();
-				}
+				if (isSuccess) IntegrationConfigurationManager._modalInstance.hide();
 			}
 		});
 
@@ -384,30 +357,52 @@ class IntegrationConfigurationManager {
 			}
 		});
 
+		// Dynamic Array Items (Add)
+		modalEl.on("click", ".add-array-item-btn", (e) => {
+			if (!IntegrationConfigurationManager._activeManager) return;
+			const mgr = IntegrationConfigurationManager._activeManager;
+
+			const btn = $(e.currentTarget);
+			const container = btn.siblings(".array-items-container");
+			const fieldId = btn.closest(".config-field").data("field-id");
+			const fieldSchema = mgr.currentConfig.provider.userIntegrationFields.find(f => f.id === fieldId);
+
+			const newItemHtml = $(mgr._createSingleInputHtml(fieldSchema, "", true));
+			container.append(newItemHtml);
+
+			if (fieldSchema.type === "models") mgr._populateModelsField(fieldSchema, newItemHtml);
+			if (fieldSchema.type === "model_vector_dimensions") mgr._populateModelVectorDimensionsField(newItemHtml);
+
+			mgr._updateFieldVisibility();
+			saveButton.prop("disabled", !mgr._getModalChanges().hasChanges);
+		});
+
+		// Dynamic Array Items (Remove)
+		modalEl.on("click", ".remove-array-item-btn", (e) => {
+			if (!IntegrationConfigurationManager._activeManager) return;
+			$(e.currentTarget).closest(".array-item").remove();
+
+			const mgr = IntegrationConfigurationManager._activeManager;
+			mgr._updateFieldVisibility();
+			saveButton.prop("disabled", !mgr._getModalChanges().hasChanges);
+		});
+
+		// Input Changes
 		modalEl.find(".modal-body div[div-type='integration-configuration-fields']").on("input change", ".config-field-input", (event) => {
 			if (IntegrationConfigurationManager._activeManager) {
 				const activeManager = IntegrationConfigurationManager._activeManager;
-
-				// Handle specific re-population logic (e.g., Vector Dimensions linked to Model)
-				const parentField = $(event.currentTarget).parent();
+				const parentField = $(event.currentTarget).closest('.config-field');
 				const fieldId = parentField.attr("data-field-id");
 
 				if (fieldId === "model" || fieldId === "model_id") {
 					const vectorField = modalEl.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model_vector_dimensions']");
-					if (vectorField.length) {
-						activeManager._populateModelVectorDimensionsField(vectorField);
-					}
+					if (vectorField.length) activeManager._populateModelVectorDimensionsField(vectorField);
 				}
 
-				// Update visibility of dependent fields
 				activeManager._updateFieldVisibility();
-
-				// Evaluate changes
 				const changes = activeManager._getModalChanges();
 				saveButton.prop("disabled", !changes.hasChanges);
-
-				// Re-validate UI to clear/show errors instantly (optional, enhances UX)
-				activeManager._validateModalUI();
+				activeManager._validateModalUI(); // Live validation cleanup
 			}
 		});
 	}
@@ -422,10 +417,7 @@ class IntegrationConfigurationManager {
 
 		let currentDataSet = this._getCurrentDataSet();
 
-		const newIntegrationData = {
-			id: integrationId,
-			fieldValues: {},
-		};
+		const newIntegrationData = { id: integrationId, fieldValues: {} };
 
 		if (integrationId) {
 			const integrationDefinition = this.options.allIntegrations.find(i => i.id === integrationId);
@@ -455,8 +447,7 @@ class IntegrationConfigurationManager {
 
 	_handleConfigureClick(e) {
 		e.preventDefault();
-		const button = $(e.currentTarget);
-		const itemElement = button.closest('.integration-item');
+		const itemElement = $(e.currentTarget).closest('.integration-item');
 		const index = itemElement.data('index');
 		const integrationId = itemElement.find('select').val();
 
@@ -470,16 +461,11 @@ class IntegrationConfigurationManager {
 
 		this.currentConfig.provider = this.options.providersData.find(p => p.integrationId === integrationDefinition.type);
 		if (!this.currentConfig.provider) {
-			AlertManager.createAlert({
-				type: "danger",
-				message: `Provider configuration not found for integration type: ${integrationDefinition.type}`,
-				timeout: 4000
-			});
+			AlertManager.createAlert({ type: "danger", message: `Provider configuration not found for integration type: ${integrationDefinition.type}`, timeout: 4000 });
 			return;
 		}
 
 		IntegrationConfigurationManager._activeManager = this;
-
 		this._renderModalFields();
 
 		const saveButton = IntegrationConfigurationManager._modalElement.find(".modal-footer button[button-type='save-integration-configuration']");
@@ -489,21 +475,13 @@ class IntegrationConfigurationManager {
 	}
 
 	_handleSaveConfiguration() {
-		// 1. Validate the UI state first
 		const validation = this._validateModalUI();
 		if (!validation.isValid) {
-			AlertManager.createAlert({
-				type: 'danger',
-				message: `Validation Failed:<br>${validation.errors.join('<br>')}`,
-				timeout: 6000,
-			});
+			AlertManager.createAlert({ type: 'danger', message: `Validation Failed:<br>${validation.errors.join('<br>')}`, timeout: 6000 });
 			return false;
 		}
 
-		// 2. Get the clean, compiled dataset containing ONLY visible fields
 		const changes = this._getModalChanges();
-
-		// 3. Completely replace old field values with the clean compiled set
 		this.currentConfig.integration.fieldValues = changes.compiledData;
 
 		this.options.onSaveSuccessful();
@@ -543,91 +521,86 @@ class IntegrationConfigurationManager {
 	//  Private Logic, Validation & Visibility Methods
 	// =================================================================
 
-	/**
-	 * Scrapes all raw values from the UI currently, regardless of visibility.
-	 * Used internally for condition evaluation.
-	 */
 	_getRawUIValues() {
 		const rawValues = {};
 		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
 
 		fieldsContainer.find(".config-field").each((_, el) => {
-			const fieldId = $(el).data("field-id");
-			const input = $(el).find(".config-field-input");
+			const fieldElement = $(el);
+			const fieldId = fieldElement.data("field-id");
+			const isArray = fieldElement.data("is-array") === true;
 
-			if (input.is(':checkbox')) {
-				rawValues[fieldId] = input.is(':checked') ? "true" : "false";
+			if (isArray) {
+				const vals = [];
+				fieldElement.find(".config-field-input").each((_, inputEl) => {
+					const input = $(inputEl);
+					if (input.is(':checkbox')) vals.push(input.is(':checked') ? "true" : "false");
+					else vals.push(input.val() || "");
+				});
+				rawValues[fieldId] = vals;
 			} else {
-				rawValues[fieldId] = input.val() || "";
+				const input = fieldElement.find(".config-field-input").first();
+				if (input.is(':checkbox')) rawValues[fieldId] = input.is(':checked') ? "true" : "false";
+				else rawValues[fieldId] = input.val() || "";
 			}
 		});
 
 		return rawValues;
 	}
 
-	/**
-	 * Evaluates Model and Field conditions to determine if a field should be shown.
-	 */
 	_isFieldVisible(fieldSchema, selectedModelId, rawValues) {
-		// Helper to handle custom JSON writer Enum format { name: "...", value: X }
 		const getEnumValue = (val) => (typeof val === 'object' && val !== null && 'value' in val) ? val.value : val;
 
-		// 1. Model Condition Check
 		if (fieldSchema.modelCondition && fieldSchema.modelCondition.models && fieldSchema.modelCondition.models.length > 0) {
 			const contains = fieldSchema.modelCondition.models.includes(selectedModelId);
 			const conditionType = getEnumValue(fieldSchema.modelCondition.type);
 
-			if (conditionType === 0 && !contains) return false; // Include 
-			if (conditionType === 1 && contains) return false;  // Exclude
+			if (conditionType === 0 && !contains) return false;
+			if (conditionType === 1 && contains) return false;
 		}
 
-		// 2. Field Conditions Check
 		if (fieldSchema.fieldConditions && fieldSchema.fieldConditions.length > 0) {
 			for (const cond of fieldSchema.fieldConditions) {
-				const depVal = String(rawValues[cond.fieldId] || "").trim();
-				const condVal = String(cond.value || "").trim();
+				// Handle array dependencies gracefully (checks the first item or joins them, though usually conditions are based on scalar fields)
+				let depValRaw = rawValues[cond.fieldId];
+				if (Array.isArray(depValRaw)) depValRaw = depValRaw[0];
+				const depVal = String(depValRaw || "").trim();
 
+				const condVal = String(cond.value || "").trim();
 				const condType = getEnumValue(cond.type);
 				const condVis = getEnumValue(cond.visibility);
 
 				let isMatch = false;
-
-				// Parse numbers for math operators, fallback to NaN if string (like "on")
 				const depNum = parseFloat(depVal);
 				const condNum = parseFloat(condVal);
 
 				switch (condType) {
-					case 0: isMatch = (depVal.toLowerCase() === condVal.toLowerCase()); break; // Equal
-					case 1: isMatch = (depVal.toLowerCase() !== condVal.toLowerCase()); break; // NotEqual
-					case 2: isMatch = (depVal.toLowerCase().includes(condVal.toLowerCase())); break; // Include
-					case 3: isMatch = (!depVal.toLowerCase().includes(condVal.toLowerCase())); break; // Exclude
-					case 4: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum > condNum); break; // GreaterThan
-					case 5: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum < condNum); break; // LessThan
-					case 6: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum >= condNum); break; // GreaterThanOrEqual
-					case 7: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum <= condNum); break; // LessThanOrEqual
-					case 8: isMatch = (depVal.toLowerCase().startsWith(condVal.toLowerCase())); break; // StartsWith
-					case 9: isMatch = (depVal.toLowerCase().endsWith(condVal.toLowerCase())); break; // EndsWith
+					case 0: isMatch = (depVal.toLowerCase() === condVal.toLowerCase()); break;
+					case 1: isMatch = (depVal.toLowerCase() !== condVal.toLowerCase()); break;
+					case 2: isMatch = (depVal.toLowerCase().includes(condVal.toLowerCase())); break;
+					case 3: isMatch = (!depVal.toLowerCase().includes(condVal.toLowerCase())); break;
+					case 4: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum > condNum); break;
+					case 5: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum < condNum); break;
+					case 6: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum >= condNum); break;
+					case 7: isMatch = (!isNaN(depNum) && !isNaN(condNum) && depNum <= condNum); break;
+					case 8: isMatch = (depVal.toLowerCase().startsWith(condVal.toLowerCase())); break;
+					case 9: isMatch = (depVal.toLowerCase().endsWith(condVal.toLowerCase())); break;
 				}
 
-				if (condVis === 0 && !isMatch) return false; // Needs match to show
-				if (condVis === 1 && isMatch) return false;  // Hide if match
+				if (condVis === 0 && !isMatch) return false;
+				if (condVis === 1 && isMatch) return false;
 			}
 		}
 
 		return true;
 	}
 
-	/**
-	 * Updates the DOM elements' visibility based on current inputs.
-	 */
 	_updateFieldVisibility() {
 		const rawValues = this._getRawUIValues();
-
-		// Determine selected model
 		let selectedModelId = "";
 		const modelFields = ["model", "model_id", "voice_id", "speech_model"];
 		for (const key of modelFields) {
-			if (rawValues[key]) {
+			if (rawValues[key] && !Array.isArray(rawValues[key])) {
 				selectedModelId = rawValues[key];
 				break;
 			}
@@ -639,25 +612,17 @@ class IntegrationConfigurationManager {
 			const isVisible = this._isFieldVisible(fieldSchema, selectedModelId, rawValues);
 			const fieldElement = fieldsContainer.find(`[data-field-id="${fieldSchema.id}"]`);
 
-			if (isVisible) {
-				fieldElement.removeClass("d-none");
-			} else {
-				fieldElement.addClass("d-none");
-			}
+			if (isVisible) fieldElement.removeClass("d-none");
+			else fieldElement.addClass("d-none");
 		});
 	}
 
-	/**
-	 * Validates only the currently visible fields in the Modal UI.
-	 * Adds/Removes is-invalid classes.
-	 */
 	_validateModalUI() {
 		const rawValues = this._getRawUIValues();
-
 		let selectedModelId = "";
 		const modelFields = ["model", "model_id", "voice_id", "speech_model"];
 		for (const key of modelFields) {
-			if (rawValues[key]) {
+			if (rawValues[key] && !Array.isArray(rawValues[key])) {
 				selectedModelId = rawValues[key];
 				break;
 			}
@@ -665,103 +630,116 @@ class IntegrationConfigurationManager {
 
 		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
 		fieldsContainer.find('.is-invalid').removeClass('is-invalid');
+		fieldsContainer.find('.border-danger').removeClass('border-danger'); // for array containers
 
 		const errors = [];
 		let isValid = true;
 
 		this.currentConfig.provider.userIntegrationFields.forEach(field => {
-			// Skip validation for hidden fields
-			if (!this._isFieldVisible(field, selectedModelId, rawValues)) {
-				return;
-			}
+			if (!this._isFieldVisible(field, selectedModelId, rawValues)) return;
 
 			const fieldElement = fieldsContainer.find(`[data-field-id="${field.id}"]`);
-			const input = fieldElement.find(".config-field-input");
 			const rawVal = rawValues[field.id];
 
-			// 1. Required Check
-			if (field.required && (!rawVal || rawVal.trim() === "")) {
-				if (field.type !== "boolean") { // boolean is never technically empty in raw extraction (true/false)
-					isValid = false;
-					errors.push(`${field.name} is required.`);
-					input.addClass('is-invalid');
-					return;
+			const valsToValidate = field.isArray ? (Array.isArray(rawVal) ? rawVal : []) : [rawVal];
+
+			// Array Bounds Check
+			if (field.isArray) {
+				if (field.minArrayCount !== null && valsToValidate.length < field.minArrayCount) {
+					isValid = false; errors.push(`${field.name} requires at least ${field.minArrayCount} item(s).`);
+					fieldElement.find('.array-items-container').addClass('border border-danger rounded p-1');
+				}
+				if (field.maxArrayCount !== null && valsToValidate.length > field.maxArrayCount) {
+					isValid = false; errors.push(`${field.name} exceeds maximum of ${field.maxArrayCount} item(s).`);
+					fieldElement.find('.array-items-container').addClass('border border-danger rounded p-1');
 				}
 			}
 
-			// Skip further validation if empty and not required
-			if (!rawVal || rawVal.trim() === "") return;
+			// Validate Each Value
+			valsToValidate.forEach((v, idx) => {
+				const inputEl = field.isArray ? fieldElement.find('.config-field-input').eq(idx) : fieldElement.find('.config-field-input');
 
-			// 2. Type & Constraints Check
-			switch (field.type) {
-				case "number":
-					const numVal = parseInt(rawVal, 10);
-					if (isNaN(numVal)) {
-						isValid = false; errors.push(`${field.name} must be a valid whole number.`); input.addClass('is-invalid');
-					} else {
-						if (field.minNumberValue !== null && numVal < field.minNumberValue) { isValid = false; errors.push(`${field.name} must be >= ${field.minNumberValue}.`); input.addClass('is-invalid'); }
-						if (field.maxNumberValue !== null && numVal > field.maxNumberValue) { isValid = false; errors.push(`${field.name} must be <= ${field.maxNumberValue}.`); input.addClass('is-invalid'); }
+				// Required and Empty checks
+				const isEmpty = (!v || String(v).trim() === "");
+				if (isEmpty) {
+					if (field.required && field.type !== "boolean") {
+						isValid = false;
+						errors.push(field.isArray ? `${field.name} item #${idx + 1} is required.` : `${field.name} is required.`);
+						inputEl.addClass('is-invalid');
+						return;
 					}
-					break;
 
-				case "double_number":
-					const dVal = parseFloat(rawVal);
-					if (isNaN(dVal)) {
-						isValid = false; errors.push(`${field.name} must be a valid decimal number.`); input.addClass('is-invalid');
-					} else {
-						if (field.minNumberValue !== null && dVal < field.minNumberValue) { isValid = false; errors.push(`${field.name} must be >= ${field.minNumberValue}.`); input.addClass('is-invalid'); }
-						if (field.maxNumberValue !== null && dVal > field.maxNumberValue) { isValid = false; errors.push(`${field.name} must be <= ${field.maxNumberValue}.`); input.addClass('is-invalid'); }
+					if (field.isArray && field.type !== "boolean") {
+						isValid = false;
+						errors.push(`${field.name} cannot contain empty items.`);
+						inputEl.addClass('is-invalid');
+						return;
 					}
-					break;
+				}
 
-				case "text":
-				case "string":
-					if (field.stringRegex) {
-						try {
-							const regex = new RegExp(field.stringRegex);
-							if (!regex.test(rawVal)) {
-								isValid = false; errors.push(`Format for ${field.name} is invalid.`); input.addClass('is-invalid');
-							}
-						} catch (e) { console.error("Invalid regex in DB schema", e); }
-					}
-					break;
+				if (isEmpty) return; // Optional and empty -> valid
 
-				case "models":
-					const model = this.currentConfig.provider.models.find(m => m.id === rawVal);
-					if (!model) { isValid = false; errors.push(`${field.name}: Selected model is invalid.`); input.addClass('is-invalid'); }
-					else if (model.disabledAt !== null) { isValid = false; errors.push(`${field.name}: Selected model is disabled.`); input.addClass('is-invalid'); }
-					break;
+				switch (field.type) {
+					case "number":
+						const numVal = parseInt(v, 10);
+						if (isNaN(numVal)) { isValid = false; errors.push(`${field.name} must be a valid whole number.`); inputEl.addClass('is-invalid'); }
+						else {
+							if (field.minNumberValue !== null && numVal < field.minNumberValue) { isValid = false; errors.push(`${field.name} must be >= ${field.minNumberValue}.`); inputEl.addClass('is-invalid'); }
+							if (field.maxNumberValue !== null && numVal > field.maxNumberValue) { isValid = false; errors.push(`${field.name} must be <= ${field.maxNumberValue}.`); inputEl.addClass('is-invalid'); }
+						}
+						break;
 
-				case "model_vector_dimensions":
-					const dimInt = parseInt(rawVal, 10);
-					const vectorModel = this.currentConfig.provider.models.find(m => m.id === selectedModelId);
-					if (!vectorModel || !vectorModel.availableVectorDimensions || !vectorModel.availableVectorDimensions.includes(dimInt)) {
-						isValid = false; errors.push(`${field.name}: Invalid vector dimension for selected model.`); input.addClass('is-invalid');
-					}
-					break;
+					case "double_number":
+						const dVal = parseFloat(v);
+						if (isNaN(dVal)) { isValid = false; errors.push(`${field.name} must be a valid decimal number.`); inputEl.addClass('is-invalid'); }
+						else {
+							if (field.minNumberValue !== null && dVal < field.minNumberValue) { isValid = false; errors.push(`${field.name} must be >= ${field.minNumberValue}.`); inputEl.addClass('is-invalid'); }
+							if (field.maxNumberValue !== null && dVal > field.maxNumberValue) { isValid = false; errors.push(`${field.name} must be <= ${field.maxNumberValue}.`); inputEl.addClass('is-invalid'); }
+						}
+						break;
 
-				case "select":
-					if (field.options && !field.options.some(opt => String(opt.key) === rawVal)) {
-						isValid = false; errors.push(`${field.name}: Invalid option selected.`); input.addClass('is-invalid');
-					}
-					break;
-			}
+					case "text":
+					case "string":
+						if (field.stringRegex) {
+							try {
+								const regex = new RegExp(field.stringRegex);
+								if (!regex.test(v)) { isValid = false; errors.push(`Format for ${field.name} is invalid.`); inputEl.addClass('is-invalid'); }
+							} catch (e) { console.error("Invalid regex in DB schema", e); }
+						}
+						break;
+
+					case "models":
+						const model = this.currentConfig.provider.models.find(m => m.id === v);
+						if (!model) { isValid = false; errors.push(`${field.name}: Selected model is invalid.`); inputEl.addClass('is-invalid'); }
+						else if (model.disabledAt !== null) { isValid = false; errors.push(`${field.name}: Selected model is disabled.`); inputEl.addClass('is-invalid'); }
+						break;
+
+					case "model_vector_dimensions":
+						const dimInt = parseInt(v, 10);
+						const vectorModel = this.currentConfig.provider.models.find(m => m.id === selectedModelId);
+						if (!vectorModel || !vectorModel.availableVectorDimensions || !vectorModel.availableVectorDimensions.includes(dimInt)) {
+							isValid = false; errors.push(`${field.name}: Invalid vector dimension for selected model.`); inputEl.addClass('is-invalid');
+						}
+						break;
+
+					case "select":
+						if (field.options && !field.options.some(opt => String(opt.key) === String(v))) {
+							isValid = false; errors.push(`${field.name}: Invalid option selected.`); inputEl.addClass('is-invalid');
+						}
+						break;
+				}
+			});
 		});
 
 		return { isValid, errors };
 	}
 
-	/**
-	 * Retrieves structured data from the modal.
-	 * Ignores hidden fields entirely to ensure a clean JSON payload.
-	 */
 	_getModalChanges() {
 		const rawUI = this._getRawUIValues();
-
 		let selectedModelId = "";
 		const modelFields = ["model", "model_id", "voice_id", "speech_model"];
 		for (const key of modelFields) {
-			if (rawUI[key]) {
+			if (rawUI[key] && !Array.isArray(rawUI[key])) {
 				selectedModelId = rawUI[key];
 				break;
 			}
@@ -769,46 +747,41 @@ class IntegrationConfigurationManager {
 
 		const proposedFieldValues = {};
 
-		this.currentConfig.provider.userIntegrationFields.forEach(fieldSchema => {
-			if (!this._isFieldVisible(fieldSchema, selectedModelId, rawUI)) {
-				return; // Skip hidden field completely
+		const processSingleValue = (val, type) => {
+			if (type === 'boolean') {
+				if (val === true || val === "true" || val === "on" || val === "yes") return true;
+				return false;
 			}
+			if (type === 'number') {
+				const intVal = parseInt(val, 10);
+				return isNaN(intVal) ? val : intVal;
+			}
+			if (type === 'double_number') {
+				const floatVal = parseFloat(val);
+				return isNaN(floatVal) ? val : floatVal;
+			}
+			return val || "";
+		};
+
+		this.currentConfig.provider.userIntegrationFields.forEach(fieldSchema => {
+			if (!this._isFieldVisible(fieldSchema, selectedModelId, rawUI)) return;
 
 			const rawVal = rawUI[fieldSchema.id];
-			let processedValue;
+			if (rawVal === undefined || rawVal === null) return;
 
-			switch (fieldSchema.type) {
-				case 'boolean':
-					processedValue = (rawVal === "true");
-					break;
-
-				case 'number':
-					const intVal = parseInt(rawVal, 10);
-					processedValue = isNaN(intVal) ? rawVal : intVal;
-					break;
-
-				case 'double_number':
-					const floatVal = parseFloat(rawVal);
-					processedValue = isNaN(floatVal) ? rawVal : floatVal;
-					break;
-
-				default:
-					processedValue = rawVal || "";
-					break;
+			if (fieldSchema.isArray) {
+				// Must map the array, ensure we drop empty elements if they snuck in
+				const validArray = Array.isArray(rawVal) ? rawVal : [];
+				proposedFieldValues[fieldSchema.id] = validArray.map(v => processSingleValue(v, fieldSchema.type));
+			} else {
+				proposedFieldValues[fieldSchema.id] = processSingleValue(rawVal, fieldSchema.type);
 			}
-
-			proposedFieldValues[fieldSchema.id] = processedValue;
 		});
 
-		// Deep comparison to detect changes
 		const hasChanges = !this._deepEqual(this.currentConfig.integration.fieldValues, proposedFieldValues);
-
 		return { hasChanges, compiledData: proposedFieldValues };
 	}
 
-	/**
-	 * Validates raw data objects entirely (used for public .validate() without UI elements).
-	 */
 	_validateConfigurationData(integration) {
 		const errors = [];
 		let isValid = true;
@@ -819,39 +792,48 @@ class IntegrationConfigurationManager {
 		const provider = this.options.providersData.find(p => p.integrationId === businessIntegrationData.type);
 		if (!provider) return { isValid: false, errors: [`Provider configuration not found for integration '${businessIntegrationData.friendlyName}'.`] };
 
-		// Pre-pass for selected model
+		// Format raw values for condition check mapping
+		const mockRawValues = {};
 		let selectedModelId = "";
 		const modelFields = ["model", "model_id", "voice_id", "speech_model"];
-		for (const key of modelFields) {
-			if (integration.fieldValues[key]) {
-				selectedModelId = String(integration.fieldValues[key]);
-				break;
-			}
+
+		for (const [k, v] of Object.entries(integration.fieldValues)) {
+			if (Array.isArray(v)) mockRawValues[k] = v.map(String);
+			else mockRawValues[k] = String(v);
+
+			if (modelFields.includes(k)) selectedModelId = String(v);
 		}
 
 		provider.userIntegrationFields.forEach(field => {
-			// If it's conditionally hidden based on current data, skip validation.
-			// Note: For backend data validation, we mock the UI raw string format
-			const mockRawValues = {};
-			for (const [k, v] of Object.entries(integration.fieldValues)) mockRawValues[k] = String(v);
-
-			if (!this._isFieldVisible(field, selectedModelId, mockRawValues)) {
-				return;
-			}
+			if (!this._isFieldVisible(field, selectedModelId, mockRawValues)) return;
 
 			const value = integration.fieldValues[field.id];
+			const isValueEmpty = (value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0));
 
-			if (field.required && (value === undefined || value === null || String(value).trim() === "")) {
+			if (field.required && isValueEmpty && field.type !== "boolean") {
 				isValid = false; errors.push(`${field.name} is required.`); return;
 			}
 
-			if (value !== undefined && value !== null && String(value).trim() !== "") {
+			if (isValueEmpty) return;
+
+			const valsToValidate = field.isArray ? (Array.isArray(value) ? value : []) : [value];
+
+			if (field.isArray) {
+				if (field.minArrayCount !== null && valsToValidate.length < field.minArrayCount) { isValid = false; errors.push(`${field.name} requires at least ${field.minArrayCount} item(s).`); }
+				if (field.maxArrayCount !== null && valsToValidate.length > field.maxArrayCount) { isValid = false; errors.push(`${field.name} exceeds max of ${field.maxArrayCount} item(s).`); }
+			}
+
+			valsToValidate.forEach(v => {
+				if (field.isArray && (!v || String(v).trim() === "") && field.type !== "boolean") {
+					isValid = false; errors.push(`${field.name} cannot contain empty items.`); return;
+				}
+
 				switch (field.type) {
 					case "number":
 					case "double_number":
-						if (isNaN(value)) { isValid = false; errors.push(`${field.name} must be a valid number.`); }
+						if (isNaN(v)) { isValid = false; errors.push(`${field.name} must be a valid number.`); }
 						else {
-							const num = parseFloat(value);
+							const num = parseFloat(v);
 							if (field.minNumberValue !== null && num < field.minNumberValue) { isValid = false; errors.push(`${field.name} must be >= ${field.minNumberValue}.`); }
 							if (field.maxNumberValue !== null && num > field.maxNumberValue) { isValid = false; errors.push(`${field.name} must be <= ${field.maxNumberValue}.`); }
 						}
@@ -861,28 +843,26 @@ class IntegrationConfigurationManager {
 					case "string":
 						if (field.stringRegex) {
 							try {
-								if (!new RegExp(field.stringRegex).test(String(value))) {
-									isValid = false; errors.push(`Format for ${field.name} is invalid.`);
-								}
+								if (!new RegExp(field.stringRegex).test(String(v))) { isValid = false; errors.push(`Format for ${field.name} is invalid.`); }
 							} catch (e) { }
 						}
 						break;
 
 					case "models":
-						const model = provider.models.find(m => m.id === String(value));
+						const model = provider.models.find(m => m.id === String(v));
 						if (!model) { isValid = false; errors.push(`${field.name}: Selected model is invalid.`); }
 						else if (model.disabledAt !== null) { isValid = false; errors.push(`${field.name}: Selected model is disabled.`); }
 						break;
 
 					case "model_vector_dimensions":
-						const dimInt = parseInt(value, 10);
+						const dimInt = parseInt(v, 10);
 						const vectorModel = provider.models.find(m => m.id === selectedModelId);
 						if (!vectorModel || !vectorModel.availableVectorDimensions || !vectorModel.availableVectorDimensions.includes(dimInt)) {
 							isValid = false; errors.push(`${field.name}: Invalid vector dimension for selected model.`);
 						}
 						break;
 				}
-			}
+			});
 		});
 
 		return { isValid, errors };

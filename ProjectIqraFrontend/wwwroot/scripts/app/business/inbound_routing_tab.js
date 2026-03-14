@@ -8,6 +8,143 @@ let currentRouteAgentSelectedId = "";
 let IsSavingRouteManageTab = false;
 let IsDeletingRoute = false;
 
+const routeActionArguments = [
+	// Call Queue Data
+	{
+		"id": "call_queue_id",
+		"Name": "Call Queue Id",
+		"Type": "string",
+		"group": "Call Queue Data",
+		"Description": "The unique identifier of the call queue entry."
+	},
+	{
+		"id": "call_queue_created_at",
+		"Name": "Call Queue Created At",
+		"Type": "datetime",
+		"group": "Call Queue Data",
+		"Description": "Date and time when the call queue entry was first created."
+	},
+	{
+		"id": "call_queue_enqueued_at",
+		"Name": "Call Queue Enqueued At",
+		"Type": "datetime",
+		"group": "Call Queue Data",
+		"Description": "Date and time when the call was officially placed in the queue."
+	},
+	{
+		"id": "call_queue_processing_started_at",
+		"Name": "Call Queue Processing Started At",
+		"Type": "datetime",
+		"group": "Call Queue Data",
+		"Description": "Date and time when the system started processing the call."
+	},
+	{
+		"id": "call_queue_completed_at",
+		"Name": "Call Queue Completed At",
+		"Type": "datetime",
+		"group": "Call Queue Data",
+		"Description": "Date and time when the call was completed."
+	},
+	{
+		"id": "call_queue_status",
+		"Name": "Call Queue Status",
+		"Type": "string",
+		"group": "Call Queue Data",
+		"Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
+	},
+	{
+		"id": "call_queue_route_id",
+		"Name": "Call Queue Route Id",
+		"Type": "string",
+		"group": "Call Queue Data",
+		"Description": "The ID of the route this call belongs to."
+	},
+	{
+		"id": "call_queue_calling_number_id",
+		"Name": "Call Queue Calling Number Id",
+		"Type": "string",
+		"group": "Call Queue Data",
+		"Description": "The ID of the phone number used to make/receive the call."
+	},
+	{
+		"id": "call_queue_calling_number_provider",
+		"Name": "Call Queue Calling Number Provider",
+		"Type": "string",
+		"group": "Call Queue Data",
+		"Description": "The telephony provider of the calling number (e.g., Twilio)."
+	},
+	{
+		"id": "call_queue_caller_number",
+		"Name": "Call Queue Caller Number",
+		"Type": "string",
+		"group": "Call Queue Data",
+		"Description": "The phone number of the caller."
+	},
+	{
+		"id": "call_queue_dynamic_variables",
+		"Name": "Call Queue Dynamic Variables",
+		"Type": "object",
+		"group": "Call Queue Data",
+		"Description": "Dynamic variables associated with the call (key-value pairs)."
+	},
+	{
+		"id": "call_queue_metadata",
+		"Name": "Call Queue Metadata",
+		"Type": "object",
+		"group": "Call Queue Data",
+		"Description": "Metadata associated with the call (key-value pairs)."
+	},
+	// Conversation Data
+	{
+		"id": "conversation_id",
+		"Name": "Conversation Id",
+		"Type": "string",
+		"group": "Conversation Data",
+		"Description": "Id of the conversation"
+	},
+	{
+		"id": "conversation_start_time",
+		"Name": "Conversation Start Time",
+		"Type": "datetime",
+		"group": "Conversation Data",
+		"Description": "Date and time when the conversation was started"
+	},
+	{
+		"id": "conversation_end_type",
+		"Name": "Conversation End Type",
+		"Type": "string",
+		"group": "Conversation Data",
+		"Description": "Type the conversation was ended with"
+	},
+	{
+		"id": "conversation_end_time",
+		"Name": "Conversation End Time",
+		"Type": "datetime",
+		"group": "Conversation Data",
+		"Description": "Date and time when the conversation was ended"
+	},
+	{
+		"id": "conversation_turns",
+		"Name": "Conversation Turns",
+		"Type": "object",
+		"group": "Conversation Data",
+		"Description": "Complete System/Agent/User turns data of the conversation"
+	},
+	{
+		"id": "conversation_turns_simplified",
+		"Name": "Conversation Turns Simplified",
+		"Type": "string",
+		"group": "Conversation Data",
+		"Description": "Simplified & already compiled `<role>: <content>` string of Conversations Turns"
+	}
+];
+
+let editRouteActionToolCallInitiationFailureCustomInputs = {};
+let editRouteActionToolRingingCustomInputs = {};
+let editRouteActionToolPickedCustomInputs = {};
+let editRouteActionToolCallMissedCustomInputs = {};
+let editRouteActionToolEndedCustomInputs = {};
+
 /** Element Variables  **/
 const tooltipTriggerList = document.querySelectorAll('#routing-tab [data-bs-toggle="tooltip"]');
 const tooltipList = [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -93,19 +230,24 @@ const editRouteAgentCallerNumberInContextCheck = routingTab.find("#editRouteAgen
 const editRouteAgentRouteNumberInContextCheck = routingTab.find("#editRouteAgentRouteNumberInContextCheck");
 
 // Actions Tab
+const editRouteActionToolCallInitiationFailure = routingTab.find("#editRouteActionToolCallInitiationFailure");
+const editRouteActionToolCallInitiationFailureInputArguementContainer = routingTab.find("#editRouteActionToolCallInitiationFailureContainer .custom-tool-input-arguments");
+const editRouteActionToolCallInitiationFailureInputArgumentsList = routingTab.find("#editRouteActionToolCallInitiationFailureInputArgumentsList");
+
 const editRouteActionToolRinging = routingTab.find("#editRouteActionToolRinging");
 const editRouteActionToolRingingInputArguementContainer = routingTab.find("#editRouteActionToolRingingContainer .custom-tool-input-arguments");
-const editRouteActionToolRingingInputArgumentsSelect = routingTab.find("#editRouteActionToolRingingInputArgumentsSelect");
 const editRouteActionToolRingingInputArgumentsList = routingTab.find("#editRouteActionToolRingingInputArgumentsList");
 
 const editRouteActionToolPicked = routingTab.find("#editRouteActionToolPicked");
 const editRouteActionToolPickedInputArguementContainer = routingTab.find("#editRouteActionToolPickedContainer .custom-tool-input-arguments");
-const editRouteActionToolPickedInputArgumentsSelect = routingTab.find("#editRouteActionToolPickedInputArgumentsSelect");
 const editRouteActionToolPickedInputArgumentsList = routingTab.find("#editRouteActionToolPickedInputArgumentsList");
+
+const editRouteActionToolCallMissed = routingTab.find("#editRouteActionToolCallMissed");
+const editRouteActionToolCallMissedInputArguementContainer = routingTab.find("#editRouteActionToolCallMissedContainer .custom-tool-input-arguments");
+const editRouteActionToolCallMissedInputArgumentsList = routingTab.find("#editRouteActionToolCallMissedInputArgumentsList");
 
 const editRouteActionToolEnded = routingTab.find("#editRouteActionToolEnded");
 const editRouteActionToolEndedInputArguementContainer = routingTab.find("#editRouteActionToolEndedContainer .custom-tool-input-arguments");
-const editRouteActionToolEndedInputArgumentsSelect = routingTab.find("#editRouteActionToolEndedInputArgumentsSelect");
 const editRouteActionToolEndedInputArgumentsList = routingTab.find("#editRouteActionToolEndedInputArgumentsList");
 
 /** API FUNCTIONS **/
@@ -129,20 +271,20 @@ function SaveBusinessRoute(formData, successCallback, errorCallback) {
 	});
 }
 function DeleteBusinessRoute(routeId, successCallback, errorCallback) {
-    return $.ajax({
+	return $.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/routes/${routeId}/delete`,
-        type: "POST",
-        success: (response) => {
-            if (response.success) {
-                successCallback(response);
-            } else {
-                errorCallback(response, true);
-            }
-        },
-        error: (xhr, status, error) => {
-            errorCallback(error, false);
-        },
-    });
+		type: "POST",
+		success: (response) => {
+			if (response.success) {
+				successCallback(response);
+			} else {
+				errorCallback(response, true);
+			}
+		},
+		error: (xhr, status, error) => {
+			errorCallback(error, false);
+		},
+	});
 }
 
 /** Functions **/
@@ -250,11 +392,19 @@ function createDefaultRouteObject() {
 			routeNumberInContext: true,
 		},
 		actions: {
+			callInitiationFailureTool: {
+				selectedToolId: null,
+				arguments: null,
+			},
 			ringingTool: {
 				selectedToolId: null,
 				arguments: null,
 			},
 			callPickedTool: {
+				selectedToolId: null,
+				arguments: null,
+			},
+			callMissedTool: {
 				selectedToolId: null,
 				arguments: null,
 			},
@@ -320,29 +470,31 @@ function resetAndEmptyRouteManagerTab() {
 	editRouteAgentRouteNumberInContextCheck.prop("checked", true);
 
 	// Actions
+	editRouteActionToolCallInitiationFailure.empty();
+	editRouteActionToolCallInitiationFailureInputArgumentsList.empty();
+	editRouteActionToolCallInitiationFailure.append(`<option value="none" selected>None</option>`);
+
 	editRouteActionToolRinging.empty();
-	editRouteActionToolRingingInputArgumentsSelect.empty();
 	editRouteActionToolRingingInputArgumentsList.empty();
 	editRouteActionToolRinging.append(`<option value="none" selected>None</option>`);
-	editRouteActionToolRingingInputArgumentsSelect.append(`<option value="" disabled selected>Add Input Argument</option>`);
 
 	editRouteActionToolPicked.empty();
-	editRouteActionToolPickedInputArgumentsSelect.empty();
 	editRouteActionToolPickedInputArgumentsList.empty();
 	editRouteActionToolPicked.append(`<option value="none" selected>None</option>`);
-	editRouteActionToolPickedInputArgumentsSelect.append(`<option value="" disabled selected>Add Input Argument</option>`);
+
+	editRouteActionToolCallMissed.empty();
+	editRouteActionToolCallMissedInputArgumentsList.empty();
+	editRouteActionToolCallMissed.append(`<option value="none" selected>None</option>`);
 
 	editRouteActionToolEnded.empty();
-	editRouteActionToolEndedInputArgumentsSelect.empty();
 	editRouteActionToolEndedInputArgumentsList.empty();
 	editRouteActionToolEnded.append(`<option value="none" selected>None</option>`);
-	editRouteActionToolEndedInputArgumentsSelect.append(`<option value="" disabled selected>Add Input Argument</option>`);
 
 	BusinessFullData.businessApp.tools.forEach((tool) => {
+		editRouteActionToolCallInitiationFailure.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
 		editRouteActionToolRinging.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
-
 		editRouteActionToolPicked.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
-
+		editRouteActionToolCallMissed.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
 		editRouteActionToolEnded.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
 	});
 
@@ -518,6 +670,10 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 	// Actions Tab
 	function checkActionsTab() {
 		changes.actions = {
+			callInitiationFailureTool: {
+				selectedToolId: editRouteActionToolCallInitiationFailure.val() === "none" ? null : editRouteActionToolCallInitiationFailure.val(),
+				arguments: null,
+			},
 			ringingTool: {
 				selectedToolId: editRouteActionToolRinging.val() === "none" ? null : editRouteActionToolRinging.val(),
 				arguments: null,
@@ -526,20 +682,24 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 				selectedToolId: editRouteActionToolPicked.val() === "none" ? null : editRouteActionToolPicked.val(),
 				arguments: null,
 			},
+			callMissedTool: {
+				selectedToolId: editRouteActionToolCallMissed.val() === "none" ? null : editRouteActionToolCallMissed.val(),
+				arguments: null,
+			},
 			callEndedTool: {
 				selectedToolId: editRouteActionToolEnded.val() === "none" ? null : editRouteActionToolEnded.val(),
 				arguments: null,
 			},
 		};
 
-		// Helper function to collect arguments from input list
-		function collectToolArguments(inputList) {
-			const args = {};
-			inputList.find(".input-group").each((idx, element) => {
-				const input = $(element).find("input");
-				args[input.attr("input_arguement")] = input.val().trim();
+		function getCustomToolInputArguments(customInputObj) {
+			const activeArgs = {};
+			Object.values(customInputObj).forEach((customInput) => {
+				const id = customInput.element.attr('input_arguement');
+				const val = customInput.getValue();
+				activeArgs[id] = val;
 			});
-			return args;
+			return Object.keys(activeArgs).length > 0 ? activeArgs : null;
 		}
 
 		// Helper function to compare tool data
@@ -580,21 +740,28 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 			return false;
 		}
 
-		// Collect arguments for each tool
+		if (changes.actions.callInitiationFailureTool.selectedToolId) {
+			changes.actions.callInitiationFailureTool.arguments = getCustomToolInputArguments(editRouteActionToolCallInitiationFailureCustomInputs);
+		}
 		if (changes.actions.ringingTool.selectedToolId) {
-			changes.actions.ringingTool.arguments = collectToolArguments(editRouteActionToolRingingInputArgumentsList);
+			changes.actions.ringingTool.arguments = getCustomToolInputArguments(editRouteActionToolRingingCustomInputs);
 		}
 		if (changes.actions.callPickedTool.selectedToolId) {
-			changes.actions.callPickedTool.arguments = collectToolArguments(editRouteActionToolPickedInputArgumentsList);
+			changes.actions.callPickedTool.arguments = getCustomToolInputArguments(editRouteActionToolPickedCustomInputs);
+		}
+		if (changes.actions.callMissedTool.selectedToolId) {
+			changes.actions.callMissedTool.arguments = getCustomToolInputArguments(editRouteActionToolCallMissedCustomInputs);
 		}
 		if (changes.actions.callEndedTool.selectedToolId) {
-			changes.actions.callEndedTool.arguments = collectToolArguments(editRouteActionToolEndedInputArgumentsList);
+			changes.actions.callEndedTool.arguments = getCustomToolInputArguments(editRouteActionToolEndedCustomInputs);
 		}
 
 		// Compare each tool independently
 		if (
+			compareToolData(changes.actions.callInitiationFailureTool, ManageCurrentRouteData.actions.callInitiationFailureTool) ||
 			compareToolData(changes.actions.ringingTool, ManageCurrentRouteData.actions.ringingTool) ||
 			compareToolData(changes.actions.callPickedTool, ManageCurrentRouteData.actions.callPickedTool) ||
+			compareToolData(changes.actions.callMissedTool, ManageCurrentRouteData.actions.callMissedTool) ||
 			compareToolData(changes.actions.callEndedTool, ManageCurrentRouteData.actions.callEndedTool)
 		) {
 			hasChanges = true;
@@ -965,7 +1132,7 @@ function fillRoutingManagerTab() {
 		if (agentData) {
 			currentRouteAgentSelectedId = agentData.id;
 			editSelectedRouteAgentIcon.text(agentData.general.emoji);
-			editSelectedRouteAgentName.val(agentData.general.name[BusinessDefaultLanguage]);	
+			editSelectedRouteAgentName.val(agentData.general.name[BusinessDefaultLanguage]);
 		}
 	}
 
@@ -1167,8 +1334,8 @@ function createRouteAgentModalListElement(agentData) {
 function createAddedRouteNumberListElement(numberData) {
 	const countryData = undefined;
 	if (numberData.provider.value !== NumberProviderEnum.SIP || numberData.isE164Number) {
-        countryData = CountriesList[numberData.countryCode.toUpperCase()]
-    }
+		countryData = CountriesList[numberData.countryCode.toUpperCase()]
+	}
 
 	const element = `
 		<tr>

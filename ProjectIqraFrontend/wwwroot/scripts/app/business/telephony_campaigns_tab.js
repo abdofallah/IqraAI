@@ -1913,7 +1913,7 @@ function populateTelephonyNumberSelectionModal() {
         listGroup.append("<span>No numbers found for your business.</span>");
     } else {
         availableNumbers.forEach((number) => {
-            const countryData = undefined;
+            var countryData = undefined;
             if (number.provider.value !== NumberProviderEnum.SIP || number.isE164Number) {
                 countryData = CountriesList[number.countryCode.toUpperCase()]
             }

@@ -1,0 +1,8 @@
+[submodule "Dependencies/ElevenLabs-DotNet"]
+	path = Dependencies/ElevenLabs-DotNet
+	url = https://github.com/abdofallah/ElevenLabs-DotNet.git
+	branch = dev/4.0.0
+[submodule "Dependencies/sipsorcery"]
+	path = Dependencies/sipsorcery
+	url = https://github.com/abdofallah/sipsorcery.git
+	branch = master

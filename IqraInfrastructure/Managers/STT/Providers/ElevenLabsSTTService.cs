@@ -114,13 +114,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
                     };
                 }
 
-                // Verify Model Exists
-                var allModels = await _client.ModelsEndpoint.GetModelsAsync();
-                if (allModels.All(d => d.Id != _config.ModelId))
-                {
-                    throw new Exception($"Model {_config.ModelId} not found in ElevenLabs available models.");
-                }
-
                 return result.SetSuccessResult();
             }
             catch (Exception ex)
@@ -141,8 +134,8 @@ namespace IqraInfrastructure.Managers.STT.Providers
                     var config = new SpeechToTextSessionConfiguration
                     {
                         ModelId = _config.ModelId,
-                        AudioFormat = _elevenLabsApiFormatEnum,
                         CommitStrategy = CommitStrategy.Vad,
+                        AudioFormat = _elevenLabsApiFormatEnum,
                         IncludeTimestamps = false,
                         IncludeLanguageDetection = false,
                         LanguageCode = _config.LanguageCode,
@@ -239,8 +232,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
                     // Create the chunk
                     var chunk = new InputAudioChunk(
-                        Convert.ToBase64String(dataToSend),
-                        commit: false
+                        Convert.ToBase64String(dataToSend)
                     );
 
                     // Pass the token so it cancels if StopTranscription is called mid-send
@@ -291,12 +283,12 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
             var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), AudioFormat>
             {
-                { (AudioEncodingTypeEnum.PCM, 8000, 16), AudioFormat.Pcm8000 },
-                { (AudioEncodingTypeEnum.PCM, 16000, 16), AudioFormat.Pcm16000 },
-                { (AudioEncodingTypeEnum.PCM, 22050, 16), AudioFormat.Pcm22050 },
-                { (AudioEncodingTypeEnum.PCM, 24000, 16), AudioFormat.Pcm24000 },
-                { (AudioEncodingTypeEnum.PCM, 44100, 16), AudioFormat.Pcm44100 },
-                { (AudioEncodingTypeEnum.PCM, 48000, 16), AudioFormat.Pcm48000 },
+                { (AudioEncodingTypeEnum.PCM, 8000, 16), AudioFormat.Pcm_8000 },
+                { (AudioEncodingTypeEnum.PCM, 16000, 16), AudioFormat.Pcm_16000 },
+                { (AudioEncodingTypeEnum.PCM, 22050, 16), AudioFormat.Pcm_22050 },
+                { (AudioEncodingTypeEnum.PCM, 24000, 16), AudioFormat.Pcm_24000 },
+                { (AudioEncodingTypeEnum.PCM, 44100, 16), AudioFormat.Pcm_44100 },
+                { (AudioEncodingTypeEnum.PCM, 48000, 16), AudioFormat.Pcm_48000 },
             };
             FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), AudioFormat>(formatMap);
         }

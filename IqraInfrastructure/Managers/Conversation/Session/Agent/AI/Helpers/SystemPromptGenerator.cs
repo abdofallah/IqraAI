@@ -74,6 +74,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                 agentObject["Scripts"] = CreateAgentScriptsObject(openingScriptNodesData.tools, new List<BusinessAppScript>() { openingScript }, currentLanguageData.Id);
                 agentObject["ScriptTools"] = CreateAgentScriptToolsObject(openingScriptNodesData.tools, currentLanguageData.Id);
                 agentObject["ScriptAgents"] = CreateAgentScriptAgentsObject(openingScriptNodesData.agents, currentLanguageData.Id);
+                agentObject["HumanAgents"] = new ScriptArray(); // TODO
+                agentObject["FlowApps"] = new ScriptArray(); // TODO
                 agentObject["ScriptAddableScripts"] = CreateAgentScriptAddableScriptsObject(openingScriptNodesData.scripts, currentLanguageData.Id);
                 agentObject["HasDTMFRequestTool"] = openingScriptNodesData.hasDTMFRequestTool;
                 agentObject["HasSendSMSTool"] = openingScriptNodesData.hasSendSMSTool;

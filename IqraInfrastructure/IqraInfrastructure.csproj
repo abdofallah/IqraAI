@@ -60,7 +60,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Dependencies\ElevenLabs-DotNet\ElevenLabs-DotNet\ElevenLabs-DotNet.csproj" />
-    <ProjectReference Include="..\Dependencies\sipsorcery\src\SIPSorcery.csproj" />
+    <ProjectReference Include="..\Dependencies\sipsorcery\src\SIPSorcery\SIPSorcery.csproj" />
     <ProjectReference Include="..\Dependencies\w3c-validator-net\src\W3CValidator.Core\W3CValidator.Core.csproj" />
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
   </ItemGroup>

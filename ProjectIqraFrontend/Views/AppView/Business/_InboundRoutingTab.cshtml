@@ -350,6 +350,24 @@
                 </div>
                 <!-- Actions -->
                 <div class="tab-pane fade w-100" id="routing-manager-actions" role="tabpanel" aria-labelledby="routing-manager-actions-tab" tabindex="0">
+                    <div class="mb-3" id="editRouteActionToolCallInitiationFailureContainer">
+                        <label class="form-label btn-ic-span-align" for="editRouteActionToolCallInitiationFailure">
+                            <span>Call Initiation Failure Action </span>
+
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call initiation fails on the queue.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editRouteActionToolCallInitiationFailure">
+                            <!-- Dynamically Generated -->
+                        </select>
+                        <div class="custom-tool-input-arguments d-none mt-2">
+                            <label class="form-label d-block mb-1">Input Arguments </label>
+                            <div id="editRouteActionToolCallInitiationFailureInputArgumentsList">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+                    </div>
                     <div class="mb-3" id="editRouteActionToolRingingContainer">
                         <label class="form-label btn-ic-span-align" for="editRouteActionToolRinging">
                             <span>Ringing Action </span>
@@ -361,18 +379,9 @@
                         <select class="form-select" id="editRouteActionToolRinging">
                             <!-- Dynamically Generated -->
                         </select>
-                        <div class="custom-tool-input-arguments d-none">
-                            <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolRingingInputArgumentsSelect">
-                                <span>Input Arguments </span>
-
-                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {route_number}, {timezone_datetime}.">
-                                    <i class="fa-regular fa-circle-question"></i>
-                                </a>
-                            </label>
-                            <select class="form-select" id="editRouteActionToolRingingInputArgumentsSelect">
-                                <option value="-1">Select Input Argument</option>
-                            </select>
-                            <div class="mt-1" id="editRouteActionToolRingingInputArgumentsList">
+                        <div class="custom-tool-input-arguments d-none mt-2">
+                            <label class="form-label d-block mb-1">Input Arguments </label>
+                            <div id="editRouteActionToolRingingInputArgumentsList">
                                 <!-- Dynamically Generated -->
                             </div>
                         </div>
@@ -388,18 +397,27 @@
                         <select class="form-select" id="editRouteActionToolPicked">
                             <!-- Dynamically Generated -->
                         </select>
-                        <div class="custom-tool-input-arguments d-none">
-                            <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolPickedInputArgumentsSelect">
-                                <span>Input Arguments </span>
+                        <div class="custom-tool-input-arguments d-none mt-2">
+                            <label class="form-label d-block mb-1">Input Arguments </label>
+                            <div id="editRouteActionToolPickedInputArgumentsList">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="editRouteActionToolCallMissedContainer">
+                        <label class="form-label btn-ic-span-align" for="editRouteActionToolCallMissed">
+                            <span>Call Missed Action </span>
 
-                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {route_number}, {timezone_datetime}, {call_session_id}.">
-                                    <i class="fa-regular fa-circle-question"></i>
-                                </a>
-                            </label>
-                            <select class="form-select" id="editRouteActionToolPickedInputArgumentsSelect">
-                                <option value="-1">Select Input Argument</option>
-                            </select>
-                            <div class="mt-1" id="editRouteActionToolPickedInputArgumentsList">
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call is missed/declined by the agent.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editRouteActionToolCallMissed">
+                            <!-- Dynamically Generated -->
+                        </select>
+                        <div class="custom-tool-input-arguments d-none mt-2">
+                            <label class="form-label d-block mb-1">Input Arguments </label>
+                            <div id="editRouteActionToolCallMissedInputArgumentsList">
                                 <!-- Dynamically Generated -->
                             </div>
                         </div>
@@ -415,18 +433,9 @@
                         <select class="form-select" id="editRouteActionToolEnded">
                             <!-- Dynamically Generated -->
                         </select>
-                        <div class="custom-tool-input-arguments d-none">
-                            <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolEndedInputArgumentsSelect">
-                                <span>Input Arguments </span>
-
-                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {route_number}, {timezone_datetime}, {call_session_id}, {call_started}, {conversation}, {ended_by}.">
-                                    <i class="fa-regular fa-circle-question"></i>
-                                </a>
-                            </label>
-                            <select class="form-select" id="editRouteActionToolEndedInputArgumentsSelect">
-                                <option value="-1">Select Input Argument</option>
-                            </select>
-                            <div class="mt-1" id="editRouteActionToolEndedInputArgumentsList">
+                        <div class="custom-tool-input-arguments d-none mt-2">
+                            <label class="form-label d-block mb-1">Input Arguments </label>
+                            <div id="editRouteActionToolEndedInputArgumentsList">
                                 <!-- Dynamically Generated -->
                             </div>
                         </div>

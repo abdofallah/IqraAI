@@ -487,10 +487,6 @@ function CheckTTSProviderModelManageTabHasChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
-	if (!speakingStylesAreEqual(changes.speakingStyles, CurrentTTSProviderModelData.speakingStyles)) {
-		hasChanges = true;
-	}
-
 	// Check disabled state
 	changes.disabled = manageTTSProviderModelDisabledInput.prop("checked");
 	if (changes.disabled === (CurrentTTSProviderModelData.disabledAt === null)) {

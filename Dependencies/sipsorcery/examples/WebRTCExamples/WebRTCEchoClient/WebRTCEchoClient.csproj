@@ -14,11 +14,11 @@
     <PackageReference Include="System.Net.WebSockets.Client" Version="4.3.2" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="3.0.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
-    <PackageReference Include="SIPSorceryMedia.Encoders" Version="8.0.7" />
+    <PackageReference Include="SIPSorceryMedia.Encoders" Version="10.0.4" />
   </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\SIPSorcery.csproj" />
+        <ProjectReference Include="..\..\..\src\SIPSorcery\SIPSorcery.csproj" />
     </ItemGroup>
 
 </Project>

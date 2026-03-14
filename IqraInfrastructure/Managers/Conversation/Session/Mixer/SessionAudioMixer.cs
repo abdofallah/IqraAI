@@ -60,77 +60,109 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Mixer
         {
             lock (_lock)
             {
-                _semaphore.Wait(_cts.Token);
-
-                _masterFormat.SampleRate = sampleRate;
-                _masterFormat.BitsPerSample = bits;
-                RecalculateFrameSize();
-
-                // We must convert the existing buffer if any for all channels to the new format
-                foreach (var channel in _inputs)
+                try
                 {
-                    if (!channel.Value.SpeechQueue.IsEmpty && channel.Value.SpeechQueue.TryDequeue(out var buffer))
-                    {
-                        try
-                        {
-                            var (convertedBuffer, _) = AudioConversationHelper.Convert(
-                                buffer,
-                                new()
-                                {
-                                    Encoding = AudioEncodingTypeEnum.PCM,
-                                    SampleRateHz = channel.Value.CurrentFormat!.SampleRate,
-                                    BitsPerSample = channel.Value.CurrentFormat.BitsPerSample
-                                },
-                                new()
-                                {
-                                    RequestedEncoding = AudioEncodingTypeEnum.PCM,
-                                    RequestedSampleRateHz = channel.Value.CurrentFormat!.SampleRate,
-                                    RequestedBitsPerSample = channel.Value.CurrentFormat.BitsPerSample
-                                },
-                                false
-                            );
+                    _semaphore.Wait(_cts.Token);
 
-                            channel.Value.SpeechQueue.Enqueue(convertedBuffer);
-                        }
-                        catch (Exception ex)
+                    _masterFormat.SampleRate = sampleRate;
+                    _masterFormat.BitsPerSample = bits;
+                    RecalculateFrameSize();
+
+                    // We must convert the existing buffer if any for all channels to the new format
+                    foreach (var channel in _inputs)
+                    {
+                        if (!channel.Value.SpeechQueue.IsEmpty && channel.Value.SpeechQueue.TryDequeue(out var buffer))
                         {
-                            _logger.LogError(ex, "SessionAudioMixer: Failed to convert buffer to new format for {channel}", channel.Key);
+                            try
+                            {
+                                var (convertedBuffer, _) = AudioConversationHelper.Convert(
+                                    buffer,
+                                    new()
+                                    {
+                                        Encoding = AudioEncodingTypeEnum.PCM,
+                                        SampleRateHz = channel.Value.CurrentFormat!.SampleRate,
+                                        BitsPerSample = channel.Value.CurrentFormat.BitsPerSample
+                                    },
+                                    new()
+                                    {
+                                        RequestedEncoding = AudioEncodingTypeEnum.PCM,
+                                        RequestedSampleRateHz = channel.Value.CurrentFormat!.SampleRate,
+                                        RequestedBitsPerSample = channel.Value.CurrentFormat.BitsPerSample
+                                    },
+                                    false
+                                );
+
+                                channel.Value.SpeechQueue.Enqueue(convertedBuffer);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "SessionAudioMixer: Failed to convert buffer to new format for {channel}", channel.Key);
+                            }
                         }
                     }
+
+                    _logger.LogDebug("SessionAudioMixer: Master Format updated to {Rate}Hz {Bits}bit.", sampleRate, bits);
                 }
+                finally
+                {
+                    _semaphore.Release();
+                }
+            }
+        }
 
+        public void RegisterMixer(string sourceId, int sampleRate, int bitsPerSample)
+        {
+            try
+            {
+                _semaphore.Wait(_cts.Token);
+
+                _inputs.GetOrAdd(sourceId, _ => new MixerInputChannel()
+                {
+                    CurrentFormat = new AudioFormatDetails
+                    {
+                        SampleRate = sampleRate,
+                        BitsPerSample = bitsPerSample
+                    }
+                });
+            }
+            finally
+            {
                 _semaphore.Release();
-
-                _logger.LogInformation("SessionAudioMixer: Master Format updated to {Rate}Hz {Bits}bit.", sampleRate, bits);
             }
         }
 
         // Input Management
         public void EnqueueInput(string sourceId, byte[] audioData, int sampleRate, int bitsPerSample)
         {
-            _semaphore.Wait(_cts.Token);
-            _semaphore.Release();
-
-            var channel = _inputs.GetOrAdd(sourceId, _ => new MixerInputChannel()
+            try
             {
-                CurrentFormat = new AudioFormatDetails
-                {
-                    SampleRate = sampleRate,
-                    BitsPerSample = bitsPerSample
-                }
-            });
+                _semaphore.Wait(_cts.Token);
 
-            byte[] masterAudioData = AudioMixingHelper.ResampleIfFormatMismatch(
-                audioData,
-                new AudioFormatDetails()
+                var channel = _inputs.GetOrAdd(sourceId, _ => new MixerInputChannel()
                 {
-                    SampleRate = sampleRate,
-                    BitsPerSample = bitsPerSample
-                },
-                _masterFormat
-            );
+                    CurrentFormat = new AudioFormatDetails
+                    {
+                        SampleRate = sampleRate,
+                        BitsPerSample = bitsPerSample
+                    }
+                });
 
-            channel.SpeechQueue.Enqueue(masterAudioData);
+                byte[] masterAudioData = AudioMixingHelper.ResampleIfFormatMismatch(
+                    audioData,
+                    new AudioFormatDetails()
+                    {
+                        SampleRate = sampleRate,
+                        BitsPerSample = bitsPerSample
+                    },
+                    _masterFormat
+                );
+
+                channel.SpeechQueue.Enqueue(masterAudioData);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
         public void SetBackgroundSource(string sourceId, ConversationAIAgentBackgroundAudioProvider? provider)
         {

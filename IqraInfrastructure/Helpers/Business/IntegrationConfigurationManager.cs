@@ -394,12 +394,11 @@ namespace IqraInfrastructure.Helpers.Business
                 {
                     data.FieldValues.Add(field.Id, defaultDouble);
                 }
-                else if (field.Type == "boolean" || field.Type == "select")
+                else if (field.Type == "boolean")
                 {
                     var lower = field.DefaultValue.ToLower();
-                    if (lower == "true" || lower == "on") data.FieldValues.Add(field.Id, true);
-                    else if (lower == "false" || lower == "off") data.FieldValues.Add(field.Id, false);
-                    else data.FieldValues.Add(field.Id, field.DefaultValue);
+                    if (lower == "true" || lower == "on" || lower == "yes") data.FieldValues.Add(field.Id, true);
+                    else if (lower == "false" || lower == "off" || lower == "no") data.FieldValues.Add(field.Id, false);
                 }
                 else
                 {
@@ -540,9 +539,6 @@ namespace IqraInfrastructure.Helpers.Business
                                 return result.SetFailureResult("INVALID_OPTION", $"Option '{val}' is not valid for '{field.Name}'.");
                             }
                         }
-
-                        if (val.ToLower() == "on" || val.ToLower() == "true") return result.SetSuccessResult(true);
-                        if (val.ToLower() == "off" || val.ToLower() == "false") return result.SetSuccessResult(false);
 
                         return result.SetSuccessResult(val);
                     }

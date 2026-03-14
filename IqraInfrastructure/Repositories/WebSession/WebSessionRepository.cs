@@ -11,7 +11,7 @@ namespace IqraInfrastructure.Repositories.WebSession
         private readonly IMongoCollection<WebSessionData> _webSessionCollection;
         private readonly ILogger<WebSessionRepository> _logger;
 
-        private readonly string DatabaseName = "IqraUserUsage";
+        private readonly string DatabaseName = "IqraWebSession";
         private const string WebSessionCollectionName = "WebSession";
 
         public WebSessionRepository(ILogger<WebSessionRepository> logger, IMongoClient client)

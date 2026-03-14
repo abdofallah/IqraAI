@@ -14,7 +14,7 @@ namespace IqraInfrastructure.Repositories.User
         private readonly ILogger<UserUsageRepository> _logger;
         private readonly IMongoCollection<UserUsageRecordData> _userUsageCollection;
 
-        private readonly string DatabaseName = "IqraWebSession";
+        private readonly string DatabaseName = "IqraUserUsage";
         private readonly string CollectionName = "UserUsageRecords";
 
         public UserUsageRepository(ILogger<UserUsageRepository> logger, IMongoClient client)
