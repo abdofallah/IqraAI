@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "ProjectIqraBackendProxy": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:7214;http://localhost:7215"
+    }
+  }
+}

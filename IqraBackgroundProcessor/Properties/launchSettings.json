@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "IqraBackgroundProcessor": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:7216;http://localhost:7217"
+    }
+  }
+}
