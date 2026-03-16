@@ -316,7 +316,7 @@ namespace IqraInfrastructure.Managers.Call
             //    return;
             //}
 
-            //var outboundCallQueueData = await _outboundCallQueueRepo.GetOutboundCallQueueBySessionIdAsync(outboundConversationSessionId);
+            //var outboundCallQueueData = await _outboundCallQueueRepo.GetOutboundCallQueueByIdAsync(converationStateData.QueueId!);
             //if (outboundCallQueueData == null)
             //{
             //    _logger.LogError("Unable to find outbound call queue data for outbound conversation session id {OutboundConversationSessionId}.", outboundConversationSessionId);
@@ -486,7 +486,7 @@ namespace IqraInfrastructure.Managers.Call
 
             if (converationStateData.Status != ConversationSessionState.Ended && converationStateData.Status != ConversationSessionState.Error)
             {
-                _logger.LogError("Outbound conversation session id {OutboundConversationSessionId} invalid status (not ended/error/waiting for client) {Status} to run action for reason {Reason}.", outboundConversationSessionId, converationStateData.Status.ToString(), reason);
+                _logger.LogError("Outbound conversation session id {OutboundConversationSessionId} invalid status (not ended/error) {Status} to run action for reason {Reason}.", outboundConversationSessionId, converationStateData.Status.ToString(), reason);
 
                 await _conversationStateLogsRepository.AddLogEntryAsync(
                     outboundConversationSessionId,
@@ -494,14 +494,14 @@ namespace IqraInfrastructure.Managers.Call
                     {
                         SenderType = ConversationStateLogSenderTypeEnum.Conversation,
                         Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Outbound conversation session id {outboundConversationSessionId} invalid status to run action if any for reason {reason}.",
+                        Message = $"Outbound conversation session id {outboundConversationSessionId} invalid status {converationStateData.Status.ToString()} to run action if any for reason {reason}.",
                     }
                 );
 
                 return;
             }
 
-            var outboundCallQueueData = await _outboundCallQueueRepo.GetOutboundCallQueueBySessionIdAsync(outboundConversationSessionId);
+            var outboundCallQueueData = await _outboundCallQueueRepo.GetOutboundCallQueueByIdAsync(converationStateData.QueueId!);
             if (outboundCallQueueData == null)
             {
                 _logger.LogError("Unable to find outbound call queue data for outbound conversation session id {OutboundConversationSessionId}.", outboundConversationSessionId);
@@ -1286,7 +1286,7 @@ namespace IqraInfrastructure.Managers.Call
             //    return;
             //}
 
-            //var inboundCallQueueData = await _inboundCallQueueRepository.GetInboundCallQueueBySessionIdAsync(inboundConversationSessionId);
+            //var inboundCallQueueData = await _inboundCallQueueRepository.GetInboundCallQueueBySessionIdAsync(inboundConversationSessionId); dont use by session id here
             //if (inboundCallQueueData == null)
             //{
             //    _logger.LogError("Unable to find inbound call queue data for inbound conversation session id {InboundConversationSessionId}.", inboundConversationSessionId);
@@ -1470,7 +1470,7 @@ namespace IqraInfrastructure.Managers.Call
             //    return;
             //}
 
-            //var inboundCallQueueData = await _inboundCallQueueRepository.GetInboundCallQueueBySessionIdAsync(inboundConversationSessionId);
+            //var inboundCallQueueData = await _inboundCallQueueRepository.GetInboundCallQueueBySessionIdAsync(inboundConversationSessionId); dont use by session id here
             //if (inboundCallQueueData == null)
             //{
             //    _logger.LogError("Unable to find inbound call queue data for inbound conversation session id {InboundConversationSessionId}.", inboundConversationSessionId);
@@ -1886,461 +1886,594 @@ namespace IqraInfrastructure.Managers.Call
         // Web Session
         public async Task SendWebSessionCampaignAction(string webSessionId)
         {
-            //var webSessionData = await _webSessionRepository.GetWebSessionByIdAsync(webSessionId);
-            //if (webSessionData == null)
-            //{
-            //    _logger.LogError("Unable to find web session {webSessionId} to send campaign action.", webSessionId);
-            //    return;
-            //}
+            var webSessionData = await _webSessionRepository.GetWebSessionByIdAsync(webSessionId);
+            if (webSessionData == null)
+            {
+                _logger.LogError("Unable to find web session {webSessionId} to send campaign action.", webSessionId);
+                return;
+            }
 
-            //if (webSessionData.Status == WebSessionStatusEnum.Queued ||
-            //    webSessionData.Status == WebSessionStatusEnum.ProcessingProxy ||
-            //    webSessionData.Status == WebSessionStatusEnum.ProcessedProxy ||
-            //    webSessionData.Status == WebSessionStatusEnum.ProcessingBackend
-            //) {
-            //    return;
-            //}
+            if (webSessionData.Status == WebSessionStatusEnum.Queued ||
+                webSessionData.Status == WebSessionStatusEnum.ProcessingQueue ||
+                webSessionData.Status == WebSessionStatusEnum.ProcessingBackend ||
+                webSessionData.Status == WebSessionStatusEnum.ProcessedBackend
+            )
+            {
+                return;
+            }
 
-            //var businessDataResult = await _businessManager.GetUserBusinessById(webSessionData.BusinessId, "SendWebSessionCampaignAction");
-            //if (!businessDataResult.Success)
-            //{
-            //    _logger.LogError("Unable to find business {businessId} for web session {webSessionId} to send campaign action.", webSessionData.BusinessId, webSessionId);
+            var businessDataResult = await _businessManager.GetUserBusinessById(webSessionData.BusinessId, "SendWebSessionCampaignAction");
+            if (!businessDataResult.Success)
+            {
+                _logger.LogError("Unable to find business {businessId} for web session {webSessionId} to send campaign action.", webSessionData.BusinessId, webSessionId);
 
-            //    await _webSessionRepository.AddLogAsync(
-            //        webSessionData.Id,
-            //        new WebSessionLog
-            //        {
-            //            Message = $"Unable to find business {webSessionData.BusinessId} for web session {webSessionId} to send campaign action: [{businessDataResult.Code}] {businessDataResult.Message}",
-            //            Type = WebSessionLogTypeEnum.Error
-            //        }
-            //    );
+                await _webSessionRepository.AddLogAsync(
+                    webSessionData.Id,
+                    new WebSessionLog
+                    {
+                        Message = $"Unable to find business {webSessionData.BusinessId} for web session {webSessionId} to send campaign action: [{businessDataResult.Code}] {businessDataResult.Message}",
+                        Type = WebSessionLogTypeEnum.Error
+                    }
+                );
 
-            //    return;
-            //}
-            //var businessData = businessDataResult.Data!;
+                return;
+            }
+            var businessData = businessDataResult.Data!;
 
-            //var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebSessionCampaignAction");
-            //if (!businessAppResult.Success)
-            //{
-            //    _logger.LogError("Unable to find business app for web session {webSessionId} to send campaign action.", webSessionId);
+            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebSessionCampaignAction");
+            if (!businessAppResult.Success)
+            {
+                _logger.LogError("Unable to find business app for web session {webSessionId} to send campaign action.", webSessionId);
 
-            //    await _webSessionRepository.AddLogAsync(
-            //        webSessionData.Id,
-            //        new WebSessionLog
-            //        {
-            //            Message = $"Unable to find business app for web session {webSessionId} to send campaign action: [{businessAppResult.Code}] {businessAppResult.Message} ",
-            //            Type = WebSessionLogTypeEnum.Error
-            //        }
-            //    );
+                await _webSessionRepository.AddLogAsync(
+                    webSessionData.Id,
+                    new WebSessionLog
+                    {
+                        Message = $"Unable to find business app for web session {webSessionId} to send campaign action: [{businessAppResult.Code}] {businessAppResult.Message} ",
+                        Type = WebSessionLogTypeEnum.Error
+                    }
+                );
 
-            //    return;
-            //}
-            //var businessApp = businessAppResult.Data!;
+                return;
+            }
+            var businessApp = businessAppResult.Data!;
 
-            //if (string.IsNullOrEmpty(webSessionData.WebCampaignId)) return;
+            if (string.IsNullOrEmpty(webSessionData.WebCampaignId)) return;
 
-            //var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId);
-            //if (!webCampaignResult.Success)
-            //{
-            //    await _webSessionRepository.AddLogAsync(
-            //        webSessionData.Id,
-            //        new WebSessionLog
-            //        {
-            //            Message = $"Unable to find web campaign to send campaign action if any.",
-            //            Type = WebSessionLogTypeEnum.Error
-            //        }
-            //    );
+            var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId);
+            if (!webCampaignResult.Success)
+            {
+                await _webSessionRepository.AddLogAsync(
+                    webSessionData.Id,
+                    new WebSessionLog
+                    {
+                        Message = $"Unable to find web campaign to send campaign action if any.",
+                        Type = WebSessionLogTypeEnum.Error
+                    }
+                );
 
-            //    return;
-            //}
-            //var webCampaignData = webCampaignResult.Data!;
+                return;
+            }
+            var webCampaignData = webCampaignResult.Data!;
 
-            //if (webSessionData.Status == WebSessionStatusEnum.Failed || webSessionData.Status == WebSessionStatusEnum.Canceled)
-            //{
-            //    if (string.IsNullOrEmpty(webCampaignData.Actions.ConversationInitiationFailureTool.ToolId)) return;
+            if (webSessionData.Status == WebSessionStatusEnum.Failed || webSessionData.Status == WebSessionStatusEnum.Canceled)
+            {
+                if (string.IsNullOrEmpty(webCampaignData.Actions.ConversationInitiationFailureTool.ToolId)) return;
 
-            //    var failureToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(webSessionData.BusinessId, webCampaignData.Actions.ConversationInitiationFailureTool.ToolId);
-            //    if (failureToolData == null)
-            //    {
-            //        await _webSessionRepository.AddLogAsync(
-            //            webSessionData.Id,
-            //            new WebSessionLog
-            //            {
-            //                Message = $"Unable to find web campaign call initiation failure tool to find and send campaign action.",
-            //                Type = WebSessionLogTypeEnum.Error
-            //            }
-            //        );
+                var failureToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(webSessionData.BusinessId, webCampaignData.Actions.ConversationInitiationFailureTool.ToolId);
+                if (failureToolData == null)
+                {
+                    await _webSessionRepository.AddLogAsync(
+                        webSessionData.Id,
+                        new WebSessionLog
+                        {
+                            Message = $"Unable to find web campaign call initiation failure tool to find and send campaign action.",
+                            Type = WebSessionLogTypeEnum.Error
+                        }
+                    );
 
-            //        return;
-            //    }
+                    return;
+                }
 
-            //    CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
-            //    toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
-            //    var failureArgumentsResult = GetWebCampaignConversationInitiationFailureArguements(webSessionData);
-            //    if (!failureArgumentsResult.Success)
-            //    {
-            //        await _webSessionRepository.AddLogAsync(
-            //            webSessionData.Id,
-            //            new WebSessionLog
-            //            {
-            //                Message = $"Unable to get web campaign call initiation failure tool arguements. [{failureArgumentsResult.Code}] {failureArgumentsResult.Message} ",
-            //                Type = WebSessionLogTypeEnum.Error
-            //            }
-            //        );
+                var failureArgumentsResult = GetWebCampaignConversationInitiationFailureArguements(webSessionData);
+                if (!failureArgumentsResult.Success)
+                {
+                    await _webSessionRepository.AddLogAsync(
+                        webSessionData.Id,
+                        new WebSessionLog
+                        {
+                            Message = $"Unable to get web campaign call initiation failure tool arguements. [{failureArgumentsResult.Code}] {failureArgumentsResult.Message} ",
+                            Type = WebSessionLogTypeEnum.Error
+                        }
+                    );
 
-            //        return;
-            //    }
-            //    var failureArguments = failureArgumentsResult.Data!;
+                    return;
+                }
+                var failureArguments = failureArgumentsResult.Data!;
 
-            //    var finalToolArguments = new Dictionary<string, object?>();
-            //    var configuredArguments = webCampaignData.Actions.ConversationInitiationFailureTool.Arguments;
-            //    if (configuredArguments != null)
-            //    {
-            //        foreach (var configuredArg in configuredArguments)
-            //        {
-            //            var argumentName = configuredArg.Key;
-            //            var argumentTemplate = configuredArg.Value;
+                var finalToolArguments = new Dictionary<string, object?>();
+                var configuredArguments = webCampaignData.Actions.ConversationInitiationFailureTool.Arguments;
+                if (configuredArguments != null)
+                {
+                    foreach (var configuredArg in configuredArguments)
+                    {
+                        var argumentName = configuredArg.Key;
+                        var argumentTemplate = configuredArg.Value;
 
-            //            var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
-            //                argumentTemplate.ToString()!,
-            //                failureArguments
-            //            );
+                        var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
+                            argumentTemplate.ToString()!,
+                            failureArguments
+                        );
 
-            //            finalToolArguments[argumentName] = processedValue;
-            //        }
-            //    }
+                        finalToolArguments[argumentName] = processedValue;
+                    }
+                }
 
-            //    var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
-            //        failureToolData,
-            //        finalToolArguments,
-            //        CancellationToken.None
-            //    );
-            //    if (!executeActionToolResult.Success)
-            //    {
-            //        await _webSessionRepository.AddLogAsync(
-            //            webSessionData.Id,
-            //            new WebSessionLog
-            //            {
-            //                Message = $"Unable to execute web campaign call initiation failure tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
-            //                Type = WebSessionLogTypeEnum.Error
-            //            }
-            //        );
+                var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
+                    failureToolData,
+                    finalToolArguments,
+                    CancellationToken.None
+                );
+                if (!executeActionToolResult.Success)
+                {
+                    await _webSessionRepository.AddLogAsync(
+                        webSessionData.Id,
+                        new WebSessionLog
+                        {
+                            Message = $"Unable to execute web campaign call initiation failure tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
+                            Type = WebSessionLogTypeEnum.Error
+                        }
+                    );
 
-            //        return;
-            //    }
-            //    else
-            //    {
-            //        await _webSessionRepository.AddLogAsync(
-            //            webSessionData.Id,
-            //            new WebSessionLog
-            //            {
-            //                Message = $"Web campaign call initiation failure tool response:\n```{executeActionToolResult.Data}```",
-            //                Type = WebSessionLogTypeEnum.Information
-            //            }
-            //        );
-            //    }
+                    return;
+                }
+                else
+                {
+                    await _webSessionRepository.AddLogAsync(
+                        webSessionData.Id,
+                        new WebSessionLog
+                        {
+                            Message = $"Web campaign call initiation failure tool response:\n```{executeActionToolResult.Data}```",
+                            Type = WebSessionLogTypeEnum.Information
+                        }
+                    );
+                }
 
-            //    return;
-            //}
-            //else if (webSessionData.Status == WebSessionStatusEnum.ProcessedBackend)
-            //{
-            //    if (string.IsNullOrEmpty(webCampaignData.Actions.ConversationInitiatedTool.ToolId)) return;
+                return;
+            }
+            else
+            {
+                await _webSessionRepository.AddLogAsync(
+                    webSessionData.Id,
+                    new WebSessionLog
+                    {
+                        Message = $"Web session status is not failed or canceled. Status: {webSessionData.Status}.",
+                        Type = WebSessionLogTypeEnum.Error
+                    }
+                );
 
-            //    var conversationState = await _conversationStateRepository.GetByIdAsync(webSessionData.SessionId!);
-            //    if (conversationState == null)
-            //    {
-            //        await _webSessionRepository.AddLogAsync(
-            //            webSessionData.Id,
-            //            new WebSessionLog
-            //            {
-            //                Message = $"Unable to find web session conversation to send initiated campaign action.",
-            //                Type = WebSessionLogTypeEnum.Error
-            //            }
-            //        );
-            //    }
-
-            //    var initiatedToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(webSessionData.BusinessId, webCampaignData.Actions.ConversationInitiatedTool.ToolId);
-            //    if (initiatedToolData == null)
-            //    {
-            //        await _webSessionRepository.AddLogAsync(
-            //            webSessionData.Id,
-            //            new WebSessionLog
-            //            {
-            //                Message = $"Unable to find web campaign initiated tool to find and send initiated campaign action.",
-            //                Type = WebSessionLogTypeEnum.Error
-            //            }
-            //        );
-
-            //        return;
-            //    }
-
-            //    CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
-            //    toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
-
-            //    var initiatedArgumentsResult = GetWebCampaignConversationInitiatedArguements(webSessionData, conversationState);
-            //    if (!initiatedArgumentsResult.Success)
-            //    {
-            //        await _webSessionRepository.AddLogAsync(
-            //            webSessionData.Id,
-            //            new WebSessionLog
-            //            {
-            //                Message = $"Unable to get web campaign initiated tool arguements. [{initiatedArgumentsResult.Code}] {initiatedArgumentsResult.Message} ",
-            //                Type = WebSessionLogTypeEnum.Error
-            //            }
-            //        );
-
-            //        return;
-            //    }
-
-            //    var finalToolArguments = new Dictionary<string, object?>();
-            //    var configuredArguments = webCampaignData.Actions.ConversationInitiatedTool.Arguments;
-            //    if (configuredArguments != null)
-            //    {
-            //        foreach (var configuredArg in configuredArguments)
-            //        {
-            //            var argumentName = configuredArg.Key;
-            //            var argumentTemplate = configuredArg.Value;
-
-            //            var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
-            //                argumentTemplate.ToString()!,
-            //                initiatedArgumentsResult.Data!
-            //            );
-
-            //            finalToolArguments[argumentName] = processedValue;
-            //        }
-            //    }
-
-            //    var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
-            //        initiatedToolData,
-            //        finalToolArguments,
-            //        CancellationToken.None
-            //    );
-            //    if (!executeActionToolResult.Success)
-            //    {
-            //        await _webSessionRepository.AddLogAsync(
-            //            webSessionData.Id,
-            //            new WebSessionLog
-            //            {
-            //                Message = $"Unable to execute web campaign initiated tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
-            //                Type = WebSessionLogTypeEnum.Error
-            //            }
-            //        );
-
-            //        return;
-            //    }
-            //    else
-            //    {
-            //        await _webSessionRepository.AddLogAsync(
-            //            webSessionData.Id,
-            //            new WebSessionLog
-            //            {
-            //                Message = $"Web campaign initiated tool response:\n```{executeActionToolResult.Message}```",
-            //                Type = WebSessionLogTypeEnum.Information
-            //            }
-            //        );
-            //    }
-
-            //    return;
-            //}
+                return;
+            }
         }
-        public async Task SendWebConversationSessionCampaignAction(string webConversationSessionId)
+        public async Task SendWebConversationSessionInitiatedCampaignAction(string webConversationSessionId)
         {
-            //var converationStateData = await _conversationStateRepository.GetByIdAsync(webConversationSessionId);
-            //if (converationStateData == null)
-            //{
-            //    _logger.LogError("Unable to find conversation state data for web conversation session id {WebConversationSessionId} to run action.", webConversationSessionId);
-            //    return;
-            //}
+            var converationStateData = await _conversationStateRepository.GetByIdAsync(webConversationSessionId);
+            if (converationStateData == null)
+            {
+                _logger.LogError("Unable to find conversation state data for web conversation session id {WebConversationSessionId} to run initiated action.", webConversationSessionId);
+                return;
+            }
 
-            //if (converationStateData.Status != ConversationSessionState.Ended && converationStateData.Status != ConversationSessionState.Error)
-            //{
-            //    _logger.LogError("Web conversation session id {WebConversationSessionId} invalid status (not ended/error/waiting for client) {Status} to run action.", webConversationSessionId, converationStateData.Status.ToString());
+            if (converationStateData.Status == ConversationSessionState.Created || converationStateData.Status == ConversationSessionState.WaitingForPrimaryClient)
+            {
+                _logger.LogError("Conversation state is status {ConverationStateStatus} for web conversation session id {WebConversationSessionId} to run initiated action.", converationStateData.Status, webConversationSessionId);
+                
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Conversation state is status {converationStateData.Status} for web conversation session id {webConversationSessionId} to run initiated action.",
+                    }
+                );
 
-            //    await _conversationStateLogsRepository.AddLogEntryAsync(
-            //        webConversationSessionId,
-            //        new ConversationStateLogEntry
-            //        {
-            //            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-            //            Level = ConversationStateLogLevelEnum.Error,
-            //            Message = $"Web conversation session id {webConversationSessionId} invalid status to run action if any.",
-            //        }
-            //    );
+                return;
+            }
 
-            //    return;
-            //}
+            var webSessionData = await _webSessionRepository.GetWebSessionByIdAsync(webConversationSessionId);
+            if (webSessionData == null)
+            {
+                _logger.LogError("Unable to find web session data for web conversation session id {WebConversationSessionId}.", webConversationSessionId);
 
-            //var webSessionData = await _webSessionRepository.GetWebSessionBySessionIdAsync(webConversationSessionId);
-            //if (webSessionData == null)
-            //{
-            //    _logger.LogError("Unable to find web session data for web conversation session id {WebConversationSessionId}.", webConversationSessionId);
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find web session data for web conversation session id {webConversationSessionId} to run initiated action.",
+                    }
+                );
 
-            //    await _conversationStateLogsRepository.AddLogEntryAsync(
-            //        webConversationSessionId,
-            //        new ConversationStateLogEntry
-            //        {
-            //            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-            //            Level = ConversationStateLogLevelEnum.Error,
-            //            Message = $"Unable to find web session data for web conversation session id {webConversationSessionId} to run action if any.",
-            //        }
-            //    );
+                return;
+            }
 
-            //    return;
-            //}
+            if (webSessionData.Status != WebSessionStatusEnum.ProcessedBackend)
+            {
+                _logger.LogError("Web session status is not processed backend for web conversation session id {WebConversationSessionId}.", webConversationSessionId);
 
-            //var businessDataResult = await _businessManager.GetUserBusinessById(webSessionData.BusinessId, "SendWebConversationSessionCampaignAction");
-            //if (!businessDataResult.Success)
-            //{
-            //    _logger.LogError("Unable to find business data for web session id {WebSessionId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, webSessionData.Id);
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Web session status is not processed backend for web conversation session id {webConversationSessionId} to run initiated action.",
+                    }
+                );
 
-            //    await _conversationStateLogsRepository.AddLogEntryAsync(
-            //        webConversationSessionId,
-            //        new ConversationStateLogEntry
-            //        {
-            //            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-            //            Level = ConversationStateLogLevelEnum.Error,
-            //            Message = $"Unable to find business data for web session id {webSessionData.Id} to send web campaign action if any.",
-            //        }
-            //    );
-            //    return;
-            //}
-            //var businessData = businessDataResult.Data!;
+                return;
+            }
 
-            //var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebConversationSessionCampaignAction");
-            //if (!businessAppResult.Success)
-            //{
-            //    _logger.LogError("Unable to find business app data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, businessData.Id);
+            var businessDataResult = await _businessManager.GetUserBusinessById(webSessionData.BusinessId, "SendWebConversationSessionInitiatedCampaignAction");
+            if (!businessDataResult.Success)
+            {
+                _logger.LogError("Unable to find business data for web session id {WebSessionId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, webSessionData.Id);
 
-            //    await _conversationStateLogsRepository.AddLogEntryAsync(
-            //        webConversationSessionId,
-            //        new ConversationStateLogEntry
-            //        {
-            //            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-            //            Level = ConversationStateLogLevelEnum.Error,
-            //            Message = $"Unable to find business app data for business id {businessData.Id} to send web campaign action if any.",
-            //        }
-            //    );
-            //    return;
-            //}
-            //var businessApp = businessAppResult.Data!;
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business data for web session id {webSessionData.Id} to send web campaign initiated action.",
+                    }
+                );
+                return;
+            }
+            var businessData = businessDataResult.Data!;
 
-            //if (string.IsNullOrEmpty(webSessionData.WebCampaignId)) return;
+            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebConversationSessionInitiatedCampaignAction");
+            if (!businessAppResult.Success)
+            {
+                _logger.LogError("Unable to find business app data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, businessData.Id);
 
-            //var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId);
-            //if (!webCampaignResult.Success)
-            //{
-            //    _logger.LogError("Unable to find web campaign data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, businessData.Id);
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business app data for business id {businessData.Id} to send web campaign initiated action.",
+                    }
+                );
+                return;
+            }
+            var businessApp = businessAppResult.Data!;
 
-            //    await _conversationStateLogsRepository.AddLogEntryAsync(
-            //        webConversationSessionId,
-            //        new ConversationStateLogEntry
-            //        {
-            //            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-            //            Level = ConversationStateLogLevelEnum.Error,
-            //            Message = $"Unable to find web campaign data to send session campaign action if any.",
-            //        }
-            //    );
-            //    return;
-            //}
-            //var webCampaignData = webCampaignResult.Data!;
+            if (string.IsNullOrEmpty(webSessionData.WebCampaignId)) return;
 
-            //if (
-            //    converationStateData.EndType == ConversationSessionEndType.UserEndedCall ||
-            //    converationStateData.EndType == ConversationSessionEndType.AgentEndedCall ||
-            //    converationStateData.EndType == ConversationSessionEndType.UserSilenceTimeoutReached ||
-            //    converationStateData.EndType == ConversationSessionEndType.MaxConversationDurationReached ||
-            //    converationStateData.EndType == ConversationSessionEndType.MidSessionFailure
-            //) {
-            //    if (string.IsNullOrEmpty(webCampaignData.Actions.ConversationEndedTool.ToolId)) return;
+            var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId);
+            if (!webCampaignResult.Success)
+            {
+                _logger.LogError("Unable to find web campaign data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, businessData.Id);
 
-            //    var conversationEndedToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(webSessionData.BusinessId, webCampaignData.Actions.ConversationEndedTool.ToolId!);
-            //    if (conversationEndedToolData == null)
-            //    {
-            //        await _conversationStateLogsRepository.AddLogEntryAsync(
-            //            webConversationSessionId,
-            //            new ConversationStateLogEntry
-            //            {
-            //                SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-            //                Level = ConversationStateLogLevelEnum.Error,
-            //                Message = $"Unable to find conversation ended tool data with id {webCampaignData.Actions.ConversationEndedTool.ToolId} for web conversation session id {webConversationSessionId} to send conversation end action.",
-            //            }
-            //        );
-            //        return;
-            //    }
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find web campaign data to send session campaign initiated action.",
+                    }
+                );
+                return;
+            }
+            var webCampaignData = webCampaignResult.Data!;
 
-            //    CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
-            //    toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+            if (webCampaignData.Actions.ConversationInitiatedTool == null || string.IsNullOrEmpty(webCampaignData.Actions.ConversationInitiatedTool.ToolId)) return;
 
-            //    var callEndedArgumentsResult = GetWebCampaignConversationEndArguements(webSessionData, converationStateData);
-            //    if (!callEndedArgumentsResult.Success)
-            //    {
-            //        await _conversationStateLogsRepository.AddLogEntryAsync(
-            //            webConversationSessionId,
-            //            new ConversationStateLogEntry
-            //            {
-            //                SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-            //                Level = ConversationStateLogLevelEnum.Error,
-            //                Message = $"Unable to get call end arguments for web conversation session id {webConversationSessionId} to send conversation end action: [{callEndedArgumentsResult.Code}] {callEndedArgumentsResult.Message}.",
-            //            }
-            //        );
+            var conversationInitiatedToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(webSessionData.BusinessId, webCampaignData.Actions.ConversationInitiatedTool.ToolId);
+            if (conversationInitiatedToolData == null)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find conversation initiated tool data with id {webCampaignData.Actions.ConversationInitiatedTool.ToolId} for web conversation session id {webConversationSessionId} to send conversation initiated action.",
+                    }
+                );
+                return;
+            }
 
-            //        return;
-            //    }
-            //    var callEndedArguments = callEndedArgumentsResult.Data!;
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
-            //    var finalToolArguments = new Dictionary<string, object?>();
-            //    var configuredArguments = webCampaignData.Actions.ConversationEndedTool.Arguments;
-            //    if (configuredArguments != null)
-            //    {
-            //        foreach (var configuredArg in configuredArguments)
-            //        {
-            //            var argumentName = configuredArg.Key;
-            //            var argumentTemplate = configuredArg.Value;
+            var callInitiatedArgumentsResult = GetWebCampaignConversationInitiatedArguements(webSessionData, converationStateData);
+            if (!callInitiatedArgumentsResult.Success)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to get call initiated arguments for web conversation session id {webConversationSessionId} to send conversation initiated action:[{callInitiatedArgumentsResult.Code}] {callInitiatedArgumentsResult.Message}.",
+                    }
+                );
 
-            //            var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
-            //                argumentTemplate.ToString()!,
-            //                callEndedArguments
-            //            );
+                return;
+            }
+            var callInitiatedArguments = callInitiatedArgumentsResult.Data!;
 
-            //            finalToolArguments[argumentName] = processedValue;
-            //        }
-            //    }
+            var finalToolArguments = new Dictionary<string, object?>();
+            var configuredArguments = webCampaignData.Actions.ConversationInitiatedTool.Arguments;
+            if (configuredArguments != null)
+            {
+                foreach (var configuredArg in configuredArguments)
+                {
+                    var argumentName = configuredArg.Key;
+                    var argumentTemplate = configuredArg.Value;
 
-            //    var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
-            //        conversationEndedToolData,
-            //        finalToolArguments,
-            //        CancellationToken.None
-            //    );
-            //    if (!executeActionToolResult.Success)
-            //    {
-            //        await _conversationStateLogsRepository.AddLogEntryAsync(
-            //            webConversationSessionId,
-            //            new ConversationStateLogEntry
-            //            {
-            //                SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-            //                Level = ConversationStateLogLevelEnum.Error,
-            //                Message = $"Unable to execute conversation ended tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
-            //            }
-            //        );
+                    var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
+                        argumentTemplate.ToString()!,
+                        callInitiatedArguments
+                    );
 
-            //        return;
-            //    }
-            //    else
-            //    {
-            //        await _conversationStateLogsRepository.AddLogEntryAsync(
-            //            webConversationSessionId,
-            //            new ConversationStateLogEntry
-            //            {
-            //                SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-            //                Level = ConversationStateLogLevelEnum.Information,
-            //                Message = $"Web campaign conversation ended tool response:\n```{executeActionToolResult.Data}```",
-            //            }
-            //        );
-            //    }
+                    finalToolArguments[argumentName] = processedValue;
+                }
+            }
 
-            //    return;
-            //}
+            var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
+                conversationInitiatedToolData,
+                finalToolArguments,
+                CancellationToken.None
+            );
+
+            if (!executeActionToolResult.Success)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to execute conversation initiated tool.[{executeActionToolResult.Code}] {executeActionToolResult.Message}",
+                    }
+                );
+
+                return;
+            }
+            else
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Information,
+                        Message = $"Web campaign conversation initiated tool response:\n```{executeActionToolResult.Data}```",
+                    }
+                );
+            }
         }
+        public async Task SendWebConversationSessionEndedCampaignAction(string webConversationSessionId)
+        {
+            var converationStateData = await _conversationStateRepository.GetByIdAsync(webConversationSessionId);
+            if (converationStateData == null)
+            {
+                _logger.LogError("Unable to find conversation state data for web conversation session id {WebConversationSessionId} to run action.", webConversationSessionId);
+                return;
+            }
+
+            if (converationStateData.Status != ConversationSessionState.Ended && converationStateData.Status != ConversationSessionState.Error)
+            {
+                _logger.LogError("Web conversation session id {WebConversationSessionId} invalid status (not ended/error/waiting for client) {Status} to run action.", webConversationSessionId, converationStateData.Status.ToString());
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Web conversation session id {webConversationSessionId} invalid status to run action if any.",
+                    }
+                );
+
+                return;
+            }
+
+            var webSessionData = await _webSessionRepository.GetWebSessionByIdAsync(converationStateData.WebSessionId!);
+            if (webSessionData == null)
+            {
+                _logger.LogError("Unable to find web session data for web conversation session id {WebConversationSessionId}.", webConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find web session data for web conversation session id {webConversationSessionId} to run action if any.",
+                    }
+                );
+
+                return;
+            }
+
+            var businessDataResult = await _businessManager.GetUserBusinessById(webSessionData.BusinessId, "SendWebConversationSessionCampaignAction");
+            if (!businessDataResult.Success)
+            {
+                _logger.LogError("Unable to find business data for web session id {WebSessionId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, webSessionData.Id);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business data for web session id {webSessionData.Id} to send web campaign action if any.",
+                    }
+                );
+                return;
+            }
+            var businessData = businessDataResult.Data!;
+
+            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebConversationSessionCampaignAction");
+            if (!businessAppResult.Success)
+            {
+                _logger.LogError("Unable to find business app data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, businessData.Id);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business app data for business id {businessData.Id} to send web campaign action if any.",
+                    }
+                );
+                return;
+            }
+            var businessApp = businessAppResult.Data!;
+
+            if (string.IsNullOrEmpty(webSessionData.WebCampaignId)) return;
+
+            var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId);
+            if (!webCampaignResult.Success)
+            {
+                _logger.LogError("Unable to find web campaign data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, businessData.Id);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find web campaign data to send session campaign action if any.",
+                    }
+                );
+                return;
+            }
+            var webCampaignData = webCampaignResult.Data!;
+
+            if (
+                converationStateData.EndType == ConversationSessionEndType.UserEndedCall ||
+                converationStateData.EndType == ConversationSessionEndType.AgentEndedCall ||
+                converationStateData.EndType == ConversationSessionEndType.UserSilenceTimeoutReached ||
+                converationStateData.EndType == ConversationSessionEndType.MaxConversationDurationReached ||
+                converationStateData.EndType == ConversationSessionEndType.MidSessionFailure
+            )
+            {
+                if (string.IsNullOrEmpty(webCampaignData.Actions.ConversationEndedTool.ToolId)) return;
+
+                var conversationEndedToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(webSessionData.BusinessId, webCampaignData.Actions.ConversationEndedTool.ToolId!);
+                if (conversationEndedToolData == null)
+                {
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
+                        webConversationSessionId,
+                        new ConversationStateLogEntry
+                        {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
+                            Message = $"Unable to find conversation ended tool data with id {webCampaignData.Actions.ConversationEndedTool.ToolId} for web conversation session id {webConversationSessionId} to send conversation end action.",
+                        }
+                    );
+                    return;
+                }
+
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+
+                var callEndedArgumentsResult = GetWebCampaignConversationEndArguements(webSessionData, converationStateData);
+                if (!callEndedArgumentsResult.Success)
+                {
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
+                        webConversationSessionId,
+                        new ConversationStateLogEntry
+                        {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
+                            Message = $"Unable to get call end arguments for web conversation session id {webConversationSessionId} to send conversation end action: [{callEndedArgumentsResult.Code}] {callEndedArgumentsResult.Message}.",
+                        }
+                    );
+
+                    return;
+                }
+                var callEndedArguments = callEndedArgumentsResult.Data!;
+
+                var finalToolArguments = new Dictionary<string, object?>();
+                var configuredArguments = webCampaignData.Actions.ConversationEndedTool.Arguments;
+                if (configuredArguments != null)
+                {
+                    foreach (var configuredArg in configuredArguments)
+                    {
+                        var argumentName = configuredArg.Key;
+                        var argumentTemplate = configuredArg.Value;
+
+                        var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
+                            argumentTemplate.ToString()!,
+                            callEndedArguments
+                        );
+
+                        finalToolArguments[argumentName] = processedValue;
+                    }
+                }
+
+                var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
+                    conversationEndedToolData,
+                    finalToolArguments,
+                    CancellationToken.None
+                );
+                if (!executeActionToolResult.Success)
+                {
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
+                        webConversationSessionId,
+                        new ConversationStateLogEntry
+                        {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Error,
+                            Message = $"Unable to execute conversation ended tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
+                        }
+                    );
+
+                    return;
+                }
+                else
+                {
+                    await _conversationStateLogsRepository.AddLogEntryAsync(
+                        webConversationSessionId,
+                        new ConversationStateLogEntry
+                        {
+                            SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                            Level = ConversationStateLogLevelEnum.Information,
+                            Message = $"Web campaign conversation ended tool response:\n```{executeActionToolResult.Data}```",
+                        }
+                    );
+                }
+
+                return;
+            }
+            else
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Invalid end type {converationStateData.EndType} for web conversation session id {webConversationSessionId} to send conversation end action.",
+                    }
+                );
+            }
+        }
+
 
         private FunctionReturnResult<Dictionary<string, object?>?> GetWebCampaignConversationInitiationFailureArguements(WebSessionData webSessionData)
         {

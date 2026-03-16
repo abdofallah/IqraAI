@@ -249,6 +249,25 @@ namespace IqraInfrastructure.Repositories.WebSession
             }
         }
 
+        public async Task<bool> AddLogAsync(string id, WebSessionLog webSessionLog)
+        {
+            try
+            {
+                var filter = Builders<WebSessionData>.Filter.Eq(x => x.Id, id);
+                var update = Builders<WebSessionData>.Update
+                    .Push(x => x.Logs, webSessionLog);
+
+                var result = await _webSessionCollection.UpdateOneAsync(filter, update);
+
+                return result.IsAcknowledged;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in AddLogAsync");
+                return false;
+            }
+        }
+
         public async Task<bool> UpdateStatusProcessedBackendWithServerIdAndWebsocketURL(string webSessionId, string sessionId, string websocketUrl)
         {
             try

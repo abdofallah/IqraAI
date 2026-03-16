@@ -8,8 +8,8 @@ namespace IqraInfrastructure.Managers.Server.Metrics.Monitor.Hardware
     {
         private readonly ILogger<LinuxHardwareMonitor> _logger;
 
-        private const string ProcStatPath = "/proc/stat";
-        private const string ProcMemInfoPath = "/proc/meminfo";
+        private readonly string ProcStatPath;
+        private readonly string ProcMemInfoPath;
         private readonly string _networkRxBytesPath;
         private readonly string _networkTxBytesPath;
 
@@ -24,7 +24,8 @@ namespace IqraInfrastructure.Managers.Server.Metrics.Monitor.Hardware
 
         public LinuxHardwareMonitor(
             ILogger<LinuxHardwareMonitor> logger,
-            string networkInterfaceName
+            string networkInterfaceName,
+            bool isDockerContainer
         ) {
             _logger = logger;
 
@@ -33,8 +34,12 @@ namespace IqraInfrastructure.Managers.Server.Metrics.Monitor.Hardware
                 throw new PlatformNotSupportedException("LinuxHardwareMonitor can only run on Linux.");
             }
 
-            _networkRxBytesPath = $"/sys/class/net/{networkInterfaceName}/statistics/rx_bytes";
-            _networkTxBytesPath = $"/sys/class/net/{networkInterfaceName}/statistics/tx_bytes";
+            ProcStatPath = isDockerContainer ? "/host/proc/stat" : "/proc/stat";
+            ProcMemInfoPath = isDockerContainer ? "/host/proc/meminfo" : "/proc/meminfo";
+
+            string networkBasePath = isDockerContainer ? "/host/sys/class/net" : "/sys/class/net";
+            _networkRxBytesPath = $"{networkBasePath}/{networkInterfaceName}/statistics/rx_bytes";
+            _networkTxBytesPath = $"{networkBasePath}/{networkInterfaceName}/statistics/tx_bytes";
         }
 
         public async Task InitializeAsync()

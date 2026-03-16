@@ -290,7 +290,8 @@ namespace IqraBackgroundProcessor
                 {
                     return new LinuxHardwareMonitor(
                         sp.GetRequiredService<ILogger<LinuxHardwareMonitor>>(),
-                        appConfig["Hardware:NetworkInterfaceName"]
+                        appConfig["Hardware:NetworkInterfaceName"],
+                        bool.Parse(appConfig["Hardware:IsDockerContainer"])
                     );
                 }
                 else

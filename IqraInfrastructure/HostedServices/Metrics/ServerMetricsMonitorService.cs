@@ -25,7 +25,7 @@ namespace IqraInfrastructure.HostedServices.Metrics
         // Proxy
         private readonly OutboundCallProcessorService? _outboundCallProcessorService;
 
-        private readonly TimeSpan _updateInterval = TimeSpan.FromMilliseconds(10);
+        private readonly TimeSpan _updateInterval = TimeSpan.FromMilliseconds(400);
 
         public ServerMetricsMonitorService(
             IServiceProvider serviceProvider,

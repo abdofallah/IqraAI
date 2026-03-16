@@ -1,12 +1,13 @@
-# Exclude git and VS folders
+# Exclude git and IDE folders
 **/.git
 **/.vs
 **/.vscode
 
-# Exclude build artifacts
+# Exclude local build artifacts
 **/bin
 **/obj
+**/TestResults
 
-# EXCLUDE ALL APPSETTINGS
+# STRICTLY EXCLUDE ALL APPSETTINGS
 **/appsettings.json
 **/appsettings.*.json

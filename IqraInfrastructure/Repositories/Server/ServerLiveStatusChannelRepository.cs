@@ -3,6 +3,7 @@ using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Metrics;
 using IqraInfrastructure.Repositories.Redis;
 using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Repositories.Server
@@ -46,9 +47,9 @@ namespace IqraInfrastructure.Repositories.Server
                 var key = $"server:status:{regionId}:{status.NodeId}";
 
                 // Update status
-                await db.StringSetAsync(key, json, _statusExpiry);
+                await db.StringSetAsync(key, json, _statusExpiry, flags: CommandFlags.FireAndForget);
                 // Publish update notification
-                await db.PublishAsync($"{key}:updates", json);
+                await db.PublishAsync($"{key}:updates", json, CommandFlags.FireAndForget);
             }
             catch (Exception ex)
             {

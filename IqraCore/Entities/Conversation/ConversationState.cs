@@ -15,9 +15,11 @@ namespace IqraCore.Entities.Conversation
 
 
         public ConversationSessionInitiationType SessionInitiationType { get; set; }
+        // Telephony (inbound vs outbound)
         public string? QueueId { get; set; }
         public string? QueueInboundRouteId { get; set; }
         public string? QueueTelephonyCampaignId { get; set; }
+        // Web
         public string? WebSessionId { get; set; }
         public string? WebSessionWebCampaignId { get; set; }
 

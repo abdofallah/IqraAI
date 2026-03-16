@@ -22,7 +22,11 @@
     // Estimated download bandwidth available to this server (used for capacity planning).
     "MaxNetworkDownloadMbps": 200,
     // Estimated upload bandwidth available to this server (used for capacity planning).
-    "MaxNetworkUploadMbps": 50
+    "MaxNetworkUploadMbps": 50,
+    // Whether the app is running in a Docker container
+    // (in which case for monitor intead of using the container info uses the host)
+    // (make sure to mount `/proc:/host/proc:ro`, `/sys:/host/sys:ro`)
+    "IsDockerContainer": false
   },
 
   "Cors": {

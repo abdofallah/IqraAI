@@ -802,7 +802,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 }
                 else if (IsWebInitiated)
                 {
-                    //_ = _campaignActionExecutorService.SendWebSessionCampaignAction(WebSessionData!.Id);
+                    _ = _campaignActionExecutorService.SendWebConversationSessionInitiatedCampaignAction(SessionId);
                 }
 
                 return result.SetSuccessResult();
@@ -957,7 +957,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 }
                 else if (IsWebInitiated)
                 {
-                    _ = _campaignActionExecutorService.SendWebConversationSessionCampaignAction(SessionId);
+                    _ = _campaignActionExecutorService.SendWebConversationSessionEndedCampaignAction(SessionId);
                 }
                 
             }

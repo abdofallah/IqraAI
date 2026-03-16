@@ -1,12 +1,16 @@
 {
   // url where the dashboard is hosted without trailing slash (currently used for email links)
-  "URL": "https://app.iqra.bot", 
+  "URL": "https://app.iqra.bot",
 
   "Hardware": {
     // CRITICAL: The OS-level name of the network interface to bind for RTP Audio (UDP).
     // Linux: Run `ip addr` (e.g., "eth0", "ens5").
     // Windows: Run `ipconfig` (e.g., "Ethernet", "vEthernet (WSL)").
-    "NetworkInterfaceName": "<network_interface_name>"
+    "NetworkInterfaceName": "<network_interface_name>",
+    // Whether the app is running in a Docker container
+    // (in which case for monitor intead of using the container info uses the host)
+    // (make sure to mount `/proc:/host/proc:ro`, `/sys:/host/sys:ro`)
+    "IsDockerContainer": false
   },
 
   "S3Storage": {

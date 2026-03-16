@@ -12,6 +12,7 @@
         public int ExpectedMaxConcurrentCalls { get; set; } = 50;
 
         // Network settings
+        public bool IsDockerContainer { get; set; } = false;
         public string NetworkInterfaceName { get; set; } = string.Empty;
         public double MaxNetworkDownloadMbps { get; set; } = 100;
         public double MaxNetworkUploadMbps { get; set; } = 100;

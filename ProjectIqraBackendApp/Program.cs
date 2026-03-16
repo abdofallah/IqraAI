@@ -104,7 +104,8 @@ namespace ProjectIqraBackendApp
                 MaxNetworkUploadMbps = int.Parse(appConfig["Hardware:MaxNetworkUploadMbps"]),
                 ApiKey = appConfig["Server:ApiKey"],
                 WebhookTokenSecret = appConfig["Server:WebhookTokenSecret"],
-                IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
+                IsCloudVersion = bool.Parse(appConfig["IsCloudVersion"] ?? "false"),
+                IsDockerContainer = bool.Parse(appConfig["Hardware:IsDockerContainer"] ?? "false"),
             };
             builder.Services.AddSingleton<BackendAppConfig>(backendAppConfig);
 
@@ -860,14 +861,15 @@ namespace ProjectIqraBackendApp
                 {
                     return new WindowsHardwareMonitor(
                         sp.GetRequiredService<ILogger<WindowsHardwareMonitor>>(),
-                        sp.GetRequiredService<BackendAppConfig>().NetworkInterfaceName
+                        backendAppConfig.NetworkInterfaceName
                     );
                 }
                 else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
                     return new LinuxHardwareMonitor(
                         sp.GetRequiredService<ILogger<LinuxHardwareMonitor>>(),
-                        sp.GetRequiredService<BackendAppConfig>().NetworkInterfaceName
+                        backendAppConfig.NetworkInterfaceName,
+                        backendAppConfig.IsDockerContainer
                     );
                 }
                 else
