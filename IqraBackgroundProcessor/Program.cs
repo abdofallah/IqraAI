@@ -30,7 +30,6 @@ using Microsoft.Extensions.Hosting.WindowsServices;
 using MongoDB.Driver;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using WebSocketSharp;
 
 namespace IqraBackgroundProcessor
 {

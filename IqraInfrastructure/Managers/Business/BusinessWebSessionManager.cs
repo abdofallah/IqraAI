@@ -8,9 +8,9 @@ using IqraCore.Entities.WebSession.Enum;
 using IqraCore.Interfaces.User;
 using IqraCore.Models.Server;
 using IqraCore.Models.WebSession;
+using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
-using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.WebSession;
 using MongoDB.Bson;
 using System.Net.Http.Headers;
@@ -28,6 +28,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly ServerSelectionManager _serverSelectionManager;
         private readonly RegionManager _regionManager;
         private readonly IHttpClientFactory _httpClientFactory;
+        private CampaignActionExecutorService _campaignActionExecutorService;
 
         private readonly JsonSerializerOptions _camelCaseSerializationOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -47,6 +48,11 @@ namespace IqraInfrastructure.Managers.Business
             _httpClientFactory = httpClientFactory;
         }
 
+        public void SetupDependencies(CampaignActionExecutorService campaignActionExecutorService)
+        {
+            _campaignActionExecutorService = campaignActionExecutorService;
+        }
+
         public async Task<FunctionReturnResult<InitiateWebSessionResultModel?>> InitiateWebSession(BusinessData businessData, InitiateWebSessionRequestModel modelData, bool isUserAdmin)
         {
             var result = new FunctionReturnResult<InitiateWebSessionResultModel?>();
@@ -58,8 +64,7 @@ namespace IqraInfrastructure.Managers.Business
                     Id = ObjectId.GenerateNewId().ToString(),
                     BusinessId = businessData.Id,
                     CreatedAt = DateTime.UtcNow,
-                    Status = WebSessionStatusEnum.Queued,
-                    Logs = new List<WebSessionLog>(),
+                    Status = WebSessionStatusEnum.Queued
                 };
                 BusinessAppWebCampaign webCampaignData;
 
@@ -317,10 +322,10 @@ namespace IqraInfrastructure.Managers.Business
                 var checkBalanceOrMinutes = await _billingValidationManager.ValidateCallPermissionAsync(businessData.Id);
                 if (!checkBalanceOrMinutes.Success)
                 {
-                    await _webSessionRepoistory.UpdateStatusAndAddLogAsync(
-                        newWebSessionData.Id,
+                    await OnUpdateWebSessionStatusAndAddLogAndSendCampaignAction(
+                        newWebSessionData,
                         WebSessionStatusEnum.Failed,
-                        new WebSessionLog {
+                        new WebSessionLogEntry {
                             Message = $"[InitiateWebSession:{checkBalanceOrMinutes.Code}] {checkBalanceOrMinutes.Message}",
                             Type = WebSessionLogTypeEnum.Error
                         }
@@ -336,10 +341,11 @@ namespace IqraInfrastructure.Managers.Business
                 if (!serverSelectionResult.Success || !serverSelectionResult.Data.Any())
                 {
                     // todo this should happen very critically but should we kill the queue because of it?
-                    await _webSessionRepoistory.UpdateStatusAndAddLogAsync(
-                        newWebSessionData.Id,
+                    await OnUpdateWebSessionStatusAndAddLogAndSendCampaignAction(
+                        newWebSessionData,
                         WebSessionStatusEnum.Failed,
-                        new WebSessionLog {
+                        new WebSessionLogEntry
+                        {
                             Message = $"[InitiateWebSession:{serverSelectionResult.Code}] {serverSelectionResult.Message}",
                             Type = WebSessionLogTypeEnum.Error
                         }
@@ -354,10 +360,11 @@ namespace IqraInfrastructure.Managers.Business
                 RegionData? regionDetails = await _regionManager.GetRegionById(newWebSessionData.RegionId);
                 if (regionDetails == null)
                 {
-                    await _webSessionRepoistory.UpdateStatusAndAddLogAsync(
-                        newWebSessionData.Id,
+                    await OnUpdateWebSessionStatusAndAddLogAndSendCampaignAction(
+                        newWebSessionData,
                         WebSessionStatusEnum.Failed,
-                        new WebSessionLog {
+                        new WebSessionLogEntry
+                        {
                             Message = $"[InitiateWebSession:REGION_NOT_FOUND] Region details for {newWebSessionData.RegionId} not found.",
                             Type = WebSessionLogTypeEnum.Error
                         }
@@ -375,16 +382,19 @@ namespace IqraInfrastructure.Managers.Business
                 };
 
                 bool successfullyForwarded = false;
+
+                string? conversationSessionId = null;
                 string? webSessionWebSocketUrl = null;
                 foreach (var optimalServer in serverSelectionResult.Data)
                 {
                     RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Id == optimalServer.ServerId && s.Type == ServerTypeEnum.Backend);
                     if (backendServerDetails == null)
                     {
-                        await _webSessionRepoistory.UpdateStatusAndAddLogAsync(
-                            newWebSessionData.Id,
+                        await OnUpdateWebSessionStatusAndAddLogAndSendCampaignAction(
+                        newWebSessionData,
                             WebSessionStatusEnum.Failed,
-                            new WebSessionLog {
+                            new WebSessionLogEntry
+                            {
                                 Message = $"[InitiateWebSession:BACKEND_SERVER_NOT_FOUND] Backend server details for {optimalServer.ServerId} not found.",
                                 Type = WebSessionLogTypeEnum.Error
                             }
@@ -395,10 +405,11 @@ namespace IqraInfrastructure.Managers.Business
                     var forwardWebSessionRequestResponse = await ForwardInitiateWebSessionRequestToBackendAsync(backendServerDetails, webSessionRequestBackendModel);
                     if (!forwardWebSessionRequestResponse.Success)
                     {
-                        await _webSessionRepoistory.UpdateStatusAndAddLogAsync(
-                            newWebSessionData.Id,
+                        await OnUpdateWebSessionStatusAndAddLogAndSendCampaignAction(
+                        newWebSessionData,
                             WebSessionStatusEnum.Failed,
-                            new WebSessionLog {
+                            new WebSessionLogEntry
+                            {
                                 Message = $"[InitiateWebSession:BACKEND_FORWARD_FAIL] Failed to forward to backend:\n\n[{forwardWebSessionRequestResponse.Code}] {forwardWebSessionRequestResponse.Message}",
                                 Type = WebSessionLogTypeEnum.Error
                             }
@@ -412,10 +423,11 @@ namespace IqraInfrastructure.Managers.Business
                         {
                             successfullyForwarded = false;
 
-                            await _webSessionRepoistory.UpdateStatusAndAddLogAsync(
-                                newWebSessionData.Id,
+                            await OnUpdateWebSessionStatusAndAddLogAndSendCampaignAction(
+                                newWebSessionData,
                                 WebSessionStatusEnum.Failed,
-                                new WebSessionLog {
+                                new WebSessionLogEntry
+                                {
                                     Message = $"[InitiateWebSession:BACKEND_CALL_PROCESS_FAIL] Backend call processing failure:\n\n[{backendResult.Code}] {backendResult.Message}",
                                     Type = WebSessionLogTypeEnum.Error
                                 }
@@ -429,6 +441,7 @@ namespace IqraInfrastructure.Managers.Business
                         else
                         {
                             successfullyForwarded = true;
+                            conversationSessionId = backendResult.Data.SessionId;
                             webSessionWebSocketUrl = backendResult.Data.WebSocketURL;
                         }
 
@@ -444,10 +457,14 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
+                // Initiated Action
+                _ = _campaignActionExecutorService.SendWebSessionCampaignAction(newWebSessionData.Id);
+
                 return result.SetSuccessResult(
                     new InitiateWebSessionResultModel()
                     {
-                        SessionId = newWebSessionData.Id,
+                        WebSessionId = newWebSessionData.Id,
+                        ConversationSessionId = conversationSessionId!,
                         SessionWebSocketURL = webSessionWebSocketUrl!
                     }
                 );
@@ -698,6 +715,19 @@ namespace IqraInfrastructure.Managers.Business
                     "ForwardInitiateWebSessionRequestToBackendAsync:GenericError",
                     $"Exception: {ex.Message}"
                 );
+            }
+        }
+
+        public async Task OnUpdateWebSessionStatusAndAddLogAndSendCampaignAction(
+            WebSessionData webSessionData,
+            WebSessionStatusEnum newStatus,
+            WebSessionLogEntry? log = null
+        ) {
+            await _webSessionRepoistory.UpdateStatusAndAddLogAsync(webSessionData.Id, newStatus, log);
+
+            if (newStatus == WebSessionStatusEnum.Failed || newStatus == WebSessionStatusEnum.Canceled || newStatus == WebSessionStatusEnum.Expired)
+            {
+                _ = _campaignActionExecutorService.SendWebSessionCampaignAction(webSessionData.Id);
             }
         }
     }

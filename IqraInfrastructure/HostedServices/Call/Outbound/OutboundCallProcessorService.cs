@@ -179,7 +179,7 @@ namespace IqraInfrastructure.HostedServices.Call.Outbound
 
                 try
                 {
-                    await _outboundCallProcessingOrchestrator.OnUpdateCallQueueStatusAndSendCampaignAction(
+                    await _outboundCallProcessingOrchestrator.OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                         call,
                         CallQueueStatusEnum.Failed,
                         new CallQueueLogEntry

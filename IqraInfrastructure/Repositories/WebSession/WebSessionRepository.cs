@@ -10,13 +10,15 @@ namespace IqraInfrastructure.Repositories.WebSession
     {
         private readonly IMongoCollection<WebSessionData> _webSessionCollection;
         private readonly ILogger<WebSessionRepository> _logger;
+        private readonly WebSessionLogsRepository _webSessionLogsRepository;
 
         private readonly string DatabaseName = "IqraWebSession";
         private const string WebSessionCollectionName = "WebSession";
 
-        public WebSessionRepository(ILogger<WebSessionRepository> logger, IMongoClient client)
+        public WebSessionRepository(ILogger<WebSessionRepository> logger, IMongoClient client, WebSessionLogsRepository webSessionLogsRepository)
         {
             _logger = logger;
+            _webSessionLogsRepository = webSessionLogsRepository;
 
             var database = client.GetDatabase(DatabaseName);
             _webSessionCollection = database.GetCollection<WebSessionData>(WebSessionCollectionName);
@@ -229,14 +231,18 @@ namespace IqraInfrastructure.Repositories.WebSession
             }
         }
 
-        public async Task<bool> UpdateStatusAndAddLogAsync(string id, WebSessionStatusEnum failed, WebSessionLog webSessionLog)
+        public async Task<bool> UpdateStatusAndAddLogAsync(string id, WebSessionStatusEnum failed, WebSessionLogEntry? log)
         {
             try
             {
                 var filter = Builders<WebSessionData>.Filter.Eq(x => x.Id, id);
                 var update = Builders<WebSessionData>.Update
-                    .Set(x => x.Status, failed)
-                    .Push(x => x.Logs, webSessionLog);
+                    .Set(x => x.Status, failed);
+
+                if (log != null)
+                {
+                    _ = await _webSessionLogsRepository.AddLogAsync(id, log);
+                }
 
                 var result = await _webSessionCollection.UpdateOneAsync(filter, update);
 
@@ -249,23 +255,9 @@ namespace IqraInfrastructure.Repositories.WebSession
             }
         }
 
-        public async Task<bool> AddLogAsync(string id, WebSessionLog webSessionLog)
+        public async Task<bool> AddLogAsync(string id, WebSessionLogEntry log)
         {
-            try
-            {
-                var filter = Builders<WebSessionData>.Filter.Eq(x => x.Id, id);
-                var update = Builders<WebSessionData>.Update
-                    .Push(x => x.Logs, webSessionLog);
-
-                var result = await _webSessionCollection.UpdateOneAsync(filter, update);
-
-                return result.IsAcknowledged;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in AddLogAsync");
-                return false;
-            }
+            return await _webSessionLogsRepository.AddLogAsync(id, log);
         }
 
         public async Task<bool> UpdateStatusProcessedBackendWithServerIdAndWebsocketURL(string webSessionId, string sessionId, string websocketUrl)

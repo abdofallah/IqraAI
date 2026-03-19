@@ -326,11 +326,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 if (businessRouteData.Actions != null)
                 {
                     // Ended
-                    if (businessRouteData.Actions.CallEndedTool != null && businessRouteData.Actions.CallEndedTool.SelectedToolId != null)
+                    if (businessRouteData.Actions.CallEndedTool != null && businessRouteData.Actions.CallEndedTool.ToolId != null)
                     {
                         _sessionContextData.CallEndedAction = new ConversationSessionContextAction()
                         {
-                            SelectedToolId = businessRouteData.Actions.CallEndedTool.SelectedToolId,
+                            SelectedToolId = businessRouteData.Actions.CallEndedTool.ToolId,
                             Arguments = businessRouteData.Actions.CallEndedTool.Arguments ?? new Dictionary<string, object>()
                         };
                     }
@@ -797,12 +797,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     }
                     else if (IsInboundCall)
                     {
-                        _ = _campaignActionExecutorService.SendInboundConversationSessionAnsweredTelephonyCampaignAction(SessionId);
+                        _ = _campaignActionExecutorService.SendInboundConversationSessionPickedTelephonyCampaignAction(SessionId);
                     }
                 }
                 else if (IsWebInitiated)
                 {
-                    _ = _campaignActionExecutorService.SendWebConversationSessionInitiatedCampaignAction(SessionId);
+                    _ = _campaignActionExecutorService.SendWebConversationSessionStartedCampaignAction(SessionId);
                 }
 
                 return result.SetSuccessResult();
@@ -949,58 +949,33 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     if (IsOutboundCall)
                     {
                         _ = _campaignActionExecutorService.SendOutboundConversationSessionEndedTelephonyCampaignAction(SessionId, reason);
-                    }
-                    else if (IsInboundCall)
-                    {
-                        _ = _campaignActionExecutorService.SendInboundConversationSessionEndedTelephonyCampaignAction(SessionId);
-                    }
-                }
-                else if (IsWebInitiated)
-                {
-                    _ = _campaignActionExecutorService.SendWebConversationSessionEndedCampaignAction(SessionId);
-                }
-                
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error invoking session actions for session {SessionId}", SessionId);
-            }
-
-            
-            try
-            {
-                if (IsCallInitiated)
-                {
-                    if (IsOutboundCall)
-                    {
                         _ = _conversationSessionPostAnalysisService.PerformTelephonyOutboundSessionPostCallAnalysis(SessionId, _sessionBusinessAppData, (_sessionCallQueueData as OutboundCallQueueData)!, _sessionCallQueueTelephonyCampaignData!);
                     }
                     else if (IsInboundCall)
                     {
+                        _ = _campaignActionExecutorService.SendInboundConversationSessionEndedTelephonyCampaignAction(SessionId);
                         _ = _conversationSessionPostAnalysisService.PerformTelephonyInboundSessionPostCallAnalysis(SessionId, _sessionBusinessAppData, (_sessionCallQueueData as InboundCallQueueData)!, _sessionCallQueueRouteData!);
                     }
                 }
                 else if (IsWebInitiated)
                 {
+                    _ = _campaignActionExecutorService.SendWebConversationSessionEndedCampaignAction(SessionId);
                     _ = _conversationSessionPostAnalysisService.PerformWebSessionPostCallAnalysis(SessionId, _sessionBusinessAppData, _sessionWebSessionData!, _sessionWebSessionCampaignData!);
                 }
+                
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invoking session post call analysis for session {SessionId}", SessionId);
+                _logger.LogError(ex, "Error invoking session actions/post call analysis for session {SessionId}", SessionId);
             }
 
-            // On SessionEnded Cleanup for Parent Manager
-            if (SessionEnded != null)
+            try
             {
-                try
-                {
-                    await SessionEnded.Invoke(this);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error invoking SessionEnded event handler for session {SessionId}", SessionId);
-                }
+                await SessionEnded.Invoke(this);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invoking SessionEnded event handler for session {SessionId}", SessionId);
             }
 
             // Dispose

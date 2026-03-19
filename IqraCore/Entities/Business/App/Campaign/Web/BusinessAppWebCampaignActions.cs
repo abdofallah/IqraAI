@@ -4,6 +4,7 @@
     {
         public BusinessAppCampaignActionConfig ConversationInitiationFailureTool { get; set; } = new BusinessAppCampaignActionConfig();
         public BusinessAppCampaignActionConfig ConversationInitiatedTool { get; set; } = new BusinessAppCampaignActionConfig();
+        public BusinessAppCampaignActionConfig ConversationStartedTool { get; set; } = new BusinessAppCampaignActionConfig();
         public BusinessAppCampaignActionConfig ConversationEndedTool { get; set; } = new BusinessAppCampaignActionConfig();
     }
 }

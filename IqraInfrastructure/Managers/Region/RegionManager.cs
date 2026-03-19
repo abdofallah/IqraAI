@@ -29,7 +29,7 @@ namespace IqraInfrastructure.Managers.Region
             _logger = logger;
         }
 
-        public void SetDependencies(ServerMetricsManager serverMetricsManager)
+        public void SetupDependencies(ServerMetricsManager serverMetricsManager)
         {
             _serverMetricsManager = serverMetricsManager;
         }

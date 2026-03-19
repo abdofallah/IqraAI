@@ -2364,24 +2364,24 @@ table.table > thead > * > * {
 	border-top-width: var(--bs-border-width) !important;
 }
 
-.campaign-action-tool-argument {
+.campaign-action-tool-argument, .route-action-tool-argument {
 	flex-wrap: nowrap;
 }
 
-.campaign-action-tool-argument .input-group-text {
+.campaign-action-tool-argument .input-group-text, .route-action-tool-argument .input-group-text {
 	width: 30%;
 }
 
-.campaign-action-tool-argument .btn.btn-danger {
+.campaign-action-tool-argument .btn.btn-danger, .route-action-tool-argument .btn.btn-danger {
 	width: 41px;
 }
 
-.campaign-action-tool-argument .variable-input-container
+.campaign-action-tool-argument .variable-input-container, .route-action-tool-argument .variable-input-container
 {
 	width: calc(70% - 41px);
 }
 
-.campaign-action-tool-argument .variable-input-container .editor-area.form-control
+.campaign-action-tool-argument .variable-input-container .editor-area.form-control, .route-action-tool-argument .variable-input-container .editor-area.form-control
 {
 	border-radius: 0px;
 }

@@ -278,6 +278,11 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
+        public async Task<bool> AddCallLogAsync(string queueId, CallQueueLogEntry log)
+        {
+            return await _callQueueLogsRepository.AddCallLogAsync(queueId, log);
+        }
+
         public async Task UpdateInboundCallQueueProcessingBackendServerIdAsync(string queueId, string? serverId, CallQueueStatusEnum? status = null)
         {
             try

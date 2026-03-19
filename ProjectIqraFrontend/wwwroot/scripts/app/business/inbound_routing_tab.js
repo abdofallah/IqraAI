@@ -1,3 +1,70 @@
+/** Global Static Variables **/
+const inboundRouteCallRingingArguments = [
+	{ "id": "call_queue_id", "Name": "Call Queue Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique identifier of the call queue entry." },
+	{ "id": "call_queue_created_at", "Name": "Call Queue Created At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call queue entry was first created." },
+	{ "id": "call_queue_enqueued_at", "Name": "Call Queue Enqueued At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was officially placed in the queue." },
+	{ "id": "call_queue_processing_started_at", "Name": "Call Queue Processing Started At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the system started processing the call." },
+	{ "id": "call_queue_completed_at", "Name": "Call Queue Completed At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was completed." },
+	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "string", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
+	{ "id": "call_queue_route_id", "Name": "Call Queue Route Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the route this call belongs to." },
+	{ "id": "call_queue_route_number_id", "Name": "Call Queue Route Number Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the phone number used to receive the call." },
+	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "string", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
+	{ "id": "call_queue_provider_call_id", "Name": "Call Queue Provider Call Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique call identifier from the telephony provider." },
+	{ "id": "call_queue_caller_number", "Name": "Call Queue Caller Number", "Type": "string", "group": "Call Queue Data", "Description": "The phone number of the caller." }
+];
+
+const inboundRouteCallInitiationFailureArguments = [
+	{ "id": "call_queue_id", "Name": "Call Queue Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique identifier of the call queue entry." },
+	{ "id": "call_queue_created_at", "Name": "Call Queue Created At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call queue entry was first created." },
+	{ "id": "call_queue_enqueued_at", "Name": "Call Queue Enqueued At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was officially placed in the queue." },
+	{ "id": "call_queue_processing_started_at", "Name": "Call Queue Processing Started At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the system started processing the call." },
+	{ "id": "call_queue_completed_at", "Name": "Call Queue Completed At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was completed." },
+	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "string", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
+	{ "id": "call_queue_route_id", "Name": "Call Queue Route Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the route this call belongs to." },
+	{ "id": "call_queue_route_number_id", "Name": "Call Queue Route Number Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the phone number used to receive the call." },
+	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "string", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
+	{ "id": "call_queue_provider_call_id", "Name": "Call Queue Provider Call Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique call identifier from the telephony provider." },
+	{ "id": "call_queue_caller_number", "Name": "Call Queue Caller Number", "Type": "string", "group": "Call Queue Data", "Description": "The phone number of the caller." },
+	{ "id": "call_queue_session_id", "Name": "Call Queue Session Id", "Type": "string", "group": "Call Queue Data", "Description": "The telephony session ID." },
+	{ "id": "call_queue_initiation_error", "Name": "Call Queue Initiation Error", "Type": "string", "group": "Call Queue Data", "Description": "Error message of the call initiation failure." }
+];
+
+const inboundRouteCallPickedArguments = [
+	{ "id": "call_queue_id", "Name": "Call Queue Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique identifier of the call queue entry." },
+	{ "id": "call_queue_created_at", "Name": "Call Queue Created At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call queue entry was first created." },
+	{ "id": "call_queue_enqueued_at", "Name": "Call Queue Enqueued At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was officially placed in the queue." },
+	{ "id": "call_queue_processing_started_at", "Name": "Call Queue Processing Started At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the system started processing the call." },
+	{ "id": "call_queue_completed_at", "Name": "Call Queue Completed At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was completed." },
+	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "string", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
+	{ "id": "call_queue_route_id", "Name": "Call Queue Route Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the route this call belongs to." },
+	{ "id": "call_queue_route_number_id", "Name": "Call Queue Route Number Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the phone number used to receive the call." },
+	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "string", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
+	{ "id": "call_queue_provider_call_id", "Name": "Call Queue Provider Call Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique call identifier from the telephony provider." },
+	{ "id": "call_queue_caller_number", "Name": "Call Queue Caller Number", "Type": "string", "group": "Call Queue Data", "Description": "The phone number of the caller." },
+	{ "id": "conversation_id", "Name": "Conversation Id", "Type": "string", "group": "Conversation Data", "Description": "Id of the conversation." },
+	{ "id": "conversation_start_time", "Name": "Conversation Start Time", "Type": "datetime", "group": "Conversation Data", "Description": "Date and time when the conversation was started." }
+];
+
+const inboundRouteCallEndedArguments = [
+	{ "id": "call_queue_id", "Name": "Call Queue Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique identifier of the call queue entry." },
+	{ "id": "call_queue_created_at", "Name": "Call Queue Created At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call queue entry was first created." },
+	{ "id": "call_queue_enqueued_at", "Name": "Call Queue Enqueued At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was officially placed in the queue." },
+	{ "id": "call_queue_processing_started_at", "Name": "Call Queue Processing Started At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the system started processing the call." },
+	{ "id": "call_queue_completed_at", "Name": "Call Queue Completed At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was completed." },
+	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "string", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
+	{ "id": "call_queue_route_id", "Name": "Call Queue Route Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the route this call belongs to." },
+	{ "id": "call_queue_route_number_id", "Name": "Call Queue Route Number Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the phone number used to receive the call." },
+	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "string", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
+	{ "id": "call_queue_provider_call_id", "Name": "Call Queue Provider Call Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique call identifier from the telephony provider." },
+	{ "id": "call_queue_caller_number", "Name": "Call Queue Caller Number", "Type": "string", "group": "Call Queue Data", "Description": "The phone number of the caller." },
+	{ "id": "conversation_id", "Name": "Conversation Id", "Type": "string", "group": "Conversation Data", "Description": "Id of the conversation." },
+	{ "id": "conversation_start_time", "Name": "Conversation Start Time", "Type": "datetime", "group": "Conversation Data", "Description": "Date and time when the conversation was started." },
+	{ "id": "conversation_end_type", "Name": "Conversation End Type", "Type": "string", "group": "Conversation Data", "Description": "Type the conversation was ended with." },
+	{ "id": "conversation_end_time", "Name": "Conversation End Time", "Type": "datetime", "group": "Conversation Data", "Description": "Date and time when the conversation was ended." },
+	{ "id": "conversation_turns", "Name": "Conversation Turns", "Type": "object", "group": "Conversation Data", "Description": "Complete System/Agent/User turns data of the conversation." },
+	{ "id": "conversation_turns_simplified", "Name": "Conversation Turns Simplified", "Type": "string", "group": "Conversation Data", "Description": "Simplified compiled `<role>: <content>` string." }
+];
+
 /** Dynamic Variables **/
 let ManageRouteType = null; // edit or new
 let ManageCurrentRouteData = null;
@@ -8,141 +75,9 @@ let currentRouteAgentSelectedId = "";
 let IsSavingRouteManageTab = false;
 let IsDeletingRoute = false;
 
-const routeActionArguments = [
-	// Call Queue Data
-	{
-		"id": "call_queue_id",
-		"Name": "Call Queue Id",
-		"Type": "string",
-		"group": "Call Queue Data",
-		"Description": "The unique identifier of the call queue entry."
-	},
-	{
-		"id": "call_queue_created_at",
-		"Name": "Call Queue Created At",
-		"Type": "datetime",
-		"group": "Call Queue Data",
-		"Description": "Date and time when the call queue entry was first created."
-	},
-	{
-		"id": "call_queue_enqueued_at",
-		"Name": "Call Queue Enqueued At",
-		"Type": "datetime",
-		"group": "Call Queue Data",
-		"Description": "Date and time when the call was officially placed in the queue."
-	},
-	{
-		"id": "call_queue_processing_started_at",
-		"Name": "Call Queue Processing Started At",
-		"Type": "datetime",
-		"group": "Call Queue Data",
-		"Description": "Date and time when the system started processing the call."
-	},
-	{
-		"id": "call_queue_completed_at",
-		"Name": "Call Queue Completed At",
-		"Type": "datetime",
-		"group": "Call Queue Data",
-		"Description": "Date and time when the call was completed."
-	},
-	{
-		"id": "call_queue_status",
-		"Name": "Call Queue Status",
-		"Type": "string",
-		"group": "Call Queue Data",
-		"Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
-	},
-	{
-		"id": "call_queue_route_id",
-		"Name": "Call Queue Route Id",
-		"Type": "string",
-		"group": "Call Queue Data",
-		"Description": "The ID of the route this call belongs to."
-	},
-	{
-		"id": "call_queue_calling_number_id",
-		"Name": "Call Queue Calling Number Id",
-		"Type": "string",
-		"group": "Call Queue Data",
-		"Description": "The ID of the phone number used to make/receive the call."
-	},
-	{
-		"id": "call_queue_calling_number_provider",
-		"Name": "Call Queue Calling Number Provider",
-		"Type": "string",
-		"group": "Call Queue Data",
-		"Description": "The telephony provider of the calling number (e.g., Twilio)."
-	},
-	{
-		"id": "call_queue_caller_number",
-		"Name": "Call Queue Caller Number",
-		"Type": "string",
-		"group": "Call Queue Data",
-		"Description": "The phone number of the caller."
-	},
-	{
-		"id": "call_queue_dynamic_variables",
-		"Name": "Call Queue Dynamic Variables",
-		"Type": "object",
-		"group": "Call Queue Data",
-		"Description": "Dynamic variables associated with the call (key-value pairs)."
-	},
-	{
-		"id": "call_queue_metadata",
-		"Name": "Call Queue Metadata",
-		"Type": "object",
-		"group": "Call Queue Data",
-		"Description": "Metadata associated with the call (key-value pairs)."
-	},
-	// Conversation Data
-	{
-		"id": "conversation_id",
-		"Name": "Conversation Id",
-		"Type": "string",
-		"group": "Conversation Data",
-		"Description": "Id of the conversation"
-	},
-	{
-		"id": "conversation_start_time",
-		"Name": "Conversation Start Time",
-		"Type": "datetime",
-		"group": "Conversation Data",
-		"Description": "Date and time when the conversation was started"
-	},
-	{
-		"id": "conversation_end_type",
-		"Name": "Conversation End Type",
-		"Type": "string",
-		"group": "Conversation Data",
-		"Description": "Type the conversation was ended with"
-	},
-	{
-		"id": "conversation_end_time",
-		"Name": "Conversation End Time",
-		"Type": "datetime",
-		"group": "Conversation Data",
-		"Description": "Date and time when the conversation was ended"
-	},
-	{
-		"id": "conversation_turns",
-		"Name": "Conversation Turns",
-		"Type": "object",
-		"group": "Conversation Data",
-		"Description": "Complete System/Agent/User turns data of the conversation"
-	},
-	{
-		"id": "conversation_turns_simplified",
-		"Name": "Conversation Turns Simplified",
-		"Type": "string",
-		"group": "Conversation Data",
-		"Description": "Simplified & already compiled `<role>: <content>` string of Conversations Turns"
-	}
-];
-
 let editRouteActionToolCallInitiationFailureCustomInputs = {};
 let editRouteActionToolRingingCustomInputs = {};
 let editRouteActionToolPickedCustomInputs = {};
-let editRouteActionToolCallMissedCustomInputs = {};
 let editRouteActionToolEndedCustomInputs = {};
 
 /** Element Variables  **/
@@ -230,25 +165,11 @@ const editRouteAgentCallerNumberInContextCheck = routingTab.find("#editRouteAgen
 const editRouteAgentRouteNumberInContextCheck = routingTab.find("#editRouteAgentRouteNumberInContextCheck");
 
 // Actions Tab
-const editRouteActionToolCallInitiationFailure = routingTab.find("#editRouteActionToolCallInitiationFailure");
-const editRouteActionToolCallInitiationFailureInputArguementContainer = routingTab.find("#editRouteActionToolCallInitiationFailureContainer .custom-tool-input-arguments");
-const editRouteActionToolCallInitiationFailureInputArgumentsList = routingTab.find("#editRouteActionToolCallInitiationFailureInputArgumentsList");
-
-const editRouteActionToolRinging = routingTab.find("#editRouteActionToolRinging");
-const editRouteActionToolRingingInputArguementContainer = routingTab.find("#editRouteActionToolRingingContainer .custom-tool-input-arguments");
-const editRouteActionToolRingingInputArgumentsList = routingTab.find("#editRouteActionToolRingingInputArgumentsList");
-
-const editRouteActionToolPicked = routingTab.find("#editRouteActionToolPicked");
-const editRouteActionToolPickedInputArguementContainer = routingTab.find("#editRouteActionToolPickedContainer .custom-tool-input-arguments");
-const editRouteActionToolPickedInputArgumentsList = routingTab.find("#editRouteActionToolPickedInputArgumentsList");
-
-const editRouteActionToolCallMissed = routingTab.find("#editRouteActionToolCallMissed");
-const editRouteActionToolCallMissedInputArguementContainer = routingTab.find("#editRouteActionToolCallMissedContainer .custom-tool-input-arguments");
-const editRouteActionToolCallMissedInputArgumentsList = routingTab.find("#editRouteActionToolCallMissedInputArgumentsList");
-
-const editRouteActionToolEnded = routingTab.find("#editRouteActionToolEnded");
-const editRouteActionToolEndedInputArguementContainer = routingTab.find("#editRouteActionToolEndedContainer .custom-tool-input-arguments");
-const editRouteActionToolEndedInputArgumentsList = routingTab.find("#editRouteActionToolEndedInputArgumentsList");
+const routeActionsTab = routingManagerTab.find("#routing-manager-actions");
+const editRouteActionToolCallInitiationFailure = routeActionsTab.find("#editRouteActionToolCallInitiationFailure");
+const editRouteActionToolRinging = routeActionsTab.find("#editRouteActionToolRinging");
+const editRouteActionToolPicked = routeActionsTab.find("#editRouteActionToolPicked");
+const editRouteActionToolEnded = routeActionsTab.find("#editRouteActionToolEnded");
 
 /** API FUNCTIONS **/
 function SaveBusinessRoute(formData, successCallback, errorCallback) {
@@ -392,26 +313,10 @@ function createDefaultRouteObject() {
 			routeNumberInContext: true,
 		},
 		actions: {
-			callInitiationFailureTool: {
-				selectedToolId: null,
-				arguments: null,
-			},
-			ringingTool: {
-				selectedToolId: null,
-				arguments: null,
-			},
-			callPickedTool: {
-				selectedToolId: null,
-				arguments: null,
-			},
-			callMissedTool: {
-				selectedToolId: null,
-				arguments: null,
-			},
-			callEndedTool: {
-				selectedToolId: null,
-				arguments: null,
-			},
+			callInitiationFailureTool: { toolId: null, arguments: null },
+			ringingTool: { toolId: null, arguments: null },
+			callPickedTool: { toolId: null, arguments: null },
+			callEndedTool: { toolId: null, arguments: null },
 		},
 	};
 
@@ -470,32 +375,33 @@ function resetAndEmptyRouteManagerTab() {
 	editRouteAgentRouteNumberInContextCheck.prop("checked", true);
 
 	// Actions
-	editRouteActionToolCallInitiationFailure.empty();
-	editRouteActionToolCallInitiationFailureInputArgumentsList.empty();
-	editRouteActionToolCallInitiationFailure.append(`<option value="none" selected>None</option>`);
+	const actionSelects = [
+		editRouteActionToolCallInitiationFailure,
+		editRouteActionToolRinging,
+		editRouteActionToolPicked,
+		editRouteActionToolEnded
+	];
+	actionSelects.forEach(select => {
+		select.empty().append('<option value="none" selected>None</option>');
+		BusinessFullData.businessApp.tools.forEach(tool => {
+			select.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
+		});
+		const container = select.closest('div.mb-3');
+		container.find('.custom-tool-input-arguments').addClass('d-none');
+		container.find('[id$="-arguments-list"]').empty();
+	});
 
-	editRouteActionToolRinging.empty();
-	editRouteActionToolRingingInputArgumentsList.empty();
-	editRouteActionToolRinging.append(`<option value="none" selected>None</option>`);
-
-	editRouteActionToolPicked.empty();
-	editRouteActionToolPickedInputArgumentsList.empty();
-	editRouteActionToolPicked.append(`<option value="none" selected>None</option>`);
-
-	editRouteActionToolCallMissed.empty();
-	editRouteActionToolCallMissedInputArgumentsList.empty();
-	editRouteActionToolCallMissed.append(`<option value="none" selected>None</option>`);
-
-	editRouteActionToolEnded.empty();
-	editRouteActionToolEndedInputArgumentsList.empty();
-	editRouteActionToolEnded.append(`<option value="none" selected>None</option>`);
-
-	BusinessFullData.businessApp.tools.forEach((tool) => {
-		editRouteActionToolCallInitiationFailure.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
-		editRouteActionToolRinging.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
-		editRouteActionToolPicked.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
-		editRouteActionToolCallMissed.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
-		editRouteActionToolEnded.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
+	const toolArgumentsListObjects = [
+		editRouteActionToolCallInitiationFailureCustomInputs,
+		editRouteActionToolRingingCustomInputs,
+		editRouteActionToolPickedCustomInputs,
+		editRouteActionToolEndedCustomInputs
+	];
+	toolArgumentsListObjects.forEach(toolArgumentsListObject => {
+		Object.keys(toolArgumentsListObject).forEach((customInputId) => {
+			toolArgumentsListObject[customInputId].destroy();
+			delete toolArgumentsListObject[customInputId];
+		});
 	});
 
 	$("#routing-manager-general-tab").click();
@@ -669,101 +575,46 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 
 	// Actions Tab
 	function checkActionsTab() {
-		changes.actions = {
-			callInitiationFailureTool: {
-				selectedToolId: editRouteActionToolCallInitiationFailure.val() === "none" ? null : editRouteActionToolCallInitiationFailure.val(),
-				arguments: null,
-			},
-			ringingTool: {
-				selectedToolId: editRouteActionToolRinging.val() === "none" ? null : editRouteActionToolRinging.val(),
-				arguments: null,
-			},
-			callPickedTool: {
-				selectedToolId: editRouteActionToolPicked.val() === "none" ? null : editRouteActionToolPicked.val(),
-				arguments: null,
-			},
-			callMissedTool: {
-				selectedToolId: editRouteActionToolCallMissed.val() === "none" ? null : editRouteActionToolCallMissed.val(),
-				arguments: null,
-			},
-			callEndedTool: {
-				selectedToolId: editRouteActionToolEnded.val() === "none" ? null : editRouteActionToolEnded.val(),
-				arguments: null,
-			},
-		};
-
-		function getCustomToolInputArguments(customInputObj) {
-			const activeArgs = {};
-			Object.values(customInputObj).forEach((customInput) => {
-				const id = customInput.element.attr('input_arguement');
-				const val = customInput.getValue();
-				activeArgs[id] = val;
+		function collectToolArguments(selectElement, inputArguementObject) {
+			const args = {};
+			const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
+			argumentsList.find(".variable-input-container").each((_, el) => {
+				const inputArguement = $(el).attr("input_arguement");
+				args[inputArguement] = inputArguementObject[inputArguement].getValue();
 			});
-			return Object.keys(activeArgs).length > 0 ? activeArgs : null;
+			return Object.keys(args).length > 0 ? args : null;
 		}
 
-		// Helper function to compare tool data
 		function compareToolData(newTool, originalTool) {
-			// Compare selectedToolId
-			if (newTool.selectedToolId !== originalTool.selectedToolId) {
-				return true;
-			}
-
-			// If both have no arguments, they're equal
-			if (!newTool.arguments && !originalTool.arguments) {
-				return false;
-			}
-
-			// If one has arguments and the other doesn't, they're different
-			if ((!newTool.arguments && originalTool.arguments) || (newTool.arguments && !originalTool.arguments)) {
-				return true;
-			}
-
-			// If both have arguments, compare them
-			if (newTool.arguments && originalTool.arguments) {
-				const newKeys = Object.keys(newTool.arguments);
-				const originalKeys = Object.keys(originalTool.arguments);
-
-				// Compare number of arguments
-				if (newKeys.length !== originalKeys.length) {
-					return true;
-				}
-
-				// Compare each argument
-				for (const key of newKeys) {
-					if (!originalTool.arguments.hasOwnProperty(key) || newTool.arguments[key] !== originalTool.arguments[key]) {
-						return true;
-					}
-				}
-			}
-
+			if (!originalTool) originalTool = { toolId: null, arguments: null };
+			if (newTool.toolId !== originalTool.toolId) return true;
+			if (JSON.stringify(newTool.arguments) !== JSON.stringify(originalTool.arguments)) return true;
 			return false;
 		}
 
-		if (changes.actions.callInitiationFailureTool.selectedToolId) {
-			changes.actions.callInitiationFailureTool.arguments = getCustomToolInputArguments(editRouteActionToolCallInitiationFailureCustomInputs);
-		}
-		if (changes.actions.ringingTool.selectedToolId) {
-			changes.actions.ringingTool.arguments = getCustomToolInputArguments(editRouteActionToolRingingCustomInputs);
-		}
-		if (changes.actions.callPickedTool.selectedToolId) {
-			changes.actions.callPickedTool.arguments = getCustomToolInputArguments(editRouteActionToolPickedCustomInputs);
-		}
-		if (changes.actions.callMissedTool.selectedToolId) {
-			changes.actions.callMissedTool.arguments = getCustomToolInputArguments(editRouteActionToolCallMissedCustomInputs);
-		}
-		if (changes.actions.callEndedTool.selectedToolId) {
-			changes.actions.callEndedTool.arguments = getCustomToolInputArguments(editRouteActionToolEndedCustomInputs);
-		}
+		changes.actions = {
+			callInitiationFailureTool: {
+				toolId: editRouteActionToolCallInitiationFailure.val() === "none" ? null : editRouteActionToolCallInitiationFailure.val(),
+				arguments: collectToolArguments(editRouteActionToolCallInitiationFailure, editRouteActionToolCallInitiationFailureCustomInputs),
+			},
+			ringingTool: {
+				toolId: editRouteActionToolRinging.val() === "none" ? null : editRouteActionToolRinging.val(),
+				arguments: collectToolArguments(editRouteActionToolRinging, editRouteActionToolRingingCustomInputs),
+			},
+			callPickedTool: {
+				toolId: editRouteActionToolPicked.val() === "none" ? null : editRouteActionToolPicked.val(),
+				arguments: collectToolArguments(editRouteActionToolPicked, editRouteActionToolPickedCustomInputs),
+			},
+			callEndedTool: {
+				toolId: editRouteActionToolEnded.val() === "none" ? null : editRouteActionToolEnded.val(),
+				arguments: collectToolArguments(editRouteActionToolEnded, editRouteActionToolEndedCustomInputs),
+			},
+		};
 
-		// Compare each tool independently
-		if (
-			compareToolData(changes.actions.callInitiationFailureTool, ManageCurrentRouteData.actions.callInitiationFailureTool) ||
-			compareToolData(changes.actions.ringingTool, ManageCurrentRouteData.actions.ringingTool) ||
-			compareToolData(changes.actions.callPickedTool, ManageCurrentRouteData.actions.callPickedTool) ||
-			compareToolData(changes.actions.callMissedTool, ManageCurrentRouteData.actions.callMissedTool) ||
-			compareToolData(changes.actions.callEndedTool, ManageCurrentRouteData.actions.callEndedTool)
-		) {
+		if (compareToolData(changes.actions.callInitiationFailureTool, original.actions.callInitiationFailureTool) ||
+			compareToolData(changes.actions.ringingTool, original.actions.ringingTool) ||
+			compareToolData(changes.actions.callPickedTool, original.actions.callPickedTool) ||
+			compareToolData(changes.actions.callEndedTool, original.actions.callEndedTool)) {
 			hasChanges = true;
 		}
 	}
@@ -984,85 +835,40 @@ function validateRoutingTab(onlyRemove = true) {
 
 	// Actions Tab
 	function validateActionsTab() {
-		function validateToolArguments($toolSelect, $argumentsContainer, errorPrefix, onlyRemove = false) {
-			// If no tool is selected, it's valid by default.
-			if ($toolSelect.val() === "none") {
-				return { isValid: true, messages: [] };
-			}
-
-			const localErrors = [];
-			let localIsValid = true;
-
+		function validateToolArguments($toolSelect, inputArguementObject, errorPrefix) {
+			if ($toolSelect.val() === "none") return;
 			const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === $toolSelect.val());
-
-			// Safety check in case the tool isn't found
-			if (!toolData) {
-				console.error(`Tool with ID '${$toolSelect.val()}' not found.`);
-				return { isValid: true, messages: [] }; // Or handle as an error
-			}
-
+			if (!toolData) return;
 			const requiredArguments = toolData.configuration.inputSchemea.filter((arg) => arg.isRequired);
-			const currentArguments = $argumentsContainer.find(".input-group input");
+			const $argumentsContainer = $toolSelect.closest('div').find('.custom-tool-input-arguments');
 
+			$toolSelect.removeClass("is-invalid");
 			requiredArguments.forEach((reqArg) => {
-				const $argInput = currentArguments.filter(`[input_arguement="${reqArg.id}"]`);
-
-				// Check if the input element doesn't exist or its value is empty
-				if ($argInput.length === 0 || !$argInput.val().trim()) {
-					localIsValid = false;
-					localErrors.push(`${errorPrefix}: ${reqArg.name[BusinessDefaultLanguage]} is required`);
-
-					// Add 'is-invalid' class only if we are in full validation mode
-					if (!onlyRemove && $argInput.length > 0) {
-						$argInput.addClass("is-invalid");
+				const arguementInput = inputArguementObject[reqArg.id];
+				if (!arguementInput) {
+					validated = false;
+					errors.push(`${errorPrefix}: ${reqArg.name[BusinessDefaultLanguage]} is required.`);
+					if (!onlyRemove) $toolSelect.addClass("is-invalid");
+				}
+				else {
+					const arguementInputEditorField = $argumentsContainer.find(`.variable-input-container[input_arguement="${reqArg.id}"] .editor-area.form-control`);
+					const value = arguementInput.getValue();
+					if (!value || value == "" || value == null) {
+						validated = false;
+						errors.push(`${errorPrefix}: ${reqArg.name[BusinessDefaultLanguage]} is required.`);
+						if (!onlyRemove) arguementInputEditorField.addClass("is-invalid");
 					}
-				} else {
-					// If the input is valid, always remove the class
-					$argInput.removeClass("is-invalid");
+					else {
+						arguementInputEditorField.removeClass("is-invalid");
+					}
 				}
 			});
-
-			return {
-				isValid: localIsValid,
-				messages: localErrors,
-			};
 		}
 
-		// 1. Validate Ringing Tool Arguments
-		const ringingResult = validateToolArguments(
-			editRouteActionToolRinging,
-			editRouteActionToolRingingInputArgumentsList,
-			"Ringing tool",
-			onlyRemove
-		);
-		if (!ringingResult.isValid) {
-			validated = false;
-			errors.push(...ringingResult.messages);
-		}
-
-		// 2. Validate Picked Tool Arguments
-		const pickedResult = validateToolArguments(
-			editRouteActionToolPicked,
-			editRouteActionToolPickedInputArgumentsList,
-			"Picked tool",
-			onlyRemove
-		);
-		if (!pickedResult.isValid) {
-			validated = false;
-			errors.push(...pickedResult.messages);
-		}
-
-		// 3. Validate Ended Tool Arguments
-		const endedResult = validateToolArguments(
-			editRouteActionToolEnded,
-			editRouteActionToolEndedInputArgumentsList,
-			"Ended tool",
-			onlyRemove
-		);
-		if (!endedResult.isValid) {
-			validated = false;
-			errors.push(...endedResult.messages);
-		}
+		validateToolArguments(editRouteActionToolCallInitiationFailure, editRouteActionToolCallInitiationFailureCustomInputs, "Call Initiation Failure tool");
+		validateToolArguments(editRouteActionToolRinging, editRouteActionToolRingingCustomInputs, "Ringing tool");
+		validateToolArguments(editRouteActionToolPicked, editRouteActionToolPickedCustomInputs, "Picked tool");
+		validateToolArguments(editRouteActionToolEnded, editRouteActionToolEndedCustomInputs, "Ended tool");
 	}
 
 	// Execute all validation functions
@@ -1147,76 +953,55 @@ function fillRoutingManagerTab() {
 	editRouteAgentCallerNumberInContextCheck.prop("checked", ManageCurrentRouteData.agent.callerNumberInContext);
 	editRouteAgentRouteNumberInContextCheck.prop("checked", ManageCurrentRouteData.agent.routeNumberInContext);
 
-	// Actions Tab
-	function fillActionTool(toolData, selectElement, argumentsContainer, argumentsSelect, argumentsList) {
-		if (toolData.selectedToolId) {
-			selectElement.val(toolData.selectedToolId);
-			argumentsContainer.removeClass("d-none");
+	// Actions
+	function fillRouteActionTool(actionToolData, actionToolSelectElement, customInputArguments, customInputObject) {
+		const container = actionToolSelectElement.closest('div.mb-3');
+		const argumentsContainer = container.find('.custom-tool-input-arguments');
+		const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
+		const selectElement = argumentsContainer.find('select[id$="-arguments-select"]');
 
-			const tool = BusinessFullData.businessApp.tools.find((t) => t.id === toolData.selectedToolId);
-			if (tool) {
-				// Clear and populate arguments select
-				argumentsSelect.empty();
-				argumentsSelect.append('<option value="" disabled selected>Add Input Argument</option>');
+		actionToolSelectElement.val("none");
+		selectElement.val("");
+		argumentsList.empty();
+		argumentsContainer.addClass('d-none');
 
-				// Add available arguments that aren't already used
-				const usedArguments = toolData.arguments ? Object.keys(toolData.arguments) : [];
-				tool.configuration.inputSchemea.forEach((arg) => {
-					if (!usedArguments.includes(arg.id)) {
-						argumentsSelect.append(`<option value="${arg.id}">${arg.name[BusinessDefaultLanguage]}${arg.isRequired ? "*" : ""}</option>`);
+		if (actionToolData && actionToolData.toolId) {
+			actionToolSelectElement.val(actionToolData.toolId).change();
+			if (actionToolData.arguments) {
+				Object.entries(actionToolData.arguments).forEach(([argId, value]) => {
+					const businessToolData = BusinessFullData.businessApp.tools.find(tool => tool.id === actionToolData.toolId);
+					const argumentData = businessToolData.configuration.inputSchemea.find(arg => arg.id === argId);
+
+					if (argumentData) {
+						selectElement.find(`option[value="${argId}"]`).remove();
+
+						var element = $(createRouteActionArgumentListElement(argumentData));
+						argumentsList.append(element);
+
+						const customInput = new CustomVariableInput(
+							$(element.find('.variable-input-container')[0]),
+							customInputArguments,
+							{
+								placeholder: `Enter '${argumentData.type.name}' value or select {={variable}=}...`,
+								onValueChange: () => {
+									checkRoutingTabHasChanges();
+									validateRoutingTab(true);
+								}
+							}
+						);
+
+						customInputObject[argId] = customInput;
+						customInput.setValue(value);
 					}
 				});
-
-				// Fill existing arguments
-				if (toolData.arguments) {
-					Object.entries(toolData.arguments).forEach(([argId, value]) => {
-						const argData = tool.configuration.inputSchemea.find((a) => a.id === argId);
-						if (argData) {
-							argumentsList.append(`
-                                <div class="input-group mb-1">
-                                    <span class="input-group-text">${argData.name[BusinessDefaultLanguage]}</span>
-                                    <input type="text" class="form-control" input_arguement="${argData.id}" 
-                                        placeholder="Enter ${argData.type.name} variable" value="${value}">
-                                    <button class="btn btn-danger" btn-action="remove-route-action-tool-arguement" 
-                                        input_arguement="${argData.id}">
-                                        <i class="fa-regular fa-trash"></i>
-                                    </button>
-                                </div>
-                            `);
-						}
-					});
-				}
 			}
-		} else {
-			selectElement.val("none");
-			argumentsContainer.addClass("d-none");
 		}
 	}
 
-	// Fill each action tool
-	fillActionTool(
-		ManageCurrentRouteData.actions.ringingTool,
-		editRouteActionToolRinging,
-		editRouteActionToolRingingInputArguementContainer,
-		editRouteActionToolRingingInputArgumentsSelect,
-		editRouteActionToolRingingInputArgumentsList,
-	);
-
-	fillActionTool(
-		ManageCurrentRouteData.actions.callPickedTool,
-		editRouteActionToolPicked,
-		editRouteActionToolPickedInputArguementContainer,
-		editRouteActionToolPickedInputArgumentsSelect,
-		editRouteActionToolPickedInputArgumentsList,
-	);
-
-	fillActionTool(
-		ManageCurrentRouteData.actions.callEndedTool,
-		editRouteActionToolEnded,
-		editRouteActionToolEndedInputArguementContainer,
-		editRouteActionToolEndedInputArgumentsSelect,
-		editRouteActionToolEndedInputArgumentsList,
-	);
+	fillRouteActionTool(data.actions.callInitiationFailureTool, editRouteActionToolCallInitiationFailure, inboundRouteCallInitiationFailureArguments, editRouteActionToolCallInitiationFailureCustomInputs);
+	fillRouteActionTool(data.actions.ringingTool, editRouteActionToolRinging, inboundRouteCallRingingArguments, editRouteActionToolRingingCustomInputs);
+	fillRouteActionTool(data.actions.callPickedTool, editRouteActionToolPicked, inboundRouteCallPickedArguments, editRouteActionToolPickedCustomInputs);
+	fillRouteActionTool(data.actions.callEndedTool, editRouteActionToolEnded, inboundRouteCallEndedArguments, editRouteActionToolEndedCustomInputs);
 }
 async function canLeaveRoutingTab(leaveMessage = "") {
 	if (IsSavingRouteManageTab) {
@@ -1387,6 +1172,107 @@ function fillRouteNumberModalNumbersList() {
 			});
 		}
 	});
+}
+
+/** Action Tab Helpers **/
+function handleRouteActionToolChange(event) {
+	const selectElement = $(event.currentTarget);
+	const selectedToolId = selectElement.val();
+	const container = selectElement.closest('div.mb-3');
+	const argumentsContainer = container.find('.custom-tool-input-arguments');
+	const argumentsSelect = argumentsContainer.find('select');
+	const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
+
+	argumentsList.empty();
+	argumentsSelect.empty().append('<option value="" disabled selected>Add Input Argument</option>');
+
+	if (selectedToolId === 'none') {
+		argumentsContainer.addClass('d-none');
+	} else {
+		argumentsContainer.removeClass('d-none');
+		const toolData = BusinessFullData.businessApp.tools.find(tool => tool.id === selectedToolId);
+		if (toolData && toolData.configuration.inputSchemea) {
+			toolData.configuration.inputSchemea.forEach(inputArgument => {
+				argumentsSelect.append(`<option value="${inputArgument.id}">${inputArgument.name[BusinessDefaultLanguage]}${inputArgument.isRequired ? "*" : ""}</option>`);
+			});
+		}
+	}
+	checkRoutingTabHasChanges();
+	validateRoutingTab(true);
+}
+function createRouteActionArgumentListElement(argumentData) {
+	return `
+        <div class="input-group mb-1 route-action-tool-argument">
+            <span class="input-group-text">${argumentData.isRequired ? "*" : ""}${argumentData.name[BusinessDefaultLanguage]}</span>
+            <div class="variable-input-container" input_arguement="${argumentData.id}"></div>
+            <button class="btn btn-danger" btn-action="remove-route-action-tool-argument" input_arguement="${argumentData.id}">
+                <i class="fa-regular fa-trash"></i>
+            </button>
+        </div>
+    `;
+}
+function handleRouteActionAddArgument(event, customInputArguments, customInputObject) {
+	const selectElement = $(event.currentTarget);
+	const selectedArgumentId = selectElement.val();
+	if (!selectedArgumentId) return;
+
+	const container = selectElement.closest('.custom-tool-input-arguments');
+	const mainToolSelect = container.parent().find('select').first();
+	const selectedToolId = mainToolSelect.val();
+	const argumentsList = container.find('[id$="-arguments-list"]');
+
+	const toolData = BusinessFullData.businessApp.tools.find(tool => tool.id === selectedToolId);
+	const argumentData = toolData.configuration.inputSchemea.find(arg => arg.id === selectedArgumentId);
+
+	if (argumentData) {
+		selectElement.find(`option[value="${selectedArgumentId}"]`).remove();
+		selectElement.val("");
+
+		var element = $(createRouteActionArgumentListElement(argumentData));
+		argumentsList.append(element);
+
+		const customInput = new CustomVariableInput(
+			$(element.find('.variable-input-container')[0]),
+			customInputArguments,
+			{
+				placeholder: `Enter '${argumentData.type.name}' value or select {={variable}=}...`,
+				onValueChange: () => {
+					checkRoutingTabHasChanges();
+					validateRoutingTab(true);
+				}
+			}
+		);
+
+		customInputObject[selectedArgumentId] = customInput;
+	}
+
+	checkRoutingTabHasChanges();
+	validateRoutingTab(true);
+}
+function handleRouteActionRemoveArgument(event, customInputObject) {
+	event.preventDefault();
+	const removeButton = $(event.currentTarget);
+	const argumentIdToRemove = removeButton.attr('input_arguement');
+	const inputGroup = removeButton.closest('.input-group');
+	const container = removeButton.closest('.custom-tool-input-arguments');
+	const mainToolSelect = container.parent().find('select').first();
+	const argumentsSelect = container.find('select');
+	const selectedToolId = mainToolSelect.val();
+
+	const toolData = BusinessFullData.businessApp.tools.find(tool => tool.id === selectedToolId);
+	const argumentData = toolData.configuration.inputSchemea.find(arg => arg.id === argumentIdToRemove);
+
+	if (argumentData) {
+		argumentsSelect.append(`<option value="${argumentData.id}">${argumentData.name[BusinessDefaultLanguage]}${argumentData.isRequired ? "*" : ""}</option>`);
+	}
+
+	customInputObject[argumentIdToRemove].destroy();
+	delete customInputObject[argumentIdToRemove];
+
+	inputGroup.remove();
+
+	checkRoutingTabHasChanges();
+	validateRoutingTab(true);
 }
 
 /** Init **/
@@ -1795,215 +1681,35 @@ function initRoutingTab() {
 
 		/** Action Tab Events **/
 		function initActionTabHandlers() {
-			// Ringing Event
-			editRouteActionToolRinging.on("change", (event) => {
-				const selectedValue = editRouteActionToolRinging.val();
+			editRouteActionToolCallInitiationFailure.on('change', handleRouteActionToolChange);
+			editRouteActionToolRinging.on('change', handleRouteActionToolChange);
+			editRouteActionToolPicked.on('change', handleRouteActionToolChange);
+			editRouteActionToolEnded.on('change', handleRouteActionToolChange);
 
-				editRouteActionToolRingingInputArgumentsSelect.empty();
-				editRouteActionToolRingingInputArgumentsList.empty();
-				editRouteActionToolRingingInputArgumentsSelect.append(`<option value="" disabled selected>Add Input Argument</option>`);
-
-				if (selectedValue === "none") {
-					editRouteActionToolRingingInputArguementContainer.addClass("d-none");
-
-					checkRoutingTabHasChanges();
-					validateRoutingTab(true);
-					return;
-				}
-
-				editRouteActionToolRingingInputArguementContainer.removeClass("d-none");
-
-				const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === selectedValue);
-
-				toolData.configuration.inputSchemea.forEach((inputArguement) => {
-					editRouteActionToolRingingInputArgumentsSelect.append(`<option value="${inputArguement.id}">${inputArguement.name[BusinessDefaultLanguage]}${inputArguement.isRequired ? "*" : ""}</option>`);
-				});
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
+			routeActionsTab.on('change', '#editRouteActionToolCallInitiationFailure-arguments-select', (event) => {
+				handleRouteActionAddArgument(event, inboundRouteCallInitiationFailureArguments, editRouteActionToolCallInitiationFailureCustomInputs);
 			});
-			editRouteActionToolRingingInputArgumentsSelect.on("change", (event) => {
-				const selectedValue = editRouteActionToolRingingInputArgumentsSelect.val();
-
-				if (selectedValue === "") return;
-
-				const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolRinging.val());
-				const inputArguementData = toolData.configuration.inputSchemea.find((inputArguement) => inputArguement.id === selectedValue);
-
-				editRouteActionToolRingingInputArgumentsList.append(`
-					<div class="input-group mb-1">
-						<span class="input-group-text">${inputArguementData.name[BusinessDefaultLanguage]}${inputArguementData.isRequired ? "*" : ""}</span>
-						<input type="text" class="form-control" input_arguement="${inputArguementData.id}" placeholder="Enter ${inputArguementData.type.name} variable" value="">
-						<button class="btn btn-danger" btn-action="remove-route-action-tool-arguement" input_arguement="${inputArguementData.id}">
-							<i class="fa-regular fa-trash"></i>
-						</button>
-					</div>
-				`);
-
-				editRouteActionToolRingingInputArgumentsSelect.find(`option[value="${selectedValue}"]`).remove();
-
-				editRouteActionToolRingingInputArgumentsSelect.val("");
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
+			routeActionsTab.on('change', '#editRouteActionToolRinging-arguments-select', (event) => {
+				handleRouteActionAddArgument(event, inboundRouteCallRingingArguments, editRouteActionToolRingingCustomInputs);
 			});
-			editRouteActionToolRingingInputArgumentsList.on("click", '[btn-action="remove-route-action-tool-arguement"]', (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				event.stopImmediatePropagation();
-
-				const currentElement = $(event.currentTarget);
-				const inputArguementId = currentElement.attr("input_arguement");
-
-				const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolRinging.val());
-				const inputArguementData = toolData.configuration.inputSchemea.find((inputArguement) => inputArguement.id === inputArguementId);
-
-				editRouteActionToolRingingInputArgumentsSelect.append(`<option value="${inputArguementData.id}">${inputArguementData.name[BusinessDefaultLanguage]}</option>`);
-
-				currentElement.parent().remove();
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
+			routeActionsTab.on('change', '#editRouteActionToolPicked-arguments-select', (event) => {
+				handleRouteActionAddArgument(event, inboundRouteCallPickedArguments, editRouteActionToolPickedCustomInputs);
+			});
+			routeActionsTab.on('change', '#editRouteActionToolEnded-arguments-select', (event) => {
+				handleRouteActionAddArgument(event, inboundRouteCallEndedArguments, editRouteActionToolEndedCustomInputs);
 			});
 
-			// Tool Picked Up Event
-			editRouteActionToolPicked.on("change", (event) => {
-				const selectedValue = editRouteActionToolPicked.val();
-
-				editRouteActionToolPickedInputArgumentsSelect.empty();
-				editRouteActionToolPickedInputArgumentsList.empty();
-				editRouteActionToolPickedInputArgumentsSelect.append(`<option value="" disabled selected>Add Input Argument</option>`);
-
-				if (selectedValue === "none") {
-					editRouteActionToolPickedInputArguementContainer.addClass("d-none");
-
-					checkRoutingTabHasChanges();
-					validateRoutingTab(true);
-					return;
-				}
-
-				editRouteActionToolPickedInputArguementContainer.removeClass("d-none");
-
-				const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === selectedValue);
-
-				toolData.configuration.inputSchemea.forEach((inputArguement) => {
-					editRouteActionToolPickedInputArgumentsSelect.append(`<option value="${inputArguement.id}">${inputArguement.name[BusinessDefaultLanguage]}${inputArguement.isRequired ? "*" : ""}</option>`);
-				});
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
+			routeActionsTab.on('click', '#editRouteActionToolCallInitiationFailure-arguments-list [btn-action="remove-route-action-tool-argument"]', (event) => {
+				handleRouteActionRemoveArgument(event, editRouteActionToolCallInitiationFailureCustomInputs);
 			});
-			editRouteActionToolPickedInputArgumentsSelect.on("change", (event) => {
-				const selectedValue = editRouteActionToolPickedInputArgumentsSelect.val();
-
-				if (selectedValue === "") return;
-
-				const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolPicked.val());
-				const inputArguementData = toolData.configuration.inputSchemea.find((inputArguement) => inputArguement.id === selectedValue);
-
-				editRouteActionToolPickedInputArgumentsList.append(`
-			<div class="input-group mb-1">
-				<span class="input-group-text">${inputArguementData.name[BusinessDefaultLanguage]}${inputArguementData.isRequired ? "*" : ""}</span>
-				<input type="text" class="form-control" input_arguement="${inputArguementData.id}" placeholder="Enter ${inputArguementData.type.name} variable" value="">
-				<button class="btn btn-danger" btn-action="remove-route-action-tool-arguement" input_arguement="${inputArguementData.id}">
-					<i class="fa-regular fa-trash"></i>
-				</button>
-			</div>
-		`);
-
-				editRouteActionToolPickedInputArgumentsSelect.find(`option[value="${selectedValue}"]`).remove();
-				editRouteActionToolPickedInputArgumentsSelect.val("");
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
+			routeActionsTab.on('click', '#editRouteActionToolRinging-arguments-list [btn-action="remove-route-action-tool-argument"]', (event) => {
+				handleRouteActionRemoveArgument(event, editRouteActionToolRingingCustomInputs);
 			});
-			editRouteActionToolPickedInputArgumentsList.on("click", '[btn-action="remove-route-action-tool-arguement"]', (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				event.stopImmediatePropagation();
-
-				const currentElement = $(event.currentTarget);
-				const inputArguementId = currentElement.attr("input_arguement");
-
-				const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolPicked.val());
-				const inputArguementData = toolData.configuration.inputSchemea.find((inputArguement) => inputArguement.id === inputArguementId);
-
-				editRouteActionToolPickedInputArgumentsSelect.append(`<option value="${inputArguementData.id}">${inputArguementData.name[BusinessDefaultLanguage]}</option>`);
-
-				currentElement.parent().remove();
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
+			routeActionsTab.on('click', '#editRouteActionToolPicked-arguments-list [btn-action="remove-route-action-tool-argument"]', (event) => {
+				handleRouteActionRemoveArgument(event, editRouteActionToolPickedCustomInputs);
 			});
-
-			// Tool Ended Event
-			editRouteActionToolEnded.on("change", (event) => {
-				const selectedValue = editRouteActionToolEnded.val();
-
-				editRouteActionToolEndedInputArgumentsSelect.empty();
-				editRouteActionToolEndedInputArgumentsList.empty();
-				editRouteActionToolEndedInputArgumentsSelect.append(`<option value="" disabled selected>Add Input Argument</option>`);
-
-				if (selectedValue === "none") {
-					editRouteActionToolEndedInputArguementContainer.addClass("d-none");
-
-					checkRoutingTabHasChanges();
-					validateRoutingTab(true);
-					return;
-				}
-
-				editRouteActionToolEndedInputArguementContainer.removeClass("d-none");
-
-				const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === selectedValue);
-
-				toolData.configuration.inputSchemea.forEach((inputArguement) => {
-					editRouteActionToolEndedInputArgumentsSelect.append(`<option value="${inputArguement.id}">${inputArguement.name[BusinessDefaultLanguage]}${inputArguement.isRequired ? "*" : ""}</option>`);
-				});
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
-			});
-			editRouteActionToolEndedInputArgumentsSelect.on("change", (event) => {
-				const selectedValue = editRouteActionToolEndedInputArgumentsSelect.val();
-
-				if (selectedValue === "") return;
-
-				const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolEnded.val());
-				const inputArguementData = toolData.configuration.inputSchemea.find((inputArguement) => inputArguement.id === selectedValue);
-
-				editRouteActionToolEndedInputArgumentsList.append(`
-			<div class="input-group mb-1">
-				<span class="input-group-text">${inputArguementData.name[BusinessDefaultLanguage]}${inputArguementData.isRequired ? "*" : ""}</span>
-				<input type="text" class="form-control" input_arguement="${inputArguementData.id}" placeholder="Enter ${inputArguementData.type.name} variable" value="">
-				<button class="btn btn-danger" btn-action="remove-route-action-tool-arguement" input_arguement="${inputArguementData.id}">
-					<i class="fa-regular fa-trash"></i>
-				</button>
-			</div>
-		`);
-
-				editRouteActionToolEndedInputArgumentsSelect.find(`option[value="${selectedValue}"]`).remove();
-				editRouteActionToolEndedInputArgumentsSelect.val("");
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
-			});
-			editRouteActionToolEndedInputArgumentsList.on("click", '[btn-action="remove-route-action-tool-arguement"]', (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				event.stopImmediatePropagation();
-
-				const currentElement = $(event.currentTarget);
-				const inputArguementId = currentElement.attr("input_arguement");
-
-				const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolEnded.val());
-				const inputArguementData = toolData.configuration.inputSchemea.find((inputArguement) => inputArguement.id === inputArguementId);
-
-				editRouteActionToolEndedInputArgumentsSelect.append(`<option value="${inputArguementData.id}">${inputArguementData.name[BusinessDefaultLanguage]}</option>`);
-
-				currentElement.parent().remove();
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
+			routeActionsTab.on('click', '#editRouteActionToolEnded-arguments-list [btn-action="remove-route-action-tool-argument"]', (event) => {
+				handleRouteActionRemoveArgument(event, editRouteActionToolEndedCustomInputs);
 			});
 		}
 		initActionTabHandlers();

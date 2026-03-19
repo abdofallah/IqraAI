@@ -168,7 +168,7 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_metadata", Name = "Web Session Metadata", Type = VariableType.Object },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_initiation_error", Name = "Web Session Initiation Error", Type = VariableType.String },
         };
-        private readonly static List<CustomVariableInputTemplateVariableDefinition> WebCampaignOnConversationInitiatedActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> WebCampaignOnConversationInitiatedOrStartedActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
         {
             // --- Web Session Data ---
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
@@ -1141,12 +1141,13 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        var callInitiationFailureToolValidationResult = await ValidateBusinessCampaignActionData(
+                        var callInitiationFailureToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
                             businessId,
                             businessLanguages[0],
                             callInitiationFailureToolElement,
                             "CallInitiationFailure",
-                            TelephonyCampaignOnCallInitiationFailureActionArguments
+                            TelephonyCampaignOnCallInitiationFailureActionArguments,
+                            _businessAppRepository
                         );
                         if (!callInitiationFailureToolValidationResult.Success)
                         {
@@ -1168,12 +1169,13 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        var callInitiatedToolValidationResult = await ValidateBusinessCampaignActionData(
+                        var callInitiatedToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
                             businessId,
                             businessLanguages[0],
                             telephonyActionsTabRootElement.GetProperty("callInitiatedTool"),
                             "CallInitiated",
-                            TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments
+                            TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments,
+                            _businessAppRepository
                         );
                         if (!callInitiatedToolValidationResult.Success)
                         {
@@ -1195,12 +1197,13 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        var callDeclinedToolValidationResult = await ValidateBusinessCampaignActionData(
+                        var callDeclinedToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
                             businessId,
                             businessLanguages[0],
                             telephonyActionsTabRootElement.GetProperty("callDeclinedTool"),
                             "CallDeclined",
-                            TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments
+                            TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments,
+                            _businessAppRepository
                         );
                         if (!callDeclinedToolValidationResult.Success)
                         {
@@ -1222,12 +1225,13 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        var callMissedToolValidationResult = await ValidateBusinessCampaignActionData(
+                        var callMissedToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
                             businessId,
                             businessLanguages[0],
                             telephonyActionsTabRootElement.GetProperty("callMissedTool"),
                             "CallMissed",
-                            TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments
+                            TelephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArguments,
+                            _businessAppRepository
                         );
                         if (!callMissedToolValidationResult.Success)
                         {
@@ -1249,12 +1253,13 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        var callAnsweredToolValidationResult = await ValidateBusinessCampaignActionData(
+                        var callAnsweredToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
                             businessId,
                             businessLanguages[0],
                             telephonyActionsTabRootElement.GetProperty("callAnsweredTool"),
                             "CallAnswered",
-                            TelephonyCampaignOnCallAnsweredActionArguments
+                            TelephonyCampaignOnCallAnsweredActionArguments,
+                            _businessAppRepository
                         );
                         if (!callAnsweredToolValidationResult.Success)
                         {
@@ -1276,12 +1281,13 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        var callEndedToolValidationResult = await ValidateBusinessCampaignActionData(
+                        var callEndedToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
                             businessId,
                             businessLanguages[0],
                             telephonyActionsTabRootElement.GetProperty("callEndedTool"),
                             "CallEnded",
-                            TelephonyCampaignOnCallEndedActionArguments
+                            TelephonyCampaignOnCallEndedActionArguments,
+                            _businessAppRepository
                         );
                         if (!callEndedToolValidationResult.Success)
                         {
@@ -2280,12 +2286,13 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        var conversationInitiationFailureToolValidationResult = await ValidateBusinessCampaignActionData(
+                        var conversationInitiationFailureToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
                             businessId,
                             businessLanguages[0],
                             conversationInitiationFailureToolElement,
                             "ConversationInitiationFailure",
-                            WebCampaignOnConversationInitiationFailureActionArguments
+                            WebCampaignOnConversationInitiationFailureActionArguments,
+                            _businessAppRepository
                         );
                         if (!conversationInitiationFailureToolValidationResult.Success)
                         {
@@ -2307,12 +2314,13 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        var conversationInitiatedToolValidationResult = await ValidateBusinessCampaignActionData(
+                        var conversationInitiatedToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
                             businessId,
                             businessLanguages[0],
                             webActionsTabRootElement.GetProperty("conversationInitiatedTool"),
                             "ConversationInitiated",
-                            WebCampaignOnConversationInitiatedActionArguments
+                            WebCampaignOnConversationInitiatedOrStartedActionArguments,
+                            _businessAppRepository
                         );
                         if (!conversationInitiatedToolValidationResult.Success)
                         {
@@ -2322,6 +2330,34 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
                         newBusinessAppCampaignData.Actions.ConversationInitiatedTool = conversationInitiatedToolValidationResult.Data!;
+                    }
+
+                    if (!webActionsTabRootElement.TryGetProperty("conversationStartedTool", out var conversationStartedToolElement) ||
+                        conversationStartedToolElement.ValueKind != JsonValueKind.Object)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateWebCampaignAsync:CONVERSATION_STARTED_TOOL_NOT_FOUND",
+                            "Conversation Started Tool not found."
+                        );
+                    }
+                    else
+                    {
+                        var conversationStartedToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            webActionsTabRootElement.GetProperty("conversationStartedTool"),
+                            "ConversationStarted",
+                            WebCampaignOnConversationInitiatedOrStartedActionArguments,
+                            _businessAppRepository
+                        );
+                        if (!conversationStartedToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateWebCampaignAsync:" + conversationStartedToolValidationResult.Code,
+                                conversationStartedToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.ConversationStartedTool = conversationStartedToolValidationResult.Data!;
                     }
 
                     if (!webActionsTabRootElement.TryGetProperty("conversationEndedTool", out var conversationEndedToolElement) ||
@@ -2334,12 +2370,13 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     else
                     {
-                        var conversationEndedToolValidationResult = await ValidateBusinessCampaignActionData(
+                        var conversationEndedToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
                             businessId,
                             businessLanguages[0],
                             webActionsTabRootElement.GetProperty("conversationEndedTool"),
                             "ConversationEnded",
-                            WebCampaignOnConversationEndedActionArguments
+                            WebCampaignOnConversationEndedActionArguments,
+                            _businessAppRepository
                         );
                         if (!conversationEndedToolValidationResult.Success)
                         {
@@ -2543,7 +2580,14 @@ namespace IqraInfrastructure.Managers.Business
                 BusinessAppToolWebCampaignActionType.ConversationInitiated
             );
 
-            // 3. Conversation Ended
+            // 3. Conversation Started
+            await HandleToolRef(
+                oldCampaign?.Actions.ConversationStartedTool.ToolId,
+                newCampaign.Actions.ConversationStartedTool.ToolId,
+                BusinessAppToolWebCampaignActionType.ConversationStarted
+            );
+
+            // 4. Conversation Ended
             await HandleToolRef(
                 oldCampaign?.Actions.ConversationEndedTool.ToolId,
                 newCampaign.Actions.ConversationEndedTool.ToolId,
@@ -2615,6 +2659,7 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         await RemoveToolRef(campaign.Actions.ConversationInitiationFailureTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationInitiationFailure);
                         await RemoveToolRef(campaign.Actions.ConversationInitiatedTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationInitiated);
+                        await RemoveToolRef(campaign.Actions.ConversationStartedTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationStarted);
                         await RemoveToolRef(campaign.Actions.ConversationEndedTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationEnded);
 
                         // 5. Delete Campaign Document
@@ -2638,111 +2683,6 @@ namespace IqraInfrastructure.Managers.Business
             {
                 return result.SetFailureResult("DeleteWebCampaign:EXCEPTION", $"An error occurred: {ex.Message}");
             }
-        }
-
-        // Common Helpers
-        private async Task<FunctionReturnResult<BusinessAppCampaignActionConfig>> ValidateBusinessCampaignActionData(long businessId, string businessDefaultLanguage, JsonElement actionToolElement, string actionType, List<CustomVariableInputTemplateVariableDefinition> argurmentList)
-        {
-            var result = new FunctionReturnResult<BusinessAppCampaignActionConfig>();          
-            var resultData = new BusinessAppCampaignActionConfig();
-
-            if (!actionToolElement.TryGetProperty("toolId", out var toolIdProperty))
-            {
-                return result.SetFailureResult(
-                    "ValidateBusinessCampaignActionData:TOOL_ID_NOT_FOUND",
-                    $"{actionType} tool id not found. Must be null or id of the tool."
-                );
-            }
-
-            string? toolId = toolIdProperty.GetString();
-            if (toolId == null)
-            {
-                return result.SetSuccessResult(resultData);
-            }
-            var selectedToolData = await _businessAppRepository.GetBusinessAppTool(businessId, toolId);
-            if (selectedToolData == null)
-            {
-                return result.SetFailureResult(
-                    "ValidateBusinessCampaignActionData:TOOL_NOT_FOUND",
-                    $"{actionType} tool not found in business."
-                );
-            }
-            resultData.ToolId = toolId;
-            resultData.Arguments = new Dictionary<string, object>();
-
-            if (!actionToolElement.TryGetProperty("arguments", out var argumentsProperty))
-            {
-                if (selectedToolData.Configuration.InputSchemea.Any(arg => arg.IsRequired))
-                {
-                    return result.SetFailureResult(
-                        "ValidateBusinessCampaignActionData:ARGS_MISSING_BUT_REQUIRED",
-                        $"{actionType} tool arguments not found, but required arguments exist."
-                    );
-                }
-            }
-
-            if (argumentsProperty.ValueKind != JsonValueKind.Object)
-            {
-                return result.SetFailureResult(
-                    "ValidateBusinessCampaignActionData:ARGS_NOT_OBJECT",
-                    $"{actionType} tool 'arguments' must be an object."
-                );
-            }
-            else
-            {
-                foreach (var toolInputArgument in selectedToolData.Configuration.InputSchemea)
-                {
-                    var propertyFound = argumentsProperty.TryGetProperty(toolInputArgument.Id, out var argumentValueProperty);
-
-                    if (!propertyFound)
-                    {
-                        if (toolInputArgument.IsRequired)
-                        {
-                            return result.SetFailureResult(
-                                "ValidateBusinessCampaignActionData:REQUIRED_ARG_MISSING",
-                                $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} is missing. Required fields must not be empty."
-                            );
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        if (argumentValueProperty.ValueKind != JsonValueKind.String)
-                        {
-                            return result.SetFailureResult(
-                                "ValidateBusinessCampaignActionData:ARG_NOT_STRING",
-                                $"{actionType} tool input argument ${toolInputArgument.Name[businessDefaultLanguage]} 'value' must be a string."
-                            );
-                        }
-
-                        var argurmentValue = argumentValueProperty.GetString();
-
-                        if (string.IsNullOrWhiteSpace(argurmentValue) && toolInputArgument.IsRequired)
-                        {
-                            return result.SetFailureResult(
-                                "ValidateBusinessCampaignActionData:REQUIRED_ARG_MISSING",
-                                $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} is empty. Required fields must not be empty."
-                            );
-                        }
-
-                        var valueTemplateValidation = CustomVariableInputTemplateService.Validate(argurmentValue, argurmentList);
-                        if (!valueTemplateValidation.IsValid)
-                        {
-                            return result.SetFailureResult(
-                                "ValidateBusinessCampaignActionData:ACTION_ARG_VARIABLE_VALUE_INVALID",
-                                $"{actionType} tool input argument 'value' is invalid:\n\n{string.Join("\n", valueTemplateValidation.Errors)}"
-                            );
-                        }
-
-                        resultData.Arguments.Add(toolInputArgument.Id, argurmentValue);
-                    }
-                }
-            }
-
-            return result.SetSuccessResult(resultData);
         }
     }
 }

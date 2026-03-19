@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
+using IqraInfrastructure.Helpers;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
@@ -19,6 +19,76 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
         private readonly IntegrationConfigurationManager _integrationConfigurationManager;
+
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> InboundRouteCallRingingArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_id", Name = "Call Queue Route Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_id", Name = "Call Queue Route Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_caller_number", Name = "Call Queue Caller Number", Type = VariableType.String }
+        };
+
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> InboundRouteCallInitiationFailureArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_id", Name = "Call Queue Route Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_id", Name = "Call Queue Route Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_caller_number", Name = "Call Queue Caller Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_session_id", Name = "Call Queue Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_initiation_error", Name = "Call Queue Initiation Error", Type = VariableType.String }
+        };
+
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> InboundRouteCallPickedArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_id", Name = "Call Queue Route Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_id", Name = "Call Queue Route Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_caller_number", Name = "Call Queue Caller Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime }
+        };
+
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> InboundRouteCallEndedArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_id", Name = "Call Queue Route Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_id", Name = "Call Queue Route Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_caller_number", Name = "Call Queue Caller Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String }
+        };
 
         public BusinessRoutesManager(BusinessManager businessManager, IMongoClient mongoClient, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, IntegrationConfigurationManager integrationConfigurationManager)
         {
@@ -421,53 +491,73 @@ namespace IqraInfrastructure.Managers.Business
                 return result;
             }
 
-            // Validate Ringing Tool
-            if (!actionsTabRootElement.TryGetProperty("ringingTool", out var ringingToolElement))
+            // Validate Call Initiation Failure Tool
+            if (!actionsTabRootElement.TryGetProperty("callInitiationFailureTool", out var callInitiationFailureToolElement) || callInitiationFailureToolElement.ValueKind != JsonValueKind.Object)
             {
-                result.Code = "AddOrUpdateUserBusinessRoute:45";
-                result.Message = "Ringing tool not found.";
+                result.Code = "AddOrUpdateUserBusinessRoute:46";
+                result.Message = "CallInitiationFailureTool not found or invalid.";
                 return result;
             }
-            var ringingToolValidationResult = await ValidateBusinessRouteActionData(businessId, businessLanguages[0], ringingToolElement, "Ringing");
+            var callInitiationFailureToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
+                businessId, businessLanguages[0], callInitiationFailureToolElement, "CallInitiationFailure", InboundRouteCallInitiationFailureArguments, _businessAppRepository);
+            if (!callInitiationFailureToolValidationResult.Success)
+            {
+                result.Code = "AddOrUpdateUserBusinessRoute:" + callInitiationFailureToolValidationResult.Code;
+                result.Message = callInitiationFailureToolValidationResult.Message;
+                return result;
+            }
+            newBusinessAppRouteData.Actions.CallInitiationFailureTool = callInitiationFailureToolValidationResult.Data!;
+
+            // Validate Ringing Tool
+            if (!actionsTabRootElement.TryGetProperty("ringingTool", out var ringingToolElement) || ringingToolElement.ValueKind != JsonValueKind.Object)
+            {
+                result.Code = "AddOrUpdateUserBusinessRoute:45";
+                result.Message = "Ringing tool not found or invalid.";
+                return result;
+            }
+            var ringingToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
+                businessId, businessLanguages[0], ringingToolElement, "Ringing", InboundRouteCallRingingArguments, _businessAppRepository);
             if (!ringingToolValidationResult.Success)
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:" + ringingToolValidationResult.Code;
                 result.Message = ringingToolValidationResult.Message;
                 return result;
             }
-            newBusinessAppRouteData.Actions.RingingTool = ringingToolValidationResult.Data;
+            newBusinessAppRouteData.Actions.RingingTool = ringingToolValidationResult.Data!;
 
             // Validate Picked Tool
-            if (!actionsTabRootElement.TryGetProperty("callPickedTool", out var pickedToolElement))
+            if (!actionsTabRootElement.TryGetProperty("callPickedTool", out var pickedToolElement) || pickedToolElement.ValueKind != JsonValueKind.Object)
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:47";
-                result.Message = "Picked tool not found.";
+                result.Message = "Picked tool not found or invalid.";
                 return result;
             }
-            var pickedToolValidationResult = await ValidateBusinessRouteActionData(businessId, businessLanguages[0], pickedToolElement, "Picked");
+            var pickedToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
+                businessId, businessLanguages[0], pickedToolElement, "Picked", InboundRouteCallPickedArguments, _businessAppRepository);
             if (!pickedToolValidationResult.Success)
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:" + pickedToolValidationResult.Code;
                 result.Message = pickedToolValidationResult.Message;
                 return result;
             }
-            newBusinessAppRouteData.Actions.CallPickedTool = pickedToolValidationResult.Data;
+            newBusinessAppRouteData.Actions.CallPickedTool = pickedToolValidationResult.Data!;
 
             // Validate Ended Tool
-            if (!actionsTabRootElement.TryGetProperty("callEndedTool", out var endedToolElement))
+            if (!actionsTabRootElement.TryGetProperty("callEndedTool", out var endedToolElement) || endedToolElement.ValueKind != JsonValueKind.Object)
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:49";
-                result.Message = "Ended tool not found.";
+                result.Message = "Ended tool not found or invalid.";
                 return result;
             }
-            var endedToolValidationResult = await ValidateBusinessRouteActionData(businessId, businessLanguages[0], endedToolElement, "Ended");
+            var endedToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
+                businessId, businessLanguages[0], endedToolElement, "Ended", InboundRouteCallEndedArguments, _businessAppRepository);
             if (!endedToolValidationResult.Success)
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:" + endedToolValidationResult.Code;
                 result.Message = endedToolValidationResult.Message;
                 return result;
             }
-            newBusinessAppRouteData.Actions.CallEndedTool = endedToolValidationResult.Data;
+            newBusinessAppRouteData.Actions.CallEndedTool = endedToolValidationResult.Data!;
 
             using (var session = await _mongoClient.StartSessionAsync())
             {
@@ -676,121 +766,33 @@ namespace IqraInfrastructure.Managers.Business
 
             // 1. Ringing Tool
             await HandleToolRef(
-                oldRoute?.Actions.RingingTool.SelectedToolId,
-                newRoute.Actions.RingingTool.SelectedToolId,
+                oldRoute?.Actions.RingingTool.ToolId,
+                newRoute.Actions.RingingTool.ToolId,
                 BusinessAppToolInboundRouteActionType.Ringing
             );
 
-            // 2. Call Picked Tool
+            // 2. Call Initiation Failure Tool
             await HandleToolRef(
-                oldRoute?.Actions.CallPickedTool.SelectedToolId,
-                newRoute.Actions.CallPickedTool.SelectedToolId,
+                oldRoute?.Actions.CallInitiationFailureTool.ToolId,
+                newRoute.Actions.CallInitiationFailureTool.ToolId,
+                BusinessAppToolInboundRouteActionType.CallInitiationFailure
+            );
+
+            // 3. Call Picked Tool
+            await HandleToolRef(
+                oldRoute?.Actions.CallPickedTool.ToolId,
+                newRoute.Actions.CallPickedTool.ToolId,
                 BusinessAppToolInboundRouteActionType.CallPicked
             );
 
-            // 3. Call Ended Tool
+            // 4. Call Ended Tool
             await HandleToolRef(
-                oldRoute?.Actions.CallEndedTool.SelectedToolId,
-                newRoute.Actions.CallEndedTool.SelectedToolId,
+                oldRoute?.Actions.CallEndedTool.ToolId,
+                newRoute.Actions.CallEndedTool.ToolId,
                 BusinessAppToolInboundRouteActionType.CallEnded
             );
         }
-        private async Task<FunctionReturnResult<BusinessAppRouteActionTool>> ValidateBusinessRouteActionData(long businessId, string businessDefaultLanguage, JsonElement actionsTabRootElement, string actionType)
-        {
-            var result = new FunctionReturnResult<BusinessAppRouteActionTool>();
-            result.Data = new BusinessAppRouteActionTool();
-
-            if (!actionsTabRootElement.TryGetProperty("selectedToolId", out var selectedToolIdProperty))
-            {
-                throw new Exception($"{actionType} selected tool id not found.");
-            }
-
-            string? selectedToolId = selectedToolIdProperty.GetString();
-            if (selectedToolId == null)
-            {
-                result.Success = true;
-                return result;
-            }
-            var selectedToolData = await _businessAppRepository.GetBusinessAppTool(businessId, selectedToolId);
-            if (selectedToolData == null)
-            {
-                result.Code = "ValidateBusinessRouteActionData:1";
-                result.Message = $"{actionType} tool not found in business.";
-                return result;
-            }
-            result.Data.SelectedToolId = selectedToolId;
-            result.Data.Arguments = new Dictionary<string, object>();
-
-            if (!actionsTabRootElement.TryGetProperty("arguments", out var argumentsProperty))
-            {
-                result.Code = "ValidateBusinessRouteActionData:2";
-                result.Message = $"{actionType} tool arguments not found.";
-                return result;
-            }
-
-            foreach (var toolInputArgument in selectedToolData.Configuration.InputSchemea)
-            {
-                bool foundProperty = argumentsProperty.TryGetProperty(toolInputArgument.Id, out var argumentValueProperty);
-
-                if (!foundProperty && toolInputArgument.IsRequired)
-                {
-                    result.Code = "ValidateBusinessRouteActionData:3";
-                    result.Message = $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} not found but is required.";
-                    return result;
-                }
-                else if (foundProperty)
-                {
-                    // Handle Array Type
-                    if (toolInputArgument.IsArray)
-                    {
-                        if (argumentValueProperty.ValueKind != JsonValueKind.Array)
-                        {
-                            result.Code = "ValidateBusinessRouteActionData:4";
-                            result.Message = $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} should be an array.";
-                            return result;
-                        }
-
-                        var arrayValues = new List<object>();
-                        foreach (var arrayElement in argumentValueProperty.EnumerateArray())
-                        {
-                            var validationResult = BusinessAppToolPropertyValidator.ValidateArgumentValue(businessDefaultLanguage, arrayElement, toolInputArgument, actionType);
-                            if (!validationResult.Success)
-                            {
-                                result.Code = validationResult.Code;
-                                result.Message = validationResult.Message;
-                                return result;
-                            }
-                            arrayValues.Add(validationResult.Data);
-                        }
-
-                        if (toolInputArgument.IsRequired && arrayValues.Count == 0)
-                        {
-                            result.Code = "ValidateBusinessRouteActionData:5";
-                            result.Message = $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} array cannot be empty as it is required.";
-                            return result;
-                        }
-
-                        result.Data.Arguments.Add(toolInputArgument.Id, arrayValues);
-                    }
-                    // Handle Single Value
-                    else
-                    {
-                        var validationResult = BusinessAppToolPropertyValidator.ValidateArgumentValue(businessDefaultLanguage, argumentValueProperty, toolInputArgument, actionType);
-                        if (!validationResult.Success)
-                        {
-                            result.Code = validationResult.Code;
-                            result.Message = validationResult.Message;
-                            return result;
-                        }
-                        result.Data.Arguments.Add(toolInputArgument.Id, validationResult.Data);
-                    }
-                }
-            }
-
-            result.Success = true;
-            return result;
-        }
-
+        
         public async Task<FunctionReturnResult> DeleteBusinessRoute(long businessId, BusinessAppRoute businessAppRoute)
         {
             var result = new FunctionReturnResult();
@@ -872,10 +874,10 @@ namespace IqraInfrastructure.Managers.Business
                         // 5. Remove references from Tools
 
                         // Ringing Tool
-                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.RingingTool.SelectedToolId))
+                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.RingingTool.ToolId))
                         {
                             var refObj = new BusinessAppToolInboundRouteReference { RouteId = businessAppRoute.Id, ActionType = BusinessAppToolInboundRouteActionType.Ringing };
-                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.RingingTool.SelectedToolId, refObj, session);
+                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.RingingTool.ToolId, refObj, session);
                             if (!removeToolRef)
                             {
                                 await session.AbortTransactionAsync();
@@ -883,11 +885,23 @@ namespace IqraInfrastructure.Managers.Business
                             }
                         }
 
+                        // Call Initiation Failure Tool
+                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.CallInitiationFailureTool.ToolId))
+                        {
+                            var refObj = new BusinessAppToolInboundRouteReference { RouteId = businessAppRoute.Id, ActionType = BusinessAppToolInboundRouteActionType.CallInitiationFailure };
+                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.CallInitiationFailureTool.ToolId, refObj, session);
+                            if (!removeToolRef)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteBusinessRoute:CALL_INITIATION_FAILURE_TOOL_REF_REMOVAL_FAILED", "Failed to remove call initiation failure tool reference.");
+                            }
+                        }
+
                         // Call Picked Tool
-                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.CallPickedTool.SelectedToolId))
+                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.CallPickedTool.ToolId))
                         {
                             var refObj = new BusinessAppToolInboundRouteReference { RouteId = businessAppRoute.Id, ActionType = BusinessAppToolInboundRouteActionType.CallPicked };
-                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.CallPickedTool.SelectedToolId, refObj, session);
+                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.CallPickedTool.ToolId, refObj, session);
                             if (!removeToolRef)
                             {
                                 await session.AbortTransactionAsync();
@@ -896,10 +910,10 @@ namespace IqraInfrastructure.Managers.Business
                         }
 
                         // Call Ended Tool
-                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.CallEndedTool.SelectedToolId))
+                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.CallEndedTool.ToolId))
                         {
                             var refObj = new BusinessAppToolInboundRouteReference { RouteId = businessAppRoute.Id, ActionType = BusinessAppToolInboundRouteActionType.CallEnded };
-                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.CallEndedTool.SelectedToolId, refObj, session);
+                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.CallEndedTool.ToolId, refObj, session);
                             if (!removeToolRef)
                             {
                                 await session.AbortTransactionAsync();

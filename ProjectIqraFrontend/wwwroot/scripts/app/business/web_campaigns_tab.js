@@ -154,7 +154,7 @@ const webCampaignOnConversationInitiationFailureActionArgurments = [
         "Description": "Error message of the web session initiation failure",
     }
 ];
-const webCampaignOnConversationInitiatedActionArgurments = [
+const webCampaignOnConversationInitiatedOrStartedActionArgurments = [
     // Web Session Data
     {
         "id": "web_session_id",
@@ -333,6 +333,7 @@ var webCampaignPostAnalysisContextVariablesCustomInput = {};
 
 var webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput = {};
 var webCampaignOnConversationInitiatedActionInputArgumentsCustomInput = {};
+var webCampaignOnConversationStartedActionInputArgumentsCustomInput = {};
 var webCampaignOnConversationEndedActionInputArgumentsCustomInput = {};
 
 /** Element Variables **/
@@ -385,6 +386,7 @@ const webCampaignPostAnalysisVariablesList = webCampaignsManagerView.find("#webC
 const webCampaignActionsTab = webCampaignsManagerView.find("#web-campaign-manager-actions");
 const webCampaignActionToolConversationInitiationFailureSelect = webCampaignActionsTab.find("#web-campaign-action-tool-conversation-initiation-failure-select");
 const webCampaignActionToolConversationInitiatedSelect = webCampaignActionsTab.find("#web-campaign-action-tool-conversation-initiated-select");
+const webCampaignActionToolConversationStartedSelect = webCampaignActionsTab.find("#web-campaign-action-tool-conversation-started-select");
 const webCampaignActionToolConversationEndedSelect = webCampaignActionsTab.find("#web-campaign-action-tool-conversation-ended-select");
 
 // Modals
@@ -597,6 +599,7 @@ function resetWebCampaignManager() {
     const actionSelects = [
         webCampaignActionToolConversationInitiationFailureSelect,
         webCampaignActionToolConversationInitiatedSelect,
+        webCampaignActionToolConversationStartedSelect,
         webCampaignActionToolConversationEndedSelect
     ];
     actionSelects.forEach(select => {
@@ -611,6 +614,7 @@ function resetWebCampaignManager() {
     const toolArgumentsListObjects = [
         webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput,
         webCampaignOnConversationInitiatedActionInputArgumentsCustomInput,
+        webCampaignOnConversationStartedActionInputArgumentsCustomInput,
         webCampaignOnConversationEndedActionInputArgumentsCustomInput
     ];
     toolArgumentsListObjects.forEach(toolArgumentsListObject => {
@@ -735,7 +739,8 @@ function fillWebCampaignManager() {
         }
     }
     fillWebActionTool(data.actions.conversationInitiationFailureTool, webCampaignActionToolConversationInitiationFailureSelect, webCampaignOnConversationInitiationFailureActionArgurments, webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput);
-    fillWebActionTool(data.actions.conversationInitiatedTool, webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionArgurments, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput);
+    fillWebActionTool(data.actions.conversationInitiatedTool, webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedOrStartedActionArgurments, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput);
+    fillWebActionTool(data.actions.conversationStartedTool, webCampaignActionToolConversationStartedSelect, webCampaignOnConversationInitiatedOrStartedActionArgurments, webCampaignOnConversationStartedActionInputArgumentsCustomInput);
     fillWebActionTool(data.actions.conversationEndedTool, webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionArgurments, webCampaignOnConversationEndedActionInputArgumentsCustomInput);
 }
 
@@ -900,6 +905,10 @@ function checkWebCampaignChanges(enableDisableButton = true) {
                 toolId: webCampaignActionToolConversationInitiatedSelect.val() === 'none' ? null : webCampaignActionToolConversationInitiatedSelect.val(),
                 arguments: collectToolArguments(webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput)
             },
+            conversationStartedTool: {
+                toolId: webCampaignActionToolConversationStartedSelect.val() === 'none' ? null : webCampaignActionToolConversationStartedSelect.val(),
+                arguments: collectToolArguments(webCampaignActionToolConversationStartedSelect, webCampaignOnConversationStartedActionInputArgumentsCustomInput)
+            },
             conversationEndedTool: {
                 toolId: webCampaignActionToolConversationEndedSelect.val() === 'none' ? null : webCampaignActionToolConversationEndedSelect.val(),
                 arguments: collectToolArguments(webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionInputArgumentsCustomInput)
@@ -908,6 +917,7 @@ function checkWebCampaignChanges(enableDisableButton = true) {
 
         if (compareToolData(changes.actions.conversationInitiationFailureTool, original.actions.conversationInitiationFailureTool) ||
             compareToolData(changes.actions.conversationInitiatedTool, original.actions.conversationInitiatedTool) ||
+            compareToolData(changes.actions.conversationStartedTool, original.actions.conversationStartedTool) ||
             compareToolData(changes.actions.conversationEndedTool, original.actions.conversationEndedTool)) {
             hasChanges = true;
         }
@@ -1155,6 +1165,7 @@ function validateWebCampaign(onlyRemove = true) {
 
         validateToolArguments(webCampaignActionToolConversationInitiationFailureSelect, webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput, "Conversation Initiation Failure tool");
         validateToolArguments(webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput, "Conversation Initiated tool");
+        validateToolArguments(webCampaignActionToolConversationStartedSelect, webCampaignOnConversationStartedActionInputArgumentsCustomInput, "Conversation Started tool");
         validateToolArguments(webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionInputArgumentsCustomInput, "Conversation Ended tool");
     }
 
@@ -1555,6 +1566,7 @@ function initWebActionsEventHandlers() {
     // Main tool selection change handler
     webCampaignActionToolConversationInitiationFailureSelect.on('change', handleWebCampaignActionToolChange);
     webCampaignActionToolConversationInitiatedSelect.on('change', handleWebCampaignActionToolChange);
+    webCampaignActionToolConversationStartedSelect.on('change', handleWebCampaignActionToolChange);
     webCampaignActionToolConversationEndedSelect.on('change', handleWebCampaignActionToolChange);
 
     // Add argument dropdown change handler
@@ -1568,8 +1580,15 @@ function initWebActionsEventHandlers() {
     webCampaignsManagerView.on('change', '#web-campaign-action-tool-conversation-initiated-arguments-select', (event) => {
         handleWebCampaignActionAddArgument(
             event,
-            webCampaignOnConversationInitiatedActionArgurments,
+            webCampaignOnConversationInitiatedOrStartedActionArgurments,
             webCampaignOnConversationInitiatedActionInputArgumentsCustomInput
+        );
+    });
+    webCampaignsManagerView.on('change', '#web-campaign-action-tool-conversation-started-arguments-select', (event) => {
+        handleWebCampaignActionAddArgument(
+            event,
+            webCampaignOnConversationInitiatedOrStartedActionArgurments,
+            webCampaignOnConversationStartedActionInputArgumentsCustomInput
         );
     });
     webCampaignsManagerView.on('change', '#web-campaign-action-tool-conversation-ended-arguments-select', (event) => {
@@ -1586,6 +1605,9 @@ function initWebActionsEventHandlers() {
     });
     webCampaignActionsTab.on('click', '#web-campaign-action-tool-conversation-initiated-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
         handleWebCampaignActionRemoveArgument(event, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput);
+    });
+    webCampaignActionsTab.on('click', '#web-campaign-action-tool-conversation-started-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleWebCampaignActionRemoveArgument(event, webCampaignOnConversationStartedActionInputArgumentsCustomInput);
     });
     webCampaignActionsTab.on('click', '#web-campaign-action-tool-conversation-ended-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
         handleWebCampaignActionRemoveArgument(event, webCampaignOnConversationEndedActionInputArgumentsCustomInput);

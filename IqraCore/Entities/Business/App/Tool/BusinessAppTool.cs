@@ -38,8 +38,9 @@ namespace IqraCore.Entities.Business
     public enum BusinessAppToolInboundRouteActionType
     {
         Ringing = 0,
-        CallPicked = 1,
-        CallEnded = 2
+        CallInitiationFailure = 1,
+        CallPicked = 2,
+        CallEnded = 3
     }
 
     public class BusinessAppToolTelephonyCampaignReference
@@ -66,6 +67,7 @@ namespace IqraCore.Entities.Business
     {
         ConversationInitiationFailure = 0,
         ConversationInitiated = 1,
-        ConversationEnded = 2
+        ConversationStarted = 2,
+        ConversationEnded = 3
     }
 }

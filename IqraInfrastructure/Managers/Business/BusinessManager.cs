@@ -6,6 +6,7 @@ using IqraCore.Interfaces.User;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
+using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.FlowApp;
 using IqraInfrastructure.Managers.Integrations;
@@ -238,6 +239,14 @@ namespace IqraInfrastructure.Managers.Business
                     throw new Exception("Null constructor input variable for BusinessPostAnalysisManager");
                 }
                _businessPostAnalysisManager = new BusinessPostAnalysisManager(this, mongoClient, businessAppRepository, integrationConfigurationManager);
+            }
+        }
+
+        public void SetupDependencies(CampaignActionExecutorService campaignActionExecutorService)
+        {
+            if (_settings.InitalizeWebSessionManager)
+            {
+                _businessWebSessionManager!.SetupDependencies(campaignActionExecutorService);
             }
         }
 

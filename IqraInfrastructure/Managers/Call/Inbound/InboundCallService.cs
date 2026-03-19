@@ -33,6 +33,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
         private readonly RegionManager _regionManager;
         private readonly IUserUsageValidationManager _billingValidationManager;
         private readonly UserManager _userManager;
+        private readonly CampaignActionExecutorService _campaignActionExecutorService;
 
         private JsonSerializerOptions _seralizationOptionCamelCase = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -48,7 +49,8 @@ namespace IqraInfrastructure.Managers.Call.Inbound
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
             IUserUsageValidationManager billingValidationManager,
-            UserManager userManager
+            UserManager userManager,
+            CampaignActionExecutorService campaignActionExecutorService
         )
         {
             _logger = logger;
@@ -63,6 +65,7 @@ namespace IqraInfrastructure.Managers.Call.Inbound
             _regionManager = regionManager;
             _billingValidationManager = billingValidationManager;
             _userManager = userManager;
+            _campaignActionExecutorService = campaignActionExecutorService;
         }
 
         public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> DistributeIncomingCall(TelephonyWebhookContextModel webhookContext)
@@ -108,22 +111,45 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 }
                 callQueue.Id = callQueueId!;
 
+                _ = _campaignActionExecutorService.SendInboundCallQueueRingingAction(callQueueId!);
+
                 if (!phoneNumberInfo.IsVoiceEnabled)
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"Phone number voice is disabled", Type = CallQueueLogTypeEnum.Error });
+                    await OnUpdateCallQueueStatusFailureAndAddLogAndSendCampaignAction(
+                        callQueue.Id,
+                        new CallQueueLogEntry() {
+                            CreatedAt = DateTime.UtcNow, 
+                            Message = $"Phone number voice is disabled", 
+                            Type = CallQueueLogTypeEnum.Error
+                        }
+                    );
                     return result.SetFailureResult("DistributeIncomingCall:NUMBER_VOICE_DISABLED", "Phone number voice is disabled");
                 }
 
                 if (string.IsNullOrWhiteSpace(numberRouteId))
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"Business number has no inbound route set", Type = CallQueueLogTypeEnum.Error });
+                    await OnUpdateCallQueueStatusFailureAndAddLogAndSendCampaignAction(
+                        callQueue.Id, 
+                        new CallQueueLogEntry() { 
+                            CreatedAt = DateTime.UtcNow, 
+                            Message = $"Business number has no inbound route set", 
+                            Type = CallQueueLogTypeEnum.Error 
+                        }
+                    );
                     return result.SetFailureResult("DistributeIncomingCall:NO_ROUTE_SET", "Business number has no inbound route set");
                 }
 
                 var planValidation = await _billingValidationManager.ValidateCallPermissionAsync(businessId);
                 if (!planValidation.Success)
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"[{planValidation.Code}]: {planValidation.Message}", Type = CallQueueLogTypeEnum.Error });
+                    await OnUpdateCallQueueStatusFailureAndAddLogAndSendCampaignAction(
+                        callQueue.Id, 
+                        new CallQueueLogEntry() { 
+                            CreatedAt = DateTime.UtcNow, 
+                            Message = $"[{planValidation.Code}]: {planValidation.Message}", 
+                            Type = CallQueueLogTypeEnum.Error 
+                        }
+                    );
 
                     return result.SetFailureResult($"DistributeIncomingCall:{planValidation.Code}", planValidation.Message);
                 }
@@ -131,7 +157,13 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId, phoneNumberInfo.isUserAdmin);
                 if (!serverSelection.Success)
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"[{serverSelection.Code}]: {serverSelection.Message}", Type = CallQueueLogTypeEnum.Error });
+                    await OnUpdateCallQueueStatusFailureAndAddLogAndSendCampaignAction(
+                        callQueue.Id, new CallQueueLogEntry() { 
+                            CreatedAt = DateTime.UtcNow, 
+                            Message = $"[{serverSelection.Code}]: {serverSelection.Message}", 
+                            Type = CallQueueLogTypeEnum.Error
+                        }
+                    );
 
                     return result.SetFailureResult($"DistributeIncomingCall:{serverSelection.Code}", serverSelection.Message);
                 }
@@ -141,7 +173,14 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 {
                     _logger.LogError("Error distributing call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}: region not found {RegionId}", webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId, regionId);
 
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = $"Region not found: {regionId}", Type = CallQueueLogTypeEnum.Error });
+                    await OnUpdateCallQueueStatusFailureAndAddLogAndSendCampaignAction(
+                        callQueue.Id,
+                        new CallQueueLogEntry() { 
+                            CreatedAt = DateTime.UtcNow, 
+                            Message = $"Region not found: {regionId}", 
+                            Type = CallQueueLogTypeEnum.Error 
+                        }
+                    );
                     
                     return result.SetFailureResult("DistributeIncomingCall:REGION_NOT_FOUND", $"Region not found: {regionId}");
                 }
@@ -200,7 +239,13 @@ namespace IqraInfrastructure.Managers.Call.Inbound
                 if (!forwardResult.Success)
                 {
                     var message = string.Join("\n", errorsList);
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = message, Type = CallQueueLogTypeEnum.Error });
+                    await OnUpdateCallQueueStatusFailureAndAddLogAndSendCampaignAction(
+                        callQueue.Id, new CallQueueLogEntry() { 
+                            CreatedAt = DateTime.UtcNow, 
+                            Message = message, 
+                            Type = CallQueueLogTypeEnum.Error 
+                        }
+                    );
                     return result.SetFailureResult("DistributeIncomingCall:BACKEND_ERROR", message);
                 }
                 
@@ -212,7 +257,13 @@ namespace IqraInfrastructure.Managers.Call.Inbound
 
                 if (callQueueId != null && !string.IsNullOrEmpty(callQueueId))
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueueId, new CallQueueLogEntry() { CreatedAt = DateTime.UtcNow, Message = ex.Message, Type = CallQueueLogTypeEnum.Error });
+                    await OnUpdateCallQueueStatusFailureAndAddLogAndSendCampaignAction(
+                        callQueueId, new CallQueueLogEntry() { 
+                            CreatedAt = DateTime.UtcNow, 
+                            Message = ex.Message, 
+                            Type = CallQueueLogTypeEnum.Error 
+                        }
+                    );
                 }
 
                 return result.SetFailureResult("DistributeIncomingCall:EXCEPTION", result.Message);
@@ -292,6 +343,19 @@ namespace IqraInfrastructure.Managers.Call.Inbound
             }
         }
 
+        public async Task OnUpdateCallQueueStatusFailureAndAddLogAndSendCampaignAction(
+            string callQueueId,
+            CallQueueLogEntry log
+        ) {
+            await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(
+                callQueueId,
+                log
+            );
+
+            var logMessage = $"[{log.Type.ToString()}] {log.Message}";
+
+            _ = _campaignActionExecutorService.SendInboundCallQueueInitiationFailureAction(callQueueId, logMessage);
+        }
 
         /**
          * 

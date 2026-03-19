@@ -19,6 +19,7 @@ using IqraInfrastructure.HostedServices.Lifecycle;
 using IqraInfrastructure.HostedServices.Metrics;
 using IqraInfrastructure.Managers.App;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.FlowApp;
 using IqraInfrastructure.Managers.Infrastructure;
@@ -583,11 +584,20 @@ namespace ProjectIqraFrontend
                 );
             });
 
+            builder.Services.AddSingleton<WebSessionLogsRepository>((sp) =>
+            {
+                return new WebSessionLogsRepository(
+                    sp.GetRequiredService<IMongoClient>(),
+                    sp.GetRequiredService<ILogger<WebSessionLogsRepository>>()
+                );
+            });
+
             builder.Services.AddSingleton<WebSessionRepository>((sp) =>
             {
                 return new WebSessionRepository(
                     sp.GetRequiredService<ILogger<WebSessionRepository>>(),
-                    sp.GetRequiredService<IMongoClient>()
+                    sp.GetRequiredService<IMongoClient>(),
+                    sp.GetRequiredService<WebSessionLogsRepository>()
                 );
             });
 
@@ -1080,6 +1090,19 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<InfrastructureManager>>()
                 );
             });
+
+            builder.Services.AddSingleton<CampaignActionExecutorService>((sp) =>
+            {
+                return new CampaignActionExecutorService(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
+                    sp.GetRequiredService<OutboundCallQueueRepository>(),
+                    sp.GetRequiredService<WebSessionRepository>(),
+                    sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<ConversationStateLogsRepository>(),
+                    sp.GetRequiredService<BusinessManager>()
+                );
+            });
         }
 
         private static void SetupHostedServices(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -1121,8 +1144,12 @@ namespace ProjectIqraFrontend
                 serviceProvider.GetRequiredService<BusinessManager>().GetIntegrationsManager()
             );
 
-            serviceProvider.GetRequiredService<RegionManager>().SetDependencies(
+            serviceProvider.GetRequiredService<RegionManager>().SetupDependencies(
                 serviceProvider.GetRequiredService<ServerMetricsManager>()
+            );
+
+            serviceProvider.GetRequiredService<BusinessManager>().SetupDependencies(
+                serviceProvider.GetRequiredService<CampaignActionExecutorService>()
             );
         }
 

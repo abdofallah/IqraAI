@@ -215,6 +215,7 @@ namespace IqraInfrastructure.Managers.WebSession
                 return result.SetSuccessResult(
                     new BackendInitiateWebSessionResultModel()
                     {
+                        SessionId = session.SessionId,
                         WebSocketURL = webhookUrl
                     }    
                 );

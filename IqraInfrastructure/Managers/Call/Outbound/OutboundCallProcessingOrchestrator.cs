@@ -72,7 +72,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
         {
             if (callQueueData.MaxScheduleForDateTime <= DateTime.UtcNow)
             {
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Expired,
                     new CallQueueLogEntry {
@@ -87,7 +87,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             var validationResult = await _billingValidationManager.ValidateCallPermissionAsync(callQueueData.BusinessId);
             if (!validationResult.Success)
             {
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Canceled,
                     new CallQueueLogEntry {
@@ -102,7 +102,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             var preCheckConcurrency = await _billingValidationManager.CheckUsageConcurrency(callQueueData.BusinessId, BillingFeatureKey.CallConcurrency);
             if (!preCheckConcurrency.Success)
             {
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Queued
                     // DO NOT LOG, we do not want crazy recheck amounts
@@ -113,7 +113,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             var businessDataResult = await _businessManager.GetUserBusinessById(callQueueData.BusinessId, "ProcessCallAsync");
             if (!businessDataResult.Success || businessDataResult.Data == null)
             {
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Canceled,
                     new CallQueueLogEntry {
@@ -129,7 +129,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             var businessPhoneNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(callQueueData.BusinessId, callQueueData.CallingNumberId);
             if (businessPhoneNumber == null)
             {
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Canceled,
                     new CallQueueLogEntry {
@@ -143,7 +143,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             var businessPhoneIntegration = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(callQueueData.BusinessId, businessPhoneNumber.IntegrationId);
             if (businessPhoneIntegration == null)
             {
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Canceled,
                     new CallQueueLogEntry {
@@ -164,7 +164,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                         var currentNumberCalls = await _modemTelManager.GetCallsByStatusForPhoneNumber(_integrationsManager.DecryptField(businessPhoneIntegration.Data.EncryptedFields["apikey"]), businessPhoneIntegration.Data.Fields["endpoint"], modemTelPhonenumberId, modemtelStatusToCheck, 1);
                         if (!currentNumberCalls.Success)
                         {
-                            await OnUpdateCallQueueStatusAndSendCampaignAction(
+                            await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                                 callQueueData,
                                 CallQueueStatusEnum.Canceled,
                                 new CallQueueLogEntry {
@@ -178,7 +178,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
 
                         if (currentNumberCalls.Data.Count > 0)
                         {
-                            await OnUpdateCallQueueStatusAndSendCampaignAction(callQueueData, CallQueueStatusEnum.Queued);
+                            await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(callQueueData, CallQueueStatusEnum.Queued);
                             return;
                         }
                         break;
@@ -186,13 +186,13 @@ namespace IqraInfrastructure.Managers.Call.Outbound
 
                 case TelephonyProviderEnum.Twilio:
                     {
-                        await OnUpdateCallQueueStatusAndSendCampaignAction(callQueueData, CallQueueStatusEnum.Queued);
+                        await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(callQueueData, CallQueueStatusEnum.Queued);
                         break;
                     }
 
                 default:
                     {
-                        await OnUpdateCallQueueStatusAndSendCampaignAction(
+                        await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                             callQueueData,
                             CallQueueStatusEnum.Canceled,
                             new CallQueueLogEntry {
@@ -205,7 +205,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                     }
             }
 
-            await OnUpdateCallQueueStatusAndSendCampaignAction(
+            await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                 callQueueData,
                 CallQueueStatusEnum.ProcessingProxy,
                 new CallQueueLogEntry {
@@ -219,7 +219,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             if (!serverSelectionResult.Success || !serverSelectionResult.Data.Any())
             {
                 // todo this should happen very critically but should we kill the queue because of it?
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Failed,
                     new CallQueueLogEntry {
@@ -235,7 +235,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             if (regionDetails == null)
             {
                 _logger.LogError("Region details not found for {RegionId} during call {QueueId} processing.", callQueueData.RegionId, callQueueData.Id);
-                await OnUpdateCallQueueStatusAndSendCampaignAction(
+                await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                     callQueueData,
                     CallQueueStatusEnum.Failed,
                     new CallQueueLogEntry {
@@ -252,7 +252,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Id == optimalServer.ServerId && s.Type == ServerTypeEnum.Backend);
                 if (backendServerDetails == null)
                 {
-                    await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                         callQueueData,
                         CallQueueStatusEnum.Failed,
                         new CallQueueLogEntry {
@@ -272,7 +272,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                 var forwardResponse = await ForwardToBackendAsync(backendServerDetails, requestDto);
                 if (!forwardResponse.Success)
                 {
-                    await OnUpdateCallQueueStatusAndSendCampaignAction(
+                    await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                         callQueueData,
                         CallQueueStatusEnum.Failed,
                         new CallQueueLogEntry
@@ -293,7 +293,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                         if (backendResult.Data!.ShouldRequeue)
                         {
                             string? requeueReason = backendResult.Message ?? "";
-                            await OnUpdateCallQueueStatusAndSendCampaignAction(
+                            await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                                 callQueueData,
                                 CallQueueStatusEnum.Queued,
                                 new CallQueueLogEntry
@@ -305,7 +305,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
                         }
                         else
                         {
-                            await OnUpdateCallQueueStatusAndSendCampaignAction(
+                            await OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
                                 callQueueData,
                                 CallQueueStatusEnum.Failed,
                                 new CallQueueLogEntry
@@ -396,7 +396,7 @@ namespace IqraInfrastructure.Managers.Call.Outbound
             }
         }
     
-        public async Task OnUpdateCallQueueStatusAndSendCampaignAction(
+        public async Task OnUpdateCallQueueStatusAndAddLogAndSendCampaignAction(
             OutboundCallQueueData callQueueData, CallQueueStatusEnum newStatus,
             CallQueueLogEntry? log = null,
             string? newProcessingServerId = null,
