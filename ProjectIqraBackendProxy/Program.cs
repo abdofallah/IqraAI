@@ -467,7 +467,8 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<IUserUsageValidationManager>(),
-                    sp.GetRequiredService<UserManager>()
+                    sp.GetRequiredService<UserManager>(),
+                    sp.GetRequiredService<CampaignActionExecutorService>()
                 );
             });
             builder.Services.AddSingleton<UserManager>((sp) =>
