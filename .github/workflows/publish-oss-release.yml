@@ -12,6 +12,9 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: write
+
 env:
   DOCKER_ORG: abdofallah
 
