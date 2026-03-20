@@ -1,0 +1,54 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY . .
+
+RUN find . -name "appsettings*.json" -type f -delete
+
+# Restore ONLY the 4 target apps.
+RUN dotnet restore "ProjectIqraFrontend/ProjectIqraFrontend.csproj" -r linux-x64 && \
+    dotnet restore "ProjectIqraBackendApp/ProjectIqraBackendApp.csproj" -r linux-x64 && \
+    dotnet restore "ProjectIqraBackendProxy/ProjectIqraBackendProxy.csproj" -r linux-x64 && \
+    dotnet restore "IqraBackgroundProcessor/IqraBackgroundProcessor.csproj" -r linux-x64
+
+# Publish ONLY the 4 target apps.
+RUN dotnet publish "ProjectIqraFrontend/ProjectIqraFrontend.csproj" -c Release -r linux-x64 --self-contained true --no-restore -o /app/publish/frontend && \
+    dotnet publish "ProjectIqraBackendApp/ProjectIqraBackendApp.csproj" -c Release -r linux-x64 --self-contained true --no-restore -o /app/publish/backend && \
+    dotnet publish "ProjectIqraBackendProxy/ProjectIqraBackendProxy.csproj" -c Release -r linux-x64 --self-contained true --no-restore -o /app/publish/proxy && \
+    dotnet publish "IqraBackgroundProcessor/IqraBackgroundProcessor.csproj" -c Release -r linux-x64 --self-contained true --no-restore -o /app/publish/background
+
+
+# Frontend Runtime Target
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS frontend_target
+WORKDIR /app
+COPY --from=build /app/publish/frontend .
+ENV ASPNETCORE_HTTP_PORTS=6666
+EXPOSE 6666
+ENTRYPOINT ["./ProjectIqraFrontend"]
+
+
+# Proxy Runtime Target
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS proxy_target
+WORKDIR /app
+COPY --from=build /app/publish/proxy .
+ENV ASPNETCORE_HTTP_PORTS=7777
+EXPOSE 7777
+ENTRYPOINT ["./ProjectIqraBackendProxy"]
+
+
+# Backend Runtime Target
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS backend_target
+WORKDIR /app
+COPY --from=build /app/publish/backend .
+ENV ASPNETCORE_HTTP_PORTS=8888
+EXPOSE 8888
+ENTRYPOINT ["./ProjectIqraBackendApp"]
+
+
+# Background Processor Target
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS background_target
+WORKDIR /app
+COPY --from=build /app/publish/background .
+ENV ASPNETCORE_HTTP_PORTS=9999
+EXPOSE 9999
+ENTRYPOINT ["./IqraBackgroundProcessor"]
