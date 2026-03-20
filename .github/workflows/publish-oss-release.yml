@@ -89,7 +89,7 @@ jobs:
     needs: verify-repository # Waits for the guardrail job to pass
     strategy:
       matrix:
-        target: [linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64]
+        target: [linux-x64, linux-arm64, win-x64, win-arm64]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
