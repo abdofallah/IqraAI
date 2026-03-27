@@ -1,7 +1,7 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
 using CommunityToolkit.HighPerformance;
-using IqraCore.Entities.App.Configuration;
+using IqraCore.Constants;
 using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -18,14 +18,16 @@ namespace IqraInfrastructure.Repositories.Conversation
         {
             _logger = logger;
             _s3StorageClientFactory = clientFactory;
-            _bucketName = S3StorageConfig.BusinessConversationAudioRepositoryBucketName;
-
-            // Ensure the bucket exists in the current region using the Helper
-            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, null);
-            S3StorageHelpers.EnsureBucketExistsAsync(client, _bucketName, _logger).GetAwaiter().GetResult();
+            _bucketName = S3StorageBucketConstants.BusinessConversationAudioRepositoryBucketName;
         }
 
-        public async Task<bool> StoreAudioAsync(string reference, byte[] audioData, Dictionary<string, string>? metadata = null, string? region = null)
+        public async Task Initalize()
+        {
+            var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
+            await S3StorageHelpers.EnsureBucketExistsAsync(client, _bucketName, _logger);
+        }
+
+        public async Task<bool> StoreAudioAsync(string reference, byte[] audioData, Dictionary<string, string>? metadata = null)
         {
             try
             {
@@ -55,7 +57,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                 }
 
                 // Use Helper to get client
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
                 await client.PutObjectAsync(request);
 
                 return true;
@@ -67,7 +69,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<byte[]?> RetrieveAudioAsync(string reference, string? region = null)
+        public async Task<byte[]?> RetrieveAudioAsync(string reference)
         {
             if (string.IsNullOrEmpty(reference) || reference.Contains(".."))
             {
@@ -83,7 +85,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                     Key = reference
                 };
 
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
 
                 using var response = await client.GetObjectAsync(request);
                 using var memoryStream = new MemoryStream();
@@ -103,7 +105,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<bool> DeleteAudioAsync(string reference, string? region = null)
+        public async Task<bool> DeleteAudioAsync(string reference)
         {
             try
             {
@@ -119,7 +121,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                     Key = reference
                 };
 
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
                 await client.DeleteObjectAsync(request);
 
                 return true;
@@ -136,7 +138,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<List<string>> ListAudioForConversationAsync(string conversationId, string? region = null)
+        public async Task<List<string>> ListAudioForConversationAsync(string conversationId)
         {
             try
             {
@@ -150,7 +152,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                 };
 
                 ListObjectsV2Response response;
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
 
                 do
                 {
@@ -174,7 +176,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<Dictionary<string, string>?> GetAudioMetadataAsync(string reference, string? region = null)
+        public async Task<Dictionary<string, string>?> GetAudioMetadataAsync(string reference)
         {
             try
             {
@@ -190,7 +192,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                     Key = reference
                 };
 
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
                 var response = await client.GetObjectMetadataAsync(request);
 
                 if (response.Metadata == null || response.Metadata.Count == 0)
@@ -218,9 +220,9 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public string? GeneratePresignedUrl(string fileId, int expiresInSeconds, string? region = null)
+        public string? GeneratePresignedUrl(string fileId, int expiresInSeconds)
         {
-            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+            var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
             return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, fileId, expiresInSeconds, _logger);
         }
     }

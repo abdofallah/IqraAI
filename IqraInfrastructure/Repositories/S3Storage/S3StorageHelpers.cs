@@ -1,6 +1,5 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
-using IqraCore.Entities.Region;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
@@ -8,39 +7,30 @@ namespace IqraInfrastructure.Repositories.S3Storage
 {
     public static class S3StorageHelpers
     {
-        /// <summary>
-        /// Resolves the correct S3 Client based on the provided region or defaults to the current region.
-        /// </summary>
-        public static IAmazonS3 GetS3Client(S3StorageClientFactory factory, string? region)
+        public static IAmazonS3 GetRegionS3Client(S3StorageClientFactory factory, string region)
         {
-            var client = string.IsNullOrEmpty(region)
-                ? factory.GetClientForCurrentRegion()
-                : factory.GetClientForRegion(region);
+            var client = factory.GetClientForRegion(region);
 
             if (client == null)
             {
-                throw new InvalidOperationException($"S3 Client not found for region: {region ?? "Current"}");
-            }
-
-            return client;
-        }
-        public static RegionS3StorageServerData GetS3ClientServerData(S3StorageClientFactory factory, string? region)
-        {
-            var client = string.IsNullOrEmpty(region)
-                ? factory.GetServerForCurrentRegion()
-                : factory.GetServerForRegion(region);
-
-            if (client == null)
-            {
-                throw new InvalidOperationException($"S3 Server not found for region: {region ?? "Current"}");
+                throw new InvalidOperationException($"S3 Client not found for region: {region}");
             }
 
             return client;
         }
 
-        /// <summary>
-        /// Ensures the specified bucket exists. If not, it attempts to create it.
-        /// </summary>
+        public static IAmazonS3 GetDefaultS3Client(S3StorageClientFactory factory)
+        {
+            var client = factory.GetDefaultClient();
+
+            if (client == null)
+            {
+                throw new InvalidOperationException("Default S3 Client not found");
+            }
+
+            return client;
+        }
+
         public static async Task EnsureBucketExistsAsync(IAmazonS3 client, string bucketName, ILogger logger)
         {
             try

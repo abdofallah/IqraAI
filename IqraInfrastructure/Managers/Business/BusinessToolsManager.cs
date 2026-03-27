@@ -545,7 +545,7 @@ namespace IqraInfrastructure.Managers.Business
                             NewBusinessAppToolData.Audio.DuringExecutionAudioS3StorageLink = new S3StorageFileLink
                             {
                                 ObjectName = validationResult.Hash,
-                                OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                                IsDefaultS3 = true
                             };
                         }
                         else if (audioDuringExecutionUrlType == "previous")
@@ -629,7 +629,7 @@ namespace IqraInfrastructure.Managers.Business
                             NewBusinessAppToolData.Audio.AfterExecutionAudioS3StorageLink = new S3StorageFileLink
                             {
                                 ObjectName = validationResult.Hash,
-                                OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                                IsDefaultS3 = true
                             };
                         }
                         else if (audioAfterExecutionUrlType == "previous")

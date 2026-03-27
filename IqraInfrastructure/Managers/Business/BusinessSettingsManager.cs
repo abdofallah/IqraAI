@@ -246,7 +246,7 @@ namespace IqraInfrastructure.Managers.Business
                         new S3StorageFileLink
                         {
                             ObjectName = fileName,
-                            OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                            IsDefaultS3 = true
                         }
                     )
                 );

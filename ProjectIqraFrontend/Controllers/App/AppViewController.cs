@@ -16,10 +16,12 @@ namespace ProjectIqraFrontend.Controllers.App
 
         public AppViewController(
             ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
-            UserManager userManager
+            UserManager userManager,
+            IqraAppManager appManager
         ) {
             _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _userManager = userManager;
+            _appManager = appManager;
         }
 
         [HttpGet("/install")]

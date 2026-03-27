@@ -23,9 +23,16 @@ namespace IqraInfrastructure.Repositories.User
             _usersCollection = database.GetCollection<UserData>(CollectionName);
         }
 
-        public async Task<bool> AddUserAsync(UserData user)
+        public async Task<bool> AddUserAsync(UserData user, IClientSessionHandle? mongoSession = null)
         {
-            await _usersCollection.InsertOneAsync(user);
+            if (mongoSession != null)
+            {
+                await _usersCollection.InsertOneAsync(mongoSession, user);
+            }
+            else
+            {
+                await _usersCollection.InsertOneAsync(user);
+            }
             return true;
         }
 

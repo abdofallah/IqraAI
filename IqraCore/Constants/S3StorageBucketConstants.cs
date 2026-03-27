@@ -1,6 +1,6 @@
-﻿namespace IqraCore.Entities.App.Configuration
+﻿namespace IqraCore.Constants
 {
-    public static class S3StorageConfig
+    public static class S3StorageBucketConstants
     {
         public const string IntegrationsLogoRepositoryBucketName = "iqra.integrations.logo";
 

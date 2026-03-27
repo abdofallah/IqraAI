@@ -12,12 +12,12 @@
     var logoUrl = "/img/logo/logo-colored-light.png";
     if (platformLogoS3StorageLink != null)
     {
-        logoUrl = LogoRepo.GeneratePresignedUrl(platformLogoS3StorageLink.ObjectName, 3600, platformLogoS3StorageLink.OriginRegion);
+        logoUrl = LogoRepo.GeneratePresignedUrl(platformLogoS3StorageLink.ObjectName, 3600);
     }
     var iconUrl = "/img/favicon/favicon.ico";
     if (platformIconS3StorageLink != null)
     {
-        iconUrl = LogoRepo.GeneratePresignedUrl(platformIconS3StorageLink.ObjectName, 3600, platformIconS3StorageLink.OriginRegion);
+        iconUrl = LogoRepo.GeneratePresignedUrl(platformIconS3StorageLink.ObjectName, 3600);
     }
 }
 <!DOCTYPE html>

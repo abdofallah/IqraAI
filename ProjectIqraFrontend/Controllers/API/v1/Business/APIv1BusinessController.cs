@@ -70,7 +70,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                 var businessMetaDataModel = new GetUseBusinessFullResultMetaDataModel(businessData);
                 if (businessData.LogoS3StorageLink != null)
                 {
-                    businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400, businessData.LogoS3StorageLink.OriginRegion);
+                    businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400);
                 }
 
                 var businessAppModel = new GetUseBusinessFullResultAppModel(businessAppResult.Data!);
@@ -81,7 +81,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
 
                     if (agent.Settings.BackgroundAudioS3StorageLink != null)
                     {
-                        modelAgent.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GeneratePresignedUrl(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000, agent.Settings.BackgroundAudioS3StorageLink.OriginRegion);
+                        modelAgent.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GeneratePresignedUrl(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000);
                     }
                 }
 

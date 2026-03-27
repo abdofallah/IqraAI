@@ -3,14 +3,19 @@ using IqraCore.Entities.App.Configuration;
 using IqraCore.Entities.App.Lifecycle;
 using IqraCore.Entities.App.Update;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.S3Storage;
 using IqraCore.Models.App;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.Server.Metrics;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.App;
+using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using System.Net.Http.Json;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -58,6 +63,12 @@ namespace IqraInfrastructure.Managers.App
         /// </summary>
         public async Task RefreshConfigAndStatusAsync()
         {
+            if (_currentStatus == AppLifecycleStatus.AwaitingInstallRestart)
+            {
+                // never allow a refresh while in this state
+                return;
+            }
+
             var config = await GetConfigSnapshotAsync();
             _currentConfig = config;
 
@@ -165,7 +176,7 @@ namespace IqraInfrastructure.Managers.App
             var result = new FunctionReturnResult();
 
             // Guard: Double check status to prevent overwriting
-            if (_currentStatus != AppLifecycleStatus.NotInstalled)
+            if (_currentStatus != AppLifecycleStatus.NotInstalled || _currentStatus == AppLifecycleStatus.AwaitingInstallRestart)
             {
                 return result.SetFailureResult("ALREADY_INSTALLED", "Application is already installed.");
             }
@@ -179,44 +190,169 @@ namespace IqraInfrastructure.Managers.App
                     var languagesManager = scope.ServiceProvider.GetRequiredService<LanguagesManager>();
                     var integrationsManager = scope.ServiceProvider.GetRequiredService<IntegrationsManager>();
 
-                    // Create Super Admin
-                    var adminResult = await userManager.CreateAdminUserAsync(request.AdminEmail, request.AdminPassword);
-                    if (!adminResult.Success)
+                    var mongoClient = scope.ServiceProvider.GetRequiredService<MongoDB.Driver.IMongoClient>();
+                    using (var mongoSession = await mongoClient.StartSessionAsync())
                     {
-                        return result.SetFailureResult("ADMIN_CREATION_FAILED", $"Failed to create admin: {adminResult.Message}");
+                        mongoSession.StartTransaction();
+
+                        try
+                        {
+                            // Test S3 Configuration First
+                            var defaultS3Config = new S3StorageConfigData()
+                            {
+                                Endpoint = request.S3Config.Endpoint,
+                                UseSSL = request.S3Config.UseSSL,
+                                AccessKey = request.S3Config.AccessKey,
+                                SecretKey = request.S3Config.SecretKey,
+                                DisabledAt = null
+                            };
+                            var defaultS3ClientResult = await S3StorageClientFactory.CreateAmazonS3Client(defaultS3Config);
+                            if (!defaultS3ClientResult.Success)
+                            {
+                                await mongoSession.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "PerformFreshInstallAsync:S3_CONFIG_FAILED",
+                                    $"Failed to create Amazon S3 client (invalid configuration? or server offline?): {defaultS3ClientResult.Message}"
+                                );
+                            }
+
+                            var setS3ConfigResult = await appRepository.AddUpdateDefaultS3StorageConfig(defaultS3Config, mongoSession);
+                            if (!setS3ConfigResult)
+                            {
+                                await mongoSession.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "PerformFreshInstallAsync:S3_CONFIG_SAVE_FAILED",
+                                    $"Failed to set default S3 configuration in db"
+                                );
+                            }
+
+                            // Create Super Admin
+                            var adminResult = await userManager.CreateAdminUserAsync(request.AdminEmail, request.AdminPassword, mongoSession);
+                            if (!adminResult.Success)
+                            {
+                                await mongoSession.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "PerformFreshInstallAsync:ADMIN_CREATION_FAILED",
+                                    $"Failed to create admin: {adminResult.Message}"
+                                );
+                            }
+
+                            // Seed Default Data
+                            string seedingDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Seeding");
+                            if (Directory.Exists(seedingDir))
+                            {
+                                var seedFiles = Directory.GetFiles(seedingDir, "*.json");
+                                if (seedFiles.Length == 0)
+                                {
+                                    await mongoSession.AbortTransactionAsync();
+                                    return result.SetFailureResult(
+                                        "PerformFreshInstallAsync:SEEDING_DIR_EMPTY",
+                                        $"Seeding directory is empty: {seedingDir}"
+                                    );
+                                }
+
+                                foreach (var file in seedFiles)
+                                {
+                                    var filename = Path.GetFileNameWithoutExtension(file);
+                                    var parts = filename.Split('.');
+                                    if (parts.Length == 2)
+                                    {
+                                        string dbName = parts[0];
+                                        string colName = parts[1];
+
+                                        string json = await File.ReadAllTextAsync(file);
+                                        if (!string.IsNullOrWhiteSpace(json))
+                                        {
+                                            var docs = BsonSerializer.Deserialize<List<BsonDocument>>(json);
+                                            if (docs != null && docs.Count > 0)
+                                            {
+                                                var db = mongoClient.GetDatabase(dbName);
+                                                var col = db.GetCollection<BsonDocument>(colName);
+                                                
+                                                try
+                                                {
+                                                    await col.InsertManyAsync(mongoSession, docs);
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    await mongoSession.AbortTransactionAsync();
+                                                    return result.SetFailureResult(
+                                                        "PerformFreshInstallAsync:SEEDING_FILE_FAILED",
+                                                        $"Failed to seed file into db (insertMany failed): {file}: {ex.Message}"
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        await mongoSession.AbortTransactionAsync();
+                                        return result.SetFailureResult(
+                                            "PerformFreshInstallAsync:SEEDING_FILE_INVALID",
+                                            $"Seeding file is invalid: {file}"
+                                        );
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                await mongoSession.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "PerformFreshInstallAsync:SEEDING_DIR_NOT_FOUND",
+                                    $"Failed to find seeding directory (should be in project folder): {seedingDir}"
+                                );
+                            }
+
+                            // Update Configuration
+                            var config = await appRepository.GetIqraAppConfig() ?? new IqraAppConfig();
+
+                            config.AppInstalled = true;
+                            config.InstalledVersion = IqraGlobalConstants.CurrentAppVersion;
+                            config.InstallationDate = DateTime.UtcNow;
+                            config.EnableExtraTelemetry = request.EnableExtraTelemetry;
+                            if (string.IsNullOrEmpty(config.InstanceId)) config.InstanceId = Guid.NewGuid().ToString();
+
+                            var saveResult = await appRepository.AddUpdateIqraAppConfig(config, mongoSession);
+                            if (!saveResult)
+                            {
+                                await mongoSession.AbortTransactionAsync();
+                                return result.SetFailureResult(
+                                    "PerformFreshInstallAsync:CONFIG_SAVE_FAILED",
+                                    "Failed to save final configuration."
+                                );
+                            }
+
+                            _currentStatus = AppLifecycleStatus.AwaitingInstallRestart; // force set the status for restart - will auto change on next restart
+
+                            await mongoSession.CommitTransactionAsync();
+
+                            _ = SendTelemetryEvent(config, "installation_complete", new Dictionary<string, object>
+                            {
+                                { "current_version", IqraGlobalConstants.CurrentAppVersion },
+                                { "contact", request.AdminEmail },
+                                { "hardware", GetSystemSpecs() }
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            await mongoSession.AbortTransactionAsync();
+                            _logger.LogError(ex, "Installation failed.");
+                            return result.SetFailureResult(
+                                "INSTALL_EXCEPTION",
+                                $"Installation failed with exception: {ex.Message}"
+                            );
+                        }
                     }
 
-                    // Seed Default Data (Placeholder)
-                    // await languagesManager.SeedDefaultsAsync(...);
-                    // await integrationsManager.SeedDefaultsAsync(...);
-                    // we will create helper functions for both of them
-                    // they will read from the json files in Seeding/Languages or Seeding/Integrations folders
-                    // e.g for language we will have en.json, that will map to LanguagesData, and this way we can create a list of all of them and seed into the database
-
-                    // Update Configuration
-                    var config = await appRepository.GetIqraAppConfig() ?? new IqraAppConfig();
-
-                    config.AppInstalled = true;
-                    config.InstalledVersion = IqraGlobalConstants.CurrentAppVersion;
-                    config.InstallationDate = DateTime.UtcNow;        
-                    config.EnableExtraTelemetry = request.EnableExtraTelemetry;
-                    if (string.IsNullOrEmpty(config.InstanceId)) config.InstanceId = Guid.NewGuid().ToString();
-
-                    var saveResult = await appRepository.AddUpdateIqraAppConfig(config);
-                    if (!saveResult)
+                    // Force shutdown app so user restarts it manually - to reinitalize everything
+                    _ = Task.Run(async () =>
                     {
-                        return result.SetFailureResult("CONFIG_SAVE_FAILED", "Failed to save final configuration.");
-                    }
-
-                    _ = SendTelemetryEvent(config, "installation_complete", new Dictionary<string, object>
-                    {
-                        { "current_version", IqraGlobalConstants.CurrentAppVersion },
-                        { "contact", request.AdminEmail },
-                        { "hardware", GetSystemSpecs() }
+                        await Task.Delay(5); // delay so the result is recieved by the client
+                        var appLifetime = _serviceProvider.GetRequiredService<IHostApplicationLifetime>();
+                        appLifetime.StopApplication();
                     });
                 }
 
-                await RefreshConfigAndStatusAsync();
                 return result.SetSuccessResult();
             }
             catch (Exception ex)

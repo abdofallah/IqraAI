@@ -163,7 +163,7 @@ namespace IqraInfrastructure.Managers.Integrations
                     }
                     integrationData.LogoS3StorageLink = new S3StorageFileLink {
                         ObjectName = fileName,
-                        OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                        IsDefaultS3 = true
                     };
                 }
                 else if (postType == "edit" && existingIntegration?.LogoS3StorageLink != null)

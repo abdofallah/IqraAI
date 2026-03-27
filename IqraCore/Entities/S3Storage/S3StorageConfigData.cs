@@ -1,6 +1,9 @@
-﻿namespace IqraCore.Entities.Region
+﻿using MongoDB.Bson.Serialization.Attributes;
+
+namespace IqraCore.Entities.S3Storage
 {
-    public class RegionS3StorageServerData
+    [BsonIgnoreExtraElements]
+    public class S3StorageConfigData
     {
         public string Endpoint { get; set; } = string.Empty;
         public string AccessKey { get; set; } = string.Empty;

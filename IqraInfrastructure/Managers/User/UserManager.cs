@@ -38,7 +38,8 @@ namespace IqraInfrastructure.Managers.User
             UserRepository userRepository,
             EmailManager emailManager,
             UserApiKeyProcessor apiKeyProcessor,
-            string hostURL
+            string hostURL,
+            IUserRegistrationManager userRegistrationManager
         )
         {
             _logger = logger;
@@ -49,6 +50,7 @@ namespace IqraInfrastructure.Managers.User
             _emailManager = emailManager;
             _apiKeyProcessor = apiKeyProcessor;
             _hostURL = hostURL;
+            _userRegistrationManager = userRegistrationManager;
         }
 
         // CURD
@@ -91,9 +93,9 @@ namespace IqraInfrastructure.Managers.User
         }
 
         // Management
-        public async Task<FunctionReturnResult> CreateAdminUserAsync(string email, string password)
+        public async Task<FunctionReturnResult> CreateAdminUserAsync(string email, string password, IClientSessionHandle? mongoSession = null)
         {
-            return await _userRegistrationManager.RegisterUser(new RegisterModel() { Email = email, Password = password, FirstName = "Iqra", LastName = "Admin" }, HashPassword, "YESADMINENABLED");
+            return await _userRegistrationManager.RegisterUser(new RegisterModel() { Email = email, Password = password, FirstName = "Iqra", LastName = "Admin" }, HashPassword, "YESADMINENABLED", mongoSession);
         }
 
         public async Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model)

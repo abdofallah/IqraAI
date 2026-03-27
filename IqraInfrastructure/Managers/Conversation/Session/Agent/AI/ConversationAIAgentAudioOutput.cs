@@ -225,7 +225,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
 
             string audioUrl = _agentState.BusinessAppAgent.Settings.BackgroundAudioS3StorageLink.ObjectName;
-            string audioUrlOriginRegion = _agentState.BusinessAppAgent.Settings.BackgroundAudioS3StorageLink.OriginRegion;
             _logger.LogInformation("Agent {AgentId}: Attempting to load background audio (ID: {FileId})", _agentState.AgentId, audioUrl);
 
             try
@@ -233,7 +232,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 AudioFileResult? fileResult = await _audioRepository.GetFileWithMetadataAsync(audioUrl);
                 if (fileResult == null || fileResult.Data.IsEmpty)
                 {
-                    fileResult = await _audioRepository.GetFileWithMetadataAsync(audioUrl, audioUrlOriginRegion);
+                    fileResult = await _audioRepository.GetFileWithMetadataAsync(audioUrl);
                     if (fileResult == null || fileResult.Data.IsEmpty)
                     {
                         _logger.LogWarning("Agent {AgentId}: Background audio file not found or is empty (ID: {FileId})", _agentState.AgentId, audioUrl);

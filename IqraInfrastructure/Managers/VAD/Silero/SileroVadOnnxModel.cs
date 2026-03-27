@@ -1,14 +1,17 @@
-﻿using Microsoft.ML.OnnxRuntime;
+﻿using IqraInfrastructure.Helpers.GitHub;
+using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 
 namespace IqraInfrastructure.Managers.VAD.Silero
 {
     public class SileroVadOnnxModel
     {
-        private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "Silero", "silero_vad.onnx");
+        private static readonly string ModelFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "Silero");
+        private static readonly string ModelPath = Path.Combine(ModelFolder, "silero_vad.onnx");
+        
         private static InferenceSession session;
         private static bool IsModelLoaded = false;
-        private static bool IsLoadingModel = false;
+        private static readonly object _initLock = new object();
 
         private float[][][] state;
         private float[][] context;
@@ -20,29 +23,39 @@ namespace IqraInfrastructure.Managers.VAD.Silero
         {
             if (!IsModelLoaded)
             {
-                while (IsLoadingModel)
+                lock (_initLock)
                 {
-                    Task.Delay(100).GetAwaiter().GetResult();
-                }
+                    if (!IsModelLoaded)
+                    {
+                        EnsureModelExists();
 
-                try
-                {
-                    var sessionOptions = new SessionOptions();
-                    sessionOptions.InterOpNumThreads = 1;
-                    sessionOptions.IntraOpNumThreads = 1;
-                    sessionOptions.EnableCpuMemArena = true;
+                        var sessionOptions = new SessionOptions();
+                        sessionOptions.InterOpNumThreads = 1;
+                        sessionOptions.IntraOpNumThreads = 1;
+                        sessionOptions.EnableCpuMemArena = true;
 
-                    session = new InferenceSession(ModelPath, sessionOptions);
+                        session = new InferenceSession(ModelPath, sessionOptions);
 
-                    IsModelLoaded = true;
-                }
-                finally
-                {
-                    IsLoadingModel = false;
+                        IsModelLoaded = true;
+                    }
                 }
             }
 
             ResetStates();
+        }
+
+        private void EnsureModelExists()
+        {
+            Task.Run(async () =>
+            {
+                await GitHubDownloader.DownloadSingleFileAsync(
+                    ownerRepo: "snakers4/silero-vad",
+                    branch: "master",
+                    gitFilePath: "src/silero_vad/data/silero_vad.onnx",
+                    localFilePath: ModelPath,                           
+                    replaceIfShaMismatch: true                          
+                );
+            }).GetAwaiter().GetResult();
         }
 
         public void ResetStates()

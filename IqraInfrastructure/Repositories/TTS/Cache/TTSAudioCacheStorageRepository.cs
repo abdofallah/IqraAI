@@ -1,7 +1,7 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
 using CommunityToolkit.HighPerformance;
-using IqraCore.Entities.App.Configuration;
+using IqraCore.Constants;
 using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -18,17 +18,20 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
         {
             _logger = logger;
             _s3StorageClientFactory = clientFactory;
-            _bucketName = S3StorageConfig.BusinessTTSAudioCacheStorageRepositoryBucketName;
+            _bucketName = S3StorageBucketConstants.BusinessTTSAudioCacheStorageRepositoryBucketName;
+        }
 
-            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, null);
-            S3StorageHelpers.EnsureBucketExistsAsync(client, _bucketName, _logger).GetAwaiter().GetResult();
+        public async Task Initalize(string regionId)
+        {
+            var client = S3StorageHelpers.GetRegionS3Client(_s3StorageClientFactory, regionId);
+            await S3StorageHelpers.EnsureBucketExistsAsync(client, _bucketName, _logger);
         }
 
         public async Task<ReadOnlyMemory<byte>> GetFileAsByteArrayAsync(string objectPath, CancellationToken token = default, string? region = null)
         {
             try
             {
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetRegionS3Client(_s3StorageClientFactory, region);
 
                 var request = new GetObjectRequest
                 {
@@ -58,7 +61,7 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
         {
             try
             {
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetRegionS3Client(_s3StorageClientFactory, region);
 
                 using var fileStream = fileBytes.AsStream();
 
@@ -91,7 +94,7 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
         {
             try
             {
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetRegionS3Client(_s3StorageClientFactory, region);
 
                 // Check metadata to verify existence
                 await client.GetObjectMetadataAsync(_bucketName, objectPath, token);
@@ -110,7 +113,7 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
 
         public string? GeneratePresignedUrl(string fileId, int expiresInSeconds, string? region = null)
         {
-            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+            var client = S3StorageHelpers.GetRegionS3Client(_s3StorageClientFactory, region);
             return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, fileId, expiresInSeconds, _logger);
         }
     }

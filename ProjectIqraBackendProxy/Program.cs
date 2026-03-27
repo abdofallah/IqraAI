@@ -235,10 +235,11 @@ namespace ProjectIqraBackendProxy
             // Repositories
             builder.Services.AddSingleton<AppRepository>((sp) =>
             {
-                return new AppRepository(
-                    sp.GetRequiredService<ILogger<AppRepository>>(),
+                var appRepository = new AppRepository(
                     sp.GetRequiredService<IMongoClient>()
                 );
+                appRepository.SetLogger(sp.GetRequiredService<ILogger<AppRepository>>());
+                return appRepository;
             });
 
             builder.Services.AddSingleton<CallQueueLogsRepository>((sp) =>
@@ -478,6 +479,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     sp.GetRequiredService<UserRepository>(),
+                    null,
                     null,
                     null,
                     null

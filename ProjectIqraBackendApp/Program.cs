@@ -31,7 +31,10 @@ using IqraInfrastructure.Managers.SIP;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.TurnEnd;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Managers.VAD.Silero;
+using IqraInfrastructure.Managers.VoiceMailDetection;
 using IqraInfrastructure.Managers.WebSession;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Business;
@@ -272,7 +275,7 @@ namespace ProjectIqraBackendApp
                 appLogger.LogInformation("Iqra Backend Bootstrapping...");
 
                 var regionManager = scope.ServiceProvider.GetRequiredService<RegionManager>();
-                var regionData = await regionManager.GetRegionById(backendAppConfig.RegionId);
+                var regionData = await regionManager.GetRegionById(backendAppConfig.RegionId!);
                 if (regionData == null)
                 {
                     throw new Exception($"Region with id {backendAppConfig.RegionId} not found.");
@@ -289,7 +292,7 @@ namespace ProjectIqraBackendApp
 
                 // Make sure no other backend node with same config is running
                 var metricsManager = scope.ServiceProvider.GetRequiredService<ServerMetricsManager>();
-                var frontendAlreadyRunning = await metricsManager.CheckBackendNodeRunning(backendAppConfig.RegionId, backendAppConfig.Id);
+                var frontendAlreadyRunning = await metricsManager.CheckBackendNodeRunning(backendAppConfig.RegionId!, backendAppConfig.Id!);
                 if (frontendAlreadyRunning)
                 {
                     throw new Exception("Server Metrics Manager found that a backend node (with same node id in current region) is already running.\nThis could be a false positive too, but it's better to be safe than sorry.\n\nGiven the redis database takes 30seconds to clear previous running backend status, if the issue presits for more than a minute, there must be another backend node (with same node id in current region) running.");
@@ -298,6 +301,9 @@ namespace ProjectIqraBackendApp
                 // Perform Initial Startup Integrity Check
                 var startupIntregity = scope.ServiceProvider.GetRequiredService<StartupIntegrityCheckService>();
                 await startupIntregity.CheckAsync();
+
+                // If startup integrity passes, initialize s3 repos
+                await InitalizeS3Services(app.Services, backendAppConfig!);
 
                 appLogger.LogInformation("Iqra Backend Bootstrapping Completed.");
             }
@@ -327,10 +333,32 @@ namespace ProjectIqraBackendApp
             builder.Services.AddSingleton<IMongoClient>(mongoClient);
 
             var regionRepoistory = new RegionRepository(mongoClient);
-            builder.Services.AddSingleton<RegionRepository>(regionRepoistory);
+            builder.Services.AddSingleton<RegionRepository>((sp) =>
+            {
+                regionRepoistory.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
+                return regionRepoistory;
+            });
 
             var regionManager = new RegionManager(regionRepoistory);
-            builder.Services.AddSingleton<RegionManager>(regionManager);
+            builder.Services.AddSingleton<RegionManager>((sp) =>
+            {
+                regionManager.SetLogger(sp.GetRequiredService<ILogger<RegionManager>>());
+                return regionManager;
+            });
+
+            var appRepository = new AppRepository(mongoClient);
+            builder.Services.AddSingleton<AppRepository>((sp) =>
+            {
+                appRepository.SetLogger(sp.GetRequiredService<ILogger<AppRepository>>());
+                return appRepository;
+            });
+
+            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory();
+            builder.Services.AddSingleton<S3StorageClientFactory>((sp) =>
+            {
+                s3StorageClientFactory.SetLogger(sp.GetRequiredService<ILogger<S3StorageClientFactory>>());
+                return s3StorageClientFactory;
+            });
 
             // Build Remaning config from dependencies
             var regionData = await regionManager.GetRegionById(backendAppConfig.RegionId);
@@ -346,18 +374,25 @@ namespace ProjectIqraBackendApp
             backendAppConfig.ServerEndpoint = regionServerData.Endpoint;
             backendAppConfig.SIPPort = regionServerData.SIPPort;
 
-            var allRegionsDataResult = await regionManager.GetRegions();
-            if (!allRegionsDataResult.Success)
-            {
-                throw new Exception($"[{allRegionsDataResult.Code}] {allRegionsDataResult.Message}");
-            }
+            // Inialize S3 Storage
+            var appInfo = await appRepository.GetIqraAppConfig();
+            var isNewApp = appInfo == null || appInfo.AppInstalled == false;
 
-            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory(backendAppConfig.RegionId);
-            builder.Services.AddSingleton<S3StorageClientFactory>(s3StorageClientFactory);
-            var s3StorageInitResult = await s3StorageClientFactory.Initalize(allRegionsDataResult.Data!);
-            if (!s3StorageInitResult.Success)
+            if (!isNewApp)
             {
-                throw new Exception($"[{s3StorageInitResult.Code}] {s3StorageInitResult.Message}");
+                var defaultS3Config = await appRepository.GetDefaultS3StorageConfig();
+                if (defaultS3Config == null)
+                {
+                    throw new Exception("Default S3 Storage Config not found.");
+                }
+
+                var allRegionServers = await regionRepoistory.GetRegions();
+
+                var s3StorageInitResult = await s3StorageClientFactory.Initalize(defaultS3Config, allRegionServers);
+                if (!s3StorageInitResult.Success)
+                {
+                    throw new Exception($"[{s3StorageInitResult.Code}] {s3StorageInitResult.Message}");
+                }
             }
         }
 
@@ -385,14 +420,6 @@ namespace ProjectIqraBackendApp
             });
 
             // Repositories
-            builder.Services.AddSingleton<AppRepository>((sp) =>
-            {
-                return new AppRepository(
-                    sp.GetRequiredService<ILogger<AppRepository>>(),
-                    sp.GetRequiredService<IMongoClient>()
-                );
-            });
-
             builder.Services.AddSingleton<LanguagesRepository>((sp) =>
             {
                 return new LanguagesRepository(
@@ -481,13 +508,7 @@ namespace ProjectIqraBackendApp
                 );
             });
 
-            builder.Services.AddSingleton<BusinessConversationAudioRepository>(sp =>
-            {
-                return new BusinessConversationAudioRepository(
-                    sp.GetRequiredService<ILogger<BusinessConversationAudioRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
+            
 
             builder.Services.AddSingleton<IntegrationsRepository>((sp) =>
             {
@@ -513,21 +534,7 @@ namespace ProjectIqraBackendApp
                 );
             });
 
-            builder.Services.AddSingleton<BusinessToolAudioRepository>((sp) =>
-            {
-                return new BusinessToolAudioRepository(
-                    sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
-
-            builder.Services.AddSingleton<BusinessAgentAudioRepository>((sp) =>
-            {
-                return new BusinessAgentAudioRepository(
-                    sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
+            
 
             builder.Services.AddSingleton<LLMProviderRepository>((sp) =>
             {
@@ -592,14 +599,6 @@ namespace ProjectIqraBackendApp
                 return new TTSAudioCacheMetadataRepository(
                     sp.GetRequiredService<ILogger<TTSAudioCacheMetadataRepository>>(),
                     sp.GetRequiredService<IMongoClient>()
-                );
-            });
-
-            builder.Services.AddSingleton<TTSAudioCacheStorageRepository>((sp) =>
-            {
-                return new TTSAudioCacheStorageRepository(
-                    sp.GetRequiredService<ILogger<TTSAudioCacheStorageRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
 
@@ -677,6 +676,54 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<FlowAppRepository>>()
                 );
             });
+
+            // S3 Repos
+            builder.Services.AddSingleton<BusinessConversationAudioRepository>(sp =>
+            {
+                return new BusinessConversationAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessConversationAudioRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
+                );
+            });
+
+            builder.Services.AddSingleton<BusinessToolAudioRepository>((sp) =>
+            {
+                return new BusinessToolAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
+                );
+            });
+
+            builder.Services.AddSingleton<BusinessAgentAudioRepository>((sp) =>
+            {
+                return new BusinessAgentAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
+                );
+            });
+
+            builder.Services.AddSingleton<TTSAudioCacheStorageRepository>((sp) =>
+            {
+                return new TTSAudioCacheStorageRepository(
+                    sp.GetRequiredService<ILogger<TTSAudioCacheStorageRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
+                );
+            });
+        }
+
+        private static async Task InitalizeS3Services(IServiceProvider serviceProvider, BackendAppConfig backendAppConfig)
+        {
+            BusinessConversationAudioRepository businessConversationAudioRepository = serviceProvider.GetRequiredService<BusinessConversationAudioRepository>();
+            await businessConversationAudioRepository.Initalize();
+
+            BusinessToolAudioRepository businessToolAudioRepository = serviceProvider.GetRequiredService<BusinessToolAudioRepository>();
+            await businessToolAudioRepository.Initalize();
+
+            BusinessAgentAudioRepository businessAgentAudioRepository = serviceProvider.GetRequiredService<BusinessAgentAudioRepository>();
+            await businessAgentAudioRepository.Initalize();
+
+            TTSAudioCacheStorageRepository ttsAudioCacheStorageRepository = serviceProvider.GetRequiredService<TTSAudioCacheStorageRepository>();
+            await ttsAudioCacheStorageRepository.Initalize(backendAppConfig.RegionId);
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
@@ -1089,12 +1136,6 @@ namespace ProjectIqraBackendApp
 
         private static void SetupPostflight(WebApplication app)
         {
-            var regionRepoistory = app.Services.GetRequiredService<RegionRepository>();
-            regionRepoistory.SetLogger(app.Services.GetRequiredService<ILogger<RegionRepository>>());
-
-            var regionManager = app.Services.GetRequiredService<RegionManager>();
-            regionManager.SetLogger(app.Services.GetRequiredService<ILogger<RegionManager>>());
-
             var backendWorkloadMonitor = app.Services.GetRequiredService<BackendWorkloadMonitor>();
             backendWorkloadMonitor.SetupDependencies(
                 app.Services.GetRequiredService<BackendCallProcessorManager>(),

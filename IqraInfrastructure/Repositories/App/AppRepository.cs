@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.App.Configuration;
+using IqraCore.Entities.S3Storage;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -8,36 +9,47 @@ namespace IqraInfrastructure.Repositories.App
 {
     public class AppRepository
     {
-        private readonly ILogger<AppRepository> _logger;
+        private ILogger<AppRepository> _logger;
 
         private readonly string DatabaseName = "IqraApp";
         private readonly string CollectionName = "AppConfiguration";
 
         private readonly IMongoCollection<BsonDocument> _applicationConfigurationCollection;
 
-        public AppRepository(ILogger<AppRepository> logger, IMongoClient client)
+        public AppRepository(IMongoClient client)
         {
-            _logger = logger;
             IMongoDatabase database = client.GetDatabase(DatabaseName);
             _applicationConfigurationCollection = database.GetCollection<BsonDocument>(CollectionName);
         }
+
+        public void SetLogger(ILogger<AppRepository> logger) => _logger = logger;
 
         // Fields
         private const string IqraAppConfigConfigField = "IqraAppConfig";
         private const string AppPermissionConfigField = "AppPermissionConfig";
         private const string EmailTemplatesField = "EmailTemplates";
         private const string CoreNodesConfigField = "CoreNodesConfig";
+        private const string DefaultS3StorageConfigField = "DefaultS3StorageConfig";
 
         /**
          * 
          * App Permission Config
          * 
         **/
-        public async Task<bool> AddUpdateIqraAppConfig(IqraAppConfig iqraAppConfig)
+        public async Task<bool> AddUpdateIqraAppConfig(IqraAppConfig iqraAppConfig, IClientSessionHandle? session = null)
         {
             var filter = Builders<BsonDocument>.Filter.Eq("_id", IqraAppConfigConfigField);
 
-            var result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, iqraAppConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
+            ReplaceOneResult result;
+            if (session != null)
+            {
+                result = await _applicationConfigurationCollection.ReplaceOneAsync(session, filter, iqraAppConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
+            }
+            else
+            {
+                result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, iqraAppConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
+            }
+            
             return result.IsAcknowledged && ((result.UpsertedId != null && result.UpsertedId.IsString) || result.ModifiedCount > 0);
         }
 
@@ -121,8 +133,6 @@ namespace IqraInfrastructure.Repositories.App
             return result.IsAcknowledged && ((result.UpsertedId != null && result.UpsertedId.IsString) || result.ModifiedCount > 0);
         }
 
-
-
         public async Task<bool> AddUpdateCoreNodeBackgroundNodeConfig(string endpoint, bool useSSL, string apiKey)
         {
             var filter = Builders<BsonDocument>.Filter.Eq("_id", CoreNodesConfigField);
@@ -145,6 +155,38 @@ namespace IqraInfrastructure.Repositories.App
             if (result == null) return null;
 
             return BsonSerializer.Deserialize<CoreNodesConfig>(result);
+        }
+
+        /**
+         * 
+         * Default S3 Storage Config
+         * 
+        **/
+        public async Task<bool> AddUpdateDefaultS3StorageConfig(S3StorageConfigData defaultS3StorageConfig, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", DefaultS3StorageConfigField);
+
+            ReplaceOneResult result;
+            if (session != null)
+            {
+                result = await _applicationConfigurationCollection.ReplaceOneAsync(session, filter, defaultS3StorageConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
+            }
+            else
+            {
+                result = await _applicationConfigurationCollection.ReplaceOneAsync(filter, defaultS3StorageConfig.ToBsonDocument(), new ReplaceOptions { IsUpsert = true });
+            }
+            return result.IsAcknowledged && ((result.UpsertedId != null && result.UpsertedId.IsString) || result.ModifiedCount > 0);
+        }
+
+        public async Task<S3StorageConfigData?> GetDefaultS3StorageConfig()
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", DefaultS3StorageConfigField);
+
+            var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
+
+            if (result == null) return null;
+
+            return BsonSerializer.Deserialize<S3StorageConfigData>(result);
         }
     }
 }

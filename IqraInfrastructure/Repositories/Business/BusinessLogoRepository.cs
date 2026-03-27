@@ -1,7 +1,7 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
 using CommunityToolkit.HighPerformance;
-using IqraCore.Entities.App.Configuration;
+using IqraCore.Constants;
 using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -18,20 +18,22 @@ namespace IqraInfrastructure.Repositories.Business
         {
             _logger = logger;
             _s3StorageClientFactory = clientFactory;
-            _bucketName = S3StorageConfig.BusinessLogoRepositoryBucketName;
-
-            // Ensure the bucket exists using the Helper
-            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, null);
-            S3StorageHelpers.EnsureBucketExistsAsync(client, _bucketName, _logger).GetAwaiter().GetResult();
+            _bucketName = S3StorageBucketConstants.BusinessLogoRepositoryBucketName;
         }
 
-        public async Task PutFileAsByteData(string fileId, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData, string? region = null)
+        public async Task Initalize()
+        {
+            var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
+            await S3StorageHelpers.EnsureBucketExistsAsync(client, _bucketName, _logger);
+        }
+
+        public async Task PutFileAsByteData(string fileId, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData)
         {
             using var filestream = fileBytes.AsStream();
-            await PutFileAsStreamData(fileId, filestream, metaData, region);
+            await PutFileAsStreamData(fileId, filestream, metaData);
         }
 
-        public async Task PutFileAsStreamData(string fileId, Stream fileStream, Dictionary<string, string> metaData, string? region = null)
+        public async Task PutFileAsStreamData(string fileId, Stream fileStream, Dictionary<string, string> metaData)
         {
             try
             {
@@ -51,7 +53,7 @@ namespace IqraInfrastructure.Repositories.Business
                     }
                 }
 
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
                 await client.PutObjectAsync(request);
             }
             catch (Exception ex)
@@ -61,11 +63,11 @@ namespace IqraInfrastructure.Repositories.Business
             }
         }
 
-        public async Task<MemoryStream> GetFileAtPath(string fileId, string filePath, string? region = null)
+        public async Task<MemoryStream> GetFileAtPath(string fileId, string filePath)
         {
             try
             {
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
 
                 // Download from S3
                 using var response = await client.GetObjectAsync(new GetObjectRequest
@@ -104,11 +106,11 @@ namespace IqraInfrastructure.Repositories.Business
             }
         }
 
-        public async Task<bool> FileExists(string fileId, string? region = null)
+        public async Task<bool> FileExists(string fileId)
         {
             try
             {
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
 
                 // AWS S3 uses GetObjectMetadata (HeadObject) to check existence
                 await client.GetObjectMetadataAsync(_bucketName, fileId);
@@ -125,11 +127,11 @@ namespace IqraInfrastructure.Repositories.Business
             }
         }
 
-        public async Task<MemoryStream> GetFileAsMemoryStream(string fileId, string? region = null)
+        public async Task<MemoryStream> GetFileAsMemoryStream(string fileId)
         {
             try
             {
-                var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+                var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
 
                 using var response = await client.GetObjectAsync(new GetObjectRequest
                 {
@@ -149,15 +151,15 @@ namespace IqraInfrastructure.Repositories.Business
             }
         }
 
-        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArray(string fileId, string? region = null)
+        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArray(string fileId)
         {
-            using var stream = await GetFileAsMemoryStream(fileId, region);
+            using var stream = await GetFileAsMemoryStream(fileId);
             return new ReadOnlyMemory<byte>(stream.ToArray());
         }
 
-        public string? GeneratePresignedUrl(string fileId, int expiresInSeconds, string? region = null)
+        public string? GeneratePresignedUrl(string fileId, int expiresInSeconds)
         {
-            var client = S3StorageHelpers.GetS3Client(_s3StorageClientFactory, region);
+            var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
             return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, fileId, expiresInSeconds, _logger);
         }
     }

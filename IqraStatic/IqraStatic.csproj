@@ -6,15 +6,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-	<ItemGroup Condition="'$(IncludeIqraModels)' != 'false'">
-		<Folder Include="Models\BlandAIVM\" />
-		<Folder Include="Models\Silero\" />
-		<Folder Include="Models\SmartTurn\" />
-		<None Update="Models\**\*.*">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
-
 	<ItemGroup Condition="'$(IncludeVestaCP)' != 'false'">
 		<Folder Include="VestaCP\ProxyTemplates\" />
 		<None Update="VestaCP\**\*.*">
@@ -23,7 +14,6 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(IncludeSeeding)' != 'false'">
-		<Folder Include="Seeding\Languages\" />
 		<None Update="Seeding\**\*.*">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>

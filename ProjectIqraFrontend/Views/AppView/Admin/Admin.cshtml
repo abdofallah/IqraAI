@@ -121,8 +121,13 @@
         <!-- Business Container -->
         <partial name="_BusinessTab.cshtml" />
         
-        <!-- Billing Container -->
-        <partial name="_BillingTab.cshtml" />
+        @{
+            if (FrontendAppConfig.IsCloudVersion)
+            {
+                <!-- Billing Container -->
+                <partial name="_BillingTab.cshtml" />
+            }
+        }
         
         <!-- LLM Provider Container -->
         <partial name="_LLMProviderTab.cshtml" />

@@ -1,5 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Server;
-using IqraCore.Entities.Region;
+using IqraCore.Entities.S3Storage;
 using IqraCore.Entities.Server;
 
 namespace IqraCore.Models.Infrastructure
@@ -94,7 +94,7 @@ namespace IqraCore.Models.Infrastructure
         public string? PublicDisabledReason { get; set; }
 
         // Configuration
-        public RegionS3StorageServerData S3Config { get; set; } = new();
+        public S3StorageConfigData S3Config { get; set; } = new();
 
         // Live Aggregates
         // Backend

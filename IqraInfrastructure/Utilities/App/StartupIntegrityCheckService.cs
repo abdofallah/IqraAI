@@ -38,7 +38,7 @@ namespace IqraInfrastructure.HostedServices.Lifecycle
                     var config = appManager.CurrentConfig;
 
                     // 1. Install Check
-                    if (status == AppLifecycleStatus.NotInstalled)
+                    if (status == AppLifecycleStatus.NotInstalled || status == AppLifecycleStatus.AwaitingInstallRestart)
                     {
                         if (_appNodeType == AppNodeTypeEnum.Frontend) return; // Allow Frontend to start Installer
 

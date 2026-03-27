@@ -8,19 +8,21 @@ namespace IqraInfrastructure.HostedServices.TTS
 {
     public class OrphanedTTSAudioCacheCleanupService : BackgroundService
     {
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<OrphanedTTSAudioCacheCleanupService> _logger;
         private readonly TTSAudioCacheMetadataRepository _metadataRepo;
-        private readonly TTSAudioCacheStorageRepository _storageRepo;
 
         public OrphanedTTSAudioCacheCleanupService(
+            IServiceProvider serviceProvider,
             ILogger<OrphanedTTSAudioCacheCleanupService> logger,
-            TTSAudioCacheMetadataRepository metadataRepo,
-            TTSAudioCacheStorageRepository storageRepo
+            TTSAudioCacheMetadataRepository metadataRepo
         )
         {
+            _serviceProvider = serviceProvider;
             _logger = logger;
             _metadataRepo = metadataRepo;
-            _storageRepo = storageRepo;
+
+            // INITALIZE ALL TTS CACHE FOR ALL REGIONS
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

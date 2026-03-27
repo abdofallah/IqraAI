@@ -78,6 +78,9 @@ namespace IqraBackgroundProcessor
                 _cloudModule!.SetupConfiguration(builder.Services, appConfig);
             }
 
+            // Preflight
+            await SetupPreflight(builder, appConfig);
+
             // Repositories
             await SetupRepositories(builder, appConfig, backgroundAppConfig);
             if (backgroundAppConfig.IsCloudVersion)
@@ -155,6 +158,54 @@ namespace IqraBackgroundProcessor
             app.Run();
         }
 
+        private static async Task SetupPreflight(WebApplicationBuilder builder, IConfiguration appConfig)
+        {
+            // Build Base Services
+            IMongoClient mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
+            builder.Services.AddSingleton<IMongoClient>(mongoClient);
+
+            AppRepository appRepository = new AppRepository(mongoClient);
+            builder.Services.AddSingleton<AppRepository>((sp) =>
+            {
+                appRepository.SetLogger(sp.GetRequiredService<ILogger<AppRepository>>());
+                return appRepository;
+            });
+
+            RegionRepository regionRepository = new RegionRepository(mongoClient);
+            builder.Services.AddSingleton<RegionRepository>((sp) => {
+                regionRepository.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
+                return regionRepository;
+            });
+
+            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory();
+            builder.Services.AddSingleton<S3StorageClientFactory>((sp) =>
+            {
+                s3StorageClientFactory.SetLogger(sp.GetRequiredService<ILogger<S3StorageClientFactory>>());
+                return s3StorageClientFactory;
+            });
+
+            // Initalize S3 Repos
+            var appInfo = await appRepository.GetIqraAppConfig();
+            var isNewApp = appInfo == null || appInfo.AppInstalled == false;
+
+            if (!isNewApp)
+            {
+                var defaultS3Config = await appRepository.GetDefaultS3StorageConfig();
+                if (defaultS3Config == null)
+                {
+                    throw new Exception("Default S3 Storage Config not found.");
+                }
+
+                var allRegionServers = await regionRepository.GetRegions();
+
+                var s3StorageInitResult = await s3StorageClientFactory.Initalize(defaultS3Config, allRegionServers);
+                if (!s3StorageInitResult.Success)
+                {
+                    throw new Exception($"[{s3StorageInitResult.Code}] {s3StorageInitResult.Message}");
+                }
+            }
+        }
+
         private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig, BackgroundAppConfig backgroundAppConfig)
         {
             string redisConnectionString = appConfig["RedisDatabase:Endpoint"]!;
@@ -163,27 +214,6 @@ namespace IqraBackgroundProcessor
             {
                 redisConnectionString += $",password={redisConfigPassword}";
             }
-
-            IMongoClient mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
-            RegionRepository regionRepository = new RegionRepository(mongoClient);
-            var allRegionServers = await regionRepository.GetRegions();
-            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory(backgroundAppConfig.DefaultS3StorageRegionId);
-            var s3StorageInitResult = await s3StorageClientFactory.Initalize(allRegionServers);
-            if (!s3StorageInitResult.Success)
-            {
-                throw new Exception($"[{s3StorageInitResult.Code}] {s3StorageInitResult.Message}");
-            }
-
-            builder.Services.AddSingleton<IMongoClient>(mongoClient);
-            builder.Services.AddSingleton<S3StorageClientFactory>(s3StorageClientFactory);
-
-            builder.Services.AddSingleton<AppRepository>((sp) =>
-            {
-                return new AppRepository(
-                    sp.GetRequiredService<ILogger<AppRepository>>(),
-                    sp.GetRequiredService<IMongoClient>()
-                );
-            });
 
             builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
             {
@@ -232,14 +262,6 @@ namespace IqraBackgroundProcessor
                 );
             });
 
-            builder.Services.AddSingleton<TTSAudioCacheStorageRepository>((sp) =>
-            {
-                return new TTSAudioCacheStorageRepository(
-                    sp.GetRequiredService<ILogger<TTSAudioCacheStorageRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
-
             builder.Services.AddSingleton<ServerLiveStatusChannelRepository>((sp) =>
             {
                 return new ServerLiveStatusChannelRepository(
@@ -260,6 +282,7 @@ namespace IqraBackgroundProcessor
             });
 
             builder.Services.AddSingleton<RegionRepository>((sp) => {
+                var regionRepository = sp.GetRequiredService<RegionRepository>();
                 regionRepository.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
                 return regionRepository;
             });
@@ -378,9 +401,9 @@ namespace IqraBackgroundProcessor
             builder.Services.AddHostedService<OrphanedTTSAudioCacheCleanupService>((sp) =>
             {
                 return new OrphanedTTSAudioCacheCleanupService(
+                     sp,
                      sp.GetRequiredService<ILogger<OrphanedTTSAudioCacheCleanupService>>(),
-                     sp.GetRequiredService<TTSAudioCacheMetadataRepository>(),
-                     sp.GetRequiredService<TTSAudioCacheStorageRepository>()
+                     sp.GetRequiredService<TTSAudioCacheMetadataRepository>()
                 );
             });
 

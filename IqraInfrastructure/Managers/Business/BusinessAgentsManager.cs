@@ -1253,7 +1253,7 @@ namespace IqraInfrastructure.Managers.Business
                         newAgentData.Settings.BackgroundAudioS3StorageLink = new S3StorageFileLink
                         {
                             ObjectName = validationResult.Hash,
-                            OriginRegion = _s3StorageClientFactory.GetCurrentRegion()
+                            IsDefaultS3 = true
                         };
                     }
                     else if (backgroundAudioUrl == "previous")

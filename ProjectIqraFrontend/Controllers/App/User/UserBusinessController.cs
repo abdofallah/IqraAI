@@ -81,7 +81,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                     var businessMetaDataModel = new GetUseBusinessFullResultMetaDataModel(businessData);
                     if (businessData.LogoS3StorageLink != null)
                     {
-                        businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400, businessData.LogoS3StorageLink.OriginRegion);
+                        businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400);
                     }
 
                     resultModel.Add(businessMetaDataModel);
@@ -138,7 +138,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                 var businessMetaDataModel = new GetUseBusinessFullResultMetaDataModel(businessData);
                 if (businessData.LogoS3StorageLink != null)
                 {
-                    businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400, businessData.LogoS3StorageLink.OriginRegion);
+                    businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400);
                 }
 
                 var businessAppModel = new GetUseBusinessFullResultAppModel(businessAppResult.Data!);
@@ -149,7 +149,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
 
                     if (agent.Settings.BackgroundAudioS3StorageLink != null)
                     {
-                        modelAgent.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GeneratePresignedUrl(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000, agent.Settings.BackgroundAudioS3StorageLink.OriginRegion);
+                        modelAgent.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GeneratePresignedUrl(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000);
                     }
                 }
 
@@ -220,7 +220,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                         var businessMetaDataModel = new GetUseBusinessFullResultMetaDataModel(newBusinessData);
                         if (newBusinessData.LogoS3StorageLink != null)
                         {
-                            businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(newBusinessData.LogoS3StorageLink.ObjectName, 86400, newBusinessData.LogoS3StorageLink.OriginRegion);
+                            businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(newBusinessData.LogoS3StorageLink.ObjectName, 86400);
                         }
 
                         return result.SetSuccessResult(businessMetaDataModel);

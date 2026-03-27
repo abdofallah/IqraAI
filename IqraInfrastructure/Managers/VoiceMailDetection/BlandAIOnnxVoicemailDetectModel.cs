@@ -1,4 +1,5 @@
-﻿using Microsoft.ML.OnnxRuntime;
+﻿using IqraInfrastructure.Helpers.HuggingFace;
+using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using System.Text.Json;
 
@@ -11,47 +12,66 @@ namespace IqraInfrastructure.Managers.VoiceMailDetection
 
     public class BlandAIOnnxVoicemailDetectModel : IDisposable
     {
-        private static string BasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "BlandAIVM");
-        private static string ModelPath = Path.Combine(BasePath, "voicemail_detector.onnx");
-        private static string ModelConfigPath = Path.Combine(BasePath, "config.json");
+        private static readonly string BasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "BlandAIVM");
+        private static readonly string ModelPath = Path.Combine(BasePath, "voicemail_detector.onnx");
+        private static readonly string ModelConfigPath = Path.Combine(BasePath, "config.json");
 
         private static InferenceSession Session;
         private static IReadOnlyDictionary<long, string> Id2label;
+
         private static bool IsModelLoaded = false;
-        private static bool IsLoadingModel = false;
+        private static readonly object _initLock = new object();
 
         public BlandAIOnnxVoicemailDetectModel()
         {
             if (!IsModelLoaded)
             {
-                while (IsLoadingModel)
+                lock (_initLock)
                 {
-                    Task.Delay(100).GetAwaiter().GetResult();
-                }
+                    if (!IsModelLoaded)
+                    {
+                        // 1. Ensure all 4 model files exist and match remote SHAs
+                        EnsureModelExists();
 
-                try
-                {
-                    IsLoadingModel = true;
+                        // 2. We keep these standard exception throws as a safety net in case of disk write failures
+                        if (!File.Exists(ModelPath))
+                            throw new FileNotFoundException("ONNX model file not found.", ModelPath);
+                        if (!File.Exists(ModelConfigPath))
+                            throw new FileNotFoundException("Model config file not found.", ModelConfigPath);
 
-                    if (!File.Exists(ModelPath))
-                        throw new FileNotFoundException("ONNX model file not found.", ModelPath);
-                    if (!File.Exists(ModelConfigPath))
-                        throw new FileNotFoundException("Model config file not found.", ModelConfigPath);
+                        Session = new InferenceSession(ModelPath);
 
-                    Session = new InferenceSession(ModelPath);
+                        var configJson = File.ReadAllText(ModelConfigPath);
+                        var modelConfig = JsonSerializer.Deserialize<ModelConfig>(configJson);
 
-                    var configJson = File.ReadAllText(ModelConfigPath);
-                    var modelConfig = JsonSerializer.Deserialize<ModelConfig>(configJson);
+                        if (modelConfig == null || modelConfig.id2label == null)
+                            throw new InvalidOperationException("Failed to parse config.json or id2label is missing.");
 
-                    Id2label = modelConfig.id2label.ToDictionary(kvp => long.Parse(kvp.Key), kvp => kvp.Value);
+                        Id2label = modelConfig.id2label.ToDictionary(kvp => long.Parse(kvp.Key), kvp => kvp.Value);
 
-                    IsModelLoaded = true;
-                }
-                finally
-                {
-                    IsLoadingModel = false;
+                        IsModelLoaded = true;
+                    }
                 }
             }
+        }
+
+        private void EnsureModelExists()
+        {
+            Task.Run(async () =>
+            {
+                await HFDownloader.DownloadModelAsync(
+                    repoId: "adsoul/wav2vec-vm-finetune-onnx",
+                    filesToDownload: new List<string>
+                    {
+                        "config.json",
+                        "preprocessor_config.json",
+                        "training_args.bin",
+                        "voicemail_detector.onnx"
+                    },
+                    outputFolder: BasePath,
+                    replaceIfShaMismatch: true
+                );
+            }).GetAwaiter().GetResult();
         }
 
         public (string Label, float Confidence) Predict(float[] audioSource)

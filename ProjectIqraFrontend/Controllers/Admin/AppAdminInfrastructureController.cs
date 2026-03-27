@@ -1,5 +1,5 @@
 ﻿using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Region;
+using IqraCore.Entities.S3Storage;
 using IqraCore.Entities.Server;
 using IqraCore.Interfaces.Validation;
 using IqraCore.Models.Infrastructure;
@@ -315,7 +315,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
         }
 
         [HttpPost("regions/{regionId}/s3")]
-        public async Task<FunctionReturnResult> SaveRegionS3(string regionId, [FromBody] RegionS3StorageServerData s3Data)
+        public async Task<FunctionReturnResult> SaveRegionS3(string regionId, [FromBody] S3StorageConfigData s3Data)
         {
             var result = new FunctionReturnResult();
             try

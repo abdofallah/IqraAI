@@ -1,4 +1,5 @@
 ﻿using IqraCore.Attributes;
+using IqraCore.Entities.S3Storage;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Region
@@ -24,8 +25,13 @@ namespace IqraCore.Entities.Region
         [IncludeInEndpoint("/app/admin/regions")]
         public List<RegionServerData> Servers { get; set; } = new List<RegionServerData>();
 
+        // S3 Related
         [ExcludeInAllEndpoints]
         [IncludeInEndpoint("/app/admin/regions")]
-        public RegionS3StorageServerData S3Server { get; set; } = new RegionS3StorageServerData();
+        public bool UseDefaultS3 { get; set; } = true;
+
+        [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/regions")]
+        public S3StorageConfigData? S3Server { get; set; } = null;
     }
 }

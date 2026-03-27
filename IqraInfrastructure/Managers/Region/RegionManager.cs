@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
+using IqraCore.Entities.S3Storage;
 using IqraCore.Entities.Server.Metrics;
 using IqraCore.Models.Infrastructure;
 using IqraInfrastructure.Managers.Server.Metrics;
@@ -94,7 +95,7 @@ namespace IqraInfrastructure.Managers.Region
                     MaintenanceEnabledAt = DateTime.UtcNow,
                     PublicMaintenanceEnabledReason = "Region initialization",
                     PrivateMaintenanceEnabledReason = "Newly created region",
-                    S3Server = new RegionS3StorageServerData()
+                    S3Server = new S3StorageConfigData()
                     {
                         DisabledAt = DateTime.UtcNow
                     }
@@ -185,7 +186,7 @@ namespace IqraInfrastructure.Managers.Region
             }
         }
 
-        public async Task<FunctionReturnResult> UpdateRegionS3Config(string regionId, RegionS3StorageServerData s3Data)
+        public async Task<FunctionReturnResult> UpdateRegionS3Config(string regionId, S3StorageConfigData s3Data)
         {
             var result = new FunctionReturnResult();
 

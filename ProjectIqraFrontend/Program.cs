@@ -5,7 +5,6 @@ using IqraCore.Entities.Server;
 using IqraCore.Entities.Server.Configuration;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Modules;
-using IqraCore.Interfaces.Node;
 using IqraCore.Interfaces.Server;
 using IqraCore.Interfaces.User;
 using IqraCore.Interfaces.Validation;
@@ -73,11 +72,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting.Systemd;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using MongoDB.Driver;
-using Namotion.Reflection;
 using ProjectIqraFrontend.Middlewares;
 using ProjectIqraFrontend.Transformer;
 using Scalar.AspNetCore;
@@ -108,15 +105,15 @@ namespace ProjectIqraFrontend
             }
             builder.Services.Configure<HostOptions>(options =>
             {
-                options.ShutdownTimeout = TimeSpan.FromMinutes(10);
+                options.ShutdownTimeout = TimeSpan.FromMinutes(10); // TODO make configurable in appsettings.json
             });
 
             // Configuration
             var appConfig = builder.Configuration;
+            var isCloudVersion = appConfig["IsCloudVersion"] ?? "false";
             var frontendAppConfig = new FrontendAppConfig()
             {
-                DefaultS3StorageRegionId = appConfig["S3Storage:DefaultStorageRegionId"],
-                IsCloudVersion = appConfig["IsCloudVersion"]?.ToLower() == "true",
+                IsCloudVersion = bool.Parse(isCloudVersion),
             };
             builder.Services.AddSingleton<FrontendAppConfig>(frontendAppConfig);
             builder.Services.AddScoped<WhiteLabelContext>();
@@ -131,6 +128,9 @@ namespace ProjectIqraFrontend
             {
                 _cloudModule!.SetupConfiguration(builder.Services, appConfig);
             }
+
+            // Preflight
+            await SetupPreflight(builder, appConfig, frontendAppConfig);
 
             // Repositories
             await SetupRepositories(builder, appConfig, frontendAppConfig);
@@ -172,7 +172,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddHttpClient("UnstructuredClient", client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(200);
-                client.BaseAddress = new Uri(appConfig["Unstructured:EndPoint"]);
+                client.BaseAddress = new Uri(appConfig["Unstructured:EndPoint"]!);
                 client.DefaultRequestHeaders.Add("unstructured-api-key", appConfig["Unstructured:ApiKey"]);
             });
 
@@ -196,7 +196,7 @@ namespace ProjectIqraFrontend
             builder.Services.Configure<ForwardedHeadersOptions>(options =>
             {
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-                
+
                 // Known Proxies
                 options.KnownProxies.Clear();
                 var knownProxies = appConfig.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>();
@@ -223,7 +223,7 @@ namespace ProjectIqraFrontend
             {
                 options.AddDocumentTransformer<OpenApiDocumentTransformer>();
                 options.AddSchemaTransformer<OpenApiEnumSchemaTransformer>();
-            });   
+            });
 
             var app = builder.Build();
 
@@ -293,7 +293,7 @@ namespace ProjectIqraFrontend
                     {
                         throw new Exception("Server Metrics Manager found that a frontend node is already running.\nThis could be a false positive too, but it's better to be safe than sorry.\n\nGiven the redis database takes 30seconds to clear previous running frontend status, if the issue presits for more than a minute, there must be another frontend node running.");
                     }
-                }  
+                }
 
                 // Perform Initial Startup Integrity Check
                 var startupIntregity = scope.ServiceProvider.GetRequiredService<StartupIntegrityCheckService>();
@@ -306,32 +306,83 @@ namespace ProjectIqraFrontend
                     await appManager.PerformAutoMigrationAsync();
                 }
 
+                // Check if first time or not
+                var isFirstTime = appManager.CurrentConfig == null || appManager.CurrentConfig.AppInstalled == false;
+                if (!isFirstTime)
+                {
+                    // Initalize S3 Repos
+                    await InitalizeS3Services(app.Services);
+                }
+
                 logger.LogInformation("Iqra Frontend Bootstrapping Completed.");
             }
 
             app.Run();
         }
 
-        private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig, FrontendAppConfig frontendAppConfig)
+        private static async Task SetupPreflight(WebApplicationBuilder builder, IConfiguration appConfig, FrontendAppConfig frontendAppConfig)
         {
             // Build Base Services
             IMongoClient mongoClient = new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
-            RegionRepository regionRepository = new RegionRepository(mongoClient);
-            var allRegionServers = await regionRepository.GetRegions();
-            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory(frontendAppConfig.DefaultS3StorageRegionId);
-            var s3StorageInitResult = await s3StorageClientFactory.Initalize(allRegionServers);
-            if (!s3StorageInitResult.Success)
+            builder.Services.AddSingleton<IMongoClient>(mongoClient);
+
+            AppRepository appRepository = new AppRepository(mongoClient);
+            builder.Services.AddSingleton<AppRepository>((sp) =>
             {
-                throw new Exception($"[{s3StorageInitResult.Code}] {s3StorageInitResult.Message}");
+                appRepository.SetLogger(sp.GetRequiredService<ILogger<AppRepository>>());
+                return appRepository;
+            });
+
+            RegionRepository regionRepository = new RegionRepository(mongoClient);
+            builder.Services.AddSingleton<RegionRepository>((sp) => {
+                regionRepository.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
+                return regionRepository;
+            });
+
+            S3StorageClientFactory s3StorageClientFactory = new S3StorageClientFactory();
+            builder.Services.AddSingleton<S3StorageClientFactory>((sp) =>
+            {
+                s3StorageClientFactory.SetLogger(sp.GetRequiredService<ILogger<S3StorageClientFactory>>());
+                return s3StorageClientFactory;
+            });
+
+            // Initalize S3 Repos
+            var appInfo = await appRepository.GetIqraAppConfig();
+            var isNewApp = appInfo == null || appInfo.AppInstalled == false;
+
+            if (!isNewApp)
+            {
+                var defaultS3Config = await appRepository.GetDefaultS3StorageConfig();
+                if (defaultS3Config == null)
+                {
+                    throw new Exception("Default S3 Storage Config not found.");
+                }
+
+                var allRegionServers = await regionRepository.GetRegions();
+
+                var s3StorageInitResult = await s3StorageClientFactory.Initalize(defaultS3Config, allRegionServers);
+                if (!s3StorageInitResult.Success)
+                {
+                    throw new Exception($"[{s3StorageInitResult.Code}] {s3StorageInitResult.Message}");
+                }
+            }
+        }
+
+        private static async Task SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig, FrontendAppConfig frontendAppConfig)
+        {
+            string redisConnectionString = appConfig["RedisDatabase:Endpoint"]!;
+            string redisConfigPassword = appConfig["RedisDatabase:Password"]!;
+            if (!string.IsNullOrEmpty(redisConfigPassword))
+            {
+                redisConnectionString += $",password={redisConfigPassword}";
             }
 
-            builder.Services.AddSingleton<IMongoClient>(mongoClient);
-            builder.Services.AddSingleton<S3StorageClientFactory>(s3StorageClientFactory);
             builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
             {
                 return new MilvusKnowledgeBaseClient(
                     sp.GetRequiredService<IHttpClientFactory>(),
-                    new MilvusOptions() { 
+                    new MilvusOptions()
+                    {
                         Endpoint = appConfig["Milvus:Endpoint"],
                         Username = appConfig["Milvus:Username"],
                         Password = appConfig["Milvus:Password"]
@@ -340,27 +391,7 @@ namespace ProjectIqraFrontend
                 );
             });
 
-            string redisConnectionString = appConfig["RedisDatabase:Endpoint"]!;
-            string redisConfigPassword = appConfig["RedisDatabase:Password"]!;
-            if (!string.IsNullOrEmpty(redisConfigPassword))
-            {
-                redisConnectionString += $",password={redisConfigPassword}";
-            }
-
             // Repositories
-            builder.Services.AddSingleton<AppRepository>((sp) =>
-            {
-                return new AppRepository(
-                    sp.GetRequiredService<ILogger<AppRepository>>(),
-                    sp.GetRequiredService<IMongoClient>()
-                );
-            });
-
-            builder.Services.AddSingleton<RegionRepository>((sp) => {
-                regionRepository.SetLogger(sp.GetRequiredService<ILogger<RegionRepository>>());
-                return regionRepository;
-            });
-
             builder.Services.AddSingleton<LanguagesRepository>((sp) =>
             {
                 return new LanguagesRepository(
@@ -502,46 +533,6 @@ namespace ProjectIqraFrontend
                 );
             });
 
-            builder.Services.AddSingleton<IntegrationsLogoRepository>((sp) =>
-            {
-                return new IntegrationsLogoRepository(
-                    sp.GetRequiredService<ILogger<IntegrationsLogoRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
-
-            builder.Services.AddSingleton<BusinessLogoRepository>((sp) =>
-            {
-                return new BusinessLogoRepository(
-                    sp.GetRequiredService<ILogger<BusinessLogoRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
-
-            builder.Services.AddSingleton<BusinessToolAudioRepository>((sp) =>
-            {
-                return new BusinessToolAudioRepository(
-                    sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
-
-            builder.Services.AddSingleton<BusinessAgentAudioRepository>((sp) =>
-            {
-                return new BusinessAgentAudioRepository(
-                    sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
-
-            builder.Services.AddSingleton<BusinessConversationAudioRepository>((sp) =>
-            {
-                return new BusinessConversationAudioRepository(
-                    sp.GetRequiredService<ILogger<BusinessConversationAudioRepository>>(),
-                    sp.GetRequiredService<S3StorageClientFactory>()
-                );
-            });
-
             builder.Services.AddSingleton<UserUsageRepository>((sp) =>
             {
                 return new UserUsageRepository(
@@ -638,6 +629,64 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<FlowAppRepository>>()
                 );
             });
+
+            // S3 Repos
+            builder.Services.AddSingleton<IntegrationsLogoRepository>((sp) =>
+            {
+                return new IntegrationsLogoRepository(
+                    sp.GetRequiredService<ILogger<IntegrationsLogoRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
+                );
+            });
+
+            builder.Services.AddSingleton<BusinessLogoRepository>((sp) =>
+            {
+                return new BusinessLogoRepository(
+                    sp.GetRequiredService<ILogger<BusinessLogoRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
+                );
+            });
+
+            builder.Services.AddSingleton<BusinessToolAudioRepository>((sp) =>
+            {
+                return new BusinessToolAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
+                );
+            });
+
+            builder.Services.AddSingleton<BusinessAgentAudioRepository>((sp) =>
+            {
+                return new BusinessAgentAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
+                );
+            });
+
+            builder.Services.AddSingleton<BusinessConversationAudioRepository>((sp) =>
+            {
+                return new BusinessConversationAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessConversationAudioRepository>>(),
+                    sp.GetRequiredService<S3StorageClientFactory>()
+                );
+            });
+        }
+        private static async Task InitalizeS3Services(IServiceProvider serviceProvider)
+        {
+            IntegrationsLogoRepository integrationsLogoRepository = serviceProvider.GetRequiredService<IntegrationsLogoRepository>();
+            await integrationsLogoRepository.Initalize();
+
+            BusinessLogoRepository businessLogoRepository = serviceProvider.GetRequiredService<BusinessLogoRepository>();
+            await businessLogoRepository.Initalize();
+
+            BusinessToolAudioRepository businessToolAudioRepository = serviceProvider.GetRequiredService<BusinessToolAudioRepository>();
+            await businessToolAudioRepository.Initalize();
+
+            BusinessAgentAudioRepository businessAgentAudioRepository = serviceProvider.GetRequiredService<BusinessAgentAudioRepository>();
+            await businessAgentAudioRepository.Initalize();
+
+            BusinessConversationAudioRepository businessConversationAudioRepository = serviceProvider.GetRequiredService<BusinessConversationAudioRepository>();
+            await businessConversationAudioRepository.Initalize();
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, FrontendAppConfig frontendAppConfig)
@@ -651,7 +700,7 @@ namespace ProjectIqraFrontend
 
             if (!frontendAppConfig.IsCloudVersion)
             {
-                builder.Services.AddScoped<IUserRegistrationManager, UserRegistrationManager>((sp) =>
+                builder.Services.AddSingleton<IUserRegistrationManager, UserRegistrationManager>((sp) =>
                 {
                     return new UserRegistrationManager(
                         sp.GetRequiredService<UserApiKeyProcessor>(),
@@ -712,7 +761,7 @@ namespace ProjectIqraFrontend
             {
                 return new UserBusinessPermissionHelper();
             });
-            
+
             builder.Services.AddSingleton<EmailManager>((sp) =>
             {
                 return new EmailManager(
@@ -803,7 +852,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<UserRepository>(),
                     sp.GetRequiredService<EmailManager>(),
                     sp.GetRequiredService<UserApiKeyProcessor>(),
-                    appConfig["URL"]
+                    appConfig["URL"],
+                    sp.GetRequiredService<IUserRegistrationManager>()
                 );
             });
             builder.Services.AddSingleton<IntegrationConfigurationManager>((sp) =>
@@ -822,7 +872,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILoggerFactory>(),
                     sp.GetRequiredService<IMongoClient>(),
                     new BusinessManagerInitalizationSettings()
-                    { 
+                    {
                         InitalizeAgentsManager = true,
                         InitalizeScriptsManager = true,
                         InitalizeCacheManager = true,
@@ -912,7 +962,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<IntegrationsManager>()
                 );
             });
-            
+
             builder.Services.AddSingleton<UserUsageManager>((sp) =>
             {
                 return new UserUsageManager(

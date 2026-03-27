@@ -7,16 +7,17 @@
         /// Redirect to Installer Wizard.
         /// </summary>
         NotInstalled = 0,
+        AwaitingInstallRestart = 1,
 
         /// <summary>
         /// Database Version != Code Version.
         /// Redirect to Migration/Update page.
         /// </summary>
-        VersionMismatch = 1,
+        VersionMismatch = 2,
 
         /// <summary>
         /// Healthy state.
         /// </summary>
-        Running = 2
+        Running = 3
     }
 }

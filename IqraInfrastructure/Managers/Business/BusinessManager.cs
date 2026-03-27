@@ -347,7 +347,7 @@ namespace IqraInfrastructure.Managers.Business
                 businessData.LogoS3StorageLink = new S3StorageFileLink
                 {
                     ObjectName = fileName,
-                    OriginRegion = _s3StorageClientFactory!.GetCurrentRegion()
+                    IsDefaultS3 = true
                 };
             }
 

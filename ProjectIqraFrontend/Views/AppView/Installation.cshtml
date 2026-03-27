@@ -1,5 +1,6 @@
 ﻿<!DOCTYPE html>
 <html data-bs-theme="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,7 +27,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, rgba(26,26,26,0.9) 0%, rgba(0,0,0,0.95) 100%);
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.9) 0%, rgba(0, 0, 0, 0.95) 100%);
             z-index: 10;
         }
 
@@ -96,6 +97,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="d-flex" id="main-body-container">
         <!-- Left Panel -->
@@ -150,9 +152,28 @@
             <!-- STEP 2: Configuration -->
             <div class="install-container fade d-none" id="step-2-container">
                 <h4 class="mb-1">System Configuration</h4>
-                <p class="text-white-50 mb-4">Help us improve Iqra AI.</p>
+                <p class="text-white-50 mb-4">Configure default S3 storage and telemetry settings.</p>
 
                 <form id="configForm">
+                    <h5 class="mb-3 text-white">S3 Storage Configuration</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Endpoint</label>
+                        <input type="text" class="form-control" id="s3Endpoint" placeholder="e.g. s3.amazonaws.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Access Key</label>
+                        <input type="text" class="form-control" id="s3AccessKey" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Secret Key</label>
+                        <input type="password" class="form-control" id="s3SecretKey" required>
+                    </div>
+                    <div class="mb-4 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="s3UseSSL" checked>
+                        <label class="form-check-label text-white" for="s3UseSSL">Use SSL (HTTPS)</label>
+                    </div>
+
+                    <h5 class="mb-3 text-white mt-4">Telemetry</h5>
                     <div class="card bg-black border-secondary mb-1">
                         <div class="card-body">
                             <div class="form-check form-switch">
@@ -214,6 +235,12 @@
             let formData = {
                 adminEmail: '',
                 adminPassword: '',
+                s3Config: {
+                    endpoint: '',
+                    useSSL: true,
+                    accessKey: '',
+                    secretKey: ''
+                },
                 enableExtraTelemetry: true
             };
 
@@ -227,7 +254,7 @@
 
                 // Update Indicators
                 $('.step-item').removeClass('active completed');
-                for(let i=1; i < stepId; i++) $(`#step-indicator-${i}`).addClass('completed');
+                for (let i = 1; i < stepId; i++) $(`#step-indicator-${i}`).addClass('completed');
                 $(`#step-indicator-${stepId}`).addClass('active');
             }
 
@@ -245,6 +272,12 @@
             // Step 2 -> Install
             $('#configForm').on('submit', (e) => {
                 e.preventDefault();
+
+                formData.s3Config.endpoint = $('#s3Endpoint').val().trim();
+                formData.s3Config.accessKey = $('#s3AccessKey').val().trim();
+                formData.s3Config.secretKey = $('#s3SecretKey').val().trim();
+                formData.s3Config.useSSL = $('#s3UseSSL').is(':checked');
+
                 formData.enableExtraTelemetry = $('#telemetryToggle').is(':checked');
 
                 showStep(3);
@@ -258,7 +291,7 @@
                     contentType: 'application/json',
                     data: JSON.stringify(formData),
                     success: (response) => {
-                        if(response.success) {
+                        if (response.success) {
                             $('#installingState').addClass('d-none');
                             $('#successState').removeClass('d-none');
                         } else {
@@ -279,4 +312,5 @@
         });
     </script>
 </body>
+
 </html>

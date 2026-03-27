@@ -1,4 +1,5 @@
-﻿using Microsoft.ML.OnnxRuntime;
+﻿using IqraInfrastructure.Helpers.HuggingFace;
+using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 
 namespace IqraInfrastructure.Managers.TurnEnd
@@ -9,40 +10,56 @@ namespace IqraInfrastructure.Managers.TurnEnd
     /// </summary>
     public class SmartTurnOnnxModel
     {
-        private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "SmartTurn", "smart-turn-v3.0.onnx");
+        private static readonly string ModelFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "SmartTurn");
+        private static readonly string ModelFileName = "smart-turn-v3.2-cpu.onnx";
+        private static readonly string ModelPath = Path.Combine(ModelFolder, ModelFileName);
+
         private static InferenceSession Session;
         private static WhisperFeatureExtractor FeatureExtractor;
+
         private static bool IsModelLoaded = false;
-        private static bool IsLoadingModel = false;
+        private static readonly object _initLock = new object();
 
         public SmartTurnOnnxModel()
         {
             if (!IsModelLoaded)
             {
-                while (IsLoadingModel)
+                lock (_initLock)
                 {
-                    Task.Delay(100).GetAwaiter().GetResult();
-                }
-
-                try
-                {
-                    var sessionOptions = new SessionOptions
+                    if (!IsModelLoaded)
                     {
-                        ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
-                        InterOpNumThreads = 1,
-                        IntraOpNumThreads = 1,
-                        GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL
-                    };
+                        EnsureModelExists();
 
-                    Session = new InferenceSession(ModelPath, sessionOptions);
-                    FeatureExtractor = new WhisperFeatureExtractor(8);
+                        var sessionOptions = new SessionOptions
+                        {
+                            ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
+                            InterOpNumThreads = 1,
+                            IntraOpNumThreads = 1,
+                            GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL
+                        };
 
-                    IsModelLoaded = true;
+                        Session = new InferenceSession(ModelPath, sessionOptions);
+                        FeatureExtractor = new WhisperFeatureExtractor(8);
+
+                        IsModelLoaded = true;
+                    }
                 }
-                finally
+            }
+        }
+
+        private void EnsureModelExists()
+        {
+            if (!File.Exists(ModelPath))
+            {
+                Task.Run(async () =>
                 {
-                    IsLoadingModel = false;
-                }
+                    await HFDownloader.DownloadModelAsync(
+                        repoId: "pipecat-ai/smart-turn-v3",
+                        filesToDownload: new List<string> { ModelFileName },
+                        outputFolder: ModelFolder,
+                        replaceIfShaMismatch: true
+                    );
+                }).GetAwaiter().GetResult();
             }
         }
 

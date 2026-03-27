@@ -59,7 +59,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 {
                     if (item.LogoS3StorageLink != null)
                     {
-                        item.PresignedLogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400, item.LogoS3StorageLink.OriginRegion);
+                        item.PresignedLogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400);
                     }
                 }
 

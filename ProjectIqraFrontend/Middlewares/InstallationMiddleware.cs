@@ -26,7 +26,12 @@ namespace ProjectIqraFrontend.Middlewares
             // 2. Check Cached Status (Instant)
             var status = appManager.CurrentStatus;
 
-            // 3. Handle Not Installed
+            // 3. Handle Not Installed/Restart
+            if (status == AppLifecycleStatus.AwaitingInstallRestart)
+            {
+                context.Response.Redirect("/install?restart=true");
+                return;
+            }
             if (status == AppLifecycleStatus.NotInstalled)
             {
                 context.Response.Redirect("/install");

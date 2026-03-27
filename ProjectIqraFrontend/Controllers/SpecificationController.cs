@@ -108,7 +108,7 @@ namespace ProjectIqraFrontend.Controllers
                     var dtoItem = new IntegrationViewModel(item);
                     if (item.LogoS3StorageLink != null)
                     {
-                        dtoItem.LogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400, item.LogoS3StorageLink.OriginRegion);
+                        dtoItem.LogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400);
                     }
 
                     resultDto.Add(dtoItem);

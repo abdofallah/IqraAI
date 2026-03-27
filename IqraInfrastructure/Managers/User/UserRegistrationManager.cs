@@ -21,7 +21,7 @@ namespace IqraInfrastructure.Managers.User
             _userRepoistory = userRepoistory;
         }
 
-        public async Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model, Func<string, string, string> hashPasswordFunction, string? isAdmin = null)
+        public async Task<FunctionReturnResult<UserData?>> RegisterUser(RegisterModel model, Func<string, string, string> hashPasswordFunction, string? isAdmin = null, MongoDB.Driver.IClientSessionHandle? mongoSession = null)
         {
             var result = new FunctionReturnResult<UserData?>();
 
@@ -38,7 +38,7 @@ namespace IqraInfrastructure.Managers.User
                 }
             };
 
-            var addResult = await _userRepoistory.AddUserAsync(newUser);
+            var addResult = await _userRepoistory.AddUserAsync(newUser, mongoSession);
             if (!addResult)
             {
                 return result.SetFailureResult(
