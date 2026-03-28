@@ -27,8 +27,6 @@ namespace IqraInfrastructure.Managers.VAD.Silero
                 {
                     if (!IsModelLoaded)
                     {
-                        EnsureModelExists();
-
                         var sessionOptions = new SessionOptions();
                         sessionOptions.InterOpNumThreads = 1;
                         sessionOptions.IntraOpNumThreads = 1;
@@ -44,7 +42,7 @@ namespace IqraInfrastructure.Managers.VAD.Silero
             ResetStates();
         }
 
-        private void EnsureModelExists()
+        public static void EnsureModelExists()
         {
             Task.Run(async () =>
             {

@@ -305,6 +305,11 @@ namespace ProjectIqraBackendApp
                 // If startup integrity passes, initialize s3 repos
                 await InitalizeS3Services(app.Services, backendAppConfig!);
 
+                // Ensure Models Are downloaded
+                SileroVadOnnxModel.EnsureModelExists();
+                BlandAIOnnxVoicemailDetectModel.EnsureModelExists();
+                SmartTurnOnnxModel.EnsureModelExists();
+
                 appLogger.LogInformation("Iqra Backend Bootstrapping Completed.");
             }
 

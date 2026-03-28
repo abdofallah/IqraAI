@@ -28,8 +28,6 @@ namespace IqraInfrastructure.Managers.TurnEnd
                 {
                     if (!IsModelLoaded)
                     {
-                        EnsureModelExists();
-
                         var sessionOptions = new SessionOptions
                         {
                             ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
@@ -47,7 +45,7 @@ namespace IqraInfrastructure.Managers.TurnEnd
             }
         }
 
-        private void EnsureModelExists()
+        public static void EnsureModelExists()
         {
             if (!File.Exists(ModelPath))
             {

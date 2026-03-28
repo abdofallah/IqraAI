@@ -30,10 +30,6 @@ namespace IqraInfrastructure.Managers.VoiceMailDetection
                 {
                     if (!IsModelLoaded)
                     {
-                        // 1. Ensure all 4 model files exist and match remote SHAs
-                        EnsureModelExists();
-
-                        // 2. We keep these standard exception throws as a safety net in case of disk write failures
                         if (!File.Exists(ModelPath))
                             throw new FileNotFoundException("ONNX model file not found.", ModelPath);
                         if (!File.Exists(ModelConfigPath))
@@ -55,7 +51,7 @@ namespace IqraInfrastructure.Managers.VoiceMailDetection
             }
         }
 
-        private void EnsureModelExists()
+        public static void EnsureModelExists()
         {
             Task.Run(async () =>
             {
