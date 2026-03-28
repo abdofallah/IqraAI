@@ -46,8 +46,9 @@
   // BACKEND SPECIFIC: Local Redis for L1 Caching.
   // This instance should ideally be running on the same machine (localhost) to minimize audio retrieval latency.
   "LocalRedisDatabase": {
-    "ConnectionString": "127.0.0.1:6379",
-    "TTSAudioCacheIndex": 14
+    // The connection to your local Redis instance
+    "Endpoint": "localhost:6379",
+    "Password": "" // leave blank if no password
   },
 
   // SHARED CONFIGURATION: This block must match the Frontend/Backend/Background configuration.

@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Humanizer" Version="3.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
     <ProjectReference Include="..\IqraInfrastructure\IqraInfrastructure.csproj" />
   </ItemGroup>

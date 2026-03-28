@@ -59,7 +59,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                 Transport = new HttpClientPipelineTransport()
             });
 
-            _client = client.GetResponsesClient(_config.Model);
+            _client = client.GetResponsesClient();
             _messagesMemory = new List<ResponseItem>();
             _systemPrompt = "You are Iqra. A helpful AI Assistant.";
         }
@@ -70,6 +70,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
             var request = new CreateResponseOptions()
             {
+                Model = _config.Model,
                 MaxOutputTokenCount = _config.MaxTokens,
                 Instructions = _systemPrompt,
                 Temperature = _config.Temperature,
