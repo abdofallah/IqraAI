@@ -43,10 +43,6 @@
   <img src="https://img.shields.io/github/commit-activity/m/abdofallah/IqraAI?color=black" alt="Activity">
 </p>
 
-> [!WARNING]  
-> **Pre-Release Notice (v0.1 Pending)**  
-> This codebase is currently active but requires manual service configuration. The automated seeding scripts for the database are pending the official v0.1 release. Developers are welcome to explore the architecture, but production deployment requires manual DB setup for now.
-
 # The Dynamic AI-First Engine
 
 **Iqra AI** is an orchestration infrastructure designed to bridge the gap between the chaos of LLMs and the reliability of business code. It allows you to build superhuman Voice & Conversational Agents that think dynamically but act systematically.

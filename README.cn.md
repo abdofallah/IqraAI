@@ -43,10 +43,6 @@
   <img src="https://img.shields.io/github/commit-activity/m/abdofallah/IqraAI?color=black" alt="Activity">
 </p>
 
-> [!WARNING]  
-> **预发布通知 (v0.1 待定)**  
-> 此代码库当前处于活跃状态，但需要手动配置服务。数据库的自动播种脚本仍在等待正式的 v0.1 发布。欢迎开发者探索架构，但目前的生产部署需要手动设置数据库。
-
 # 动态 AI-First 引擎
 
 **Iqra AI** 是一个编排基础设施，旨在弥合 LLM 的混乱与业务代码的可靠性之间的鸿沟。它允许您构建思维动态但行动系统的超人语音与对话代理。
