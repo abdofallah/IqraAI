@@ -5,64 +5,86 @@ const inboundRouteCallRingingArguments = [
 	{ "id": "call_queue_enqueued_at", "Name": "Call Queue Enqueued At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was officially placed in the queue." },
 	{ "id": "call_queue_processing_started_at", "Name": "Call Queue Processing Started At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the system started processing the call." },
 	{ "id": "call_queue_completed_at", "Name": "Call Queue Completed At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was completed." },
-	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "string", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
+	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "enum", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
 	{ "id": "call_queue_route_id", "Name": "Call Queue Route Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the route this call belongs to." },
 	{ "id": "call_queue_route_number_id", "Name": "Call Queue Route Number Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the phone number used to receive the call." },
-	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "string", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
+	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "enum", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
 	{ "id": "call_queue_provider_call_id", "Name": "Call Queue Provider Call Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique call identifier from the telephony provider." },
 	{ "id": "call_queue_caller_number", "Name": "Call Queue Caller Number", "Type": "string", "group": "Call Queue Data", "Description": "The phone number of the caller." }
 ];
-
 const inboundRouteCallInitiationFailureArguments = [
 	{ "id": "call_queue_id", "Name": "Call Queue Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique identifier of the call queue entry." },
 	{ "id": "call_queue_created_at", "Name": "Call Queue Created At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call queue entry was first created." },
 	{ "id": "call_queue_enqueued_at", "Name": "Call Queue Enqueued At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was officially placed in the queue." },
 	{ "id": "call_queue_processing_started_at", "Name": "Call Queue Processing Started At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the system started processing the call." },
 	{ "id": "call_queue_completed_at", "Name": "Call Queue Completed At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was completed." },
-	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "string", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
+	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "enum", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
 	{ "id": "call_queue_route_id", "Name": "Call Queue Route Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the route this call belongs to." },
 	{ "id": "call_queue_route_number_id", "Name": "Call Queue Route Number Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the phone number used to receive the call." },
-	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "string", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
+	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "enum", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
 	{ "id": "call_queue_provider_call_id", "Name": "Call Queue Provider Call Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique call identifier from the telephony provider." },
 	{ "id": "call_queue_caller_number", "Name": "Call Queue Caller Number", "Type": "string", "group": "Call Queue Data", "Description": "The phone number of the caller." },
 	{ "id": "call_queue_session_id", "Name": "Call Queue Session Id", "Type": "string", "group": "Call Queue Data", "Description": "The telephony session ID." },
 	{ "id": "call_queue_initiation_error", "Name": "Call Queue Initiation Error", "Type": "string", "group": "Call Queue Data", "Description": "Error message of the call initiation failure." }
 ];
-
 const inboundRouteCallPickedArguments = [
 	{ "id": "call_queue_id", "Name": "Call Queue Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique identifier of the call queue entry." },
 	{ "id": "call_queue_created_at", "Name": "Call Queue Created At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call queue entry was first created." },
 	{ "id": "call_queue_enqueued_at", "Name": "Call Queue Enqueued At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was officially placed in the queue." },
 	{ "id": "call_queue_processing_started_at", "Name": "Call Queue Processing Started At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the system started processing the call." },
 	{ "id": "call_queue_completed_at", "Name": "Call Queue Completed At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was completed." },
-	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "string", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
+	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "enum", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
 	{ "id": "call_queue_route_id", "Name": "Call Queue Route Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the route this call belongs to." },
 	{ "id": "call_queue_route_number_id", "Name": "Call Queue Route Number Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the phone number used to receive the call." },
-	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "string", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
+	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "enum", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
 	{ "id": "call_queue_provider_call_id", "Name": "Call Queue Provider Call Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique call identifier from the telephony provider." },
 	{ "id": "call_queue_caller_number", "Name": "Call Queue Caller Number", "Type": "string", "group": "Call Queue Data", "Description": "The phone number of the caller." },
 	{ "id": "conversation_id", "Name": "Conversation Id", "Type": "string", "group": "Conversation Data", "Description": "Id of the conversation." },
 	{ "id": "conversation_start_time", "Name": "Conversation Start Time", "Type": "datetime", "group": "Conversation Data", "Description": "Date and time when the conversation was started." }
 ];
-
 const inboundRouteCallEndedArguments = [
 	{ "id": "call_queue_id", "Name": "Call Queue Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique identifier of the call queue entry." },
 	{ "id": "call_queue_created_at", "Name": "Call Queue Created At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call queue entry was first created." },
 	{ "id": "call_queue_enqueued_at", "Name": "Call Queue Enqueued At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was officially placed in the queue." },
 	{ "id": "call_queue_processing_started_at", "Name": "Call Queue Processing Started At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the system started processing the call." },
 	{ "id": "call_queue_completed_at", "Name": "Call Queue Completed At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was completed." },
-	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "string", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
+	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "enum", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
 	{ "id": "call_queue_route_id", "Name": "Call Queue Route Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the route this call belongs to." },
 	{ "id": "call_queue_route_number_id", "Name": "Call Queue Route Number Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the phone number used to receive the call." },
-	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "string", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
+	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "enum", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
 	{ "id": "call_queue_provider_call_id", "Name": "Call Queue Provider Call Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique call identifier from the telephony provider." },
 	{ "id": "call_queue_caller_number", "Name": "Call Queue Caller Number", "Type": "string", "group": "Call Queue Data", "Description": "The phone number of the caller." },
 	{ "id": "conversation_id", "Name": "Conversation Id", "Type": "string", "group": "Conversation Data", "Description": "Id of the conversation." },
 	{ "id": "conversation_start_time", "Name": "Conversation Start Time", "Type": "datetime", "group": "Conversation Data", "Description": "Date and time when the conversation was started." },
-	{ "id": "conversation_end_type", "Name": "Conversation End Type", "Type": "string", "group": "Conversation Data", "Description": "Type the conversation was ended with." },
+	{ "id": "conversation_end_type", "Name": "Conversation End Type", "Type": "enum", "group": "Conversation Data", "Description": "Type the conversation was ended with." },
 	{ "id": "conversation_end_time", "Name": "Conversation End Time", "Type": "datetime", "group": "Conversation Data", "Description": "Date and time when the conversation was ended." },
 	{ "id": "conversation_turns", "Name": "Conversation Turns", "Type": "object", "group": "Conversation Data", "Description": "Complete System/Agent/User turns data of the conversation." },
 	{ "id": "conversation_turns_simplified", "Name": "Conversation Turns Simplified", "Type": "string", "group": "Conversation Data", "Description": "Simplified compiled `<role>: <content>` string." }
+];
+const inboundRoutePostCallAnalysisActionArgurments = [
+	{ "id": "call_queue_id", "Name": "Call Queue Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique identifier of the call queue entry." },
+	{ "id": "call_queue_created_at", "Name": "Call Queue Created At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call queue entry was first created." },
+	{ "id": "call_queue_enqueued_at", "Name": "Call Queue Enqueued At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was officially placed in the queue." },
+	{ "id": "call_queue_processing_started_at", "Name": "Call Queue Processing Started At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the system started processing the call." },
+	{ "id": "call_queue_completed_at", "Name": "Call Queue Completed At", "Type": "datetime", "group": "Call Queue Data", "Description": "Date and time when the call was completed." },
+	{ "id": "call_queue_status", "Name": "Call Queue Status", "Type": "enum", "group": "Call Queue Data", "Description": "The current status of the call in the queue." },
+	{ "id": "call_queue_route_id", "Name": "Call Queue Route Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the route this call belongs to." },
+	{ "id": "call_queue_route_number_id", "Name": "Call Queue Route Number Id", "Type": "string", "group": "Call Queue Data", "Description": "The ID of the phone number used to receive the call." },
+	{ "id": "call_queue_route_number_provider", "Name": "Call Queue Route Number Provider", "Type": "enum", "group": "Call Queue Data", "Description": "The telephony provider of the route number." },
+	{ "id": "call_queue_provider_call_id", "Name": "Call Queue Provider Call Id", "Type": "string", "group": "Call Queue Data", "Description": "The unique call identifier from the telephony provider." },
+	{ "id": "call_queue_caller_number", "Name": "Call Queue Caller Number", "Type": "string", "group": "Call Queue Data", "Description": "The phone number of the caller." },
+	{ "id": "conversation_id", "Name": "Conversation Id", "Type": "string", "group": "Conversation Data", "Description": "Id of the conversation." },
+	{ "id": "conversation_start_time", "Name": "Conversation Start Time", "Type": "datetime", "group": "Conversation Data", "Description": "Date and time when the conversation was started." },
+	{ "id": "conversation_end_type", "Name": "Conversation End Type", "Type": "enum", "group": "Conversation Data", "Description": "Type the conversation was ended with." },
+	{ "id": "conversation_end_time", "Name": "Conversation End Time", "Type": "datetime", "group": "Conversation Data", "Description": "Date and time when the conversation was ended." },
+	{ "id": "conversation_turns", "Name": "Conversation Turns", "Type": "object", "group": "Conversation Data", "Description": "Complete System/Agent/User turns data of the conversation." },
+	{ "id": "conversation_turns_simplified", "Name": "Conversation Turns Simplified", "Type": "string", "group": "Conversation Data", "Description": "Simplified compiled `<role>: <content>` string." },
+	// Post Analysis Data
+	{ "id": "post_analysis_template_id", "Name": "Post Analysis Template Id", "Type": "string", "group": "Post Analysis Data", "Description": "Id of the post analysis template" },
+	{ "id": "post_analysis_status_type", "Name": "Post Analysis Status Type", "Type": "enum", "group": "Post Analysis Data", "Description": "Status type of the post analysis" },
+	{ "id": "post_analysis_summary_data", "Name": "Post Analysis Summary Data", "Type": "object", "group": "Post Analysis Data", "Description": "Summary data of the post analysis" },
+	{ "id": "post_analysis_tagging_data", "Name": "Post Analysis Tagging Data", "Type": "object", "group": "Post Analysis Data", "Description": "Tagging data of the post analysis" },
+	{ "id": "post_analysis_extraction_data", "Name": "Post Analysis Extraction Data", "Type": "object", "group": "Post Analysis Data", "Description": "Extraction data of the post analysis" }
 ];
 
 /** Dynamic Variables **/
@@ -79,6 +101,7 @@ let editRouteActionToolCallInitiationFailureCustomInputs = {};
 let editRouteActionToolRingingCustomInputs = {};
 let editRouteActionToolPickedCustomInputs = {};
 let editRouteActionToolEndedCustomInputs = {};
+let editRouteActionToolPostCallAnalysisCustomInputs = {};
 
 /** Element Variables  **/
 const tooltipTriggerList = document.querySelectorAll('#routing-tab [data-bs-toggle="tooltip"]');
@@ -170,6 +193,7 @@ const editRouteActionToolCallInitiationFailure = routeActionsTab.find("#editRout
 const editRouteActionToolRinging = routeActionsTab.find("#editRouteActionToolRinging");
 const editRouteActionToolPicked = routeActionsTab.find("#editRouteActionToolPicked");
 const editRouteActionToolEnded = routeActionsTab.find("#editRouteActionToolEnded");
+const editRouteActionToolPostAnalysis = routeActionsTab.find("#editRouteActionToolPostAnalysis");
 
 /** API FUNCTIONS **/
 function SaveBusinessRoute(formData, successCallback, errorCallback) {
@@ -379,14 +403,15 @@ function resetAndEmptyRouteManagerTab() {
 		editRouteActionToolCallInitiationFailure,
 		editRouteActionToolRinging,
 		editRouteActionToolPicked,
-		editRouteActionToolEnded
+		editRouteActionToolEnded,
+		editRouteActionToolPostAnalysis 
 	];
 	actionSelects.forEach(select => {
 		select.empty().append('<option value="none" selected>None</option>');
 		BusinessFullData.businessApp.tools.forEach(tool => {
 			select.append(`<option value="${tool.id}">${tool.general.name[BusinessDefaultLanguage]}</option>`);
 		});
-		const container = select.closest('div.mb-3');
+		const container = select.closest('div');
 		container.find('.custom-tool-input-arguments').addClass('d-none');
 		container.find('[id$="-arguments-list"]').empty();
 	});
@@ -395,7 +420,8 @@ function resetAndEmptyRouteManagerTab() {
 		editRouteActionToolCallInitiationFailureCustomInputs,
 		editRouteActionToolRingingCustomInputs,
 		editRouteActionToolPickedCustomInputs,
-		editRouteActionToolEndedCustomInputs
+		editRouteActionToolEndedCustomInputs,
+		editRouteActionToolPostCallAnalysisCustomInputs 
 	];
 	toolArgumentsListObjects.forEach(toolArgumentsListObject => {
 		Object.keys(toolArgumentsListObject).forEach((customInputId) => {
@@ -609,12 +635,19 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 				toolId: editRouteActionToolEnded.val() === "none" ? null : editRouteActionToolEnded.val(),
 				arguments: collectToolArguments(editRouteActionToolEnded, editRouteActionToolEndedCustomInputs),
 			},
+			conversationPostAnalysisTool: {
+				toolId: editRouteActionToolPostAnalysis.val() === "none" ? null : editRouteActionToolPostAnalysis.val(),
+				arguments: collectToolArguments(editRouteActionToolPostAnalysis, editRouteActionToolPostCallAnalysisCustomInputs),
+			},
 		};
 
-		if (compareToolData(changes.actions.callInitiationFailureTool, original.actions.callInitiationFailureTool) ||
+		if (
+			compareToolData(changes.actions.callInitiationFailureTool, original.actions.callInitiationFailureTool) ||
 			compareToolData(changes.actions.ringingTool, original.actions.ringingTool) ||
 			compareToolData(changes.actions.callPickedTool, original.actions.callPickedTool) ||
-			compareToolData(changes.actions.callEndedTool, original.actions.callEndedTool)) {
+			compareToolData(changes.actions.callEndedTool, original.actions.callEndedTool) ||
+			compareToolData(changes.actions.conversationPostAnalysisTool, original.actions.conversationPostAnalysisTool)
+		) {
 			hasChanges = true;
 		}
 	}
@@ -869,6 +902,7 @@ function validateRoutingTab(onlyRemove = true) {
 		validateToolArguments(editRouteActionToolRinging, editRouteActionToolRingingCustomInputs, "Ringing tool");
 		validateToolArguments(editRouteActionToolPicked, editRouteActionToolPickedCustomInputs, "Picked tool");
 		validateToolArguments(editRouteActionToolEnded, editRouteActionToolEndedCustomInputs, "Ended tool");
+		validateToolArguments(editRouteActionToolPostAnalysis, editRouteActionToolPostCallAnalysisCustomInputs, "Post Analysis tool"); 
 	}
 
 	// Execute all validation functions
@@ -955,7 +989,7 @@ function fillRoutingManagerTab() {
 
 	// Actions
 	function fillRouteActionTool(actionToolData, actionToolSelectElement, customInputArguments, customInputObject) {
-		const container = actionToolSelectElement.closest('div.mb-3');
+		const container = actionToolSelectElement.parent();
 		const argumentsContainer = container.find('.custom-tool-input-arguments');
 		const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
 		const selectElement = argumentsContainer.find('select[id$="-arguments-select"]');
@@ -1002,6 +1036,7 @@ function fillRoutingManagerTab() {
 	fillRouteActionTool(data.actions.ringingTool, editRouteActionToolRinging, inboundRouteCallRingingArguments, editRouteActionToolRingingCustomInputs);
 	fillRouteActionTool(data.actions.callPickedTool, editRouteActionToolPicked, inboundRouteCallPickedArguments, editRouteActionToolPickedCustomInputs);
 	fillRouteActionTool(data.actions.callEndedTool, editRouteActionToolEnded, inboundRouteCallEndedArguments, editRouteActionToolEndedCustomInputs);
+	fillRouteActionTool(data.actions.conversationPostAnalysisTool, editRouteActionToolPostAnalysis, inboundRoutePostCallAnalysisActionArgurments, editRouteActionToolPostCallAnalysisCustomInputs);
 }
 async function canLeaveRoutingTab(leaveMessage = "") {
 	if (IsSavingRouteManageTab) {
@@ -1178,7 +1213,7 @@ function fillRouteNumberModalNumbersList() {
 function handleRouteActionToolChange(event) {
 	const selectElement = $(event.currentTarget);
 	const selectedToolId = selectElement.val();
-	const container = selectElement.closest('div.mb-3');
+	const container = selectElement.parent();
 	const argumentsContainer = container.find('.custom-tool-input-arguments');
 	const argumentsSelect = argumentsContainer.find('select');
 	const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
@@ -1685,6 +1720,7 @@ function initRoutingTab() {
 			editRouteActionToolRinging.on('change', handleRouteActionToolChange);
 			editRouteActionToolPicked.on('change', handleRouteActionToolChange);
 			editRouteActionToolEnded.on('change', handleRouteActionToolChange);
+			editRouteActionToolPostAnalysis.on('change', handleRouteActionToolChange);
 
 			routeActionsTab.on('change', '#editRouteActionToolCallInitiationFailure-arguments-select', (event) => {
 				handleRouteActionAddArgument(event, inboundRouteCallInitiationFailureArguments, editRouteActionToolCallInitiationFailureCustomInputs);
@@ -1698,6 +1734,9 @@ function initRoutingTab() {
 			routeActionsTab.on('change', '#editRouteActionToolEnded-arguments-select', (event) => {
 				handleRouteActionAddArgument(event, inboundRouteCallEndedArguments, editRouteActionToolEndedCustomInputs);
 			});
+			routeActionsTab.on('change', '#editRouteActionToolPostAnalysis-arguments-select', (event) => {
+				handleRouteActionAddArgument(event, inboundRoutePostCallAnalysisActionArgurments, editRouteActionToolPostCallAnalysisCustomInputs);
+			});
 
 			routeActionsTab.on('click', '#editRouteActionToolCallInitiationFailure-arguments-list [btn-action="remove-route-action-tool-argument"]', (event) => {
 				handleRouteActionRemoveArgument(event, editRouteActionToolCallInitiationFailureCustomInputs);
@@ -1710,6 +1749,9 @@ function initRoutingTab() {
 			});
 			routeActionsTab.on('click', '#editRouteActionToolEnded-arguments-list [btn-action="remove-route-action-tool-argument"]', (event) => {
 				handleRouteActionRemoveArgument(event, editRouteActionToolEndedCustomInputs);
+			});
+			routeActionsTab.on('click', '#editRouteActionToolPostAnalysis-arguments-list [btn-action="remove-route-action-tool-argument"]', (event) => {
+				handleRouteActionRemoveArgument(event, editRouteActionToolPostCallAnalysisCustomInputs);
 			});
 		}
 		initActionTabHandlers();

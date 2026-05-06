@@ -654,10 +654,13 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 {
                     if (baseClient.Transport is DeferredClientTransport deferredTransport)
                     {
+                        var bytesPerFrame = sessionManager.AudioEngine?.GetBytesPerFrame() ?? 1024;
+
                         var realTransport = new WebSocketClientTransport(
                             webSocket,
                             sessionManager.SessionLoggerFactory.CreateLogger<WebSocketClientTransport>(),
-                            sessionOverallCts.Token
+                            sessionOverallCts.Token,
+                            bytesPerFrame
                         );
 
                         deferredTransport.Activate(realTransport);
@@ -881,8 +884,7 @@ namespace IqraInfrastructure.Managers.Call.Backend
                     AudioEncodingType = sessionAudioEncodingType,
                     BitsPerSample = sessionBitPerSample,
                     Channels = sessionChannels,
-                    SampleRate = sessionSampleRate,
-                    FrameDurationMs = 30, // for opus
+                    SampleRate = sessionSampleRate
                 }
             };
 
@@ -1176,10 +1178,13 @@ namespace IqraInfrastructure.Managers.Call.Backend
                 string authToken = _integrationsManager.DecryptField(integration.EncryptedFields["auth"]);
                 var twilioManager = _serviceProvider.GetRequiredService<TwilioManager>();
 
+                var countryCode = PhoneNumberUtil.GetInstance().GetCountryCodeForRegion(phoneNumber.CountryCode);
+                var phoneNumberWithCountryCode = $"+{countryCode}{phoneNumber.Number}";
+
                 var callResult = await twilioManager.MakeCallAsync(
                     accountSid,
                     authToken,
-                    phoneNumber.Number,
+                    phoneNumberWithCountryCode,
                     toNumber,
                     statusCallbackUrl, // Status callback for Twilio
                     websocketUrl

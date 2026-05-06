@@ -12,5 +12,6 @@ namespace IqraCore.Interfaces.Modules
         void SetupRepositories(IServiceCollection services, IConfiguration appConfig);
         void UseWhiteLabelResolver(IApplicationBuilder app);
         void ConfigureStaticFiles(IWebHostEnvironment env);
+        void SetupOpenIddict(WebApplicationBuilder builder, IConfiguration appConfig);
     }
 }

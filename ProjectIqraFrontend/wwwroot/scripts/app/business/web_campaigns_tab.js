@@ -18,7 +18,7 @@ const webCampaignPostAnalysisContextVariableArguments = [
     {
         "id": "web_session_status",
         "Name": "Web Session Status",
-        "Type": "string",
+        "Type": "enum",
         "group": "Web Session Data",
         "Description": "Status of the web session"
     },
@@ -68,7 +68,7 @@ const webCampaignPostAnalysisContextVariableArguments = [
     {
         "id": "conversation_end_type",
         "Name": "Conversation End Type",
-        "Type": "string",
+        "Type": "enum",
         "group": "Conversation Data",
         "Description": "Type the conversation was ended with"
     },
@@ -114,7 +114,7 @@ const webCampaignOnConversationInitiationFailureActionArgurments = [
     {
         "id": "web_session_status",
         "Name": "Web Session Status",
-        "Type": "string",
+        "Type": "enum",
         "group": "Web Session Data",
         "Description": "Status of the web session"
     },
@@ -173,7 +173,7 @@ const webCampaignOnConversationInitiatedOrStartedActionArgurments = [
     {
         "id": "web_session_status",
         "Name": "Web Session Status",
-        "Type": "string",
+        "Type": "enum",
         "group": "Web Session Data",
         "Description": "Status of the web session"
     },
@@ -240,7 +240,7 @@ const webCampaignOnConversationEndedActionArgurments = [
     {
         "id": "web_session_status",
         "Name": "Web Session Status",
-        "Type": "string",
+        "Type": "enum",
         "group": "Web Session Data",
         "Description": "Status of the web session"
     },
@@ -290,7 +290,7 @@ const webCampaignOnConversationEndedActionArgurments = [
     {
         "id": "conversation_end_type",
         "Name": "Conversation End Type",
-        "Type": "string",
+        "Type": "enum",
         "group": "Conversation Data",
         "Description": "Type the conversation was ended with"
     },
@@ -316,6 +316,137 @@ const webCampaignOnConversationEndedActionArgurments = [
         "Description": "Simplified & already compiled `<role>: <content>` string of Conversations Turns"
     }
 ];
+const webCampaignOnPostAnalysisActionArgurments = [
+    // Web Session Data
+    {
+        "id": "web_session_id",
+        "Name": "Web Session Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web session that the conversation belongs to"
+    },
+    {
+        "id": "web_session_created_at",
+        "Name": "Web Session Created At",
+        "Type": "datetime",
+        "group": "Web Session Data",
+        "Description": "Date and time when the web session was created"
+    },
+    {
+        "id": "web_session_status",
+        "Name": "Web Session Status",
+        "Type": "enum",
+        "group": "Web Session Data",
+        "Description": "Status of the web session"
+    },
+    {
+        "id": "web_session_web_campaign_id",
+        "Name": "Web Session Web Campaign Id",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Id of the web campaign the web session is configured with"
+    },
+    {
+        "id": "web_session_client_identifier",
+        "Name": "Web Session Client Identifier",
+        "Type": "string",
+        "group": "Web Session Data",
+        "Description": "Unique identifier of the client the web session was initiated with"
+    },
+    {
+        "id": "web_session_dynamic_variables",
+        "Name": "Web Session Dynamic Variables",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Dynamic variables the web session was initiated with",
+    },
+    {
+        "id": "web_session_metadata",
+        "Name": "Web Session Metadata",
+        "Type": "object",
+        "group": "Web Session Data",
+        "Description": "Metadata the web session was initiated with",
+    },
+    // Conversation Data
+    {
+        "id": "conversation_id",
+        "Name": "Conversation Id",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Id of the conversation"
+    },
+    {
+        "id": "conversation_start_time",
+        "Name": "Conversation Start Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was started"
+    },
+    {
+        "id": "conversation_end_type",
+        "Name": "Conversation End Type",
+        "Type": "enum",
+        "group": "Conversation Data",
+        "Description": "Type the conversation was ended with"
+    },
+    {
+        "id": "conversation_end_time",
+        "Name": "Conversation End Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was ended"
+    },
+    {
+        "id": "conversation_turns",
+        "Name": "Conversation Turns",
+        "Type": "object",
+        "group": "Conversation Data",
+        "Description": "Complete System/Agent/User turns data of the conversation"
+    },
+    {
+        "id": "conversation_turns_simplified",
+        "Name": "Conversation Turns Simplified",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Simplified & already compiled `<role>: <content>` string of Conversations Turns"
+    },
+    // Post Analysis Data
+    {
+        "id": "post_analysis_template_id",
+        "Name": "Post Analysis Template Id",
+        "Type": "string",
+        "group": "Post Analysis Data",
+        "Description": "Id of the post analysis template"
+    },
+    {
+        "id": "post_analysis_status_type",
+        "Name": "Post Analysis Status Type",
+        "Type": "enum",
+        "group": "Post Analysis Data",
+        "Description": "Status type of the post analysis"
+    },
+    {
+        "id": "post_analysis_summary_data",
+        "Name": "Post Analysis Summary Data",
+        "Type": "object",
+        "group": "Post Analysis Data",
+        "Description": "Summary data of the post analysis"
+    },
+    {
+        "id": "post_analysis_tagging_data",
+        "Name": "Post Analysis Tagging Data",
+        "Type": "object",
+        "group": "Post Analysis Data",
+        "Description": "Tagging data of the post analysis"
+    },
+    {
+        "id": "post_analysis_extraction_data",
+        "Name": "Post Analysis Extraction Data",
+        "Type": "object",
+        "group": "Post Analysis Data",
+        "Description": "Extraction data of the post analysis"
+    }
+];
 
 /** Dynamic Variables **/
 let manageWebCampaignType = null; // 'new' or 'edit'
@@ -335,6 +466,7 @@ var webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput = 
 var webCampaignOnConversationInitiatedActionInputArgumentsCustomInput = {};
 var webCampaignOnConversationStartedActionInputArgumentsCustomInput = {};
 var webCampaignOnConversationEndedActionInputArgumentsCustomInput = {};
+var webCampaignOnPostAnalysisActionInputArgumentsCustomInput = {};
 
 /** Element Variables **/
 const webCampaignsTab = $("#web-campaigns-tab");
@@ -388,6 +520,7 @@ const webCampaignActionToolConversationInitiationFailureSelect = webCampaignActi
 const webCampaignActionToolConversationInitiatedSelect = webCampaignActionsTab.find("#web-campaign-action-tool-conversation-initiated-select");
 const webCampaignActionToolConversationStartedSelect = webCampaignActionsTab.find("#web-campaign-action-tool-conversation-started-select");
 const webCampaignActionToolConversationEndedSelect = webCampaignActionsTab.find("#web-campaign-action-tool-conversation-ended-select");
+const webCampaignActionToolPostAnalysisSelect = webCampaignActionsTab.find("#web-campaign-action-tool-post-analysis-select");
 
 // Modals
 const webCampaignSelectAgentModalElement = webCampaignsTab.find("#web-campaign-select-agent-modal");
@@ -544,6 +677,10 @@ function createDefaultWebCampaignObject() {
             conversationEndedTool: {
                 toolId: null,
                 arguments: null
+            },
+            conversationPostAnalysisTool: {
+                toolId: null,
+                arguments: null
             }
         }
     };
@@ -600,7 +737,8 @@ function resetWebCampaignManager() {
         webCampaignActionToolConversationInitiationFailureSelect,
         webCampaignActionToolConversationInitiatedSelect,
         webCampaignActionToolConversationStartedSelect,
-        webCampaignActionToolConversationEndedSelect
+        webCampaignActionToolConversationEndedSelect,
+        webCampaignActionToolPostAnalysisSelect
     ];
     actionSelects.forEach(select => {
         select.empty().append('<option value="none" selected>None</option>');
@@ -615,7 +753,8 @@ function resetWebCampaignManager() {
         webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput,
         webCampaignOnConversationInitiatedActionInputArgumentsCustomInput,
         webCampaignOnConversationStartedActionInputArgumentsCustomInput,
-        webCampaignOnConversationEndedActionInputArgumentsCustomInput
+        webCampaignOnConversationEndedActionInputArgumentsCustomInput,
+        webCampaignOnPostAnalysisActionInputArgumentsCustomInput
     ];
     toolArgumentsListObjects.forEach(toolArgumentsListObject => {
         Object.keys(toolArgumentsListObject).forEach((customInputId) => {
@@ -742,6 +881,7 @@ function fillWebCampaignManager() {
     fillWebActionTool(data.actions.conversationInitiatedTool, webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedOrStartedActionArgurments, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput);
     fillWebActionTool(data.actions.conversationStartedTool, webCampaignActionToolConversationStartedSelect, webCampaignOnConversationInitiatedOrStartedActionArgurments, webCampaignOnConversationStartedActionInputArgumentsCustomInput);
     fillWebActionTool(data.actions.conversationEndedTool, webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionArgurments, webCampaignOnConversationEndedActionInputArgumentsCustomInput);
+    fillWebActionTool(data.actions.conversationPostAnalysisTool, webCampaignActionToolPostAnalysisSelect, webCampaignOnPostAnalysisActionArgurments, webCampaignOnPostAnalysisActionInputArgumentsCustomInput);
 }
 
 function checkWebCampaignChanges(enableDisableButton = true) {
@@ -912,13 +1052,20 @@ function checkWebCampaignChanges(enableDisableButton = true) {
             conversationEndedTool: {
                 toolId: webCampaignActionToolConversationEndedSelect.val() === 'none' ? null : webCampaignActionToolConversationEndedSelect.val(),
                 arguments: collectToolArguments(webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionInputArgumentsCustomInput)
+            },
+            conversationPostAnalysisTool: {
+                toolId: webCampaignActionToolPostAnalysisSelect.val() === 'none' ? null : webCampaignActionToolPostAnalysisSelect.val(),
+                arguments: collectToolArguments(webCampaignActionToolPostAnalysisSelect, webCampaignOnPostAnalysisActionInputArgumentsCustomInput)
             }
         };
 
-        if (compareToolData(changes.actions.conversationInitiationFailureTool, original.actions.conversationInitiationFailureTool) ||
+        if (
+            compareToolData(changes.actions.conversationInitiationFailureTool, original.actions.conversationInitiationFailureTool) ||
             compareToolData(changes.actions.conversationInitiatedTool, original.actions.conversationInitiatedTool) ||
             compareToolData(changes.actions.conversationStartedTool, original.actions.conversationStartedTool) ||
-            compareToolData(changes.actions.conversationEndedTool, original.actions.conversationEndedTool)) {
+            compareToolData(changes.actions.conversationEndedTool, original.actions.conversationEndedTool) ||
+            compareToolData(changes.actions.conversationPostAnalysisTool, original.actions.conversationPostAnalysisTool)
+        ) {
             hasChanges = true;
         }
     }
@@ -1167,6 +1314,7 @@ function validateWebCampaign(onlyRemove = true) {
         validateToolArguments(webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput, "Conversation Initiated tool");
         validateToolArguments(webCampaignActionToolConversationStartedSelect, webCampaignOnConversationStartedActionInputArgumentsCustomInput, "Conversation Started tool");
         validateToolArguments(webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionInputArgumentsCustomInput, "Conversation Ended tool");
+        validateToolArguments(webCampaignActionToolPostAnalysisSelect, webCampaignOnPostAnalysisActionInputArgumentsCustomInput, "Post Analysis tool");
     }
 
     // Execute all validation checks
@@ -1568,6 +1716,7 @@ function initWebActionsEventHandlers() {
     webCampaignActionToolConversationInitiatedSelect.on('change', handleWebCampaignActionToolChange);
     webCampaignActionToolConversationStartedSelect.on('change', handleWebCampaignActionToolChange);
     webCampaignActionToolConversationEndedSelect.on('change', handleWebCampaignActionToolChange);
+    webCampaignActionToolPostAnalysisSelect.on('change', handleWebCampaignActionToolChange);
 
     // Add argument dropdown change handler
     webCampaignsManagerView.on('change', '#web-campaign-action-tool-conversation-initiation-failure-arguments-select', (event) => {
@@ -1598,6 +1747,13 @@ function initWebActionsEventHandlers() {
             webCampaignOnConversationEndedActionInputArgumentsCustomInput
         );
     });
+    webCampaignsManagerView.on('change', '#web-campaign-action-tool-post-analysis-arguments-select', (event) => {
+        handleWebCampaignActionAddArgument(
+            event,
+            webCampaignOnPostAnalysisActionArgurments,
+            webCampaignOnPostAnalysisActionInputArgumentsCustomInput
+        );
+    });
 
     // Remove argument button click handler
     webCampaignActionsTab.on('click', '#web-campaign-action-tool-conversation-initiation-failure-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
@@ -1611,6 +1767,9 @@ function initWebActionsEventHandlers() {
     });
     webCampaignActionsTab.on('click', '#web-campaign-action-tool-conversation-ended-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
         handleWebCampaignActionRemoveArgument(event, webCampaignOnConversationEndedActionInputArgumentsCustomInput);
+    });
+    webCampaignActionsTab.on('click', '#web-campaign-action-tool-post-analysis-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleWebCampaignActionRemoveArgument(event, webCampaignOnPostAnalysisActionInputArgumentsCustomInput);
     });
 }
 

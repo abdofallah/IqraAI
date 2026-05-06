@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Entities.Business
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppTelephonyCampaignActions
     { 
@@ -9,5 +9,6 @@
         public BusinessAppCampaignActionConfig CallMissedTool { get; set; } = new BusinessAppCampaignActionConfig();
         public BusinessAppCampaignActionConfig CallAnsweredTool { get; set; } = new BusinessAppCampaignActionConfig();
         public BusinessAppCampaignActionConfig CallEndedTool { get; set; } = new BusinessAppCampaignActionConfig();
+        public BusinessAppCampaignActionConfig ConversationPostAnalysisTool { get; set; } = new BusinessAppCampaignActionConfig();
     }
 }

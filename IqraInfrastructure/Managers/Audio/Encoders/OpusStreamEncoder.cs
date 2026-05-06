@@ -103,6 +103,7 @@ namespace IqraInfrastructure.Managers.Audio.Encoders
 
         public override void Dispose()
         {
+            _encoder?.Dispose();
             _buffer?.Dispose();
         }
     }

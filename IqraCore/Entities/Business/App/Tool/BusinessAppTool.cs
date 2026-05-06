@@ -40,7 +40,8 @@ namespace IqraCore.Entities.Business
         Ringing = 0,
         CallInitiationFailure = 1,
         CallPicked = 2,
-        CallEnded = 3
+        CallEnded = 3,
+        ConversationPostAnalysis = 4
     }
 
     public class BusinessAppToolTelephonyCampaignReference
@@ -55,7 +56,8 @@ namespace IqraCore.Entities.Business
         CallDeclined = 2,
         CallMissed = 3,
         CallAnswered = 4,
-        CallEnded = 5
+        CallEnded = 5,
+        ConversationPostAnalysis = 6
     }
 
     public class BusinessAppToolWebCampaignReference
@@ -68,6 +70,7 @@ namespace IqraCore.Entities.Business
         ConversationInitiationFailure = 0,
         ConversationInitiated = 1,
         ConversationStarted = 2,
-        ConversationEnded = 3
+        ConversationEnded = 3,
+        ConversationPostAnalysis = 4
     }
 }

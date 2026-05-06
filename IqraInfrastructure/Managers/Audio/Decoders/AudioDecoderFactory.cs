@@ -14,7 +14,8 @@ namespace IqraInfrastructure.Managers.Audio.Decoders
                 AudioEncodingTypeEnum.MULAW => new MulawStreamDecoder(),
                 AudioEncodingTypeEnum.ALAW => new AlawStreamDecoder(),
                 AudioEncodingTypeEnum.OPUS => new OpusStreamDecoder(inputSampleRate),
-                // G.722, G.729 can be added here following the G.711 pattern
+                AudioEncodingTypeEnum.G722 => new G722StreamDecoder(),
+                AudioEncodingTypeEnum.G729 => new G729StreamDecoder(),
                 _ => throw new NotSupportedException($"No decoder found for {type}")
             };
         }

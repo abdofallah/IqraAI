@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Helpers
 {
-    public enum VariableType { String, Number, Boolean, Datetime, Object, Function }
+    public enum VariableType { String, Number, Boolean, Datetime, Object, Function, Enum }
 
     public class CustomVariableInputTemplateVariableDefinition
     {

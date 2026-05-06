@@ -28,10 +28,10 @@ using IqraInfrastructure.Managers.Conversation.Session.Mixer;
 using IqraInfrastructure.Managers.Conversation.Session.Recording;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
-using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
 using static IqraCore.Interfaces.User.IUserBillingUsageManager;
+using static IqraInfrastructure.Managers.Conversation.Session.Mixer.SessionAudioMixer;
 
 namespace IqraInfrastructure.Managers.Conversation.Session
 {
@@ -157,7 +157,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             _logger = _sessionLoggerFactory.CreateLogger<ConversationSessionOrchestrator>();
             _campaignActionExecutorService = campaignActionExecutorService;
-            _conversationSessionPostAnalysisService = new ConversationSessionPostAnalysisService(_sessionLoggerFactory, conversationStateRepository, llmProviderManager, langaugesManager);
+            _conversationSessionPostAnalysisService = new ConversationSessionPostAnalysisService(_sessionLoggerFactory, conversationStateRepository, llmProviderManager, langaugesManager, campaignActionExecutorService);
 
             if (IsCallInitiated)
             {
@@ -218,7 +218,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
                         if (!string.IsNullOrWhiteSpace(_sessionCallQueueTelephonyCampaignData!.PostAnalysis.PostAnalysisId))
                         {
+                            conversationState.PostAnalysis.PostAnalysisId = _sessionCallQueueTelephonyCampaignData!.PostAnalysis.PostAnalysisId;
                             conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.Waiting;
+                        }
+                        else
+                        {
+                            conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.NotSet;
                         }
                     }
                     else if (IsInboundCall)
@@ -227,7 +232,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
                         if (!string.IsNullOrWhiteSpace(_sessionCallQueueRouteData!.PostAnalysis.PostAnalysisId))
                         {
+                            conversationState.PostAnalysis.PostAnalysisId = _sessionCallQueueRouteData!.PostAnalysis.PostAnalysisId;
                             conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.Waiting;
+                        }
+                        else
+                        {
+                            conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.NotSet;
                         }
                     }
                 }
@@ -238,7 +248,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
                     if (!string.IsNullOrWhiteSpace(_sessionWebSessionCampaignData!.PostAnalysis.PostAnalysisId))
                     {
+                        conversationState.PostAnalysis.PostAnalysisId = _sessionWebSessionCampaignData!.PostAnalysis.PostAnalysisId;
                         conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.Waiting;
+                    }
+                    else
+                    {
+                        conversationState.PostAnalysis.Status = ConversationPostAnalysisStatusEnum.NotSet;
                     }
                 }
 
@@ -509,7 +524,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             await _conversationStateRepository.AddClientInfoAsync(_sessionId, clientInfo);
 
-            _sessionMixer?.RegisterMixer(client.ClientId, _sessionMasterSampleRate, _sessionMasterBitsPerSample);
+            _sessionMixer?.RegisterMixer(client.ClientId, MixerSourceType.Client, _sessionMasterSampleRate, _sessionMasterBitsPerSample);
             await RecalculateAndApplyMasterAudioFormat();
 
             // Notify event subscribers
@@ -593,11 +608,24 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                         agentsToUpdate = _agents.ToList();
                     }
 
+                    List<IConversationClient> clientsToUpdate;
+                    lock (_clientsLock)
+                    {
+                        clientsToUpdate = _clients.ToList();
+                    }
+
                     _sessionMixer?.UpdateMasterFormat(_sessionMasterSampleRate, _sessionMasterBitsPerSample);
+
+                    var bytesPerFrame = _sessionMixer?.GetBytesPerFrame() ?? 1024;
 
                     foreach (var agent in agentsToUpdate)
                     {
                         await agent.UpdateOutputFormatAsync(_sessionMasterSampleRate, _sessionMasterBitsPerSample);
+                    }
+
+                    foreach (var client in clientsToUpdate)
+                    {
+                        client.UpdateBytesPerFrame(bytesPerFrame);
                     }
                 }
             }
@@ -702,7 +730,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             await _conversationStateRepository.AddAgentInfoAsync(_sessionId, agentInfo);
 
-            _sessionMixer?.RegisterMixer(agent.AgentId, _sessionMasterSampleRate, _sessionMasterBitsPerSample);
+            _sessionMixer?.RegisterMixer(agent.AgentId, MixerSourceType.Agent, _sessionMasterSampleRate, _sessionMasterBitsPerSample);
             await RecalculateAndApplyMasterAudioFormat();
 
             // Notify event subscribers

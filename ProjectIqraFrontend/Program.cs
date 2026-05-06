@@ -216,6 +216,11 @@ namespace ProjectIqraFrontend
                 }
             });
 
+            if (frontendAppConfig.IsCloudVersion)
+            {
+                _cloudModule!.SetupOpenIddict(builder, appConfig);
+            }
+
             // OpenAPI
             builder.Services.AddTransient<OpenApiDocumentTransformer>();
             builder.Services.AddTransient<OpenApiEnumSchemaTransformer>();

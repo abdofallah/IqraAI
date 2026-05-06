@@ -56,8 +56,5 @@ namespace IqraCore.Models.WebSession
 
         [Required]
         public AudioEncoderFallbackOptimizationMode AudioEncodingFallbackMode { get; set; }
-
-        [Required]
-        public int FrameDurationMs { get; set; }
     }
 }

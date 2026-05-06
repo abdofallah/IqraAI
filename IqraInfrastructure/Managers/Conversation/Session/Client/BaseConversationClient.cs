@@ -8,6 +8,7 @@ using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Audio.Decoders;
 using IqraInfrastructure.Managers.Audio.Encoders;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
+using IqraInfrastructure.Managers.Conversation.Session.Mixer;
 using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Client
@@ -54,7 +55,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
                     ClientConfig.AudioOutputConfiguration.AudioEncodingType,
                     ClientConfig.AudioOutputConfiguration.SampleRate,
                     ClientConfig.AudioOutputConfiguration.BitsPerSample,
-                    ClientConfig.AudioOutputConfiguration.FrameDurationMs
+                    SessionAudioMixer.FRAME_DURATION_MS
                 );
             }
             catch (Exception ex)
@@ -101,6 +102,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             InitializeEncoder();
         }
 
+        public void UpdateBytesPerFrame(int bytesPerFrame)
+        {
+            if (Transport != null && Transport is WebSocketClientTransport webSocketClientTransport)
+            {
+                webSocketClientTransport.UpdateBytesPerFrame(bytesPerFrame);
+            }
+        }
+
         /// <summary>
         /// The main entry point for audio coming FROM the AI Agent to be sent TO the User.
         /// This method handles the "Edge Encoding" logic.
@@ -126,12 +135,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             byte[] dataToSend;
             int dataSampleRate;
             int dataBitsPerSample;
-
-            // Special case for OPUS where we define custom frame duration
-            if (ClientConfig.AudioOutputConfiguration.AudioEncodingType == AudioEncodingTypeEnum.OPUS)
-            {
-                frameDurationMs = ClientConfig.AudioOutputConfiguration.FrameDurationMs;
-            }
 
             if (
                 (

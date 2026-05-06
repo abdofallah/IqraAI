@@ -16,6 +16,8 @@ namespace IqraCore.Interfaces.Conversation
         Task SendTextAsync(string text, CancellationToken cancellationToken);
         Task DisconnectAsync(string reason);
 
+        void UpdateBytesPerFrame(int bytesPerFrame);
+
         event EventHandler<ConversationAudioReceivedEventArgs> AudioReceived;
         event EventHandler<ConversationTextReceivedEventArgs> TextReceived;
         event EventHandler<ConversationClientDisconnectedEventArgs> Disconnected;

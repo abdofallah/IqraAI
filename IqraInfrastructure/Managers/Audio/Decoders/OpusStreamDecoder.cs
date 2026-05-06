@@ -62,7 +62,7 @@ namespace IqraInfrastructure.Managers.Audio.Decoders
 
         public override void Dispose()
         {
-            // Concentus is managed
+            _decoder?.Dispose();
         }
     }
 }

@@ -11,22 +11,29 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
         private readonly ILogger _logger;
         private readonly CancellationTokenSource _loopCts;
         private readonly Task _receiveLoopTask;
-        private readonly int _receiveBufferSize = 8192; // 8 KB buffer
+
+        private int _receiveBufferSize;
 
         public event EventHandler<byte[]> BinaryMessageReceived;
         public event EventHandler<string> TextMessageReceived;
         public event EventHandler<string> Disconnected;
 
-        public WebSocketClientTransport(WebSocket webSocket, ILogger logger, CancellationToken sessionCts)
+        public WebSocketClientTransport(WebSocket webSocket, ILogger logger, CancellationToken sessionCts, int bytesPerFrame)
         {
             _webSocket = webSocket ?? throw new ArgumentNullException(nameof(webSocket));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _receiveBufferSize = bytesPerFrame;
 
             // Link the loop's cancellation to the broader session's cancellation
             _loopCts = CancellationTokenSource.CreateLinkedTokenSource(sessionCts);
 
             // Start the process of listening for incoming messages
             _receiveLoopTask = Task.Run(() => StartReceiveLoopAsync(_loopCts.Token), _loopCts.Token);
+        }
+
+        public void UpdateBytesPerFrame(int bytesPerFrame)
+        {
+            _receiveBufferSize = bytesPerFrame;
         }
 
         private async Task StartReceiveLoopAsync(CancellationToken cancellationToken)
@@ -128,8 +135,28 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
         public void Dispose()
         {
             _loopCts?.Cancel();
-            _loopCts?.Dispose();
-            _webSocket?.Dispose();
+
+            if (_receiveLoopTask != null)
+            {
+                try
+                {
+                    _receiveLoopTask.Wait(1000);
+                    _receiveLoopTask.Dispose();
+                }
+                catch { /** do nothing **/ }
+            }
+
+            try
+            {
+                _loopCts?.Dispose();
+            }
+            catch { /** do nothing **/ }
+
+            try
+            {
+                _webSocket?.Dispose();
+            }
+            catch { /** do nothing **/ }
         }
     }
 }

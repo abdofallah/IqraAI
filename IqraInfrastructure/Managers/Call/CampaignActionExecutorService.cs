@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Call.Queue;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Logs;
@@ -15,7 +16,7 @@ using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.Extensions.Logging;
 
-namespace IqraInfrastructure.Managers.Call
+namespace IqraInfrastructure.Managers.Call 
 {
     public class CampaignActionExecutorService
     {
@@ -902,6 +903,172 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
         }
+        public async Task SendOutboundConversationSessionPostAnalysisCampaignAction(string outboundConversationSessionId)
+        {
+            var converationStateData = await _conversationStateRepository.GetByIdAsync(outboundConversationSessionId);
+            if (converationStateData == null)
+            {
+                _logger.LogError("Unable to find conversation state data for outbound conversation session id {OutboundConversationSessionId} to run post analysis action.", outboundConversationSessionId);
+                return;
+            }
+
+            var outboundCallQueueData = await _outboundCallQueueRepo.GetOutboundCallQueueByIdAsync(converationStateData.QueueId!);
+            if (outboundCallQueueData == null)
+            {
+                _logger.LogError("Unable to find outbound call queue data for outbound conversation session id {OutboundConversationSessionId}.", outboundConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    outboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find outbound call queue data for outbound conversation session id {outboundConversationSessionId} to run post analysis action.",
+                    }
+                );
+                return;
+            }
+
+            var businessDataResult = await _businessManager.GetUserBusinessById(outboundCallQueueData.BusinessId, "SendOutboundConversationSessionPostAnalysisAction");
+            if (!businessDataResult.Success)
+            {
+                _logger.LogError("Unable to find business data for outbound call queue id {OutboundCallQueueId} for outbound conversation session id {OutboundConversationSessionId}.", outboundCallQueueData.Id, outboundConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    outboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business data for outbound call queue id {outboundCallQueueData.Id} to send session post analysis action.",
+                    }
+                );
+                return;
+            }
+            var businessData = businessDataResult.Data!;
+
+            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendOutboundConversationSessionPostAnalysisAction");
+            if (!businessAppResult.Success)
+            {
+                _logger.LogError("Unable to find business app data for business id {BusinessId} for outbound conversation session id {OutboundConversationSessionId}.", businessData.Id, outboundConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    outboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business app data for business id {businessData.Id} to send session post analysis action.",
+                    }
+                );
+                return;
+            }
+            var businessApp = businessAppResult.Data!;
+
+            var callQueueTelephonyCampaignResult = await _businessManager.GetCampaignManager().GetTelephonyCampaignById(outboundCallQueueData.BusinessId, outboundCallQueueData.CampaignId);
+            if (!callQueueTelephonyCampaignResult.Success)
+            {
+                _logger.LogError("Unable to find telephony campaign data for business id {BusinessId} for outbound conversation session id {OutboundConversationSessionId}.", businessData.Id, outboundConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    outboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find telephony campaign data to send session post analysis action.",
+                    }
+                );
+                return;
+            }
+            var telephonyCampaign = callQueueTelephonyCampaignResult.Data!;
+
+            if (string.IsNullOrEmpty(telephonyCampaign.Actions.ConversationPostAnalysisTool.ToolId)) return;
+
+            var conversationPostAnalysisToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(outboundCallQueueData.BusinessId, telephonyCampaign.Actions.ConversationPostAnalysisTool.ToolId!);
+            if (conversationPostAnalysisToolData == null)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    outboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find conversation post analysis tool data with id {telephonyCampaign.Actions.ConversationPostAnalysisTool.ToolId} for outbound conversation session id {outboundConversationSessionId} to send post analysis action.",
+                    }
+                );
+                return;
+            }
+
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+
+            var postAnalysisArgumentsResult = GetTelephonyCampaignPostAnalysisArguements(outboundCallQueueData, converationStateData);
+            if (!postAnalysisArgumentsResult.Success)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    outboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to get post analysis arguments for outbound conversation session id {outboundConversationSessionId} to send post analysis action: [{postAnalysisArgumentsResult.Code}] {postAnalysisArgumentsResult.Message}.",
+                    }
+                );
+                return;
+            }
+            var postAnalysisArguments = postAnalysisArgumentsResult.Data!;
+
+            var finalToolArguments = new Dictionary<string, object?>();
+            var configuredArguments = telephonyCampaign.Actions.ConversationPostAnalysisTool.Arguments;
+            if (configuredArguments != null)
+            {
+                foreach (var configuredArg in configuredArguments)
+                {
+                    var argumentName = configuredArg.Key;
+                    var argumentTemplate = configuredArg.Value;
+
+                    var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
+                        argumentTemplate.ToString()!,
+                        postAnalysisArguments
+                    );
+
+                    finalToolArguments[argumentName] = processedValue;
+                }
+            }
+
+            var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
+                conversationPostAnalysisToolData,
+                finalToolArguments,
+                CancellationToken.None
+            );
+            if (!executeActionToolResult.Success)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    outboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to execute conversation post analysis tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
+                    }
+                );
+                return;
+            }
+            else
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    outboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Information,
+                        Message = $"Telephony campaign post analysis tool response:\n```{executeActionToolResult.Data}```",
+                    }
+                );
+            }
+        }
+
         private FunctionReturnResult<Dictionary<string, object?>?> GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(OutboundCallQueueData callQueueData)
         {
             var result = new FunctionReturnResult<Dictionary<string, object?>?>();
@@ -916,12 +1083,12 @@ namespace IqraInfrastructure.Managers.Call
                     { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
                     { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
                     { "call_queue_completed_at", callQueueData.CompletedAt },
-                    { "call_queue_status", callQueueData.Status.ToString() },
+                    { "call_queue_status", (int)callQueueData.Status },
 
                     // OutboundCallQueueData specific fields
                     { "call_queue_campaign_id", callQueueData.CampaignId },
                     { "call_queue_calling_number_id", callQueueData.CallingNumberId },
-                    { "call_queue_calling_number_provider", callQueueData.CallingNumberProvider.ToString() },
+                    { "call_queue_calling_number_provider", (int)callQueueData.CallingNumberProvider },
                     { "call_queue_provider_call_id", callQueueData.ProviderCallId },
                     { "call_queue_recipient_number", callQueueData.RecipientNumber },
                     { "call_queue_scheduled_for_date_time", callQueueData.ScheduledForDateTime },
@@ -956,13 +1123,13 @@ namespace IqraInfrastructure.Managers.Call
                     { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
                     { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
                     { "call_queue_completed_at", callQueueData.CompletedAt },
-                    { "call_queue_status", callQueueData.Status.ToString() },
+                    { "call_queue_status", callQueueData.Status },
                     { "call_queue_session_id", callQueueData.SessionId },
 
                     // OutboundCallQueueData specific fields
                     { "call_queue_campaign_id", callQueueData.CampaignId },
                     { "call_queue_calling_number_id", callQueueData.CallingNumberId },
-                    { "call_queue_calling_number_provider", callQueueData.CallingNumberProvider.ToString() },
+                    { "call_queue_calling_number_provider", (int)callQueueData.CallingNumberProvider },
                     { "call_queue_provider_call_id", callQueueData.ProviderCallId },
                     { "call_queue_recipient_number", callQueueData.RecipientNumber },
                     { "call_queue_scheduled_for_date_time", callQueueData.ScheduledForDateTime },
@@ -997,10 +1164,10 @@ namespace IqraInfrastructure.Managers.Call
                     { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
                     { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
                     { "call_queue_completed_at", callQueueData.CompletedAt },
-                    { "call_queue_status", callQueueData.Status.ToString() },
+                    { "call_queue_status", (int)callQueueData.Status },
                     { "call_queue_campaign_id", callQueueData.CampaignId },
                     { "call_queue_calling_number_id", callQueueData.CallingNumberId },
-                    { "call_queue_calling_number_provider", callQueueData.CallingNumberProvider.ToString() },
+                    { "call_queue_calling_number_provider", (int)callQueueData.CallingNumberProvider },
                     { "call_queue_provider_call_id", callQueueData.ProviderCallId },
                     { "call_queue_recipient_number", callQueueData.RecipientNumber },
                     { "call_queue_scheduled_for_date_time", callQueueData.ScheduledForDateTime },
@@ -1036,10 +1203,10 @@ namespace IqraInfrastructure.Managers.Call
                     { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
                     { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
                     { "call_queue_completed_at", callQueueData.CompletedAt },
-                    { "call_queue_status", callQueueData.Status.ToString() },
+                    { "call_queue_status", (int)callQueueData.Status },
                     { "call_queue_campaign_id", callQueueData.CampaignId },
                     { "call_queue_calling_number_id", callQueueData.CallingNumberId },
-                    { "call_queue_calling_number_provider", callQueueData.CallingNumberProvider.ToString() },
+                    { "call_queue_calling_number_provider", (int)callQueueData.CallingNumberProvider },
                     { "call_queue_provider_call_id", callQueueData.ProviderCallId },
                     { "call_queue_recipient_number", callQueueData.RecipientNumber },
                     { "call_queue_scheduled_for_date_time", callQueueData.ScheduledForDateTime },
@@ -1049,7 +1216,7 @@ namespace IqraInfrastructure.Managers.Call
                     // --- Conversation Data ---
                     { "conversation_id", conversationStateData.Id },
                     { "conversation_start_time", conversationStateData.StartTime },
-                    { "conversation_end_type", conversationStateData.EndType.ToString() },
+                    { "conversation_end_type", (int)conversationStateData.EndType },
                     { "conversation_end_time", conversationStateData.EndTime },
                     { "conversation_turns", conversationStateData.Turns },
                     { "conversation_turns_simplified", ConversationTurnsCompiler.SimplifyConversationTurns(conversationStateData.Turns) }
@@ -1065,6 +1232,57 @@ namespace IqraInfrastructure.Managers.Call
                 );
             }
         }
+        private FunctionReturnResult<Dictionary<string, object?>> GetTelephonyCampaignPostAnalysisArguements(OutboundCallQueueData callQueueData, ConversationState conversationStateData)
+        {
+            var result = new FunctionReturnResult<Dictionary<string, object?>>();
+
+            try
+            {
+                var resultData = new Dictionary<string, object?>
+                {
+                    // --- Call Queue Data ---
+                    { "call_queue_id", callQueueData.Id },
+                    { "call_queue_created_at", callQueueData.CreatedAt },
+                    { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
+                    { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
+                    { "call_queue_completed_at", callQueueData.CompletedAt },
+                    { "call_queue_status", (int)callQueueData.Status },
+                    { "call_queue_campaign_id", callQueueData.CampaignId },
+                    { "call_queue_calling_number_id", callQueueData.CallingNumberId },
+                    { "call_queue_calling_number_provider", (int)callQueueData.CallingNumberProvider },
+                    { "call_queue_provider_call_id", callQueueData.ProviderCallId },
+                    { "call_queue_recipient_number", callQueueData.RecipientNumber },
+                    { "call_queue_scheduled_for_date_time", callQueueData.ScheduledForDateTime },
+                    { "call_queue_dynamic_variables", callQueueData.DynamicVariables },
+                    { "call_queue_metadata", callQueueData.Metadata },
+
+                    // --- Conversation Data ---
+                    { "conversation_id", conversationStateData.Id },
+                    { "conversation_start_time", conversationStateData.StartTime },
+                    { "conversation_end_type", (int)conversationStateData.EndType },
+                    { "conversation_end_time", conversationStateData.EndTime },
+                    { "conversation_turns", conversationStateData.Turns },
+                    { "conversation_turns_simplified", ConversationTurnsCompiler.SimplifyConversationTurns(conversationStateData.Turns) },
+
+                    // --- Post Analysis Data ---
+                    { "post_analysis_template_id", conversationStateData.PostAnalysis?.PostAnalysisId },
+                    { "post_analysis_status_type", (int?)conversationStateData.PostAnalysis?.Status },
+                    { "post_analysis_summary_data", conversationStateData.PostAnalysis?.SummaryData },
+                    { "post_analysis_tagging_data", conversationStateData.PostAnalysis?.TagsData },
+                    { "post_analysis_extraction_data", conversationStateData.PostAnalysis?.ExtractedFieldsData },
+                };
+
+                return result.SetSuccessResult(resultData);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetTelephonyCampaignPostAnalysisArguements:EXCEPTION",
+                    $"Error getting telephony campaign post analysis arguements: {ex.Message}"
+                );
+            }
+        }
+
 
         // Inbound Telephony
         public async Task SendInboundCallQueueRingingAction(string inboundCallQueueId)
@@ -1796,6 +2014,173 @@ namespace IqraInfrastructure.Managers.Call
                 );
             }
         }
+        public async Task SendInboundConversationSessionPostAnalysisCampaignAction(string inboundConversationSessionId)
+        {
+            var converationStateData = await _conversationStateRepository.GetByIdAsync(inboundConversationSessionId);
+            if (converationStateData == null)
+            {
+                _logger.LogError("Unable to find conversation state data for inbound conversation session id {InboundConversationSessionId} to run post analysis action.", inboundConversationSessionId);
+                return;
+            }
+
+            var inboundCallQueueData = await _inboundCallQueueRepository.GetInboundCallQueueByIdAsync(converationStateData.QueueId!);
+            if (inboundCallQueueData == null)
+            {
+                _logger.LogError("Unable to find inbound call queue data for inbound conversation session id {InboundConversationSessionId}.", inboundConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    inboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find inbound call queue data for inbound conversation session id {inboundConversationSessionId} to run post analysis action.",
+                    }
+                );
+                return;
+            }
+
+            if (string.IsNullOrEmpty(inboundCallQueueData.RouteId)) return;
+
+            var businessDataResult = await _businessManager.GetUserBusinessById(inboundCallQueueData.BusinessId, "SendInboundConversationSessionPostAnalysisAction");
+            if (!businessDataResult.Success)
+            {
+                _logger.LogError("Unable to find business data for inbound call queue id {InboundCallQueueId} for inbound conversation session id {InboundConversationSessionId}.", inboundCallQueueData.Id, inboundConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    inboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business data for inbound call queue id {inboundCallQueueData.Id} to send session post analysis action.",
+                    }
+                );
+                return;
+            }
+            var businessData = businessDataResult.Data!;
+
+            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendInboundConversationSessionPostAnalysisAction");
+            if (!businessAppResult.Success)
+            {
+                _logger.LogError("Unable to find business app data for business id {BusinessId} for inbound conversation session id {InboundConversationSessionId}.", businessData.Id, inboundConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    inboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business app data for business id {businessData.Id} to send session post analysis action.",
+                    }
+                );
+                return;
+            }
+            var businessApp = businessAppResult.Data!;
+
+            var businessRoute = await _businessManager.GetRoutesManager().GetBusinessRoute(inboundCallQueueData.BusinessId, inboundCallQueueData.RouteId!);
+            if (businessRoute == null)
+            {
+                _logger.LogError("Unable to find business route data for business id {BusinessId} for inbound conversation session id {InboundConversationSessionId}.", businessData.Id, inboundConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    inboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business route data to send session post analysis action.",
+                    }
+                );
+                return;
+            }
+
+            if (string.IsNullOrEmpty(businessRoute.Actions.ConversationPostAnalysisTool.ToolId)) return;
+
+            var conversationPostAnalysisToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(inboundCallQueueData.BusinessId, businessRoute.Actions.ConversationPostAnalysisTool.ToolId!);
+            if (conversationPostAnalysisToolData == null)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    inboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find conversation post analysis tool data with id {businessRoute.Actions.ConversationPostAnalysisTool.ToolId} for inbound conversation session id {inboundConversationSessionId} to send post analysis action.",
+                    }
+                );
+                return;
+            }
+
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+
+            var postAnalysisArgumentsResult = GetInboundTelephonyCampaignPostAnalysisArguements(inboundCallQueueData, converationStateData);
+            if (!postAnalysisArgumentsResult.Success)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    inboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to get post analysis arguments for inbound conversation session id {inboundConversationSessionId} to send post analysis action: [{postAnalysisArgumentsResult.Code}] {postAnalysisArgumentsResult.Message}.",
+                    }
+                );
+                return;
+            }
+            var postAnalysisArguments = postAnalysisArgumentsResult.Data!;
+
+            var finalToolArguments = new Dictionary<string, object?>();
+            var configuredArguments = businessRoute.Actions.ConversationPostAnalysisTool.Arguments;
+            if (configuredArguments != null)
+            {
+                foreach (var configuredArg in configuredArguments)
+                {
+                    var argumentName = configuredArg.Key;
+                    var argumentTemplate = configuredArg.Value;
+
+                    var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
+                        argumentTemplate.ToString()!,
+                        postAnalysisArguments
+                    );
+
+                    finalToolArguments[argumentName] = processedValue;
+                }
+            }
+
+            var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
+                conversationPostAnalysisToolData,
+                finalToolArguments,
+                CancellationToken.None
+            );
+            if (!executeActionToolResult.Success)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    inboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to execute conversation post analysis tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
+                    }
+                );
+                return;
+            }
+            else
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    inboundConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Information,
+                        Message = $"Inbound route post analysis tool response:\n```{executeActionToolResult.Data}```",
+                    }
+                );
+            }
+        }
+
         private FunctionReturnResult<Dictionary<string, object?>?> GetInboundTelephonyCampaignCallRingingArguements(InboundCallQueueData callQueueData)
         {
             var result = new FunctionReturnResult<Dictionary<string, object?>?>();
@@ -1810,12 +2195,12 @@ namespace IqraInfrastructure.Managers.Call
                     { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
                     { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
                     { "call_queue_completed_at", callQueueData.CompletedAt },
-                    { "call_queue_status", callQueueData.Status.ToString() },
+                    { "call_queue_status", (int)callQueueData.Status },
 
                     // InboundCallQueueData specific fields
                     { "call_queue_route_id", callQueueData.RouteId },
                     { "call_queue_route_number_id", callQueueData.RouteNumberId },
-                    { "call_queue_route_number_provider", callQueueData.RouteNumberProvider.ToString() },
+                    { "call_queue_route_number_provider", (int)callQueueData.RouteNumberProvider },
                     { "call_queue_provider_call_id", callQueueData.ProviderCallId },
                     { "call_queue_caller_number", callQueueData.CallerNumber }
                 };
@@ -1844,13 +2229,13 @@ namespace IqraInfrastructure.Managers.Call
                     { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
                     { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
                     { "call_queue_completed_at", callQueueData.CompletedAt },
-                    { "call_queue_status", callQueueData.Status.ToString() },
+                    { "call_queue_status", (int)callQueueData.Status },
                     { "call_queue_session_id", callQueueData.SessionId },
 
                     // InboundCallQueueData specific fields
                     { "call_queue_route_id", callQueueData.RouteId },
                     { "call_queue_route_number_id", callQueueData.RouteNumberId },
-                    { "call_queue_route_number_provider", callQueueData.RouteNumberProvider.ToString() },
+                    { "call_queue_route_number_provider", (int)callQueueData.RouteNumberProvider },
                     { "call_queue_provider_call_id", callQueueData.ProviderCallId },
                     { "call_queue_caller_number", callQueueData.CallerNumber },
             
@@ -1882,10 +2267,10 @@ namespace IqraInfrastructure.Managers.Call
                     { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
                     { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
                     { "call_queue_completed_at", callQueueData.CompletedAt },
-                    { "call_queue_status", callQueueData.Status.ToString() },
+                    { "call_queue_status", (int)callQueueData.Status },
                     { "call_queue_route_id", callQueueData.RouteId },
                     { "call_queue_route_number_id", callQueueData.RouteNumberId },
-                    { "call_queue_route_number_provider", callQueueData.RouteNumberProvider.ToString() },
+                    { "call_queue_route_number_provider", (int)callQueueData.RouteNumberProvider },
                     { "call_queue_provider_call_id", callQueueData.ProviderCallId },
                     { "call_queue_caller_number", callQueueData.CallerNumber },
 
@@ -1918,17 +2303,17 @@ namespace IqraInfrastructure.Managers.Call
                     { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
                     { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
                     { "call_queue_completed_at", callQueueData.CompletedAt },
-                    { "call_queue_status", callQueueData.Status.ToString() },
+                    { "call_queue_status", (int)callQueueData.Status },
                     { "call_queue_route_id", callQueueData.RouteId },
                     { "call_queue_route_number_id", callQueueData.RouteNumberId },
-                    { "call_queue_route_number_provider", callQueueData.RouteNumberProvider.ToString() },
+                    { "call_queue_route_number_provider", (int)callQueueData.RouteNumberProvider },
                     { "call_queue_provider_call_id", callQueueData.ProviderCallId },
                     { "call_queue_caller_number", callQueueData.CallerNumber },
 
                     // --- Conversation Data ---
                     { "conversation_id", conversationStateData.Id },
                     { "conversation_start_time", conversationStateData.StartTime },
-                    { "conversation_end_type", conversationStateData.EndType.ToString() },
+                    { "conversation_end_type", (int)conversationStateData.EndType },
                     { "conversation_end_time", conversationStateData.EndTime },
                     { "conversation_turns", conversationStateData.Turns },
                     { "conversation_turns_simplified", ConversationTurnsCompiler.SimplifyConversationTurns(conversationStateData.Turns) }
@@ -1941,6 +2326,53 @@ namespace IqraInfrastructure.Managers.Call
                 return result.SetFailureResult(
                     "GetInboundTelephonyCampaignCallEndArguements:EXCEPTION",
                     $"Error getting telephony campaign call end arguements: {ex.Message}"
+                );
+            }
+        }
+        private FunctionReturnResult<Dictionary<string, object?>> GetInboundTelephonyCampaignPostAnalysisArguements(InboundCallQueueData callQueueData, ConversationState conversationStateData)
+        {
+            var result = new FunctionReturnResult<Dictionary<string, object?>>();
+
+            try
+            {
+                var resultData = new Dictionary<string, object?>
+                {
+                    // --- Call Queue Data ---
+                    { "call_queue_id", callQueueData.Id },
+                    { "call_queue_created_at", callQueueData.CreatedAt },
+                    { "call_queue_enqueued_at", callQueueData.EnqueuedAt },
+                    { "call_queue_processing_started_at", callQueueData.ProcessingStartedAt },
+                    { "call_queue_completed_at", callQueueData.CompletedAt },
+                    { "call_queue_status", (int)callQueueData.Status },
+                    { "call_queue_route_id", callQueueData.RouteId },
+                    { "call_queue_route_number_id", callQueueData.RouteNumberId },
+                    { "call_queue_route_number_provider", (int)callQueueData.RouteNumberProvider },
+                    { "call_queue_provider_call_id", callQueueData.ProviderCallId },
+                    { "call_queue_caller_number", callQueueData.CallerNumber },
+
+                    // --- Conversation Data ---
+                    { "conversation_id", conversationStateData.Id },
+                    { "conversation_start_time", conversationStateData.StartTime },
+                    { "conversation_end_type", (int)conversationStateData.EndType },
+                    { "conversation_end_time", conversationStateData.EndTime },
+                    { "conversation_turns", conversationStateData.Turns },
+                    { "conversation_turns_simplified", ConversationTurnsCompiler.SimplifyConversationTurns(conversationStateData.Turns) },
+
+                    // --- Post Analysis Data ---
+                    { "post_analysis_template_id", conversationStateData.PostAnalysis?.PostAnalysisId },
+                    { "post_analysis_status_type", (int?)conversationStateData.PostAnalysis?.Status },
+                    { "post_analysis_summary_data", conversationStateData.PostAnalysis?.SummaryData },
+                    { "post_analysis_tagging_data", conversationStateData.PostAnalysis?.TagsData },
+                    { "post_analysis_extraction_data", conversationStateData.PostAnalysis?.ExtractedFieldsData },
+                };
+
+                return result.SetSuccessResult(resultData);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetInboundTelephonyCampaignPostAnalysisArguements:EXCEPTION",
+                    $"Error getting telephony campaign post analysis arguements: {ex.Message}"
                 );
             }
         }
@@ -2621,6 +3053,174 @@ namespace IqraInfrastructure.Managers.Call
                 );
             }
         }
+        public async Task SendWebConversationSessionPostAnalysisCampaignAction(string webConversationSessionId)
+        {
+            var converationStateData = await _conversationStateRepository.GetByIdAsync(webConversationSessionId);
+            if (converationStateData == null)
+            {
+                _logger.LogError("Unable to find conversation state data for web conversation session id {WebConversationSessionId} to run post analysis action.", webConversationSessionId);
+                return;
+            }
+
+            var webSessionData = await _webSessionRepository.GetWebSessionByIdAsync(converationStateData.WebSessionId!);
+            if (webSessionData == null)
+            {
+                _logger.LogError("Unable to find web session data for web conversation session id {WebConversationSessionId}.", webConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find web session data for web conversation session id {webConversationSessionId} to run post analysis action.",
+                    }
+                );
+                return;
+            }
+
+            if (string.IsNullOrEmpty(webSessionData.WebCampaignId)) return;
+
+            var businessDataResult = await _businessManager.GetUserBusinessById(webSessionData.BusinessId, "SendWebConversationSessionPostAnalysisAction");
+            if (!businessDataResult.Success)
+            {
+                _logger.LogError("Unable to find business data for web session id {WebSessionId} for web conversation session id {WebConversationSessionId}.", webSessionData.Id, webConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business data for web session id {webSessionData.Id} to send session post analysis action.",
+                    }
+                );
+                return;
+            }
+            var businessData = businessDataResult.Data!;
+
+            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebConversationSessionPostAnalysisAction");
+            if (!businessAppResult.Success)
+            {
+                _logger.LogError("Unable to find business app data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", businessData.Id, webConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find business app data for business id {businessData.Id} to send session post analysis action.",
+                    }
+                );
+                return;
+            }
+            var businessApp = businessAppResult.Data!;
+
+            var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId!);
+            if (!webCampaignResult.Success)
+            {
+                _logger.LogError("Unable to find web campaign data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", businessData.Id, webConversationSessionId);
+
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find web campaign data to send session post analysis action.",
+                    }
+                );
+                return;
+            }
+            var webCampaignData = webCampaignResult.Data!;
+
+            if (string.IsNullOrEmpty(webCampaignData.Actions.ConversationPostAnalysisTool.ToolId)) return;
+
+            var conversationPostAnalysisToolData = await _businessManager.GetToolsManager().GetBusinessAppTool(webSessionData.BusinessId, webCampaignData.Actions.ConversationPostAnalysisTool.ToolId!);
+            if (conversationPostAnalysisToolData == null)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to find conversation post analysis tool data with id {webCampaignData.Actions.ConversationPostAnalysisTool.ToolId} for web conversation session id {webConversationSessionId} to send post analysis action.",
+                    }
+                );
+                return;
+            }
+
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+
+            var postAnalysisArgumentsResult = GetWebCampaignConversationPostAnalysisArguements(webSessionData, converationStateData);
+            if (!postAnalysisArgumentsResult.Success)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to get post analysis arguments for web conversation session id {webConversationSessionId} to send post analysis action: [{postAnalysisArgumentsResult.Code}] {postAnalysisArgumentsResult.Message}.",
+                    }
+                );
+                return;
+            }
+            var postAnalysisArguments = postAnalysisArgumentsResult.Data!;
+
+            var finalToolArguments = new Dictionary<string, object?>();
+            var configuredArguments = webCampaignData.Actions.ConversationPostAnalysisTool.Arguments;
+            if (configuredArguments != null)
+            {
+                foreach (var configuredArg in configuredArguments)
+                {
+                    var argumentName = configuredArg.Key;
+                    var argumentTemplate = configuredArg.Value;
+
+                    var processedValue = CustomVariableInputTemplateService.ProcessTemplateToObject(
+                        argumentTemplate.ToString()!,
+                        postAnalysisArguments
+                    );
+
+                    finalToolArguments[argumentName] = processedValue;
+                }
+            }
+
+            var executeActionToolResult = await toolExecutionHelper.ExecuteHttpRequestForToolWithObjectDictAsync(
+                conversationPostAnalysisToolData,
+                finalToolArguments,
+                CancellationToken.None
+            );
+            if (!executeActionToolResult.Success)
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Error,
+                        Message = $"Unable to execute conversation post analysis tool. [{executeActionToolResult.Code}] {executeActionToolResult.Message}",
+                    }
+                );
+                return;
+            }
+            else
+            {
+                await _conversationStateLogsRepository.AddLogEntryAsync(
+                    webConversationSessionId,
+                    new ConversationStateLogEntry
+                    {
+                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
+                        Level = ConversationStateLogLevelEnum.Information,
+                        Message = $"Web campaign post analysis tool response:\n```{executeActionToolResult.Data}```",
+                    }
+                );
+            }
+        }
+
         private FunctionReturnResult<Dictionary<string, object?>?> GetWebCampaignConversationInitiationFailureArguements(WebSessionData webSessionData)
         {
             var result = new FunctionReturnResult<Dictionary<string, object?>?>();
@@ -2631,13 +3231,13 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     { "web_session_id", webSessionData.Id },
                     { "web_session_created_at", webSessionData.CreatedAt },
-                    { "web_session_status", webSessionData.Status.ToString() },
+                    { "web_session_status", (int)webSessionData.Status },
                     { "web_session_campaign_id", webSessionData.WebCampaignId },
                     { "web_session_region_id", webSessionData.RegionId },
                     { "web_session_client_identifier", webSessionData.ClientIdentifier },
                     { "web_session_dynamic_variables", webSessionData.DynamicVariables },
                     { "web_session_metadata", webSessionData.Metadata },
-                    { "web_session_transport_type", webSessionData.TransportType.ToString() },
+                    { "web_session_transport_type", (int)webSessionData.TransportType },
                     { "web_session_initiation_error", "Failed to initiate web session" }
                 };
 
@@ -2661,13 +3261,13 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     { "web_session_id", webSessionData.Id },
                     { "web_session_created_at", webSessionData.CreatedAt },
-                    { "web_session_status", webSessionData.Status.ToString() },
+                    { "web_session_status", (int)webSessionData.Status },
                     { "web_session_campaign_id", webSessionData.WebCampaignId },
                     { "web_session_region_id", webSessionData.RegionId },
                     { "web_session_client_identifier", webSessionData.ClientIdentifier },
                     { "web_session_dynamic_variables", webSessionData.DynamicVariables },
                     { "web_session_metadata", webSessionData.Metadata },
-                    { "web_session_transport_type", webSessionData.TransportType.ToString() },
+                    { "web_session_transport_type", (int)webSessionData.TransportType },
 
                     { "conversation_id", conversationStateData.Id },
                     { "conversation_start_time", conversationStateData.StartTime }
@@ -2693,17 +3293,17 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     { "web_session_id", webSessionData.Id },
                     { "web_session_created_at", webSessionData.CreatedAt },
-                    { "web_session_status", webSessionData.Status.ToString() },
+                    { "web_session_status", (int)webSessionData.Status },
                     { "web_session_campaign_id", webSessionData.WebCampaignId },
                     { "web_session_region_id", webSessionData.RegionId },
                     { "web_session_client_identifier", webSessionData.ClientIdentifier },
                     { "web_session_dynamic_variables", webSessionData.DynamicVariables },
                     { "web_session_metadata", webSessionData.Metadata },
-                    { "web_session_transport_type", webSessionData.TransportType.ToString() },
+                    { "web_session_transport_type", (int)webSessionData.TransportType },
 
                     { "conversation_id", conversationStateData.Id },
                     { "conversation_start_time", conversationStateData.StartTime },
-                    { "conversation_end_type", conversationStateData.EndType.ToString() },
+                    { "conversation_end_type", (int)conversationStateData.EndType },
                     { "conversation_end_time", conversationStateData.EndTime },
                     { "conversation_turns", conversationStateData.Turns },
                     { "conversation_turns_simplified", ConversationTurnsCompiler.SimplifyConversationTurns(conversationStateData.Turns) }
@@ -2718,6 +3318,51 @@ namespace IqraInfrastructure.Managers.Call
                     $"Error getting web campaign conversation end arguements: {ex.Message}"
                 );
             }
-        }        
+        }
+        private FunctionReturnResult<Dictionary<string, object?>> GetWebCampaignConversationPostAnalysisArguements(WebSessionData webSessionData, ConversationState conversationStateData)
+        {
+            var result = new FunctionReturnResult<Dictionary<string, object?>>();
+
+            try
+            {
+                var resultData = new Dictionary<string, object?>
+                {
+                    // --- Web Session Data ---
+                    { "web_session_id", webSessionData.Id },
+                    { "web_session_created_at", webSessionData.CreatedAt },
+                    { "web_session_status", (int)webSessionData.Status },
+                    { "web_session_campaign_id", webSessionData.WebCampaignId },
+                    { "web_session_region_id", webSessionData.RegionId },
+                    { "web_session_client_identifier", webSessionData.ClientIdentifier },
+                    { "web_session_dynamic_variables", webSessionData.DynamicVariables },
+                    { "web_session_metadata", webSessionData.Metadata },
+                    { "web_session_transport_type", (int)webSessionData.TransportType },
+
+                    // --- Conversation Data ---
+                    { "conversation_id", conversationStateData.Id },
+                    { "conversation_start_time", conversationStateData.StartTime },
+                    { "conversation_end_type", (int)conversationStateData.EndType },
+                    { "conversation_end_time", conversationStateData.EndTime },
+                    { "conversation_turns", conversationStateData.Turns },
+                    { "conversation_turns_simplified", ConversationTurnsCompiler.SimplifyConversationTurns(conversationStateData.Turns) },
+
+                    // --- Post Analysis Data ---
+                    { "post_analysis_template_id", conversationStateData.PostAnalysis?.PostAnalysisId },
+                    { "post_analysis_status_type", (int?)conversationStateData.PostAnalysis?.Status },
+                    { "post_analysis_summary_data", conversationStateData.PostAnalysis?.SummaryData },
+                    { "post_analysis_tagging_data", conversationStateData.PostAnalysis?.TagsData },
+                    { "post_analysis_extraction_data", conversationStateData.PostAnalysis?.ExtractedFieldsData },
+                };
+
+                return result.SetSuccessResult(resultData);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetWebCampaignConversationPostAnalysisArguements:EXCEPTION",
+                    $"Error getting web campaign post analysis arguements: {ex.Message}"
+                );
+            }
+        }
     }
 }

@@ -2,8 +2,8 @@
 {
     public class ConversationPostAnalsysisTaggingResultData
     {
-        public string Thinking { get; set; }
-        public string TagId { get; set; }
-        public List<ConversationPostAnalsysisTaggingResultData> SubTags { get; set; }
+        public string Thinking { get; set; } = null!;
+        public string TagId { get; set; } = null!;
+        public List<ConversationPostAnalsysisTaggingResultData>? SubTags { get; set; } = null;
     }
 }

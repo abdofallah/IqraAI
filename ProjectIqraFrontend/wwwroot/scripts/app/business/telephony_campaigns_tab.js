@@ -39,7 +39,7 @@ const telephonyCampaignPostAnalysisContextVariableArguments = [
     {
         "id": "call_queue_status",
         "Name": "Call Queue Status",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
     },
@@ -60,7 +60,7 @@ const telephonyCampaignPostAnalysisContextVariableArguments = [
     {
         "id": "call_queue_calling_number_provider",
         "Name": "Call Queue Calling Number Provider",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The telephony provider of the calling number (e.g., Twilio)."
     },
@@ -117,7 +117,7 @@ const telephonyCampaignPostAnalysisContextVariableArguments = [
     {
         "id": "conversation_end_type",
         "Name": "Conversation End Type",
-        "Type": "string",
+        "Type": "enum",
         "group": "Conversation Data",
         "Description": "Type the conversation was ended with"
     },
@@ -184,7 +184,7 @@ const telephonyCampaignOnCallInitiationFailureActionArgurments = [
     {
         "id": "call_queue_status",
         "Name": "Call Queue Status",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
     },
@@ -205,7 +205,7 @@ const telephonyCampaignOnCallInitiationFailureActionArgurments = [
     {
         "id": "call_queue_calling_number_provider",
         "Name": "Call Queue Calling Number Provider",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The telephony provider of the calling number (e.g., Twilio)."
     },
@@ -292,7 +292,7 @@ const telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments = [
     {
         "id": "call_queue_status",
         "Name": "Call Queue Status",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
     },
@@ -313,7 +313,7 @@ const telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments = [
     {
         "id": "call_queue_calling_number_provider",
         "Name": "Call Queue Calling Number Provider",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The telephony provider of the calling number (e.g., Twilio)."
     },
@@ -401,7 +401,7 @@ const telephonyCampaignOnCallAnsweredActionArgurments = [
     {
         "id": "call_queue_status",
         "Name": "Call Queue Status",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
     },
@@ -422,7 +422,7 @@ const telephonyCampaignOnCallAnsweredActionArgurments = [
     {
         "id": "call_queue_calling_number_provider",
         "Name": "Call Queue Calling Number Provider",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The telephony provider of the calling number (e.g., Twilio)."
     },
@@ -517,7 +517,7 @@ const telephonyCampaignOnCallEndedActionArgurments = [
     {
         "id": "call_queue_status",
         "Name": "Call Queue Status",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
     },
@@ -538,7 +538,7 @@ const telephonyCampaignOnCallEndedActionArgurments = [
     {
         "id": "call_queue_calling_number_provider",
         "Name": "Call Queue Calling Number Provider",
-        "Type": "string",
+        "Type": "enum",
         "group": "Call Queue Data",
         "Description": "The telephony provider of the calling number (e.g., Twilio)."
     },
@@ -595,7 +595,7 @@ const telephonyCampaignOnCallEndedActionArgurments = [
     {
         "id": "conversation_end_type",
         "Name": "Conversation End Type",
-        "Type": "string",
+        "Type": "enum",
         "group": "Conversation Data",
         "Description": "Type the conversation was ended with"
     },
@@ -621,6 +621,186 @@ const telephonyCampaignOnCallEndedActionArgurments = [
         "Description": "Simplified & already compiled `<role>: <content>` string of Conversations Turns"
     }
 ];
+const telephonyCampaignOnPostCallAnalysisActionArgurments = [
+    // Call Queue Data
+    {
+        "id": "call_queue_id",
+        "Name": "Call Queue Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique identifier of the call queue entry."
+    },
+    {
+        "id": "call_queue_created_at",
+        "Name": "Call Queue Created At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call queue entry was first created."
+    },
+    {
+        "id": "call_queue_enqueued_at",
+        "Name": "Call Queue Enqueued At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was officially placed in the queue."
+    },
+    {
+        "id": "call_queue_processing_started_at",
+        "Name": "Call Queue Processing Started At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the system started processing the call."
+    },
+    {
+        "id": "call_queue_completed_at",
+        "Name": "Call Queue Completed At",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "Date and time when the call was completed."
+    },
+    {
+        "id": "call_queue_status",
+        "Name": "Call Queue Status",
+        "Type": "enum",
+        "group": "Call Queue Data",
+        "Description": "The current status of the call in the queue (e.g., Queued, Processing, Completed)."
+    },
+    {
+        "id": "call_queue_campaign_id",
+        "Name": "Call Queue Campaign Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the telephony campaign this call belongs to."
+    },
+    {
+        "id": "call_queue_calling_number_id",
+        "Name": "Call Queue Calling Number Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The ID of the phone number used to make the call."
+    },
+    {
+        "id": "call_queue_calling_number_provider",
+        "Name": "Call Queue Calling Number Provider",
+        "Type": "enum",
+        "group": "Call Queue Data",
+        "Description": "The telephony provider of the calling number (e.g., Twilio)."
+    },
+    {
+        "id": "call_queue_provider_call_id",
+        "Name": "Call Queue Provider Call Id",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The unique call identifier from the telephony provider (e.g., Twilio Call SID)."
+    },
+    {
+        "id": "call_queue_recipient_number",
+        "Name": "Call Queue Recipient Number",
+        "Type": "string",
+        "group": "Call Queue Data",
+        "Description": "The phone number of the person being called."
+    },
+    {
+        "id": "call_queue_scheduled_for_date_time",
+        "Name": "Call Queue Scheduled For",
+        "Type": "datetime",
+        "group": "Call Queue Data",
+        "Description": "The date and time the call is scheduled to be made."
+    },
+    {
+        "id": "call_queue_dynamic_variables",
+        "Name": "Call Queue Dynamic Variables",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Dynamic variables associated with the call (key-value pairs)."
+    },
+    {
+        "id": "call_queue_metadata",
+        "Name": "Call Queue Metadata",
+        "Type": "object",
+        "group": "Call Queue Data",
+        "Description": "Metadata associated with the call (key-value pairs)."
+    },
+    // Conversation Data
+    {
+        "id": "conversation_id",
+        "Name": "Conversation Id",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Id of the conversation"
+    },
+    {
+        "id": "conversation_start_time",
+        "Name": "Conversation Start Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was started"
+    },
+    {
+        "id": "conversation_end_type",
+        "Name": "Conversation End Type",
+        "Type": "enum",
+        "group": "Conversation Data",
+        "Description": "Type the conversation was ended with"
+    },
+    {
+        "id": "conversation_end_time",
+        "Name": "Conversation End Time",
+        "Type": "datetime",
+        "group": "Conversation Data",
+        "Description": "Date and time when the conversation was ended"
+    },
+    {
+        "id": "conversation_turns",
+        "Name": "Conversation Turns",
+        "Type": "object",
+        "group": "Conversation Data",
+        "Description": "Complete System/Agent/User turns data of the conversation"
+    },
+    {
+        "id": "conversation_turns_simplified",
+        "Name": "Conversation Turns Simplified",
+        "Type": "string",
+        "group": "Conversation Data",
+        "Description": "Simplified & already compiled `<role>: <content>` string of Conversations Turns"
+    },
+    // Post Analysis Data
+    {
+        "id": "post_analysis_template_id",
+        "Name": "Post Analysis Template Id",
+        "Type": "string",
+        "group": "Post Analysis Data",
+        "Description": "Id of the post analysis template"
+    },
+    {
+        "id": "post_analysis_status_type",
+        "Name": "Post Analysis Status Type",
+        "Type": "enum",
+        "group": "Post Analysis Data",
+        "Description": "Status type of the post analysis"
+    },
+    {
+        "id": "post_analysis_summary_data",
+        "Name": "Post Analysis Summary Data",
+        "Type": "object",
+        "group": "Post Analysis Data",
+        "Description": "Summary data of the post analysis"
+    },
+    {
+        "id": "post_analysis_tagging_data",
+        "Name": "Post Analysis Tagging Data",
+        "Type": "object",
+        "group": "Post Analysis Data",
+        "Description": "Tagging data of the post analysis"
+    },
+    {
+        "id": "post_analysis_extraction_data",
+        "Name": "Post Analysis Extraction Data",
+        "Type": "object",
+        "group": "Post Analysis Data",
+        "Description": "Extraction data of the post analysis"
+    }
+];
 
 /** Dynamic Variables **/
 let manageTelephonyCampaignType = null; // 'new' or 'edit'
@@ -641,6 +821,7 @@ var telephonyCampaignOnCallMissedActionInputArgumentsCustomInput = {};
 var telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput = {};
 var telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput = {};
 var telephonyCampaignOnCallEndedActionInputArgumentsCustomInput = {};
+var telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput = {};
 
 // Integration Managers for Voicemail Detection
 let telephonyCampaignVoicemailSTTIntegrationManager = null;
@@ -741,6 +922,7 @@ const telephonyCampaignActionToolCallDeclinedSelect = telephonyCampaignActionsTa
 const telephonyCampaignActionToolCallMissedSelect = telephonyCampaignActionsTab.find("#telephony-campaign-action-tool-call-missed-select");
 const telephonyCampaignActionToolCallAnsweredSelect = telephonyCampaignActionsTab.find("#telephony-campaign-action-tool-call-answered-select");
 const telephonyCampaignActionToolCallEndedSelect = telephonyCampaignActionsTab.find("#telephony-campaign-action-tool-call-ended-select");
+const telephonyCampaignActionToolPostAnalysisSelect = telephonyCampaignActionsTab.find("#telephony-campaign-action-tool-post-analysis-select");
 
 // Modals
 const telephonyCampaignSelectAgentModalElement = $("#telephony-campaign-select-agent-modal");
@@ -945,6 +1127,10 @@ function createDefaultTelephonyCampaignObject() {
             callEndedTool: {
                 toolId: null,
                 arguments: null
+            },
+            conversationPostAnalysisTool: {
+                toolId: null,
+                arguments: null
             }
         }
     };
@@ -1029,7 +1215,8 @@ function resetTelephonyCampaignManager() {
         telephonyCampaignActionToolCallMissedSelect,
         telephonyCampaignActionToolCallDeclinedSelect,
         telephonyCampaignActionToolCallAnsweredSelect,
-        telephonyCampaignActionToolCallEndedSelect
+        telephonyCampaignActionToolCallEndedSelect,
+        telephonyCampaignActionToolPostAnalysisSelect
     ];
     actionSelects.forEach(select => {
         select.empty().append('<option value="none" selected>None</option>');
@@ -1046,7 +1233,8 @@ function resetTelephonyCampaignManager() {
         telephonyCampaignOnCallMissedActionInputArgumentsCustomInput,
         telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput,
         telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput,
-        telephonyCampaignOnCallEndedActionInputArgumentsCustomInput
+        telephonyCampaignOnCallEndedActionInputArgumentsCustomInput,
+        telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput
     ];
     toolArgumentsListObjects.forEach(toolArgumentsListObject => {
         Object.keys(toolArgumentsListObject).forEach((customInputId) => {
@@ -1212,6 +1400,7 @@ function fillTelephonyCampaignManager() {
     fillTelephonyActionTool(data.actions.callMissedTool, telephonyCampaignActionToolCallMissedSelect, telephonyCampaignOnCallInitiatedOrDeclinedOrMissedActionArgurments, telephonyCampaignOnCallMissedActionInputArgumentsCustomInput);
     fillTelephonyActionTool(data.actions.callAnsweredTool, telephonyCampaignActionToolCallAnsweredSelect, telephonyCampaignOnCallAnsweredActionArgurments, telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput);
     fillTelephonyActionTool(data.actions.callEndedTool, telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionArgurments, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput);
+    fillTelephonyActionTool(data.actions.conversationPostAnalysisTool, telephonyCampaignActionToolPostAnalysisSelect, telephonyCampaignOnPostCallAnalysisActionArgurments, telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput);
 }
 function checkTelephonyCampaignChanges(enableDisableButton = true) {
     if (manageTelephonyCampaignType === null) {
@@ -1485,14 +1674,21 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
                 toolId: telephonyCampaignActionToolCallEndedSelect.val() === 'none' ? null : telephonyCampaignActionToolCallEndedSelect.val(),
                 arguments: collectToolArguments(telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput)
             },
+            conversationPostAnalysisTool: {
+                toolId: telephonyCampaignActionToolPostAnalysisSelect.val() === 'none' ? null : telephonyCampaignActionToolPostAnalysisSelect.val(),
+                arguments: collectToolArguments(telephonyCampaignActionToolPostAnalysisSelect, telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput)
+            }
         };
 
-        if (compareToolData(changes.actions.callInitiationFailureTool, original.actions.callInitiationFailureTool) ||
+        if (
+            compareToolData(changes.actions.callInitiationFailureTool, original.actions.callInitiationFailureTool) ||
             compareToolData(changes.actions.callInitiatedTool, original.actions.callInitiatedTool) ||
             compareToolData(changes.actions.callDeclinedTool, original.actions.callDeclinedTool) ||
             compareToolData(changes.actions.callMissedTool, original.actions.callMissedTool) ||
             compareToolData(changes.actions.callAnsweredTool, original.actions.callAnsweredTool) ||
-            compareToolData(changes.actions.callEndedTool, original.actions.callEndedTool)) {
+            compareToolData(changes.actions.callEndedTool, original.actions.callEndedTool) ||
+            compareToolData(changes.actions.conversationPostAnalysisTool, original.actions.conversationPostAnalysisTool)
+        ) {
             hasChanges = true;
         }
     }
@@ -1781,6 +1977,7 @@ function validateTelephonyCampaign(onlyRemove = true) {
         validateToolArguments(telephonyCampaignActionToolCallMissedSelect, telephonyCampaignOnCallMissedActionInputArgumentsCustomInput, "Call Missed tool");
         validateToolArguments(telephonyCampaignActionToolCallAnsweredSelect, telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput, "Call Answered tool");
         validateToolArguments(telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput, "Call Ended tool");
+        validateToolArguments(telephonyCampaignActionToolPostAnalysisSelect, telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput, "Post Analysis tool");
     }
 
 
@@ -2228,6 +2425,7 @@ function initTelephonyActionsEventHandlers() {
     telephonyCampaignActionToolCallDeclinedSelect.on('change', handleTelephonyCampaignActionToolChange);
     telephonyCampaignActionToolCallAnsweredSelect.on('change', handleTelephonyCampaignActionToolChange);
     telephonyCampaignActionToolCallEndedSelect.on('change', handleTelephonyCampaignActionToolChange);
+    telephonyCampaignActionToolPostAnalysisSelect.on('change', handleTelephonyCampaignActionToolChange);
 
     // Add argument dropdown change handler (uses event delegation on the tab content)
     telephonyCampaignActionsTab.on('change', '#telephony-campaign-action-tool-call-initiation-failure-arguments-select', (event) => {
@@ -2272,6 +2470,13 @@ function initTelephonyActionsEventHandlers() {
             telephonyCampaignOnCallEndedActionInputArgumentsCustomInput
         );
     });
+    telephonyCampaignActionsTab.on('change', '#telephony-campaign-action-tool-post-analysis-arguments-select', (event) => {
+        handleTelephonyCampaignActionAddArgument(
+            event,
+            telephonyCampaignOnPostCallAnalysisActionArgurments,
+            telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput
+        );
+    });
 
     // Remove argument button click handler
     telephonyCampaignActionsTab.on('click', '#telephony-campaign-action-tool-call-initiation-failure-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
@@ -2291,6 +2496,9 @@ function initTelephonyActionsEventHandlers() {
     });
     telephonyCampaignActionsTab.on('click', '#telephony-campaign-action-tool-call-ended-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
         handleTelephonyCampaignActionRemoveArgument(event, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput);
+    });
+    telephonyCampaignActionsTab.on('click', '#telephony-campaign-action-tool-post-analysis-arguments-list [btn-action="remove-campaign-action-tool-argument"]', (event) => {
+        handleTelephonyCampaignActionRemoveArgument(event, telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput);
     });
 }
 

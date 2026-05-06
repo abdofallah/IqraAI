@@ -222,16 +222,6 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     newWebSessionData.AudioOutputConfiguration.AudioEncodingType = modelData.AudioOutputConfiguration.AudioEncodingType;
-
-                    // int FrameDurationMs - always required?
-                    if (modelData.AudioOutputConfiguration.FrameDurationMs < 20 || modelData.AudioOutputConfiguration.FrameDurationMs > 150)
-                    {
-                        return result.SetFailureResult(
-                            "InitiateWebSession:CONFIG_AUDIO_OUTPUT_CONFIGURATION_FRAME_DURATION_MS_INVALID",
-                            "Audio Output Configuration frame duration is invalid. Allowed values: 20~150."
-                        );
-                    }
-                    newWebSessionData.AudioOutputConfiguration.FrameDurationMs = modelData.AudioOutputConfiguration.FrameDurationMs;
                 }
 
                 // Dynamic Variables
@@ -579,7 +569,7 @@ namespace IqraInfrastructure.Managers.Business
             ) {
                 return result.SetFailureResult(
                     "VALIDATION:INVALID_SAMPLE_RATE",
-                    "Output: G.722 requires 16000Hz sample rate."
+                    "Output: G.722 requires 16000Hz sample rate and 14 bits per sample."
                 );
             }
 

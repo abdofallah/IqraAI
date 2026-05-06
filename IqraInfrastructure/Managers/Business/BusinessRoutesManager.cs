@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers;
@@ -27,10 +27,10 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_id", Name = "Call Queue Route Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_id", Name = "Call Queue Route Number Id", Type = VariableType.String },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_caller_number", Name = "Call Queue Caller Number", Type = VariableType.String }
         };
@@ -42,10 +42,10 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_id", Name = "Call Queue Route Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_id", Name = "Call Queue Route Number Id", Type = VariableType.String },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_caller_number", Name = "Call Queue Caller Number", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_session_id", Name = "Call Queue Session Id", Type = VariableType.String },
@@ -59,10 +59,10 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_id", Name = "Call Queue Route Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_id", Name = "Call Queue Route Number Id", Type = VariableType.String },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_caller_number", Name = "Call Queue Caller Number", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
@@ -76,18 +76,45 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_id", Name = "Call Queue Route Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_id", Name = "Call Queue Route Number Id", Type = VariableType.String },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_caller_number", Name = "Call Queue Caller Number", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String }
+        };
+
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> InboundRoutePostCallAnalysisActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_id", Name = "Call Queue Route Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_id", Name = "Call Queue Route Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_route_number_provider", Name = "Call Queue Route Number Provider", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_caller_number", Name = "Call Queue Caller Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
+            // Post Analysis Data
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_template_id", Name = "Post Analysis Template Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_status_type", Name = "Post Analysis Status Type", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_summary_data", Name = "Post Analysis Summary Data", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_tagging_data", Name = "Post Analysis Tagging Data", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_extraction_data", Name = "Post Analysis Extraction Data", Type = VariableType.Object }
         };
 
         public BusinessRoutesManager(BusinessManager businessManager, IMongoClient mongoClient, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, IntegrationConfigurationManager integrationConfigurationManager)
@@ -559,6 +586,23 @@ namespace IqraInfrastructure.Managers.Business
             }
             newBusinessAppRouteData.Actions.CallEndedTool = endedToolValidationResult.Data!;
 
+            // Validate Post Analysis Tool
+            if (!actionsTabRootElement.TryGetProperty("conversationPostAnalysisTool", out var postAnalysisToolElement) || postAnalysisToolElement.ValueKind != JsonValueKind.Object)
+            {
+                result.Code = "AddOrUpdateUserBusinessRoute:50";
+                result.Message = "Post Analysis tool not found or invalid.";
+                return result;
+            }
+            var postAnalysisToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
+                businessId, businessLanguages[0], postAnalysisToolElement, "ConversationPostAnalysis", InboundRoutePostCallAnalysisActionArguments, _businessAppRepository);
+            if (!postAnalysisToolValidationResult.Success)
+            {
+                result.Code = "AddOrUpdateUserBusinessRoute:" + postAnalysisToolValidationResult.Code;
+                result.Message = postAnalysisToolValidationResult.Message;
+                return result;
+            }
+            newBusinessAppRouteData.Actions.ConversationPostAnalysisTool = postAnalysisToolValidationResult.Data!;
+
             using (var session = await _mongoClient.StartSessionAsync())
             {
                 session.StartTransaction();
@@ -791,6 +835,13 @@ namespace IqraInfrastructure.Managers.Business
                 newRoute.Actions.CallEndedTool.ToolId,
                 BusinessAppToolInboundRouteActionType.CallEnded
             );
+
+            // 5. Conversation Post Analysis Tool
+            await HandleToolRef(
+                oldRoute?.Actions.ConversationPostAnalysisTool.ToolId,
+                newRoute.Actions.ConversationPostAnalysisTool.ToolId,
+                BusinessAppToolInboundRouteActionType.ConversationPostAnalysis
+            );
         }
         
         public async Task<FunctionReturnResult> DeleteBusinessRoute(long businessId, BusinessAppRoute businessAppRoute)
@@ -918,6 +969,18 @@ namespace IqraInfrastructure.Managers.Business
                             {
                                 await session.AbortTransactionAsync();
                                 return result.SetFailureResult("DeleteBusinessRoute:ENDED_TOOL_REF_REMOVAL_FAILED", "Failed to remove ended tool reference.");
+                            }
+                        }
+
+                        // Conversation Post Analysis Tool
+                        if (!string.IsNullOrEmpty(businessAppRoute.Actions.ConversationPostAnalysisTool.ToolId))
+                        {
+                            var refObj = new BusinessAppToolInboundRouteReference { RouteId = businessAppRoute.Id, ActionType = BusinessAppToolInboundRouteActionType.ConversationPostAnalysis };
+                            var removeToolRef = await _businessAppRepository.RemoveToolInboundRouteReference(businessId, businessAppRoute.Actions.ConversationPostAnalysisTool.ToolId, refObj, session);
+                            if (!removeToolRef)
+                            {
+                                await session.AbortTransactionAsync();
+                                return result.SetFailureResult("DeleteBusinessRoute:POST_ANALYSIS_TOOL_REF_REMOVAL_FAILED", "Failed to remove post analysis tool reference.");
                             }
                         }
 

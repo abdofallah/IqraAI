@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Entities.Business
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppWebCampaignActions
     {
@@ -6,5 +6,6 @@
         public BusinessAppCampaignActionConfig ConversationInitiatedTool { get; set; } = new BusinessAppCampaignActionConfig();
         public BusinessAppCampaignActionConfig ConversationStartedTool { get; set; } = new BusinessAppCampaignActionConfig();
         public BusinessAppCampaignActionConfig ConversationEndedTool { get; set; } = new BusinessAppCampaignActionConfig();
+        public BusinessAppCampaignActionConfig ConversationPostAnalysisTool { get; set; } = new BusinessAppCampaignActionConfig();
     }
 }

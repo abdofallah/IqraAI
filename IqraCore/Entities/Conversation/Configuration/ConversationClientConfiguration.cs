@@ -16,7 +16,6 @@ namespace IqraCore.Entities.Conversation.Configuration
         public int BitsPerSample { get; set; }
         public int Channels { get; set; } = 1;
         public AudioEncodingTypeEnum AudioEncodingType { get; set; }
-        public int FrameDurationMs { get; set; }
     }
 
     public class ConversationClientAudioInputConfiguration

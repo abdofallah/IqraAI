@@ -1,4 +1,4 @@
-﻿<div class="main-container fade d-none w-100" id="routing-tab">
+<div class="main-container fade d-none w-100" id="routing-tab">
     <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-code-fork'></i> <span>Routing</span></h3>
 
     <!-- Header Container -->
@@ -416,6 +416,23 @@
                                 <option value="" selected disabled>Add Input Argument</option>
                             </select>
                             <div class="mt-1" id="editRouteActionToolEnded-arguments-list"></div>
+                        </div>
+                    </div>
+                    <!-- Post Call Analysis Action -->
+                    <div class="">
+                        <label class="form-label btn-ic-span-align" for="editRouteActionToolPostAnalysis">
+                            <span>Post Call Analysis Action </span>
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the post call analysis has finished processing.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editRouteActionToolPostAnalysis"></select>
+                        <div class="custom-tool-input-arguments d-none">
+                            <label class="form-label d-block mb-1" for="editRouteActionToolPostAnalysis-arguments-select">Input Arguments</label>
+                            <select class="form-select mb-2" id="editRouteActionToolPostAnalysis-arguments-select">
+                                <option value="" selected disabled>Add Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="editRouteActionToolPostAnalysis-arguments-list"></div>
                         </div>
                     </div>
                 </div>

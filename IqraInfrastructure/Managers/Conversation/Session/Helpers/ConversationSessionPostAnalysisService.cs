@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
@@ -15,10 +15,11 @@ using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Managers.Call;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text;
-using System.Text.Json;
+using System.Text.Json; 
 using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
@@ -30,18 +31,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly LLMProviderManager _llmProviderManager;
         private readonly LanguagesManager _languagesManager;
+        private readonly CampaignActionExecutorService _campaignActionExecutorService;
 
         public ConversationSessionPostAnalysisService(
             SessionLoggerFactory loggerFactory,
             ConversationStateRepository conversationStateRepository,
             LLMProviderManager llmProviderManager,
-            LanguagesManager languagesManager
+            LanguagesManager languagesManager,
+            CampaignActionExecutorService campaignActionExecutorService
         ) {
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<ConversationSessionPostAnalysisService>();
             _conversationStateRepository = conversationStateRepository;
             _llmProviderManager = llmProviderManager;
             _languagesManager = languagesManager;
+            _campaignActionExecutorService = campaignActionExecutorService;
         }
 
         public async Task PerformTelephonyOutboundSessionPostCallAnalysis(
@@ -52,34 +56,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
         ) {
             try
             {
-                // Initital Checks
-                if (campaignData.PostAnalysis.PostAnalysisId == null)
-                {
-                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.NotSet);
-
-                    _logger.LogDebug("Post analysis ID is not set for campaign ID {CampaignId}. Skipping.", campaignData.Id);
-                    return;
-                }
-                string postAnalysisId = campaignData.PostAnalysis.PostAnalysisId;
-                var postAnalysisData = businessAppData.PostAnalysis.Find(p => p.Id == postAnalysisId);
-                if (postAnalysisData == null)
-                {
-                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
-
-                    _logger.LogError("Post analysis data not found for post analysis ID {PostAnalysisId}", postAnalysisId);
-                    return;
-                }
-                if (!postAnalysisData.Summary.IsActive && !postAnalysisData.Tagging.IsActive && !postAnalysisData.Extraction.IsActive)
-                {
-                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.NothingToProcess);
-
-                    _logger.LogDebug("Post analysis data is not active for post analysis ID {PostAnalysisId}. Skipping.", postAnalysisId);
-                    return;
-                }
-
-                await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Processing);
-                _logger.LogDebug("Processing post call analysis for post analysis ID {PostAnalysisId}", postAnalysisId);
-
                 // Generate Context using Variables
                 var conversationStateData = await _conversationStateRepository.GetByIdAsync(sessionId);
                 if (conversationStateData == null)
@@ -89,6 +65,36 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                     _logger.LogError("Conversation state data not found for session {SessionId} while processing post call analysis", sessionId);
                     return;
                 }
+
+                if (conversationStateData.PostAnalysis.PostAnalysisId == null)
+                {
+                    //await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.NotSet);
+                    // this db update should not be needed 
+                    return;
+                }
+
+                string postAnalysisId = conversationStateData.PostAnalysis.PostAnalysisId;
+
+                await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Processing);
+                _logger.LogDebug("Processing post call analysis for post analysis ID {PostAnalysisId}", postAnalysisId);
+
+                var postAnalysisData = businessAppData.PostAnalysis.Find(p => p.Id == postAnalysisId);
+                if (postAnalysisData == null)
+                {
+                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
+
+                    _logger.LogError("Post analysis data in business app data not found for post analysis ID {PostAnalysisId}", postAnalysisId);
+                    return;
+                }
+
+                if (!postAnalysisData.Summary.IsActive && !postAnalysisData.Tagging.IsActive && !postAnalysisData.Extraction.IsActive)
+                {
+                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.NothingToProcess);
+
+                    _logger.LogDebug("Post analysis data is not active for post analysis ID {PostAnalysisId}. Skipping.", postAnalysisId);
+                    return;
+                }
+
                 var contextVariableArguementsResult = GetTelephonyOutboundArguements(callQueueData, conversationStateData);
                 if (!contextVariableArguementsResult.Success)
                 {
@@ -141,26 +147,47 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
                 _logger.LogError(ex, "Error performing session post call analysis for session {SessionId}", sessionId);
             }
+            finally {
+                _ = _campaignActionExecutorService.SendOutboundConversationSessionPostAnalysisCampaignAction(sessionId);
+            }
         }
-        public async Task PerformTelephonyInboundSessionPostCallAnalysis(string sessionId, BusinessApp businessAppData, InboundCallQueueData callQueueData, BusinessAppRoute routeData)
+        public async Task PerformTelephonyInboundSessionPostCallAnalysis(
+            string sessionId,
+            BusinessApp businessAppData,
+            InboundCallQueueData callQueueData,
+            BusinessAppRoute routeData
+        )
         {
             try
             {
-                // Initital Checks
-                if (routeData.PostAnalysis.PostAnalysisId == null)
+                // Generate Context using Variables
+                var conversationStateData = await _conversationStateRepository.GetByIdAsync(sessionId);
+                if (conversationStateData == null)
                 {
-                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.NotSet);
+                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
 
-                    _logger.LogDebug("Post analysis ID is not set for route ID {RouteId}. Skipping.", routeData.Id);
+                    _logger.LogError("Conversation state data not found for session {SessionId} while processing post call analysis", sessionId);
                     return;
                 }
-                string postAnalysisId = routeData.PostAnalysis.PostAnalysisId;
+
+                if (conversationStateData.PostAnalysis.PostAnalysisId == null)
+                {
+                    //await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.NotSet);
+                    // this db update should not be needed 
+                    return;
+                }
+
+                string postAnalysisId = conversationStateData.PostAnalysis.PostAnalysisId;
+
+                await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Processing);
+                _logger.LogDebug("Processing post call analysis for post analysis ID {PostAnalysisId}", postAnalysisId);
+
                 var postAnalysisData = businessAppData.PostAnalysis.Find(p => p.Id == postAnalysisId);
                 if (postAnalysisData == null)
                 {
                     await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
 
-                    _logger.LogError("Post analysis data not found for post analysis ID {PostAnalysisId}", postAnalysisId);
+                    _logger.LogError("Post analysis data in business app data not found for post analysis ID {PostAnalysisId}", postAnalysisId);
                     return;
                 }
                 if (!postAnalysisData.Summary.IsActive && !postAnalysisData.Tagging.IsActive && !postAnalysisData.Extraction.IsActive)
@@ -171,18 +198,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                     return;
                 }
 
-                await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Processing);
-                _logger.LogDebug("Processing post call analysis for post analysis ID {PostAnalysisId}", postAnalysisId);
-
-                // Generate Context using Variables
-                var conversationStateData = await _conversationStateRepository.GetByIdAsync(sessionId);
-                if (conversationStateData == null)
-                {
-                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
-
-                    _logger.LogError("Conversation state data not found for session {SessionId} while processing post call analysis", sessionId);
-                    return;
-                }
                 var contextVariableArguementsResult = GetRouteInboundArguements(callQueueData, conversationStateData);
                 if (!contextVariableArguementsResult.Success)
                 {
@@ -235,26 +250,48 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
                 _logger.LogError(ex, "Error performing session post call analysis for session {SessionId}", sessionId);
             }
+            finally
+            {
+                _ = _campaignActionExecutorService.SendInboundConversationSessionPostAnalysisCampaignAction(sessionId);
+            }
         }
-        public async Task PerformWebSessionPostCallAnalysis(string sessionId, BusinessApp businessAppData, WebSessionData sessionData, BusinessAppWebCampaign campaignData)
+        public async Task PerformWebSessionPostCallAnalysis(
+            string sessionId,
+            BusinessApp businessAppData,
+            WebSessionData sessionData,
+            BusinessAppWebCampaign campaignData
+        )
         {
             try
             {
-                // Initital Checks
-                if (campaignData.PostAnalysis.PostAnalysisId == null)
+                // Generate Context using Variables
+                var conversationStateData = await _conversationStateRepository.GetByIdAsync(sessionId);
+                if (conversationStateData == null)
                 {
-                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.NotSet);
+                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
 
-                    _logger.LogDebug("Post analysis ID is not set for web campaign ID {WebCampaignId}. Skipping.", campaignData.Id);
+                    _logger.LogError("Conversation state data not found for session {SessionId} while processing post call analysis", sessionId);
                     return;
                 }
-                string postAnalysisId = campaignData.PostAnalysis.PostAnalysisId;
+
+                if (conversationStateData.PostAnalysis.PostAnalysisId == null)
+                {
+                    //await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.NotSet);
+                    // this db update should not be needed 
+                    return;
+                }
+
+                string postAnalysisId = conversationStateData.PostAnalysis.PostAnalysisId;
+
+                await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Processing);
+                _logger.LogDebug("Processing post call analysis for post analysis ID {PostAnalysisId}", postAnalysisId);
+
                 var postAnalysisData = businessAppData.PostAnalysis.Find(p => p.Id == postAnalysisId);
                 if (postAnalysisData == null)
                 {
                     await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
 
-                    _logger.LogError("Post analysis data not found for post analysis ID {PostAnalysisId}", postAnalysisId);
+                    _logger.LogError("Post analysis data in business app data not found for post analysis ID {PostAnalysisId}", postAnalysisId);
                     return;
                 }
                 if (!postAnalysisData.Summary.IsActive && !postAnalysisData.Tagging.IsActive && !postAnalysisData.Extraction.IsActive)
@@ -265,18 +302,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                     return;
                 }
 
-                await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Processing);
-                _logger.LogDebug("Processing post call analysis for post analysis ID {PostAnalysisId}", postAnalysisId);
-
-                // Generate Context using Variables
-                var conversationStateData = await _conversationStateRepository.GetByIdAsync(sessionId);
-                if (conversationStateData == null)
-                {
-                    await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
-
-                    _logger.LogError("Conversation state data not found for session {SessionId} while processing post call analysis", sessionId);
-                    return;
-                }
                 var contextVariableArguementsResult = GetWebSessionArgurments(sessionData, conversationStateData);
                 if (!contextVariableArguementsResult.Success)
                 {
@@ -329,11 +354,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
                 _logger.LogError(ex, "Error performing session post call analysis for session {SessionId}", sessionId);
             }
+            finally
+            {
+                _ = _campaignActionExecutorService.SendWebConversationSessionPostAnalysisCampaignAction(sessionId);
+            }
         }
 
         private async Task ProcessPostAnalysisTasks(string sessionId, BusinessApp businessAppData, BusinessAppPostAnalysis postAnalysisData, string promptContext, LanguagesData defaultLanguageData)
         {
-            // Run Processing Tasks
+            // Run Processing https://yflix.to/#Tasks
             Task<FunctionReturnResult<ConversationSummaryGenerationResultData?>>? summaryGenerationTask = null;
             Task<FunctionReturnResult<List<ConversationPostAnalsysisTaggingResultData>?>>? taggingTask = null;
             Task<FunctionReturnResult<List<ConversationPostAnalsysisExtractionFieldResultData>?>>? extractionTask = null;
@@ -361,14 +390,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
             if (summaryGenerationTask != null)
             {
                 summaryGenerationResult = await summaryGenerationTask;
+                _logger.LogDebug("Summary Task Completed for post analysis ID {PostAnalysisId}", postAnalysisData.Id);
             }
             if (taggingTask != null)
             {
                 taggingResult = await taggingTask;
+                _logger.LogDebug("Tagging Task Completed for post analysis ID {PostAnalysisId}", postAnalysisData.Id);
             }
             if (extractionTask != null)
             {
                 extractionResult = await extractionTask;
+                _logger.LogDebug("Extraction Task Completed for post analysis ID {PostAnalysisId}", postAnalysisData.Id);
             }
 
             // Set Post Analysis
@@ -380,34 +412,52 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
             {
                 if (summaryGenerationResult != null && !summaryGenerationResult.Success)
                 {
-                    _logger.LogError("Error generating conversation summary for session {SessionId}: [{ErrorCode}] {ErrorMessage}", sessionId, summaryGenerationResult.Code, summaryGenerationResult.Message);
+                    postAnalysis.SummaryData.Status = ConversationPostAnalysisStatusEnum.Failed;
+                    _logger.LogError("Error generating conversation summary for session {SessionId}: [{ErrorCode}] {ErrorMessage}", sessionId, summaryGenerationResult.Code, summaryGenerationResult.Message);              
                 }
                 else
                 {
-                    postAnalysis.Summary = summaryGenerationResult!.Data;
+                    postAnalysis.SummaryData.Status = ConversationPostAnalysisStatusEnum.Success;
+                    postAnalysis.SummaryData.Summary = summaryGenerationResult!.Data;
                 }
+            }
+            else
+            {
+                postAnalysis.SummaryData.Status = ConversationPostAnalysisStatusEnum.NotSet;
             }
             if (postAnalysisData.Tagging.IsActive)
             {
                 if (taggingResult != null && !taggingResult.Success)
                 {
+                    postAnalysis.TagsData.Status = ConversationPostAnalysisStatusEnum.Failed;
                     _logger.LogError("Error tagging conversation for session {SessionId}: [{ErrorCode}] {ErrorMessage}", sessionId, taggingResult.Code, taggingResult.Message);
                 }
                 else
                 {
-                    postAnalysis.Tags = taggingResult!.Data;
+                    postAnalysis.TagsData.Status = ConversationPostAnalysisStatusEnum.Success;
+                    postAnalysis.TagsData.Tags = taggingResult!.Data;
                 }
+            }
+            else
+            {
+                postAnalysis.TagsData.Status = ConversationPostAnalysisStatusEnum.NotSet;
             }
             if (postAnalysisData.Extraction.IsActive)
             {
                 if (extractionResult != null && !extractionResult.Success)
                 {
+                    postAnalysis.ExtractedFieldsData.Status = ConversationPostAnalysisStatusEnum.Failed;
                     _logger.LogError("Error extracting conversation for session {SessionId}: [{ErrorCode}] {ErrorMessage}", sessionId, extractionResult.Code, extractionResult.Message);
                 }
                 else
                 {
-                    postAnalysis.ExtractedFields = extractionResult!.Data;
+                    postAnalysis.ExtractedFieldsData.Status = ConversationPostAnalysisStatusEnum.Success;
+                    postAnalysis.ExtractedFieldsData.ExtractedFields = extractionResult!.Data;
                 }
+            }
+            else
+            {
+                postAnalysis.ExtractedFieldsData.Status = ConversationPostAnalysisStatusEnum.NotSet;
             }
 
             // Update Database
@@ -417,6 +467,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 await _conversationStateRepository.UpdatePostAnalaysisStatusAsync(sessionId, ConversationPostAnalysisStatusEnum.Failed);
                 _logger.LogError("Error updating post analysis for session {SessionId} {PostAnalysisResult}", sessionId, postAnalysisData);
             }
+
+            _logger.LogDebug("Post analysis tasks completed for session {SessionId} {PostAnalysisResult}", sessionId, postAnalysisData);
         }
 
         // Processing
@@ -445,8 +497,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisSummaryGenerationPrompt.Replace("{{USER_DEFINED_SUMMARY_PROMPT}}", postAnalysisData.Summary.Prompt);
                 var promptQuery = defaultLanguageData.Prompts.PostAnalaysisSummaryGenerationPromptQuery.Replace("{{CONTEXT}}", context);
 
+                _logger.LogDebug("Generated Summary Prompt for session {SessionId} post analysis ID {PostAnalysisId}: {Prompt}", sessionId, postAnalysisData.Id, systemPrompt);
+                _logger.LogDebug("Generated Summary Query for session {SessionId} post analysis ID {PostAnalysisId}: {Query}", sessionId, postAnalysisData.Id, promptQuery);
+
                 llmService.SetSystemPrompt(systemPrompt);
-                llmService.SetMaxTokens(10000);
+                llmService.SetMaxTokens(30000); // TODO get this from configuration
                 llmService.AddUserMessage(promptQuery);
 
                 StringBuilder responseBuilder = new StringBuilder();
@@ -497,7 +552,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                     }
                     await Task.Delay(100);
                 }
-                stopWatch.Stop();
 
                 try
                 {
@@ -512,6 +566,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 
                 if (hasStreamingFailed)
                 {
+                    _logger.LogWarning("Summary Generation LLM Stream Failed for session {SessionId}. Message: {StreamingFailedMessage}", sessionId, streamingFailedMessage);
+
                     return result.SetFailureResult(
                         "PerformConversationSummaryGeneration:LLM_STREAM_FAILED",
                         streamingFailedMessage!
@@ -519,21 +575,30 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 }
 
                 string rawLlmResponse = responseBuilder.ToString();
+
+                _logger.LogDebug("Summary Generation RAW LLM Response for session {SessionId}: {RawLlmResponse}", sessionId, rawLlmResponse);
+
                 string? jsonBlock = ExtractJsonBlock(rawLlmResponse);
 
                 if (string.IsNullOrWhiteSpace(jsonBlock))
                 {
+                    _logger.LogWarning("Could not extract a valid JSON block from the LLM response for Summary Generation for session {SessionId}. Raw Response: {RawLlmResponse}", sessionId, rawLlmResponse);
+
                     return result.SetFailureResult(
                         "PerformConversationSummaryGeneration:JSON_EXTRACTION_FAILED",
                         $"Could not extract a valid JSON block from the LLM response. Raw Response: {rawLlmResponse}"
                     );
                 }
 
+                _logger.LogDebug("Summary Generation JSON Block for session {SessionId}: {JsonBlock}", sessionId, jsonBlock);
+
                 try
                 {
                     var summaryData = JsonSerializer.Deserialize<ConversationSummaryGenerationResultData>(jsonBlock, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (summaryData == null)
                     {
+                        _logger.LogWarning("Deserialized JSON object is null for Summary Generation for session {SessionId}. JSON Block: {JsonBlock}", sessionId, jsonBlock);
+
                         return result.SetFailureResult(
                             "PerformConversationSummaryGeneration:JSON_DESERIALIZATION_FAILED",
                             "Deserialized JSON object is null."
@@ -545,6 +610,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 catch (JsonException ex)
                 {
                     _logger.LogError(ex, "Failed to parse JSON for summary generation on session {SessionId}. JSON Block: {JsonBlock}", sessionId, jsonBlock);
+
                     return result.SetFailureResult(
                         "PerformConversationSummaryGeneration:JSON_PARSE_EXCEPTION",
                         $"Failed to parse JSON from LLM: {ex.Message}"
@@ -553,6 +619,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error generating conversation summary for session {SessionId}", sessionId);
+
                 return result.SetFailureResult(
                     "PerformConversationSummaryGeneration:EXCEPTION",
                     $"Error generating conversation summary for session {sessionId}: {ex.Message}"
@@ -591,10 +659,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 
                 // --- 2. Construct the detailed system prompt ---
                 var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisTagsClassificationPrompt.Replace("{{TAG_DEFINITIONS_JSON}}", tagDefinitionsJson);
-                var promptQuery = defaultLanguageData.Prompts.PostAnalaysisTagsClassificationPromptQuery.Replace("{{CONTEXT}}", context);        
+                var promptQuery = defaultLanguageData.Prompts.PostAnalaysisTagsClassificationPromptQuery.Replace("{{CONTEXT}}", context);
+
+                _logger.LogDebug("Generated Tagging Prompt for session {SessionId} post analysis ID {PostAnalysisId}: {Prompt}", sessionId, postAnalysisData.Id, systemPrompt);
+                _logger.LogDebug("Generated Tagging Query for session {SessionId} post analysis ID {PostAnalysisId}: {Query}", sessionId, postAnalysisData.Id, promptQuery);
 
                 llmService.SetSystemPrompt(systemPrompt);
-                llmService.SetMaxTokens(10000);
+                llmService.SetMaxTokens(30000);  // TODO get this from configuration
                 llmService.AddUserMessage(promptQuery);
 
                 // --- 3. Full streaming & processing logic ---
@@ -662,6 +733,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 
                 if (hasStreamingFailed)
                 {
+                    _logger.LogError("Post Analysis Tagging LLM service for session {SessionId} has failed: {FailureMessage}", sessionId, streamingFailedMessage);
+
                     return result.SetFailureResult(
                         "PerformConversationTagging:LLM_STREAM_FAILED",
                         streamingFailedMessage!
@@ -670,22 +743,29 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 
                 string rawLlmResponse = responseBuilder.ToString();
 
+                _logger.LogDebug("Post Analysis Tagging LLM response for session {SessionId}: {Response}", sessionId, rawLlmResponse);
 
                 // --- 4. Extract, Parse, and Return ---
                 string? jsonBlock = ExtractJsonBlock(rawLlmResponse);
                 if (string.IsNullOrWhiteSpace(jsonBlock))
                 {
+                    _logger.LogError("Could not extract a valid JSON block from the LLM response for tagging for session {SessionId}. Raw: {RawLlmResponse}", sessionId, rawLlmResponse);
+
                     return result.SetFailureResult(
                         "PerformConversationTagging:JSON_EXTRACTION_FAILED",
                         $"Could not extract a valid JSON block from the LLM response for tagging. Raw: {rawLlmResponse}"
                     );
                 }
 
+                _logger.LogDebug("Extracted JSON block for tagging for session {SessionId}: {JsonBlock}", sessionId, jsonBlock);
+
                 try
                 {
                     var taggingResponse = JsonSerializer.Deserialize<ConversationTaggingLLMResponse>(jsonBlock, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (taggingResponse == null)
                     {
+                        _logger.LogError("Deserialized tagging response object is null for session {SessionId}. JSON Block: {JsonBlock}", sessionId, jsonBlock);
+
                         return result.SetFailureResult(
                             "PerformConversationTagging:JSON_DESERIALIZATION_FAILED",
                             "Deserialized tagging response object is null."
@@ -704,6 +784,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error performing conversation tagging for session {SessionId}", sessionId);
+
                 return result.SetFailureResult(
                     "PerformConversationTagging:EXCEPTION",
                     $"Error performing conversation tagging for session {sessionId}: {ex.Message}"
@@ -744,8 +826,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisDataExtractionPrompt.Replace("{{FIELD_DEFINITIONS_JSON}}", fieldDefinitionsJson);
                 var queryPrompt = defaultLanguageData.Prompts.PostAnalaysisDataExtractionPromptQuery.Replace("{{CONTEXT}}", context);
 
+                _logger.LogDebug("Post Analysis Extraction system prompt for session {SessionId}: {Prompt}", sessionId, systemPrompt);
+                _logger.LogDebug("Post Analysis Extraction query prompt for session {SessionId}: {Prompt}", sessionId, queryPrompt);
+
                 llmService.SetSystemPrompt(systemPrompt);
-                llmService.SetMaxTokens(10000);
+                llmService.SetMaxTokens(30000);  // TODO get this from configuration
                 llmService.AddUserMessage(queryPrompt);
 
                 // --- 3. Full streaming & processing logic ---
@@ -821,15 +906,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 
                 string rawLlmResponse = responseBuilder.ToString();
 
+                _logger.LogDebug("Post Analysis Extraction raw LLM response for session {SessionId}: {RawLlmResponse}", sessionId, rawLlmResponse);
+
                 // --- 4. Extract, Parse, and Return ---
                 string? jsonBlock = ExtractJsonBlock(rawLlmResponse);
                 if (string.IsNullOrWhiteSpace(jsonBlock))
                 {
+                    _logger.LogError("Could not extract a valid JSON block from the LLM response for extraction on session {SessionId}. Raw: {RawLlmResponse}", sessionId, rawLlmResponse);
+
                     return result.SetFailureResult(
                         "PerformConversationExtraction:JSON_EXTRACTION_FAILED",
                         $"Could not extract a valid JSON block from the LLM response for extraction. Raw: {rawLlmResponse}"
                     );
                 }
+
+                _logger.LogDebug("Post Analysis Extraction JSON block for session {SessionId}: {JsonBlock}", sessionId, jsonBlock);
 
                 try
                 {
@@ -842,6 +933,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                     var extractionResponse = JsonSerializer.Deserialize<ConversationExtractionLLMResponse>(jsonBlock, options);
                     if (extractionResponse == null)
                     {
+                        _logger.LogError("Deserialized extraction response object is null for session {SessionId}. JSON Block: {JsonBlock}", sessionId, jsonBlock);
+
                         return result.SetFailureResult(
                             "PerformConversationExtraction:JSON_DESERIALIZATION_FAILED",
                             "Deserialized extraction response object is null."
@@ -860,6 +953,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error performing conversation extraction for session {SessionId}", sessionId);
+
                 return result.SetFailureResult(
                     "PerformConversationExtraction:EXCEPTION",
                     $"Error performing conversation extraction for session {sessionId}: {ex.Message}"

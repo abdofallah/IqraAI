@@ -270,10 +270,13 @@ namespace IqraInfrastructure.Managers.WebSession
 
                         if (clientType == "websocket")
                         {
+                            var bytesPerFrame = sessionManager.AudioEngine?.GetBytesPerFrame() ?? 1024;
+
                             var readWebSocketTransport = new WebSocketClientTransport(
                                 webSocket,
                                 loggerFactory.CreateLogger<WebSocketClientTransport>(),
-                                sessionOverallCts.Token
+                                sessionOverallCts.Token,
+                                bytesPerFrame
                             );
                             deferredTransport.Activate(readWebSocketTransport);
                         }
@@ -422,8 +425,7 @@ namespace IqraInfrastructure.Managers.WebSession
                     AudioEncodingType = webSessionData.AudioOutputConfiguration.AudioEncodingType,
                     BitsPerSample = webSessionData.AudioOutputConfiguration.BitsPerSample,
                     Channels = 1, // static for now
-                    SampleRate = webSessionData.AudioOutputConfiguration.SampleRate,
-                    FrameDurationMs = webSessionData.AudioOutputConfiguration.FrameDurationMs,
+                    SampleRate = webSessionData.AudioOutputConfiguration.SampleRate
                 }
             };
 

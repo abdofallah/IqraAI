@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.Campaign;
 using IqraCore.Entities.Helper.Call.Outbound;
 using IqraCore.Entities.Helpers;
@@ -30,10 +30,10 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
@@ -43,7 +43,7 @@ namespace IqraInfrastructure.Managers.Business
             // --- Conversation Data ---
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
@@ -56,10 +56,10 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
@@ -75,10 +75,10 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
@@ -96,10 +96,10 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
@@ -118,10 +118,10 @@ namespace IqraInfrastructure.Managers.Business
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
-            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
@@ -131,10 +131,43 @@ namespace IqraInfrastructure.Managers.Business
             // --- Conversation Data ---
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
+        };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> TelephonyCampaignOnPostCallAnalysisActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Call Queue Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_id", Name = "Call Queue Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_created_at", Name = "Call Queue Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_enqueued_at", Name = "Call Queue Enqueued At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_processing_started_at", Name = "Call Queue Processing Started At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_completed_at", Name = "Call Queue Completed At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_status", Name = "Call Queue Status", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_campaign_id", Name = "Call Queue Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_id", Name = "Call Queue Calling Number Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_calling_number_provider", Name = "Call Queue Calling Number Provider", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_provider_call_id", Name = "Call Queue Provider Call Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_recipient_number", Name = "Call Queue Recipient Number", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_scheduled_for_date_time", Name = "Call Queue Scheduled For", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_dynamic_variables", Name = "Call Queue Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "call_queue_metadata", Name = "Call Queue Metadata", Type = VariableType.Object },
+    
+            // --- Conversation Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
+
+            // --- Post Analysis Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_template_id", Name = "Post Analysis Template Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_status_type", Name = "Post Analysis Status Type", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_summary_data", Name = "Post Analysis Summary Data", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_tagging_data", Name = "Post Analysis Tagging Data", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_extraction_data", Name = "Post Analysis Extraction Data", Type = VariableType.Object },
         };
 
         private readonly static List<CustomVariableInputTemplateVariableDefinition> WebCampaginPostAnalysisContextVariableArguementsList = new List<CustomVariableInputTemplateVariableDefinition>()
@@ -142,7 +175,7 @@ namespace IqraInfrastructure.Managers.Business
             // --- Web Session Data ---
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_created_at", Name = "Web Session Created At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_web_campaign_id", Name = "Web Session Web Campaign Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_client_identifier", Name = "Web Session Client Identifier", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_dynamic_variables", Name = "Web Session Dynamic Variables", Type = VariableType.Object },
@@ -151,7 +184,7 @@ namespace IqraInfrastructure.Managers.Business
             // --- Conversation Data ---
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String }, 
@@ -161,7 +194,7 @@ namespace IqraInfrastructure.Managers.Business
             // --- Web Session Data ---
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_created_at", Name = "Web Session Created At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_web_campaign_id", Name = "Web Session Web Campaign Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_client_identifier", Name = "Web Session Client Identifier", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_dynamic_variables", Name = "Web Session Dynamic Variables", Type = VariableType.Object },
@@ -173,7 +206,7 @@ namespace IqraInfrastructure.Managers.Business
             // --- Web Session Data ---
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_created_at", Name = "Web Session Created At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_web_campaign_id", Name = "Web Session Web Campaign Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_client_identifier", Name = "Web Session Client Identifier", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_dynamic_variables", Name = "Web Session Dynamic Variables", Type = VariableType.Object },
@@ -188,7 +221,7 @@ namespace IqraInfrastructure.Managers.Business
             // --- Web Session Data ---
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_created_at", Name = "Web Session Created At", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_web_campaign_id", Name = "Web Session Web Campaign Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_client_identifier", Name = "Web Session Client Identifier", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "web_session_dynamic_variables", Name = "Web Session Dynamic Variables", Type = VariableType.Object },
@@ -197,10 +230,36 @@ namespace IqraInfrastructure.Managers.Business
             // --- Conversation Data ---
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
-            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.Enum },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
             new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
+        };
+        private readonly static List<CustomVariableInputTemplateVariableDefinition> WebCampaignOnPostAnalysisActionArguments = new List<CustomVariableInputTemplateVariableDefinition>()
+        {
+            // --- Web Session Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_id", Name = "Web Session Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_created_at", Name = "Web Session Created At", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_status", Name = "Web Session Status", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_web_campaign_id", Name = "Web Session Web Campaign Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_client_identifier", Name = "Web Session Client Identifier", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_dynamic_variables", Name = "Web Session Dynamic Variables", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "web_session_metadata", Name = "Web Session Metadata", Type = VariableType.Object },
+
+            // --- Conversation Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_id", Name = "Conversation Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_start_time", Name = "Conversation Start Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_type", Name = "Conversation End Type", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_end_time", Name = "Conversation End Time", Type = VariableType.Datetime },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns", Name = "Conversation Turns", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "conversation_turns_simplified", Name = "Conversation Turns Simplified", Type = VariableType.String },
+
+            // --- Post Analysis Data ---
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_template_id", Name = "Post Analysis Template Id", Type = VariableType.String },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_status_type", Name = "Post Analysis Status Type", Type = VariableType.Enum },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_summary_data", Name = "Post Analysis Summary Data", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_tagging_data", Name = "Post Analysis Tagging Data", Type = VariableType.Object },
+            new CustomVariableInputTemplateVariableDefinition { Id = "post_analysis_extraction_data", Name = "Post Analysis Extraction Data", Type = VariableType.Object },
         };
 
         public BusinessCampaignManager(
@@ -1298,6 +1357,34 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         newBusinessAppCampaignData.Actions.CallEndedTool = callEndedToolValidationResult.Data!;
                     }
+
+                    if (!telephonyActionsTabRootElement.TryGetProperty("conversationPostAnalysisTool", out var conversationPostAnalysisToolElement) ||
+                        conversationPostAnalysisToolElement.ValueKind != JsonValueKind.Object)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateTelephonyCampaignAsync:TELEPHONY_ACTIONS_TAB_CONVERSATION_POST_ANALYSIS_TOOL_NOT_FOUND",
+                            "Telephony actions tab 'conversationPostAnalysisTool' not found or not an object."
+                        );
+                    }
+                    else
+                    {
+                        var conversationPostAnalysisToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            telephonyActionsTabRootElement.GetProperty("conversationPostAnalysisTool"),
+                            "ConversationPostAnalysis",
+                            TelephonyCampaignOnPostCallAnalysisActionArguments,
+                            _businessAppRepository
+                        );
+                        if (!conversationPostAnalysisToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTelephonyCampaignAsync:" + conversationPostAnalysisToolValidationResult.Code,
+                                conversationPostAnalysisToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.ConversationPostAnalysisTool = conversationPostAnalysisToolValidationResult.Data!;
+                    }
                 }
 
                 using (var session = await _mongoClient.StartSessionAsync())
@@ -1539,6 +1626,13 @@ namespace IqraInfrastructure.Managers.Business
                 newCampaign.Actions.CallEndedTool.ToolId,
                 BusinessAppToolTelephonyCampaignActionType.CallEnded
             );
+
+            // 7. Post Call Analysis
+            await HandleToolRef(
+                oldCampaign?.Actions.ConversationPostAnalysisTool.ToolId,
+                newCampaign.Actions.ConversationPostAnalysisTool.ToolId,
+                BusinessAppToolTelephonyCampaignActionType.ConversationPostAnalysis
+            );
         }
         private async Task UpdateTelephonyCampaignNumberReferences(
             long businessId,
@@ -1715,6 +1809,7 @@ namespace IqraInfrastructure.Managers.Business
                         await RemoveToolRef(campaign.Actions.CallMissedTool.ToolId, BusinessAppToolTelephonyCampaignActionType.CallMissed);
                         await RemoveToolRef(campaign.Actions.CallAnsweredTool.ToolId, BusinessAppToolTelephonyCampaignActionType.CallAnswered);
                         await RemoveToolRef(campaign.Actions.CallEndedTool.ToolId, BusinessAppToolTelephonyCampaignActionType.CallEnded);
+                        await RemoveToolRef(campaign.Actions.ConversationPostAnalysisTool.ToolId, BusinessAppToolTelephonyCampaignActionType.ConversationPostAnalysis);
 
                         // 5. Remove Number References
                         // Default Number
@@ -2387,6 +2482,34 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         newBusinessAppCampaignData.Actions.ConversationEndedTool = conversationEndedToolValidationResult.Data!;
                     }
+
+                    if (!webActionsTabRootElement.TryGetProperty("conversationPostAnalysisTool", out var conversationPostAnalysisToolElement) ||
+                        conversationPostAnalysisToolElement.ValueKind != JsonValueKind.Object)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateWebCampaignAsync:WEB_ACTIONS_TAB_CONVERSATION_POST_ANALYSIS_TOOL_NOT_FOUND",
+                            "Web actions tab 'conversationPostAnalysisTool' not found or not an object."
+                        );
+                    }
+                    else
+                    {
+                        var conversationPostAnalysisToolValidationResult = await BusinessCampaignActionValidatorHelper.ValidateBusinessCampaignActionData(
+                            businessId,
+                            businessLanguages[0],
+                            webActionsTabRootElement.GetProperty("conversationPostAnalysisTool"),
+                            "ConversationPostAnalysis",
+                            WebCampaignOnPostAnalysisActionArguments,
+                            _businessAppRepository
+                        );
+                        if (!conversationPostAnalysisToolValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateWebCampaignAsync:" + conversationPostAnalysisToolValidationResult.Code,
+                                conversationPostAnalysisToolValidationResult.Message
+                            );
+                        }
+                        newBusinessAppCampaignData.Actions.ConversationPostAnalysisTool = conversationPostAnalysisToolValidationResult.Data!;
+                    }
                 }
 
                 using (var session = await _mongoClient.StartSessionAsync())
@@ -2593,6 +2716,13 @@ namespace IqraInfrastructure.Managers.Business
                 newCampaign.Actions.ConversationEndedTool.ToolId,
                 BusinessAppToolWebCampaignActionType.ConversationEnded
             );
+
+            // 5. Post Call Analysis
+            await HandleToolRef(
+                oldCampaign?.Actions.ConversationPostAnalysisTool.ToolId,
+                newCampaign.Actions.ConversationPostAnalysisTool.ToolId,
+                BusinessAppToolWebCampaignActionType.ConversationPostAnalysis
+            );
         }
 
         public async Task<FunctionReturnResult> DeleteWebCampaign(long businessId, BusinessAppWebCampaign campaign)
@@ -2661,6 +2791,7 @@ namespace IqraInfrastructure.Managers.Business
                         await RemoveToolRef(campaign.Actions.ConversationInitiatedTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationInitiated);
                         await RemoveToolRef(campaign.Actions.ConversationStartedTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationStarted);
                         await RemoveToolRef(campaign.Actions.ConversationEndedTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationEnded);
+                        await RemoveToolRef(campaign.Actions.ConversationPostAnalysisTool.ToolId, BusinessAppToolWebCampaignActionType.ConversationPostAnalysis);
 
                         // 5. Delete Campaign Document
                         if (!await _businessAppRepository.DeleteBusinessAppWebCampaign(businessId, campaign.Id, session))
