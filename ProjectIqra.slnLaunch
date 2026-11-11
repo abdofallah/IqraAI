@@ -1,0 +1,72 @@
+[
+  {
+    "Name": "(Open Source) Stack | ALL",
+    "Projects": [
+      {
+        "Path": "ProjectIqraBackendProxy\\ProjectIqraBackendProxy.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      },
+      {
+        "Path": "ProjectIqraBackendApp\\ProjectIqraBackendApp.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      },
+      {
+        "Path": "ProjectIqraFrontend\\ProjectIqraFrontend.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      },
+      {
+        "Path": "IqraBackgroundProcessor\\IqraBackgroundProcessor.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      }
+    ]
+  },
+  {
+    "Name": "(Open Source) Stack | Frontend + Proxy",
+    "Projects": [
+      {
+        "Path": "ProjectIqraBackendProxy\\ProjectIqraBackendProxy.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      },
+      {
+        "Path": "ProjectIqraFrontend\\ProjectIqraFrontend.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      }
+    ]
+  },
+  {
+    "Name": "(Open Source) Stack | Frontend + Backend",
+    "Projects": [
+      {
+        "Path": "ProjectIqraFrontend\\ProjectIqraFrontend.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      },
+      {
+        "Path": "ProjectIqraBackendApp\\ProjectIqraBackendApp.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      }
+    ]
+  },
+  {
+    "Name": "(Open Source) Stack | Proxy + Backend",
+    "Projects": [
+      {
+        "Path": "ProjectIqraBackendProxy\\ProjectIqraBackendProxy.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      },
+      {
+        "Path": "ProjectIqraBackendApp\\ProjectIqraBackendApp.csproj",
+        "Action": "Start",
+        "DebugTarget": "Iqra AI (Open Source)"
+      }
+    ]
+  }
+]

@@ -1,11 +1,14 @@
 {
   "profiles": {
-    "IqraBackgroundProcessor": {
+    "Iqra AI (Open Source)": {
       "commandName": "Project",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "IsCloudVersion": "false"
       },
-      "applicationUrl": "https://localhost:7216;http://localhost:7217"
+      "dotnetRunMessages": true,
+      "applicationUrl": "http://0.0.0.0:7625"
     }
-  }
+  },
+  "$schema": "https://json.schemastore.org/launchsettings.json"
 }
