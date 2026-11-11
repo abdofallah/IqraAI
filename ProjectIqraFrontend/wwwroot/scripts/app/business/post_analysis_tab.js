@@ -70,12 +70,14 @@ const pcaSummaryFormatSelect = pcaManagerView.find("#pca-summary-format-select")
 // Manager View - Conversation Tags Tab
 const pcaTagsActiveToggle = pcaManagerView.find("#pca-tags-active-toggle");
 const pcaTagsConfigContainer = pcaManagerView.find("#pca-tags-config-container");
+const pcaTagsPromptInput = pcaManagerView.find("#pca-tags-prompt-input");
 const pcaAddTagSetButton = pcaManagerView.find("#pca-add-tag-set-button");
 const pcaTagSetsList = pcaManagerView.find("#pca-tag-sets-list");
 
 // Manager View - Data Extraction Tab
 const pcaExtractionActiveToggle = pcaManagerView.find("#pca-extraction-active-toggle");
 const pcaExtractionConfigContainer = pcaManagerView.find("#pca-extraction-config-container");
+const pcaExtractionPromptInput = pcaManagerView.find("#pca-extraction-prompt-input");
 const pcaAddExtractionFieldButton = pcaManagerView.find("#pca-add-extraction-field-button");
 const pcaExtractionFieldsList = pcaManagerView.find("#pca-extraction-fields-list");
 
@@ -172,10 +174,12 @@ function createDefaultPCATemplateObject() {
         },
         tagging: {
             isActive: true,
+            prompt: "",
             tags: []
         },
         extraction: {
             isActive: true,
+            prompt: "",
             fields: []
         }
     };
@@ -197,10 +201,12 @@ function resetPCAManager() {
 
     // Tags
     pcaTagsActiveToggle.prop("checked", true).change();
+    pcaTagsPromptInput.val("");
     pcaTagSetsList.empty();
 
     // Extraction
     pcaExtractionActiveToggle.prop("checked", true).change();
+    pcaExtractionPromptInput.val("");
     pcaExtractionFieldsList.empty();
 
     // State
@@ -222,10 +228,12 @@ function fillPCAManager(templateData) {
 
     // Tags
     pcaTagsActiveToggle.prop("checked", templateData.tagging.isActive).change();
+    pcaTagsPromptInput.val(templateData.tagging.prompt);
     renderPCATags(pcaTagSetsList, templateData.tagging.tags, 0);
 
     // Extraction
     pcaExtractionActiveToggle.prop("checked", templateData.extraction.isActive).change();
+    pcaExtractionPromptInput.val(templateData.extraction.prompt);
     renderPCAExtractionFields(pcaExtractionFieldsList, templateData.extraction.fields, 0);
 }
 function checkPCAChanges(enableDisableButton = true) {
@@ -251,10 +259,12 @@ function checkPCAChanges(enableDisableButton = true) {
         },
         tagging: {
             isActive: pcaTagsActiveToggle.is(':checked'),
+            prompt: pcaTagsPromptInput.val().trim(),
             tags: getPCATagsFromDOM(pcaTagSetsList)
         },
         extraction: {
             isActive: pcaExtractionActiveToggle.is(':checked'),
+            prompt: pcaExtractionPromptInput.val().trim(),
             fields: getPCAFieldsFromDOM(pcaExtractionFieldsList)
         }
     };
@@ -281,7 +291,9 @@ function checkPCAChanges(enableDisableButton = true) {
     }
 
     // Compare Tagging recursively
-    if (currentState.tagging.isActive !== original.tagging.isActive) {
+    if (currentState.tagging.isActive !== original.tagging.isActive ||
+        currentState.tagging.prompt !== original.tagging.prompt
+    ) {
         hasChanges = true;
     }
     if (!hasChanges) {
@@ -289,7 +301,9 @@ function checkPCAChanges(enableDisableButton = true) {
     }
 
     // Compare Extraction recursively
-    if (currentState.extraction.isActive !== original.extraction.isActive) {
+    if (currentState.extraction.isActive !== original.extraction.isActive ||
+        currentState.extraction.prompt !== original.extraction.prompt
+    ) {
         hasChanges = true;
     }
     if (!hasChanges) {

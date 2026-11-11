@@ -200,6 +200,7 @@ namespace IqraInfrastructure.Managers.Languages
                 p.PostAnalaysisTagsClassificationPromptQuery = GetPrompt("postAnalaysisTagsClassificationPromptQuery", oldP.PostAnalaysisTagsClassificationPromptQuery);
                 p.PostAnalaysisDataExtractionPrompt = GetPrompt("postAnalaysisDataExtractionPrompt", oldP.PostAnalaysisDataExtractionPrompt);
                 p.PostAnalaysisDataExtractionPromptQuery = GetPrompt("postAnalaysisDataExtractionPromptQuery", oldP.PostAnalaysisDataExtractionPromptQuery);
+                p.PostAnalaysisNoUserPromptText = GetPrompt("postAnalaysisNoUserPromptText", oldP.PostAnalaysisNoUserPromptText);
             }
 
             if (newLanguagesData.DisabledAt == null)
@@ -364,6 +365,15 @@ namespace IqraInfrastructure.Managers.Languages
                 return result.SetFailureResult(
                     "ValidatePromptsAreFilled:MISSING_DATA_EXTRACT_QUERY_PROMPT",
                     "Post Analysis Data Extraction Prompt Query is missing."
+                );
+            }
+
+            // Post Analysis - Text used when a template's optional Tags / Extraction prompt is empty
+            if (string.IsNullOrWhiteSpace(prompts.PostAnalaysisNoUserPromptText))
+            {
+                return result.SetFailureResult(
+                    "ValidatePromptsAreFilled:MISSING_NO_USER_PROMPT_TEXT",
+                    "Post Analysis No User Prompt Text is missing."
                 );
             }
 

@@ -658,7 +658,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 string tagDefinitionsJson = GenerateTagDefinitionsForPrompt(postAnalysisData.Tagging.Tags);
 
                 // --- 2. Construct the detailed system prompt ---
-                var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisTagsClassificationPrompt.Replace("{{TAG_DEFINITIONS_JSON}}", tagDefinitionsJson);
+                var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisTagsClassificationPrompt
+                    .Replace("{{TAG_DEFINITIONS_JSON}}", tagDefinitionsJson)
+                    .Replace("{{USER_DEFINED_TAGS_PROMPT}}", string.IsNullOrWhiteSpace(postAnalysisData.Tagging.Prompt)
+                        ? defaultLanguageData.Prompts.PostAnalaysisNoUserPromptText
+                        : postAnalysisData.Tagging.Prompt);
                 var promptQuery = defaultLanguageData.Prompts.PostAnalaysisTagsClassificationPromptQuery.Replace("{{CONTEXT}}", context);
 
                 _logger.LogDebug("Generated Tagging Prompt for session {SessionId} post analysis ID {PostAnalysisId}: {Prompt}", sessionId, postAnalysisData.Id, systemPrompt);
@@ -823,7 +827,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 string fieldDefinitionsJson = GenerateFieldDefinitionsForPrompt(postAnalysisData.Extraction.Fields);
 
                 // --- 2. Construct the highly detailed system prompt ---
-                var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisDataExtractionPrompt.Replace("{{FIELD_DEFINITIONS_JSON}}", fieldDefinitionsJson);
+                var systemPrompt = defaultLanguageData.Prompts.PostAnalaysisDataExtractionPrompt
+                    .Replace("{{FIELD_DEFINITIONS_JSON}}", fieldDefinitionsJson)
+                    .Replace("{{USER_DEFINED_EXTRACTION_PROMPT}}", string.IsNullOrWhiteSpace(postAnalysisData.Extraction.Prompt)
+                        ? defaultLanguageData.Prompts.PostAnalaysisNoUserPromptText
+                        : postAnalysisData.Extraction.Prompt);
                 var queryPrompt = defaultLanguageData.Prompts.PostAnalaysisDataExtractionPromptQuery.Replace("{{CONTEXT}}", context);
 
                 _logger.LogDebug("Post Analysis Extraction system prompt for session {SessionId}: {Prompt}", sessionId, systemPrompt);

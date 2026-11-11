@@ -21,5 +21,6 @@
         public string PostAnalaysisTagsClassificationPromptQuery { get; set; } = "";
         public string PostAnalaysisDataExtractionPrompt { get; set; } = "";
         public string PostAnalaysisDataExtractionPromptQuery { get; set; } = "";
+        public string PostAnalaysisNoUserPromptText { get; set; } = "";
     }
 }

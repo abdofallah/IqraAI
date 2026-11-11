@@ -220,6 +220,18 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     newTemplate.Tagging.IsActive = activeProp.GetBoolean();
 
+                    if (taggingElement.TryGetProperty("prompt", out var taggingPromptProp))
+                    {
+                        if (taggingPromptProp.ValueKind != JsonValueKind.String)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTemplate:TAGGING_PROMPT_INVALID",
+                                "Tagging prompt must be a string."
+                            );
+                        }
+                        newTemplate.Tagging.Prompt = taggingPromptProp.GetString() ?? string.Empty;
+                    }
+
                     if (!taggingElement.TryGetProperty("tags", out var tagsArray) ||
                         tagsArray.ValueKind != JsonValueKind.Array)
                     {
@@ -261,6 +273,18 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
                     newTemplate.Extraction.IsActive = activeProp.GetBoolean();
+
+                    if (extractionElement.TryGetProperty("prompt", out var extractionPromptProp))
+                    {
+                        if (extractionPromptProp.ValueKind != JsonValueKind.String)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateTemplate:EXTRACTION_PROMPT_INVALID",
+                                "Extraction prompt must be a string."
+                            );
+                        }
+                        newTemplate.Extraction.Prompt = extractionPromptProp.GetString() ?? string.Empty;
+                    }
 
                     if (!extractionElement.TryGetProperty("fields", out var fieldsArray) ||
                         fieldsArray.ValueKind != JsonValueKind.Array

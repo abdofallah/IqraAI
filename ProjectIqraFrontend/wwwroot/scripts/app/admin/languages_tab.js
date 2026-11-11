@@ -58,6 +58,7 @@ const promptAnalysisTags = languagesManageTab.find("#manageLanguagesPrompt_Analy
 const promptAnalysisTagsQuery = languagesManageTab.find("#manageLanguagesPrompt_AnalysisTagsQuery");
 const promptAnalysisExtract = languagesManageTab.find("#manageLanguagesPrompt_AnalysisExtract");
 const promptAnalysisExtractQuery = languagesManageTab.find("#manageLanguagesPrompt_AnalysisExtractQuery");
+const promptAnalysisNoUserPrompt = languagesManageTab.find("#manageLanguagesPrompt_AnalysisNoUserPrompt");
 
 // Collection for bulk operations
 const allPromptInputs = promptConversationWarmup.add(promptConversationBase).add(promptConversationFailed)
@@ -65,7 +66,8 @@ const allPromptInputs = promptConversationWarmup.add(promptConversationBase).add
     .add(promptRagClassifier).add(promptRagRefinement)
     .add(promptAnalysisSummary).add(promptAnalysisSummaryQuery)
     .add(promptAnalysisTags).add(promptAnalysisTagsQuery)
-    .add(promptAnalysisExtract).add(promptAnalysisExtractQuery);
+    .add(promptAnalysisExtract).add(promptAnalysisExtractQuery)
+    .add(promptAnalysisNoUserPrompt);
 
 // Modal Elements
 const languageStatusReasonModalEl = document.getElementById('languageStatusReasonModal');
@@ -217,7 +219,8 @@ function CreateDefaultLanguagesDataObject() {
             postAnalaysisTagsClassificationPrompt: "",
             postAnalaysisTagsClassificationPromptQuery: "",
             postAnalaysisDataExtractionPrompt: "",
-            postAnalaysisDataExtractionPromptQuery: ""
+            postAnalaysisDataExtractionPromptQuery: "",
+            postAnalaysisNoUserPromptText: ""
         }
     };
 }
@@ -294,7 +297,8 @@ function CheckLanguageManageTabHasChanges(enableDisableButton = true) {
         postAnalaysisTagsClassificationPrompt: promptAnalysisTags.val(),
         postAnalaysisTagsClassificationPromptQuery: promptAnalysisTagsQuery.val(),
         postAnalaysisDataExtractionPrompt: promptAnalysisExtract.val(),
-        postAnalaysisDataExtractionPromptQuery: promptAnalysisExtractQuery.val()
+        postAnalaysisDataExtractionPromptQuery: promptAnalysisExtractQuery.val(),
+        postAnalaysisNoUserPromptText: promptAnalysisNoUserPrompt.val()
     };
 
     // Deep compare prompts
@@ -423,6 +427,7 @@ function FillLanguagesManageTabData(data) {
     promptAnalysisTagsQuery.val(p.postAnalaysisTagsClassificationPromptQuery || "");
     promptAnalysisExtract.val(p.postAnalaysisDataExtractionPrompt || "");
     promptAnalysisExtractQuery.val(p.postAnalaysisDataExtractionPromptQuery || "");
+    promptAnalysisNoUserPrompt.val(p.postAnalaysisNoUserPromptText || "");
 }
 
 /** Initializer **/

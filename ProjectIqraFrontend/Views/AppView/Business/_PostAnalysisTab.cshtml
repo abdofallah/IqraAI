@@ -121,6 +121,15 @@
                         <label class="form-check-label" for="pca-tags-active-toggle">Enable Conversation Tagging</label>
                     </div>
                     <div id="pca-tags-config-container">
+                        <div class="mb-3">
+                            <label for="pca-tags-prompt-input" class="form-label">
+                                Tags Prompt <span class="text-muted">(optional)</span>
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Optional context for the AI when classifying the conversation. The tag definitions below always apply; these guidelines add nuance (e.g., how to interpret ambiguous cases).">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <textarea class="form-control" id="pca-tags-prompt-input" rows="3" placeholder="e.g., Treat a tag as applicable only when the customer explicitly raised the topic; ignore agent small talk."></textarea>
+                        </div>
                         <label class="form-label d-block">Tag Definitions</label>
                         <button class="btn btn-light btn-sm mb-3" id="pca-add-tag-set-button">
                             <i class="fa-regular fa-plus"></i> Add Tag
@@ -138,6 +147,15 @@
                         <label class="form-check-label" for="pca-extraction-active-toggle">Enable Data Extraction</label>
                     </div>
                     <div id="pca-extraction-config-container">
+                        <div class="mb-3">
+                            <label for="pca-extraction-prompt-input" class="form-label">
+                                Extraction Prompt <span class="text-muted">(optional)</span>
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Optional context for the AI when extracting data. The field schema below always applies; these guidelines add nuance (e.g., preferred formats or how to resolve conflicting values).">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <textarea class="form-control" id="pca-extraction-prompt-input" rows="3" placeholder="e.g., Prefer the most recently stated value when the customer corrects themselves; normalize phone numbers to E.164."></textarea>
+                        </div>
                         <label class="form-label d-block">Field Definitions</label>
                         <button class="btn btn-light btn-sm mb-3" id="pca-add-extraction-field-button">
                             <i class="fa-regular fa-plus"></i> Add Field

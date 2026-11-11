@@ -5,6 +5,9 @@ namespace IqraCore.Entities.Business
     public class BusinessAppPostAnalysisTagging
     {
         public bool IsActive { get; set; } = true;
+
+        public string Prompt { get; set; } = string.Empty;
+
         public List<BusinessAppPostAnalysisTagDefinition> Tags { get; set; } = new List<BusinessAppPostAnalysisTagDefinition>();
     }
 

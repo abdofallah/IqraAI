@@ -5,6 +5,9 @@ namespace IqraCore.Entities.Business
     public class BusinessAppPostAnalysisExtraction
     {
         public bool IsActive { get; set; } = true;
+
+        public string Prompt { get; set; } = string.Empty;
+
         public List<BusinessAppPostAnalysisExtractionField> Fields { get; set; } = new List<BusinessAppPostAnalysisExtractionField>();
     }
 
