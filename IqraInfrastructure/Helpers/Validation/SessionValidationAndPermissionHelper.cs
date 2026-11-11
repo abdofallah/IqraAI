@@ -1,5 +1,4 @@
-﻿using IqraCore.Cloud.Entities.WhiteLabel;
-using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Entities.Validation;
 using IqraCore.Entities.WhiteLabel;

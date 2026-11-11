@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Cloud.Entities.WhiteLabel
+﻿namespace IqraCore.Entities.WhiteLabel
 {
     public class WhiteLabelSessionData
     {
