@@ -1,5 +1,8 @@
-﻿using IqraCore.Entities.Business.ModulePermission.ENUM;
+using IqraCore.Entities.Business.ModulePermission.ENUM;
+using IqraCore.Entities.Call.Queue;
+using IqraCore.Entities.Conversation.Logs;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.WebSession;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
 using IqraCore.Models.Business.Conversations;
@@ -321,6 +324,197 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             {
                 return result.SetFailureResult(
                     "GetConversationState:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpGet("/app/user/business/{businessId}/conversations/queue/{queueId}/logs")]
+        public async Task<FunctionReturnResult<List<CallQueueLogEntry>?>> GetQueueLogs(long businessId, string queueId)
+        {
+            var result = new FunctionReturnResult<List<CallQueueLogEntry>?>();
+
+            try
+            {
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        }
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetQueueLogs:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+
+                var logsResult = await _businessManager.GetConversationsManager().GetCallQueueLogsAsync(businessId, queueId);
+                if (!logsResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetQueueLogs:{logsResult.Code}",
+                        logsResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(logsResult.Data);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetQueueLogs:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpPost("/app/user/business/{businessId}/conversations/session/{sessionId}/logs")]
+        public async Task<FunctionReturnResult<object?>> GetSessionLogs(
+            long businessId,
+            string sessionId,
+            [FromBody] GetSessionLogsRequestModel requestModel)
+        {
+            var result = new FunctionReturnResult<object?>();
+
+            try
+            {
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        }
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetSessionLogs:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+
+                var logsResult = await _businessManager.GetConversationsManager().GetSessionLogsPaginatedAsync(
+                    businessId,
+                    sessionId,
+                    requestModel.Page,
+                    requestModel.PageSize,
+                    requestModel.Search,
+                    requestModel.LevelFilter
+                );
+                if (!logsResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetSessionLogs:{logsResult.Code}",
+                        logsResult.Message
+                    );
+                }
+
+                var data = logsResult.Data;
+                return result.SetSuccessResult(new
+                {
+                    logs = data?.Logs ?? new List<ConversationStateLogEntry>(),
+                    totalCount = data?.TotalCount ?? 0,
+                    page = requestModel.Page,
+                    pageSize = requestModel.PageSize
+                });
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetSessionLogs:EXCEPTION",
+                    $"Exception: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpGet("/app/user/business/{businessId}/conversations/websession/{webSessionId}/logs")]
+        public async Task<FunctionReturnResult<List<WebSessionLogEntry>?>> GetWebSessionLogs(long businessId, string webSessionId)
+        {
+            var result = new FunctionReturnResult<List<WebSessionLogEntry>?>();
+
+            try
+            {
+                var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    checkUserDisabled: true,
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        }
+                    }
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetWebSessionLogs:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message
+                    );
+                }
+
+                var logsResult = await _businessManager.GetConversationsManager().GetWebSessionLogsAsync(businessId, webSessionId);
+                if (!logsResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetWebSessionLogs:{logsResult.Code}",
+                        logsResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(logsResult.Data);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetWebSessionLogs:EXCEPTION",
                     $"Exception: {ex.Message}"
                 );
             }

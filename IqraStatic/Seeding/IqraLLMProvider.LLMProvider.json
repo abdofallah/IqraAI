@@ -1726,4 +1726,277 @@
       "ModelCondition": null
     }
   ]
+},
+{
+  "_id": 6,
+  "DisabledAt": null,
+  "IntegrationId": "openai_compatible_api",
+  "Models": [],
+  "UserIntegrationFields": [
+    {
+      "_id": "model",
+      "Name": "Model ID",
+      "Type": "text",
+      "Tooltip": "Enter the model identifier exactly as expected by your server (e.g., 'llama3', 'mistral-7b-instruct', 'deepseek-r1').",
+      "Placeholder": "e.g. llama3",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "max_tokens",
+      "Name": "Max Output Tokens",
+      "Type": "number",
+      "Tooltip": "Limits generated tokens. Minimum 200 enforced.",
+      "Placeholder": "e.g. 1024",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 200,
+      "MaxNumberValue": 128000,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "temperature",
+      "Name": "Temperature",
+      "Type": "double_number",
+      "Tooltip": "Controls randomness (0.0 to 2.0).",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "top_p",
+      "Name": "Top P",
+      "Type": "double_number",
+      "Tooltip": "Nucleus sampling (0.0 to 1.0).",
+      "Placeholder": "1.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": 0,
+      "MaxNumberValue": 1,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "frequency_penalty",
+      "Name": "Frequency Penalty",
+      "Type": "double_number",
+      "Tooltip": "Penalizes new tokens based on their existing frequency in the text so far (-2.0 to 2.0).",
+      "Placeholder": "0.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": -2,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "presence_penalty",
+      "Name": "Presence Penalty",
+      "Type": "double_number",
+      "Tooltip": "Penalizes new tokens based on whether they appear in the text so far (-2.0 to 2.0).",
+      "Placeholder": "0.0",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": -2,
+      "MaxNumberValue": 2,
+      "DecimalPlaces": 2,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "includes_thinking",
+      "Name": "Includes Thinking Tokens",
+      "Type": "select",
+      "Tooltip": "Enable if the model outputs thinking/reasoning tokens (e.g., DeepSeek R1, Qwen QwQ). This lets you control whether thinking is spoken aloud.",
+      "Placeholder": "Select",
+      "DefaultValue": "off",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": null,
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "thinking_token_format",
+      "Name": "Thinking Token Format",
+      "Type": "select",
+      "Tooltip": "Select the thinking token format used by your model. Choose 'Custom' to enter your own tag.",
+      "Placeholder": "Select",
+      "DefaultValue": "<think>",
+      "Options": [
+        {
+          "Key": "<think>",
+          "Value": "<think>",
+          "IsDefault": true
+        },
+        {
+          "Key": "<thinking>",
+          "Value": "<thinking>",
+          "IsDefault": false
+        },
+        {
+          "Key": "custom",
+          "Value": "Custom",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": [
+        {
+          "FieldId": "includes_thinking",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "on"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "thinking_token_custom",
+      "Name": "Custom Thinking Token",
+      "Type": "text",
+      "Tooltip": "Enter your custom thinking open tag (e.g., '<reason>'). The closing tag will be derived automatically (e.g., '</reason>').",
+      "Placeholder": "e.g. <reason>",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": [
+        {
+          "FieldId": "includes_thinking",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "on"
+        },
+        {
+          "FieldId": "thinking_token_format",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "custom"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    },
+    {
+      "_id": "include_thinking_in_response",
+      "Name": "Include Thinking in Response",
+      "Type": "select",
+      "Tooltip": "If enabled, the model's thinking/reasoning tokens will be included in the spoken response. If disabled, only the final answer is spoken.",
+      "Placeholder": "Select",
+      "DefaultValue": "off",
+      "Options": [
+        {
+          "Key": "off",
+          "Value": "Off (Final Answer Only)",
+          "IsDefault": true
+        },
+        {
+          "Key": "on",
+          "Value": "On (Include Thinking)",
+          "IsDefault": false
+        }
+      ],
+      "Required": false,
+      "IsEncrypted": false,
+      "IsArray": false,
+      "ModelCondition": null,
+      "FieldConditions": [
+        {
+          "FieldId": "includes_thinking",
+          "Type": 0,
+          "Visibility": 0,
+          "Value": "on"
+        }
+      ],
+      "MinNumberValue": null,
+      "MaxNumberValue": null,
+      "DecimalPlaces": null,
+      "StringRegex": "",
+      "MinArrayCount": null,
+      "MaxArrayCount": null
+    }
+  ]
 }]

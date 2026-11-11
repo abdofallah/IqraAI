@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business.App.KnowledgeBase.Document;
+using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
 using IqraInfrastructure.Repositories.Counter;
@@ -25,6 +25,32 @@ namespace IqraInfrastructure.Repositories.Business
             var database = client.GetDatabase(DatabaseName);
             _documentsCollection = database.GetCollection<BusinessAppKnowledgeBaseDocument>(CollectionName);
             _counterRepository = new CounterRepository(client, DatabaseName);
+
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // Compound index for document listing and counts per knowledge base
+                // Covers: GetDocumentsForKnowledgeBase, GetProcessingDocumentsCountsForKnowledegeBaseAsync
+                var businessKbIndex = Builders<BusinessAppKnowledgeBaseDocument>.IndexKeys
+                    .Ascending(d => d.BusinessId)
+                    .Ascending(d => d.KnowledgeBaseId);
+                _documentsCollection.Indexes.CreateOne(new CreateIndexModel<BusinessAppKnowledgeBaseDocument>(businessKbIndex));
+
+                // Index on nested Chunks._id for RAG chunk retrieval aggregation pipeline
+                // Covers: GetChunksByIdsAsync — called during LIVE conversation for RAG retrieval
+                // This is latency-critical as it happens while the user is waiting for a response
+                var chunksIdIndex = Builders<BusinessAppKnowledgeBaseDocument>.IndexKeys
+                    .Ascending("Chunks._id");
+                _documentsCollection.Indexes.CreateOne(new CreateIndexModel<BusinessAppKnowledgeBaseDocument>(chunksIdIndex));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for BusinessKnowledgeBaseDocuments collection");
+            }
         }
 
         public async Task<long> GetNextDocumentId()

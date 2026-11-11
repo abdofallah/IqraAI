@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Region;
+using IqraCore.Entities.Region;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -16,6 +16,26 @@ namespace IqraInfrastructure.Repositories.Region
         {
             IMongoDatabase database = client.GetDatabase(DatabaseName);
             _regionCollection = database.GetCollection<RegionData>(CollectionName);
+
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // Unique index on RegionId — RegionId is NOT the same as MongoDB's _id
+                // Every lookup (GetRegion, GetRegionById, CheckRegionExists, UpdateRegion, etc.) filters by RegionId
+                var regionIdIndex = Builders<RegionData>.IndexKeys.Ascending(r => r.RegionId);
+                _regionCollection.Indexes.CreateOne(new CreateIndexModel<RegionData>(
+                    regionIdIndex,
+                    new CreateIndexOptions { Unique = true }
+                ));
+            }
+            catch (Exception)
+            {
+                // Logger may not be set yet (SetLogger is called separately)
+            }
         }
 
         public void SetLogger(ILogger<RegionRepository> logger) => _logger = logger;

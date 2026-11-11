@@ -1,11 +1,13 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helpers;
+using IqraInfrastructure.Services;
 using Jint;
 using Microsoft.Extensions.Logging;
 using Scriban.Functions;
 using Scriban.Runtime;
 using Scriban;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -16,10 +18,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
         private readonly ILogger<CustomToolExecutionHelper> _logger;
         private BusinessApp? _businessApp;
         private string? _currentLanguageCode;
+        private EndpointSecurityService? _endpointSecurityService;
 
-        public CustomToolExecutionHelper(ILoggerFactory loggerFactory)
+        public CustomToolExecutionHelper(ILoggerFactory loggerFactory, EndpointSecurityService? endpointSecurityService = null)
         {
             _logger = loggerFactory.CreateLogger<CustomToolExecutionHelper>();
+            _endpointSecurityService = endpointSecurityService;
         }
 
         public void Initialize(BusinessApp businessApp, string languageCode)
@@ -65,6 +69,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     return result;
                 }
                 var baseUri = baseUriResult.Data;
+
+                // Endpoint Security Check
+                if (_endpointSecurityService != null)
+                {
+                    var (isAllowed, securityReason) = await _endpointSecurityService.IsEndpointAllowedAsync(baseUri!);
+                    if (!isAllowed)
+                    {
+                        result.Code = "ExecuteHttpRequest:SECURITY";
+                        result.Message = $"Endpoint security check failed for tool {toolData.Id}: {securityReason}";
+                        return result;
+                    }
+                }
 
                 using (var toolHttpClient = new HttpClient())
                 {
@@ -212,6 +228,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                 }
                 var baseUri = baseUriResult.Data;
 
+                // Endpoint Security Check
+                if (_endpointSecurityService != null)
+                {
+                    var (isAllowed, securityReason) = await _endpointSecurityService.IsEndpointAllowedAsync(baseUri!);
+                    if (!isAllowed)
+                    {
+                        result.Code = "ExecuteHttpRequest:SECURITY";
+                        result.Message = $"Endpoint security check failed for tool {toolData.Id}: {securityReason}";
+                        return result;
+                    }
+                }
+
                 using (var toolHttpClient = new HttpClient())
                 {
                     toolHttpClient.Timeout = TimeSpan.FromSeconds(5); // todo make configurable by user
@@ -323,6 +351,416 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                 result.Message = $"Error executing tool '{toolData.General.Name[_currentLanguageCode]}': {ex.Message}";
                 return result;
             }
+        }
+
+        /// <summary>
+        /// Executes a tool HTTP request in test/debug mode, capturing detailed diagnostic information at each phase.
+        /// Returns a BusinessToolTestResult with resolved variables, request details, response data, JS processing results, and final AI output.
+        /// </summary>
+        public async Task<FunctionReturnResult<BusinessToolTestResult?>> ExecuteHttpRequestForToolTestAsync(
+            BusinessAppTool toolData,
+            Dictionary<string, object?> parameters,
+            CancellationToken cancellationToken)
+        {
+            var result = new FunctionReturnResult<BusinessToolTestResult?>();
+            var testResult = new BusinessToolTestResult();
+            const int MAX_RESPONSE_BODY_SIZE = 100 * 1024; // 100KB
+
+            if (_businessApp == null || string.IsNullOrEmpty(_currentLanguageCode))
+            {
+                result.Code = "TestHttpRequest:0";
+                result.Message = "Helper not initialized with BusinessApp and LanguageCode.";
+                return result;
+            }
+            if (toolData == null)
+            {
+                result.Code = "TestHttpRequest:1";
+                result.Message = "Tool data provided was null.";
+                return result;
+            }
+
+            testResult.RequestMethod = toolData.Configuration.RequestType.ToString().ToUpper();
+
+            try
+            {
+                // Phase 1: Validate Parameters against InputSchemea
+                var validationResult = ValidateTestParameters(toolData, parameters);
+                testResult.ResolvedVariables = parameters.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                if (!validationResult.Success)
+                {
+                    testResult.VariableValidationSuccess = false;
+                    testResult.VariableValidationError = validationResult.Message;
+                    // Non-short-circuit: still return the result (user sees what failed)
+                    result.Data = testResult;
+                    result.Success = true;
+                    return result;
+                }
+                testResult.VariableValidationSuccess = true;
+
+                // Use the validated/converted parameters for subsequent phases
+                var validatedParameters = validationResult.Data ?? parameters;
+
+                // Phase 2: Resolve Endpoint
+                var baseUriResult = await ResolveEndpointQueryStrings(toolData.Configuration.Endpoint, validatedParameters);
+                if (!baseUriResult.Success)
+                {
+                    testResult.ResolvedEndpoint = toolData.Configuration.Endpoint;
+                    testResult.HttpExecutionError = $"Error resolving endpoint: {baseUriResult.Message}";
+                    result.Data = testResult;
+                    result.Success = true;
+                    return result;
+                }
+                var baseUri = baseUriResult.Data;
+                testResult.ResolvedEndpoint = baseUri;
+
+                // Endpoint Security Check
+                if (_endpointSecurityService != null)
+                {
+                    var (isAllowed, securityReason) = await _endpointSecurityService.IsEndpointAllowedAsync(baseUri!);
+                    if (!isAllowed)
+                    {
+                        testResult.HttpExecutionError = $"Endpoint security check failed: {securityReason}";
+                        result.Data = testResult;
+                        result.Success = true;
+                        return result;
+                    }
+                }
+
+                using (var toolHttpClient = new HttpClient())
+                {
+                    toolHttpClient.Timeout = TimeSpan.FromSeconds(10); // Extended timeout for testing
+
+                    HttpResponseMessage httpResponseMessage;
+                    HttpContent? requestContent = null;
+
+                    // Phase 3: Build Request Body
+                    if (toolData.Configuration.RequestType != HttpMethodEnum.Get && toolData.Configuration.RequestType != HttpMethodEnum.Delete)
+                    {
+                        var requestContentResult = await BuildRequestBody(toolData.Id, toolData.Configuration, validatedParameters);
+                        if (!requestContentResult.Success)
+                        {
+                            testResult.HttpExecutionError = $"Error building request body: {requestContentResult.Message}";
+                            result.Data = testResult;
+                            result.Success = true;
+                            return result;
+                        }
+                        requestContent = requestContentResult.Data;
+
+                        // Capture resolved body (clean display for FormData)
+                        if (requestContent != null)
+                        {
+                            try
+                            {
+                                if (requestContent is MultipartFormDataContent)
+                                {
+                                    testResult.ResolvedBody = "[MultipartFormData content - field values rendered via Scriban templates]";
+                                }
+                                else
+                                {
+                                    testResult.ResolvedBody = await requestContent.ReadAsStringAsync(cancellationToken);
+                                }
+                            }
+                            catch
+                            {
+                                testResult.ResolvedBody = "[Unable to read request body as string]";
+                            }
+                        }
+                    }
+
+                    // Phase 4: Add Headers (capture resolved values)
+                    testResult.ResolvedHeaders = new Dictionary<string, string>();
+                    foreach (var header in toolData.Configuration.Headers)
+                    {
+                        var headerValueResult = await RenderScribanTemplateAsync(header.Value, validatedParameters);
+                        if (!headerValueResult.Success)
+                        {
+                            testResult.HttpExecutionError = $"Error rendering header '{header.Key}': {headerValueResult.Message}";
+                            result.Data = testResult;
+                            result.Success = true;
+                            return result;
+                        }
+                        testResult.ResolvedHeaders[header.Key] = headerValueResult.Data ?? "";
+                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValueResult.Data);
+                    }
+
+                    // Phase 4: Execute HTTP Request
+                    var stopwatch = Stopwatch.StartNew();
+                    try
+                    {
+                        switch (toolData.Configuration.RequestType)
+                        {
+                            case HttpMethodEnum.Get:
+                                httpResponseMessage = await toolHttpClient.GetAsync(baseUri, cancellationToken);
+                                break;
+                            case HttpMethodEnum.Post:
+                                httpResponseMessage = await toolHttpClient.PostAsync(baseUri, requestContent, cancellationToken);
+                                break;
+                            case HttpMethodEnum.Put:
+                                httpResponseMessage = await toolHttpClient.PutAsync(baseUri, requestContent, cancellationToken);
+                                break;
+                            case HttpMethodEnum.Patch:
+                                httpResponseMessage = await toolHttpClient.PatchAsync(baseUri, requestContent, cancellationToken);
+                                break;
+                            case HttpMethodEnum.Delete:
+                                httpResponseMessage = await toolHttpClient.DeleteAsync(baseUri, cancellationToken);
+                                break;
+                            default:
+                                testResult.HttpExecutionError = $"Unsupported HTTP method: {toolData.Configuration.RequestType}";
+                                result.Data = testResult;
+                                result.Success = true;
+                                return result;
+                        }
+                    }
+                    catch (HttpRequestException httpEx)
+                    {
+                        stopwatch.Stop();
+                        testResult.ResponseTimeMs = stopwatch.ElapsedMilliseconds;
+                        testResult.HttpExecutionError = $"Network or HTTP error: {httpEx.Message}";
+                        result.Data = testResult;
+                        result.Success = true;
+                        return result;
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        stopwatch.Stop();
+                        testResult.ResponseTimeMs = stopwatch.ElapsedMilliseconds;
+                        testResult.HttpExecutionError = "Request timed out (10 second limit exceeded).";
+                        result.Data = testResult;
+                        result.Success = true;
+                        return result;
+                    }
+
+                    stopwatch.Stop();
+                    testResult.HttpExecutionSuccess = true;
+                    testResult.ResponseTimeMs = stopwatch.ElapsedMilliseconds;
+                    testResult.ResponseStatusCode = (int)httpResponseMessage.StatusCode;
+                    testResult.ResponseStatusText = httpResponseMessage.StatusCode.ToString();
+
+                    // Capture response headers
+                    testResult.ResponseHeaders = new Dictionary<string, string>();
+                    foreach (var header in httpResponseMessage.Headers)
+                    {
+                        testResult.ResponseHeaders[header.Key] = string.Join(", ", header.Value);
+                    }
+                    foreach (var header in httpResponseMessage.Content.Headers)
+                    {
+                        testResult.ResponseHeaders[header.Key] = string.Join(", ", header.Value);
+                    }
+
+                    // Capture response body (truncate if needed)
+                    var responseData = await httpResponseMessage.Content.ReadAsStringAsync(cancellationToken);
+                    if (responseData.Length > MAX_RESPONSE_BODY_SIZE)
+                    {
+                        testResult.ResponseRawBody = responseData.Substring(0, MAX_RESPONSE_BODY_SIZE);
+                        testResult.ResponseBodyTruncated = true;
+                    }
+                    else
+                    {
+                        testResult.ResponseRawBody = responseData;
+                        testResult.ResponseBodyTruncated = false;
+                    }
+
+                    // Phase 5: JavaScript Processor
+                    var statusCodeStr = httpResponseMessage.StatusCode.ToString();
+                    if (toolData.Response.TryGetValue(statusCodeStr, out BusinessAppToolResponse? responseToolConfiguration) && responseToolConfiguration != null)
+                    {
+                        testResult.HasResponseProcessor = !string.IsNullOrWhiteSpace(responseToolConfiguration.Javascript);
+
+                        if (testResult.HasResponseProcessor)
+                        {
+                            var jsResult = ExecuteJavaScriptProcessor(responseData, responseToolConfiguration.Javascript);
+                            testResult.JsProcessorSuccess = jsResult.Success;
+                            if (jsResult.Success)
+                            {
+                                testResult.JsProcessorResult = jsResult.Data;
+                            }
+                            else
+                            {
+                                testResult.JsProcessorError = jsResult.Message;
+                            }
+                        }
+                        else
+                        {
+                            testResult.JsProcessorSuccess = true;
+                            testResult.JsProcessorResult = responseData;
+                        }
+
+                        // Phase 6: Static Response
+                        if (responseToolConfiguration.HasStaticResponse && responseToolConfiguration.StaticResponse != null &&
+                            responseToolConfiguration.StaticResponse.TryGetValue(_currentLanguageCode!, out string? staticResponse) &&
+                            !string.IsNullOrEmpty(staticResponse))
+                        {
+                            testResult.HasStaticResponse = true;
+                            testResult.StaticResponseText = staticResponse;
+                        }
+
+                        // Build Final AI Output (same as production)
+                        var jsDataForFinal = testResult.JsProcessorSuccess ? testResult.JsProcessorResult : responseData;
+                        if (testResult.HasStaticResponse)
+                        {
+                            testResult.FinalAIOutput = $"The custom tool {toolData.General.Name[_currentLanguageCode]} ({toolData.Id}) executed successfully (Status: {statusCodeStr}). The processed data was:\n\n```{jsDataForFinal}```\n\nThe following static response is configured:\n\n```{testResult.StaticResponseText}```";
+                        }
+                        else
+                        {
+                            testResult.FinalAIOutput = $"The custom tool {toolData.General.Name[_currentLanguageCode]} ({toolData.Id}) executed successfully (Status: {statusCodeStr}). The processed data is:\n\n```{jsDataForFinal}```";
+                        }
+                    }
+                    else
+                    {
+                        // No specific handler defined for this status code
+                        testResult.FinalAIOutput = $"The custom tool {toolData.General.Name[_currentLanguageCode]} ({toolData.Id}) returned status code {statusCodeStr} with data:\n\n```{responseData}```\n\nNo specific handling was defined for this status code.";
+                    }
+                }
+
+                result.Data = testResult;
+                result.Success = true;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during test execution of tool {ToolId}", toolData.Id);
+                testResult.HttpExecutionError = $"Unexpected error: {ex.Message}";
+                result.Data = testResult;
+                result.Success = true;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Validates test parameters (Dictionary&lt;string, object?&gt;) against the tool's InputSchemea.
+        /// Similar to BuildAndValidateCustomToolVariables but works with pre-deserialized object values.
+        /// </summary>
+        private FunctionReturnResult<Dictionary<string, object?>> ValidateTestParameters(BusinessAppTool toolData, Dictionary<string, object?> parameters)
+        {
+            var result = new FunctionReturnResult<Dictionary<string, object?>> { Data = new Dictionary<string, object?>() };
+            var errors = new List<string>();
+
+            if (toolData.Configuration?.InputSchemea == null || toolData.Configuration.InputSchemea.Count == 0)
+            {
+                // No schema to validate against — pass through all parameters
+                result.Data = parameters;
+                result.Success = true;
+                return result;
+            }
+
+            foreach (var toolInputProperty in toolData.Configuration.InputSchemea)
+            {
+                bool foundValue = parameters.TryGetValue(toolInputProperty.Id, out object? paramValue);
+
+                if (toolInputProperty.IsRequired)
+                {
+                    if (!foundValue || paramValue == null)
+                    {
+                        errors.Add($"Required parameter '{toolInputProperty.Id}' is missing or null.");
+                        continue;
+                    }
+                }
+
+                if (!foundValue || paramValue == null)
+                {
+                    // Optional and not provided — skip
+                    continue;
+                }
+
+                // Type validation
+                if (toolInputProperty.IsArray)
+                {
+                    if (paramValue is not System.Collections.IEnumerable || paramValue is string)
+                    {
+                        errors.Add($"Parameter '{toolInputProperty.Id}' must be an array.");
+                        continue;
+                    }
+                    result.Data[toolInputProperty.Id] = paramValue;
+                }
+                else
+                {
+                    switch (toolInputProperty.Type)
+                    {
+                        case BusinessAppToolConfigurationInputSchemeaTypeEnum.Number:
+                            if (paramValue is JsonElement numEl && numEl.ValueKind == JsonValueKind.Number)
+                            {
+                                result.Data[toolInputProperty.Id] = numEl.GetDouble();
+                            }
+                            else if (paramValue is double or int or long or float or decimal)
+                            {
+                                result.Data[toolInputProperty.Id] = Convert.ToDouble(paramValue);
+                            }
+                            else if (paramValue is string numStr && double.TryParse(numStr, out double parsedNum))
+                            {
+                                result.Data[toolInputProperty.Id] = parsedNum;
+                            }
+                            else
+                            {
+                                errors.Add($"Parameter '{toolInputProperty.Id}' must be a number, but received '{paramValue?.GetType().Name}'.");
+                            }
+                            break;
+
+                        case BusinessAppToolConfigurationInputSchemeaTypeEnum.Boolean:
+                            if (paramValue is JsonElement boolEl && (boolEl.ValueKind == JsonValueKind.True || boolEl.ValueKind == JsonValueKind.False))
+                            {
+                                result.Data[toolInputProperty.Id] = boolEl.GetBoolean();
+                            }
+                            else if (paramValue is bool)
+                            {
+                                result.Data[toolInputProperty.Id] = paramValue;
+                            }
+                            else if (paramValue is string boolStr && bool.TryParse(boolStr, out bool parsedBool))
+                            {
+                                result.Data[toolInputProperty.Id] = parsedBool;
+                            }
+                            else
+                            {
+                                errors.Add($"Parameter '{toolInputProperty.Id}' must be a boolean, but received '{paramValue?.GetType().Name}'.");
+                            }
+                            break;
+
+                        case BusinessAppToolConfigurationInputSchemeaTypeEnum.DateTime:
+                            if (paramValue is string dateStr)
+                            {
+                                result.Data[toolInputProperty.Id] = dateStr; // Pass as string, Scriban will render it
+                            }
+                            else if (paramValue is DateTime dt)
+                            {
+                                result.Data[toolInputProperty.Id] = dt.ToString("o");
+                            }
+                            else if (paramValue is JsonElement dtEl && dtEl.ValueKind == JsonValueKind.String)
+                            {
+                                result.Data[toolInputProperty.Id] = dtEl.GetString();
+                            }
+                            else
+                            {
+                                errors.Add($"Parameter '{toolInputProperty.Id}' must be a date/time string, but received '{paramValue?.GetType().Name}'.");
+                            }
+                            break;
+
+                        case BusinessAppToolConfigurationInputSchemeaTypeEnum.String:
+                        default:
+                            // Accept any value, convert to string if needed
+                            if (paramValue is JsonElement strEl)
+                            {
+                                result.Data[toolInputProperty.Id] = strEl.ToString();
+                            }
+                            else
+                            {
+                                result.Data[toolInputProperty.Id] = paramValue?.ToString() ?? "";
+                            }
+                            break;
+                    }
+                }
+            }
+
+            if (errors.Any())
+            {
+                _logger.LogWarning("Test parameter validation failed for tool {ToolId}: {Errors}", toolData.Id, string.Join("; ", errors));
+                result.Success = false;
+                result.Message = string.Join("\n", errors);
+            }
+            else
+            {
+                result.Success = true;
+            }
+
+            return result;
         }
 
         private async Task<FunctionReturnResult<HttpContent?>> BuildRequestBody(string toolId, BusinessAppToolConfiguration toolConfig, Dictionary<string, object?> context)

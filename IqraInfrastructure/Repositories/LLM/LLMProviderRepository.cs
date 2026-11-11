@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -20,6 +20,22 @@ namespace IqraInfrastructure.Repositories.LLM
 
             IMongoDatabase database = client.GetDatabase(DatabaseName);
             _llmProviderCollection = database.GetCollection<LLMProviderData>(CollectionName);
+
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // Index on IntegrationId — covers GetProviderDataByIntegration lookups
+                var integrationIdIndex = Builders<LLMProviderData>.IndexKeys.Ascending(x => x.IntegrationId);
+                _llmProviderCollection.Indexes.CreateOne(new CreateIndexModel<LLMProviderData>(integrationIdIndex));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for LLMProvider collection");
+            }
         }
 
         public async Task<bool> AddProviderAsync(LLMProviderData providerData)

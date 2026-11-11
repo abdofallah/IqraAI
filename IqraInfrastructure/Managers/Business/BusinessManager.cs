@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.S3Storage;
@@ -28,6 +28,7 @@ using IqraInfrastructure.Repositories.WebSession;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
+using WebSessionLogsRepository = IqraInfrastructure.Repositories.WebSession.WebSessionLogsRepository;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -100,7 +101,10 @@ namespace IqraInfrastructure.Managers.Business
             ServerSelectionManager? serverSelectionManager,
             IHttpClientFactory? httpClientFactory,
             S3StorageClientFactory? s3StorageClientFactory,
-            FlowAppManager? flowAppManager
+            FlowAppManager? flowAppManager,
+            CallQueueLogsRepository? callQueueLogsRepository = null,
+            ConversationStateLogsRepository? conversationStateLogsRepository = null,
+            WebSessionLogsRepository? webSessionLogsRepository = null
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -193,7 +197,7 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     throw new Exception("Null constructor input variable for BusinessConversationsManager");
                 }
-                _businessConversationsManager = new BusinessConversationsManager(this, inboundCallQueueRepo, outboundCallQueueRepository, conversationStateRepository, conversationAudioRepository, webSessionRepoistory);
+                _businessConversationsManager = new BusinessConversationsManager(this, inboundCallQueueRepo, outboundCallQueueRepository, conversationStateRepository, conversationAudioRepository, webSessionRepoistory, callQueueLogsRepository, conversationStateLogsRepository, webSessionLogsRepository);
             }
             if (_settings.InitalizeMakeCallManager)
             {

@@ -29,9 +29,22 @@ let currentWebSessionPageNumber = 1;
 
 // Conversation Manager
 let CurrentViewStateData = null;
+let CurrentViewQueueData = null;
 let IsLoadingManageView = false;
 let waveSurferAgent = null;
 let waveSurferClient = null;
+
+// Session Logs Pagination
+let sessionLogsCurrentPage = 1;
+let sessionLogsTotalCount = 0;
+const sessionLogsPageSize = 30;
+let isLoadingSessionLogs = false;
+
+// Audio Turn Sync (F5)
+let isSyncAudioEnabled = true;
+let sessionStartTimeMs = null;
+let currentActiveTurnId = null;
+let lastHighlightUpdate = 0;
 
 // Enums mirroring backend
 const CallQueueStatusEnum = {
@@ -179,14 +192,21 @@ const clientAudioPlayBtn = clientAudioContainer.find(".client-audio-play");
 const clientAudioDownloadBtn = clientAudioContainer.find(".client-audio-download");
 const clientAudioError = clientAudioContainer.find(".client-audio-error");
 
-const conversationMessagesContainer = conversationManageTab.find(".conversation-messages");
-const messagesPlaceholder = conversationMessagesContainer.find(".messages-placeholder");
+const syncPlayPauseBtn = $("#syncPlayPauseBtn");
+const syncStopBtn = $("#syncStopBtn");
+const conversationTurnsContainer = $("#conversationTurnsContainer");
 
 // Manage View - Logs Tab Elements
 const manageViewRoutingContainer = $("#manageViewRoutingContainer");
 const logsTabButton = $("#conversationsManage-logs-tab");
 const queueLogsContainer = $("#queueLogsContainer");
 const sessionLogsContainer = $("#sessionLogsContainer");
+const sessionLogSearchInput = $("#sessionLogSearchInput");
+const sessionLogLevelFilter = $("#sessionLogLevelFilter");
+const sessionLogSearchBtn = $("#sessionLogSearchBtn");
+const sessionLogsInfo = $("#sessionLogsInfo");
+const sessionLogsPrevBtn = $("#sessionLogsPrevBtn");
+const sessionLogsNextBtn = $("#sessionLogsNextBtn");
 
 /** API Functions **/
 function FetchInboundConversationsMetaDataFromAPI(requestPayload, successCallback, errorCallback) {
@@ -301,6 +321,33 @@ function FetchTemporaryAudioUrl(sessionId, memberType, memberId, successCallback
             // ... error handling ...
             errorCallback({ message: errorMsg, code: jqXHR.status });
         },
+    });
+}
+
+function FetchQueueLogs(queueId, successCallback, errorCallback) {
+    $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/conversations/queue/${queueId}/logs`,
+        type: "GET", dataType: "json",
+        success: (response) => { if (!response || !response.success) { errorCallback(response || { message: "Unknown error." }); return; } successCallback(response.data); },
+        error: (jqXHR) => { errorCallback({ message: jqXHR.responseJSON?.message || "Failed to fetch queue logs." }); },
+    });
+}
+function FetchSessionLogsPaginated(sessionId, page, pageSize, search, levelFilter, successCallback, errorCallback) {
+    $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/conversations/session/${sessionId}/logs`,
+        type: "POST", contentType: "application/json; charset=utf-8",
+        data: JSON.stringify({ page, pageSize, search: search || null, levelFilter: levelFilter }),
+        dataType: "json",
+        success: (response) => { if (!response || !response.success) { errorCallback(response || { message: "Unknown error." }); return; } successCallback(response.data); },
+        error: (jqXHR) => { errorCallback({ message: jqXHR.responseJSON?.message || "Failed to fetch session logs." }); },
+    });
+}
+function FetchWebSessionLogs(webSessionId, successCallback, errorCallback) {
+    $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/conversations/websession/${webSessionId}/logs`,
+        type: "GET", dataType: "json",
+        success: (response) => { if (!response || !response.success) { errorCallback(response || { message: "Unknown error." }); return; } successCallback(response.data); },
+        error: (jqXHR) => { errorCallback({ message: jqXHR.responseJSON?.message || "Failed to fetch web session logs." }); },
     });
 }
 
@@ -454,6 +501,19 @@ function getStatusBadgeElement(statusType, statusValue, sessionEndType = null, i
     const styleAttribute = includeText ? 'style="text-align: start;"' : '';
     return `<span class="badge ${badgeClass}" title="${statusText}" ${styleAttribute}>${badgeContent}</span>`;
 }
+
+function getPostAnalysisStatusBadge(statusEnum) {
+    if (!statusEnum) return '';
+    const val = statusEnum.value ?? statusEnum;
+    switch (val) {
+        case 4: return '<span class="badge bg-success ms-1" title="Analysis Complete"><i class="fa-regular fa-brain-circuit"></i></span>';
+        case 5: return '<span class="badge bg-danger ms-1" title="Analysis Failed"><i class="fa-regular fa-brain-circuit"></i></span>';
+        case 1: case 2: return '<span class="badge bg-warning text-dark ms-1" title="Analysis Pending"><i class="fa-regular fa-brain-circuit"></i></span>';
+        case 3: return '<span class="badge bg-secondary ms-1" title="Nothing to Analyze"><i class="fa-regular fa-brain-circuit"></i></span>';
+        default: return '';
+    }
+}
+
 function getOrCreateWaveSurfer(containerId, options) {
     let wavesurfer = null;
     if (containerId === '#waveform-agent-audio') wavesurfer = waveSurferAgent;
@@ -670,7 +730,7 @@ function CreateInboundConversationRow(item) {
             <td><b>${$('<div>').text(item.callerNumber).html()}</b></td>
             <td>${$('<div>').text(numberDisplay).html()}</td>
              <td>${hasSession ? `<input type="text" class="form-control form-control-sm copy-on-click" value="${item.sessionId}" readonly title="Click to copy">` : '-'}</td>
-            <td class="text-center">${hasSession ? sessionStatusBadge : '-'}</td>
+            <td class="text-center">${hasSession ? sessionStatusBadge : '-'}${getPostAnalysisStatusBadge(item.postAnalysisStatus)}</td>
             <td>
                 <button class="btn btn-info btn-sm view-conversation-button" title="View Details" ${viewButtonData}>
                     <i class="fa-regular fa-eye"></i>
@@ -726,7 +786,7 @@ function CreateOutboundConversationRow(item) {
             <td>${$('<div>').text(fromNumberDisplay).html()}</td>
             <td><b>${$('<div>').text(item.recipientNumber).html()}</b></td>
             <td>${hasSession ? `<input type="text" class="form-control form-control-sm copy-on-click" value="${item.sessionId}" readonly title="Click to copy">` : '-'}</td>
-            <td class="text-center">${hasSession ? sessionStatusBadge : '-'}</td>
+            <td class="text-center">${hasSession ? sessionStatusBadge : '-'}${getPostAnalysisStatusBadge(item.postAnalysisStatus)}</td>
             <td>
                 <button class="btn btn-info btn-sm view-conversation-button" title="View Details" ${viewButtonData}>
                     <i class="fa-regular fa-eye"></i>
@@ -775,7 +835,7 @@ function CreateWebSessionConversationRow(item) {
             <td><b>${$('<div>').text(item.clientIdentifier).html()}</b></td>
             <td>${$('<div>').text(item.webCampaignId).html()}</td>
             <td>${hasSession ? `<input type="text" class="form-control form-control-sm copy-on-click" value="${item.sessionId}" readonly title="Click to copy">` : '-'}</td>
-            <td class="text-center">${hasSession ? sessionStatusBadge : '-'}</td>
+            <td class="text-center">${hasSession ? sessionStatusBadge : '-'}${getPostAnalysisStatusBadge(item.postAnalysisStatus)}</td>
             <td>
                 <button class="btn btn-info btn-sm view-conversation-button" title="View Details" ${viewButtonData}>
                     <i class="fa-regular fa-eye"></i>
@@ -908,6 +968,7 @@ function UpdateWebSessionPaginationButtons(hasNext, hasPrev) {
 
 function ClearManageView() {
     CurrentViewStateData = null;
+    CurrentViewQueueData = null;
     manageViewLoader.addClass('d-none');
     IsLoadingManageView = false;
 
@@ -931,7 +992,7 @@ function ClearManageView() {
     metricAdditionalMetricsContainer.empty(); // Clear additional metrics
 
     // Conversation Tab
-    conversationMessagesContainer.empty().append(messagesPlaceholder.clone().removeClass('d-none')); // Clear messages
+    conversationTurnsContainer.html('<div class="text-center p-3 text-muted">No conversation data found or session not loaded.</div>');
     agentAudioContainer.addClass('d-none');
     clientAudioContainer.addClass('d-none');
     agentAudioError.addClass('d-none').text('');
@@ -940,10 +1001,39 @@ function ClearManageView() {
     clientAudioPlayBtn.prop('disabled', true).find('i').removeClass('fa-pause').addClass('fa-play');
     agentAudioDownloadBtn.prop('disabled', true).attr('href', '#'); // Reset download link
     clientAudioDownloadBtn.prop('disabled', true).attr('href', '#');
+    syncPlayPauseBtn.prop('disabled', true).find('i').removeClass('fa-pause').addClass('fa-play');
+    syncPlayPauseBtn.html('<i class="fa-regular fa-play me-1"></i> Play Both');
+    syncStopBtn.prop('disabled', true);
+
+    // Audio Turn Sync resets
+    sessionStartTimeMs = null;
+    currentActiveTurnId = null;
+    lastHighlightUpdate = 0;
+    isSyncAudioEnabled = true;
+    $('#audioTimeDisplay').text('00:00 / 00:00');
+    $('#agentVolumeSlider').val(1);
+    $('#clientVolumeSlider').val(1);
+    $('#syncAudioToggle').prop('checked', true);
+    conversationTurnsContainer.find('.turn-active').removeClass('turn-active');
 
     // Logs Tab
     queueLogsContainer.html('<div class="text-muted">No queue logs found.</div>');
     sessionLogsContainer.html('<div class="text-muted">No session logs found or session not loaded.</div>');
+    sessionLogsInfo.text('-');
+    sessionLogsPrevBtn.prop('disabled', true);
+    sessionLogsNextBtn.prop('disabled', true);
+    sessionLogSearchInput.val('');
+    sessionLogLevelFilter.val('');
+
+    // Post-Analysis Section
+    $('#postAnalysisSection').addClass('d-none');
+    $('#postAnalysisSummaryCard').addClass('d-none');
+    $('#postAnalysisTagsCard').addClass('d-none');
+    $('#postAnalysisFieldsCard').addClass('d-none');
+    $('#postAnalysisStatusBadge').empty();
+    $('#postAnalysisSummaryText').empty();
+    $('#postAnalysisTagsContainer').empty();
+    $('#postAnalysisFieldsTableBody').empty();
 
     // Re-enable tabs that might have been disabled
     //conversationsManageMetricsTab.removeClass('disabled');
@@ -1009,8 +1099,11 @@ function PopulateManageView(queueData, stateData) {
         manageViewToNumber.val(queueData.campaignId).prev('label').text('Campaign ID');
     }
 
-    const queueLogs = queueData.logs;
-    PopulateLogsTab(queueLogs, stateData ? stateData.logs : []);
+    CurrentViewQueueData = queueData;
+    // Only populate logs when stateData is available to prevent double API fetch
+    if (stateData) {
+        PopulateLogsTab(queueData, stateData);
+    }
 
     // Assume tabs are enabled unless a reason to disable is found
     //conversationsManageMetricsTab.removeClass('disabled');
@@ -1023,8 +1116,13 @@ function PopulateManageView(queueData, stateData) {
         manageViewEndTime.val(stateData.endTime ? formatDateTime(stateData.endTime) : 'N/A');
 
         PopulateMetricsTab(stateData.metrics);
-        RenderConversationMessages(stateData.messages);
+        RenderConversationTurns(stateData.turns);
         LoadConversationAudio(stateData);
+
+        // Post-Analysis
+        if (stateData.postAnalysis) {
+            RenderPostAnalysis(stateData.postAnalysis);
+        }
 
         const isSessionEnded = stateData.status && stateData.status.value === ConversationSessionState.Ended;
         if (isSessionEnded) {
@@ -1044,12 +1142,15 @@ function PopulateManageView(queueData, stateData) {
         manageViewStartTime.val('N/A');
         manageViewEndTime.val('N/A');
         metricsTabItem.addClass('d-none');
-        conversationMessagesContainer.empty().append(messagesPlaceholder.clone().removeClass('d-none').text('Session data not available.'));
+        conversationTurnsContainer.html('<div class="text-center p-3 text-muted">Session data not available.</div>');
         agentAudioContainer.addClass('d-none');
         clientAudioContainer.addClass('d-none');
 
         conversationsManageMetricsTab.addClass('disabled').parent().tooltip({ title: 'Metrics require a completed session.', trigger: 'hover' });
         conversationsManageConversationTab.addClass('disabled').parent().tooltip({ title: 'Conversation requires an active session.', trigger: 'hover' });
+
+        // Still load queue logs even without session data
+        PopulateLogsTab(queueData, null);
     }
 
     IsLoadingManageView = false;
@@ -1093,48 +1194,525 @@ function PopulateMetricsTab(metrics) {
     }
 }
 
-function RenderConversationMessages(messages) {
-    conversationMessagesContainer.empty(); // Clear placeholder or old messages
+function RenderConversationTurns(turns) {
+    conversationTurnsContainer.empty();
 
-    if (!messages || messages.length === 0) {
-        conversationMessagesContainer.append(messagesPlaceholder.clone().removeClass('d-none').text('No messages in this conversation.'));
+    if (!turns || turns.length === 0) {
+        conversationTurnsContainer.append('<div class="text-center p-3 text-muted">No conversation turns found.</div>');
         return;
     }
 
-    messages.forEach(msg => {
-        let iconClass = 'fa-regular fa-message-question'; // System default
-        let messageClass = 'system-message';
-        let senderName = 'System';
-        let textAlign = 'text-start';
+    const sortedTurns = [...turns].sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
 
-        if (msg.role.value === ConversationSenderRole.Client) {
-            iconClass = 'fa-regular fa-user';
-            messageClass = 'user-message';
-            senderName = 'Client'; // Or get from ClientInfo if available
-            textAlign = 'text-end'; // Align user right
-        } else if (msg.role.value === ConversationSenderRole.Agent) {
-            iconClass = 'fa-regular fa-headset'; // Or fa-microchip-ai
-            messageClass = 'ai-message';
-            senderName = 'Agent'; // Or get from AgentInfo
-            textAlign = 'text-start'; // Align agent left
+    sortedTurns.forEach((turn, idx) => {
+        const turnType = turn.type?.name || 'Unknown';
+        const turnStatus = turn.status?.name || 'Unknown';
+        const isClient = turnType === 'User';
+        const isInterrupted = turnStatus === 'Interrupted';
+        const isSystem = turnType === 'System';
+        const isToolResult = turnType === 'ToolResult';
+        const alignClass = isClient ? 'text-end' : (isSystem ? 'text-center' : 'text-start');
+        const bubbleClass = isClient ? 'user-message' : (isSystem ? 'system-message' : 'ai-message');
+        const iconClass = isClient ? 'fa-regular fa-user' : (isSystem ? 'fa-regular fa-gear' : 'fa-regular fa-headset');
+        const senderLabel = isClient ? 'Client' : (isSystem ? 'System' : 'Agent');
+        const badgeClass = isClient ? 'bg-info' : (isSystem ? 'bg-secondary' : 'bg-success');
+
+        // Status indicator
+        let statusIcon = '';
+        if (turnStatus === 'Completed') statusIcon = '<span class="badge bg-success ms-1" title="Completed"><i class="fa-regular fa-check"></i></span>';
+        else if (isInterrupted) statusIcon = '<span class="badge bg-warning text-dark ms-1" title="Interrupted"><i class="fa-regular fa-bolt"></i></span>';
+        else if (turnStatus === 'Error') statusIcon = '<span class="badge bg-danger ms-1" title="Error"><i class="fa-regular fa-xmark"></i></span>';
+
+        let primaryText = '';
+        if (turn.userInput?.transcribedText) {
+            primaryText = turn.userInput.transcribedText;
+        } else if (turn.response?.spokenSegments && turn.response.spokenSegments.length > 0) {
+            primaryText = turn.response.spokenSegments.map(s => s.text || '').join(' ');
+        } else if (turn.systemInput?.type) {
+            primaryText = `[System: ${turn.systemInput.type}]`;
+        } else if (isToolResult && turn.toolResultInput?.resultOfTurnId) {
+            primaryText = `[Tool Result for Turn ${turn.toolResultInput.resultOfTurnId}]`;
         }
 
-        // Basic structure - adapt based on your message display preference
-        const messageElement = $(`
-            <div class="each-conversation-message mb-2 ${textAlign}">
-                 <div class="this-conversation-container d-inline-block p-2 rounded shadow-sm ${messageClass}" style="max-width: 75%;">
-                    <div class="message-header small text-muted mb-1">
-                         <i class="${iconClass} me-1"></i>
-                         <span>${senderName}</span>
-                         <span class="float-end">${formatDateTime(msg.timestamp)}</span>
+        let detailsHtml = '';
+
+        // F6: TTFT / Latency metadata row for agent responses
+        if (!isClient && !isSystem && turn.response) {
+            let metaItems = [];
+            if (turn.response.llmProcessLatencyFirstTokenMS)
+                metaItems.push(`TTFT: ${turn.response.llmProcessLatencyFirstTokenMS}ms`);
+            if (turn.response.spokenSegments?.length)
+                metaItems.push(`Segments: ${turn.response.spokenSegments.length}`);
+            const cacheHits = turn.response.spokenSegments?.filter(s => s.isCacheHit).length || 0;
+            if (cacheHits > 0) metaItems.push(`Cache Hits: ${cacheHits}`);
+            const interruptedSegs = turn.response.spokenSegments?.filter(s => s.wasInterrupted).length || 0;
+            if (interruptedSegs > 0) metaItems.push(`⚡ ${interruptedSegs} interrupted`);
+            if (metaItems.length > 0) {
+                detailsHtml += `<div class="mt-1 small text-muted opacity-75">${metaItems.join(' · ')}</div>`;
+            }
+        }
+
+        if (turn.response?.spokenSegments && turn.response.spokenSegments.length > 0) {
+            detailsHtml += `<div class="mt-2"><small class="text-muted fw-bold"><i class="fa-regular fa-volume-high me-1"></i>Spoken Segments (${turn.response.spokenSegments.length})</small>`;
+            turn.response.spokenSegments.forEach((seg, i) => {
+                const interrupted = seg.wasInterrupted ? ' <span class="badge bg-warning text-dark">Interrupted</span>' : '';
+                const cached = seg.isCacheHit ? ' <span class="badge bg-secondary">Cached</span>' : '';
+                detailsHtml += `<div class="small text-muted ms-2">#${i + 1}: ${$('<div>').text(seg.text || '').html()}${interrupted}${cached}</div>`;
+            });
+            detailsHtml += '</div>';
+        }
+
+        if (turn.response?.toolExecution) {
+            const tool = turn.response.toolExecution;
+            const toolName = tool.toolName || 'Unknown Tool';
+            const success = tool.wasSuccessful ? '<span class="badge bg-success">Success</span>' : '<span class="badge bg-danger">Failed</span>';
+            const turnIdx = idx;
+            detailsHtml += `<div class="mt-2"><small class="text-muted fw-bold"><i class="fa-regular fa-wrench me-1"></i>Tool Execution</small>`;
+            detailsHtml += `<div class="small ms-2 mb-1 p-2 border rounded d-flex justify-content-between align-items-center">`;
+            detailsHtml += `<span><strong>${$('<div>').text(toolName).html()}</strong> ${success}</span>`;
+            detailsHtml += `<button class="btn btn-outline-secondary btn-sm view-tool-details-btn" data-turn-idx="${turnIdx}"><i class="fa-regular fa-eye me-1"></i>Details</button>`;
+            detailsHtml += `</div></div>`;
+        }
+
+        if (turn.response?.knowledgeBaseRetrievalData) {
+            const kb = turn.response.knowledgeBaseRetrievalData;
+            const kbSuccess = kb.wasSuccessfull ? '<span class="badge bg-success">Success</span>' : '<span class="badge bg-danger">Failed</span>';
+            const turnIdx = idx;
+            detailsHtml += `<div class="mt-2"><small class="text-muted fw-bold"><i class="fa-regular fa-book me-1"></i>KB Retrieval</small>`;
+            detailsHtml += `<div class="small ms-2 d-flex justify-content-between align-items-center">`;
+            detailsHtml += `<span>${kbSuccess} (${kb.retrievalLatencyMS || 0}ms)`;
+            if (kb.resultMessage) detailsHtml += ` — ${$('<div>').text(kb.resultMessage).html()}`;
+            detailsHtml += `</span>`;
+            detailsHtml += `<button class="btn btn-outline-secondary btn-sm view-kb-details-btn" data-turn-idx="${turnIdx}"><i class="fa-regular fa-eye me-1"></i>Details</button>`;
+            detailsHtml += `</div></div>`;
+        }
+
+        const turnElement = $(`
+            <div class="each-conversation-message mb-3 ${alignClass}" data-turn-id="${turn.id}" data-sequence="${turn.sequence}">
+                <div class="this-conversation-container d-inline-block p-3 rounded shadow-sm ${bubbleClass}" style="max-width: 80%; text-align: left;">
+                    <div class="message-header small mb-1 d-flex justify-content-between align-items-center">
+                        <span>
+                            <span class="badge ${badgeClass} me-1"><i class="${iconClass} me-1"></i>${senderLabel}</span>
+                            <span class="badge bg-secondary">#${turn.sequence || idx + 1}</span>
+                            <span class="badge bg-dark ms-1">${turnType}</span>
+                            ${statusIcon}
+                        </span>
+                        <span class="text-muted small">${formatDateTime(turn.createdAt)}</span>
                     </div>
-                    <div class="message-content">
-                        ${$('<div>').text(msg.content).html()} <!-- Basic XSS protection -->
+                    <div class="message-content mt-1">
+                        ${primaryText ? $('<div>').text(primaryText).html() : '<span class="text-muted fst-italic">No text content</span>'}
                     </div>
-                 </div>
-             </div>
+                    ${detailsHtml}
+                </div>
+            </div>
         `);
-        conversationMessagesContainer.append(messageElement);
+        conversationTurnsContainer.append(turnElement);
+    });
+
+    // Bind "View Details" buttons for tool execution modals
+    conversationTurnsContainer.find('.view-tool-details-btn').on('click', function() {
+        const turnIdx = $(this).data('turn-idx');
+        const turn = sortedTurns[turnIdx];
+        if (turn?.response?.toolExecution) {
+            PopulateToolExecutionModal(turn.response.toolExecution);
+            new bootstrap.Modal(document.getElementById('toolExecutionDetailModal')).show();
+        }
+    });
+
+    // Bind "View Details" buttons for KB retrieval modals
+    conversationTurnsContainer.find('.view-kb-details-btn').on('click', function() {
+        const turnIdx = $(this).data('turn-idx');
+        const turn = sortedTurns[turnIdx];
+        if (turn?.response?.knowledgeBaseRetrievalData) {
+            PopulateKBRetrievalModal(turn.response.knowledgeBaseRetrievalData);
+            new bootstrap.Modal(document.getElementById('kbRetrievalDetailModal')).show();
+        }
+    });
+}
+
+function RenderPostAnalysis(postAnalysis) {
+    const section = $('#postAnalysisSection');
+    const statusBadge = $('#postAnalysisStatusBadge');
+    const summaryCard = $('#postAnalysisSummaryCard');
+    const tagsCard = $('#postAnalysisTagsCard');
+    const fieldsCard = $('#postAnalysisFieldsCard');
+
+    section.removeClass('d-none');
+
+    const statusValue = postAnalysis.status?.value ?? postAnalysis.status;
+    const statusName = postAnalysis.status?.name || 'Unknown';
+
+    // Status badge
+    let statusBadgeHtml = '';
+    switch (statusValue) {
+        case 4: // Success
+            statusBadgeHtml = '<span class="badge bg-success"><i class="fa-regular fa-check me-1"></i>Analysis Complete</span>';
+            break;
+        case 5: // Failed
+            statusBadgeHtml = '<span class="badge bg-danger"><i class="fa-regular fa-xmark me-1"></i>Analysis Failed</span>';
+            section.removeClass('d-none');
+            statusBadge.html(statusBadgeHtml);
+            return;
+        case 1: // Waiting
+        case 2: // Processing
+            statusBadgeHtml = `<span class="badge bg-warning text-dark"><i class="fa-regular fa-spinner-third fa-spin me-1"></i>${statusName}</span>`;
+            section.removeClass('d-none');
+            statusBadge.html(statusBadgeHtml);
+            return;
+        case 3: // NothingToProcess
+            statusBadgeHtml = '<span class="badge bg-secondary"><i class="fa-regular fa-minus me-1"></i>Nothing to Process</span>';
+            section.removeClass('d-none');
+            statusBadge.html(statusBadgeHtml);
+            return;
+        default:
+            return; // Don't show for NotSet
+    }
+    statusBadge.html(statusBadgeHtml);
+
+    // Summary
+    if (postAnalysis.summaryData?.summary?.summary) {
+        summaryCard.removeClass('d-none');
+        $('#postAnalysisSummaryText').text(postAnalysis.summaryData.summary.summary);
+    }
+
+    // Tags — resolve TagId → name via BusinessFullData
+    if (postAnalysis.tagsData?.tags && postAnalysis.tagsData.tags.length > 0) {
+        tagsCard.removeClass('d-none');
+        const tagsContainer = $('#postAnalysisTagsContainer');
+        tagsContainer.empty();
+
+        // Try to resolve tag names from BusinessFullData
+        let tagDefinitions = null;
+        try {
+            tagDefinitions = BusinessFullData?.businessApp?.postAnalysis?.tags;
+        } catch (e) { /* BusinessFullData may not be available */ }
+
+        function resolveTagName(tagId) {
+            if (!tagDefinitions) return tagId;
+            const found = tagDefinitions.find(t => t.id === tagId || t.tagId === tagId);
+            return found?.name || found?.tagName || tagId;
+        }
+
+        function renderTagPills(tags, container, indent = 0) {
+            tags.forEach(tag => {
+                const tagName = resolveTagName(tag.tagId);
+                const thinkingTooltip = tag.thinking ? `title="${$('<div>').text(tag.thinking).html()}"` : '';
+                const marginClass = indent > 0 ? `ms-${indent * 2}` : '';
+                container.append(`
+                    <span class="badge bg-primary me-1 mb-1 ${marginClass}" ${thinkingTooltip} style="cursor: help;">
+                        <i class="fa-regular fa-tag me-1"></i>${$('<div>').text(tagName).html()}
+                    </span>
+                `);
+                if (tag.subTags && tag.subTags.length > 0) {
+                    renderTagPills(tag.subTags, container, indent + 1);
+                }
+            });
+        }
+
+        renderTagPills(postAnalysis.tagsData.tags, tagsContainer);
+    }
+
+    // Extracted Fields
+    if (postAnalysis.extractedFieldsData?.extractedFields && postAnalysis.extractedFieldsData.extractedFields.length > 0) {
+        fieldsCard.removeClass('d-none');
+        const tbody = $('#postAnalysisFieldsTableBody');
+        tbody.empty();
+
+        let fieldDefinitions = null;
+        try {
+            fieldDefinitions = BusinessFullData?.businessApp?.postAnalysis?.extractedFields;
+        } catch (e) { /* BusinessFullData may not be available */ }
+
+        function resolveFieldName(fieldId) {
+            if (!fieldDefinitions) return fieldId;
+            const found = fieldDefinitions.find(f => f.id === fieldId || f.fieldId === fieldId);
+            return found?.name || found?.fieldName || fieldId;
+        }
+
+        function renderFields(fields, indent = 0) {
+            fields.forEach(field => {
+                const fieldName = resolveFieldName(field.fieldId);
+                const indentPx = indent * 20;
+                const value = field.fieldValue !== null && field.fieldValue !== undefined ? String(field.fieldValue) : '-';
+                const thinkingTooltip = field.thinking ? `title="${$('<div>').text(field.thinking).html()}"` : '';
+                tbody.append(`
+                    <tr ${thinkingTooltip} style="cursor: help;">
+                        <td style="padding-left: ${indentPx + 12}px;">${$('<div>').text(fieldName).html()}</td>
+                        <td>${$('<div>').text(value).html()}</td>
+                    </tr>
+                `);
+                if (field.conditionalExtractedFields && field.conditionalExtractedFields.length > 0) {
+                    renderFields(field.conditionalExtractedFields, indent + 1);
+                }
+            });
+        }
+
+        renderFields(postAnalysis.extractedFieldsData.extractedFields);
+    }
+}
+
+function PopulateToolExecutionModal(toolExecution) {
+    $('#toolModalName').text(toolExecution.toolName || 'Unknown Tool');
+
+    // Tool type
+    const toolTypeName = toolExecution.toolType?.name || 'Unknown';
+    const toolTypeBadge = toolTypeName === 'Custom'
+        ? '<span class="badge bg-primary">Custom</span>'
+        : '<span class="badge bg-secondary">System</span>';
+    $('#toolModalType').html(toolTypeBadge);
+
+    // Status
+    const statusBadge = toolExecution.wasSuccessful
+        ? '<span class="badge bg-success"><i class="fa-regular fa-check me-1"></i>Success</span>'
+        : '<span class="badge bg-danger"><i class="fa-regular fa-xmark me-1"></i>Failed</span>';
+    $('#toolModalStatus').html(statusBadge);
+
+    // Node ID
+    if (toolExecution.nodeId) {
+        $('#toolModalNodeIdContainer').removeClass('d-none');
+        $('#toolModalNodeId').text(toolExecution.nodeId);
+    } else {
+        $('#toolModalNodeIdContainer').addClass('d-none');
+    }
+
+    // Reason
+    if (toolExecution.reasonForExecution) {
+        $('#toolModalReasonContainer').removeClass('d-none');
+        $('#toolModalReason').text(toolExecution.reasonForExecution);
+    } else {
+        $('#toolModalReasonContainer').addClass('d-none');
+    }
+
+    // Raw LLM Input — try to parse and pretty-print as JSON
+    let rawInput = toolExecution.rawLLMInput || '';
+    try {
+        rawInput = JSON.stringify(JSON.parse(rawInput), null, 2);
+    } catch (e) { /* Not valid JSON, display as-is */ }
+    $('#toolModalRawInput').text(rawInput);
+
+    // Result
+    if (toolExecution.result) {
+        $('#toolModalResultContainer').removeClass('d-none');
+        let result = toolExecution.result;
+        try {
+            result = JSON.stringify(JSON.parse(result), null, 2);
+        } catch (e) { /* Not valid JSON */ }
+        $('#toolModalResult').text(result);
+    } else {
+        $('#toolModalResultContainer').addClass('d-none');
+    }
+
+    // Completed At
+    $('#toolModalCompletedAt').text(toolExecution.completedAt ? formatDateTime(toolExecution.completedAt) : 'N/A');
+}
+
+function PopulateKBRetrievalModal(kbData) {
+    // Status
+    const statusBadge = kbData.wasSuccessfull
+        ? '<span class="badge bg-success"><i class="fa-regular fa-check me-1"></i>Success</span>'
+        : '<span class="badge bg-danger"><i class="fa-regular fa-xmark me-1"></i>Failed</span>';
+    $('#kbModalStatus').html(statusBadge);
+
+    // Latency
+    $('#kbModalLatency').text(`${kbData.retrievalLatencyMS || 0}ms`);
+
+    // Result Message
+    if (kbData.resultMessage) {
+        $('#kbModalResultMessageContainer').removeClass('d-none');
+        $('#kbModalResultMessage').text(kbData.resultMessage);
+    } else {
+        $('#kbModalResultMessageContainer').addClass('d-none');
+    }
+
+    // Retrieved Metadata
+    if (kbData.retrievedResultsMetaData && kbData.retrievedResultsMetaData.length > 0) {
+        $('#kbModalMetadataContainer').removeClass('d-none');
+        try {
+            $('#kbModalMetadata').text(JSON.stringify(kbData.retrievedResultsMetaData, null, 2));
+        } catch (e) {
+            $('#kbModalMetadata').text(String(kbData.retrievedResultsMetaData));
+        }
+    } else {
+        $('#kbModalMetadataContainer').addClass('d-none');
+    }
+}
+
+function PopulateLogDetailModal(logData) {
+    const logType = logData.type?.name || logData.level?.name || 'Information';
+
+    // Level badge
+    let levelBadge = '<span class="badge bg-info">Info</span>';
+    switch (logType) {
+        case 'Trace': levelBadge = '<span class="badge bg-secondary">Trace</span>'; break;
+        case 'Debug': levelBadge = '<span class="badge bg-primary">Debug</span>'; break;
+        case 'Information': levelBadge = '<span class="badge bg-info">Information</span>'; break;
+        case 'Warning': levelBadge = '<span class="badge bg-warning text-dark">Warning</span>'; break;
+        case 'Error': levelBadge = '<span class="badge bg-danger">Error</span>'; break;
+        case 'Critical': levelBadge = '<span class="badge bg-dark">Critical</span>'; break;
+    }
+    $('#logModalLevel').html(levelBadge);
+
+    // Sender Type
+    const senderType = logData.senderType?.name || '-';
+    $('#logModalSenderType').text(senderType);
+
+    // Timestamp
+    $('#logModalTimestamp').text(formatDateTime(logData.createdAt || logData.timestamp));
+
+    // System Reference
+    if (logData.systemSenderReference) {
+        $('#logModalSystemRefContainer').removeClass('d-none');
+        $('#logModalSystemRef').text(logData.systemSenderReference);
+    } else {
+        $('#logModalSystemRefContainer').addClass('d-none');
+    }
+
+    // Full Message
+    $('#logModalMessage').text(logData.message || '');
+
+    // Exception Data
+    if (logData.exceptionDataJson) {
+        $('#logModalExceptionContainer').removeClass('d-none');
+        let exceptionText = logData.exceptionDataJson;
+        try {
+            exceptionText = JSON.stringify(JSON.parse(exceptionText), null, 2);
+        } catch (e) { /* Not valid JSON, display as-is */ }
+        $('#logModalException').text(exceptionText);
+    } else {
+        $('#logModalExceptionContainer').addClass('d-none');
+    }
+}
+
+// Delegated click handler for expandable log entries
+$(document).on('click', '.log-entry-expandable', function() {
+    try {
+        const logDataStr = decodeURIComponent($(this).data('log-json'));
+        const logData = JSON.parse(logDataStr);
+        PopulateLogDetailModal(logData);
+        new bootstrap.Modal(document.getElementById('logDetailModal')).show();
+    } catch (e) {
+        console.error('Failed to parse log data for modal:', e);
+    }
+});
+
+function formatAudioTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '00:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function initAudioTurnSync(stateData) {
+    if (!stateData || !stateData.startTime) return;
+    sessionStartTimeMs = new Date(stateData.startTime).getTime();
+
+    // Sort turns for offset lookup
+    const turns = stateData.turns || [];
+    if (turns.length === 0) return;
+    const sortedTurns = [...turns].sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+
+    // Build turn time ranges for fast lookup
+    const turnTimeRanges = sortedTurns.map((turn, idx) => {
+        let startMs = null;
+        let endMs = null;
+
+        if (turn.userInput?.startedSpeakingAt) {
+            startMs = new Date(turn.userInput.startedSpeakingAt).getTime();
+            endMs = turn.userInput.finishedSpeakingAt
+                ? new Date(turn.userInput.finishedSpeakingAt).getTime()
+                : startMs + 5000; // fallback 5s
+        } else if (turn.response?.spokenSegments?.length > 0) {
+            const segs = turn.response.spokenSegments;
+            startMs = new Date(segs[0].startedPlayingAt).getTime();
+            const lastSeg = segs[segs.length - 1];
+            endMs = lastSeg.finishedPlayingAt
+                ? new Date(lastSeg.finishedPlayingAt).getTime()
+                : startMs + 5000;
+        } else if (turn.createdAt) {
+            startMs = new Date(turn.createdAt).getTime();
+            endMs = turn.completedAt ? new Date(turn.completedAt).getTime() : startMs + 2000;
+        }
+
+        return {
+            turnId: turn.id,
+            startOffset: startMs ? (startMs - sessionStartTimeMs) / 1000 : null,
+            endOffset: endMs ? (endMs - sessionStartTimeMs) / 1000 : null
+        };
+    }).filter(t => t.startOffset !== null);
+
+    // Register audioprocess callback on agent wavesurfer (throttled to ~4Hz)
+    const primaryPlayer = waveSurferAgent || waveSurferClient;
+    if (!primaryPlayer) return;
+
+    primaryPlayer.on('audioprocess', (currentTime) => {
+        const now = Date.now();
+        if (now - lastHighlightUpdate < 250) return; // Throttle to 4Hz
+        lastHighlightUpdate = now;
+
+        // Update time display
+        const duration = primaryPlayer.getDuration() || 0;
+        $('#audioTimeDisplay').text(`${formatAudioTime(currentTime)} / ${formatAudioTime(duration)}`);
+
+        // Find active turn
+        let activeTurnId = null;
+        for (let i = turnTimeRanges.length - 1; i >= 0; i--) {
+            const range = turnTimeRanges[i];
+            if (currentTime >= range.startOffset && currentTime <= range.endOffset) {
+                activeTurnId = range.turnId;
+                break;
+            }
+        }
+
+        // Fallback: find the most recent turn that started before current time
+        if (!activeTurnId) {
+            for (let i = turnTimeRanges.length - 1; i >= 0; i--) {
+                if (currentTime >= turnTimeRanges[i].startOffset) {
+                    activeTurnId = turnTimeRanges[i].turnId;
+                    break;
+                }
+            }
+        }
+
+        // Apply highlight if changed
+        if (activeTurnId !== currentActiveTurnId) {
+            currentActiveTurnId = activeTurnId;
+            conversationTurnsContainer.find('.turn-active').removeClass('turn-active');
+
+            if (activeTurnId) {
+                const activeEl = conversationTurnsContainer.find(`[data-turn-id="${activeTurnId}"]`);
+                activeEl.addClass('turn-active');
+
+                if (isSyncAudioEnabled && activeEl.length) {
+                    activeEl[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+    });
+
+    // Reset highlight on stop/finish
+    primaryPlayer.on('finish', () => {
+        conversationTurnsContainer.find('.turn-active').removeClass('turn-active');
+        currentActiveTurnId = null;
+        $('#audioTimeDisplay').text(`${formatAudioTime(primaryPlayer.getDuration())} / ${formatAudioTime(primaryPlayer.getDuration())}`);
+    });
+
+    // Click-to-seek on turn bubbles
+    conversationTurnsContainer.find('.each-conversation-message').on('click', function (e) {
+        // Don't intercept button clicks
+        if ($(e.target).closest('button').length) return;
+
+        const turnId = $(this).data('turn-id');
+        if (!turnId || !primaryPlayer) return;
+
+        const range = turnTimeRanges.find(t => t.turnId === turnId);
+        if (!range || range.startOffset === null) return;
+
+        const duration = primaryPlayer.getDuration();
+        if (duration <= 0) return;
+
+        const seekRatio = Math.max(0, Math.min(1, range.startOffset / duration));
+        if (waveSurferAgent) waveSurferAgent.seekTo(seekRatio);
+        if (waveSurferClient) waveSurferClient.seekTo(seekRatio);
     });
 }
 
@@ -1151,87 +1729,142 @@ function LoadConversationAudio(stateData) {
 
     // --- Agent Audio ---
     const agentInfo = stateData.agents && stateData.agents.length > 0 ? stateData.agents[0] : null;
-    if (agentInfo && agentInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Compiled) {
+    if (agentInfo && agentInfo.audioUrl) {
         agentAudioContainer.removeClass('d-none');
         agentAudioLoader.removeClass('d-none');
         agentAudioPlayBtn.prop('disabled', true);
         agentAudioDownloadBtn.prop('disabled', true).attr('href', '#');
         agentAudioError.addClass('d-none');
-
-        handleAudioUrlSuccess(stateData.agents[0].audioUrl, '#waveform-agent-audio', agentAudioLoader, agentAudioPlayBtn, agentAudioDownloadBtn, agentAudioError)
-        //handleAudioUrlError(error, agentAudioLoader, agentAudioError)
-    } else if (agentInfo && agentInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Failed) {
+        handleAudioUrlSuccess(agentInfo.audioUrl, '#waveform-agent-audio', agentAudioLoader, agentAudioPlayBtn, agentAudioDownloadBtn, agentAudioError);
+    } else if (agentInfo) {
         agentAudioContainer.removeClass('d-none');
-        agentAudioError.text(`Agent audio compilation failed: ${agentInfo.failedReason || 'Unknown reason'}`).removeClass('d-none');
+        agentAudioError.text('Agent audio not yet available. It may still be compiling.').removeClass('d-none');
     }
-    else {
-        agentAudioContainer.removeClass('d-none');
-        agentAudioError.text('Agent audio currently compiling. Please wait a while and check later.').removeClass('d-none');
-    }
-    // Optionally show a message if status is Waiting or Compiling
 
     // --- Client Audio ---
     const clientInfo = stateData.clients && stateData.clients.length > 0 ? stateData.clients[0] : null;
-    if (clientInfo && clientInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Compiled) {
+    if (clientInfo && clientInfo.audioUrl) {
         clientAudioContainer.removeClass('d-none');
         clientAudioLoader.removeClass('d-none');
         clientAudioPlayBtn.prop('disabled', true);
         clientAudioDownloadBtn.prop('disabled', true).attr('href', '#');
         clientAudioError.addClass('d-none');
-
-        handleAudioUrlSuccess(stateData.clients[0].audioUrl, '#waveform-client-audio', clientAudioLoader, clientAudioPlayBtn, clientAudioDownloadBtn, clientAudioError)
-        //handleAudioUrlError(error, clientAudioLoader, clientAudioError)
-    } else if (clientInfo && clientInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Failed) {
+        handleAudioUrlSuccess(clientInfo.audioUrl, '#waveform-client-audio', clientAudioLoader, clientAudioPlayBtn, clientAudioDownloadBtn, clientAudioError);
+    } else if (clientInfo) {
         clientAudioContainer.removeClass('d-none');
-        clientAudioError.text(`Client audio compilation failed: ${clientInfo.failedReason || 'Unknown reason'}`).removeClass('d-none');
+        clientAudioError.text('Client audio not yet available. It may still be compiling.').removeClass('d-none');
     }
-    else {
-        clientAudioContainer.removeClass('d-none');
-        clientAudioError.text('Client audio currently compiling. Please wait a while and check later.').removeClass('d-none');
+
+    // Initialize audio-turn sync after a short delay to allow WaveSurfer to fully load
+    setTimeout(() => initAudioTurnSync(stateData), 500);
+}
+
+function createLogEntryHtml(log) {
+    let iconClass = 'fa-regular fa-circle-info';
+    let textClass = 'text-muted';
+    const logType = log.type?.name || log.level?.name || 'Information';
+
+    switch (logType) {
+        case 'Warning': iconClass = 'fa-regular fa-triangle-exclamation'; textClass = 'text-warning'; break;
+        case 'Error': case 'Critical': iconClass = 'fa-regular fa-circle-exclamation'; textClass = 'text-danger'; break;
+        case 'Debug': case 'Trace': iconClass = 'fa-regular fa-bug'; textClass = 'text-secondary'; break;
+    }
+    const timestamp = formatDateTime(log.createdAt || log.timestamp);
+    const sender = log.senderType?.name ? `<span class="badge bg-dark me-1">${log.senderType.name}</span>` : '';
+    const sysRef = log.systemSenderReference ? `<span class="badge bg-secondary me-1">${$('<div>').text(log.systemSenderReference).html()}</span>` : '';
+    // Store log data as JSON for modal expansion
+    const logDataAttr = encodeURIComponent(JSON.stringify(log));
+    const hasException = log.exceptionDataJson ? true : false;
+    const exceptionIndicator = hasException ? ' <span class="badge bg-danger" title="Has exception data"><i class="fa-regular fa-bug"></i></span>' : '';
+    return `
+        <div class="log-entry d-flex align-items-start mb-2 ${textClass} log-entry-expandable" role="button" data-log-json="${logDataAttr}" style="cursor: pointer;">
+            <i class="${iconClass} me-2 mt-1"></i>
+            <div class="flex-grow-1">
+                <strong class="me-2">[${timestamp}]</strong>
+                ${sender}${sysRef}${exceptionIndicator}
+                <span>${$('<div>').text(log.message).html()}</span>
+            </div>
+            <i class="fa-regular fa-chevron-right ms-2 mt-1 opacity-50" title="Click to view details"></i>
+        </div>
+    `;
+}
+
+function PopulateLogsTab(queueData, stateData) {
+    // --- Queue / WebSession Logs (fetched from API) ---
+    queueLogsContainer.html('<div class="text-muted"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading...</div>');
+
+    if (queueData && queueData.queueId) {
+        if (queueData.callType === 'websession') {
+            FetchWebSessionLogs(queueData.queueId,
+                (logs) => {
+                    queueLogsContainer.empty();
+                    if (logs && logs.length > 0) { logs.forEach(log => queueLogsContainer.append(createLogEntryHtml(log))); }
+                    else { queueLogsContainer.html('<div class="text-muted">No queue logs found.</div>'); }
+                },
+                () => { queueLogsContainer.html('<div class="text-danger">Failed to load queue logs.</div>'); }
+            );
+        } else {
+            FetchQueueLogs(queueData.queueId,
+                (logs) => {
+                    queueLogsContainer.empty();
+                    if (logs && logs.length > 0) { logs.forEach(log => queueLogsContainer.append(createLogEntryHtml(log))); }
+                    else { queueLogsContainer.html('<div class="text-muted">No queue logs found.</div>'); }
+                },
+                () => { queueLogsContainer.html('<div class="text-danger">Failed to load queue logs.</div>'); }
+            );
+        }
+    } else {
+        queueLogsContainer.html('<div class="text-muted">No queue data available.</div>');
+    }
+
+    // --- Session Logs (paginated) ---
+    sessionLogsCurrentPage = 1;
+    sessionLogsTotalCount = 0;
+    sessionLogSearchInput.val('');
+    sessionLogLevelFilter.val('');
+    if (stateData && stateData.id) {
+        LoadSessionLogsPaginated(stateData.id, 1);
+    } else {
+        sessionLogsContainer.html('<div class="text-muted">No session data available.</div>');
+        sessionLogsInfo.text('-');
+        sessionLogsPrevBtn.prop('disabled', true);
+        sessionLogsNextBtn.prop('disabled', true);
     }
 }
 
-function PopulateLogsTab(queueLogs, sessionLogs) {
-    const createLogEntry = (log) => {
-        let iconClass = 'fa-regular fa-circle-info';
-        let textClass = 'text-muted';
-        const logType = log.type?.name || log.level?.name || 'Information';
+function LoadSessionLogsPaginated(sessionId, page) {
+    if (isLoadingSessionLogs) return;
+    isLoadingSessionLogs = true;
+    sessionLogsContainer.html('<div class="text-muted"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading...</div>');
 
-        switch (logType) {
-            case 'Warning':
-                iconClass = 'fa-regular fa-triangle-exclamation';
-                textClass = 'text-warning';
-                break;
-            case 'Error':
-                iconClass = 'fa-regular fa-circle-exclamation';
-                textClass = 'text-danger';
-                break;
+    const search = sessionLogSearchInput.val().trim();
+    const levelVal = sessionLogLevelFilter.val();
+    const levelFilter = levelVal !== '' ? parseInt(levelVal) : null;
+
+    FetchSessionLogsPaginated(sessionId, page, sessionLogsPageSize, search, levelFilter,
+        (data) => {
+            isLoadingSessionLogs = false;
+            sessionLogsCurrentPage = data.page;
+            sessionLogsTotalCount = data.totalCount;
+
+            sessionLogsContainer.empty();
+            if (data.logs && data.logs.length > 0) {
+                data.logs.forEach(log => sessionLogsContainer.append(createLogEntryHtml(log)));
+            } else {
+                sessionLogsContainer.html('<div class="text-muted">No session logs found matching criteria.</div>');
+            }
+
+            const totalPages = Math.ceil(data.totalCount / data.pageSize) || 1;
+            sessionLogsInfo.text(`Page ${data.page} of ${totalPages} (${data.totalCount} total)`);
+            sessionLogsPrevBtn.prop('disabled', data.page <= 1);
+            sessionLogsNextBtn.prop('disabled', data.page >= totalPages);
+        },
+        (error) => {
+            isLoadingSessionLogs = false;
+            sessionLogsContainer.html('<div class="text-danger">Failed to load session logs.</div>');
+            console.error("Session logs error:", error);
         }
-        const timestamp = formatDateTime(log.createdAt || log.timestamp);
-        return `
-            <div class="log-entry d-flex align-items-start mb-2 ${textClass}">
-                <i class="${iconClass} me-2 mt-1"></i>
-                <div>
-                    <strong class="me-2">[${timestamp}]</strong>
-                    <span>${$('<div>').text(log.message).html()}</span>
-                </div>
-            </div>
-        `;
-    };
-
-    queueLogsContainer.empty();
-    if (queueLogs && queueLogs.length > 0) {
-        queueLogs.forEach(log => queueLogsContainer.append(createLogEntry(log)));
-    } else {
-        queueLogsContainer.html('<div class="text-muted">No queue logs found.</div>');
-    }
-
-    sessionLogsContainer.empty();
-    if (sessionLogs && sessionLogs.length > 0) {
-        sessionLogs.forEach(log => sessionLogsContainer.append(createLogEntry(log)));
-    } else {
-        sessionLogsContainer.html('<div class="text-muted">No session logs found or session not loaded.</div>');
-    }
+    );
 }
 
 /** Event Handlers **/
@@ -1249,6 +1882,9 @@ function handleAudioUrlSuccess(url, containerId, loader, playBtn, downloadBtn, e
             playBtn.prop('disabled', false);
             downloadBtn.prop('disabled', false).attr('href', url).attr('download', `conversation_${containerId.includes('agent') ? 'agent' : 'client'}_audio.wav`); // Set download link
             console.log(`WaveSurfer ready for ${containerId}`);
+            // Enable sync controls when at least one player is ready
+            syncPlayPauseBtn.prop('disabled', false);
+            syncStopBtn.prop('disabled', false);
         });
 
         wavesurfer.on('error', (err) => {
@@ -1486,9 +2122,12 @@ function SwitchToManageView(buttonElement) {
     if (queueData.callType === 'inbound') {
         currentConversationTypeName.text("Inbound Call");
         currentConversationName.text(`From ${queueData.callerNumber}`);
-    } else {
+    } else if (queueData.callType === 'outbound') {
         currentConversationTypeName.text("Outbound Call");
         currentConversationName.text(`To ${queueData.toNumber}`);
+    } else if (queueData.callType === 'websession') {
+        currentConversationTypeName.text("Web Session");
+        currentConversationName.text(queueData.clientIdentifier || 'Unknown Client');
     }
 
     PopulateManageView(queueData, null);
@@ -1700,5 +2339,71 @@ function initConversationsTab() {
     switchBackToConversationsListTabButton.on("click", (event) => {
         event.preventDefault();
         SwitchToListView();
+    });
+
+    // Session Logs - Search, Filter, Pagination
+    sessionLogSearchBtn.on('click', function () {
+        if (CurrentViewStateData && CurrentViewStateData.id) {
+            sessionLogsCurrentPage = 1;
+            LoadSessionLogsPaginated(CurrentViewStateData.id, 1);
+        }
+    });
+    sessionLogSearchInput.on('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); sessionLogSearchBtn.click(); }
+    });
+    sessionLogLevelFilter.on('change', function () {
+        if (CurrentViewStateData && CurrentViewStateData.id) {
+            sessionLogsCurrentPage = 1;
+            LoadSessionLogsPaginated(CurrentViewStateData.id, 1);
+        }
+    });
+    sessionLogsPrevBtn.on('click', function () {
+        if (CurrentViewStateData && CurrentViewStateData.id && sessionLogsCurrentPage > 1) {
+            LoadSessionLogsPaginated(CurrentViewStateData.id, sessionLogsCurrentPage - 1);
+        }
+    });
+    sessionLogsNextBtn.on('click', function () {
+        if (CurrentViewStateData && CurrentViewStateData.id) {
+            const totalPages = Math.ceil(sessionLogsTotalCount / sessionLogsPageSize) || 1;
+            if (sessionLogsCurrentPage < totalPages) {
+                LoadSessionLogsPaginated(CurrentViewStateData.id, sessionLogsCurrentPage + 1);
+            }
+        }
+    });
+
+    // Synchronized Audio Controls
+    syncPlayPauseBtn.on('click', function () {
+        const isPlaying = waveSurferAgent?.isPlaying() || waveSurferClient?.isPlaying();
+        if (isPlaying) {
+            if (waveSurferAgent) waveSurferAgent.pause();
+            if (waveSurferClient) waveSurferClient.pause();
+            syncPlayPauseBtn.html('<i class="fa-regular fa-play me-1"></i> Play Both');
+        } else {
+            if (waveSurferAgent) waveSurferAgent.play();
+            if (waveSurferClient) waveSurferClient.play();
+            syncPlayPauseBtn.html('<i class="fa-regular fa-pause me-1"></i> Pause Both');
+        }
+    });
+    syncStopBtn.on('click', function () {
+        if (waveSurferAgent) { waveSurferAgent.stop(); }
+        if (waveSurferClient) { waveSurferClient.stop(); }
+        syncPlayPauseBtn.html('<i class="fa-regular fa-play me-1"></i> Play Both');
+        // Reset turn highlight on stop
+        conversationTurnsContainer.find('.turn-active').removeClass('turn-active');
+        currentActiveTurnId = null;
+        $('#audioTimeDisplay').text('00:00 / 00:00');
+    });
+
+    // Volume sliders
+    $('#agentVolumeSlider').on('input', function () {
+        if (waveSurferAgent) waveSurferAgent.setVolume(parseFloat($(this).val()));
+    });
+    $('#clientVolumeSlider').on('input', function () {
+        if (waveSurferClient) waveSurferClient.setVolume(parseFloat($(this).val()));
+    });
+
+    // Sync toggle
+    $('#syncAudioToggle').on('change', function () {
+        isSyncAudioEnabled = $(this).is(':checked');
     });
 }

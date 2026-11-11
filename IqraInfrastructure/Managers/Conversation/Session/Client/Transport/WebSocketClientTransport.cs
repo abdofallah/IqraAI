@@ -1,4 +1,4 @@
-﻿using IqraCore.Interfaces.Conversation;
+using IqraCore.Interfaces.Conversation;
 using Microsoft.Extensions.Logging;
 using System.Net.WebSockets;
 using System.Text;
@@ -38,7 +38,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Transport
 
         private async Task StartReceiveLoopAsync(CancellationToken cancellationToken)
         {
-            var buffer = new ArraySegment<byte>(new byte[_receiveBufferSize]);
+            // Use a fixed large buffer to handle any frame size, even after mid-session format changes.
+            // WebSocket ReceiveAsync returns result.Count with the actual message size.
+            var buffer = new ArraySegment<byte>(new byte[8192]);
             try
             {
                 while (_webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)

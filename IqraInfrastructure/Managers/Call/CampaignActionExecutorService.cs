@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
@@ -14,6 +14,7 @@ using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.WebSession;
+using IqraInfrastructure.Services;
 using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Call 
@@ -28,6 +29,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationStateLogsRepository _conversationStateLogsRepository;
         private readonly BusinessManager _businessManager;
+        private readonly EndpointSecurityService? _endpointSecurityService;
 
         public CampaignActionExecutorService(
             ILoggerFactory loggerFactory,
@@ -36,7 +38,8 @@ namespace IqraInfrastructure.Managers.Call
             WebSessionRepository webSessionRepository,
             ConversationStateRepository conversationStateRepository,
             ConversationStateLogsRepository conversationStateLogsRepository,
-            BusinessManager businessManager
+            BusinessManager businessManager,
+            EndpointSecurityService? endpointSecurityService = null
         ) {
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<CampaignActionExecutorService>();
@@ -46,6 +49,7 @@ namespace IqraInfrastructure.Managers.Call
             _conversationStateRepository = conversationStateRepository;
             _conversationStateLogsRepository = conversationStateLogsRepository;
             _businessManager = businessManager;
+            _endpointSecurityService = endpointSecurityService;
         }
 
         // Outbound Telephony
@@ -146,7 +150,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
                 toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
                 var callFailureArgumentsResult = GetTelephonyCampaignCallInitiationFailureArguements(outboundCallQueueData, logMessage);
@@ -248,7 +252,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
                 toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
                 var callInitiatedArgumentsResult = GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(outboundCallQueueData);
@@ -455,7 +459,7 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
             toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
             var callAnsweredArgumentsResult = GetTelephonyCampaignCallAnsweredArguements(outboundCallQueueData, converationStateData);
@@ -648,7 +652,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
                 toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
                 var callEndedArgumentsResult = GetTelephonyCampaignCallEndArguements(outboundCallQueueData, converationStateData);
@@ -739,7 +743,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
                 toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
                 var callDeclinedOrBusyArgumentsResult = GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(outboundCallQueueData);
@@ -830,7 +834,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
                 toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
                 var callMissedArgumentsResult = GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(outboundCallQueueData);
@@ -1000,7 +1004,7 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
             toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
             var postAnalysisArgumentsResult = GetTelephonyCampaignPostAnalysisArguements(outboundCallQueueData, converationStateData);
@@ -1393,7 +1397,7 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
             toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
             var ringingArgumentsResult = GetInboundTelephonyCampaignCallRingingArguements(inboundCallQueueData);
@@ -1555,7 +1559,7 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
             toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
             var callFailureArgumentsResult = GetInboundTelephonyCampaignCallInitiationFailureArguements(inboundCallQueueData, logMessage);
@@ -1743,7 +1747,7 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
             toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
             var callPickedArgumentsResult = GetInboundTelephonyCampaignCallPickedArguements(inboundCallQueueData, converationStateData);
@@ -1933,7 +1937,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
                 toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
                 var callEndedArgumentsResult = GetInboundTelephonyCampaignCallEndArguements(inboundCallQueueData, converationStateData);
@@ -2112,7 +2116,7 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
             toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
             var postAnalysisArgumentsResult = GetInboundTelephonyCampaignPostAnalysisArguements(inboundCallQueueData, converationStateData);
@@ -2468,7 +2472,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
                 toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
                 var failureArgumentsResult = GetWebCampaignConversationInitiationFailureArguements(webSessionData);
@@ -2569,7 +2573,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
                 toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
                 var successArgumentsResult = GetWebCampaignConversationInitiatedOrStartedArguements(webSessionData, conversationState!);
@@ -2772,7 +2776,7 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
             toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
             var conversationStartedArgumentsResult = GetWebCampaignConversationInitiatedOrStartedArguements(webSessionData, converationStateData);
@@ -2968,7 +2972,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+                CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
                 toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
                 var callEndedArgumentsResult = GetWebCampaignConversationEndArguements(webSessionData, converationStateData);
@@ -3152,7 +3156,7 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory);
+            CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _endpointSecurityService);
             toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
 
             var postAnalysisArgumentsResult = GetWebCampaignConversationPostAnalysisArguements(webSessionData, converationStateData);

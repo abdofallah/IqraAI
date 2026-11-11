@@ -1,4 +1,4 @@
-﻿
+
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 
@@ -29,7 +29,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers.Helpers
                     }
                 }
             }
-            else if (providerType == InterfaceLLMProviderEnum.OpenAIGPT)
+            else if (providerType == InterfaceLLMProviderEnum.OpenAIResponses)
             {
                 throw new NotImplementedException("NEED TO USE RESPONSES FROM OPENAI SDK");
 
@@ -40,6 +40,21 @@ namespace IqraInfrastructure.Managers.LLM.Providers.Helpers
 
                 if (
                     response.FinishReason != null 
+                    //&& (response.FinishReason == OpenAI.Chat.ChatFinishReason.Stop || response.FinishReason == OpenAI.Chat.ChatFinishReason.Length)
+                )
+                {
+                    isEndOfResponse = true;
+                }
+            }
+            else if (providerType == InterfaceLLMProviderEnum.OpenAIChatCompletionsCompatible)
+            {
+                var response = (OpenAI.Chat.StreamingChatCompletionUpdate)responseObject;
+                var messageContentPart = (OpenAI.Chat.ChatMessageContentPart)response.ContentUpdate.FirstOrDefault();
+
+                deltaText = messageContentPart?.Text ?? "";
+
+                if (
+                    response.FinishReason != null
                     //&& (response.FinishReason == OpenAI.Chat.ChatFinishReason.Stop || response.FinishReason == OpenAI.Chat.ChatFinishReason.Length)
                 )
                 {

@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Call.Queue;
+using IqraCore.Entities.Call.Queue;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -17,6 +17,20 @@ namespace IqraInfrastructure.Repositories.Call
             var database = client.GetDatabase(DatabaseName);
             _callQueueLogsCollection = database.GetCollection<CallQueueLogsData>(CollectionName);
             _logger = logger;
+        }
+
+        public async Task<CallQueueLogsData?> GetLogsByIdAsync(string queueId)
+        {
+            try
+            {
+                var filter = Builders<CallQueueLogsData>.Filter.Eq(c => c.Id, queueId);
+                return await _callQueueLogsCollection.Find(filter).FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting logs for call queue {QueueId}", queueId);
+                return null;
+            }
         }
 
         public async Task<bool> AddCallLogAsync(string queueId, CallQueueLogEntry log)

@@ -151,10 +151,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 var request = new PostedTts
                 {
                     Utterances = new List<PostedUtterance> { utterance },
-                    Format = new FormatPcm
-                    {
-                        Type = _selectedApiFormat.FormatString // "pcm" from our map
-                    },
+                    Format = new FormatPcm(),
                     NumGenerations = 1,
                     StripHeaders = true,
                     SplitUtterances = false,

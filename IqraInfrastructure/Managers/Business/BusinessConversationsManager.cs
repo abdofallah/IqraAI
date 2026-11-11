@@ -1,6 +1,10 @@
-﻿using IqraCore.Entities.Conversation;
+using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Logs;
+using IqraCore.Entities.Conversation.Logs.Enums;
+using IqraCore.Entities.Conversation.PostAnalysis;
 using IqraCore.Entities.Conversation.Turn;
+using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WebSession;
@@ -25,13 +29,21 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessConversationAudioRepository _conversationAudioRepository;
         private readonly WebSessionRepository _webSessionRepository;
 
+        // Log repositories (optional — only needed for frontend log retrieval)
+        private readonly CallQueueLogsRepository? _callQueueLogsRepository;
+        private readonly ConversationStateLogsRepository? _conversationStateLogsRepository;
+        private readonly WebSessionLogsRepository? _webSessionLogsRepository;
+
         public BusinessConversationsManager(
             BusinessManager businessManager,
             InboundCallQueueRepository callQueueRepository,
             OutboundCallQueueRepository outboundCallQueueRepository,
             ConversationStateRepository conversationStateRepository,
             BusinessConversationAudioRepository conversationAudioRepository,
-            WebSessionRepository webSessionRepository
+            WebSessionRepository webSessionRepository,
+            CallQueueLogsRepository? callQueueLogsRepository = null,
+            ConversationStateLogsRepository? conversationStateLogsRepository = null,
+            WebSessionLogsRepository? webSessionLogsRepository = null
         )
         {
             _parentBusinessManager = businessManager;
@@ -41,6 +53,10 @@ namespace IqraInfrastructure.Managers.Business
             _conversationStateRepository = conversationStateRepository;
             _conversationAudioRepository = conversationAudioRepository;
             _webSessionRepository = webSessionRepository;
+
+            _callQueueLogsRepository = callQueueLogsRepository;
+            _conversationStateLogsRepository = conversationStateLogsRepository;
+            _webSessionLogsRepository = webSessionLogsRepository;
         }
 
         /*
@@ -385,6 +401,13 @@ namespace IqraInfrastructure.Managers.Business
                     metadata.SessionId = state.Id;
                     metadata.SessionStatus = state.Status;
                     metadata.SessionEndType = state.EndType;
+
+                    // Post-Analysis enrichment
+                    metadata.PostAnalysisStatus = state.PostAnalysis?.Status;
+                    var summary = state.PostAnalysis?.SummaryData?.Summary?.Summary;
+                    metadata.PostAnalysisSummaryPreview = summary != null && summary.Length > 80
+                        ? summary.Substring(0, 80) + "..."
+                        : summary;
                 }
 
                 return metadata;
@@ -588,6 +611,13 @@ namespace IqraInfrastructure.Managers.Business
                     metadata.SessionId = state.Id;
                     metadata.SessionStatus = state.Status;
                     metadata.SessionEndType = state.EndType;
+
+                    // Post-Analysis enrichment
+                    metadata.PostAnalysisStatus = state.PostAnalysis?.Status;
+                    var summary = state.PostAnalysis?.SummaryData?.Summary?.Summary;
+                    metadata.PostAnalysisSummaryPreview = summary != null && summary.Length > 80
+                        ? summary.Substring(0, 80) + "..."
+                        : summary;
                 }
                 return metadata;
             }).ToList();
@@ -791,6 +821,13 @@ namespace IqraInfrastructure.Managers.Business
 
                     // Optional: Backfill timestamps from the session if the queue data is missing them
                     if (state.EndTime != null) metadata.CompletedAt = state.EndTime;
+
+                    // Post-Analysis enrichment
+                    metadata.PostAnalysisStatus = state.PostAnalysis?.Status;
+                    var summary = state.PostAnalysis?.SummaryData?.Summary?.Summary;
+                    metadata.PostAnalysisSummaryPreview = summary != null && summary.Length > 80
+                        ? summary.Substring(0, 80) + "..."
+                        : summary;
                 }
 
                 return metadata;
@@ -1009,6 +1046,100 @@ namespace IqraInfrastructure.Managers.Business
             return result.SetSuccessResult(paginatedResult);
         }
 
+        /*
+         * 
+         * Log Retrieval
+         * 
+        **/
+
+        public async Task<FunctionReturnResult<List<CallQueueLogEntry>?>> GetCallQueueLogsAsync(long businessId, string queueId)
+        {
+            var result = new FunctionReturnResult<List<CallQueueLogEntry>?>();
+
+            if (_callQueueLogsRepository == null)
+            {
+                return result.SetFailureResult("GetCallQueueLogs:NOT_INITIALIZED", "Call queue logs repository not initialized");
+            }
+
+            // Validate business owns this queue
+            var queue = await _inboundCallQueueRepository.GetInboundCallQueueByIdAsync(businessId, queueId);
+            if (queue == null)
+            {
+                // Try outbound
+                var outboundQueue = await _outboundCallQueueRepository.GetOutboundCallQueueByIdAsync(businessId, queueId);
+                if (outboundQueue == null)
+                {
+                    return result.SetFailureResult("GetCallQueueLogs:QUEUE_NOT_FOUND", "Queue not found for this business");
+                }
+            }
+
+            var logsData = await _callQueueLogsRepository.GetLogsByIdAsync(queueId);
+            return result.SetSuccessResult(logsData?.Logs ?? new List<CallQueueLogEntry>());
+        }
+
+        public async Task<FunctionReturnResult<(List<ConversationStateLogEntry> Logs, long TotalCount)?>> GetSessionLogsPaginatedAsync(
+            long businessId,
+            string sessionId,
+            int page,
+            int pageSize,
+            string? search = null,
+            int? levelFilter = null)
+        {
+            var result = new FunctionReturnResult<(List<ConversationStateLogEntry> Logs, long TotalCount)?>();
+
+            if (_conversationStateLogsRepository == null)
+            {
+                return result.SetFailureResult("GetSessionLogs:NOT_INITIALIZED", "Conversation state logs repository not initialized");
+            }
+
+            // Validate business owns this session
+            var state = await _conversationStateRepository.GetByIdAsync(businessId, sessionId);
+            if (state == null)
+            {
+                return result.SetFailureResult("GetSessionLogs:SESSION_NOT_FOUND", "Session not found for this business");
+            }
+
+            // Clamp page size
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 100) pageSize = 100;
+            if (page < 1) page = 1;
+
+            int skip = (page - 1) * pageSize;
+
+            ConversationStateLogLevelEnum? levelEnum = null;
+            if (levelFilter.HasValue && Enum.IsDefined(typeof(ConversationStateLogLevelEnum), levelFilter.Value))
+            {
+                levelEnum = (ConversationStateLogLevelEnum)levelFilter.Value;
+            }
+
+            var (logs, totalCount) = await _conversationStateLogsRepository.GetLogsPaginatedAsync(sessionId, skip, pageSize, search, levelEnum);
+            return result.SetSuccessResult((logs, totalCount));
+        }
+
+        public async Task<FunctionReturnResult<List<WebSessionLogEntry>?>> GetWebSessionLogsAsync(long businessId, string webSessionId)
+        {
+            var result = new FunctionReturnResult<List<WebSessionLogEntry>?>();
+
+            if (_webSessionLogsRepository == null)
+            {
+                return result.SetFailureResult("GetWebSessionLogs:NOT_INITIALIZED", "Web session logs repository not initialized");
+            }
+
+            // Validate business owns this web session
+            var webSession = await _webSessionRepository.GetWebSessionByIdAsync(webSessionId);
+            if (webSession == null)
+            {
+                return result.SetFailureResult("GetWebSessionLogs:WEB_SESSION_NOT_FOUND", "Web session not found for this business");
+            }
+            if (webSession.BusinessId != businessId)
+            {
+                return result.SetFailureResult("GetWebSessionLogs:UNAUTHORIZED", "Web session does not belong to this business");
+            }
+
+            var logsData = await _webSessionLogsRepository.GetLogsByIdAsync(webSessionId);
+            return result.SetSuccessResult(logsData?.Logs ?? new List<WebSessionLogEntry>());
+        }
+
         private async Task<ConversationStateViewModel> MapConversationStateToViewModelAsync(ConversationState state)
         {
             ConversationStateViewModel resultModel = new ConversationStateViewModel()
@@ -1021,8 +1152,7 @@ namespace IqraInfrastructure.Managers.Business
                 EndType = state.EndType,
                 Clients = new List<ConversationStateClientViewModel>(),
                 Agents = new List<ConversationStateAgentViewModel>(),
-                Messages = new List<ConversationStateMessageViewModel>(),
-                Logs = new List<ConversationStateLogViewModel>()
+                Turns = new List<ConversationTurnViewModel>(),
             };
 
             int audioUrlExpirySeconds = (int)TimeSpan.FromMinutes(30).TotalSeconds;
@@ -1061,7 +1191,27 @@ namespace IqraInfrastructure.Managers.Business
                 resultModel.Agents.Add(clientModel);
             }
 
-            // TODO stop using the message view model and use turn view model
+            // Map full turn-by-turn data
+            foreach (var turn in state.Turns)
+            {
+                var turnViewModel = MapTurnToViewModel(turn);
+                resultModel.Turns.Add(turnViewModel);
+            }
+
+            // Map post-analysis data
+            if (state.PostAnalysis != null)
+            {
+                resultModel.PostAnalysis = MapPostAnalysisToViewModel(state.PostAnalysis);
+            }
+
+            // Map metrics directly (data-only object, no sensitive fields)
+            resultModel.Metrics = state.Metrics;
+
+            // Legacy Messages mapping — kept for backward compatibility
+            #pragma warning disable CS0618 // Suppress obsolete warning for legacy mapping
+            resultModel.Messages = new List<ConversationStateMessageViewModel>();
+            resultModel.Logs = new List<ConversationStateLogViewModel>();
+
             foreach (var turn in state.Turns)
             {
                 if (turn.Type == ConversationTurnType.User)
@@ -1069,8 +1219,8 @@ namespace IqraInfrastructure.Managers.Business
                     var userMessageModel = new ConversationStateMessageViewModel()
                     {
                         Role = ConversationSenderRole.Client,
-                        Content = turn.UserInput.TranscribedText ?? "",
-                        Timestamp = turn.UserInput.StartedSpeakingAt,
+                        Content = turn.UserInput?.TranscribedText ?? "",
+                        Timestamp = turn.UserInput?.StartedSpeakingAt,
                     };
                     resultModel.Messages.Add(userMessageModel);
                 }
@@ -1079,14 +1229,10 @@ namespace IqraInfrastructure.Managers.Business
                     var userMessageModel = new ConversationStateMessageViewModel()
                     {
                         Role = ConversationSenderRole.System,
-                        Content = turn.SystemInput.Type,
+                        Content = turn.SystemInput?.Type ?? "",
                         Timestamp = turn.CreatedAt
                     };
                     resultModel.Messages.Add(userMessageModel);
-                }
-                else if (turn.Type == ConversationTurnType.ToolResult)
-                {
-                    // do nothing
                 }
 
                 var agentMessageModel = new ConversationStateMessageViewModel()
@@ -1100,7 +1246,7 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     turn.Response.SpokenSegments.ForEach(segment => agentMessageModel.Content += segment.Text + " ");
                 }
-                else if (turn.Response.Type == ConversationTurnAgentResponseType.CustomTool || turn.Response.Type == IqraCore.Entities.Conversation.Turn.ConversationTurnAgentResponseType.SystemTool)
+                else if (turn.Response.Type == ConversationTurnAgentResponseType.CustomTool || turn.Response.Type == ConversationTurnAgentResponseType.SystemTool)
                 {
                     if (turn.Response.ToolExecution != null)
                     {
@@ -1117,20 +1263,177 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 resultModel.Messages.Add(agentMessageModel);
             }
-
-            //foreach (var log in state.Logs)
-            //{
-            //    var logModel = new ConversationStateLogViewModel()
-            //    {
-            //        Level = log.Level,
-            //        Timestamp = log.Timestamp,
-            //        Message = log.Message
-            //    };
-
-            //    resultModel.Logs.Add(logModel);
-            //}
+            #pragma warning restore CS0618
 
             return resultModel;
+        }
+
+        private static ConversationTurnViewModel MapTurnToViewModel(ConversationTurn turn)
+        {
+            var viewModel = new ConversationTurnViewModel
+            {
+                Id = turn.Id,
+                Sequence = turn.Sequence,
+                Type = turn.Type,
+                Status = turn.Status,
+                CreatedAt = turn.CreatedAt,
+                CompletedAt = turn.CompletedAt,
+            };
+
+            // Map input based on turn type
+            if (turn.UserInput != null)
+            {
+                viewModel.UserInput = new ConversationTurnUserInputViewModel
+                {
+                    TranscribedText = turn.UserInput.TranscribedText,
+                    StartedSpeakingAt = turn.UserInput.StartedSpeakingAt,
+                    FinishedSpeakingAt = turn.UserInput.FinishedSpeakingAt,
+                };
+            }
+
+            if (turn.SystemInput != null)
+            {
+                viewModel.SystemInput = new ConversationTurnSystemInputViewModel
+                {
+                    Type = turn.SystemInput.Type,
+                };
+            }
+
+            if (turn.ToolResultInput != null)
+            {
+                viewModel.ToolResultInput = new ConversationTurnToolResultInputViewModel
+                {
+                    ResultOfTurnId = turn.ToolResultInput.ResultOfTurnId,
+                };
+            }
+
+            // Map agent response
+            viewModel.Response = new ConversationTurnAgentResponseViewModel
+            {
+                AgentId = turn.Response.AgentId,
+                Type = turn.Response.Type,
+                LLMProcessStartedAt = turn.Response.LLMProcessStartedAt,
+                LLMStreamingStartedAt = turn.Response.LLMStreamingStartedAt,
+                LLMStreamingCompletedAt = turn.Response.LLMStreamingCompletedAt,
+                LLMProcessLatencyFirstTokenMS = turn.Response.LLMProcessLatencyFirstTokenMS,
+                SpeechCompletedAt = turn.Response.SpeechCompletedAt,
+            };
+
+            // Map speech segments
+            if (turn.Response.SpokenSegments != null)
+            {
+                viewModel.Response.SpokenSegments = turn.Response.SpokenSegments.Select(s => new ConversationTurnSpeechSegmentViewModel
+                {
+                    Id = s.Id,
+                    Text = s.Text,
+                    StartedPlayingAt = s.StartedPlayingAt,
+                    FinishedPlayingAt = s.FinishedPlayingAt,
+                    WasInterrupted = s.WasInterrupted,
+                    Duration = s.Duration,
+                    IsCacheHit = s.IsCacheHit,
+                    RetrievalLatencyMS = s.RetrievalLatencyMS,
+                }).ToList();
+            }
+
+            // Map tool execution
+            if (turn.Response.ToolExecution != null)
+            {
+                viewModel.Response.ToolExecution = new ConversationTurnToolExecutionViewModel
+                {
+                    ToolType = turn.Response.ToolExecution.ToolType,
+                    NodeId = turn.Response.ToolExecution.NodeId,
+                    ReasonForExecution = turn.Response.ToolExecution.ReasonForExecution,
+                    ToolName = turn.Response.ToolExecution.ToolName,
+                    RawLLMInput = turn.Response.ToolExecution.RawLLMInput,
+                    Result = turn.Response.ToolExecution.Result,
+                    CompletedAt = turn.Response.ToolExecution.CompletedAt,
+                    WasSuccessful = turn.Response.ToolExecution.WasSuccessful,
+                };
+            }
+
+            // Map KB retrieval data
+            if (turn.Response.KnowledgeBaseRetrievalData != null)
+            {
+                viewModel.Response.KnowledgeBaseRetrievalData = new ConversationTurnKBRetrievalViewModel
+                {
+                    WasSuccessfull = turn.Response.KnowledgeBaseRetrievalData.WasSuccessfull,
+                    ResultMessage = turn.Response.KnowledgeBaseRetrievalData.ResultMessage,
+                    RetrievedResultsMetaData = turn.Response.KnowledgeBaseRetrievalData.RetrievedResultsMetaData,
+                    RetrievalLatencyMS = turn.Response.KnowledgeBaseRetrievalData.RetrievalLatencyMS,
+                };
+            }
+
+            return viewModel;
+        }
+
+        private static ConversationPostAnalysisViewModel MapPostAnalysisToViewModel(ConversationPostAnalysis postAnalysis)
+        {
+            var viewModel = new ConversationPostAnalysisViewModel
+            {
+                Status = postAnalysis.Status,
+                PostAnalysisId = postAnalysis.PostAnalysisId,
+            };
+
+            // Map summary data
+            viewModel.SummaryData = new ConversationSummaryGenerationViewModel
+            {
+                Status = postAnalysis.SummaryData.Status,
+            };
+            if (postAnalysis.SummaryData.Summary != null)
+            {
+                viewModel.SummaryData.Summary = new ConversationSummaryResultViewModel
+                {
+                    Thinking = postAnalysis.SummaryData.Summary.Thinking,
+                    Summary = postAnalysis.SummaryData.Summary.Summary,
+                };
+            }
+
+            // Map tags data
+            viewModel.TagsData = new ConversationTaggingDataViewModel
+            {
+                Status = postAnalysis.TagsData.Status,
+            };
+            if (postAnalysis.TagsData.Tags != null)
+            {
+                viewModel.TagsData.Tags = postAnalysis.TagsData.Tags
+                    .Select(MapTagToViewModel)
+                    .ToList();
+            }
+
+            // Map extracted fields data
+            viewModel.ExtractedFieldsData = new ConversationExtractionDataViewModel
+            {
+                Status = postAnalysis.ExtractedFieldsData.Status,
+            };
+            if (postAnalysis.ExtractedFieldsData.ExtractedFields != null)
+            {
+                viewModel.ExtractedFieldsData.ExtractedFields = postAnalysis.ExtractedFieldsData.ExtractedFields
+                    .Select(MapExtractionFieldToViewModel)
+                    .ToList();
+            }
+
+            return viewModel;
+        }
+
+        private static ConversationTagResultViewModel MapTagToViewModel(ConversationPostAnalsysisTaggingResultData tag)
+        {
+            return new ConversationTagResultViewModel
+            {
+                Thinking = tag.Thinking,
+                TagId = tag.TagId,
+                SubTags = tag.SubTags?.Select(MapTagToViewModel).ToList(),
+            };
+        }
+
+        private static ConversationExtractionFieldResultViewModel MapExtractionFieldToViewModel(ConversationPostAnalsysisExtractionFieldResultData field)
+        {
+            return new ConversationExtractionFieldResultViewModel
+            {
+                Thinking = field.Thinking,
+                FieldId = field.FieldId,
+                FieldValue = field.FieldValue,
+                ConditionalExtractedFields = field.ConditionalExtractedFields?.Select(MapExtractionFieldToViewModel).ToList(),
+            };
         }
     }
 }

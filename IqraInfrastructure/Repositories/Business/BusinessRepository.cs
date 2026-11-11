@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Archived;
+using IqraCore.Entities.Archived;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using Microsoft.Extensions.Logging;
@@ -35,7 +35,23 @@ namespace IqraInfrastructure.Repositories.Business
             _businessArchivedCollection = database.GetCollection<ArchivedRepoObject<BusinessData>>(ArchivedCollectionName);
             _businessCounterCollection = database.GetCollection<BsonDocument>(CounterCollectionName);
 
+            CreateIndexes();
             ValidateBusinessIdCounter().GetAwaiter().GetResult();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // Index on MasterUserEmail — covers GetBusinessesByMasterUserEmailAsync (user business listing)
+                // Without this, listing a user's businesses requires a full COLLSCAN
+                var masterUserEmailIndex = Builders<BusinessData>.IndexKeys.Ascending(b => b.MasterUserEmail);
+                _businessCollection.Indexes.CreateOne(new CreateIndexModel<BusinessData>(masterUserEmailIndex));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for Business collection");
+            }
         }
 
         public async Task ValidateBusinessIdCounter()

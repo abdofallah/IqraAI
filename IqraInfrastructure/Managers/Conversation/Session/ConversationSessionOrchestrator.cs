@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Billing;
+using IqraCore.Entities.Billing;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
@@ -122,6 +122,24 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         public IConversationAgent? PrimaryAgent => _primaryAgent;
         public CancellationTokenSource CancellationTokenSource => _sessionCts;
         public SessionAudioMixer? AudioEngine => _sessionMixer;
+
+        /// <summary>
+        /// Broadcasts a text message to all connected clients. Used for control signals like interruption flush.
+        /// </summary>
+        public async Task BroadcastTextToClientsAsync(string text)
+        {
+            foreach (var client in GetClients())
+            {
+                try
+                {
+                    await client.SendTextAsync(text, _sessionCts?.Token ?? CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error broadcasting text to client {ClientId}", client.ClientId);
+                }
+            }
+        }
 
         public ConversationSessionOrchestrator(
             string sessionId,
@@ -1167,7 +1185,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         }
 
         // Client Event Handlers
-        private void OnClearAgentsSentAudioWriteOnClient(object? sender, object? data)
+        private async void OnClearAgentsSentAudioWriteOnClient(object? sender, object? data)
         {
             if (sender is string)
             {
@@ -1179,13 +1197,20 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             foreach (var client in _clients)
             {
-                if (client is TwilioConversationClient twilioClient)
+                try
                 {
-                    twilioClient.ClearBufferedAudioAync(CancellationToken.None).GetAwaiter().GetResult();
+                    if (client is TwilioConversationClient twilioClient)
+                    {
+                        await twilioClient.ClearBufferedAudioAync(CancellationToken.None);
+                    }
+                    else if (client is ModemTelConversationClient modemClient)
+                    {
+                        await modemClient.ClearBufferedAudioAync(CancellationToken.None);
+                    }
                 }
-                else if (client is ModemTelConversationClient modemClient)
+                catch (Exception ex)
                 {
-                    modemClient.ClearBufferedAudioAync(CancellationToken.None).GetAwaiter().GetResult();
+                    _logger.LogError(ex, "Error clearing buffered audio for client {ClientId}", client.ClientId);
                 }
             }
         }
@@ -1322,7 +1347,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             {
                 try
                 {
-                    await baseClient.ProcessDownstreamAudioAsync(mixedAudio, sampleRate, bits, frameDurationMs);
+                    await baseClient.ProcessDownstreamAudioAsync(mixedAudio, sampleRate, bits, frameDurationMs, _sessionCts?.Token ?? CancellationToken.None);
                 }
                 catch (Exception ex)
                 {

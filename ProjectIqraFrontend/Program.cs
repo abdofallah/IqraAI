@@ -64,6 +64,7 @@ using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Repositories.WebSession;
+using IqraInfrastructure.Services;
 using IqraInfrastructure.Utilities.App;
 using IqraInfrastructure.Utilities.Templating;
 using IqraInfrastructure.Utilities.Validation;
@@ -675,6 +676,40 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<S3StorageClientFactory>()
                 );
             });
+
+            // Tool Debug/Test Feature Repositories & Services
+            builder.Services.AddSingleton<EndpointBlacklistRepository>((sp) =>
+            {
+                return new EndpointBlacklistRepository(
+                    sp.GetRequiredService<ILogger<EndpointBlacklistRepository>>(),
+                    sp.GetRequiredService<IMongoClient>()
+                );
+            });
+
+            builder.Services.AddSingleton<BusinessToolTestExecutionRepository>((sp) =>
+            {
+                return new BusinessToolTestExecutionRepository(
+                    sp.GetRequiredService<ILogger<BusinessToolTestExecutionRepository>>(),
+                    sp.GetRequiredService<IMongoClient>()
+                );
+            });
+
+            builder.Services.AddSingleton<EndpointSecurityService>((sp) =>
+            {
+                var service = new EndpointSecurityService(
+                    sp.GetRequiredService<ILogger<EndpointSecurityService>>()
+                );
+                // Load blacklist entries on startup
+                var blacklistRepo = sp.GetRequiredService<EndpointBlacklistRepository>();
+                var entries = blacklistRepo.GetAllActiveEntriesAsync().GetAwaiter().GetResult();
+                service.RefreshBlacklist(entries);
+                return service;
+            });
+
+            builder.Services.AddSingleton<ToolTestRateLimiter>((sp) =>
+            {
+                return new ToolTestRateLimiter(ipLimitPerMinute: 10, emailLimitPerMinute: 20);
+            });
         }
         private static async Task InitalizeS3Services(IServiceProvider serviceProvider)
         {
@@ -923,7 +958,10 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ServerSelectionManager>(),
                     sp.GetRequiredService<IHttpClientFactory>(),
                     sp.GetRequiredService<S3StorageClientFactory>(),
-                    sp.GetRequiredService<FlowAppManager>()
+                    sp.GetRequiredService<FlowAppManager>(),
+                    sp.GetRequiredService<CallQueueLogsRepository>(),
+                    sp.GetRequiredService<ConversationStateLogsRepository>(),
+                    sp.GetRequiredService<WebSessionLogsRepository>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>

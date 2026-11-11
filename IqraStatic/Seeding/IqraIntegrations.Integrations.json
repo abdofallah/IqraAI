@@ -1034,4 +1034,43 @@
     "Text": "",
     "Uri": ""
   }
+},
+{
+  "_id": "openai_compatible_api",
+  "Name": "OpenAI Compatible API",
+  "Description": "Connect any OpenAI-compatible API (vLLM, Ollama, LiteLLM, etc.)",
+  "DisabledAt": null,
+  "Type": [
+    "LLM",
+    "STT"
+  ],
+  "Fields": [
+    {
+      "_id": "endpoint",
+      "Name": "API Endpoint",
+      "Type": "text",
+      "Tooltip": "The base URL of the OpenAI-compatible API (e.g., http://localhost:11434/v1 for Ollama, or your vLLM endpoint)",
+      "Placeholder": "https://your-server.com/v1",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "api_key",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "API key for authentication. Some local servers may not require one — leave empty if not needed.",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "Compatible with any server implementing the OpenAI Chat Completions API",
+    "Uri": ""
+  },
+  "LogoS3StorageLink": null
 }]

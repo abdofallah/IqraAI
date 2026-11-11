@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Audio;
@@ -114,7 +114,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
         /// The main entry point for audio coming FROM the AI Agent to be sent TO the User.
         /// This method handles the "Edge Encoding" logic.
         /// </summary>
-        public virtual async Task ProcessDownstreamAudioAsync(ReadOnlyMemory<byte> masterAudioData, int masterSampleRate, int masterBitsPerSample, int frameDurationMs)
+        public virtual async Task ProcessDownstreamAudioAsync(ReadOnlyMemory<byte> masterAudioData, int masterSampleRate, int masterBitsPerSample, int frameDurationMs, CancellationToken cancellationToken = default)
         {
             if (masterAudioData.IsEmpty) return;
 
@@ -165,7 +165,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
 
             if (dataToSend.Length > 0)
             {
-                await SendAudioAsync(dataToSend, dataSampleRate, dataBitsPerSample, frameDurationMs, CancellationToken.None);
+                await SendAudioAsync(dataToSend, dataSampleRate, dataBitsPerSample, frameDurationMs, cancellationToken);
             }
         }
 

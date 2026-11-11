@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 
@@ -10,7 +10,7 @@ namespace IqraCore.Interfaces.Conversation
         ConversationClientConfiguration ClientConfig { get; }
         ConversationClientType ClientType { get; }
 
-        Task ProcessDownstreamAudioAsync(ReadOnlyMemory<byte> masterAudioData, int masterSampleRate, int masterBitsPerSample, int frameDurationMs);
+        Task ProcessDownstreamAudioAsync(ReadOnlyMemory<byte> masterAudioData, int masterSampleRate, int masterBitsPerSample, int frameDurationMs, CancellationToken cancellationToken = default);
 
         Task SendAudioAsync(byte[] audioData, int sampleRate, int bitsPerSample, int frameDurationMs, CancellationToken cancellationToken);
         Task SendTextAsync(string text, CancellationToken cancellationToken);

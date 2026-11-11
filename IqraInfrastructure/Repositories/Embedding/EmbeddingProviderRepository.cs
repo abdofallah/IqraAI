@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Embedding;
+using IqraCore.Entities.Embedding;
 using IqraCore.Entities.Interfaces;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -19,6 +19,22 @@ namespace IqraInfrastructure.Repositories.Embedding
             _logger = logger;
             IMongoDatabase database = client.GetDatabase(DatabaseName);
             _embeddingProviderCollection = database.GetCollection<EmbeddingProviderData>(CollectionName);
+
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // Index on IntegrationId — covers GetProviderDataByIntegration lookups
+                var integrationIdIndex = Builders<EmbeddingProviderData>.IndexKeys.Ascending(x => x.IntegrationId);
+                _embeddingProviderCollection.Indexes.CreateOne(new CreateIndexModel<EmbeddingProviderData>(integrationIdIndex));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for EmbeddingProvider collection");
+            }
         }
 
         public async Task<bool> AddProviderAsync(EmbeddingProviderData providerData)

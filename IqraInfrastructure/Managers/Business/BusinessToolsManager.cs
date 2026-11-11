@@ -1,12 +1,15 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.S3Storage;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
+using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.S3Storage;
+using IqraInfrastructure.Services;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -53,6 +56,34 @@ namespace IqraInfrastructure.Managers.Business
         {
             var result = await _businessAppRepository.GetBusinessAppTool(businessId, toolId);
             return result;
+        }
+
+        public async Task<FunctionReturnResult<BusinessToolTestResult?>> TestBusinessTool(
+            long businessId,
+            BusinessAppTool toolData,
+            BusinessApp businessApp,
+            Dictionary<string, object?> parameters,
+            string languageCode,
+            ILoggerFactory loggerFactory,
+            EndpointSecurityService? endpointSecurityService)
+        {
+            var result = new FunctionReturnResult<BusinessToolTestResult?>();
+
+            try
+            {
+                var helper = new CustomToolExecutionHelper(loggerFactory, endpointSecurityService);
+                helper.Initialize(businessApp, languageCode);
+
+                var testResult = await helper.ExecuteHttpRequestForToolTestAsync(toolData, parameters, CancellationToken.None);
+                return testResult;
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "TestBusinessTool:EXCEPTION",
+                    $"Exception during tool test execution: {ex.Message}"
+                );
+            }
         }
 
         public async Task<bool> CheckBusinessToolExists(long businessId, string toolId)

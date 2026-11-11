@@ -1,4 +1,4 @@
-﻿<div class="main-container fade w-100 d-none" id="conversations-tab">
+<div class="main-container fade w-100 d-none" id="conversations-tab">
     <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-messages'></i> <span>Conversations</span></h3>
     <div class="inner-header-container mb-3">
         <ul class="nav" id="conversations-tab" role="tablist">
@@ -538,6 +538,43 @@
                         <label class="form-label" for="manageViewEndTime">Session End Time</label>
                         <input type="text" class="form-control" id="manageViewEndTime" readonly>
                     </div>
+
+                    <!-- Post-Analysis Section -->
+                    <div id="postAnalysisSection" class="d-none mt-4">
+                        <h5><i class="fa-regular fa-brain-circuit me-2"></i>Post-Analysis</h5>
+                        <div id="postAnalysisStatusBadge" class="mb-3"></div>
+
+                        <!-- Summary Card -->
+                        <div id="postAnalysisSummaryCard" class="card mb-3 d-none">
+                            <div class="card-header d-flex align-items-center">
+                                <i class="fa-regular fa-file-lines me-2"></i>Summary
+                            </div>
+                            <div class="card-body">
+                                <p id="postAnalysisSummaryText" class="mb-0"></p>
+                            </div>
+                        </div>
+
+                        <!-- Tags Card -->
+                        <div id="postAnalysisTagsCard" class="card mb-3 d-none">
+                            <div class="card-header d-flex align-items-center">
+                                <i class="fa-regular fa-tags me-2"></i>Tags
+                            </div>
+                            <div class="card-body" id="postAnalysisTagsContainer"></div>
+                        </div>
+
+                        <!-- Extracted Fields Card -->
+                        <div id="postAnalysisFieldsCard" class="card mb-3 d-none">
+                            <div class="card-header d-flex align-items-center">
+                                <i class="fa-regular fa-rectangle-list me-2"></i>Extracted Fields
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-striped mb-0">
+                                    <thead><tr><th>Field</th><th>Value</th></tr></thead>
+                                    <tbody id="postAnalysisFieldsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Metrics Tab -->
@@ -599,9 +636,30 @@
 
                 <!-- Conversation Tab -->
                 <div class="tab-pane fade w-100" id="conversationsManage-conversation" role="tabpanel" aria-labelledby="conversationsManage-conversation-tab" tabindex="0">
+                    <!-- Synchronized Audio Players -->
                     <div class="conversation-recording mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0"><i class="fa-regular fa-waveform-lines me-2"></i>Audio Recording</h5>
+                            <div class="btn-group" id="syncAudioControls">
+                                <button class="btn btn-sm btn-primary" id="syncPlayPauseBtn" disabled title="Play/Pause Both">
+                                    <i class="fa-regular fa-play me-1"></i> Play Both
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" id="syncStopBtn" disabled title="Stop Both">
+                                    <i class="fa-regular fa-stop"></i>
+                                </button>
+                            </div>
+                            <span class="text-muted small ms-2 align-self-center" id="audioTimeDisplay">00:00 / 00:00</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="syncAudioToggle" checked>
+                                <label class="form-check-label small" for="syncAudioToggle">Auto-scroll to active turn</label>
+                            </div>
+                        </div>
                         <div id="agentAudioContainer" class="mb-2 d-none">
-                            <h5>Agent Audio</h5>
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="badge bg-success me-2"><i class="fa-regular fa-headset me-1"></i>Agent</span>
+                            </div>
                             <div class="recording-container agent-recording">
                                 <i class="typeofconvo fa-regular fa-headset"></i>
                                 <div class="recording-container-waveform" id="waveform-agent-audio">
@@ -615,9 +673,15 @@
                                 </div>
                             </div>
                             <div class="text-danger small mt-1 agent-audio-error d-none">Failed to load audio.</div>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <i class="fa-regular fa-volume small text-muted"></i>
+                                <input type="range" class="form-range form-range-sm" id="agentVolumeSlider" min="0" max="1" step="0.05" value="1" style="max-width: 120px;">
+                            </div>
                         </div>
                         <div id="clientAudioContainer" class="mb-2 d-none">
-                            <h5>Client Audio</h5>
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="badge bg-info me-2"><i class="fa-regular fa-user me-1"></i>Client</span>
+                            </div>
                             <div class="recording-container client-recording">
                                 <i class="typeofconvo fa-regular fa-user"></i>
                                 <div class="recording-container-waveform" id="waveform-client-audio">
@@ -631,24 +695,186 @@
                                 </div>
                             </div>
                             <div class="text-danger small mt-1 client-audio-error d-none">Failed to load audio.</div>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <i class="fa-regular fa-volume small text-muted"></i>
+                                <input type="range" class="form-range form-range-sm" id="clientVolumeSlider" min="0" max="1" step="0.05" value="1" style="max-width: 120px;">
+                            </div>
                         </div>
                     </div>
-                    <div class="conversation-messages">
-                        <div class="text-center p-3 text-muted messages-placeholder">No messages found or session not loaded.</div>
+
+                    <!-- Turn-by-Turn Conversation -->
+                    <h5 class="mb-3"><i class="fa-regular fa-messages me-2"></i>Conversation Turns</h5>
+                    <div class="conversation-turns-container" id="conversationTurnsContainer">
+                        <div class="text-center p-3 text-muted turns-placeholder">No conversation data found or session not loaded.</div>
                     </div>
                 </div>
 
                 <!-- Logs Tab -->
                 <div class="tab-pane fade w-100" id="conversationsManage-logs" role="tabpanel" aria-labelledby="conversationsManage-logs-tab" tabindex="0">
                     <div class="logs-container">
-                        <h5 class="mb-2">Queue Logs</h5>
+                        <!-- Queue / WebSession Logs -->
+                        <h5 class="mb-2"><i class="fa-regular fa-list-tree me-2"></i>Queue Logs</h5>
                         <div class="log-box mb-4 p-3 border rounded bg-dark" id="queueLogsContainer" style="max-height: 300px; overflow-y: auto;">
-                            <div class="text-muted">No queue logs found.</div>
+                            <div class="text-muted">Loading queue logs...</div>
                         </div>
-                        <h5 class="mb-2">Session Logs</h5>
-                        <div class="log-box p-3 border rounded bg-dark" id="sessionLogsContainer" style="max-height: 300px; overflow-y: auto;">
+
+                        <!-- Session Logs (Paginated) -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0"><i class="fa-regular fa-scroll me-2"></i>Session Logs</h5>
+                        </div>
+                        <div class="d-flex flex-row gap-2 mb-3">
+                            <div class="input-group" style="max-width: 400px;">
+                                <input type="text" class="form-control form-control-sm" id="sessionLogSearchInput" placeholder="Search logs...">
+                                <button class="btn btn-sm btn-primary" id="sessionLogSearchBtn">
+                                    <i class="fa-regular fa-magnifying-glass"></i>
+                                </button>
+                            </div>
+                            <select class="form-select form-select-sm" id="sessionLogLevelFilter" style="max-width: 180px;">
+                                <option value="">All Levels</option>
+                                <option value="0">Trace</option>
+                                <option value="1">Debug</option>
+                                <option value="2">Information</option>
+                                <option value="3">Warning</option>
+                                <option value="4">Error</option>
+                                <option value="5">Critical</option>
+                            </select>
+                        </div>
+                        <div class="log-box p-3 border rounded bg-dark" id="sessionLogsContainer" style="max-height: 500px; overflow-y: auto;">
                             <div class="text-muted">No session logs found or session not loaded.</div>
                         </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2" id="sessionLogsPagination">
+                            <span class="text-muted small" id="sessionLogsInfo">-</span>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" id="sessionLogsPrevBtn" disabled>
+                                    <i class="fa-regular fa-arrow-left"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" id="sessionLogsNextBtn" disabled>
+                                    <i class="fa-regular fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tool Execution Detail Modal -->
+    <div class="modal fade" id="toolExecutionDetailModal" tabindex="-1" aria-labelledby="toolExecutionDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="toolExecutionDetailModalLabel"><i class="fa-regular fa-wrench me-2"></i>Tool Execution Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Tool Name</label>
+                            <div id="toolModalName" class="form-control-plaintext"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Type</label>
+                            <div id="toolModalType"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Status</label>
+                            <div id="toolModalStatus"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="toolModalNodeIdContainer">
+                        <label class="form-label fw-bold">Node ID</label>
+                        <div id="toolModalNodeId" class="form-control-plaintext text-muted"></div>
+                    </div>
+                    <div class="mb-3" id="toolModalReasonContainer">
+                        <label class="form-label fw-bold">Reason for Execution</label>
+                        <div id="toolModalReason" class="form-control-plaintext"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Raw LLM Input</label>
+                        <pre id="toolModalRawInput" class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;"></pre>
+                    </div>
+                    <div class="mb-3" id="toolModalResultContainer">
+                        <label class="form-label fw-bold">Execution Result</label>
+                        <pre id="toolModalResult" class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;"></pre>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Completed At</label>
+                            <div id="toolModalCompletedAt" class="form-control-plaintext text-muted"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KB Retrieval Detail Modal -->
+    <div class="modal fade" id="kbRetrievalDetailModal" tabindex="-1" aria-labelledby="kbRetrievalDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="kbRetrievalDetailModalLabel"><i class="fa-regular fa-book me-2"></i>Knowledge Base Retrieval Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Status</label>
+                            <div id="kbModalStatus"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Retrieval Latency</label>
+                            <div id="kbModalLatency" class="form-control-plaintext"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="kbModalResultMessageContainer">
+                        <label class="form-label fw-bold">Result Message</label>
+                        <div id="kbModalResultMessage" class="form-control-plaintext"></div>
+                    </div>
+                    <div class="mb-3" id="kbModalMetadataContainer">
+                        <label class="form-label fw-bold">Retrieved Metadata</label>
+                        <pre id="kbModalMetadata" class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Detail Modal -->
+    <div class="modal fade" id="logDetailModal" tabindex="-1" aria-labelledby="logDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logDetailModalLabel"><i class="fa-regular fa-rectangle-list me-2"></i>Log Entry Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Level</label>
+                            <div id="logModalLevel"></div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Sender Type</label>
+                            <div id="logModalSenderType"></div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Timestamp</label>
+                            <div id="logModalTimestamp" class="form-control-plaintext"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="logModalSystemRefContainer">
+                        <label class="form-label fw-bold">System Reference</label>
+                        <div id="logModalSystemRef" class="form-control-plaintext text-muted"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Full Message</label>
+                        <pre id="logModalMessage" class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;"></pre>
+                    </div>
+                    <div class="mb-3 d-none" id="logModalExceptionContainer">
+                        <label class="form-label fw-bold text-danger">Exception Data</label>
+                        <pre id="logModalException" class="bg-dark text-danger p-3 rounded" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></pre>
                     </div>
                 </div>
             </div>

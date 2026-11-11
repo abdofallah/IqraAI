@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM;
@@ -721,19 +721,11 @@ namespace IqraInfrastructure.Managers.LLM
                             return result.SetSuccessResult(new AnthropicClaudeStreamingLLMService(logger, apiKey, config));
                         }
 
-                    case InterfaceLLMProviderEnum.OpenAIGPT:
+                    case InterfaceLLMProviderEnum.OpenAIResponses:
                         {
                             var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            var endpoint = "https://api.openai.com/v1";
 
-                            if (integrationData.Fields.TryGetValue("endpoint", out var endpointValue) &&
-                                !string.IsNullOrEmpty(endpointValue) &&
-                                Uri.IsWellFormedUriString(endpointValue, UriKind.Absolute))
-                            {
-                                endpoint = endpointValue;
-                            }
-
-                            var config = new OpenAIGPTConfig
+                            var config = new OpenAIResponsesConfig
                             {
                                 Model = GetString("model")!,
                                 MaxTokens = GetInt("max_tokens"),
@@ -744,8 +736,56 @@ namespace IqraInfrastructure.Managers.LLM
                                 ReasoningSummary = GetString("reasoning_summary")
                             };
 
-                            var logger = loggerFactory.CreateLogger<OpenAIGPTStreamingLLMService>();
-                            return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(logger, apiKey, endpoint, config));
+                            var logger = loggerFactory.CreateLogger<OpenAIResponsesStreamingLLMService>();
+                            return result.SetSuccessResult(new OpenAIResponsesStreamingLLMService(logger, apiKey, config));
+                        }
+
+                    case InterfaceLLMProviderEnum.OpenAIChatCompletionsCompatible:
+                        {
+                            string apiKey = "";
+                            if (integrationData.EncryptedFields.TryGetValue("api_key", out var encryptedApiKey) &&
+                                !string.IsNullOrEmpty(encryptedApiKey))
+                            {
+                                apiKey = _integrationsManager.DecryptField(encryptedApiKey);
+                            }
+
+                            string endpoint = integrationData.Fields["endpoint"];
+                            if (string.IsNullOrEmpty(endpoint) || !Uri.IsWellFormedUriString(endpoint, UriKind.Absolute))
+                            {
+                                return result.SetFailureResult(
+                                    "BuildProviderServiceByIntegration:INVALID_ENDPOINT",
+                                    "A valid endpoint URL is required for OpenAI Chat Completions Compatible provider"
+                                );
+                            }
+
+                            var config = new OpenAIChatCompletionsCompatibleConfig
+                            {
+                                Model = GetString("model")!,
+                                MaxTokens = GetInt("max_tokens"),
+                                Temperature = GetFloat("temperature"),
+                                TopP = GetFloat("top_p"),
+                                FrequencyPenalty = GetFloat("frequency_penalty"),
+                                PresencePenalty = GetFloat("presence_penalty"),
+                                IncludesThinking = GetBool("includes_thinking", false),
+                                IncludeThinkingInResponse = GetBool("include_thinking_in_response", false)
+                            };
+
+                            // Resolve thinking token format
+                            var thinkingFormat = GetString("thinking_token_format");
+                            if (config.IncludesThinking && !string.IsNullOrEmpty(thinkingFormat))
+                            {
+                                if (thinkingFormat == "custom")
+                                {
+                                    config.ThinkingTokenFormat = GetString("thinking_token_custom") ?? "<think>";
+                                }
+                                else
+                                {
+                                    config.ThinkingTokenFormat = thinkingFormat;
+                                }
+                            }
+
+                            var logger = loggerFactory.CreateLogger<OpenAIChatCompletionsCompatibleStreamingLLMService>();
+                            return result.SetSuccessResult(new OpenAIChatCompletionsCompatibleStreamingLLMService(logger, apiKey, endpoint, config));
                         }
 
                     case InterfaceLLMProviderEnum.GoogleAIGemini:

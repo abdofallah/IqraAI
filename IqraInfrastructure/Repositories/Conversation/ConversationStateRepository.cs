@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Conversation;
+using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.PostAnalysis;
 using IqraCore.Entities.Conversation.Turn;
@@ -32,24 +32,68 @@ namespace IqraInfrastructure.Repositories.Conversation
         {
             try
             {
-                // Create index for business ID
-                var businessIdIndex = Builders<ConversationState>.IndexKeys.Ascending(c => c.BusinessId);
-                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(businessIdIndex));
+                // === CONSOLIDATED INDEXES (replacing old separate BusinessId and Status+StartTime indexes) ===
 
-                // Create index for queue ID
+                // Compound index for pagination & general business queries
+                // Covers: GetConversationStatesPaginatedAsync, GetRecentForBusinessAsync
+                // Sort: BusinessId → StartTime DESC → _id DESC (cursor-based pagination)
+                var businessPaginationIndex = Builders<ConversationState>.IndexKeys
+                    .Ascending(c => c.BusinessId)
+                    .Descending(c => c.StartTime)
+                    .Descending(c => c.Id);
+                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(businessPaginationIndex));
+
+                // Index for queue ID lookups
+                // Covers: GetByQueueIdAsync, GetByQueueIdsAsync
                 var queueIdIndex = Builders<ConversationState>.IndexKeys.Ascending(c => c.QueueId);
                 _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(queueIdIndex));
 
-                // Create index for status and start time
-                var statusIndex = Builders<ConversationState>.IndexKeys
-                    .Ascending(c => c.Status)
-                    .Descending(c => c.StartTime);
-                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(statusIndex));
+                // === NEW: Server load balancing index ===
+                // Covers: GetActiveCallCountForServerAsync (called for every new call to check server capacity)
+                // Filter: ProcessingServerId + RegionId + Status IN [Active, Starting, Paused, Ending]
+                var serverLoadBalancingIndex = Builders<ConversationState>.IndexKeys
+                    .Ascending(c => c.ProcessingServerId)
+                    .Ascending(c => c.RegionId)
+                    .Ascending(c => c.Status);
+                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(serverLoadBalancingIndex));
 
-                // Create TTL index for ended conversations
-                var ttlIndex = Builders<ConversationState>.IndexKeys.Ascending(c => c.EndTime);
-                var indexOptions = new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(30) };
-                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(ttlIndex, indexOptions));
+                // === NEW: Web session lookup index ===
+                // Covers: GetByWebSessionIdsAsync (enrichment join from BusinessConversationsManager)
+                var webSessionIndex = Builders<ConversationState>.IndexKeys.Ascending(c => c.WebSessionId);
+                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(webSessionIndex));
+
+                // === NEW: Cleanup job index ===
+                // Covers: CleanupMaxDurationReachedConversationsAsync (background service, every 5 minutes)
+                // Filter: ExpectedEndTimeAt < threshold
+                var cleanupIndex = Builders<ConversationState>.IndexKeys.Ascending(c => c.ExpectedEndTimeAt);
+                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(cleanupIndex));
+
+                // === NEW: Ongoing conversation count indexes ===
+                // Covers: GetOngoingConversationsCountByInboundRouteId
+                var ongoingInboundRouteIndex = Builders<ConversationState>.IndexKeys
+                    .Ascending(c => c.BusinessId)
+                    .Ascending(c => c.Status)
+                    .Ascending(c => c.QueueInboundRouteId);
+                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(ongoingInboundRouteIndex));
+
+                // Covers: GetOngoingConversationsCountByTelephonyCampaignId
+                var ongoingTelephonyCampaignIndex = Builders<ConversationState>.IndexKeys
+                    .Ascending(c => c.BusinessId)
+                    .Ascending(c => c.Status)
+                    .Ascending(c => c.QueueTelephonyCampaignId);
+                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(ongoingTelephonyCampaignIndex));
+
+                // Covers: GetOngoingConversationsCountByWebCampaignId
+                var ongoingWebCampaignIndex = Builders<ConversationState>.IndexKeys
+                    .Ascending(c => c.BusinessId)
+                    .Ascending(c => c.Status)
+                    .Ascending(c => c.WebSessionWebCampaignId);
+                _conversationStateCollection.Indexes.CreateOne(new CreateIndexModel<ConversationState>(ongoingWebCampaignIndex));
+
+                // NOTE: The old TTL index on EndTime (ExpireAfter: 30 days) has been intentionally REMOVED.
+                // Conversation states must be retained permanently for historical browsing and analytics.
+                // The old separate BusinessId-only and Status+StartTime indexes have been replaced
+                // by the consolidated compound indexes above for better query coverage with less write amplification.
             }
             catch (Exception ex)
             {

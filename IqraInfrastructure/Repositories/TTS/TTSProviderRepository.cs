@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.TTS;
 using Microsoft.Extensions.Logging;
@@ -21,6 +21,22 @@ namespace IqraInfrastructure.Repositories.TTS
 
             var database = client.GetDatabase(DatabaseName);
             _ttsProviderCollection = database.GetCollection<TTSProviderData>(CollectionName);
+
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // Index on IntegrationId — covers GetProviderDataByIntegration lookups
+                var integrationIdIndex = Builders<TTSProviderData>.IndexKeys.Ascending(x => x.IntegrationId);
+                _ttsProviderCollection.Indexes.CreateOne(new CreateIndexModel<TTSProviderData>(integrationIdIndex));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for TTSProvider collection");
+            }
         }
 
         public async Task<bool> AddProviderAsync(TTSProviderData providerData)

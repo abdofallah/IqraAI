@@ -2182,6 +2182,7 @@ function initToolsTab() {
 						});
 
 						ManageToolType = "edit";
+						$(document).trigger("toolSaved.debug");
 					},
 					(saveError, isUnsuccessful) => {
 						AlertManager.createAlert({
@@ -2380,6 +2381,650 @@ function initToolsTab() {
 
 			// Initalize
 			FillToolsTab();
+
+			/** ============================================ **/
+			/** Tool Debug/Test Feature                      **/
+			/** ============================================ **/
+
+			const toolDebugButton = $("#toolDebugButton");
+			const toolDebugOffcanvas = $("#toolDebugOffcanvas");
+			const toolDebugUnsavedBanner = $("#toolDebugUnsavedBanner");
+			const toolDebugInputVariablesList = $("#toolDebugInputVariablesList");
+			const toolDebugNoInputNotice = $("#toolDebugNoInputNotice");
+			const toolDebugRunButton = $("#toolDebugRunButton");
+			const toolDebugRunSpinner = $("#toolDebugRunSpinner");
+			const toolDebugResultsSection = $("#toolDebugResultsSection");
+			const toolDebugTimeline = $("#toolDebugTimeline");
+
+			let toolDebugOffcanvasInstance = null;
+			const toolDebugResetButton = $("#toolDebugResetButton");
+			const toolDebugLastRunTimestamp = $("#toolDebugLastRunTimestamp");
+			const toolDebugStaleResultsBanner = $("#toolDebugStaleResultsBanner");
+
+			// Debug state persistence
+			let _debugPersistedInputs = {};
+			let _debugPersistedResults = null;
+			let _debugLastRunTimestamp = null;
+			let _debugIsExecuting = false;
+			let _debugLastTestedToolId = null;
+			let _debugResultsStale = false;
+			let _debugCurrentXHR = null;
+
+			// Initialize reset button tooltip
+			if (toolDebugResetButton[0]) new bootstrap.Tooltip(toolDebugResetButton[0]);
+
+			// Capture current debug input values into persisted state
+			function captureDebugInputValues() {
+				_debugPersistedInputs = {};
+				const inputSchemea = CurrentManageToolData?.configuration?.inputSchemea || [];
+				inputSchemea.forEach((variable) => {
+					const fieldId = `toolDebugInput_${variable.id}`;
+					const el = $(`#${fieldId}`);
+					if (!el.length) return;
+					const type = (variable.type.name || "String").toLowerCase();
+					if (type === "boolean" && !variable.isArray) {
+						_debugPersistedInputs[variable.id] = el.is(":checked");
+					} else {
+						_debugPersistedInputs[variable.id] = el.val() || "";
+					}
+				});
+			}
+
+			// Restore persisted input values into generated fields
+			function restoreDebugInputValues() {
+				if (!_debugPersistedInputs || Object.keys(_debugPersistedInputs).length === 0) return;
+				const inputSchemea = CurrentManageToolData?.configuration?.inputSchemea || [];
+				inputSchemea.forEach((variable) => {
+					const fieldId = `toolDebugInput_${variable.id}`;
+					const el = $(`#${fieldId}`);
+					if (!el.length) return;
+					const type = (variable.type.name || "String").toLowerCase();
+					const value = _debugPersistedInputs[variable.id];
+					if (value === undefined) return;
+					if (type === "boolean" && !variable.isArray) {
+						el.prop("checked", !!value);
+					} else {
+						el.val(value);
+					}
+				});
+			}
+
+			// Check if there's meaningful persisted debug content
+			function hasDebugContent() {
+				const hasInputs = Object.values(_debugPersistedInputs).some(v => v !== "" && v !== false);
+				return hasInputs || _debugPersistedResults !== null;
+			}
+
+			// Format timestamp for display
+			function formatDebugTimestamp(date) {
+				return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+			}
+
+			// Reset all debug state
+			function resetDebugState() {
+				_debugPersistedInputs = {};
+				_debugPersistedResults = null;
+				_debugLastRunTimestamp = null;
+				_debugResultsStale = false;
+
+				generateDebugInputFields();
+				toolDebugResultsSection.addClass("d-none");
+				toolDebugTimeline.empty();
+				toolDebugLastRunTimestamp.addClass("d-none");
+				toolDebugResetButton.addClass("d-none");
+				toolDebugStaleResultsBanner.addClass("d-none");
+			}
+
+			// Exit execution state (restore UI after run completes or is cancelled)
+			function exitDebugExecutionState() {
+				_debugIsExecuting = false;
+				_debugCurrentXHR = null;
+
+				toolDebugRunButton.prop("disabled", false);
+				toolDebugRunButton.removeClass("btn-danger").addClass("btn-primary");
+				toolDebugRunSpinner.addClass("d-none");
+				toolDebugRunButton.find("span").text("Run Test");
+				toolDebugRunButton.find("i.fa-regular").removeClass("fa-stop").addClass("fa-play");
+			}
+
+			// API Function
+			function TestBusinessTool(toolId, testData, successCallback, errorCallback) {
+				return $.ajax({
+					type: "POST",
+					url: `/app/user/business/${CurrentBusinessId}/tools/${toolId}/test`,
+					data: JSON.stringify(testData),
+					contentType: "application/json",
+					success: (response) => {
+						if (!response.success) {
+							errorCallback(response, false);
+							return;
+						}
+						successCallback(response);
+					},
+					error: (error) => {
+						errorCallback(error, true);
+					},
+				});
+			}
+
+			// Debug Button State
+			function updateDebugButtonState() {
+				if (ManageToolType === "edit") {
+					toolDebugButton.prop("disabled", false);
+					toolDebugButton.attr("data-bs-title", "Test this tool");
+				} else {
+					toolDebugButton.prop("disabled", true);
+					toolDebugButton.attr("data-bs-title", "Save this tool first to enable testing");
+				}
+				// Refresh tooltip
+				const tooltipEl = bootstrap.Tooltip.getInstance(toolDebugButton[0]);
+				if (tooltipEl) tooltipEl.dispose();
+				new bootstrap.Tooltip(toolDebugButton[0]);
+			}
+
+			// Generate input fields from schema
+			function generateDebugInputFields() {
+				toolDebugInputVariablesList.empty();
+				toolDebugNoInputNotice.addClass("d-none");
+
+				const inputSchemea = CurrentManageToolData?.configuration?.inputSchemea;
+				if (!inputSchemea || inputSchemea.length === 0) {
+					toolDebugNoInputNotice.removeClass("d-none");
+					return;
+				}
+
+				inputSchemea.forEach((variable) => {
+					const variableName = variable.name?.[BusinessDefaultLanguage] || variable.id;
+					const variableDesc = variable.description?.[BusinessDefaultLanguage] || "";
+					const isRequired = variable.isRequired;
+					const isArray = variable.isArray;
+					const type = (variable.type.name || "String").toLowerCase();
+
+					const fieldId = `toolDebugInput_${variable.id}`;
+
+					let inputHtml = "";
+					if (isArray) {
+						inputHtml = `<textarea class="form-control form-control-sm" id="${fieldId}" 
+							placeholder='Enter values as JSON array, e.g., ["a", "b"]' rows="2"
+							data-var-id="${variable.id}" data-var-type="${type}" data-var-array="true"
+							data-var-required="${isRequired}"></textarea>`;
+					} else if (type === "boolean") {
+						inputHtml = `<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" id="${fieldId}"
+								data-var-id="${variable.id}" data-var-type="boolean" data-var-array="false"
+								data-var-required="${isRequired}">
+						</div>`;
+					} else if (type === "number") {
+						inputHtml = `<input type="number" class="form-control form-control-sm" id="${fieldId}" 
+							placeholder="Enter number value" step="any"
+							data-var-id="${variable.id}" data-var-type="number" data-var-array="false"
+							data-var-required="${isRequired}">`;
+					} else if (type === "datetime") {
+						const format = variable.dateTimeFormat?.format || "yyyy-MM-dd HH:mm:ss";
+						inputHtml = `<input type="text" class="form-control form-control-sm" id="${fieldId}" 
+							placeholder="${format}"
+							data-var-id="${variable.id}" data-var-type="datetime" data-var-array="false"
+							data-var-required="${isRequired}">`;
+					} else {
+						inputHtml = `<input type="text" class="form-control form-control-sm" id="${fieldId}" 
+							placeholder="Enter text value"
+							data-var-id="${variable.id}" data-var-type="string" data-var-array="false"
+							data-var-required="${isRequired}">`;
+					}
+
+					const requiredBadge = isRequired ? `<span class="text-danger">*</span>` : "";
+					const typeBadge = `<span class="badge bg-secondary bg-opacity-25 text-secondary ms-1" style="font-size:0.65rem">${type}${isArray ? "[]" : ""}</span>`;
+
+					const fieldGroup = $(`
+						<div class="mb-3">
+							<label class="form-label small mb-1" for="${fieldId}">
+								${variableName} ${requiredBadge} ${typeBadge}
+							</label>
+							${variableDesc ? `<div class="text-muted small mb-1" style="font-size:0.75rem">${variableDesc}</div>` : ""}
+							${inputHtml}
+						</div>
+					`);
+
+					toolDebugInputVariablesList.append(fieldGroup);
+				});
+			}
+
+			// Collect input values from the form
+			function collectDebugInputValues() {
+				const parameters = {};
+				const errors = [];
+				const inputSchemea = CurrentManageToolData?.configuration?.inputSchemea || [];
+
+				inputSchemea.forEach((variable) => {
+					const fieldId = `toolDebugInput_${variable.id}`;
+					const el = $(`#${fieldId}`);
+					const type = (variable.type.name || "String").toLowerCase();
+					const isArray = variable.isArray;
+					const isRequired = variable.isRequired;
+
+					let value = null;
+
+					if (type === "boolean" && !isArray) {
+						value = el.is(":checked");
+					} else {
+						const rawValue = el.val()?.trim();
+
+						if (!rawValue || rawValue === "") {
+							if (isRequired) {
+								errors.push(`"${variable.name?.[BusinessDefaultLanguage] || variable.id}" is required.`);
+							}
+							return;
+						}
+
+						if (isArray) {
+							try {
+								value = JSON.parse(rawValue);
+								if (!Array.isArray(value)) {
+									errors.push(`"${variable.name?.[BusinessDefaultLanguage] || variable.id}" must be a JSON array.`);
+									return;
+								}
+							} catch {
+								errors.push(`"${variable.name?.[BusinessDefaultLanguage] || variable.id}" has invalid JSON format.`);
+								return;
+							}
+						} else if (type === "number") {
+							value = parseFloat(rawValue);
+							if (isNaN(value)) {
+								errors.push(`"${variable.name?.[BusinessDefaultLanguage] || variable.id}" must be a valid number.`);
+								return;
+							}
+						} else {
+							value = rawValue;
+						}
+					}
+
+					parameters[variable.id] = value;
+				});
+
+				return { parameters, errors };
+			}
+
+			// Phase card builder
+			function createPhaseCard(phaseNumber, title, icon, statusType, content, isExpanded = false) {
+				const statusIcons = {
+					success: `<i class="fa-solid fa-circle-check text-success"></i>`,
+					error: `<i class="fa-solid fa-circle-xmark text-danger"></i>`,
+					warning: `<i class="fa-solid fa-triangle-exclamation text-warning"></i>`,
+					skipped: `<i class="fa-solid fa-circle-minus text-muted"></i>`,
+					info: `<i class="fa-solid fa-circle-info text-info"></i>`,
+				};
+
+				const collapseId = `debugPhase${phaseNumber}Collapse`;
+				const statusIcon = statusIcons[statusType] || statusIcons.info;
+
+				return $(`
+					<div class="card mb-2 border-0 shadow-sm">
+						<div class="card-header bg-transparent py-2 px-3 d-flex align-items-center gap-2" 
+							 style="cursor:pointer" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+							${statusIcon}
+							<span class="small fw-semibold flex-grow-1">${icon} ${title}</span>
+							<i class="fa-solid fa-chevron-down small text-muted"></i>
+						</div>
+						<div class="collapse ${isExpanded ? 'show' : ''}" id="${collapseId}">
+							<div class="card-body py-2 px-3 small">
+								${content}
+							</div>
+						</div>
+					</div>
+				`);
+			}
+
+			// Render key-value table
+			function renderKVTable(data) {
+				if (!data || Object.keys(data).length === 0) return `<span class="text-muted">None</span>`;
+				let html = `<table class="table table-sm table-bordered mb-0" style="font-size:0.8rem">`;
+				for (const [key, value] of Object.entries(data)) {
+					const displayVal = typeof value === "object" ? JSON.stringify(value) : String(value ?? "");
+					html += `<tr><td class="fw-semibold" style="width:35%">${key}</td><td><code>${escapeHtml(displayVal)}</code></td></tr>`;
+				}
+				html += `</table>`;
+				return html;
+			}
+
+			function escapeHtml(text) {
+				const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+				return text.replace(/[&<>"']/g, (m) => map[m]);
+			}
+
+			// Status code badge
+			function statusCodeBadge(code) {
+				let colorClass = "bg-secondary";
+				if (code >= 200 && code < 300) colorClass = "bg-success";
+				else if (code >= 300 && code < 400) colorClass = "bg-info";
+				else if (code >= 400 && code < 500) colorClass = "bg-warning";
+				else if (code >= 500) colorClass = "bg-danger";
+				return `<span class="badge ${colorClass}">${code}</span>`;
+			}
+
+			// Format code block
+			function codeBlock(content, tryJson = true) {
+				if (!content) return `<span class="text-muted">Empty</span>`;
+				let displayContent = content;
+				if (tryJson) {
+					try {
+						displayContent = JSON.stringify(JSON.parse(content), null, 2);
+					} catch { /* not JSON, use raw */ }
+				}
+				return `<pre class="bg-dark text-light p-2 rounded mb-0" style="max-height:300px;overflow:auto;font-size:0.75rem;white-space:pre-wrap;word-break:break-all"><code>${escapeHtml(displayContent)}</code></pre>`;
+			}
+
+			// Download response body as file
+			function downloadTextAsFile(content, filename) {
+				const blob = new Blob([content], { type: "text/plain" });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = filename;
+				a.click();
+				URL.revokeObjectURL(url);
+			}
+
+			// Render execution results
+			function renderTestResults(data) {
+				toolDebugTimeline.empty();
+				toolDebugResultsSection.removeClass("d-none");
+
+				// Phase 1: Variable Resolution
+				let phase1Content = "";
+				if (data.variableValidationSuccess) {
+					phase1Content = renderKVTable(data.resolvedVariables);
+				} else {
+					phase1Content = `<div class="text-danger">${escapeHtml(data.variableValidationError || "Unknown validation error")}</div>`;
+				}
+				toolDebugTimeline.append(createPhaseCard(1, "Variable Resolution", "📋", 
+					data.variableValidationSuccess ? "success" : "error", phase1Content));
+
+				// Phase 2: Request Details
+				let phase2Content = "";
+				if (data.resolvedEndpoint) {
+					const methodBadge = `<span class="badge bg-primary">${data.requestMethod || "GET"}</span>`;
+					phase2Content = `
+						<div class="mb-2">${methodBadge} <code class="small">${escapeHtml(data.resolvedEndpoint)}</code></div>
+						${data.resolvedHeaders && Object.keys(data.resolvedHeaders).length > 0 ? 
+							`<div class="fw-semibold mb-1">Headers</div>${renderKVTable(data.resolvedHeaders)}` : ""}
+						${data.resolvedBody ? `<div class="fw-semibold mt-2 mb-1">Body</div>${codeBlock(data.resolvedBody)}` : ""}
+					`;
+				} else {
+					phase2Content = `<span class="text-muted">No request built</span>`;
+				}
+				toolDebugTimeline.append(createPhaseCard(2, "Request Details", "📤", 
+					data.resolvedEndpoint ? "success" : "skipped", phase2Content));
+
+				// Phase 3: HTTP Response
+				let phase3Status = "skipped";
+				let phase3Content = "";
+				if (data.httpExecutionSuccess) {
+					phase3Status = (data.responseStatusCode >= 200 && data.responseStatusCode < 300) ? "success" : "warning";
+					phase3Content = `
+						<div class="d-flex align-items-center gap-2 mb-2">
+							${statusCodeBadge(data.responseStatusCode)} 
+							<span>${data.responseStatusText}</span>
+							<span class="badge bg-dark bg-opacity-50 ms-auto">${data.responseTimeMs}ms</span>
+						</div>
+						${data.responseHeaders && Object.keys(data.responseHeaders).length > 0 ? 
+							`<details class="mb-2"><summary class="small fw-semibold">Response Headers</summary>${renderKVTable(data.responseHeaders)}</details>` : ""}
+						<div class="fw-semibold mb-1">Response Body${data.responseBodyTruncated ? ` <span class="badge bg-warning text-dark">Truncated (100KB)</span>` : ""}</div>
+						${codeBlock(data.responseRawBody)}
+						${data.responseBodyTruncated ? `<button class="btn btn-sm btn-outline-secondary mt-1" id="debugDownloadResponseBtn"><i class="fa-regular fa-download me-1"></i>Download Response</button>` : ""}
+					`;
+				} else if (data.httpExecutionError) {
+					phase3Status = "error";
+					phase3Content = `<div class="text-danger">${escapeHtml(data.httpExecutionError)}</div>
+						${data.responseTimeMs ? `<span class="badge bg-dark bg-opacity-50">${data.responseTimeMs}ms</span>` : ""}`;
+				} else {
+					phase3Content = `<span class="text-muted">HTTP request was not executed</span>`;
+				}
+				toolDebugTimeline.append(createPhaseCard(3, "HTTP Response", "📥", phase3Status, phase3Content, true));
+
+				// Phase 4: JS Processor
+				let phase4Status = "skipped";
+				let phase4Content = "";
+				if (data.hasResponseProcessor) {
+					phase4Status = data.jsProcessorSuccess ? "success" : "error";
+					if (data.jsProcessorSuccess) {
+						phase4Content = `<div class="fw-semibold mb-1">Processed Output</div>${codeBlock(data.jsProcessorResult)}`;
+					} else {
+						phase4Content = `<div class="text-danger mb-1">JS Processor Error</div><div class="text-danger">${escapeHtml(data.jsProcessorError || "Unknown error")}</div>`;
+					}
+				} else {
+					phase4Content = `<span class="text-muted">No JavaScript processor configured for this status code</span>`;
+				}
+				toolDebugTimeline.append(createPhaseCard(4, "JS Processor", "⚙️", phase4Status, phase4Content));
+
+				// Phase 5: Static Response
+				let phase5Status = data.hasStaticResponse ? "success" : "skipped";
+				let phase5Content = data.hasStaticResponse 
+					? codeBlock(data.staticResponseText, false)
+					: `<span class="text-muted">No static response configured</span>`;
+				toolDebugTimeline.append(createPhaseCard(5, "Static Response", "📝", phase5Status, phase5Content));
+
+				// Phase 6: Final AI Output
+				let phase6Content = data.finalAIOutput 
+					? codeBlock(data.finalAIOutput, false)
+					: `<span class="text-muted">No output generated</span>`;
+				const finalCard = createPhaseCard(6, "Final AI Output", "🤖", 
+					data.finalAIOutput ? "info" : "skipped", phase6Content, true);
+				finalCard.addClass("border-primary border-opacity-25");
+				toolDebugTimeline.append(finalCard);
+
+				// Download handler for truncated responses
+				$(document).off("click", "#debugDownloadResponseBtn").on("click", "#debugDownloadResponseBtn", () => {
+					downloadTextAsFile(data.responseRawBody || "", `tool_response_${Date.now()}.txt`);
+				});
+			}
+
+			// Debug button click handler (state-aware: restores persisted inputs & results)
+			toolDebugButton.on("click", (event) => {
+				event.preventDefault();
+				if (ManageToolType !== "edit" || !CurrentManageToolData?.id) return;
+
+				const isSameTool = _debugLastTestedToolId === CurrentManageToolData.id;
+
+				// Always regenerate input fields (schema might have changed)
+				generateDebugInputFields();
+
+				// Restore persisted inputs if same tool, otherwise clear state
+				if (isSameTool) {
+					restoreDebugInputValues();
+				} else {
+					_debugPersistedInputs = {};
+					_debugPersistedResults = null;
+					_debugLastRunTimestamp = null;
+					_debugResultsStale = false;
+				}
+
+				// Check for unsaved changes
+				const { hasChanges } = CheckToolsManageTabHasChanges(false);
+				if (hasChanges) {
+					toolDebugUnsavedBanner.removeClass("d-none");
+				} else {
+					toolDebugUnsavedBanner.addClass("d-none");
+				}
+
+				// Restore or hide results
+				if (isSameTool && _debugPersistedResults) {
+					renderTestResults(_debugPersistedResults);
+					toolDebugResultsSection.removeClass("d-none");
+					if (_debugResultsStale) {
+						toolDebugStaleResultsBanner.removeClass("d-none");
+					} else {
+						toolDebugStaleResultsBanner.addClass("d-none");
+					}
+				} else {
+					toolDebugResultsSection.addClass("d-none");
+					toolDebugTimeline.empty();
+					toolDebugStaleResultsBanner.addClass("d-none");
+				}
+
+				// Show last run timestamp
+				if (isSameTool && _debugLastRunTimestamp) {
+					toolDebugLastRunTimestamp.text(`Last run: ${formatDebugTimestamp(_debugLastRunTimestamp)}`).removeClass("d-none");
+				} else {
+					toolDebugLastRunTimestamp.addClass("d-none");
+				}
+
+				// Show reset button if there's content to reset
+				if (isSameTool && hasDebugContent()) {
+					toolDebugResetButton.removeClass("d-none");
+				} else {
+					toolDebugResetButton.addClass("d-none");
+				}
+
+				_debugLastTestedToolId = CurrentManageToolData.id;
+
+				// Show offcanvas
+				if (!toolDebugOffcanvasInstance) {
+					toolDebugOffcanvasInstance = new bootstrap.Offcanvas(toolDebugOffcanvas[0]);
+				}
+				toolDebugOffcanvasInstance.show();
+			});
+
+			// Run Test click handler (doubles as Cancel button during execution)
+			toolDebugRunButton.on("click", async (event) => {
+				event.preventDefault();
+
+				if (!CurrentManageToolData?.id) return;
+
+				// If currently executing, treat click as cancel
+				if (_debugIsExecuting) {
+					if (_debugCurrentXHR) {
+						_debugCurrentXHR.abort();
+					}
+					return;
+				}
+
+				// Collect values
+				const { parameters, errors } = collectDebugInputValues();
+				if (errors.length > 0) {
+					AlertManager.createAlert({
+						type: "warning",
+						message: errors.join("<br>"),
+						timeout: 5000,
+					});
+					return;
+				}
+
+				// Persist current inputs before execution
+				captureDebugInputValues();
+
+				// Enter execution state — lock the offcanvas, transform button to Cancel
+				_debugIsExecuting = true;
+				toolDebugRunButton.removeClass("btn-primary").addClass("btn-danger");
+				toolDebugRunSpinner.removeClass("d-none");
+				toolDebugRunButton.find("span").text("Cancel");
+				toolDebugRunButton.find("i.fa-regular").removeClass("fa-play").addClass("fa-stop");
+				toolDebugResultsSection.addClass("d-none");
+				toolDebugStaleResultsBanner.addClass("d-none");
+
+				const testData = {
+					parameters: parameters,
+					languageCode: BusinessDefaultLanguage || "en",
+				};
+
+				_debugCurrentXHR = TestBusinessTool(
+					CurrentManageToolData.id,
+					testData,
+					(response) => {
+						// Success — persist results and update UI
+						exitDebugExecutionState();
+
+						if (response.data) {
+							_debugPersistedResults = response.data;
+							_debugLastRunTimestamp = new Date();
+							_debugResultsStale = false;
+							_debugLastTestedToolId = CurrentManageToolData.id;
+
+							renderTestResults(response.data);
+
+							toolDebugLastRunTimestamp
+								.text(`Last run: ${formatDebugTimestamp(_debugLastRunTimestamp)}`)
+								.removeClass("d-none");
+							toolDebugResetButton.removeClass("d-none");
+							toolDebugStaleResultsBanner.addClass("d-none");
+						}
+					},
+					(error, isNetworkError) => {
+						// Error — restore UI
+						exitDebugExecutionState();
+
+						// Don't show error alert for user-cancelled requests
+						if (error?.statusText === "abort") return;
+
+						let errorMessage = "An error occurred while running the test.";
+						if (!isNetworkError && error?.message) {
+							errorMessage = error.message;
+						} else if (isNetworkError && error?.status === 429) {
+							try {
+								const parsed = JSON.parse(error.responseText);
+								errorMessage = parsed.message || "Rate limit exceeded. Please wait before running another test.";
+							} catch {
+								errorMessage = "Rate limit exceeded. Please wait before running another test.";
+							}
+						}
+
+						AlertManager.createAlert({
+							type: "danger",
+							message: errorMessage,
+							timeout: 6000,
+						});
+					}
+				);
+			});
+
+			// Persist inputs when offcanvas closes; block close during execution
+			toolDebugOffcanvas[0].addEventListener("hide.bs.offcanvas", (event) => {
+				if (_debugIsExecuting) {
+					event.preventDefault();
+					return;
+				}
+				captureDebugInputValues();
+			});
+
+			// Reset button handler
+			toolDebugResetButton.on("click", (event) => {
+				event.preventDefault();
+				resetDebugState();
+			});
+
+			// Update debug button when ManageToolType changes
+			// Hook into the add new / edit / switch back flows
+
+			// Observe the add new flow
+			addNewToolbutton.on("click.debug", () => {
+				setTimeout(updateDebugButtonState, 50);
+			});
+
+			// Observe edit flow
+			customToolsTable.on("click.debug", 'button[button-type="edit-tool"]', () => {
+				setTimeout(updateDebugButtonState, 50);
+			});
+
+			// Observe switch back flow
+			switchBackToToolsTab.on("click.debug", () => {
+				setTimeout(updateDebugButtonState, 50);
+			});
+
+			// Observe save success (new tool becomes edit) + mark results stale
+			$(document).on("toolSaved.debug", () => {
+				setTimeout(updateDebugButtonState, 50);
+				// Mark existing debug results as stale since tool config changed
+				if (_debugPersistedResults && _debugLastTestedToolId === CurrentManageToolData?.id) {
+					_debugResultsStale = true;
+					// If offcanvas is currently open, show stale banner immediately
+					if (toolDebugOffcanvas.hasClass("show")) {
+						toolDebugStaleResultsBanner.removeClass("d-none");
+						toolDebugUnsavedBanner.addClass("d-none");
+					}
+				}
+			});
+
+			// Initialize debug button state
+			updateDebugButtonState();
 		});
 	});
 }

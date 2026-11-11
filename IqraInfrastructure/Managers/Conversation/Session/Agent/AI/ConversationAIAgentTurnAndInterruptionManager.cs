@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Helper.Agent;
@@ -255,56 +255,63 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                _logger.LogDebug("Agent {AgentId}: Resetting for new turn.", _agentState.AgentId);
-
-                CancelMlFallbackTimer();
-
-                if (_config.UseTurnByTurnMode && !_config.IncludeInterruptedSpeechInTurnByTurnMode!.Value)
-                {
-                    _userTurnTextBuffer.Clear();
-                    _userTurnTextFinalBuffer.Clear();
-                }
-
-                if (_interruptionVerificationLLMTask != null)
-                {
-                    try
-                    {
-                        _interruptionVerificationLLMCTS.Cancel();
-                    }
-                    catch { /* Expected */ }
-                    _interruptionVerificationLLMTask = null;
-                }
-
-                if (_turnEndLLMTask != null)
-                {
-                    try
-                    {
-                        _turnEndLLMCTS.Cancel();
-                    }
-                    catch { /* Expected */ }
-                    _turnEndLLMTask = null;
-                }
-
-                _userTurnAudioBuffer.Clear();
-                _currentTurnWordCount = 0;
-                _isUserTurnActive = false;
-                _isAgentPaused = false;
-                _vadHasIndicatedTurnEnd = false;
-                _sttHasProvidedFinalTranscript = false;
-                _turnEndVadTracker?.Reset();
-                _pauseTriggerVadTracker?.Reset();
-                _aiHasIndicatedTurnEnd = false;
-                _mlHasIndicatedTurnEnd = false;
-                _isAwaitingVerification = false;
-                _canInterruptAgentAfterVerificaiton = false;
-                _hasVerifiedInterruptionResult = false;
-                _turnEndLLMInputBuffer.Clear();
-                _interruptionVerificationLLMInputBuffer.Clear();
+                ResetForNewTurnInternal();
             }
             finally
             {
                 _transcriptionProcessingLock.Release();
             }
+        }
+        /// <summary>
+        /// Internal reset logic — must only be called when _transcriptionProcessingLock is already held.
+        /// </summary>
+        internal void ResetForNewTurnInternal()
+        {
+            _logger.LogDebug("Agent {AgentId}: Resetting for new turn.", _agentState.AgentId);
+
+            CancelMlFallbackTimer();
+
+            if (_config.UseTurnByTurnMode && !_config.IncludeInterruptedSpeechInTurnByTurnMode!.Value)
+            {
+                _userTurnTextBuffer.Clear();
+                _userTurnTextFinalBuffer.Clear();
+            }
+
+            if (_interruptionVerificationLLMTask != null)
+            {
+                try
+                {
+                    _interruptionVerificationLLMCTS.Cancel();
+                }
+                catch { /* Expected */ }
+                _interruptionVerificationLLMTask = null;
+            }
+
+            if (_turnEndLLMTask != null)
+            {
+                try
+                {
+                    _turnEndLLMCTS.Cancel();
+                }
+                catch { /* Expected */ }
+                _turnEndLLMTask = null;
+            }
+
+            _userTurnAudioBuffer.Clear();
+            _currentTurnWordCount = 0;
+            _isUserTurnActive = false;
+            _isAgentPaused = false;
+            _vadHasIndicatedTurnEnd = false;
+            _sttHasProvidedFinalTranscript = false;
+            _turnEndVadTracker?.Reset();
+            _pauseTriggerVadTracker?.Reset();
+            _aiHasIndicatedTurnEnd = false;
+            _mlHasIndicatedTurnEnd = false;
+            _isAwaitingVerification = false;
+            _canInterruptAgentAfterVerificaiton = false;
+            _hasVerifiedInterruptionResult = false;
+            _turnEndLLMInputBuffer.Clear();
+            _interruptionVerificationLLMInputBuffer.Clear();
         }
         public void SetUserTurnActive()
         {
@@ -516,7 +523,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (turnToFinalize == null)
             {
                 _logger.LogError("TryConcludeUserTurn was called, but no active turn exists in the agent state.");
-                ResetForNewTurn();
+                ResetForNewTurnInternal();
                 return;
             }
 
@@ -937,18 +944,29 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     lastWord = trimmedText.Substring(lastSpaceIndex + 1);
                 }
 
-                _hasVerifiedInterruptionResult = true;
-                if (lastWord == "INTERRUPT")
+                // Acquire the transcription lock before modifying shared state and calling TryConcludeUserTurn.
+                // This callback fires from the LLM streaming thread (not from HandleTranscription),
+                // so the lock is NOT already held.
+                await _transcriptionProcessingLock.WaitAsync();
+                try
                 {
-                    _logger.LogDebug("Agent {AgentId}: AI interruption verification result: INTERRUPT.", _agentState.AgentId);
-                    _canInterruptAgentAfterVerificaiton = true;
+                    _hasVerifiedInterruptionResult = true;
+                    if (lastWord == "INTERRUPT")
+                    {
+                        _logger.LogDebug("Agent {AgentId}: AI interruption verification result: INTERRUPT.", _agentState.AgentId);
+                        _canInterruptAgentAfterVerificaiton = true;
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Agent {AgentId}: AI interruption verification result: NO INTERRUPT.", _agentState.AgentId);
+                        _canInterruptAgentAfterVerificaiton = false;
+                    }
+                    await TryConcludeUserTurn();
                 }
-                else
+                finally
                 {
-                    _logger.LogDebug("Agent {AgentId}: AI interruption verification result: NO INTERRUPT.", _agentState.AgentId);
-                    _canInterruptAgentAfterVerificaiton = false;
+                    _transcriptionProcessingLock.Release();
                 }
-                await TryConcludeUserTurn();
             }
         }
         // ML Turn End
@@ -993,10 +1011,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             CancelMlFallbackTimer();
 
-            if (_isUserTurnActive && !_mlHasIndicatedTurnEnd)
+            // Acquire the transcription lock before modifying shared state and calling TryConcludeUserTurn.
+            // This callback fires from the ML analysis thread (not from HandleTranscription),
+            // so the lock is NOT already held.
+            await _transcriptionProcessingLock.WaitAsync();
+            try
             {
-                _mlHasIndicatedTurnEnd = true;
-                await TryConcludeUserTurn();
+                if (_isUserTurnActive && !_mlHasIndicatedTurnEnd)
+                {
+                    _mlHasIndicatedTurnEnd = true;
+                    await TryConcludeUserTurn();
+                }
+            }
+            finally
+            {
+                _transcriptionProcessingLock.Release();
             }
         }
         private void StartMlFallbackTimer()

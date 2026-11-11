@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Entities.Interfaces
+namespace IqraCore.Entities.Interfaces
 {
     public enum InterfaceSTTProviderEnum
     {
@@ -6,6 +6,7 @@
         AzureSpeechServices = 1,
         Deepgram = 2,
         AssemblyAI = 3,
-        ElevenLabs = 4
+        ElevenLabs = 4,
+        OpenAIRealtimeCompatible = 5
     }
 }

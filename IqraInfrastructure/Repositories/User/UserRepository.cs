@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.User;
+using IqraCore.Entities.User;
 using IqraCore.Entities.User.Notifcation;
 using IqraInfrastructure.Helpers.MongoDB;
 using Microsoft.Extensions.Logging;
@@ -21,6 +21,34 @@ namespace IqraInfrastructure.Repositories.User
 
             IMongoDatabase database = client.GetDatabase(DatabaseName);
             _usersCollection = database.GetCollection<UserData>(CollectionName);
+
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // Unique index on Email — covers every auth/login/update/session-validation query
+                // This is the single highest-impact index: every authenticated API request
+                // flows through SessionValidationAndPermissionHelper → GetFullUserByEmail(email)
+                var emailIndex = Builders<UserData>.IndexKeys.Ascending(u => u.Email);
+                _usersCollection.Indexes.CreateOne(new CreateIndexModel<UserData>(
+                    emailIndex,
+                    new CreateIndexOptions { Unique = true }
+                ));
+
+                // Unique sparse index on EmailHash — covers SSO/white-label lookup path
+                var emailHashIndex = Builders<UserData>.IndexKeys.Ascending(u => u.EmailHash);
+                _usersCollection.Indexes.CreateOne(new CreateIndexModel<UserData>(
+                    emailHashIndex,
+                    new CreateIndexOptions { Unique = true, Sparse = true }
+                ));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for Users collection");
+            }
         }
 
         public async Task<bool> AddUserAsync(UserData user, IClientSessionHandle? mongoSession = null)

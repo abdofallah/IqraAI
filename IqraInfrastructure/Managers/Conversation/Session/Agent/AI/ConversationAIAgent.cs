@@ -1,4 +1,4 @@
-﻿using Humanizer;
+using Humanizer;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Context;
@@ -25,6 +25,7 @@ using IqraInfrastructure.Managers.VAD.Silero;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
+using IqraInfrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -123,7 +124,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             // Instantiate Helper Modules
             _scriptAccessor = new ScriptExecutionManager(sessionLoggerFactory.CreateLogger<ScriptExecutionManager>()); // Now primarily data access
-            _customToolHelper = new CustomToolExecutionHelper(sessionLoggerFactory); // New helper for tool execution
+            _customToolHelper = new CustomToolExecutionHelper(sessionLoggerFactory, serviceProvider.GetService<EndpointSecurityService>()); // New helper for tool execution with endpoint security
             _sendSMSToolExecutionHelper = new SendSMSToolExecutionHelper(sessionLoggerFactory, integrationManager, modemTelManager, twilioManager);
 
             // Instantiate Core Modules
@@ -456,7 +457,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _logger.LogInformation("AI Agent {AgentId} shut down complete.", AgentId);
         }
-        public async Task FinalizeCurrentTurn(ConversationTurnStatus finalStatus)
+        public async Task FinalizeCurrentTurn(ConversationTurnStatus finalStatus, bool callerHoldsTranscriptionLock = false)
         {
             if (_agentState.CurrentTurn != null)
             {
@@ -471,7 +472,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 await _conversationSessionManager.NotifyTurnUpdated(turnToFinalize);
             }
 
-            _turnManager.ResetForNewTurn();
+            // Use internal reset (no lock acquisition) when caller already holds _transcriptionProcessingLock
+            // to prevent SemaphoreSlim re-entrant deadlock.
+            if (callerHoldsTranscriptionLock)
+                _turnManager.ResetForNewTurnInternal();
+            else
+                _turnManager.ResetForNewTurn();
         }
 
         // Agent Input Management
@@ -979,12 +985,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         {
             await _audioOutputHandler.InterruptCurrentTurnSegment();
 
+            // Flush any agent audio already buffered in the mixer to prevent "ghost audio"
+            _conversationSessionManager.AudioEngine?.ClearInputQueue(_agentState.AgentId);
+
+            // Signal clients to flush their jitter buffers
+            _ = _conversationSessionManager.BroadcastTextToClientsAsync("{\"type\":\"audio_clear\"}");
+
             var currentTurnText = string.Join(" ", interruptedTurn.Response.SpokenSegments.Select(x => x.Text).ToArray());
             _agentState.LLMService!.AddAssistantMessage($"response_to_user: {currentTurnText}");
 
             _logger.LogDebug("Agent {AgentId}: Interrupted turn {TurnId} with text \"{TurnText}...\".", AgentId, interruptedTurn.Id, (currentTurnText.Length > 100 ? currentTurnText.Substring(0, 100) : currentTurnText));
 
-            await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted);
+            await FinalizeCurrentTurn(ConversationTurnStatus.Interrupted, callerHoldsTranscriptionLock: true);
         }
 
         // Voicemail Detector Handlers
@@ -1025,8 +1037,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 )
                 &&
                 (
-                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Completed ||
-                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Interrupted ||
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Completed &&
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Interrupted &&
                     _agentState.CurrentTurn.Status != ConversationTurnStatus.Error
                 )
             )
@@ -1050,8 +1062,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _agentState.CurrentTurn.Type == ConversationTurnType.ToolResult
                 &&
                 (
-                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Completed ||
-                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Interrupted ||
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Completed &&
+                    _agentState.CurrentTurn.Status != ConversationTurnStatus.Interrupted &&
                     _agentState.CurrentTurn.Status != ConversationTurnStatus.Error
                 )
             )

@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Helper.Call.Queue;
 
 namespace IqraCore.Models.Business.Queues
@@ -25,5 +25,9 @@ namespace IqraCore.Models.Business.Queues
         public string? SessionId { get; set; } = null;
         public ConversationSessionState? SessionStatus { get; set; } = null;
         public ConversationSessionEndType? SessionEndType { get; set; } = null;
+
+        // Post-Analysis (Enriched from ConversationState)
+        public ConversationPostAnalysisStatusEnum? PostAnalysisStatus { get; set; } = null;
+        public string? PostAnalysisSummaryPreview { get; set; } = null;
     }
 }

@@ -1,4 +1,4 @@
-﻿#pragma warning disable OPENAI001
+#pragma warning disable OPENAI001
 
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Interfaces;
@@ -11,7 +11,7 @@ using System.ClientModel.Primitives;
 
 namespace IqraInfrastructure.Managers.LLM.Providers
 {
-    public class OpenAIGPTConfig
+    public class OpenAIResponsesConfig
     {
         public string Model { get; set; } = "";
         public float? Temperature { get; set; }
@@ -23,13 +23,13 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public string? ReasoningSummary { get; set; } // "auto", "concise", "detailed"
     }
 
-    public class OpenAIGPTStreamingLLMService : ILLMService
+    public class OpenAIResponsesStreamingLLMService : ILLMService
     {
-        private readonly ILogger<OpenAIGPTStreamingLLMService> _logger;
+        private readonly ILogger<OpenAIResponsesStreamingLLMService> _logger;
         private readonly ResponsesClient _client;
         private readonly CancellationTokenSource _cts;
 
-        private OpenAIGPTConfig _config;
+        private OpenAIResponsesConfig _config;
         private string _systemPrompt;
         private List<ResponseItem> _messagesMemory;
 
@@ -38,7 +38,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public event EventHandler<ConversationAgentEventLLMStreamCancelled> MessageStreamedCancelled;
 
-        public OpenAIGPTStreamingLLMService(ILogger<OpenAIGPTStreamingLLMService> logger, string apiKey, string endpoint, OpenAIGPTConfig config)
+        public OpenAIResponsesStreamingLLMService(ILogger<OpenAIResponsesStreamingLLMService> logger, string apiKey, OpenAIResponsesConfig config)
         {
             _logger = logger;
             _cts = new();
@@ -52,7 +52,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
             OpenAIClient client = new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions()
             {
-                Endpoint = new Uri(endpoint),
+                Endpoint = new Uri("https://api.openai.com/v1"),
                 UserAgentApplicationId = "Iqra.bot",
                 NetworkTimeout = TimeSpan.FromSeconds(10),
                 RetryPolicy = new ClientRetryPolicy(),
@@ -166,9 +166,9 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public void ClearMessages() => _messagesMemory.Clear();
         public string GetModel() => _config.Model;
-        public string GetProviderFullName() => "OpenAI GPT";
+        public string GetProviderFullName() => "OpenAI Responses";
         public InterfaceLLMProviderEnum GetProviderType() => GetProviderTypeStatic();
-        public static InterfaceLLMProviderEnum GetProviderTypeStatic() => InterfaceLLMProviderEnum.OpenAIGPT;
+        public static InterfaceLLMProviderEnum GetProviderTypeStatic() => InterfaceLLMProviderEnum.OpenAIResponses;
 
         public void Dispose()
         {

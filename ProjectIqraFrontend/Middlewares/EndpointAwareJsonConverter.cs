@@ -1,4 +1,4 @@
-﻿using IqraCore.Attributes;
+using IqraCore.Attributes;
 using IqraCore.Entities.Helper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -89,6 +89,16 @@ namespace ProjectIqraFrontend.Middlewares
             if (value == null)
             {
                 writer.WriteNullValue();
+                return true;
+            }
+
+            // JsonElement already represents a fully-formed JSON value.
+            // Reflecting its properties would write struct metadata (e.g. ValueKind)
+            // instead of the actual value, and its indexer would throw
+            // TargetParameterCountException. WriteTo() is the correct path.
+            if (value is JsonElement jsonElement)
+            {
+                jsonElement.WriteTo(writer);
                 return true;
             }
 
@@ -272,6 +282,12 @@ namespace ProjectIqraFrontend.Middlewares
                 var serializableProperties = new List<PropertyInfo>();
                 foreach(var property in properties)
                 {
+                    // Skip indexer properties (e.g. "this[int index]" on JsonElement or
+                    // other types). They require index arguments that GetValue(obj) cannot
+                    // supply, which causes TargetParameterCountException at runtime.
+                    if (property.GetIndexParameters().Length > 0)
+                        continue;
+
                     var isSerializable = ShouldSerializeProperty(property, currentEndpoint);
 
                     if (isSerializable)

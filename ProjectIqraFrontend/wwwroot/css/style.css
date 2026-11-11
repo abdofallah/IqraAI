@@ -1,4 +1,4 @@
-﻿:root
+:root
 {
 	--tcolor-light-cream: rgb(241, 236, 232);
 	--tcolor-cream: #d1bfae;
@@ -1125,6 +1125,21 @@ table.table > thead > * > * {
 	padding: 6px;
 	border-radius: 4px;
 	font-weight: 500;
+}
+
+/* Audio Turn Sync: Active turn highlighting */
+.each-conversation-message.turn-active .this-conversation-container {
+	border-left: 3px solid #CBE54E !important;
+	background-color: rgba(203, 229, 78, 0.08) !important;
+	transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.each-conversation-message {
+	cursor: pointer;
+}
+
+.each-conversation-message:hover .this-conversation-container {
+	background-color: rgba(255, 255, 255, 0.03);
 }
 
 .toolAudioExtraOptionsBox {

@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.STT;
 using Microsoft.Extensions.Logging;
@@ -21,6 +21,22 @@ namespace IqraInfrastructure.Repositories.STT
 
             IMongoDatabase database = client.GetDatabase(DatabaseName);
             _sttProviderCollection = database.GetCollection<STTProviderData>(CollectionName);
+
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // Index on IntegrationId — covers GetProviderDataByIntegration lookups
+                var integrationIdIndex = Builders<STTProviderData>.IndexKeys.Ascending(x => x.IntegrationId);
+                _sttProviderCollection.Indexes.CreateOne(new CreateIndexModel<STTProviderData>(integrationIdIndex));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for STTProvider collection");
+            }
         }
 
         public async Task<bool> AddProviderAsync(STTProviderData providerData)

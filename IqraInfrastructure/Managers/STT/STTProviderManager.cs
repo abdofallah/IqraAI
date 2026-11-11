@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
@@ -698,6 +698,43 @@ namespace IqraInfrastructure.Managers.STT
                             );
 
                             return result.SetSuccessResult(elevenLabsService);
+                        }
+
+                    case InterfaceSTTProviderEnum.OpenAIRealtimeCompatible:
+                        {
+                            string apiKey = "";
+                            if (integrationData.EncryptedFields.TryGetValue("api_key", out var encryptedApiKey) &&
+                                !string.IsNullOrEmpty(encryptedApiKey))
+                            {
+                                apiKey = _integrationsManager.DecryptField(encryptedApiKey);
+                            }
+
+                            string endpoint = integrationData.Fields["endpoint"];
+                            if (string.IsNullOrEmpty(endpoint) || !Uri.IsWellFormedUriString(endpoint, UriKind.Absolute))
+                            {
+                                return result.SetFailureResult(
+                                    "BuildProviderServiceByIntegration:INVALID_ENDPOINT",
+                                    "A valid endpoint URL is required for OpenAI Realtime Compatible provider"
+                                );
+                            }
+
+                            var config = new OpenAIRealtimeCompatibleSTTConfig()
+                            {
+                                Model = GetString("model")!,
+                                Language = GetString("language"),
+                                VadThreshold = GetDouble("vad_threshold", 0.5) ?? 0.5,
+                                SilenceDurationMs = GetInt("silence_duration_ms", 500) ?? 500,
+                                PrefixPaddingMs = GetInt("prefix_padding_ms", 300) ?? 300
+                            };
+
+                            var openAIRealtimeService = new OpenAIRealtimeCompatibleSTTService(
+                                apiKey,
+                                endpoint,
+                                config,
+                                ttsAudioFormat
+                            );
+
+                            return result.SetSuccessResult(openAIRealtimeService);
                         }
 
                     default:

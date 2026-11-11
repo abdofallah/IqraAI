@@ -1,4 +1,4 @@
-﻿using Amazon.Runtime;
+using Amazon.Runtime;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Conversation.Turn;
@@ -697,9 +697,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        private static int TARGET_BUFFER_MS = SessionAudioMixer.MAX_BUFFER_MS;
-        private static int FRAME_HALF_WAIT = SessionAudioMixer.FRAME_DURATION_MS / 2;
-
         // Processing Task
         private async Task ProcessAudioProducerLoopAsync(CancellationToken cancellationToken)
         {
@@ -707,15 +704,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    // 1. Backpressure Check using exact duration
+                    // 1. Backpressure Check: if the mixer has enough of our audio buffered, wait.
+                    //    This keeps the "future audio" buffer small so interruptions are snappy.
                     if (_conversationSession.AudioEngine != null)
                     {
                         double currentMixerBufferMs = _conversationSession.AudioEngine.GetQueueDurationMs(_agentState.AgentId);
 
-                        if (currentMixerBufferMs >= TARGET_BUFFER_MS && !_isPlaybackPaused)
+                        if (currentMixerBufferMs >= BACKPRESSURE_THRESHOLD_MS && !_isPlaybackPaused)
                         {
-                            // Mixer is full enough. Wait half a frame and evaluate again.
-                            await Task.Delay(FRAME_HALF_WAIT, cancellationToken);
+                            await Task.Delay(FRAME_DURATION_MS, cancellationToken);
                             continue;
                         }
                     }
@@ -723,7 +720,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     var currentTurn = _agentState.CurrentTurn;
                     if (currentTurn == null)
                     {
-                        await Task.Delay(FRAME_HALF_WAIT, cancellationToken);
+                        await Task.Delay(FRAME_DURATION_MS, cancellationToken);
                         continue;
                     }
 
@@ -796,12 +793,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             _currentSpeechSegment!.Value.BitsPerSample
                         ));
 
-                        await Task.Yield();
+                        await Task.Delay(FRAME_DURATION_MS, cancellationToken);
                     }
                     else
                     {
                         // Idle (No speech available to send)
-                        await Task.Yield();
+                        await Task.Delay(FRAME_DURATION_MS, cancellationToken);
                     }
 
                     // 5. Check Turn Completion (Production Finished)
@@ -815,10 +812,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     {
                         if (_conversationSession.AudioEngine != null)
                         {
-                            // Wait until the mixer has fully drained the Agent's audio before marking complete
-                            while (_conversationSession.AudioEngine.GetQueueDurationMs(_agentState.AgentId) > 0 && !cancellationToken.IsCancellationRequested)
+                            // Wait until the mixer has nearly drained the Agent's audio before marking complete.
+                            // Use a small threshold (40ms) to avoid infinite waits from timing precision.
+                            while (_conversationSession.AudioEngine.GetQueueDurationMs(_agentState.AgentId) > 40 && !cancellationToken.IsCancellationRequested)
                             {
-                                await Task.Yield();
+                                await Task.Delay(FRAME_DURATION_MS, cancellationToken);
                             }
                         }
 

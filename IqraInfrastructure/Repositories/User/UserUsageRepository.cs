@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Usage;
 using IqraCore.Entities.User.Usage;
 using IqraCore.Entities.User.Usage.Enums;
@@ -24,10 +24,49 @@ namespace IqraInfrastructure.Repositories.User
             var database = client.GetDatabase(DatabaseName);
             _userUsageCollection = database.GetCollection<UserUsageRecordData>(CollectionName);
 
-            var indexKeysDefinition = Builders<UserUsageRecordData>.IndexKeys
-                .Ascending(r => r.BusinessId)
-                .Ascending(r => r.CreatedAt);
-            _userUsageCollection.Indexes.CreateOneAsync(new CreateIndexModel<UserUsageRecordData>(indexKeysDefinition));
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // PRIMARY: Compound index on BusinessMasterUserEmail + CreatedAt + _id
+                // Covers 80%+ of all queries: GetUserUsageMainStatsAsync, GetUserUsageAggregatedChartDataAsync,
+                // GetUserUsageHistoryAsync, GetUserUsageHistoryPaginatedAsync, GetUserUsageUniqueSourceCountsAsync
+                // All aggregation pipelines filter by BusinessMasterUserEmail first, then date range
+                var primaryIndex = Builders<UserUsageRecordData>.IndexKeys
+                    .Ascending(r => r.BusinessMasterUserEmail)
+                    .Descending(r => r.CreatedAt)
+                    .Descending(r => r.Id);
+                _userUsageCollection.Indexes.CreateOne(new CreateIndexModel<UserUsageRecordData>(primaryIndex));
+
+                // Source-type filtered aggregation
+                // Covers: GetAggregatedSourceCountByPeriodAsync, GetUserUsageSourceTypeCountsAsync
+                var sourceTypeIndex = Builders<UserUsageRecordData>.IndexKeys
+                    .Ascending(r => r.BusinessMasterUserEmail)
+                    .Ascending(r => r.SourceType)
+                    .Descending(r => r.CreatedAt);
+                _userUsageCollection.Indexes.CreateOne(new CreateIndexModel<UserUsageRecordData>(sourceTypeIndex));
+
+                // Per-business filtering (keeps existing pattern but with email prefix)
+                // Covers: GetUserBusinessUsageHistoryAsync, filtered dashboard queries
+                var perBusinessIndex = Builders<UserUsageRecordData>.IndexKeys
+                    .Ascending(r => r.BusinessMasterUserEmail)
+                    .Ascending(r => r.BusinessId)
+                    .Descending(r => r.CreatedAt);
+                _userUsageCollection.Indexes.CreateOne(new CreateIndexModel<UserUsageRecordData>(perBusinessIndex));
+
+                // Keep existing BusinessId + CreatedAt for admin/system queries
+                var existingBusinessIndex = Builders<UserUsageRecordData>.IndexKeys
+                    .Ascending(r => r.BusinessId)
+                    .Ascending(r => r.CreatedAt);
+                _userUsageCollection.Indexes.CreateOne(new CreateIndexModel<UserUsageRecordData>(existingBusinessIndex));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for UserUsageRecords collection");
+            }
         }
 
         // Basic CRUD Operations

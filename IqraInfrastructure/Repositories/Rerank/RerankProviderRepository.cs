@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.Rerank;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -19,6 +19,22 @@ namespace IqraInfrastructure.Repositories.Rerank
             _logger = logger;
             IMongoDatabase database = client.GetDatabase(DatabaseName);
             _rerankProviderCollection = database.GetCollection<RerankProviderData>(CollectionName);
+
+            CreateIndexes();
+        }
+
+        private void CreateIndexes()
+        {
+            try
+            {
+                // Index on IntegrationId — covers GetProviderDataByIntegration lookups
+                var integrationIdIndex = Builders<RerankProviderData>.IndexKeys.Ascending(x => x.IntegrationId);
+                _rerankProviderCollection.Indexes.CreateOne(new CreateIndexModel<RerankProviderData>(integrationIdIndex));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating indexes for RerankProvider collection");
+            }
         }
 
         public async Task<bool> AddProviderAsync(RerankProviderData providerData)
