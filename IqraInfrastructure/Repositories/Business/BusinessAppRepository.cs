@@ -801,13 +801,16 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessIntegration(long businessId, BusinessAppIntegration newIntegration)
+        public async Task<bool> UpdateBusinessIntegrationExceptReferences(long businessId, BusinessAppIntegration newIntegration)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, g => g.Id == newIntegration.Id)
             );
-            var update = Builders<BusinessApp>.Update.Set(b => b.Integrations.FirstMatchingElement(), newIntegration);
+            var update = Builders<BusinessApp>.Update
+                .Set(b => b.Integrations.FirstMatchingElement().FriendlyName, newIntegration.FriendlyName)
+                .Set(b => b.Integrations.FirstMatchingElement().Fields, newIntegration.Fields)
+                .Set(b => b.Integrations.FirstMatchingElement().EncryptedFields, newIntegration.EncryptedFields);
 
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 

@@ -77,6 +77,13 @@ namespace IqraInfrastructure.Managers.Business
                     return result;
                 }
 
+                if (postType == "edit" && businessIntegrationData!.Type != integrationTypeData.Id)
+                {
+                    result.Code = "AddOrUpdateBusinessIntegration:12";
+                    result.Message = "The type of an existing integration cannot be changed.";
+                    return result;
+                }
+
                 // Create new integration object
                 var newIntegration = new BusinessAppIntegration
                 {
@@ -180,7 +187,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    var updateResult = await _businessAppRepository.UpdateBusinessIntegration(businessId, newIntegration);
+                    var updateResult = await _businessAppRepository.UpdateBusinessIntegrationExceptReferences(businessId, newIntegration);
                     if (!updateResult)
                     {
                         result.Code = "AddOrUpdateBusinessIntegration:10";
