@@ -2,6 +2,7 @@ using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.Trello.Models;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text.Json;
 using System.Web;
 
@@ -60,7 +61,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Trello.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Trello Error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Trello Error", response.StatusCode, content);
                 }
 
                 var card = JsonSerializer.Deserialize<TrelloCard>(content);

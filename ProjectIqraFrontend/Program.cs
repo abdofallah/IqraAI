@@ -21,6 +21,7 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.FlowApp;
+using IqraInfrastructure.Managers.FlowApp.Apps.Webhook;
 using IqraInfrastructure.Managers.Infrastructure;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Integrations.OAuth;
@@ -170,6 +171,8 @@ namespace ProjectIqraFrontend
             });
             builder.Services.AddHttpClient("ProxyForwarder");
             builder.Services.AddHttpClient("WebSessionForwardClient");
+            builder.Services.AddHttpClient(WebhookApp.HttpClientName)
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
             // UnstructuredClient
             builder.Services.AddHttpClient("UnstructuredClient", client =>
             {

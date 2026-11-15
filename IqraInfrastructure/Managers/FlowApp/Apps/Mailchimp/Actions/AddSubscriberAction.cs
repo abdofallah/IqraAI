@@ -2,6 +2,7 @@ using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.Mailchimp.Models;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -79,7 +80,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Mailchimp.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Mailchimp Error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Mailchimp Error", response.StatusCode, content);
                 }
 
                 var result = JsonSerializer.Deserialize<MemberResponse>(content);

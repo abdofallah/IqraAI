@@ -10,6 +10,9 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Webhook.Actions
 {
     public partial class SendRequestAction : IFlowAction
     {
+        private const int MaxRedirects = 20;
+        private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(100);
+
         private readonly WebhookApp _app;
 
         public SendRequestAction(WebhookApp app)
@@ -48,13 +51,17 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Webhook.Actions
                     return ActionExecutionResult.Failure("VALIDATION_ERROR", "Webhook URL must be a valid absolute http(s) URL.");
                 }
 
+                var (isAllowed, securityReason) = await _app.IsEndpointAllowedAsync(uri.AbsoluteUri);
+                if (!isAllowed)
+                {
+                    return ActionExecutionResult.Failure("ENDPOINT_NOT_ALLOWED", $"Webhook URL failed the endpoint security check: {securityReason}");
+                }
+
                 // 2. HTTP Method
                 var methodName = input.TryGetProperty("method", out var methodProp) && !string.IsNullOrWhiteSpace(methodProp.GetString())
                     ? methodProp.GetString()!.Trim().ToUpperInvariant()
                     : "POST";
                 var method = new HttpMethod(methodName);
-
-                var httpRequest = new HttpRequestMessage(method, uri);
 
                 // 3. Build the JSON body.
                 string bodyJson = "{}";
@@ -73,12 +80,8 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Webhook.Actions
                     }
                 }
 
-                if (hasBody)
-                {
-                    httpRequest.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
-                }
-
                 // 4. Optional custom headers
+                var headers = new List<KeyValuePair<string, string>>();
                 if (input.TryGetProperty("headers", out var headersProp) && headersProp.ValueKind == JsonValueKind.Object)
                 {
                     foreach (var header in headersProp.EnumerateObject())
@@ -86,57 +89,156 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Webhook.Actions
                         var value = header.Value.ValueKind == JsonValueKind.String ? header.Value.GetString() : header.Value.GetRawText();
                         if (string.IsNullOrEmpty(value)) continue;
 
-                        if (httpRequest.Content != null && header.Name.StartsWith("Content-", StringComparison.OrdinalIgnoreCase))
-                        {
-                            httpRequest.Content.Headers.TryAddWithoutValidation(header.Name, value);
-                        }
-                        else
-                        {
-                            httpRequest.Headers.TryAddWithoutValidation(header.Name, value);
-                        }
+                        headers.Add(new KeyValuePair<string, string>(header.Name, value));
                     }
                 }
 
                 // 5. Optional auth.
                 if (input.TryGetProperty("bearerToken", out var bearerProp) && !string.IsNullOrWhiteSpace(bearerProp.GetString()))
                 {
-                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {bearerProp.GetString()}");
+                    headers.Add(new KeyValuePair<string, string>("Authorization", $"Bearer {bearerProp.GetString()}"));
                 }
 
+                string? signatureHeaderName = null;
                 if (input.TryGetProperty("hmacSecret", out var secretProp) && !string.IsNullOrWhiteSpace(secretProp.GetString()))
                 {
-                    var headerName = input.TryGetProperty("hmacHeader", out var hmacHeaderProp) && !string.IsNullOrWhiteSpace(hmacHeaderProp.GetString())
+                    signatureHeaderName = input.TryGetProperty("hmacHeader", out var hmacHeaderProp) && !string.IsNullOrWhiteSpace(hmacHeaderProp.GetString())
                         ? hmacHeaderProp.GetString()!
                         : "X-Signature";
 
                     using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretProp.GetString()!));
                     var signature = Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes(hasBody ? bodyJson : string.Empty))).ToLowerInvariant();
-                    httpRequest.Headers.TryAddWithoutValidation(headerName, signature);
+                    headers.Add(new KeyValuePair<string, string>(signatureHeaderName, signature));
                 }
 
                 // 6. Execute.
                 var client = _app.CreateClient();
-                var response = await client.SendAsync(httpRequest);
-                var responseBody = await response.Content.ReadAsStringAsync();
+                using var timeout = new CancellationTokenSource(RequestTimeout);
 
-                if (!response.IsSuccessStatusCode)
+                var currentUri = uri;
+                var currentMethod = method;
+                var sendBody = hasBody;
+                var sendCredentials = true;
+                var redirects = 0;
+                HttpResponseMessage response;
+
+                while (true)
                 {
-                    return ActionExecutionResult.Failure("HTTP_ERROR", $"Webhook returned {(int)response.StatusCode} {response.StatusCode}: {Truncate(responseBody)}");
+                    using var httpRequest = BuildRequest(currentMethod, currentUri, sendBody ? bodyJson : null, headers, signatureHeaderName, sendCredentials);
+                    response = await client.SendAsync(httpRequest, timeout.Token);
+
+                    if (!Equals(response.RequestMessage?.RequestUri, currentUri))
+                    {
+                        response.Dispose();
+                        return ActionExecutionResult.Failure("ENDPOINT_NOT_ALLOWED", "The webhook request was redirected without the endpoint security check, so its reply is not used.");
+                    }
+
+                    if (!IsRedirect(response.StatusCode) || response.Headers.Location == null)
+                    {
+                        break;
+                    }
+
+                    var nextUri = new Uri(currentUri, response.Headers.Location);
+                    var statusCode = response.StatusCode;
+                    response.Dispose();
+
+                    if (redirects == MaxRedirects)
+                    {
+                        return ActionExecutionResult.Failure("TOO_MANY_REDIRECTS", $"Webhook URL redirected more than {MaxRedirects} times.");
+                    }
+
+                    if (nextUri.Scheme != Uri.UriSchemeHttp && nextUri.Scheme != Uri.UriSchemeHttps)
+                    {
+                        return ActionExecutionResult.Failure("REDIRECT_NOT_FOLLOWED", "Webhook URL redirected to an address that is not http(s).");
+                    }
+
+                    if (currentUri.Scheme == Uri.UriSchemeHttps && nextUri.Scheme == Uri.UriSchemeHttp)
+                    {
+                        return ActionExecutionResult.Failure("REDIRECT_NOT_FOLLOWED", "Webhook URL redirected from https to http, which is not followed.");
+                    }
+
+                    var (redirectAllowed, redirectReason) = await _app.IsEndpointAllowedAsync(nextUri.AbsoluteUri);
+                    if (!redirectAllowed)
+                    {
+                        return ActionExecutionResult.Failure("ENDPOINT_NOT_ALLOWED", $"Webhook redirect target failed the endpoint security check: {redirectReason}");
+                    }
+
+                    if (!string.Equals(nextUri.Host, currentUri.Host, StringComparison.OrdinalIgnoreCase))
+                    {
+                        sendCredentials = false;
+                    }
+
+                    if ((statusCode == HttpStatusCode.SeeOther && currentMethod != HttpMethod.Head) ||
+                        ((statusCode == HttpStatusCode.MovedPermanently || statusCode == HttpStatusCode.Found) && currentMethod == HttpMethod.Post))
+                    {
+                        currentMethod = HttpMethod.Get;
+                        sendBody = false;
+                    }
+
+                    currentUri = nextUri;
+                    redirects++;
                 }
 
-                // 7. Result
-                object? parsedBody = TryParseJson(responseBody);
-
-                return ActionExecutionResult.SuccessPort("success", new
+                using (response)
                 {
-                    statusCode = (int)response.StatusCode,
-                    body = parsedBody
-                });
+                    var responseBody = await response.Content.ReadAsStringAsync(timeout.Token);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        return ActionExecutionResult.Failure("HTTP_ERROR", $"Webhook returned {(int)response.StatusCode} {response.StatusCode}: {Truncate(responseBody)}");
+                    }
+
+                    // 7. Result
+                    object? parsedBody = TryParseJson(responseBody);
+
+                    return ActionExecutionResult.SuccessPort("success", new
+                    {
+                        statusCode = (int)response.StatusCode,
+                        body = parsedBody
+                    });
+                }
             }
             catch (Exception ex)
             {
                 return ActionExecutionResult.Failure("EXCEPTION", ex.Message);
             }
+        }
+
+        private static HttpRequestMessage BuildRequest(HttpMethod method, Uri uri, string? bodyJson, List<KeyValuePair<string, string>> headers, string? signatureHeaderName, bool sendCredentials)
+        {
+            var httpRequest = new HttpRequestMessage(method, uri);
+            if (bodyJson != null)
+            {
+                httpRequest.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+            }
+
+            foreach (var header in headers)
+            {
+                if (!sendCredentials && (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) || header.Key.Equals(signatureHeaderName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                if (httpRequest.Content != null && header.Key.StartsWith("Content-", StringComparison.OrdinalIgnoreCase))
+                {
+                    httpRequest.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+                else
+                {
+                    httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            return httpRequest;
+        }
+
+        private static bool IsRedirect(HttpStatusCode statusCode)
+        {
+            return statusCode == HttpStatusCode.MovedPermanently ||
+                statusCode == HttpStatusCode.Found ||
+                statusCode == HttpStatusCode.SeeOther ||
+                statusCode == HttpStatusCode.TemporaryRedirect ||
+                statusCode == HttpStatusCode.PermanentRedirect;
         }
 
         private static object? TryParseJson(string content)

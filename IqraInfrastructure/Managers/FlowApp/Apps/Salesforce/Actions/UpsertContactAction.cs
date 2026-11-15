@@ -1,6 +1,7 @@
 using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text;
 using System.Text.Json;
 using System.Web;
@@ -40,7 +41,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Salesforce.Actions
                 var client = _app.CreateClient(accessToken, instanceUrl);
                 if (client == null)
                 {
-                    return ActionExecutionResult.Failure("NOT_CONNECTED", "Salesforce instance URL is missing. Reconnect the integration.");
+                    return ActionExecutionResult.Failure("NOT_CONNECTED", "Salesforce instance URL is missing or is not a Salesforce address. Reconnect the integration.");
                 }
 
                 var email = input.GetProperty("email").GetString();
@@ -65,7 +66,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Salesforce.Actions
 
                 if (!queryResponse.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Salesforce query error: {queryResponse.StatusCode} - {queryContent}");
+                    return ProviderReplyHelper.ActionFailure("Salesforce query error", queryResponse.StatusCode, queryContent);
                 }
 
                 using var queryDoc = JsonDocument.Parse(queryContent);
@@ -90,7 +91,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Salesforce.Actions
                     if (!patchResponse.IsSuccessStatusCode)
                     {
                         var patchContent = await patchResponse.Content.ReadAsStringAsync();
-                        return ActionExecutionResult.Failure("API_ERROR", $"Salesforce update error: {patchResponse.StatusCode} - {patchContent}");
+                        return ProviderReplyHelper.ActionFailure("Salesforce update error", patchResponse.StatusCode, patchContent);
                     }
                     return ActionExecutionResult.SuccessPort("updated", new { id = existingId });
                 }
@@ -111,7 +112,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Salesforce.Actions
 
                 if (!createResponse.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Salesforce create error: {createResponse.StatusCode} - {createContent}");
+                    return ProviderReplyHelper.ActionFailure("Salesforce create error", createResponse.StatusCode, createContent);
                 }
 
                 using var createDoc = JsonDocument.Parse(createContent);

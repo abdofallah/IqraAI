@@ -2,6 +2,7 @@ using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.Airtable.Models;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text;
 using System.Text.Json;
 
@@ -65,7 +66,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Airtable.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Airtable Error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Airtable Error", response.StatusCode, content);
                 }
 
                 var result = JsonSerializer.Deserialize<AirtableRecord>(content);

@@ -2,6 +2,7 @@ using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.Slack.Models;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -59,7 +60,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Slack.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Slack HTTP Error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Slack HTTP Error", response.StatusCode, content);
                 }
 
                 var result = JsonSerializer.Deserialize<PostMessageResponse>(content);

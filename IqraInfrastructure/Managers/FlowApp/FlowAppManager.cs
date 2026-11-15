@@ -312,7 +312,13 @@ namespace IqraInfrastructure.Managers.FlowApp
 
                 // 5. Execute Action Logic
                 // We pass the resolved, validated JSON to the logic class
-                return await action.ExecuteAsync(jsonElement, GetDescryptedIntegration(integration));
+                var actionResult = await action.ExecuteAsync(jsonElement, GetDescryptedIntegration(integration));
+                if (!actionResult.Success && actionResult.ProviderReply != null)
+                {
+                    _logger.LogWarning("Provider reply for {AppKey}:{ActionKey} ({Code}): {ProviderReply}", appKey, actionKey, actionResult.Code, actionResult.ProviderReply);
+                }
+
+                return actionResult;
             }
             catch (Exception ex)
             {

@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helpers;
+using System.Text.Json.Serialization;
 
 namespace IqraCore.Entities.FlowApp
 {
@@ -9,6 +10,9 @@ namespace IqraCore.Entities.FlowApp
         /// Defaults to "default" or "success" if not specified.
         /// </summary>
         public string OutputPortKey { get; set; } = "default";
+
+        [JsonIgnore]
+        public string? ProviderReply { get; set; }
 
         /// <summary>
         /// Helper to create a successful result pointing to a specific port.

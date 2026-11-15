@@ -1,6 +1,7 @@
 using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text;
 using System.Text.Json;
 
@@ -78,7 +79,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Zendesk.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Zendesk Error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Zendesk Error", response.StatusCode, content);
                 }
 
                 using var doc = JsonDocument.Parse(content);

@@ -2,6 +2,7 @@ using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Integrations;
 using IqraCore.Utilities;
+using IqraInfrastructure.Helpers.Integrations;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Redis;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,7 @@ namespace IqraInfrastructure.Managers.Integrations.OAuth
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _refreshLocks = new();
 
         private static readonly TimeSpan TokenRequestTimeout = TimeSpan.FromSeconds(30);
+        private const int StatusMessageMaxLength = 2000;
         private static readonly TimeSpan RefreshLockExpiry = TimeSpan.FromSeconds(60);
         private static readonly TimeSpan RefreshLockWaitTimeout = TimeSpan.FromSeconds(60);
         private static readonly TimeSpan AccessTokenExpirySkew = TimeSpan.FromSeconds(120);
@@ -140,7 +142,7 @@ namespace IqraInfrastructure.Managers.Integrations.OAuth
                 AccessTokenExpiresAt = currentOAuth?.AccessTokenExpiresAt,
                 ExtraFields = currentOAuth?.ExtraFields ?? new Dictionary<string, string>(),
                 Status = BusinessAppIntegrationOAuthData.StatusFailed,
-                StatusMessage = message,
+                StatusMessage = ProviderReplyHelper.Cap(message, StatusMessageMaxLength),
                 StatusCheckedAt = DateTime.UtcNow
             };
 
@@ -359,20 +361,16 @@ namespace IqraInfrastructure.Managers.Integrations.OAuth
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("OAuth token request for {IntegrationType} failed: {Status} - {Body}", integration.Type, response.StatusCode, content);
+                    _logger.LogWarning("OAuth token request for {IntegrationType} failed: {Status} - {Body}", integration.Type, response.StatusCode, ProviderReplyHelper.CapForLog(content));
 
-                    var failure = new TokenResult { Success = false, ErrorMessage = $"{response.StatusCode}: {content}", ProviderError = $"HTTP {(int)response.StatusCode}" };
+                    var describedFailure = ProviderReplyHelper.Describe(response.StatusCode, content);
+                    var failure = new TokenResult { Success = false, ErrorMessage = describedFailure, ProviderError = describedFailure };
                     try
                     {
                         using var errorDoc = JsonDocument.Parse(content);
                         if (errorDoc.RootElement.ValueKind == JsonValueKind.Object && errorDoc.RootElement.TryGetProperty("error", out var errorElement) && errorElement.ValueKind == JsonValueKind.String)
                         {
                             var errorCode = errorElement.GetString() ?? string.Empty;
-                            var errorDescription = errorDoc.RootElement.TryGetProperty("error_description", out var descriptionElement) && descriptionElement.ValueKind == JsonValueKind.String
-                                ? descriptionElement.GetString()
-                                : null;
-
-                            failure.ProviderError = string.IsNullOrEmpty(errorDescription) ? errorCode : $"{errorCode}: {errorDescription}";
                             failure.IsRejected =
                                 (response.StatusCode == HttpStatusCode.BadRequest || response.StatusCode == HttpStatusCode.Unauthorized) &&
                                 RejectedGrantErrors.Contains(errorCode);

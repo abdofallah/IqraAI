@@ -1,6 +1,7 @@
 using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text.Json;
 using System.Web;
 
@@ -51,7 +52,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Stripe.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Stripe Error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Stripe Error", response.StatusCode, content);
                 }
 
                 using var doc = JsonDocument.Parse(content);

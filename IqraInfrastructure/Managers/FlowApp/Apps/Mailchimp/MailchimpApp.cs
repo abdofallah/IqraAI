@@ -5,6 +5,7 @@ using IqraInfrastructure.Managers.FlowApp.Apps.Mailchimp.Fetchers;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace IqraInfrastructure.Managers.FlowApp.Apps.Mailchimp
 {
@@ -14,6 +15,8 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Mailchimp
         public string Name => "Mailchimp";
         public string IconUrl => "https://cdn.simpleicons.org/mailchimp";
         public string? IntegrationType => "mailchimp"; // Matches Admin Dashboard Definition
+
+        private static readonly Regex DataCenterPattern = new(@"^[A-Za-z0-9]+\z", RegexOptions.Compiled);
 
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<MailchimpApp> _logger;
@@ -40,12 +43,11 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Mailchimp
         public HttpClient CreateClient(string apiKey)
         {
             var dashIndex = apiKey.LastIndexOf('-');
-            if (dashIndex < 0 || dashIndex == apiKey.Length - 1)
+            var dataCenter = dashIndex < 0 ? string.Empty : apiKey.Substring(dashIndex + 1);
+            if (!DataCenterPattern.IsMatch(dataCenter))
             {
-                throw new InvalidOperationException("Invalid Mailchimp API key: missing data-center suffix (e.g. '-us21').");
+                throw new InvalidOperationException("Invalid Mailchimp API key: it must end with its data-center suffix, for example -us21.");
             }
-
-            var dataCenter = apiKey.Substring(dashIndex + 1);
 
             var client = _httpClientFactory.CreateClient();
             client.BaseAddress = new Uri($"https://{dataCenter}.api.mailchimp.com/");

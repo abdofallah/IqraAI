@@ -1,6 +1,7 @@
 using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -79,7 +80,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.SendGrid.Actions
                 }
 
                 var errorContent = await response.Content.ReadAsStringAsync();
-                return ActionExecutionResult.Failure("API_ERROR", $"SendGrid Error: {response.StatusCode} - {errorContent}");
+                return ProviderReplyHelper.ActionFailure("SendGrid Error", response.StatusCode, errorContent);
             }
             catch (Exception ex)
             {

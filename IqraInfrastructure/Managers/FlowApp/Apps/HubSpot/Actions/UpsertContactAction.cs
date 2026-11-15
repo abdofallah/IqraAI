@@ -2,6 +2,7 @@ using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.HubSpot.Models;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text;
 using System.Text.Json;
 
@@ -73,7 +74,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.HubSpot.Actions
 
                 if (!searchResponse.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"HubSpot search error: {searchResponse.StatusCode} - {searchContent}");
+                    return ProviderReplyHelper.ActionFailure("HubSpot search error", searchResponse.StatusCode, searchContent);
                 }
 
                 var searchResult = JsonSerializer.Deserialize<SearchContactsResponse>(searchContent);
@@ -92,7 +93,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.HubSpot.Actions
 
                     if (!updateResponse.IsSuccessStatusCode)
                     {
-                        return ActionExecutionResult.Failure("API_ERROR", $"HubSpot update error: {updateResponse.StatusCode} - {updateContent}");
+                        return ProviderReplyHelper.ActionFailure("HubSpot update error", updateResponse.StatusCode, updateContent);
                     }
 
                     var updated = JsonSerializer.Deserialize<HubSpotContact>(updateContent);
@@ -109,7 +110,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.HubSpot.Actions
 
                 if (!createResponse.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"HubSpot create error: {createResponse.StatusCode} - {createContent}");
+                    return ProviderReplyHelper.ActionFailure("HubSpot create error", createResponse.StatusCode, createContent);
                 }
 
                 var created = JsonSerializer.Deserialize<HubSpotContact>(createContent);

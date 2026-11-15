@@ -1,6 +1,7 @@
 using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text;
 using System.Text.Json;
 
@@ -80,7 +81,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.GoogleSheets.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Google Sheets error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Google Sheets error", response.StatusCode, content);
                 }
 
                 using var doc = JsonDocument.Parse(content);

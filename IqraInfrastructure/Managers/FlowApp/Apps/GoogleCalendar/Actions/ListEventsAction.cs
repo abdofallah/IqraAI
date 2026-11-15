@@ -2,6 +2,7 @@ using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.GoogleCalendar.Models;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text.Json;
 using System.Web;
 
@@ -67,7 +68,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.GoogleCalendar.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Google Calendar error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Google Calendar error", response.StatusCode, content);
                 }
 
                 var list = JsonSerializer.Deserialize<EventListResponse>(content);

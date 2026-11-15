@@ -2,6 +2,7 @@ using IqraCore.Interfaces.FlowApp;
 using IqraCore.Interfaces.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.Salesforce.Actions;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
 
 namespace IqraInfrastructure.Managers.FlowApp.Apps.Salesforce
 {
@@ -16,6 +17,8 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Salesforce
         private readonly ILogger<SalesforceApp> _logger;
 
         public const string ApiVersion = "v60.0";
+
+        private static readonly string[] InstanceHostSuffixes = { ".salesforce.com", ".force.com", ".salesforce.mil" };
 
         public IReadOnlyList<IFlowAction> Actions { get; }
         public IReadOnlyList<IFlowDataFetcher> DataFetchers { get; }
@@ -36,12 +39,25 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Salesforce
 
         public HttpClient? CreateClient(string accessToken, string? instanceUrl)
         {
-            if (string.IsNullOrWhiteSpace(instanceUrl)) return null;
+            if (!IsSalesforceInstanceUrl(instanceUrl)) return null;
 
             var client = _httpClientFactory.CreateClient();
             client.BaseAddress = new Uri(instanceUrl.TrimEnd('/') + "/");
             client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
             return client;
+        }
+
+        private static bool IsSalesforceInstanceUrl([NotNullWhen(true)] string? instanceUrl)
+        {
+            if (string.IsNullOrWhiteSpace(instanceUrl) || !Uri.TryCreate(instanceUrl, UriKind.Absolute, out var instanceUri))
+            {
+                return false;
+            }
+
+            return instanceUri.Scheme == Uri.UriSchemeHttps &&
+                string.IsNullOrEmpty(instanceUri.UserInfo) &&
+                instanceUri.IsDefaultPort &&
+                InstanceHostSuffixes.Any(suffix => instanceUri.Host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
         }
     }
 }

@@ -15,6 +15,7 @@ using IqraInfrastructure.Managers.Call.Backend;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.FlowApp;
+using IqraInfrastructure.Managers.FlowApp.Apps.Webhook;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Integrations.OAuth;
 using IqraInfrastructure.Managers.KnowledgeBase;
@@ -150,6 +151,8 @@ namespace ProjectIqraBackendApp
                 client.Timeout = TimeSpan.FromSeconds(10);
                 client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
             });
+            builder.Services.AddHttpClient(WebhookApp.HttpClientName)
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 
             // Memory Cache
             builder.Services.AddMemoryCache();

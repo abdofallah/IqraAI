@@ -2,6 +2,7 @@ using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.Pipedrive.Models;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text;
 using System.Text.Json;
 
@@ -64,7 +65,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Pipedrive.Actions
 
                     if (!personResponse.IsSuccessStatusCode)
                     {
-                        return ActionExecutionResult.Failure("API_ERROR", $"Pipedrive person error: {personResponse.StatusCode} - {personContent}");
+                        return ProviderReplyHelper.ActionFailure("Pipedrive person error", personResponse.StatusCode, personContent);
                     }
 
                     var personResult = JsonSerializer.Deserialize<PipedriveResponse<PersonData>>(personContent);
@@ -91,7 +92,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Pipedrive.Actions
 
                 if (!leadResponse.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Pipedrive lead error: {leadResponse.StatusCode} - {leadContent}");
+                    return ProviderReplyHelper.ActionFailure("Pipedrive lead error", leadResponse.StatusCode, leadContent);
                 }
 
                 var leadResult = JsonSerializer.Deserialize<PipedriveResponse<LeadData>>(leadContent);

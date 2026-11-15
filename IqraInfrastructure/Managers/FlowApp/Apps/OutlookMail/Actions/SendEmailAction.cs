@@ -1,6 +1,7 @@
 using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text;
 using System.Text.Json;
 
@@ -78,7 +79,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.OutlookMail.Actions
                 if (!response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    return ActionExecutionResult.Failure("API_ERROR", $"Microsoft Graph error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Microsoft Graph error", response.StatusCode, content);
                 }
 
                 return ActionExecutionResult.SuccessPort("success", new { sent = true });

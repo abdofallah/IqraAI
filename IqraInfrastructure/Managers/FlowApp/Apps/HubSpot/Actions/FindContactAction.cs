@@ -2,6 +2,7 @@ using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraInfrastructure.Managers.FlowApp.Apps.HubSpot.Models;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text;
 using System.Text.Json;
 
@@ -63,7 +64,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.HubSpot.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"HubSpot Error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("HubSpot Error", response.StatusCode, content);
                 }
 
                 var result = JsonSerializer.Deserialize<SearchContactsResponse>(content);

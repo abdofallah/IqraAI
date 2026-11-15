@@ -261,7 +261,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpGet("/app/integrations/oauth/callback")]
-        public async Task<IActionResult> BusinessIntegrationOAuthCallback(string? code, string? state, string? error)
+        public async Task<IActionResult> BusinessIntegrationOAuthCallback(string? code, string? state, string? error, [FromQuery(Name = "error_description")] string? errorDescription)
         {
             long? businessId = null;
 
@@ -307,7 +307,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     return View(OAuthResultViewPath, _integrationOAuthManager.BuildConnectResult(businessId, $"BusinessIntegrationOAuthCallback:{userSessionAndBusinessValidationResult.Code}"));
                 }
 
-                var completeResult = await _integrationOAuthManager.CompleteConnect(stateResult.Data, code, error, $"{Request.Scheme}://{Request.Host}");
+                var completeResult = await _integrationOAuthManager.CompleteConnect(stateResult.Data, code, error, errorDescription, $"{Request.Scheme}://{Request.Host}");
                 if (!completeResult.Success)
                 {
                     return View(OAuthResultViewPath, _integrationOAuthManager.BuildConnectResult(businessId, $"BusinessIntegrationOAuthCallback:{completeResult.Code}"));

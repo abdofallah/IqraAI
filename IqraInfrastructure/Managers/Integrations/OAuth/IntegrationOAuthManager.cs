@@ -3,6 +3,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Integrations;
 using IqraCore.Models.Integrations;
 using IqraCore.Models.User.Business.App.Integration;
+using IqraInfrastructure.Helpers.Integrations;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
 using System.Text;
@@ -132,7 +133,7 @@ namespace IqraInfrastructure.Managers.Integrations.OAuth
             }
         }
 
-        public async Task<FunctionReturnResult> CompleteConnect(IntegrationOAuthStateModel state, string? code, string? providerError, string origin)
+        public async Task<FunctionReturnResult> CompleteConnect(IntegrationOAuthStateModel state, string? code, string? providerError, string? providerErrorDescription, string origin)
         {
             var result = new FunctionReturnResult();
 
@@ -158,10 +159,11 @@ namespace IqraInfrastructure.Managers.Integrations.OAuth
 
                 if (!string.IsNullOrEmpty(providerError))
                 {
-                    _logger.LogWarning("OAuth provider returned an error for integration {IntegrationId}: {Error}", state.IntegrationId, providerError);
+                    var providerReason = string.IsNullOrEmpty(providerErrorDescription) ? providerError : $"{providerError}: {providerErrorDescription}";
+                    _logger.LogWarning("OAuth provider returned an error for integration {IntegrationId}: {Error}", state.IntegrationId, ProviderReplyHelper.CapForLog(providerReason));
                     return await RecordConnectFailure(state.BusinessId, integration, result.SetFailureResult(
                         "CompleteConnect:PROVIDER_ERROR",
-                        providerError
+                        providerReason
                     ));
                 }
 

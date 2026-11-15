@@ -1,6 +1,7 @@
 using IqraCore.Entities.FlowApp;
 using IqraCore.Interfaces.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
+using IqraInfrastructure.Helpers.Integrations;
 using System.Text;
 using System.Text.Json;
 
@@ -38,7 +39,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Salesforce.Actions
                 var client = _app.CreateClient(accessToken, instanceUrl);
                 if (client == null)
                 {
-                    return ActionExecutionResult.Failure("NOT_CONNECTED", "Salesforce instance URL is missing. Reconnect the integration.");
+                    return ActionExecutionResult.Failure("NOT_CONNECTED", "Salesforce instance URL is missing or is not a Salesforce address. Reconnect the integration.");
                 }
 
                 var lastName = input.GetProperty("lastName").GetString();
@@ -71,7 +72,7 @@ namespace IqraInfrastructure.Managers.FlowApp.Apps.Salesforce.Actions
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return ActionExecutionResult.Failure("API_ERROR", $"Salesforce error: {response.StatusCode} - {content}");
+                    return ProviderReplyHelper.ActionFailure("Salesforce error", response.StatusCode, content);
                 }
 
                 using var doc = JsonDocument.Parse(content);

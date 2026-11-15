@@ -416,6 +416,12 @@ namespace IqraInfrastructure.Managers.Integrations
                 return false;
             }
 
+            if (UrlHostHasField(oauth.AuthorizationUrl) || UrlHostHasField(oauth.TokenUrl))
+            {
+                error = "OAuth authorization and token URLs may use {{field}} only after the host: a field may not choose the host.";
+                return false;
+            }
+
             if (oauth.AdditionalAuthorizationParameters.Keys.Any(k => !keyPattern.IsMatch(k)) || oauth.ExtraResponseFields.Any(f => !keyPattern.IsMatch(f)))
             {
                 error = "OAuth parameter names and extra response fields may only contain letters, digits and underscores.";
@@ -432,6 +438,18 @@ namespace IqraInfrastructure.Managers.Integrations
 
             error = string.Empty;
             return true;
+        }
+
+        private static bool UrlHostHasField(string url)
+        {
+            var authority = url.Substring("https://".Length);
+            var authorityEnd = authority.IndexOfAny(new[] { '/', '?', '#' });
+            if (authorityEnd >= 0)
+            {
+                authority = authority.Substring(0, authorityEnd);
+            }
+
+            return authority.Contains("{{");
         }
 
         private IntegrationHelpData ParseHelp(JsonElement help)
