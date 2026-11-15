@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "title": "Create Activity",
+  "required": [ "subject" ],
+  "properties": {
+    "subject": {
+      "type": "string",
+      "title": "Subject",
+      "description": "What the activity is about, e.g. 'Callback {{ customer.name }}'."
+    },
+    "type": {
+      "type": "string",
+      "title": "Type",
+      "description": "Activity type key.",
+      "enum": [ "call", "meeting", "task", "deadline", "email", "lunch" ],
+      "default": "call"
+    },
+    "dueDate": {
+      "type": "string",
+      "title": "Due Date",
+      "description": "Optional due date (YYYY-MM-DD)."
+    },
+    "dueTime": {
+      "type": "string",
+      "title": "Due Time",
+      "description": "Optional due time (HH:MM)."
+    },
+    "note": {
+      "type": "string",
+      "title": "Note",
+      "description": "Optional note / context for the activity."
+    },
+    "personId": {
+      "type": "integer",
+      "title": "Person ID",
+      "description": "Optional Pipedrive person to link the activity to."
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "title": "Send Direct Message",
+  "required": [ "userId", "text" ],
+  "properties": {
+    "userId": {
+      "type": "string",
+      "title": "Slack User ID",
+      "description": "The target user's Slack ID (e.g. U012AB3CD). The bot opens a DM and posts to it."
+    },
+    "text": {
+      "type": "string",
+      "title": "Message Text",
+      "description": "The message body. Supports Slack mrkdwn."
+    }
+  }
+}

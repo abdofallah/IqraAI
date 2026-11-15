@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "title": "Create Database Item",
+  "required": [ "databaseId", "title" ],
+  "properties": {
+    "databaseId": {
+      "type": "string",
+      "title": "Database",
+      "description": "The Notion database to add a page to (must be shared with this integration).",
+      "x-fetcher": "ListDatabases"
+    },
+    "title": {
+      "type": "string",
+      "title": "Title",
+      "description": "The value for the database's title column."
+    },
+    "titlePropertyName": {
+      "type": "string",
+      "title": "Title Column Name",
+      "description": "Name of the title column in your database.",
+      "default": "Name"
+    },
+    "properties": {
+      "type": "object",
+      "title": "Other Text Columns",
+      "description": "Optional map of column name to text value (written as rich-text properties)."
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "title": "Create Card",
+  "required": [ "boardId", "listId", "name" ],
+  "properties": {
+    "boardId": {
+      "type": "string",
+      "title": "Board",
+      "description": "The Trello board.",
+      "x-fetcher": "ListBoards"
+    },
+    "listId": {
+      "type": "string",
+      "title": "List",
+      "description": "The list (column) within the selected board.",
+      "x-fetcher": "ListLists",
+      "x-fetcher-dependent-on": [ "boardId" ]
+    },
+    "name": {
+      "type": "string",
+      "title": "Card Name",
+      "description": "The card title."
+    },
+    "description": {
+      "type": "string",
+      "title": "Description",
+      "description": "Optional card description / notes."
+    },
+    "dueDate": {
+      "type": "string",
+      "title": "Due Date",
+      "description": "Optional due date (ISO 8601)."
+    }
+  }
+}

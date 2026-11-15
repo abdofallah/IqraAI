@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "title": "Create Ticket",
+  "required": [ "subject", "comment" ],
+  "properties": {
+    "subject": {
+      "type": "string",
+      "title": "Subject",
+      "description": "The ticket subject."
+    },
+    "comment": {
+      "type": "string",
+      "title": "Description",
+      "description": "The first comment / body of the ticket."
+    },
+    "priority": {
+      "type": "string",
+      "title": "Priority",
+      "enum": [ "low", "normal", "high", "urgent" ],
+      "default": "normal"
+    },
+    "requesterName": {
+      "type": "string",
+      "title": "Requester Name",
+      "description": "Optional. Name of the customer the ticket is on behalf of."
+    },
+    "requesterEmail": {
+      "type": "string",
+      "title": "Requester Email",
+      "description": "Optional. Email of the requester."
+    },
+    "tags": {
+      "type": "array",
+      "title": "Tags",
+      "description": "Optional list of tags to apply.",
+      "items": { "type": "string" }
+    }
+  }
+}

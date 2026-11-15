@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "title": "Create Lead",
+  "required": [ "title" ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Lead Title",
+      "description": "A short title for the lead, e.g. 'Inbound call - {{ customer.name }}'."
+    },
+    "personName": {
+      "type": "string",
+      "title": "Person Name",
+      "description": "Optional. If set, a Person is created and linked to the lead."
+    },
+    "personEmail": {
+      "type": "string",
+      "title": "Person Email"
+    },
+    "personPhone": {
+      "type": "string",
+      "title": "Person Phone"
+    },
+    "value": {
+      "type": "number",
+      "title": "Lead Value",
+      "description": "Optional monetary value of the lead."
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "default": "USD",
+      "description": "ISO currency code for the lead value."
+    }
+  }
+}

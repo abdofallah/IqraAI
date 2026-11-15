@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "title": "Create Payment Link",
+  "required": [ "priceId" ],
+  "properties": {
+    "priceId": {
+      "type": "string",
+      "title": "Price ID",
+      "description": "An existing Stripe Price ID (price_xxx) to charge for."
+    },
+    "quantity": {
+      "type": "integer",
+      "title": "Quantity",
+      "default": 1,
+      "description": "Quantity of the line item."
+    }
+  }
+}

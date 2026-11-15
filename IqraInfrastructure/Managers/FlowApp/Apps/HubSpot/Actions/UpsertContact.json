@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "title": "Create or Update Contact",
+  "required": [ "email" ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "title": "Email",
+      "description": "The contact's email, used as the unique key for upsert."
+    },
+    "properties": {
+      "type": "object",
+      "title": "Contact Properties",
+      "description": "Map of HubSpot contact property names to values (e.g. { \"firstname\": \"{{ customer.firstName }}\", \"phone\": \"{{ caller.number }}\" })."
+    }
+  }
+}

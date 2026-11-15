@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "title": "Create Record",
+  "required": [ "baseId", "tableId", "fields" ],
+  "properties": {
+    "baseId": {
+      "type": "string",
+      "title": "Base",
+      "description": "The Airtable base to write to.",
+      "x-fetcher": "ListBases"
+    },
+    "tableId": {
+      "type": "string",
+      "title": "Table",
+      "description": "The table within the selected base.",
+      "x-fetcher": "ListTables",
+      "x-fetcher-dependent-on": [ "baseId" ]
+    },
+    "fields": {
+      "type": "object",
+      "title": "Field Values",
+      "description": "Map of Airtable column names to values (e.g. { \"Name\": \"{{ customer.name }}\", \"Phone\": \"{{ caller.number }}\" })."
+    }
+  }
+}

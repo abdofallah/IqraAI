@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "title": "Send SMS",
+  "required": [ "to", "body" ],
+  "properties": {
+    "to": {
+      "type": "string",
+      "title": "To (E.164)",
+      "description": "Recipient phone number in E.164 format, e.g. +14155551234."
+    },
+    "body": {
+      "type": "string",
+      "title": "Message",
+      "description": "The text message body."
+    },
+    "from": {
+      "type": "string",
+      "title": "From Number",
+      "description": "A Twilio phone number you own (E.164). Leave empty if using a Messaging Service SID."
+    },
+    "messagingServiceSid": {
+      "type": "string",
+      "title": "Messaging Service SID",
+      "description": "Optional. Use a Messaging Service (MGxxxx) instead of a single From number."
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "title": "Send Email",
+  "required": [ "to", "fromEmail", "subject", "content" ],
+  "properties": {
+    "to": {
+      "type": "string",
+      "title": "To",
+      "description": "Recipient email address, e.g. {{ customer.email }}."
+    },
+    "fromEmail": {
+      "type": "string",
+      "title": "From Email",
+      "description": "A verified sender email in your SendGrid account."
+    },
+    "fromName": {
+      "type": "string",
+      "title": "From Name",
+      "description": "Optional display name for the sender."
+    },
+    "subject": {
+      "type": "string",
+      "title": "Subject"
+    },
+    "content": {
+      "type": "string",
+      "title": "Body",
+      "description": "The email body."
+    },
+    "isHtml": {
+      "type": "boolean",
+      "title": "HTML Body",
+      "default": false,
+      "description": "Send the body as HTML instead of plain text."
+    }
+  }
+}

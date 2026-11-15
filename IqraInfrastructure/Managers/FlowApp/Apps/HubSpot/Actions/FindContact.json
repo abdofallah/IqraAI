@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "title": "Find Contact",
+  "required": [ "email" ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "title": "Email",
+      "description": "The email to look the contact up by, e.g. {{ customer.email }}."
+    }
+  }
+}

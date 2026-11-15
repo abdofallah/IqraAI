@@ -1073,4 +1073,345 @@
     "Uri": ""
   },
   "LogoS3StorageLink": null
+},
+{
+  "_id": "slack",
+  "Name": "Slack",
+  "Description": "Slack",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "BotToken",
+      "Name": "Bot User OAuth Token",
+      "Type": "text",
+      "Tooltip": "Create a Slack app, add the chat:write, conversations.read and im:write scopes, install it to your workspace, then copy the Bot User OAuth Token (starts with xoxb-).",
+      "Placeholder": "xoxb-...",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get a Slack Bot Token",
+    "Uri": "https://api.slack.com/authentication/token-types#bot"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "airtable",
+  "Name": "Airtable",
+  "Description": "Airtable",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "AccessToken",
+      "Name": "Personal Access Token",
+      "Type": "text",
+      "Tooltip": "Create a Personal Access Token with the data.records:read, data.records:write and schema.bases:read scopes, granted to the bases you want to use.",
+      "Placeholder": "pat...",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to create an Airtable Personal Access Token",
+    "Uri": "https://airtable.com/create/tokens"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "notion",
+  "Name": "Notion",
+  "Description": "Notion",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "Token",
+      "Name": "Internal Integration Token",
+      "Type": "text",
+      "Tooltip": "Create an internal integration in Notion, then share the databases you want to use with it. Copy the Internal Integration Secret (starts with secret_ or ntn_).",
+      "Placeholder": "secret_...",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to create a Notion integration",
+    "Uri": "https://www.notion.so/my-integrations"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "twilio_sms",
+  "Name": "Twilio SMS",
+  "Description": "Twilio SMS",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "AccountSid",
+      "Name": "Account SID",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Account SID",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "AuthToken",
+      "Name": "Auth Token",
+      "Type": "text",
+      "Tooltip": "",
+      "Placeholder": "Enter your Auth Token",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to find your Twilio SID & Auth Token",
+    "Uri": "https://help.twilio.com/articles/14726256820123-What-is-a-Twilio-Account-SID-and-where-can-I-find-it"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "stripe",
+  "Name": "Stripe",
+  "Description": "Stripe",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "SecretKey",
+      "Name": "Secret API Key",
+      "Type": "text",
+      "Tooltip": "Use a restricted or standard secret key from your Stripe Dashboard (starts with sk_).",
+      "Placeholder": "sk_live_...",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "Where to find your Stripe API keys",
+    "Uri": "https://dashboard.stripe.com/apikeys"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "hubspot",
+  "Name": "HubSpot",
+  "Description": "HubSpot",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "AccessToken",
+      "Name": "Private App Access Token",
+      "Type": "text",
+      "Tooltip": "Create a Private App in HubSpot with the crm.objects.contacts read & write scopes, then copy its access token.",
+      "Placeholder": "pat-...",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to create a HubSpot Private App token",
+    "Uri": "https://developers.hubspot.com/docs/api/private-apps"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "pipedrive",
+  "Name": "Pipedrive",
+  "Description": "Pipedrive",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ApiToken",
+      "Name": "API Token",
+      "Type": "text",
+      "Tooltip": "Find your personal API token under Settings > Personal preferences > API in Pipedrive.",
+      "Placeholder": "Enter your API Token",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to find your Pipedrive API token",
+    "Uri": "https://pipedrive.readme.io/docs/how-to-find-the-api-token"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "zendesk",
+  "Name": "Zendesk",
+  "Description": "Zendesk",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "Subdomain",
+      "Name": "Subdomain",
+      "Type": "text",
+      "Tooltip": "The first part of your Zendesk URL, e.g. 'acme' for acme.zendesk.com.",
+      "Placeholder": "your-subdomain",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "Email",
+      "Name": "Agent Email",
+      "Type": "text",
+      "Tooltip": "The email address of the agent whose API token you are using.",
+      "Placeholder": "agent@company.com",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "ApiToken",
+      "Name": "API Token",
+      "Type": "text",
+      "Tooltip": "Enable token access under Admin Center > Apps and integrations > APIs > Zendesk API, then create a token.",
+      "Placeholder": "Enter your API Token",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to generate a Zendesk API token",
+    "Uri": "https://support.zendesk.com/hc/en-us/articles/4408889192858"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "trello",
+  "Name": "Trello",
+  "Description": "Trello",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ApiKey",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "Generate a Power-Up / API key from the Trello developer portal.",
+      "Placeholder": "Enter your API Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": false
+    },
+    {
+      "_id": "Token",
+      "Name": "API Token",
+      "Type": "text",
+      "Tooltip": "Authorize your API key to generate a token granting access to your boards.",
+      "Placeholder": "Enter your API Token",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to get your Trello API key & token",
+    "Uri": "https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "sendgrid",
+  "Name": "SendGrid",
+  "Description": "SendGrid",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ApiKey",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "Create an API key with Mail Send permission in your SendGrid account (starts with SG.).",
+      "Placeholder": "SG....",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to create a SendGrid API key",
+    "Uri": "https://docs.sendgrid.com/ui/account-and-settings/api-keys"
+  },
+  "LogoS3StorageLink": null
+},
+{
+  "_id": "mailchimp",
+  "Name": "Mailchimp",
+  "Description": "Mailchimp",
+  "DisabledAt": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ApiKey",
+      "Name": "API Key",
+      "Type": "text",
+      "Tooltip": "Generate an API key under Account > Extras > API keys. The data-center suffix (e.g. -us21) is part of the key.",
+      "Placeholder": "xxxxxxxx-us21",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true
+    }
+  ],
+  "Help": {
+    "Text": "How to generate a Mailchimp API key",
+    "Uri": "https://mailchimp.com/help/about-api-keys/"
+  },
+  "LogoS3StorageLink": null
 }]

@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "title": "Find Customer",
+  "required": [ "email" ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "title": "Customer Email",
+      "description": "The email to search Stripe customers by, e.g. {{ customer.email }}."
+    }
+  }
+}

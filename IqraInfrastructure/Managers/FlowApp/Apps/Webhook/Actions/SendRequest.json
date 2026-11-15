@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "title": "Send Request",
+  "required": [ "url" ],
+  "properties": {
+    "url": {
+      "type": "string",
+      "title": "Webhook URL",
+      "description": "The absolute https URL to send to (e.g. your Make.com / Zapier / n8n catch hook)."
+    },
+    "method": {
+      "type": "string",
+      "title": "HTTP Method",
+      "enum": [ "POST", "PUT", "PATCH", "GET", "DELETE" ],
+      "default": "POST"
+    },
+    "payload": {
+      "type": "object",
+      "title": "JSON Payload",
+      "description": "The JSON body to send. Use templates like {{ customer.name }} to inject call data. Ignored for GET/DELETE."
+    },
+    "headers": {
+      "type": "object",
+      "title": "Custom Headers",
+      "description": "Optional extra HTTP headers as key/value pairs."
+    },
+    "bearerToken": {
+      "type": "string",
+      "title": "Bearer Token",
+      "description": "Optional. Sent as 'Authorization: Bearer <token>'."
+    },
+    "hmacSecret": {
+      "type": "string",
+      "title": "HMAC Secret",
+      "description": "Optional. If set, the raw body is signed with HMAC-SHA256 and the hex digest is sent in the signature header."
+    },
+    "hmacHeader": {
+      "type": "string",
+      "title": "HMAC Signature Header",
+      "description": "Header name for the HMAC signature.",
+      "default": "X-Signature"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "title": "Add or Update Subscriber",
+  "required": [ "listId", "email" ],
+  "properties": {
+    "listId": {
+      "type": "string",
+      "title": "Audience",
+      "description": "The Mailchimp audience (list) to add the subscriber to.",
+      "x-fetcher": "ListAudiences"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email",
+      "description": "The subscriber's email, e.g. {{ customer.email }}."
+    },
+    "firstName": {
+      "type": "string",
+      "title": "First Name",
+      "description": "Optional. Mapped to the FNAME merge field."
+    },
+    "lastName": {
+      "type": "string",
+      "title": "Last Name",
+      "description": "Optional. Mapped to the LNAME merge field."
+    },
+    "doubleOptIn": {
+      "type": "boolean",
+      "title": "Require Double Opt-In",
+      "default": false,
+      "description": "If true, new subscribers are set to 'pending' and receive a confirmation email."
+    },
+    "mergeFields": {
+      "type": "object",
+      "title": "Additional Merge Fields",
+      "description": "Optional map of merge tag to value (e.g. { \"PHONE\": \"{{ caller.number }}\" })."
+    }
+  }
+}

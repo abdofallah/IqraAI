@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "title": "Find Records",
+  "required": [ "baseId", "tableId" ],
+  "properties": {
+    "baseId": {
+      "type": "string",
+      "title": "Base",
+      "description": "The Airtable base to read from.",
+      "x-fetcher": "ListBases"
+    },
+    "tableId": {
+      "type": "string",
+      "title": "Table",
+      "description": "The table within the selected base.",
+      "x-fetcher": "ListTables",
+      "x-fetcher-dependent-on": [ "baseId" ]
+    },
+    "filterByFormula": {
+      "type": "string",
+      "title": "Filter Formula",
+      "description": "Optional Airtable formula, e.g. {Phone} = '{{ caller.number }}'."
+    },
+    "maxRecords": {
+      "type": "integer",
+      "title": "Max Records",
+      "default": 10,
+      "description": "Maximum number of records to return (1-100)."
+    }
+  }
+}

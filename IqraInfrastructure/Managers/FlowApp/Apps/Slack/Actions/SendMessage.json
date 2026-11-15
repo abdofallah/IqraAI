@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "title": "Send Channel Message",
+  "required": [ "channel", "text" ],
+  "properties": {
+    "channel": {
+      "type": "string",
+      "title": "Channel",
+      "description": "The channel to post to. Pick one, or enter a channel ID / #name.",
+      "x-fetcher": "ListChannels"
+    },
+    "text": {
+      "type": "string",
+      "title": "Message Text",
+      "description": "The message body. Supports Slack mrkdwn."
+    },
+    "threadTs": {
+      "type": "string",
+      "title": "Thread Timestamp",
+      "description": "Optional. Reply inside an existing thread by passing its 'ts'."
+    }
+  }
+}
