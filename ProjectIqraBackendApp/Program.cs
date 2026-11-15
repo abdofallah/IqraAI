@@ -16,6 +16,7 @@ using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.FlowApp;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.Integrations.OAuth;
 using IqraInfrastructure.Managers.KnowledgeBase;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -1042,6 +1043,25 @@ namespace ProjectIqraBackendApp
                 return new NJsonSchemaValidator(
                     sp.GetRequiredService<IMemoryCache>(),
                     sp.GetRequiredService<ILogger<NJsonSchemaValidator>>()
+                );
+            });
+
+            builder.Services.AddSingleton<IntegrationOAuthService>((sp) =>
+            {
+                AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(
+                    sp.GetRequiredService<ILogger<AES256EncryptionService>>(),
+                    appConfig["Integrations:EncryptionKey"]
+                );
+                return new IntegrationOAuthService(
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    integrationFieldsEncryptionService,
+                    sp.GetRequiredService<BusinessAppRepository>(),
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    new RedisConnectionFactory(
+                        $"{redisConnectionString},defaultDatabase={DistributedLockRepository.DATABASE_INDEX}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    ),
+                    sp.GetRequiredService<ILogger<IntegrationOAuthService>>()
                 );
             });
 

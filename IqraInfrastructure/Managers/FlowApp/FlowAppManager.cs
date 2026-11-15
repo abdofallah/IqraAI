@@ -6,6 +6,7 @@ using IqraCore.Interfaces.Integration;
 using IqraCore.Models.FlowApp;
 using IqraCore.Models.FlowApp.Integration;
 using IqraCore.Utilities;
+using IqraInfrastructure.Managers.Integrations.OAuth;
 using IqraInfrastructure.Repositories.FlowApp;
 using IqraInfrastructure.Utilities.Templating;
 using IqraInfrastructure.Utilities.Validation;
@@ -236,7 +237,8 @@ namespace IqraInfrastructure.Managers.FlowApp
             string actionKey,
             Dictionary<string, object?> rawInputs,
             Dictionary<string, object?> sessionContext,
-            BusinessAppIntegration? integration
+            BusinessAppIntegration? integration,
+            long businessId
         ) {
             // 1. Locate App and Action
             if (!_apps.TryGetValue(appKey, out var app))
@@ -266,6 +268,16 @@ namespace IqraInfrastructure.Managers.FlowApp
             if (action.RequiresIntegration && integration == null)
             {
                 return ActionExecutionResult.Failure("AUTH_REQUIRED", "This action requires a valid integration.");
+            }
+
+            // OAuth2 Token Refresh
+            if (integration != null)
+            {
+                var refreshResult = await _serviceProvider.GetRequiredService<IntegrationOAuthService>().EnsureFreshTokenAsync(businessId, integration);
+                if (!refreshResult.Success)
+                {
+                    return ActionExecutionResult.Failure(refreshResult.Code ?? "OAUTH_REFRESH_FAILED", refreshResult.Message ?? "Failed to obtain a valid OAuth access token.");
+                }
             }
 
             try
@@ -316,7 +328,8 @@ namespace IqraInfrastructure.Managers.FlowApp
             string appKey,
             string fetcherKey,
             JsonElement context, // The current state of the frontend form
-            BusinessAppIntegration? integration)
+            BusinessAppIntegration? integration,
+            long businessId)
         {
             var result = new FunctionReturnResult<List<DynamicOption>>();
 
@@ -347,6 +360,16 @@ namespace IqraInfrastructure.Managers.FlowApp
             if (fetcher.RequiresIntegration && integration == null)
             {
                 return result.SetFailureResult("AUTH_REQUIRED", "This fetcher requires a valid integration.");
+            }
+
+            // OAuth2 Token Refresh
+            if (integration != null)
+            {
+                var refreshResult = await _serviceProvider.GetRequiredService<IntegrationOAuthService>().EnsureFreshTokenAsync(businessId, integration);
+                if (!refreshResult.Success)
+                {
+                    return result.SetFailureResult(refreshResult.Code ?? "OAUTH_REFRESH_FAILED", refreshResult.Message ?? "Failed to obtain a valid OAuth access token.");
+                }
             }
 
             try
@@ -396,7 +419,9 @@ namespace IqraInfrastructure.Managers.FlowApp
                 Type = integration.Type,
                 FriendlyName = integration.FriendlyName,
                 Fields = integration.Fields,
-                DecryptedFields = new Dictionary<string, string>()
+                DecryptedFields = new Dictionary<string, string>(),
+                OAuthAccessToken = string.IsNullOrEmpty(integration.OAuth?.EncryptedAccessToken) ? null : _integrationEncryptionService.Decrypt(integration.OAuth.EncryptedAccessToken),
+                OAuthExtraFields = integration.OAuth?.ExtraFields ?? new Dictionary<string, string>()
             };
 
             foreach (var encryptedField in integration.EncryptedFields)

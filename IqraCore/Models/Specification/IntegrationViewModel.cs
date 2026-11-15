@@ -14,6 +14,7 @@ namespace IqraCore.Models.Specification
             Type = data.Type;
             Fields = data.Fields;
             Help = data.Help;
+            IsOAuth = data.IsOAuth;
         }
 
         public string Id { get; set; }
@@ -24,5 +25,6 @@ namespace IqraCore.Models.Specification
         public List<string> Type { get; set; }
         public List<IntegrationFieldData> Fields { get; set; }
         public IntegrationHelpData Help { get; set; }
+        public bool IsOAuth { get; set; }
     }
 }

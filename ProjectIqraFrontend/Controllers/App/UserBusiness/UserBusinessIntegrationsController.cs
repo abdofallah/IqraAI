@@ -8,6 +8,7 @@ using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using IqraCore.Entities.Validation;
+using IqraCore.Models.User.Business.App.Integration;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
@@ -31,9 +32,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/integrations/save")]
-        public async Task<FunctionReturnResult<BusinessAppIntegration?>> SaveBusinessIntegration(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppIntegrationModel?>> SaveBusinessIntegration(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppIntegration?>();
+            var result = new FunctionReturnResult<BusinessAppIntegrationModel?>();
 
             try
             {
@@ -168,7 +169,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(saveResult.Data);
+                return result.SetSuccessResult(new BusinessAppIntegrationModel(saveResult.Data!));
             }
             catch (Exception ex)
             {

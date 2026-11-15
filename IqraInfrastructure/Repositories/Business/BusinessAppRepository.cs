@@ -801,7 +801,7 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessIntegrationExceptReferences(long businessId, BusinessAppIntegration newIntegration)
+        public async Task<bool> UpdateBusinessIntegrationExceptReferencesAndOAuth(long businessId, BusinessAppIntegration newIntegration, bool clearOAuth)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
@@ -812,9 +812,44 @@ namespace IqraInfrastructure.Repositories.Business
                 .Set(b => b.Integrations.FirstMatchingElement().Fields, newIntegration.Fields)
                 .Set(b => b.Integrations.FirstMatchingElement().EncryptedFields, newIntegration.EncryptedFields);
 
+            if (clearOAuth)
+            {
+                update = update.Set(b => b.Integrations.FirstMatchingElement().OAuth, null);
+            }
+
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 
-            return result.IsAcknowledged;
+            return result.IsAcknowledged && result.MatchedCount == 1;
+        }
+
+        public async Task<bool> UpdateBusinessIntegrationOAuth(long businessId, string integrationId, BusinessAppIntegrationOAuthData oauthData)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, g => g.Id == integrationId)
+            );
+            var update = Builders<BusinessApp>.Update.Set(b => b.Integrations.FirstMatchingElement().OAuth, oauthData);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.IsAcknowledged && result.MatchedCount == 1;
+        }
+
+        public async Task<bool> UpdateBusinessIntegrationOAuthIfRefreshTokenUnchanged(long businessId, string integrationId, BusinessAppIntegrationOAuthData oauthData, string? expectedEncryptedRefreshToken)
+        {
+            var integrationFilter = Builders<BusinessAppIntegration>.Filter.And(
+                Builders<BusinessAppIntegration>.Filter.Eq(i => i.Id, integrationId),
+                Builders<BusinessAppIntegration>.Filter.Eq(i => i.OAuth!.EncryptedRefreshToken, expectedEncryptedRefreshToken)
+            );
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, integrationFilter)
+            );
+            var update = Builders<BusinessApp>.Update.Set(b => b.Integrations.FirstMatchingElement().OAuth, oauthData);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.IsAcknowledged && result.MatchedCount == 1;
         }
 
         public async Task<bool> DeleteBusinessIntegration(long businessId, string integrationId)
@@ -839,7 +874,7 @@ namespace IqraInfrastructure.Repositories.Business
             var update = Builders<BusinessApp>.Update.AddToSet(b => b.Integrations.FirstMatchingElement().BusinessNumberReferences, businessNumberId);
 
             var result = await _businessAppCollection.UpdateOneAsync(session, filter, update);
-            return result.IsAcknowledged;
+            return result.IsAcknowledged && (result.MatchedCount == 1 && result.ModifiedCount >= 0);
         }
         public async Task<bool> RemoveBusinessNumberReferenceFromIntegration(long businessId, string integrationId, string businessNumberId, IClientSessionHandle session)
         {
@@ -1499,6 +1534,20 @@ namespace IqraInfrastructure.Repositories.Business
         * Numbers
         * 
         **/
+
+        public async Task<List<BusinessAppIntegration>> GetBusinessIntegrations(long businessId)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var projection = Builders<BusinessApp>.Projection.Include(b => b.Integrations).Include(b => b.Id);
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+
+            if (result == null)
+            {
+                throw new Exception("Business not found");
+            }
+
+            return result.Integrations;
+        }
 
         public async Task<List<BusinessNumberData>> GetBusinessNumbers(long businessId)
         {

@@ -1,0 +1,15 @@
+@model IqraCore.Models.Integrations.IntegrationOAuthResultViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iqra AI - Integration Connection</title>
+</head>
+<body id="oauthResult" data-redirect-url="@Model.RedirectUrl" data-success="@(Model.Success ? "true" : "false")" data-reason="@Model.Reason">
+    <script src="~/scripts/app/integrations/oauth_result.js"></script>
+</body>
+</html>

@@ -13,6 +13,9 @@ namespace IqraCore.Entities.Business
         [ExcludeInAllEndpoints]
         public Dictionary<string, string> EncryptedFields { get; set; } = new Dictionary<string, string>();
 
+        [ExcludeInAllEndpoints]
+        public BusinessAppIntegrationOAuthData? OAuth { get; set; } = null;
+
         // Business Number References
         public List<string> BusinessNumberReferences { get; set; } = new List<string>();
 

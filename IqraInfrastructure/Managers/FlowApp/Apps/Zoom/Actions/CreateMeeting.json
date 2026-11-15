@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "title": "Create Meeting",
+  "required": [ "topic" ],
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Topic"
+    },
+    "agenda": {
+      "type": "string",
+      "title": "Agenda / Description"
+    },
+    "startTime": {
+      "type": "string",
+      "title": "Start Time (ISO 8601)",
+      "description": "RFC3339 datetime, e.g. 2026-01-01T10:00:00Z. Leave blank for an instant meeting."
+    },
+    "timeZone": {
+      "type": "string",
+      "title": "Time Zone",
+      "description": "IANA time zone, e.g. America/New_York."
+    },
+    "durationMinutes": {
+      "type": "integer",
+      "title": "Duration (minutes)",
+      "default": 30
+    }
+  }
+}

@@ -23,6 +23,7 @@ using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.FlowApp;
 using IqraInfrastructure.Managers.Infrastructure;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.Integrations.OAuth;
 using IqraInfrastructure.Managers.KnowledgeBase;
 using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
 using IqraInfrastructure.Managers.Languages;
@@ -1096,6 +1097,25 @@ namespace ProjectIqraFrontend
                 );
             });
 
+            builder.Services.AddSingleton<IntegrationOAuthService>((sp) =>
+            {
+                AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(
+                    sp.GetRequiredService<ILogger<AES256EncryptionService>>(),
+                    appConfig["Integrations:EncryptionKey"]
+                );
+                return new IntegrationOAuthService(
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    integrationFieldsEncryptionService,
+                    sp.GetRequiredService<BusinessAppRepository>(),
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    new RedisConnectionFactory(
+                        $"{redisConnectionString},defaultDatabase={DistributedLockRepository.DATABASE_INDEX}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    ),
+                    sp.GetRequiredService<ILogger<IntegrationOAuthService>>()
+                );
+            });
+
             builder.Services.AddSingleton<FlowAppManager>((sp) =>
             {
                 AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(
@@ -1110,6 +1130,16 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<FlowAppRepository>(),
                     sp.GetRequiredService<IMemoryCache>(),
                     sp.GetRequiredService<ILogger<FlowAppManager>>()
+                );
+            });
+
+            builder.Services.AddSingleton<IntegrationOAuthManager>((sp) =>
+            {
+                return new IntegrationOAuthManager(
+                    sp.GetRequiredService<ILogger<IntegrationOAuthManager>>(),
+                    sp.GetRequiredService<BusinessAppRepository>(),
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    sp.GetRequiredService<IntegrationOAuthService>()
                 );
             });
 

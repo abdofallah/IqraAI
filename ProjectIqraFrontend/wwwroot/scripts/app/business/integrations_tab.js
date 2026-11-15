@@ -4,6 +4,10 @@ let ManageIntegrationType = null; // new or edit
 let SelectedIntegrationType = null;
 let IsSavingIntegrationTab = false;
 let IsDeletingIntegrationTab = false;
+let IntegrationsOAuthStatusData = {};
+let IntegrationsOAuthStatusPollInterval = null;
+let IsIntegrationsOAuthStatusTabShown = false;
+let IntegrationsOAuthRedirectUri = null;
 
 /** Elements Variables **/
 
@@ -30,6 +34,57 @@ function SaveBusinessIntegration(formData, onSuccess, onError) {
 		data: formData,
 		processData: false,
 		contentType: false,
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
+
+function FetchBusinessIntegrationsOAuthStatus(onSuccess, onError) {
+	return $.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/integrations/oauth/status`,
+		method: "GET",
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
+
+function FetchBusinessIntegrationOAuthRedirectUri(onSuccess, onError) {
+	return $.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/integrations/oauth/redirect-uri`,
+		method: "GET",
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
+
+function TestBusinessIntegrationOAuthConnection(integrationId, onSuccess, onError) {
+	return $.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/integrations/${encodeURIComponent(integrationId)}/oauth/test`,
+		method: "POST",
 		success: (response) => {
 			if (response.success) {
 				onSuccess(response);
@@ -77,11 +132,14 @@ function createIntegrationCardElement(integration) {
         </div>
     `;
 
+	const integrationSpec = SpecificationIntegrationsListData.find((i) => i.id === integration.type);
+
 	return createIqraCardElement({
 		id: integration.id,
 		type: 'integration',
 		visualHtml: `<img src="${integration.logoUrl}" alt="${integration.friendlyName} logo">`,
 		titleHtml: integration.friendlyName,
+		descriptionHtml: integrationSpec && IsOAuthIntegrationSpec(integrationSpec) ? CreateOAuthStatusBadgeElement(GetOAuthIntegrationStatus(integration)).prop("outerHTML") : "",
 		actionDropdownHtml: actionDropdownHtml,
 	});
 }
@@ -187,8 +245,221 @@ function fillIntegrationFields(integration) {
         `);
 	}
 
+	renderOAuthConnectElement(integration);
+	CheckIntegrationTabHasChanges(false);
+
 	// Initialize tooltips
 	initializeIntegrationTooltips();
+}
+
+function IsOAuthIntegrationSpec(integration) {
+	return integration.isOAuth === true;
+}
+
+function GetOAuthIntegrationStatus(integrationData) {
+	const status = integrationData ? IntegrationsOAuthStatusData[integrationData.id] : null;
+	const checkedAt = (status && status.checkedAt) || null;
+	const hasConnection = !!(status && status.hasConnection);
+
+	if (status && status.status === "Failed") {
+		return { state: "failed", label: "Connection failed", message: status.message || "", checkedAt: checkedAt, hasConnection: hasConnection };
+	}
+	if (status && status.status === "Connected") {
+		return { state: "connected", label: "Connected", message: "", checkedAt: checkedAt, hasConnection: hasConnection };
+	}
+	return { state: "not_connected", label: "Not connected", message: "", checkedAt: checkedAt, hasConnection: hasConnection };
+}
+
+function RefreshIntegrationsOAuthStatus() {
+	return FetchBusinessIntegrationsOAuthStatus(
+		(statusResponse) => {
+			IntegrationsOAuthStatusData = {};
+			(statusResponse.data || []).forEach((status) => {
+				IntegrationsOAuthStatusData[status.integrationId] = status;
+			});
+
+			RenderIntegrationsOAuthStatus();
+		},
+		(statusError) => {
+			console.log("Error occurred while loading the OAuth connection statuses: ", statusError);
+		}
+	);
+}
+
+function LoadIntegrationsOAuthRedirectUri() {
+	return FetchBusinessIntegrationOAuthRedirectUri(
+		(redirectUriResponse) => {
+			IntegrationsOAuthRedirectUri = redirectUriResponse.data;
+
+			const integrationSpec = SpecificationIntegrationsListData.find((i) => i.id === SelectedIntegrationType);
+			if (integrationSpec && IsOAuthIntegrationSpec(integrationSpec) && !integrationManagerContainer.hasClass("d-none")) {
+				renderOAuthConnectElement(integrationSpec);
+			}
+		},
+		(redirectUriError) => {
+			console.log("Error occurred while loading the OAuth redirect URI: ", redirectUriError);
+		}
+	);
+}
+
+function RenderIntegrationsOAuthStatus() {
+	FillIntegrationsList();
+
+	if (ManageIntegrationType === "edit" && CurrentIntegrationData) {
+		const integrationSpec = SpecificationIntegrationsListData.find((i) => i.id === CurrentIntegrationData.type);
+		if (integrationSpec && IsOAuthIntegrationSpec(integrationSpec)) {
+			renderOAuthConnectElement(integrationSpec);
+			CheckIntegrationTabHasChanges(false);
+		}
+	}
+}
+
+function UpdateIntegrationsOAuthStatusPolling() {
+	const shouldPoll = IsIntegrationsOAuthStatusTabShown && document.visibilityState === "visible";
+
+	if (shouldPoll && !IntegrationsOAuthStatusPollInterval) {
+		RefreshIntegrationsOAuthStatus();
+		IntegrationsOAuthStatusPollInterval = setInterval(RefreshIntegrationsOAuthStatus, 30000);
+	} else if (!shouldPoll && IntegrationsOAuthStatusPollInterval) {
+		clearInterval(IntegrationsOAuthStatusPollInterval);
+		IntegrationsOAuthStatusPollInterval = null;
+	}
+}
+
+function CreateOAuthStatusBadgeElement(status) {
+	const badgeClass = status.state === "connected" ? "bg-success" : (status.state === "failed" ? "bg-danger" : "bg-warning text-dark");
+	return $("<span>", { class: `badge ${badgeClass}` }).text(status.label);
+}
+
+function IsIntegrationOAuthConnected(integrationData) {
+	return GetOAuthIntegrationStatus(integrationData).state === "connected";
+}
+
+function GetOAuthConnectUrl(integrationId) {
+	return `/app/user/business/${CurrentBusinessId}/integrations/${encodeURIComponent(integrationId)}/oauth/connect`;
+}
+
+function OpenOAuthConnectWindow() {
+	return window.open("", "iqraIntegrationOAuthConnect", "width=600,height=720");
+}
+
+function StartOAuthConnect(connectWindow, integrationId) {
+	const connectUrl = GetOAuthConnectUrl(integrationId);
+
+	if (connectWindow && !connectWindow.closed) {
+		connectWindow.location.href = connectUrl;
+		connectWindow.focus();
+	} else {
+		window.location.href = connectUrl;
+	}
+}
+
+function HasOAuthBreakingChanges(integration, changes) {
+	if (ManageIntegrationType !== "edit" || !CurrentIntegrationData) return false;
+
+	return integration.fields.some((field) => field.requiresOAuthReconnect && (changes.fields[field.id] || "") !== (CurrentIntegrationData.fields[field.id] || ""));
+}
+
+function UpdateSaveIntegrationButtonLabel(changes) {
+	const integration = SpecificationIntegrationsListData.find((i) => i.id === SelectedIntegrationType);
+
+	let label = "Save Integration";
+	if (integration && IsOAuthIntegrationSpec(integration)) {
+		if (ManageIntegrationType !== "edit" || !IsIntegrationOAuthConnected(CurrentIntegrationData)) {
+			label = "Save & Connect";
+		} else if (HasOAuthBreakingChanges(integration, changes)) {
+			label = "Save & Reconnect";
+		}
+	}
+
+	saveIntegrationButton.text(label);
+}
+
+function renderOAuthConnectElement(integration) {
+	integrationManagerContainer.find("#oauthConnectContainer").remove();
+
+	if (!IsOAuthIntegrationSpec(integration)) return;
+
+	const isEditing = ManageIntegrationType === "edit" && !!CurrentIntegrationData;
+	const status = isEditing ? GetOAuthIntegrationStatus(CurrentIntegrationData) : null;
+	const hasStoredConnection = isEditing && status.hasConnection;
+
+	const connectElement = $(`
+        <div id="oauthConnectContainer" class="mt-3 mb-0">
+            ${IntegrationsOAuthRedirectUri ? `
+            <div class="mb-3">
+                <label class="form-label" for="oauthRedirectUriInput">Redirect URI to register at the provider</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="oauthRedirectUriInput" readonly>
+                    <button type="button" class="btn btn-outline-secondary" id="oauthCopyRedirectUriButton">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                </div>
+            </div>` : ""}
+            ${isEditing ? `
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <span class="oauth-status-badge"></span>
+                ${hasStoredConnection ? `
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="oauthTestConnectionButton">
+                    <i class="fa-solid fa-plug-circle-check me-2"></i>Test connection
+                </button>` : ""}
+                <a class="btn btn-outline-primary btn-sm" id="oauthConnectButton">
+                    <i class="fa-solid fa-link me-2"></i>${hasStoredConnection ? "Reconnect" : "Connect"}
+                </a>
+            </div>
+            <small class="d-block text-muted mt-2 oauth-status-details"></small>` : ""}
+        </div>
+    `);
+	connectElement.find("#oauthRedirectUriInput").val(IntegrationsOAuthRedirectUri);
+
+	if (isEditing) {
+		connectElement.find(".oauth-status-badge").replaceWith(CreateOAuthStatusBadgeElement(status));
+		connectElement.find("#oauthConnectButton").attr("href", GetOAuthConnectUrl(CurrentIntegrationData.id));
+
+		const statusDetails = [];
+		if (status.message) statusDetails.push(status.message);
+		if (status.checkedAt) statusDetails.push(`Last checked ${new Date(status.checkedAt).toLocaleString()}`);
+		connectElement.find(".oauth-status-details").text(statusDetails.join(". "));
+	}
+
+	if (connectElement.children().length === 0) return;
+
+	integrationFieldsContainer.after(connectElement);
+}
+
+function ShowOAuthConnectResult(success, reason) {
+	if (success) {
+		AlertManager.createAlert({
+			type: "success",
+			message: "Integration connected successfully via OAuth.",
+			timeout: 6000,
+		});
+	} else {
+		const alertElement = AlertManager.createAlert({
+			type: "danger",
+			message: "OAuth connection failed. Please verify your Client ID/Secret and the registered callback URL, then try again.",
+			timeout: 8000,
+		});
+
+		if (reason) {
+			$("<code>", { class: "bg-dark p-2 rounded border mt-2", style: "display: block;" })
+				.text(reason)
+				.insertBefore(alertElement.find(".btn-close"));
+		}
+	}
+}
+
+function ShowOAuthConnectResultAlert() {
+	const urlParams = new URLSearchParams(window.location.search);
+	const oauthStatus = urlParams.get("oauth");
+	if (!oauthStatus) return;
+
+	ShowOAuthConnectResult(oauthStatus === "success", urlParams.get("reason"));
+
+	urlParams.delete("oauth");
+	urlParams.delete("reason");
+	const newQuery = urlParams.toString();
+	history.replaceState(history.state, document.title, window.location.pathname + (newQuery ? `?${newQuery}` : "") + window.location.hash);
 }
 
 function initializeIntegrationTooltips() {
@@ -329,6 +600,8 @@ function CheckIntegrationTabHasChanges(enableDisableButton = true) {
 	if (enableDisableButton) {
 		saveIntegrationButton.prop("disabled", !hasChanges);
 	}
+
+	UpdateSaveIntegrationButtonLabel(changes);
 
 	return {
 		hasChanges: hasChanges,
@@ -551,6 +824,25 @@ function initIntegrationsTab() {
 		const changes = CheckIntegrationTabHasChanges(false);
 		if (!changes.hasChanges) return;
 
+		const integrationSpec = SpecificationIntegrationsListData.find((i) => i.id === SelectedIntegrationType);
+		const isOAuthIntegration = !!integrationSpec && IsOAuthIntegrationSpec(integrationSpec);
+
+		const breaksOAuthConnection = isOAuthIntegration && ManageIntegrationType === "edit" && IsIntegrationOAuthConnected(CurrentIntegrationData) && HasOAuthBreakingChanges(integrationSpec, changes.changes);
+		const connectAfterSave = isOAuthIntegration && (ManageIntegrationType !== "edit" || !IsIntegrationOAuthConnected(CurrentIntegrationData) || breaksOAuthConnection);
+
+		if (breaksOAuthConnection) {
+			const confirmDialog = new BootstrapConfirmDialog({
+				title: "Reconnect Required",
+				message: "These changes break the current OAuth connection. After saving you will be sent to the provider to connect again.",
+				confirmText: "Save & Reconnect",
+				confirmButtonClass: "btn-warning",
+			});
+
+			if (!(await confirmDialog.show())) return;
+		}
+
+		const connectWindow = connectAfterSave ? OpenOAuthConnectWindow() : null;
+
 		saveIntegrationButton.prop("disabled", true);
 		const saveButtonSpinner = saveIntegrationButton.find(".spinner-border");
 		saveButtonSpinner.removeClass("d-none");
@@ -590,8 +882,16 @@ function initIntegrationsTab() {
 				saveIntegrationButton.prop("disabled", true);
 				saveButtonSpinner.addClass("d-none");
 				IsSavingIntegrationTab = false;
+
+				if (connectAfterSave) {
+					StartOAuthConnect(connectWindow, saveResponse.data.id);
+				}
 			},
 			(saveError, isUnsuccessful) => {
+				if (connectWindow && !connectWindow.closed) {
+					connectWindow.close();
+				}
+
 				AlertManager.createAlert({
 					type: "danger",
 					message: "Error occurred while saving integration. Check browser console for logs.",
@@ -616,6 +916,73 @@ function initIntegrationsTab() {
 		ShowAvailableIntegrations();
 	});
 
+	integrationManagerContainer.on("click", "#oauthConnectButton", (event) => {
+		event.preventDefault();
+
+		if (!CurrentIntegrationData) return;
+
+		if (CheckIntegrationTabHasChanges(false).hasChanges) {
+			AlertManager.createAlert({
+				type: "warning",
+				message: "Save or discard your changes before connecting.",
+				timeout: 6000,
+			});
+			return;
+		}
+
+		StartOAuthConnect(OpenOAuthConnectWindow(), CurrentIntegrationData.id);
+	});
+
+	window.addEventListener("message", (event) => {
+		if (event.origin !== window.location.origin || !event.data || event.data.type !== "iqra-integration-oauth-result") return;
+
+		ShowOAuthConnectResult(event.data.success === true, event.data.reason);
+		RefreshIntegrationsOAuthStatus();
+	});
+
+	integrationManagerContainer.on("click", "#oauthTestConnectionButton", (event) => {
+		event.preventDefault();
+
+		if (!CurrentIntegrationData) return;
+
+		const button = $(event.currentTarget);
+
+		const applyTestedStatus = (testedStatus) => {
+			if (!testedStatus || !testedStatus.integrationId) return;
+
+			IntegrationsOAuthStatusData[testedStatus.integrationId] = testedStatus;
+			RenderIntegrationsOAuthStatus();
+		};
+
+		showHideButtonSpinnerWithDisableEnable(button, true);
+
+		TestBusinessIntegrationOAuthConnection(
+			CurrentIntegrationData.id,
+			(testResponse) => {
+				applyTestedStatus(testResponse.data);
+
+				AlertManager.createAlert({
+					type: "success",
+					message: "The OAuth connection works.",
+					timeout: 6000,
+				});
+			},
+			(testError, isUnsuccessful) => {
+				if (isUnsuccessful) applyTestedStatus(testError.data);
+
+				AlertManager.createAlert({
+					type: "danger",
+					message: "The OAuth connection test failed. See the connection status for details.",
+					timeout: 6000,
+				});
+
+				console.log("Error occurred while testing the OAuth connection: ", testError);
+			}
+		).always(() => {
+			showHideButtonSpinnerWithDisableEnable(button, false);
+		});
+	});
+
 	// Handle Encrypted Fields
 	integrationManagerContainer.on("keydown", 'input[type="password"]', (event) => {
 		event.stopPropagation();
@@ -627,4 +994,26 @@ function initIntegrationsTab() {
 
 		currentElement.val("");
 	});
+
+	$(document).on("tabShown", (event, tabData) => {
+		IsIntegrationsOAuthStatusTabShown = !!tabData && (tabData.tabId === "integrations-tab" || tabData.tabId === "scripts-tab");
+		UpdateIntegrationsOAuthStatusPolling();
+	});
+	document.addEventListener("visibilitychange", UpdateIntegrationsOAuthStatusPolling);
+
+	integrationManagerContainer.on("click", "#oauthCopyRedirectUriButton", (event) => {
+		event.preventDefault();
+
+		navigator.clipboard.writeText(integrationManagerContainer.find("#oauthRedirectUriInput").val()).then(() => {
+			AlertManager.createAlert({
+				type: "success",
+				message: "Copied the redirect URI to clipboard.",
+				timeout: 2000,
+			});
+		});
+	});
+
+	LoadIntegrationsOAuthRedirectUri();
+	RefreshIntegrationsOAuthStatus();
+	ShowOAuthConnectResultAlert();
 }

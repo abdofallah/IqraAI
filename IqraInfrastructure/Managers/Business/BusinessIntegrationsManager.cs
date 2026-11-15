@@ -2,6 +2,7 @@
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Integrations;
 using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Managers.Integrations.OAuth;
 using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
@@ -187,7 +188,9 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    var updateResult = await _businessAppRepository.UpdateBusinessIntegrationExceptReferences(businessId, newIntegration);
+                    var requiresReconnect = IntegrationOAuthManager.RequiresReconnectOnEdit(integrationTypeData, businessIntegrationData!, newIntegration);
+
+                    var updateResult = await _businessAppRepository.UpdateBusinessIntegrationExceptReferencesAndOAuth(businessId, newIntegration, requiresReconnect);
                     if (!updateResult)
                     {
                         result.Code = "AddOrUpdateBusinessIntegration:10";

@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "title": "Send Email",
+  "required": [ "to", "subject", "body" ],
+  "properties": {
+    "to": {
+      "type": "string",
+      "title": "To",
+      "description": "Recipient address(es). Separate multiple with commas."
+    },
+    "subject": {
+      "type": "string",
+      "title": "Subject"
+    },
+    "body": {
+      "type": "string",
+      "title": "Body"
+    },
+    "isHtml": {
+      "type": "boolean",
+      "title": "Body is HTML",
+      "default": false
+    }
+  }
+}

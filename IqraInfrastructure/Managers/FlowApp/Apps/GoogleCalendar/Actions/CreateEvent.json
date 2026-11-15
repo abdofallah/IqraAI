@@ -1,0 +1,47 @@
+{
+  "type": "object",
+  "title": "Create Event",
+  "required": [ "summary", "startDateTime", "endDateTime" ],
+  "properties": {
+    "calendarId": {
+      "type": "string",
+      "title": "Calendar",
+      "description": "Target calendar. Leave blank for the primary calendar.",
+      "x-fetcher": "ListCalendars"
+    },
+    "summary": {
+      "type": "string",
+      "title": "Title",
+      "description": "Event title / summary."
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "location": {
+      "type": "string",
+      "title": "Location"
+    },
+    "startDateTime": {
+      "type": "string",
+      "title": "Start (ISO 8601)",
+      "description": "RFC3339 datetime, e.g. 2026-01-01T10:00:00"
+    },
+    "endDateTime": {
+      "type": "string",
+      "title": "End (ISO 8601)",
+      "description": "RFC3339 datetime, e.g. 2026-01-01T10:30:00"
+    },
+    "timeZone": {
+      "type": "string",
+      "title": "Time Zone",
+      "description": "IANA time zone, e.g. America/New_York.",
+      "default": "UTC"
+    },
+    "attendeeEmail": {
+      "type": "string",
+      "title": "Attendee Email",
+      "description": "Optional single attendee to invite."
+    }
+  }
+}

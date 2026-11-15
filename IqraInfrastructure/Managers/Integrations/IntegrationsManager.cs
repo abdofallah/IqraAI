@@ -7,6 +7,7 @@ using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace IqraInfrastructure.Managers.Integrations
 {
@@ -117,6 +118,16 @@ namespace IqraInfrastructure.Managers.Integrations
                     Help = ParseHelp(changesJsonElement.RootElement.GetProperty("help"))
                 };
 
+                if (changesJsonElement.RootElement.TryGetProperty("oAuth", out var oauthElement) && oauthElement.ValueKind == JsonValueKind.Object)
+                {
+                    integrationData.OAuth = ParseOAuth(oauthElement);
+                }
+
+                if (integrationData.OAuth == null)
+                {
+                    integrationData.Fields.ForEach(f => f.RequiresOAuthReconnect = false);
+                }
+
                 // Handle disabled state
                 if (!changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
                 {
@@ -147,6 +158,13 @@ namespace IqraInfrastructure.Managers.Integrations
                 if (!ValidateFields(integrationData.Fields, out validationError))
                 {
                     result.Code = "AddOrUpdateIntegration:5";
+                    result.Message = validationError;
+                    return result;
+                }
+
+                if (integrationData.OAuth != null && !ValidateOAuth(integrationData, out validationError))
+                {
+                    result.Code = "AddOrUpdateIntegration:10";
                     result.Message = validationError;
                     return result;
                 }
@@ -317,6 +335,11 @@ namespace IqraInfrastructure.Managers.Integrations
                 IsEncrypted = field.GetProperty("isEncrypted").GetBoolean()
             };
 
+            if (field.TryGetProperty("requiresOAuthReconnect", out var requiresOAuthReconnectElement))
+            {
+                fieldData.RequiresOAuthReconnect = requiresOAuthReconnectElement.GetBoolean();
+            }
+
             // Handle optional fields
             if (field.TryGetProperty("tooltip", out var tooltipElement))
             {
@@ -363,6 +386,52 @@ namespace IqraInfrastructure.Managers.Integrations
             }
 
             return fieldData;
+        }
+
+        private IntegrationOAuthData ParseOAuth(JsonElement oauth)
+        {
+            return new IntegrationOAuthData
+            {
+                AuthorizationUrl = oauth.GetProperty("authorizationUrl").GetString()?.Trim() ?? "",
+                TokenUrl = oauth.GetProperty("tokenUrl").GetString()?.Trim() ?? "",
+                Scopes = oauth.GetProperty("scopes").GetString()?.Trim() ?? "",
+                AdditionalAuthorizationParameters = oauth.GetProperty("additionalAuthorizationParameters").EnumerateObject()
+                    .ToDictionary(p => p.Name, p => p.Value.GetString() ?? ""),
+                UseBasicAuthForTokenEndpoint = oauth.GetProperty("useBasicAuthForTokenEndpoint").GetBoolean(),
+                ExtraResponseFields = oauth.GetProperty("extraResponseFields").EnumerateArray()
+                    .Select(e => e.GetString()?.Trim() ?? "")
+                    .Where(e => e.Length > 0)
+                    .ToList()
+            };
+        }
+
+        private bool ValidateOAuth(IntegrationData integrationData, out string error)
+        {
+            var oauth = integrationData.OAuth!;
+            var keyPattern = new Regex(@"^\w+$");
+
+            if (!oauth.AuthorizationUrl.StartsWith("https://") || !oauth.TokenUrl.StartsWith("https://"))
+            {
+                error = "OAuth authorization and token URLs must start with https://.";
+                return false;
+            }
+
+            if (oauth.AdditionalAuthorizationParameters.Keys.Any(k => !keyPattern.IsMatch(k)) || oauth.ExtraResponseFields.Any(f => !keyPattern.IsMatch(f)))
+            {
+                error = "OAuth parameter names and extra response fields may only contain letters, digits and underscores.";
+                return false;
+            }
+
+            var clientIdField = integrationData.Fields.FirstOrDefault(f => f.Id == IntegrationOAuthData.ClientIdField);
+            var clientSecretField = integrationData.Fields.FirstOrDefault(f => f.Id == IntegrationOAuthData.ClientSecretField);
+            if (clientIdField == null || clientSecretField == null || !clientIdField.IsEncrypted || !clientSecretField.IsEncrypted)
+            {
+                error = $"An OAuth integration needs encrypted fields with the IDs {IntegrationOAuthData.ClientIdField} and {IntegrationOAuthData.ClientSecretField}.";
+                return false;
+            }
+
+            error = string.Empty;
+            return true;
         }
 
         private IntegrationHelpData ParseHelp(JsonElement help)

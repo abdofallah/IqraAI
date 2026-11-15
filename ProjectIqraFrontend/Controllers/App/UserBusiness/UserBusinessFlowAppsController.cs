@@ -111,7 +111,8 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
                     appKey,
                     fetcherKey,
                     request.Context,
-                    integration
+                    integration,
+                    businessId
                 );
                 if (!fetchOptionsResult.Success)
                 {
@@ -212,7 +213,8 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
                     actionKey,
                     request.Inputs,
                     new Dictionary<string, object?>(), // Empty session context
-                    integration
+                    integration,
+                    businessId
                 );
                 if (!executeResult.Success)
                 {

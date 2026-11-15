@@ -24,5 +24,10 @@ namespace IqraCore.Entities.Integrations
         public List<string> Type { get; set; } = new List<string>();
         public List<IntegrationFieldData> Fields { get; set; } = new List<IntegrationFieldData>();
         public IntegrationHelpData Help { get; set; } = new IntegrationHelpData();
+
+        [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/integrations")]
+        public IntegrationOAuthData? OAuth { get; set; } = null;
+        public bool IsOAuth => OAuth != null;
     }
 }

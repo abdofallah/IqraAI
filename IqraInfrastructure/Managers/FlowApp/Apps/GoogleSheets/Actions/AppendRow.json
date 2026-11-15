@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "title": "Append Row",
+  "required": [ "spreadsheetId", "values" ],
+  "properties": {
+    "spreadsheetId": {
+      "type": "string",
+      "title": "Spreadsheet",
+      "description": "The spreadsheet to append to.",
+      "x-fetcher": "ListSpreadsheets"
+    },
+    "range": {
+      "type": "string",
+      "title": "Sheet / Range",
+      "description": "Sheet name or A1 range to append into (e.g. Sheet1).",
+      "default": "Sheet1"
+    },
+    "values": {
+      "type": "string",
+      "title": "Row Values",
+      "description": "Comma-separated cell values for the new row (e.g. John,john@x.com,Interested)."
+    }
+  }
+}

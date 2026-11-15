@@ -7,5 +7,7 @@
         public string FriendlyName { get; set; } = string.Empty;
         public Dictionary<string, string> Fields { get; set; } = new Dictionary<string, string>();
         public Dictionary<string, string> DecryptedFields { get; set; } = new Dictionary<string, string>();
+        public string? OAuthAccessToken { get; set; } = null;
+        public Dictionary<string, string> OAuthExtraFields { get; set; } = new Dictionary<string, string>();
     }
 }

@@ -1414,4 +1414,426 @@
     "Uri": "https://mailchimp.com/help/about-api-keys/"
   },
   "LogoS3StorageLink": null
+},
+{
+  "_id": "google_calendar",
+  "Name": "Google Calendar",
+  "Description": "Create and read Google Calendar events (OAuth2).",
+  "DisabledAt": null,
+  "LogoS3StorageLink": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ClientId",
+      "Name": "OAuth Client ID",
+      "Type": "text",
+      "Tooltip": "From your Google Cloud OAuth 2.0 Client.",
+      "Placeholder": "xxxx.apps.googleusercontent.com",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "ClientSecret",
+      "Name": "OAuth Client Secret",
+      "Type": "text",
+      "Tooltip": "From your Google Cloud OAuth 2.0 Client.",
+      "Placeholder": "Enter Client Secret",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "Scopes",
+      "Name": "Scopes (optional override)",
+      "Type": "text",
+      "Tooltip": "Space-separated OAuth scopes. Leave blank to use the recommended defaults.",
+      "Placeholder": "https://www.googleapis.com/auth/calendar",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "RequiresOAuthReconnect": true
+    }
+  ],
+  "Help": {
+    "Text": "Set the redirect URI shown above as an authorized redirect URI in Google Cloud, then connect.",
+    "Uri": "https://developers.google.com/identity/protocols/oauth2/web-server"
+  },
+  "OAuth": {
+    "AuthorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+    "TokenUrl": "https://oauth2.googleapis.com/token",
+    "Scopes": "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
+    "AdditionalAuthorizationParameters": {
+      "access_type": "offline",
+      "prompt": "consent",
+      "include_granted_scopes": "true"
+    },
+    "UseBasicAuthForTokenEndpoint": false,
+    "ExtraResponseFields": []
+  }
+},
+{
+  "_id": "gmail",
+  "Name": "Gmail",
+  "Description": "Send email from a connected Gmail account (OAuth2).",
+  "DisabledAt": null,
+  "LogoS3StorageLink": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ClientId",
+      "Name": "OAuth Client ID",
+      "Type": "text",
+      "Tooltip": "From your Google Cloud OAuth 2.0 Client.",
+      "Placeholder": "xxxx.apps.googleusercontent.com",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "ClientSecret",
+      "Name": "OAuth Client Secret",
+      "Type": "text",
+      "Tooltip": "From your Google Cloud OAuth 2.0 Client.",
+      "Placeholder": "Enter Client Secret",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "Scopes",
+      "Name": "Scopes (optional override)",
+      "Type": "text",
+      "Tooltip": "Space-separated OAuth scopes. Leave blank to use the recommended defaults.",
+      "Placeholder": "https://www.googleapis.com/auth/gmail.send",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "RequiresOAuthReconnect": true
+    }
+  ],
+  "Help": {
+    "Text": "Set the redirect URI shown above as an authorized redirect URI in Google Cloud, then connect.",
+    "Uri": "https://developers.google.com/gmail/api/guides/sending"
+  },
+  "OAuth": {
+    "AuthorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+    "TokenUrl": "https://oauth2.googleapis.com/token",
+    "Scopes": "https://www.googleapis.com/auth/gmail.send",
+    "AdditionalAuthorizationParameters": {
+      "access_type": "offline",
+      "prompt": "consent",
+      "include_granted_scopes": "true"
+    },
+    "UseBasicAuthForTokenEndpoint": false,
+    "ExtraResponseFields": []
+  }
+},
+{
+  "_id": "google_sheets",
+  "Name": "Google Sheets",
+  "Description": "Append rows to Google Sheets (OAuth2).",
+  "DisabledAt": null,
+  "LogoS3StorageLink": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ClientId",
+      "Name": "OAuth Client ID",
+      "Type": "text",
+      "Tooltip": "From your Google Cloud OAuth 2.0 Client.",
+      "Placeholder": "xxxx.apps.googleusercontent.com",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "ClientSecret",
+      "Name": "OAuth Client Secret",
+      "Type": "text",
+      "Tooltip": "From your Google Cloud OAuth 2.0 Client.",
+      "Placeholder": "Enter Client Secret",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "Scopes",
+      "Name": "Scopes (optional override)",
+      "Type": "text",
+      "Tooltip": "Space-separated OAuth scopes. Leave blank to use the recommended defaults.",
+      "Placeholder": "https://www.googleapis.com/auth/spreadsheets",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "RequiresOAuthReconnect": true
+    }
+  ],
+  "Help": {
+    "Text": "Set the redirect URI shown above as an authorized redirect URI in Google Cloud, then connect.",
+    "Uri": "https://developers.google.com/sheets/api/guides/values"
+  },
+  "OAuth": {
+    "AuthorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+    "TokenUrl": "https://oauth2.googleapis.com/token",
+    "Scopes": "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly",
+    "AdditionalAuthorizationParameters": {
+      "access_type": "offline",
+      "prompt": "consent",
+      "include_granted_scopes": "true"
+    },
+    "UseBasicAuthForTokenEndpoint": false,
+    "ExtraResponseFields": []
+  }
+},
+{
+  "_id": "outlook_calendar",
+  "Name": "Outlook Calendar",
+  "Description": "Create events on Outlook / Microsoft 365 Calendar (OAuth2 via Microsoft Graph).",
+  "DisabledAt": null,
+  "LogoS3StorageLink": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ClientId",
+      "Name": "Application (Client) ID",
+      "Type": "text",
+      "Tooltip": "From your Entra ID (Azure AD) app registration.",
+      "Placeholder": "Enter Application (Client) ID",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "ClientSecret",
+      "Name": "Client Secret",
+      "Type": "text",
+      "Tooltip": "A client secret value from your Entra ID app registration.",
+      "Placeholder": "Enter Client Secret",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "Scopes",
+      "Name": "Scopes (optional override)",
+      "Type": "text",
+      "Tooltip": "Space-separated Microsoft Graph scopes (must include offline_access). Leave blank for defaults.",
+      "Placeholder": "offline_access Calendars.ReadWrite User.Read",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "RequiresOAuthReconnect": true
+    }
+  ],
+  "Help": {
+    "Text": "Register the redirect URI shown above as a redirect URI in your Entra ID app, then connect.",
+    "Uri": "https://learn.microsoft.com/en-us/graph/auth-v2-user"
+  },
+  "OAuth": {
+    "AuthorizationUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+    "TokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+    "Scopes": "offline_access Calendars.ReadWrite User.Read",
+    "AdditionalAuthorizationParameters": {},
+    "UseBasicAuthForTokenEndpoint": false,
+    "ExtraResponseFields": []
+  }
+},
+{
+  "_id": "outlook_mail",
+  "Name": "Outlook Mail",
+  "Description": "Send email from Outlook / Microsoft 365 (OAuth2 via Microsoft Graph).",
+  "DisabledAt": null,
+  "LogoS3StorageLink": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ClientId",
+      "Name": "Application (Client) ID",
+      "Type": "text",
+      "Tooltip": "From your Entra ID (Azure AD) app registration.",
+      "Placeholder": "Enter Application (Client) ID",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "ClientSecret",
+      "Name": "Client Secret",
+      "Type": "text",
+      "Tooltip": "A client secret value from your Entra ID app registration.",
+      "Placeholder": "Enter Client Secret",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "Scopes",
+      "Name": "Scopes (optional override)",
+      "Type": "text",
+      "Tooltip": "Space-separated Microsoft Graph scopes (must include offline_access). Leave blank for defaults.",
+      "Placeholder": "offline_access Mail.Send User.Read",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "RequiresOAuthReconnect": true
+    }
+  ],
+  "Help": {
+    "Text": "Register the redirect URI shown above as a redirect URI in your Entra ID app, then connect.",
+    "Uri": "https://learn.microsoft.com/en-us/graph/api/user-sendmail"
+  },
+  "OAuth": {
+    "AuthorizationUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+    "TokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+    "Scopes": "offline_access Mail.Send User.Read",
+    "AdditionalAuthorizationParameters": {},
+    "UseBasicAuthForTokenEndpoint": false,
+    "ExtraResponseFields": []
+  }
+},
+{
+  "_id": "salesforce",
+  "Name": "Salesforce",
+  "Description": "Create leads and upsert contacts in Salesforce CRM (OAuth2).",
+  "DisabledAt": null,
+  "LogoS3StorageLink": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ClientId",
+      "Name": "Consumer Key (Client ID)",
+      "Type": "text",
+      "Tooltip": "The Consumer Key from your Salesforce Connected App.",
+      "Placeholder": "Enter Consumer Key",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "ClientSecret",
+      "Name": "Consumer Secret (Client Secret)",
+      "Type": "text",
+      "Tooltip": "The Consumer Secret from your Salesforce Connected App.",
+      "Placeholder": "Enter Consumer Secret",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "Scopes",
+      "Name": "Scopes (optional override)",
+      "Type": "text",
+      "Tooltip": "OAuth scopes (must include api and refresh_token). Leave blank for defaults.",
+      "Placeholder": "api refresh_token offline_access",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": false,
+      "IsEncrypted": false,
+      "RequiresOAuthReconnect": true
+    }
+  ],
+  "Help": {
+    "Text": "Add the redirect URI shown above to your Connected App's OAuth redirect URIs, then connect.",
+    "Uri": "https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm"
+  },
+  "OAuth": {
+    "AuthorizationUrl": "https://login.salesforce.com/services/oauth2/authorize",
+    "TokenUrl": "https://login.salesforce.com/services/oauth2/token",
+    "Scopes": "api refresh_token offline_access",
+    "AdditionalAuthorizationParameters": {},
+    "UseBasicAuthForTokenEndpoint": false,
+    "ExtraResponseFields": [
+      "instance_url"
+    ]
+  }
+},
+{
+  "_id": "zoom",
+  "Name": "Zoom",
+  "Description": "Schedule Zoom meetings (OAuth2).",
+  "DisabledAt": null,
+  "LogoS3StorageLink": null,
+  "Type": [
+    "FlowApp"
+  ],
+  "Fields": [
+    {
+      "_id": "ClientId",
+      "Name": "OAuth Client ID",
+      "Type": "text",
+      "Tooltip": "From your Zoom Marketplace user-managed OAuth app.",
+      "Placeholder": "Enter Client ID",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    },
+    {
+      "_id": "ClientSecret",
+      "Name": "OAuth Client Secret",
+      "Type": "text",
+      "Tooltip": "From your Zoom Marketplace user-managed OAuth app.",
+      "Placeholder": "Enter Client Secret",
+      "DefaultValue": "",
+      "Options": null,
+      "Required": true,
+      "IsEncrypted": true,
+      "RequiresOAuthReconnect": true
+    }
+  ],
+  "Help": {
+    "Text": "Set the redirect URI shown above as the redirect URL in your Zoom OAuth app, then connect.",
+    "Uri": "https://developers.zoom.us/docs/integrations/oauth/"
+  },
+  "OAuth": {
+    "AuthorizationUrl": "https://zoom.us/oauth/authorize",
+    "TokenUrl": "https://zoom.us/oauth/token",
+    "Scopes": "meeting:write meeting:read",
+    "AdditionalAuthorizationParameters": {},
+    "UseBasicAuthForTokenEndpoint": true,
+    "ExtraResponseFields": []
+  }
 }]

@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "title": "Send Email",
+  "required": [ "to", "subject", "body" ],
+  "properties": {
+    "to": {
+      "type": "string",
+      "title": "To",
+      "description": "Recipient email address."
+    },
+    "cc": {
+      "type": "string",
+      "title": "Cc",
+      "description": "Optional carbon-copy address."
+    },
+    "subject": {
+      "type": "string",
+      "title": "Subject"
+    },
+    "body": {
+      "type": "string",
+      "title": "Body"
+    },
+    "isHtml": {
+      "type": "boolean",
+      "title": "Body is HTML",
+      "default": false
+    }
+  }
+}

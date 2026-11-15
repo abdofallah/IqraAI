@@ -1,0 +1,28 @@
+{
+  "type": "object",
+  "title": "List Events",
+  "required": [],
+  "properties": {
+    "calendarId": {
+      "type": "string",
+      "title": "Calendar",
+      "description": "Calendar to list from. Leave blank for the primary calendar.",
+      "x-fetcher": "ListCalendars"
+    },
+    "timeMin": {
+      "type": "string",
+      "title": "From (ISO 8601)",
+      "description": "Lower bound (RFC3339). Defaults to now."
+    },
+    "timeMax": {
+      "type": "string",
+      "title": "To (ISO 8601)",
+      "description": "Upper bound (RFC3339). Optional."
+    },
+    "maxResults": {
+      "type": "integer",
+      "title": "Max Results",
+      "default": 10
+    }
+  }
+}

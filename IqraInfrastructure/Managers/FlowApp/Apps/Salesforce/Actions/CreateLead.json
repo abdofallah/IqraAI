@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "title": "Create Lead",
+  "required": [ "lastName" ],
+  "properties": {
+    "firstName": {
+      "type": "string",
+      "title": "First Name"
+    },
+    "lastName": {
+      "type": "string",
+      "title": "Last Name"
+    },
+    "company": {
+      "type": "string",
+      "title": "Company",
+      "description": "Salesforce requires a company on a Lead; defaults to a placeholder if omitted."
+    },
+    "email": {
+      "type": "string",
+      "title": "Email"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone"
+    },
+    "title": {
+      "type": "string",
+      "title": "Job Title"
+    },
+    "status": {
+      "type": "string",
+      "title": "Lead Status",
+      "description": "Must match a Lead Status picklist value in the org (e.g. Open - Not Contacted)."
+    }
+  }
+}

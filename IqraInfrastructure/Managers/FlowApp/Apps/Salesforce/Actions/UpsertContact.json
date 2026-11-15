@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "title": "Create or Update Contact",
+  "required": [ "email" ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "title": "Email",
+      "description": "Match key: an existing Contact with this email is updated, otherwise created."
+    },
+    "firstName": {
+      "type": "string",
+      "title": "First Name"
+    },
+    "lastName": {
+      "type": "string",
+      "title": "Last Name",
+      "description": "Required when creating a new Contact."
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone"
+    },
+    "title": {
+      "type": "string",
+      "title": "Job Title"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "type": "object",
+  "title": "Create Event",
+  "required": [ "subject", "startDateTime", "endDateTime" ],
+  "properties": {
+    "subject": {
+      "type": "string",
+      "title": "Subject"
+    },
+    "body": {
+      "type": "string",
+      "title": "Body / Notes"
+    },
+    "isHtml": {
+      "type": "boolean",
+      "title": "Body is HTML",
+      "default": false
+    },
+    "location": {
+      "type": "string",
+      "title": "Location"
+    },
+    "startDateTime": {
+      "type": "string",
+      "title": "Start (ISO 8601)",
+      "description": "Local datetime without offset, e.g. 2026-01-01T10:00:00"
+    },
+    "endDateTime": {
+      "type": "string",
+      "title": "End (ISO 8601)",
+      "description": "Local datetime without offset, e.g. 2026-01-01T10:30:00"
+    },
+    "timeZone": {
+      "type": "string",
+      "title": "Time Zone",
+      "description": "Windows or IANA time zone name, e.g. UTC or Eastern Standard Time.",
+      "default": "UTC"
+    },
+    "attendeeEmail": {
+      "type": "string",
+      "title": "Attendee Email",
+      "description": "Optional single attendee to invite."
+    }
+  }
+}

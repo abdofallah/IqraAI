@@ -13,6 +13,7 @@
 
         public bool Required { get; set; } = false;
         public bool IsEncrypted { get; set; } = false;
+        public bool RequiresOAuthReconnect { get; set; } = false;
     }
 
     public class IntegrationFieldOption

@@ -33,6 +33,14 @@ const integrationFieldsList = $("#integrationFieldsList");
 const integrationHelpTextInput = $("#integrationHelpTextInput");
 const integrationHelpUrlInput = $("#integrationHelpUrlInput");
 const integrationDisabledCheck = $("#integrationDisabledCheck");
+const integrationOAuthEnabledCheck = $("#integrationOAuthEnabledCheck");
+const integrationOAuthSettingsContainer = $("#integrationOAuthSettingsContainer");
+const integrationOAuthAuthorizationUrlInput = $("#integrationOAuthAuthorizationUrlInput");
+const integrationOAuthTokenUrlInput = $("#integrationOAuthTokenUrlInput");
+const integrationOAuthScopesInput = $("#integrationOAuthScopesInput");
+const integrationOAuthParametersInput = $("#integrationOAuthParametersInput");
+const integrationOAuthExtraFieldsInput = $("#integrationOAuthExtraFieldsInput");
+const integrationOAuthBasicAuthCheck = $("#integrationOAuthBasicAuthCheck");
 
 /** API Functions **/
 function FetchIntegrationsFromAPI(successCallback, errorCallback) {
@@ -154,6 +162,15 @@ function createFieldElement(fieldData = null) {
                                 </div>
                             </div>
                         </div>
+                        <div class="row mt-2 field-oauth-reconnect-container ${integrationOAuthEnabledCheck.is(":checked") ? "" : "d-none"}">
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input field-oauth-reconnect-check" type="checkbox"
+                                        ${fieldData?.requiresOAuthReconnect ? "checked" : ""}>
+                                    <label class="form-check-label">Changing this field breaks the OAuth connection (reconnect required)</label>
+                                </div>
+                            </div>
+                        </div>
                         <div class="field-options-container ${fieldData?.type === "select" ? "" : "d-none"} mt-3">
                             <label class="form-label">Options</label>
                             <div class="field-options-list">
@@ -193,6 +210,54 @@ function createTypeBadgeElement(type) {
                     <button type="button" class="btn-close ms-1" aria-label="Remove"></button>
                 </span>
             `;
+}
+
+function UpdateOAuthReconnectVisibility() {
+	integrationFieldsList.find(".field-oauth-reconnect-container").toggleClass("d-none", !integrationOAuthEnabledCheck.is(":checked"));
+}
+
+function HasOAuthDataChanges(newOAuthData, oldOAuthData) {
+	if (!newOAuthData || !oldOAuthData) return !!newOAuthData !== !!oldOAuthData;
+
+	if (newOAuthData.authorizationUrl !== (oldOAuthData.authorizationUrl || "")) return true;
+	if (newOAuthData.tokenUrl !== (oldOAuthData.tokenUrl || "")) return true;
+	if (newOAuthData.scopes !== (oldOAuthData.scopes || "")) return true;
+	if (newOAuthData.useBasicAuthForTokenEndpoint !== !!oldOAuthData.useBasicAuthForTokenEndpoint) return true;
+
+	const oldParameters = oldOAuthData.additionalAuthorizationParameters || {};
+	const newParameterKeys = Object.keys(newOAuthData.additionalAuthorizationParameters);
+	if (newParameterKeys.length !== Object.keys(oldParameters).length) return true;
+	for (const key of newParameterKeys) {
+		if (!Object.prototype.hasOwnProperty.call(oldParameters, key) || newOAuthData.additionalAuthorizationParameters[key] !== oldParameters[key]) return true;
+	}
+
+	const oldExtraResponseFields = oldOAuthData.extraResponseFields || [];
+	if (newOAuthData.extraResponseFields.length !== oldExtraResponseFields.length) return true;
+	for (let i = 0; i < newOAuthData.extraResponseFields.length; i++) {
+		if (newOAuthData.extraResponseFields[i] !== oldExtraResponseFields[i]) return true;
+	}
+
+	return false;
+}
+
+function collectOAuth() {
+	if (!integrationOAuthEnabledCheck.is(":checked")) return null;
+
+	const parameters = {};
+	integrationOAuthParametersInput.val().split("\n").forEach((line) => {
+		const separatorIndex = line.indexOf("=");
+		if (separatorIndex <= 0) return;
+		parameters[line.slice(0, separatorIndex).trim()] = line.slice(separatorIndex + 1).trim();
+	});
+
+	return {
+		authorizationUrl: integrationOAuthAuthorizationUrlInput.val().trim(),
+		tokenUrl: integrationOAuthTokenUrlInput.val().trim(),
+		scopes: integrationOAuthScopesInput.val().trim(),
+		additionalAuthorizationParameters: parameters,
+		useBasicAuthForTokenEndpoint: integrationOAuthBasicAuthCheck.is(":checked"),
+		extraResponseFields: integrationOAuthExtraFieldsInput.val().split(",").map((field) => field.trim()).filter((field) => field.length > 0),
+	};
 }
 
 function generateUniqueId() {
@@ -272,6 +337,7 @@ function CreateDefaultIntegrationObject() {
 		type: [],
 		fields: [],
 		help: { text: "", uri: "" },
+		oAuth: null,
 	};
 }
 
@@ -412,6 +478,12 @@ function CheckIntegrationTabHasChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
+	// Check OAuth
+	changes.oAuth = collectOAuth();
+	if (HasOAuthDataChanges(changes.oAuth, CurrentIntegrationData.oAuth)) {
+		hasChanges = true;
+	}
+
 	// Check fields
 	changes.fields = collectFields();
 	if (changes.fields.length !== CurrentIntegrationData.fields.length) {
@@ -429,7 +501,8 @@ function CheckIntegrationTabHasChanges(enableDisableButton = true) {
 				newField.placeholder !== oldField.placeholder ||
 				newField.defaultValue !== oldField.defaultValue ||
 				newField.required !== oldField.required ||
-				newField.isEncrypted !== oldField.isEncrypted
+				newField.isEncrypted !== oldField.isEncrypted ||
+				newField.requiresOAuthReconnect !== (oldField.requiresOAuthReconnect || false)
 			) {
 				hasChanges = true;
 				break;
@@ -475,6 +548,7 @@ function collectTypes() {
 
 function collectFields() {
 	const fields = [];
+	const isOAuthIntegration = integrationOAuthEnabledCheck.is(":checked");
 	integrationFieldsList.find(".integration-field").each(function () {
 		const field = $(this);
 		const fieldData = {
@@ -486,6 +560,7 @@ function collectFields() {
 			defaultValue: field.find(".field-default-value-input").val().trim(),
 			required: field.find(".field-required-check").is(":checked"),
 			isEncrypted: field.find(".field-encrypted-check").is(":checked"),
+			requiresOAuthReconnect: isOAuthIntegration && field.find(".field-oauth-reconnect-check").is(":checked"),
 		};
 
 		if (fieldData.type === "select") {
@@ -517,6 +592,14 @@ function resetOrClearIntegrationManager() {
 	integrationFieldsList.empty();
 	integrationHelpTextInput.val("");
 	integrationHelpUrlInput.val("");
+	integrationOAuthEnabledCheck.prop("checked", false);
+	integrationOAuthSettingsContainer.addClass("d-none");
+	integrationOAuthAuthorizationUrlInput.val("");
+	integrationOAuthTokenUrlInput.val("");
+	integrationOAuthScopesInput.val("");
+	integrationOAuthParametersInput.val("");
+	integrationOAuthExtraFieldsInput.val("");
+	integrationOAuthBasicAuthCheck.prop("checked", false);
 
 	integrationManagerTab.find(".is-invalid").removeClass("is-invalid");
 	saveIntegrationButton.prop("disabled", true);
@@ -542,6 +625,18 @@ function fillIntegrationManager(integrationData) {
 	integrationData.type.forEach((type) => {
 		integrationTypesList.append($(createTypeBadgeElement(type)));
 	});
+
+	// Fill OAuth
+	if (integrationData.oAuth) {
+		integrationOAuthEnabledCheck.prop("checked", true);
+		integrationOAuthSettingsContainer.removeClass("d-none");
+		integrationOAuthAuthorizationUrlInput.val(integrationData.oAuth.authorizationUrl);
+		integrationOAuthTokenUrlInput.val(integrationData.oAuth.tokenUrl);
+		integrationOAuthScopesInput.val(integrationData.oAuth.scopes);
+		integrationOAuthParametersInput.val(Object.entries(integrationData.oAuth.additionalAuthorizationParameters || {}).map(([key, value]) => `${key}=${value}`).join("\n"));
+		integrationOAuthExtraFieldsInput.val((integrationData.oAuth.extraResponseFields || []).join(", "));
+		integrationOAuthBasicAuthCheck.prop("checked", !!integrationData.oAuth.useBasicAuthForTokenEndpoint);
+	}
 
 	// Fill fields
 	integrationData.fields.forEach((field) => {
@@ -627,6 +722,12 @@ function initIntegrationsTab() {
 
 	integrationTypesList.on("click", ".btn-close", function (event) {
 		$(this).closest(".badge").remove();
+		CheckIntegrationTabHasChanges();
+	});
+
+	integrationOAuthEnabledCheck.on("change", () => {
+		integrationOAuthSettingsContainer.toggleClass("d-none", !integrationOAuthEnabledCheck.is(":checked"));
+		UpdateOAuthReconnectVisibility();
 		CheckIntegrationTabHasChanges();
 	});
 

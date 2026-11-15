@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Models.User.Business.App.Agent;
+using IqraCore.Models.User.Business.App.Integration;
 
 namespace IqraCore.Models.User.Business
 {
@@ -13,7 +14,7 @@ namespace IqraCore.Models.User.Business
             Tools = data.Tools;
             Agents = data.Agents.Select(x => new BusinessAppAgentModel(x)).ToList();
             Scripts = data.Scripts;
-            Integrations = data.Integrations;
+            Integrations = data.Integrations.Select(x => new BusinessAppIntegrationModel(x)).ToList();
             Cache = data.Cache;
             Routings = data.Routings;
             Numbers = data.Numbers;
@@ -29,7 +30,7 @@ namespace IqraCore.Models.User.Business
         public List<BusinessAppTool> Tools { get; set; } = new List<BusinessAppTool>();
         public List<BusinessAppAgentModel> Agents { get; set; } = new List<BusinessAppAgentModel>();
         public List<BusinessAppScript> Scripts { get; set; } = new List<BusinessAppScript>();
-        public List<BusinessAppIntegration> Integrations { get; set; } = new List<BusinessAppIntegration>();
+        public List<BusinessAppIntegrationModel> Integrations { get; set; } = new List<BusinessAppIntegrationModel>();
         public BusinessAppCache Cache { get; set; } = new BusinessAppCache();
         public List<BusinessAppRoute> Routings { get; set; } = new List<BusinessAppRoute>();
         public List<BusinessNumberData> Numbers { get; set; } = new List<BusinessNumberData>();

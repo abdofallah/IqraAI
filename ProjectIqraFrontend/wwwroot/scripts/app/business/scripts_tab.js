@@ -1961,6 +1961,13 @@ function registerScriptNodes() {
 				}
 			}
 
+			const nodeIntegration = data.integrationId ? BusinessFullData.businessApp.integrations.find(i => i.id === data.integrationId) : null;
+			const nodeIntegrationSpec = appDef ? SpecificationIntegrationsListData.find(i => i.id === appDef.integrationType) : null;
+			const nodeConnectionStatus = nodeIntegration && nodeIntegrationSpec && IsOAuthIntegrationSpec(nodeIntegrationSpec) ? GetOAuthIntegrationStatus(nodeIntegration) : null;
+			const nodeConnectionBadge = nodeConnectionStatus && nodeConnectionStatus.state !== "connected"
+				? `<div class="mt-1 text-end"><span class="badge bg-danger bg-opacity-10 text-danger" style="font-size: 0.65rem;"><i class="fa-solid fa-link-slash me-1"></i>${nodeConnectionStatus.label}</span></div>`
+				: `<div class="mt-1 text-end"><span class="badge bg-success bg-opacity-10 text-success" style="font-size: 0.65rem;"><i class="fa-solid fa-link me-1"></i>Connected</span></div>`;
+
 			// Styling for the specific node type (inline or class)
 			// We reuse the header structure but inject the App Icon
 			div.innerHTML = `
@@ -1988,7 +1995,7 @@ function registerScriptNodes() {
                             ${actionLabel}
                         </div>
                     </div>
-                    ${data.integrationId ? `<div class="mt-1 text-end"><span class="badge bg-success bg-opacity-10 text-success" style="font-size: 0.65rem;"><i class="fa-solid fa-link me-1"></i>Connected</span></div>` : ''}
+                    ${data.integrationId ? nodeConnectionBadge : ''}
                 </div>
             `;
 
@@ -3105,11 +3112,17 @@ function generateFlowAppConfig(cell) {
 			i => i.type === appDef.integrationType
 		);
 
-		const integrationOptions = validIntegrations.map(integ => `
+		const integrationSpec = SpecificationIntegrationsListData.find(i => i.id === appDef.integrationType);
+		const isOAuthIntegration = !!integrationSpec && IsOAuthIntegrationSpec(integrationSpec);
+
+		const integrationOptions = validIntegrations.map(integ => {
+			const connectionStatus = isOAuthIntegration ? GetOAuthIntegrationStatus(integ) : null;
+			return `
             <option value="${integ.id}" ${data.integrationId === integ.id ? "selected" : ""}>
-                ${integ.friendlyName}
+                ${integ.friendlyName}${connectionStatus && connectionStatus.state !== "connected" ? ` (${connectionStatus.label})` : ""}
             </option>
-        `).join("");
+        `;
+		}).join("");
 
 		integrationSection = `
             <div class="tool-config-group mb-4">

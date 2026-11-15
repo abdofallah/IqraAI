@@ -57,7 +57,8 @@ namespace IqraInfrastructure.Repositories.Integrations
                 .Set(x => x.LogoS3StorageLink, integrationData.LogoS3StorageLink)
                 .Set(x => x.Type, integrationData.Type)
                 .Set(x => x.Fields, integrationData.Fields)
-                .Set(x => x.Help, integrationData.Help);
+                .Set(x => x.Help, integrationData.Help)
+                .Set(x => x.OAuth, integrationData.OAuth);
 
             return await _integrationsCollection.UpdateOneAsync(filter, update);
         }
