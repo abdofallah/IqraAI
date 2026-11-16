@@ -33,6 +33,33 @@ let embeddingCacheGroupMultilanguage = null;
 let IsSavingEmbeddingGroupTab = false;
 let IsSavingEmbeddingCacheTab = false;
 
+// --- Change Helpers ---
+const MessageGroupChanges = ChangesHelper.define({
+	name: "text",
+});
+
+const MessageCacheChanges = ChangesHelper.define({
+	query: "text",
+	response: "text",
+});
+
+const AudioGroupChanges = ChangesHelper.define({
+	name: "text",
+});
+
+const AudioCacheChanges = ChangesHelper.define({
+	query: "text",
+	unusedExpiryHours: "number",
+});
+
+const EmbeddingGroupChanges = ChangesHelper.define({
+	name: "text",
+});
+
+const EmbeddingCacheChanges = ChangesHelper.define({
+	query: "text",
+});
+
 /** Elements Variables **/
 
 // Cache Tab
@@ -328,22 +355,17 @@ function fillMessageGroupManager(groupData) {
 }
 
 function CheckMessageGroupTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Check name changes
-	changes.name = $("#messageGroupNameInput").val().trim();
-	if (CurrentMessageGroupData.name !== changes.name) {
-		hasChanges = true;
-	}
+	const result = MessageGroupChanges.compare(CurrentMessageGroupData, {
+		name: () => $("#messageGroupNameInput").val().trim(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveMessageGroupButton.prop("disabled", !hasChanges);
+		saveMessageGroupButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 
@@ -483,28 +505,18 @@ function fillMessageCacheManager(cacheData) {
 }
 
 function CheckMessageCacheTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Check query changes
-	changes.query = $("#messageCacheQueryInput").val().trim();
-	if (CurrentMessageCacheData.query !== changes.query) {
-		hasChanges = true;
-	}
-
-	// Check response changes
-	changes.response = $("#messageCacheResponseInput").val().trim();
-	if (CurrentMessageCacheData.response !== changes.response) {
-		hasChanges = true;
-	}
+	const result = MessageCacheChanges.compare(CurrentMessageCacheData, {
+		query: () => $("#messageCacheQueryInput").val().trim(),
+		response: () => $("#messageCacheResponseInput").val().trim(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveMessageCacheButton.prop("disabled", !hasChanges);
+		saveMessageCacheButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 
@@ -704,22 +716,17 @@ function ValidateAudioGroupTab(onlyRemove = true) {
 }
 
 function CheckAudioGroupTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Check name changes
-	changes.name = $("#audioGroupNameInput").val().trim();
-	if (CurrentAudioGroupData.name !== changes.name) {
-		hasChanges = true;
-	}
+	const result = AudioGroupChanges.compare(CurrentAudioGroupData, {
+		name: () => $("#audioGroupNameInput").val().trim(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveAudioGroupButton.prop("disabled", !hasChanges);
+		saveAudioGroupButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 
@@ -857,28 +864,18 @@ function ValidateAudioCacheTab(onlyRemove = true) {
 }
 
 function CheckAudioCacheTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Check query changes
-	changes.query = $("#audioCacheQueryInput").val().trim();
-	if (CurrentAudioCacheData.query !== changes.query) {
-		hasChanges = true;
-	}
-
-	// Check expiry hours changes
-	changes.unusedExpiryHours = parseInt($("#audioCacheExpiryInput").val()) || 24;
-	if (CurrentAudioCacheData.unusedExpiryHours !== changes.unusedExpiryHours) {
-		hasChanges = true;
-	}
+	const result = AudioCacheChanges.compare(CurrentAudioCacheData, {
+		query: () => $("#audioCacheQueryInput").val().trim(),
+		unusedExpiryHours: () => parseInt($("#audioCacheExpiryInput").val()) || 24,
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveAudioCacheButton.prop("disabled", !hasChanges);
+		saveAudioCacheButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 
@@ -1034,19 +1031,15 @@ function ValidateEmbeddingGroupTab(onlyRemove = true) {
 }
 
 function CheckEmbeddingGroupTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	changes.name = $("#embeddingGroupNameInput").val().trim();
-	if (CurrentEmbeddingGroupData.name !== changes.name) {
-		hasChanges = true;
-	}
+	const result = EmbeddingGroupChanges.compare(CurrentEmbeddingGroupData, {
+		name: () => $("#embeddingGroupNameInput").val().trim(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveEmbeddingGroupButton.prop("disabled", !hasChanges);
+		saveEmbeddingGroupButton.prop("disabled", !result.hasChanges);
 	}
 
-	return { hasChanges, changes };
+	return { hasChanges: result.hasChanges, changes: result.changes };
 }
 
 async function canLeaveEmbeddingGroupTab(leaveMessage = "") {
@@ -1149,18 +1142,15 @@ function ValidateEmbeddingCacheTab(onlyRemove = true) {
 }
 
 function CheckEmbeddingCacheTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	changes.query = $("#embeddingCacheQueryInput").val().trim();
-	if (CurrentEmbeddingCacheData.query !== changes.query) {
-		hasChanges = true;
-	}
+	const result = EmbeddingCacheChanges.compare(CurrentEmbeddingCacheData, {
+		query: () => $("#embeddingCacheQueryInput").val().trim(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveEmbeddingCacheButton.prop("disabled", !hasChanges);
+		saveEmbeddingCacheButton.prop("disabled", !result.hasChanges);
 	}
-	return { hasChanges, changes };
+
+	return { hasChanges: result.hasChanges, changes: result.changes };
 }
 
 async function canLeaveEmbeddingCacheTab(leaveMessage = "") {

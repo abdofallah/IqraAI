@@ -24,6 +24,31 @@ const FIELD_CONDITION_VISIBILITY = {
 };
 
 class ProviderIntegrationsFieldHelper {
+    static FieldChangeRules = {
+        id: "text",
+        name: "text",
+        type: "text",
+        tooltip: "text",
+        placeholder: "text",
+        defaultValue: "text",
+        required: "boolean",
+        isEncrypted: "boolean",
+        isArray: "boolean",
+        options: { kind: "list", fields: { key: "text", value: "text", isDefault: "boolean" } },
+        minNumberValue: "number",
+        maxNumberValue: "number",
+        decimalPlaces: "number",
+        stringRegex: "text",
+        minArrayCount: "number",
+        maxArrayCount: "number",
+        modelCondition: { kind: "object", fields: { type: "enum", models: { kind: "list", items: "text" } } },
+        fieldConditions: { kind: "list", fields: { fieldId: "text", type: "enum", visibility: "enum", value: "text" } },
+    };
+
+    static ListChanges = ChangesHelper.define({
+        fields: { kind: "list", fields: ProviderIntegrationsFieldHelper.FieldChangeRules },
+    });
+
     /**
      * @param {string|jQuery} containerSelector - The DOM element to render fields into
      * @param {string|jQuery} addButtonSelector - The button that adds a new field
@@ -248,8 +273,7 @@ class ProviderIntegrationsFieldHelper {
 
     /** Checks if the current DOM state differs from the initial data */
     hasChanges() {
-        const currentData = this.getData();
-        return !this._deepEqual(this.initialData, currentData);
+        return ProviderIntegrationsFieldHelper.ListChanges.compare({ fields: this.initialData }, { fields: this.getData() }).hasChanges;
     }
 
     /** Updates the baseline for change detection (call after a successful Save) */
@@ -624,30 +648,5 @@ class ProviderIntegrationsFieldHelper {
             </div>
         </div>
         `;
-    }
-
-    /** 
-     * Recursive helper to check deep equality of objects.
-     * Used to detect unsaved changes.
-     */
-    _deepEqual(obj1, obj2) {
-        if (obj1 === obj2) return true;
-
-        if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) {
-            return false;
-        }
-
-        const keys1 = Object.keys(obj1);
-        const keys2 = Object.keys(obj2);
-
-        if (keys1.length !== keys2.length) return false;
-
-        for (let key of keys1) {
-            if (!keys2.includes(key)) return false;
-            // Recursive check
-            if (!this._deepEqual(obj1[key], obj2[key])) return false;
-        }
-
-        return true;
     }
 }

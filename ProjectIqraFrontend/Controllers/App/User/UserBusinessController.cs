@@ -142,16 +142,7 @@ namespace ProjectIqraFrontend.Controllers.App.User
                 }
 
                 var businessAppModel = new GetUseBusinessFullResultAppModel(businessAppResult.Data!);
-                foreach (var agent in businessAppResult.Data!.Agents)
-                {
-                    var modelAgent = businessAppModel.Agents.FirstOrDefault(a => a.Id == agent.Id);
-                    if (modelAgent == null) continue;
-
-                    if (agent.Settings.BackgroundAudioS3StorageLink != null)
-                    {
-                        modelAgent.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GeneratePresignedUrl(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000);
-                    }
-                }
+                businessAppModel.Agents = businessAppResult.Data!.Agents.Select(agent => _businessManager.GetAgentsManager().CreateAgentModel(agent)).ToList();
 
                 var resultData = new GetUserBusinessFullReturnModel()
                 {

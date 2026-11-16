@@ -828,6 +828,95 @@ let telephonyCampaignVoicemailSTTIntegrationManager = null;
 let telephonyCampaignVoicemailLLMIntegrationManager = null;
 let currentTelephonyCampaignVoicemailMessageToLeaveMultiLangData = {};
 
+// --- Change Helpers ---
+const TelephonyCampaignActionToolRule = { kind: "object", fields: { toolId: "text", arguments: { kind: "map", values: "value" } } };
+const TelephonyCampaignVariableListRule = { kind: "list", fields: { key: "text", isRequired: "boolean", isEmptyOrNullAllowed: "boolean" } };
+const TelephonyCampaignIntegrationRule = { kind: "object", fields: { id: "text", fieldValues: { kind: "map", values: "value" } } };
+const TelephonyCampaignRetryOn = (get) => get("enabled");
+const TelephonyCampaignVoicemailOn = (get) => get("isEnabled");
+const TelephonyCampaignRetryRule = {
+    kind: "object",
+    fields: {
+        enabled: "boolean",
+        count: { kind: "number", when: TelephonyCampaignRetryOn },
+        delay: { kind: "number", when: TelephonyCampaignRetryOn },
+        unit: { kind: "enum", when: TelephonyCampaignRetryOn },
+    },
+};
+
+const TelephonyCampaignChanges = ChangesHelper.define({
+    general: { kind: "object", fields: { emoji: "text", name: "text", description: "text" } },
+    agent: {
+        kind: "object",
+        fields: {
+            selectedAgentId: "text",
+            openingScriptId: "text",
+            language: "text",
+            timezones: { kind: "list", items: "text" },
+            fromNumberInContext: "boolean",
+            toNumberInContext: "boolean",
+        },
+    },
+    numberRoute: {
+        kind: "object",
+        fields: {
+            defaultNumberId: "text",
+            routeNumberList: { kind: "map", values: "text", foldKeyCase: true },
+        },
+    },
+    configuration: {
+        kind: "object",
+        fields: {
+            retryOnDecline: TelephonyCampaignRetryRule,
+            retryOnMiss: TelephonyCampaignRetryRule,
+            timeouts: { kind: "object", fields: { pickupDelayMS: "number", notifyOnSilenceMS: "number", endOnSilenceMS: "number", maxCallTimeS: "number" } },
+        },
+    },
+    voicemailDetection: {
+        kind: "object",
+        fields: {
+            isEnabled: "boolean",
+            initialCheckDelayMS: { kind: "number", when: TelephonyCampaignVoicemailOn },
+            voiceMailMessageVADSilenceThresholdMS: { kind: "number", when: TelephonyCampaignVoicemailOn },
+            voiceMailMessageVADMaxSpeechDurationMS: { kind: "number", when: TelephonyCampaignVoicemailOn },
+            onVoiceMailMessageDetectVerifySTTAndLLM: { kind: "boolean", when: TelephonyCampaignVoicemailOn },
+            transcribeVoiceMessageSTT: { ...TelephonyCampaignIntegrationRule, when: TelephonyCampaignVoicemailOn },
+            verifyVoiceMessageLLM: { ...TelephonyCampaignIntegrationRule, when: TelephonyCampaignVoicemailOn },
+            stopSpeakingAgentAfterMlCheckSuccess: { kind: "boolean", when: TelephonyCampaignVoicemailOn },
+            stopSpeakingAgentAfterVadSilence: { kind: "boolean", when: TelephonyCampaignVoicemailOn },
+            stopSpeakingAgentAfterLLMConfirm: { kind: "boolean", when: TelephonyCampaignVoicemailOn },
+            stopSpeakingAgentDelayAfterMatchMS: { kind: "number", when: TelephonyCampaignVoicemailOn },
+            endOrLeaveMessageAfterMLCheckSuccess: { kind: "boolean", when: TelephonyCampaignVoicemailOn },
+            endOrLeaveMessageAfterVadSilence: { kind: "boolean", when: TelephonyCampaignVoicemailOn },
+            endOrLeaveMessageAfterLLMConfirm: { kind: "boolean", when: TelephonyCampaignVoicemailOn },
+            endOrLeaveMessageDelayAfterMatchMS: { kind: "number", when: TelephonyCampaignVoicemailOn },
+            endCallOnDetect: { kind: "boolean", when: TelephonyCampaignVoicemailOn },
+            leaveMessageOnDetect: { kind: "boolean", when: TelephonyCampaignVoicemailOn },
+            messageToLeave: { kind: "map", values: "text", when: TelephonyCampaignVoicemailOn },
+        },
+    },
+    variables: { kind: "object", fields: { dynamicVariables: TelephonyCampaignVariableListRule, metadata: TelephonyCampaignVariableListRule } },
+    postAnalysis: {
+        kind: "object",
+        fields: {
+            postAnalysisId: "text",
+            contextVariables: { kind: "list", fields: { name: "text", description: "text", value: "text" }, when: (get) => get("postAnalysisId") != null },
+        },
+    },
+    actions: {
+        kind: "object",
+        fields: {
+            callInitiationFailureTool: TelephonyCampaignActionToolRule,
+            callInitiatedTool: TelephonyCampaignActionToolRule,
+            callDeclinedTool: TelephonyCampaignActionToolRule,
+            callMissedTool: TelephonyCampaignActionToolRule,
+            callAnsweredTool: TelephonyCampaignActionToolRule,
+            callEndedTool: TelephonyCampaignActionToolRule,
+            conversationPostAnalysisTool: TelephonyCampaignActionToolRule,
+        },
+    },
+});
+
 const telephonyCampaignsTooltipTriggerList = document.querySelectorAll('#telephony-campaigns-tab [data-bs-toggle="tooltip"]');
 [...telephonyCampaignsTooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
@@ -1402,6 +1491,62 @@ function fillTelephonyCampaignManager() {
     fillTelephonyActionTool(data.actions.callEndedTool, telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionArgurments, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput);
     fillTelephonyActionTool(data.actions.conversationPostAnalysisTool, telephonyCampaignActionToolPostAnalysisSelect, telephonyCampaignOnPostCallAnalysisActionArgurments, telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput);
 }
+
+function collectTelephonyCampaignToolArguments(selectElement, inputArguementObject) {
+    const args = {};
+    const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
+    argumentsList.find(".variable-input-container").each((_, el) => {
+        const inputArguement = $(el).attr("input_arguement");
+
+        args[inputArguement] = inputArguementObject[inputArguement].getValue();
+    });
+    return Object.keys(args).length > 0 ? args : null;
+}
+
+function readTelephonyCampaignActionTool(selectElement, inputArguementObject) {
+    return {
+        toolId: selectElement.val() === 'none' ? null : selectElement.val(),
+        arguments: collectTelephonyCampaignToolArguments(selectElement, inputArguementObject)
+    };
+}
+
+function readTelephonyCampaignVoicemail() {
+    const voicemailDetection = {
+        isEnabled: telephonyCampaignVoicemailIsEnabledCheck.is(":checked")
+    };
+
+    if (voicemailDetection.isEnabled) {
+        voicemailDetection.initialCheckDelayMS = parseInt(telephonyCampaignVoicemailInitialCheckDelayMSInput.val(), 10);
+        voicemailDetection.voiceMailMessageVADSilenceThresholdMS = parseInt(telephonyCampaignVoicemailVADSilenceThresholdMSInput.val(), 10);
+        voicemailDetection.voiceMailMessageVADMaxSpeechDurationMS = parseInt(telephonyCampaignVoicemailVADMaxSpeechDurationMSInput.val(), 10);
+        voicemailDetection.onVoiceMailMessageDetectVerifySTTAndLLM = telephonyCampaignVoicemailAdvancedVerificationCheck.is(":checked");
+        if (voicemailDetection.onVoiceMailMessageDetectVerifySTTAndLLM) {
+            voicemailDetection.transcribeVoiceMessageSTT = telephonyCampaignVoicemailSTTIntegrationManager.getData();
+            voicemailDetection.verifyVoiceMessageLLM = telephonyCampaignVoicemailLLMIntegrationManager.getData();
+        }
+        else {
+            voicemailDetection.transcribeVoiceMessageSTT = null;
+            voicemailDetection.verifyVoiceMessageLLM = null;
+        }
+        voicemailDetection.stopSpeakingAgentAfterMlCheckSuccess = telephonyCampaignStopAgentOnMLCheck.is(':checked');
+        voicemailDetection.stopSpeakingAgentAfterVadSilence = telephonyCampaignStopAgentOnVADCheck.is(':checked');
+        voicemailDetection.stopSpeakingAgentAfterLLMConfirm = telephonyCampaignStopAgentOnLLMCheck.is(':checked');
+        voicemailDetection.stopSpeakingAgentDelayAfterMatchMS = parseInt(telephonyCampaignVoicemailStopSpeakingDelayInput.val(), 10);
+        voicemailDetection.endOrLeaveMessageAfterMLCheckSuccess = telephonyCampaignEndLeaveOnMLCheck.is(':checked');
+        voicemailDetection.endOrLeaveMessageAfterVadSilence = telephonyCampaignEndLeaveOnVADCheck.is(':checked');
+        voicemailDetection.endOrLeaveMessageAfterLLMConfirm = telephonyCampaignEndLeaveOnLLMCheck.is(':checked');
+        voicemailDetection.endOrLeaveMessageDelayAfterMatchMS = parseInt(telephonyCampaignVoicemailEndLeaveDelayInput.val(), 10);
+        const finalAction = telephonyCampaignFinalActionRadios.filter(":checked").val();
+        voicemailDetection.endCallOnDetect = finalAction === 'end';
+        voicemailDetection.leaveMessageOnDetect = finalAction === 'leave';
+        if (voicemailDetection.leaveMessageOnDetect) {
+            voicemailDetection.messageToLeave = currentTelephonyCampaignVoicemailMessageToLeaveMultiLangData;
+        }
+    }
+
+    return voicemailDetection;
+}
+
 function checkTelephonyCampaignChanges(enableDisableButton = true) {
     if (manageTelephonyCampaignType === null) {
         return {
@@ -1409,58 +1554,31 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
         };
     }
 
-    const changes = {};
-    let hasChanges = false;
-    const original = currentTelephonyCampaignData;
+    const timezoneValue = telephonyCampaignAgentTimezoneSelect.find(":selected").val();
+    let postAnalysisId = telephonyCampaignPostAnalysisTemplateSelect.find("option:selected").val();
+    if (!postAnalysisId || postAnalysisId == "" || postAnalysisId == null) {
+        postAnalysisId = null;
+    }
 
-    function checkGeneralTab() {
-        changes.general = {
+    const changes = {
+        general: {
             emoji: telephonyCampaignIconInput.text(),
             name: telephonyCampaignNameInput.val().trim(),
             description: telephonyCampaignDescriptionInput.val().trim(),
-        };
-
-        if (changes.general.emoji !== original.general.emoji ||
-            changes.general.name !== original.general.name ||
-            changes.general.description !== original.general.description) {
-            hasChanges = true;
-        }
-    }
-
-    function checkAgentTab() {
-        const timezoneValue = telephonyCampaignAgentTimezoneSelect.find(":selected").val();
-        changes.agent = {
+        },
+        agent: {
             selectedAgentId: currentTelephonyCampaignAgentSelectedId,
             openingScriptId: telephonyCampaignAgentScriptSelect.find(":selected").val(),
             language: telephonyCampaignAgentLanguageSelect.find(":selected").val(),
             timezones: (timezoneValue && timezoneValue.trim() !== "") ? [timezoneValue] : [],
             fromNumberInContext: telephonyCampaignAgentFromNumberInContextCheck.is(":checked"),
             toNumberInContext: telephonyCampaignAgentToNumberInContextCheck.is(":checked"),
-        };
-
-        if (changes.agent.selectedAgentId !== original.agent.selectedAgentId ||
-            changes.agent.openingScriptId !== original.agent.openingScriptId ||
-            changes.agent.language !== original.agent.language ||
-            JSON.stringify(changes.agent.timezones) !== JSON.stringify(original.agent.timezones) ||
-            changes.agent.fromNumberInContext !== original.agent.fromNumberInContext ||
-            changes.agent.toNumberInContext !== original.agent.toNumberInContext) {
-            hasChanges = true;
-        }
-    }
-
-    function checkNumbersTab() {
-        changes.numberRoute = {
+        },
+        numberRoute: {
             defaultNumberId: currentTelephonyCampaignDefaultNumberId,
             routeNumberList: currentTelephonyCampaignRouteNumberList
-        };
-        if (changes.numberRoute.defaultNumberId !== original.numberRoute.defaultNumberId ||
-            JSON.stringify(changes.numberRoute.routeNumberList) !== JSON.stringify(original.numberRoute.routeNumberList)) {
-            hasChanges = true;
-        }
-    }
-
-    function checkConfigurationTab() {
-        changes.configuration = {
+        },
+        configuration: {
             retryOnDecline: {
                 enabled: telephonyCampaignRetryOnDeclineCheck.is(":checked"),
                 count: parseInt(telephonyCampaignRetryDeclineCountInput.val()),
@@ -1479,229 +1597,42 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
                 endOnSilenceMS: parseInt(telephonyCampaignSilenceEndInput.val()),
                 maxCallTimeS: parseInt(telephonyCampaignMaxCallTimeInput.val()),
             }
-        };
-
-        if (changes.configuration.retryOnDecline.enabled !== original.configuration.retryOnDecline.enabled) {
-            hasChanges = true;
-        } else if (changes.configuration.retryOnDecline.enabled === true) {
-            if (changes.configuration.retryOnDecline.count !== original.configuration.retryOnDecline.count ||
-                changes.configuration.retryOnDecline.delay !== original.configuration.retryOnDecline.delay ||
-                changes.configuration.retryOnDecline.unit !== original.configuration.retryOnDecline.unit.value) {
-                hasChanges = true;
-            }
+        },
+        voicemailDetection: readTelephonyCampaignVoicemail(),
+        variables: {
+            dynamicVariables: getTelephonyCampaignVariablesList(telephonyCampaignDynamicVariablesList),
+            metadata: getTelephonyCampaignVariablesList(telephonyCampaignMetadataList)
+        },
+        postAnalysis: {
+            postAnalysisId: postAnalysisId,
+            contextVariables: null
+        },
+        actions: {
+            callInitiationFailureTool: readTelephonyCampaignActionTool(telephonyCampaignActionToolCallInitiationFailureSelect, telephonyCampaignOnCallInitiationFailureActionInputArgumentsCustomInput),
+            callInitiatedTool: readTelephonyCampaignActionTool(telephonyCampaignActionToolCallInitiatedSelect, telephonyCampaignOnCallInitiatedActionInputArgumentsCustomInput),
+            callDeclinedTool: readTelephonyCampaignActionTool(telephonyCampaignActionToolCallDeclinedSelect, telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput),
+            callMissedTool: readTelephonyCampaignActionTool(telephonyCampaignActionToolCallMissedSelect, telephonyCampaignOnCallMissedActionInputArgumentsCustomInput),
+            callAnsweredTool: readTelephonyCampaignActionTool(telephonyCampaignActionToolCallAnsweredSelect, telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput),
+            callEndedTool: readTelephonyCampaignActionTool(telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput),
+            conversationPostAnalysisTool: readTelephonyCampaignActionTool(telephonyCampaignActionToolPostAnalysisSelect, telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput)
         }
+    };
 
-        if (changes.configuration.retryOnMiss.enabled !== original.configuration.retryOnMiss.enabled) {
-            hasChanges = true;
-        } else if (changes.configuration.retryOnMiss.enabled === true) {
-            if (changes.configuration.retryOnMiss.count !== original.configuration.retryOnMiss.count ||
-                changes.configuration.retryOnMiss.delay !== original.configuration.retryOnMiss.delay ||
-                changes.configuration.retryOnMiss.unit !== original.configuration.retryOnMiss.unit.value) {
-                hasChanges = true;
-            }
-        }
+    if (postAnalysisId != null) {
+        changes.postAnalysis.contextVariables = [];
 
-        if (changes.configuration.timeouts.pickupDelayMS !== original.configuration.timeouts.pickupDelayMS ||
-            changes.configuration.timeouts.notifyOnSilenceMS !== original.configuration.timeouts.notifyOnSilenceMS ||
-            changes.configuration.timeouts.endOnSilenceMS !== original.configuration.timeouts.endOnSilenceMS ||
-            changes.configuration.timeouts.maxCallTimeS !== original.configuration.timeouts.maxCallTimeS) {
-            hasChanges = true;
-        }
-    }
+        telephonyCampaignPostAnalysisVariablesList.children().each((i, contextVariableElement) => {
+            const dataId = $(contextVariableElement).attr("data-id");
 
-    function checkVoicemailTab() {
-        changes.voicemailDetection = {
-            isEnabled: telephonyCampaignVoicemailIsEnabledCheck.is(":checked")
-        };
-
-        if (changes.voicemailDetection.isEnabled) {
-            changes.voicemailDetection.initialCheckDelayMS = parseInt(telephonyCampaignVoicemailInitialCheckDelayMSInput.val(), 10);
-            changes.voicemailDetection.voiceMailMessageVADSilenceThresholdMS = parseInt(telephonyCampaignVoicemailVADSilenceThresholdMSInput.val(), 10);
-            changes.voicemailDetection.voiceMailMessageVADMaxSpeechDurationMS = parseInt(telephonyCampaignVoicemailVADMaxSpeechDurationMSInput.val(), 10);
-            changes.voicemailDetection.onVoiceMailMessageDetectVerifySTTAndLLM = telephonyCampaignVoicemailAdvancedVerificationCheck.is(":checked");
-            if (changes.voicemailDetection.onVoiceMailMessageDetectVerifySTTAndLLM) {
-                changes.voicemailDetection.transcribeVoiceMessageSTT = telephonyCampaignVoicemailSTTIntegrationManager.getData();
-                changes.voicemailDetection.verifyVoiceMessageLLM = telephonyCampaignVoicemailLLMIntegrationManager.getData();
-            }
-            else {
-                changes.voicemailDetection.transcribeVoiceMessageSTT = null;
-                changes.voicemailDetection.verifyVoiceMessageLLM = null;
-            }
-            changes.voicemailDetection.stopSpeakingAgentAfterMlCheckSuccess = telephonyCampaignStopAgentOnMLCheck.is(':checked');
-            changes.voicemailDetection.stopSpeakingAgentAfterVadSilence = telephonyCampaignStopAgentOnVADCheck.is(':checked');
-            changes.voicemailDetection.stopSpeakingAgentAfterLLMConfirm = telephonyCampaignStopAgentOnLLMCheck.is(':checked');
-            changes.voicemailDetection.stopSpeakingAgentDelayAfterMatchMS = parseInt(telephonyCampaignVoicemailStopSpeakingDelayInput.val(), 10);
-            changes.voicemailDetection.endOrLeaveMessageAfterMLCheckSuccess = telephonyCampaignEndLeaveOnMLCheck.is(':checked');
-            changes.voicemailDetection.endOrLeaveMessageAfterVadSilence = telephonyCampaignEndLeaveOnVADCheck.is(':checked');
-            changes.voicemailDetection.endOrLeaveMessageAfterLLMConfirm = telephonyCampaignEndLeaveOnLLMCheck.is(':checked');
-            changes.voicemailDetection.endOrLeaveMessageDelayAfterMatchMS = parseInt(telephonyCampaignVoicemailEndLeaveDelayInput.val(), 10);
-            const finalAction = telephonyCampaignFinalActionRadios.filter(":checked").val();
-            changes.voicemailDetection.endCallOnDetect = finalAction === 'end';
-            changes.voicemailDetection.leaveMessageOnDetect = finalAction === 'leave';
-            if (changes.voicemailDetection.leaveMessageOnDetect) {
-                changes.voicemailDetection.messageToLeave = currentTelephonyCampaignVoicemailMessageToLeaveMultiLangData;
-            }
-        }
-
-        if (changes.voicemailDetection.isEnabled !== original.voicemailDetection.isEnabled) {
-            hasChanges = true;
-        } else if (changes.voicemailDetection.isEnabled) {
-            if (JSON.stringify(changes.voicemailDetection) !== JSON.stringify(original.voicemailDetection)) {
-                hasChanges = true;
-            }
-        }
-    }
-
-    function checkVariablesTab() {
-        changes.variables = {
-            dynamicVariables: [],
-            metadata: []
-        };
-
-        changes.variables.dynamicVariables = getTelephonyCampaignVariablesList(telephonyCampaignDynamicVariablesList);
-        changes.variables.metadata = getTelephonyCampaignVariablesList(telephonyCampaignMetadataList);
-
-        // Check Changes
-        function areArraysOfObjectsEqual(arr1, arr2) {
-            if (arr1 === arr2) return true;
-            if (!arr1 || !arr2 || arr1.length !== arr2.length) return false;
-
-            for (let i = 0; i < arr1.length; i++) {
-                const obj1 = arr1[i];
-                const obj2 = arr2[i];
-                const keys1 = Object.keys(obj1);
-                const keys2 = Object.keys(obj2);
-                if (keys1.length !== keys2.length) return false;
-                for (const key of keys1) {
-                    if (obj1[key] !== obj2[key]) return false;
-                }
-            }
-            return true;
-        }
-
-        if (!areArraysOfObjectsEqual(changes.variables.dynamicVariables, original.variables.dynamicVariables) ||
-            !areArraysOfObjectsEqual(changes.variables.metadata, original.variables.metadata)) {
-            hasChanges = true;
-        }
-    }
-
-    function checkPostAnalysisTab() {
-        changes.postAnalysis = {};
-
-        let postAnalysisId = telephonyCampaignPostAnalysisTemplateSelect.find("option:selected").val();
-        if (!postAnalysisId || postAnalysisId == "" || postAnalysisId == null) {
-            postAnalysisId = null;
-        }
-        changes.postAnalysis.postAnalysisId = postAnalysisId;
-        if (changes.postAnalysis.postAnalysisId != original.postAnalysis.postAnalysisId) {
-            hasChanges = true;
-        }
-
-        if (postAnalysisId == null) {
-            changes.postAnalysis.contextVariables = null;
-        }
-        else {
-            changes.postAnalysis.contextVariables = [];
-
-            telephonyCampaignPostAnalysisVariablesList.children().each((i, contextVariableElement) => {
-                const dataId = $(contextVariableElement).attr("data-id");
-
-                const contextVariableData = {
-                    name: $(contextVariableElement).find('.campaign-post-analysis-context-variable-name').val() ?? "",
-                    description: $(contextVariableElement).find('.campaign-post-analysis-context-variable-description').val() ?? "",
-                    value: telephonyCampaignPostAnalysisContextVariablesCustomInput[dataId].getValue() ?? ""
-                };
-
-                changes.postAnalysis.contextVariables.push(contextVariableData);
+            changes.postAnalysis.contextVariables.push({
+                name: $(contextVariableElement).find('.campaign-post-analysis-context-variable-name').val() ?? "",
+                description: $(contextVariableElement).find('.campaign-post-analysis-context-variable-description').val() ?? "",
+                value: telephonyCampaignPostAnalysisContextVariablesCustomInput[dataId].getValue() ?? ""
             });
-        }
-
-        if (postAnalysisId != null && original.postAnalysis.postAnalysisId != null) {
-            if (changes.postAnalysis.contextVariables.length != original.postAnalysis.contextVariables.length) {
-                hasChanges = true;
-            }
-
-            if (JSON.stringify(changes.postAnalysis.contextVariables) != JSON.stringify(original.postAnalysis.contextVariables)) {
-                hasChanges = true;
-            }
-        }
+        });
     }
 
-    function checkActionsTab() {
-        function collectToolArguments(selectElement, inputArguementObject) {
-            const args = {};
-            const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
-            argumentsList.find(".variable-input-container").each((_, el) => {
-                const inputArguement = $(el).attr("input_arguement");
-
-                args[inputArguement] = inputArguementObject[inputArguement].getValue();
-            });
-            return Object.keys(args).length > 0 ? args : null;
-        }
-
-        function compareToolData(newTool, originalTool) {
-            if (!originalTool) originalTool = {
-                toolId: null,
-                arguments: null
-            };
-            if (newTool.toolId !== originalTool.toolId) return true;
-            if (JSON.stringify(newTool.arguments) !== JSON.stringify(originalTool.arguments)) return true;
-            return false;
-        }
-
-        changes.actions = {
-            callInitiationFailureTool: {
-                toolId: telephonyCampaignActionToolCallInitiationFailureSelect.val() === 'none' ? null : telephonyCampaignActionToolCallInitiationFailureSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallInitiationFailureSelect, telephonyCampaignOnCallInitiationFailureActionInputArgumentsCustomInput)
-            },
-            callInitiatedTool: {
-                toolId: telephonyCampaignActionToolCallInitiatedSelect.val() === 'none' ? null : telephonyCampaignActionToolCallInitiatedSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallInitiatedSelect, telephonyCampaignOnCallInitiatedActionInputArgumentsCustomInput)
-            },
-            callDeclinedTool: {
-                toolId: telephonyCampaignActionToolCallDeclinedSelect.val() === 'none' ? null : telephonyCampaignActionToolCallDeclinedSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallDeclinedSelect, telephonyCampaignOnCallDeclinedActionInputArgumentsCustomInput)
-            },
-            callMissedTool: {
-                toolId: telephonyCampaignActionToolCallMissedSelect.val() === 'none' ? null : telephonyCampaignActionToolCallMissedSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallMissedSelect, telephonyCampaignOnCallMissedActionInputArgumentsCustomInput)
-            },
-            callAnsweredTool: {
-                toolId: telephonyCampaignActionToolCallAnsweredSelect.val() === 'none' ? null : telephonyCampaignActionToolCallAnsweredSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallAnsweredSelect, telephonyCampaignOnCallAnsweredActionInputArgumentsCustomInput)
-            },
-            callEndedTool: {
-                toolId: telephonyCampaignActionToolCallEndedSelect.val() === 'none' ? null : telephonyCampaignActionToolCallEndedSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolCallEndedSelect, telephonyCampaignOnCallEndedActionInputArgumentsCustomInput)
-            },
-            conversationPostAnalysisTool: {
-                toolId: telephonyCampaignActionToolPostAnalysisSelect.val() === 'none' ? null : telephonyCampaignActionToolPostAnalysisSelect.val(),
-                arguments: collectToolArguments(telephonyCampaignActionToolPostAnalysisSelect, telephonyCampaignOnPostAnalysisActionInputArgumentsCustomInput)
-            }
-        };
-
-        if (
-            compareToolData(changes.actions.callInitiationFailureTool, original.actions.callInitiationFailureTool) ||
-            compareToolData(changes.actions.callInitiatedTool, original.actions.callInitiatedTool) ||
-            compareToolData(changes.actions.callDeclinedTool, original.actions.callDeclinedTool) ||
-            compareToolData(changes.actions.callMissedTool, original.actions.callMissedTool) ||
-            compareToolData(changes.actions.callAnsweredTool, original.actions.callAnsweredTool) ||
-            compareToolData(changes.actions.callEndedTool, original.actions.callEndedTool) ||
-            compareToolData(changes.actions.conversationPostAnalysisTool, original.actions.conversationPostAnalysisTool)
-        ) {
-            hasChanges = true;
-        }
-    }
-
-    // Execute all checks
-    checkGeneralTab();
-    checkAgentTab();
-    checkNumbersTab();
-    checkConfigurationTab();  
-    checkVoicemailTab();
-    checkVariablesTab();
-    checkPostAnalysisTab()
-    checkActionsTab();
+    const hasChanges = TelephonyCampaignChanges.compare(currentTelephonyCampaignData, changes).hasChanges;
 
     if (enableDisableButton) {
         saveTelephonyCampaignButton.prop("disabled", !hasChanges);

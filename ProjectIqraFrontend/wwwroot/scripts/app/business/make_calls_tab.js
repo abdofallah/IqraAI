@@ -11,6 +11,18 @@ let SelectedCampaignId = null;
 let SelectedBulkFromFileObject = null;
 let makeCallFormInitialState = {};
 
+// --- Change Helpers ---
+const MakeCallFormChanges = ChangesHelper.define({
+	campaignId: "text",
+	callType: "number",
+	toNumber: { kind: "text", when: () => CurrentMakeCallType === OutboundCallNumberType.Single },
+	bulkFileSelected: { kind: "boolean", when: () => CurrentMakeCallType !== OutboundCallNumberType.Single },
+	scheduleDateTime: "text",
+	maxScheduleDateTime: "text",
+	dynamicVariables: { kind: "map", values: { kind: "text", strict: true } },
+	metadata: { kind: "map", values: { kind: "text", strict: true } },
+});
+
 /** Element Variables **/
 const makeCallsTab = $("#make-calls-tab");
 // Header
@@ -235,24 +247,24 @@ function validateMakeCallConfig(onlyRemoveErrors = false) {
 	return { validated: isValid, errors: errors };
 }
 
+function getMakeCallVariableData(elementList) {
+	const data = {};
+
+	elementList.find(".input-group").each((index, element) => {
+		const key = $(element).find('[data-type="key"]').val()?.trim();
+		var value = $(element).find('[data-type="value"]').val()?.trim();
+
+		if (!key) return;
+
+		if (!value || value == null) value = "";
+
+		data[key] = value;
+	});
+
+	return data;
+}
+
 function gatherMakeCallConfig() {
-	function getVariableData(elementList) {
-		const data = {};
-
-		elementList.find(".input-group").each((index, element) => {
-			const key = $(element).find('[data-type="key"]').val()?.trim();
-			var value = $(element).find('[data-type="value"]').val()?.trim();
-
-			if (!key) return;
-
-			if (!value || value == null) value = "";
-
-			data[key] = value;
-		});
-
-		return data;
-	}
-
 	const config = {
 		campaignId: SelectedCampaignId,
 		number: {
@@ -263,8 +275,8 @@ function gatherMakeCallConfig() {
 			dateTimeUTC: makeCallScheduleDateTimeInput.val() ? new Date(makeCallScheduleDateTimeInput.val()).toISOString() : "",
 			maxDateTimeUTC: makeCallMaxScheduleDateTimeInput.val() ? new Date(makeCallMaxScheduleDateTimeInput.val()).toISOString() : "",
 		},
-		dynamicVariables: getVariableData(makeCallDynamicVariablesList),
-		metadata: getVariableData(makeCallMetadataList)
+		dynamicVariables: getMakeCallVariableData(makeCallDynamicVariablesList),
+		metadata: getMakeCallVariableData(makeCallMetadataList)
 	};
 
 	return config;
@@ -279,28 +291,22 @@ function captureInitialFormState() {
 		bulkFileSelected: !!SelectedBulkFromFileObject,
 		scheduleDateTime: makeCallScheduleDateTimeInput.val(),
 		maxScheduleDateTime: makeCallMaxScheduleDateTimeInput.val(),
-		dynamicVariables: {},
-		metadata: {}
+		dynamicVariables: getMakeCallVariableData(makeCallDynamicVariablesList),
+		metadata: getMakeCallVariableData(makeCallMetadataList)
 	};
 }
 
 function checkMakeCallTabHasChanges() {
-	if (makeCallFormInitialState.campaignId !== SelectedCampaignId) return true;
-	if (makeCallFormInitialState.callType !== CurrentMakeCallType) return true;
-
-	if (CurrentMakeCallType === OutboundCallNumberType.Single) {
-		if (makeCallFormInitialState.toNumber !== makeCallToNumberInput.val()) return true;
-	} else {
-		if (makeCallFormInitialState.bulkFileSelected !== !!SelectedBulkFromFileObject) return true;
-	}
-
-	if (makeCallFormInitialState.scheduleDateTime !== makeCallScheduleDateTimeInput.val()) return true;
-	if (makeCallFormInitialState.maxScheduleDateTime !== makeCallMaxScheduleDateTimeInput.val()) return true;
-
-	if (Object.keys(makeCallFormInitialState.dynamicVariables).length != 0) return true;
-	if (Object.keys(makeCallFormInitialState.metadata).length != 0) return true;
-
-	return false; // No changes detected
+	return MakeCallFormChanges.compare(makeCallFormInitialState, {
+		campaignId: () => SelectedCampaignId,
+		callType: () => CurrentMakeCallType,
+		toNumber: () => makeCallToNumberInput.val(),
+		bulkFileSelected: () => !!SelectedBulkFromFileObject,
+		scheduleDateTime: () => makeCallScheduleDateTimeInput.val(),
+		maxScheduleDateTime: () => makeCallMaxScheduleDateTimeInput.val(),
+		dynamicVariables: () => getMakeCallVariableData(makeCallDynamicVariablesList),
+		metadata: () => getMakeCallVariableData(makeCallMetadataList),
+	}).hasChanges;
 }
 
 /** HELPER & UI FUNCTIONS **/

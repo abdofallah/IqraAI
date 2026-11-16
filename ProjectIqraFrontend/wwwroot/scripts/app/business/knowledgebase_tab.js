@@ -62,6 +62,44 @@ let fulltextRerankIntegrationManager = null;
 let hybridRerankIntegrationManager = null;
 
 
+// --- Change Helpers ---
+const KnowledgeBaseIntegrationRule = { kind: "object", fields: { id: "text", fieldValues: { kind: "map", values: "value" } } };
+
+const KnowledgeBaseChanges = ChangesHelper.define({
+    general: { kind: "object", fields: { emoji: "text", name: "text", description: "text" } },
+    configuration: {
+        kind: "object",
+        fields: {
+            chunking: {
+                kind: "object",
+                fields: {
+                    type: "enum",
+                    delimiter: "text",
+                    maxLength: "number",
+                    overlap: "number",
+                    parent: { kind: "object", fields: { type: "enum", delimiter: "text", maxLength: "number" } },
+                    child: { kind: "object", fields: { delimiter: "text", maxLength: "number" } },
+                    preprocess: { kind: "object", fields: { replaceConsecutive: "boolean", deleteUrls: "boolean" } },
+                },
+            },
+            embedding: KnowledgeBaseIntegrationRule,
+            retrieval: {
+                kind: "object",
+                fields: {
+                    type: "enum",
+                    mode: "enum",
+                    weight: "number",
+                    rerankIntegration: KnowledgeBaseIntegrationRule,
+                    topK: "number",
+                    useScoreThreshold: "boolean",
+                    scoreThreshold: "number",
+                    rerank: { kind: "object", fields: { enabled: "boolean", integration: KnowledgeBaseIntegrationRule } },
+                },
+            },
+        },
+    },
+});
+
 /** Element Variables **/
 const knowledgeBaseTab = $("#knowledge-base-tab");
 
@@ -895,9 +933,7 @@ function checkKnowledgeBaseTabHasChanges(enableDisableButton = true) {
         };
     }
 
-    // Using a deep comparison library would be more robust, but JSON.stringify is a good approximation here.
-    const hasChanges = JSON.stringify(currentData.general) !== JSON.stringify(originalData.general) ||
-        JSON.stringify(currentData.configuration) !== JSON.stringify(originalData.configuration);
+    const hasChanges = KnowledgeBaseChanges.compare(originalData, currentData).hasChanges;
 
     if (enableDisableButton) {
         saveKnowledgeBaseButton.prop("disabled", !hasChanges);

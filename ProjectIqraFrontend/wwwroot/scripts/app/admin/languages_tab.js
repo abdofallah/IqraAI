@@ -6,6 +6,36 @@ var CurrentManageLanguageData = null;
 let TempPublicDisabledReason = "";
 let TempPrivateDisabledReason = "";
 
+// --- Change Helpers ---
+const LanguageManageChanges = ChangesHelper.define({
+    id: { kind: "text", compare: false },
+    name: "text",
+    localeName: "text",
+    disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+    publicDisabledReason: { kind: "text", when: (get) => get("disabled") },
+    privateDisabledReason: { kind: "text", when: (get) => get("disabled") },
+    prompts: {
+        kind: "object",
+        fields: {
+            conversationWarmupLLMPrompt: "text",
+            conversationBasePrompt: "text",
+            failedConversationBasePromptGenerationPrompt: "text",
+            turnEndVerificationPrompt: "text",
+            interruptionVerificationPrompt: "text",
+            voicemailVerificationPrompt: "text",
+            ragQueryClassifierPrompt: "text",
+            ragQueryRefinementPrompt: "text",
+            postAnalaysisSummaryGenerationPrompt: "text",
+            postAnalaysisSummaryGenerationPromptQuery: "text",
+            postAnalaysisTagsClassificationPrompt: "text",
+            postAnalaysisTagsClassificationPromptQuery: "text",
+            postAnalaysisDataExtractionPrompt: "text",
+            postAnalaysisDataExtractionPromptQuery: "text",
+            postAnalaysisNoUserPromptText: "text",
+        },
+    },
+});
+
 /** Elements **/
 const languagesTab = $("#languages-tab");
 
@@ -201,9 +231,9 @@ function CreateDefaultLanguagesDataObject() {
         id: "",
         localeName: "",
         name: "",
-        disabledAt: null,
+        disabledAt: new Date().toISOString(),
         publicDisabledReason: "Language Initialization",
-        privateDisabledReason: "New language created",
+        privateDisabledReason: "New language created. Can enable language after adding & filling all prompts.",
         prompts: {
             // Initialize empty strings to avoid null issues
             conversationWarmupLLMPrompt: "",
@@ -248,72 +278,37 @@ function CreateLanguagesListTableElement(languagesData) {
 }
 
 function CheckLanguageManageTabHasChanges(enableDisableButton = true) {
-    let changes = {};
-    let hasChanges = false;
-    const currentData = CurrentManageLanguageData;
-    const currentPrompts = currentData.prompts || {};
-
-    // General
-    changes.id = manageLanguagesIdInput.val(); // Not really changeable in Edit, but tracked
-
-    changes.name = manageLanguagesNameInput.val();
-    if (currentData.name !== changes.name) hasChanges = true;
-
-    changes.localeName = manageLanguagesLocaleNameInput.val();
-    if (currentData.localeName !== changes.localeName) hasChanges = true;
-
-    // Disabled Logic
-    changes.disabled = manageLanguagesDisabledInput.prop("checked");
-    const isCurrentlyDisabled = currentData.disabledAt != null;
-
-    if (changes.disabled !== isCurrentlyDisabled) {
-        hasChanges = true;
-    }
-
-    // If disabled, check/send reasons
-    if (changes.disabled) {
-        changes.publicDisabledReason = TempPublicDisabledReason;
-        changes.privateDisabledReason = TempPrivateDisabledReason;
-
-        if (changes.publicDisabledReason !== currentData.publicDisabledReason) hasChanges = true;
-        if (changes.privateDisabledReason !== currentData.privateDisabledReason) hasChanges = true;
-    }
-
-    // Prompts Object Construction
-    changes.prompts = {
-        conversationWarmupLLMPrompt: promptConversationWarmup.val(),
-        conversationBasePrompt: promptConversationBase.val(),
-        failedConversationBasePromptGenerationPrompt: promptConversationFailed.val(),
-
-        turnEndVerificationPrompt: promptVerifTurnEnd.val(),
-        interruptionVerificationPrompt: promptVerifInterruption.val(),
-        voicemailVerificationPrompt: promptVerifVoicemail.val(),
-
-        ragQueryClassifierPrompt: promptRagClassifier.val(),
-        ragQueryRefinementPrompt: promptRagRefinement.val(),
-
-        postAnalaysisSummaryGenerationPrompt: promptAnalysisSummary.val(),
-        postAnalaysisSummaryGenerationPromptQuery: promptAnalysisSummaryQuery.val(),
-        postAnalaysisTagsClassificationPrompt: promptAnalysisTags.val(),
-        postAnalaysisTagsClassificationPromptQuery: promptAnalysisTagsQuery.val(),
-        postAnalaysisDataExtractionPrompt: promptAnalysisExtract.val(),
-        postAnalaysisDataExtractionPromptQuery: promptAnalysisExtractQuery.val(),
-        postAnalaysisNoUserPromptText: promptAnalysisNoUserPrompt.val()
-    };
-
-    // Deep compare prompts
-    for (const key in changes.prompts) {
-        if ((currentPrompts[key] || "") !== changes.prompts[key]) {
-            hasChanges = true;
-            break;
-        }
-    }
+    const result = LanguageManageChanges.compare(CurrentManageLanguageData, {
+        id: () => manageLanguagesIdInput.val(),
+        name: () => manageLanguagesNameInput.val(),
+        localeName: () => manageLanguagesLocaleNameInput.val(),
+        disabled: () => manageLanguagesDisabledInput.prop("checked"),
+        publicDisabledReason: () => TempPublicDisabledReason,
+        privateDisabledReason: () => TempPrivateDisabledReason,
+        prompts: {
+            conversationWarmupLLMPrompt: () => promptConversationWarmup.val(),
+            conversationBasePrompt: () => promptConversationBase.val(),
+            failedConversationBasePromptGenerationPrompt: () => promptConversationFailed.val(),
+            turnEndVerificationPrompt: () => promptVerifTurnEnd.val(),
+            interruptionVerificationPrompt: () => promptVerifInterruption.val(),
+            voicemailVerificationPrompt: () => promptVerifVoicemail.val(),
+            ragQueryClassifierPrompt: () => promptRagClassifier.val(),
+            ragQueryRefinementPrompt: () => promptRagRefinement.val(),
+            postAnalaysisSummaryGenerationPrompt: () => promptAnalysisSummary.val(),
+            postAnalaysisSummaryGenerationPromptQuery: () => promptAnalysisSummaryQuery.val(),
+            postAnalaysisTagsClassificationPrompt: () => promptAnalysisTags.val(),
+            postAnalaysisTagsClassificationPromptQuery: () => promptAnalysisTagsQuery.val(),
+            postAnalaysisDataExtractionPrompt: () => promptAnalysisExtract.val(),
+            postAnalaysisDataExtractionPromptQuery: () => promptAnalysisExtractQuery.val(),
+            postAnalaysisNoUserPromptText: () => promptAnalysisNoUserPrompt.val(),
+        },
+    }, { build: true });
 
     if (enableDisableButton) {
-        saveManageLanguagesButton.prop("disabled", !hasChanges);
+        saveManageLanguagesButton.prop("disabled", !result.hasChanges);
     }
 
-    return { hasChanges, changes };
+    return { hasChanges: result.hasChanges, changes: result.changes };
 }
 
 function ValidateLanguageManageTabFields(onlyRemove = true) {
@@ -536,6 +531,7 @@ $(document).ready(() => {
                     }
                 }
 
+                CurrentManageLanguageData = newLanguageData;
                 currentManageLanguageName.text(newLanguageData.name);
 
                 saveManageLanguagesButton.prop("disabled", true); // Disable until next change

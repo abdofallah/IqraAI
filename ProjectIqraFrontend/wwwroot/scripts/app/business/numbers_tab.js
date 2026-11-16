@@ -34,6 +34,39 @@ const SipNumbersState = {
 	IsDeleting: false
 }
 
+// --- Change Helpers ---
+const ModemTelNumberChanges = ChangesHelper.define({
+	provider: { kind: "number", compare: false },
+	integrationId: "text",
+	countryCode: "text",
+	number: "text",
+	voiceEnabled: "boolean",
+	smsEnabled: "boolean",
+	regionId: "text",
+});
+
+const TwilioNumberChanges = ChangesHelper.define({
+	provider: { kind: "number", compare: false },
+	integrationId: "text",
+	countryCode: "text",
+	number: "text",
+	voiceEnabled: "boolean",
+	smsEnabled: "boolean",
+	regionId: "text",
+});
+
+const SipNumberChanges = ChangesHelper.define({
+	provider: { kind: "number", compare: false },
+	integrationId: "text",
+	isE164Number: "boolean",
+	countryCode: { kind: "text", when: (get) => get("isE164Number"), alwaysBuild: true },
+	number: { kind: "text", trim: true },
+	voiceEnabled: "boolean",
+	smsEnabled: "boolean",
+	regionId: "text",
+	allowedSourceIps: { kind: "list", items: "text" },
+});
+
 /** Element Variables **/
 const numbersTabTooltipTriggerList = document.querySelectorAll('#phone-numbers-tab [data-bs-toggle="tooltip"]');
 const numbersTabTooltipList = [...numbersTabTooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -523,56 +556,26 @@ function FillInitialModemTelModal() {
 		physicalNumberModalRegionSelect.append($(`<option value="${regionData.countryRegion}">${countryData.Country} (${regionData.countryRegion})</option>`));
 	});
 }
+
 function CheckModemTelNumberModalHasChanges(enableDisableButton = true) {
-	let hasChanges = false;
-	const changes = {
-		provider: NumberProviderEnum.ModemTel,
-	};
-
-	// Integration
-	changes.integrationId = physicalNumberModalIntegrationSelect.find("option:selected").val();
-	if (ModemTelNumbersState.CurrentManageData.integrationId !== changes.integrationId) {
-        hasChanges = true;
-    }
-
-	// Country
-	changes.countryCode = physicalNumberModalCountrySelect.find("option:selected").val();
-	if (ModemTelNumbersState.CurrentManageData.countryCode !== changes.countryCode) {
-		hasChanges = true;
-	}
-
-	// Number
-	changes.number = physicalNumberModalNumberInput.val();
-	if (ModemTelNumbersState.CurrentManageData.number !== changes.number) {
-		hasChanges = true;
-	}
-
-	// Voice Enabled
-    const voiceEnabled = physicalNumberModalVoiceEnabledCheck.is(":checked");
-    if (ModemTelNumbersState.CurrentManageData.voiceEnabled !== voiceEnabled) {
-        hasChanges = true;
-    }
-	changes.voiceEnabled = voiceEnabled;
-
-	// Sms Enabled
-    const smsEnabled = physicalNumberModalSmsEnabledCheck.is(":checked");
-    if (ModemTelNumbersState.CurrentManageData.smsEnabled !== smsEnabled) {
-        hasChanges = true;
-    }
-
-	// Region
-	changes.regionId = physicalNumberModalRegionSelect.find("option:selected").val();
-	if (ModemTelNumbersState.CurrentManageData.regionId !== changes.regionId) {
-		hasChanges = true;
-	}
+	const result = ModemTelNumberChanges.compare(ModemTelNumbersState.CurrentManageData, {
+		provider: () => NumberProviderEnum.ModemTel,
+		integrationId: () => physicalNumberModalIntegrationSelect.find("option:selected").val(),
+		countryCode: () => physicalNumberModalCountrySelect.find("option:selected").val(),
+		number: () => physicalNumberModalNumberInput.val(),
+		voiceEnabled: () => physicalNumberModalVoiceEnabledCheck.is(":checked"),
+		smsEnabled: () => physicalNumberModalSmsEnabledCheck.is(":checked"),
+		regionId: () => physicalNumberModalRegionSelect.find("option:selected").val(),
+	}, { build: true });
+	delete result.changes.smsEnabled;
 
 	if (enableDisableButton) {
-		addNewPhysicalNumberButton.prop("disabled", !hasChanges);
+		addNewPhysicalNumberButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 function ValidateModemTelNumberModalData(onlyRemove = true) {
@@ -865,57 +868,25 @@ function FillInitialTwilioModal() {
 		twilioNumberModalRegionSelect.append($(`<option value="${regionData.countryRegion}">${countryData.Country} (${regionData.countryRegion})</option>`));
 	});
 }
+
 function CheckTwilioNumberModalHasChanges(enableDisableButton = true) {
-	let hasChanges = false;
-	const changes = {
-		provider: NumberProviderEnum.Twilio,
-	};
-
-	// Integration
-	changes.integrationId = twilioNumberModalIntegrationSelect.find("option:selected").val();
-	if (TwilioNumbersState.CurrentManageData.integrationId !== changes.integrationId) {
-		hasChanges = true;
-	}
-
-	// Country
-	changes.countryCode = twilioNumberModalCountrySelect.find("option:selected").val();
-	if (TwilioNumbersState.CurrentManageData.countryCode !== changes.countryCode) {
-		hasChanges = true;
-	}
-
-	// Number
-	changes.number = twilioNumberModalNumberInput.val();
-	if (TwilioNumbersState.CurrentManageData.number !== changes.number) {
-		hasChanges = true;
-	}
-
-	// Voice Enabled
-    const voiceEnabled = twilioNumberModalVoiceEnabledCheck.is(":checked");
-    if (TwilioNumbersState.CurrentManageData.voiceEnabled !== voiceEnabled) {
-        hasChanges = true;
-    }
-	changes.voiceEnabled = voiceEnabled;
-
-	// SMS Enabled
-    const smsEnabled = twilioNumberModalSmsEnabledCheck.is(":checked");
-    if (TwilioNumbersState.CurrentManageData.smsEnabled !== smsEnabled) {
-        hasChanges = true;
-    }
-    changes.smsEnabled = smsEnabled;
-
-	// Region
-	changes.regionId = twilioNumberModalRegionSelect.find("option:selected").val();
-	if (TwilioNumbersState.CurrentManageData.regionId !== changes.regionId) {
-		hasChanges = true;
-	}
+	const result = TwilioNumberChanges.compare(TwilioNumbersState.CurrentManageData, {
+		provider: () => NumberProviderEnum.Twilio,
+		integrationId: () => twilioNumberModalIntegrationSelect.find("option:selected").val(),
+		countryCode: () => twilioNumberModalCountrySelect.find("option:selected").val(),
+		number: () => twilioNumberModalNumberInput.val(),
+		voiceEnabled: () => twilioNumberModalVoiceEnabledCheck.is(":checked"),
+		smsEnabled: () => twilioNumberModalSmsEnabledCheck.is(":checked"),
+		regionId: () => twilioNumberModalRegionSelect.find("option:selected").val(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		addNewTwilioNumberButton.prop("disabled", !hasChanges);
+		addNewTwilioNumberButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 function ValidateTwilioNumberModalData(onlyRemove = true) {
@@ -1231,71 +1202,23 @@ function FillInitialSipModal() {
 		sipNumberModalRegionSelect.append($(`<option value="${r.countryRegion}">${r.countryRegion}</option>`));
 	});
 }
+
 function CheckSipNumberModalHasChanges(enableButton = true) {
-	let hasChanges = false;
-	const changes = { provider: NumberProviderEnum.SIP };
-
-	// Integration
-	const newIntegrationId = sipNumberModalIntegrationSelect.find("option:selected").val();
-	if (SipNumbersState.CurrentManageData.integrationId !== newIntegrationId) {
-		hasChanges = true;
-	}
-	changes.integrationId = newIntegrationId;
-
-	// Is E.164 & Country
 	const isE164 = sipNumberModalIsE164.is(':checked');
-	if (SipNumbersState.CurrentManageData.isE164Number !== isE164) {
-		hasChanges = true;
-	}
-	changes.isE164Number = isE164;
+	const result = SipNumberChanges.compare(SipNumbersState.CurrentManageData, {
+		provider: () => NumberProviderEnum.SIP,
+		integrationId: () => sipNumberModalIntegrationSelect.find("option:selected").val(),
+		isE164Number: isE164,
+		countryCode: () => (isE164 ? sipNumberModalCountrySelect.find("option:selected").val() : ""),
+		number: () => sipNumberModalNumberInput.val().trim(),
+		voiceEnabled: () => sipNumberModalVoiceEnabledCheck.is(':checked'),
+		smsEnabled: () => sipNumberModalSmsEnabledCheck.is(':checked'),
+		regionId: () => sipNumberModalRegionSelect.find("option:selected").val(),
+		allowedSourceIps: () => sipNumberModalAllowedIpsInput.val().split(',').map(s => s.trim()).filter(s => s !== ""),
+	}, { build: true });
 
-	let newCountryCode = "";
-	if (isE164) {
-		newCountryCode = sipNumberModalCountrySelect.find("option:selected").val();
-		if (SipNumbersState.CurrentManageData.countryCode !== newCountryCode) {
-			hasChanges = true;
-		}
-	}
-	changes.countryCode = newCountryCode;
-
-	// Number
-	const newNumber = sipNumberModalNumberInput.val().trim();
-	if (SipNumbersState.CurrentManageData.number !== newNumber) {
-		hasChanges = true;
-	}
-	changes.number = newNumber;
-
-	// Voice Enabled
-    const voiceEnabled = sipNumberModalVoiceEnabledCheck.is(':checked');
-    if (SipNumbersState.CurrentManageData.voiceEnabled !== voiceEnabled) {
-        hasChanges = true;
-    }
-	changes.voiceEnabled = voiceEnabled;
-
-	// SMS Enabled
-    const smsEnabled = sipNumberModalSmsEnabledCheck.is(':checked');
-    if (SipNumbersState.CurrentManageData.smsEnabled !== smsEnabled) {
-        hasChanges = true;
-    }
-    changes.smsEnabled = smsEnabled;
-
-	// Region
-	const newRegion = sipNumberModalRegionSelect.find("option:selected").val();
-	if (SipNumbersState.CurrentManageData.regionId !== newRegion) {
-		hasChanges = true;
-	}
-	changes.regionId = newRegion;
-
-	// IPs
-	const newIpsStr = sipNumberModalAllowedIpsInput.val();
-	const newIps = newIpsStr.split(',').map(s => s.trim()).filter(s => s !== "");
-	if (JSON.stringify(SipNumbersState.CurrentManageData.allowedSourceIps || []) !== JSON.stringify(newIps)) {
-		hasChanges = true;
-	}
-	changes.allowedSourceIps = newIps;
-
-	if (enableButton) addNewSipNumberSaveButton.prop("disabled", !hasChanges);
-	return { hasChanges, changes };
+	if (enableButton) addNewSipNumberSaveButton.prop("disabled", !result.hasChanges);
+	return { hasChanges: result.hasChanges, changes: result.changes };
 }
 function ValidateSipNumberModalData(onlyRemove = true) {
 	const errors = [];

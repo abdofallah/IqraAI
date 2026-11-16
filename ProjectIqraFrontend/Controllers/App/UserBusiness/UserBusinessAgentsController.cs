@@ -8,6 +8,7 @@ using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using IqraCore.Entities.Validation;
+using IqraCore.Models.User.Business.App.Agent;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
@@ -29,9 +30,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/agents/save")]
-        public async Task<FunctionReturnResult<BusinessAppAgent?>> SaveBusinessAgent(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppAgentModel?>> SaveBusinessAgent(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppAgent?>();
+            var result = new FunctionReturnResult<BusinessAppAgentModel?>();
 
             try
             {
@@ -122,7 +123,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(addOrUpdateResult.Data);
+                return result.SetSuccessResult(_businessManager.GetAgentsManager().CreateAgentModel(addOrUpdateResult.Data!));
             }
             catch (Exception ex)
             {

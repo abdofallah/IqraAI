@@ -6,6 +6,10 @@
  * @version 2.1.0 (Added dynamic Array support)
  */
 class IntegrationConfigurationManager {
+	static FieldValuesChanges = ChangesHelper.define({
+		fieldValues: { kind: "map", values: { kind: "value", split: "," } },
+	});
+
 	static _modalInstance = null;
 	static _modalElement = null;
 	static _activeManager = null;
@@ -422,9 +426,16 @@ class IntegrationConfigurationManager {
 		if (integrationId) {
 			const integrationDefinition = this.options.allIntegrations.find(i => i.id === integrationId);
 			const provider = this.options.providersData.find(p => p.integrationId === integrationDefinition.type);
+			const defaults = {};
 			provider?.userIntegrationFields.forEach(field => {
 				if (field.defaultValue !== undefined && field.defaultValue !== null) {
-					newIntegrationData.fieldValues[field.id] = field.defaultValue;
+					defaults[field.id] = field.defaultValue;
+				}
+			});
+			const selectedModelId = ["model", "model_id", "voice_id", "speech_model"].map(key => defaults[key]).find(value => value && !Array.isArray(value)) || "";
+			provider?.userIntegrationFields.forEach(field => {
+				if (field.id in defaults && this._isFieldVisible(field, selectedModelId, defaults)) {
+					newIntegrationData.fieldValues[field.id] = defaults[field.id];
 				}
 			});
 		}
@@ -747,7 +758,7 @@ class IntegrationConfigurationManager {
 
 		const proposedFieldValues = {};
 
-		const processSingleValue = (val, type) => {
+		const processSingleValue = (val, type, decimalPlaces) => {
 			if (type === 'boolean') {
 				if (val === true || val === "true" || val === "on" || val === "yes") return true;
 				return false;
@@ -758,7 +769,8 @@ class IntegrationConfigurationManager {
 			}
 			if (type === 'double_number') {
 				const floatVal = parseFloat(val);
-				return isNaN(floatVal) ? val : floatVal;
+				if (isNaN(floatVal)) return val;
+				return decimalPlaces === undefined || decimalPlaces === null ? floatVal : this._roundHalfToEven(floatVal, decimalPlaces);
 			}
 			return val || "";
 		};
@@ -772,13 +784,13 @@ class IntegrationConfigurationManager {
 			if (fieldSchema.isArray) {
 				// Must map the array, ensure we drop empty elements if they snuck in
 				const validArray = Array.isArray(rawVal) ? rawVal : [];
-				proposedFieldValues[fieldSchema.id] = validArray.map(v => processSingleValue(v, fieldSchema.type));
+				proposedFieldValues[fieldSchema.id] = validArray.map(v => processSingleValue(v, fieldSchema.type, fieldSchema.decimalPlaces));
 			} else {
-				proposedFieldValues[fieldSchema.id] = processSingleValue(rawVal, fieldSchema.type);
+				proposedFieldValues[fieldSchema.id] = processSingleValue(rawVal, fieldSchema.type, fieldSchema.decimalPlaces);
 			}
 		});
 
-		const hasChanges = !this._deepEqual(this.currentConfig.integration.fieldValues, proposedFieldValues);
+		const hasChanges = IntegrationConfigurationManager.FieldValuesChanges.compare({ fieldValues: this.currentConfig.integration.fieldValues }, { fieldValues: proposedFieldValues }).hasChanges;
 		return { hasChanges, compiledData: proposedFieldValues };
 	}
 
@@ -882,20 +894,12 @@ class IntegrationConfigurationManager {
 		this.container.find('select').prop('disabled', true);
 	}
 
-	_deepEqual(obj1, obj2) {
-		if (obj1 === obj2) return true;
-		if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false;
-
-		const keys1 = Object.keys(obj1);
-		const keys2 = Object.keys(obj2);
-
-		if (keys1.length !== keys2.length) return false;
-
-		for (let key of keys1) {
-			if (!keys2.includes(key)) return false;
-			if (!this._deepEqual(obj1[key], obj2[key])) return false;
-		}
-
-		return true;
+	_roundHalfToEven(value, decimalPlaces) {
+		const factor = Math.pow(10, decimalPlaces);
+		const scaled = value * factor;
+		const floor = Math.floor(scaled);
+		const fraction = scaled - floor;
+		if (Math.abs(fraction - 0.5) < 1e-9) return (floor % 2 === 0 ? floor : floor + 1) / factor;
+		return Math.round(scaled) / factor;
 	}
 }

@@ -66,6 +66,138 @@ let CurrentAgentPersonalityToneMultiLangData = {};
 
 let CurrentAgentUtterancesGreetingMessageMultiLangData = {};
 
+// --- Change Helpers ---
+const AgentLanguageTextMap = { kind: "map", keys: () => BusinessFullData.businessData.languages, values: "text" };
+const AgentLanguageTextListMap = { kind: "map", keys: () => BusinessFullData.businessData.languages, values: { kind: "list", items: "text" } };
+const AgentIntegrationRule = { kind: "object", fields: { id: "text", fieldValues: { kind: "map", values: { kind: "value", split: "," } } } };
+const AgentIntegrationListMap = { kind: "map", keys: () => BusinessFullData.businessData.languages, values: { kind: "list", fields: AgentIntegrationRule.fields } };
+
+const AgentIntegrationsChanges = ChangesHelper.define({
+	stt: AgentIntegrationListMap,
+	llm: AgentIntegrationListMap,
+	tts: AgentIntegrationListMap,
+});
+
+const AgentGeneralChanges = ChangesHelper.define({
+	emoji: "text",
+	name: AgentLanguageTextMap,
+	description: AgentLanguageTextMap,
+});
+
+const AgentContextChanges = ChangesHelper.define({
+	useBranding: "boolean",
+	useBranches: "boolean",
+	useServices: "boolean",
+	useProducts: "boolean",
+});
+
+const AgentPersonalityChanges = ChangesHelper.define({
+	name: AgentLanguageTextMap,
+	role: AgentLanguageTextMap,
+	capabilities: AgentLanguageTextListMap,
+	ethics: AgentLanguageTextListMap,
+	tone: AgentLanguageTextListMap,
+});
+
+const AgentUtterancesChanges = ChangesHelper.define({
+	openingType: "enum",
+	greetingMessage: AgentLanguageTextMap,
+});
+
+const AgentInterruptionsChanges = ChangesHelper.define({
+	turnEnd: {
+		kind: "object",
+		fields: {
+			type: "enum",
+			vadSilenceDurationMS: { kind: "number", when: (get) => get("type") === AGENT_INTERRUPTION_TURN_END_TYPE.VAD },
+			useAgentLLM: { kind: "boolean", when: (get) => get("type") === AGENT_INTERRUPTION_TURN_END_TYPE.AI },
+			llmIntegration: { ...AgentIntegrationRule, when: (get) => get("type") === AGENT_INTERRUPTION_TURN_END_TYPE.AI && get("useAgentLLM") },
+		},
+	},
+	useTurnByTurnMode: "boolean",
+	includeInterruptedSpeechInTurnByTurnMode: { kind: "boolean", when: (get) => get("useTurnByTurnMode") },
+	pauseTrigger: {
+		kind: "object",
+		when: (get) => !get("useTurnByTurnMode"),
+		fields: {
+			type: "enum",
+			vadDurationMS: { kind: "number", when: (get) => get("type") === AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD },
+			wordCount: { kind: "number", when: (get) => get("type") === AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT },
+		},
+	},
+	verification: {
+		kind: "object",
+		when: (get) => !get("useTurnByTurnMode"),
+		fields: {
+			enabled: "boolean",
+			useAgentLLM: { kind: "boolean", when: (get) => get("enabled") },
+			llmIntegration: { ...AgentIntegrationRule, when: (get) => get("enabled") && get("useAgentLLM") },
+		},
+	},
+});
+
+const AgentKnowledgeBaseChanges = ChangesHelper.define({
+	linkedGroups: { kind: "set", items: "text" },
+	searchStrategy: { kind: "object", fields: { type: "enum" } },
+	specificKeywords: { kind: "text", when: AgentKnowledgeBaseStrategyIs(AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD) },
+	llmClassifier: {
+		kind: "object",
+		when: AgentKnowledgeBaseStrategyIs(AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM),
+		fields: {
+			useAgentLLM: "boolean",
+			llmIntegration: { ...AgentIntegrationRule, when: (get) => get("useAgentLLM") },
+		},
+	},
+	refinement: {
+		kind: "object",
+		fields: {
+			enabled: "boolean",
+			queryCount: { kind: "number", when: (get) => get("enabled") },
+			useAgentLLM: { kind: "boolean", when: (get) => get("enabled") },
+			llmIntegration: { ...AgentIntegrationRule, when: (get) => get("enabled") && get("useAgentLLM") },
+		},
+	},
+});
+
+const AgentCacheChanges = ChangesHelper.define({
+	messages: { kind: "list", items: "text" },
+	audios: { kind: "list", items: "text" },
+	embeddings: { kind: "list", items: "text" },
+	audioCacheSettings: {
+		kind: "object",
+		fields: {
+			autoCacheAudioResponses: "boolean",
+			autoCacheAudioResponseCacheGroupId: { kind: "text", when: (get) => get("autoCacheAudioResponses") },
+			autoCacheAudioResponsesDefaultExpiryHours: { kind: "number", when: (get) => get("autoCacheAudioResponses") },
+		},
+	},
+	embeddingsCacheSettings: {
+		kind: "object",
+		fields: {
+			autoCacheEmbeddingResponses: "boolean",
+			autoCacheEmbeddingResponseCacheGroupId: { kind: "text", when: (get) => get("autoCacheEmbeddingResponses") },
+			autoCacheEmbeddingResponsesDefaultExpiryHours: { kind: "number", when: (get) => get("autoCacheEmbeddingResponses") },
+		},
+	},
+});
+
+const AgentSettingsChanges = ChangesHelper.define({
+	backgroundAudioUrl: { kind: "custom", equals: SameAgentBackgroundAudioCommand },
+	backgroundAudioVolume: { kind: "number", when: () => agentBackgroundAudioSelect.val() !== "none" },
+});
+
+const AgentTabSectionsChanges = ChangesHelper.defineSections({
+	general: { definition: AgentGeneralChanges, saved: () => CurrentManageAgentData.general, current: () => BuildAgentGeneralChanges() },
+	context: { definition: AgentContextChanges, saved: () => CurrentManageAgentData.context, current: () => BuildAgentContextChanges() },
+	personality: { definition: AgentPersonalityChanges, saved: () => CurrentManageAgentData.personality, current: () => BuildAgentPersonalityChanges() },
+	utterances: { definition: AgentUtterancesChanges, saved: () => CurrentManageAgentData.utterances, current: () => BuildAgentUtterancesChanges() },
+	interruptions: { definition: AgentInterruptionsChanges, saved: () => CurrentManageAgentData.interruptions, current: () => BuildAgentInterruptionsChanges() },
+	integrations: { definition: AgentIntegrationsChanges, saved: () => CurrentManageAgentData.integrations, current: () => BuildAgentIntegrationsChanges() },
+	knowledgeBase: { definition: AgentKnowledgeBaseChanges, saved: () => CurrentManageAgentData.knowledgeBase, current: () => BuildAgentKnowledgeBaseChanges() },
+	cache: { definition: AgentCacheChanges, saved: () => CurrentManageAgentData.cache, current: () => BuildAgentCacheChanges() },
+	settings: { definition: AgentSettingsChanges, saved: () => CurrentManageAgentData.settings, current: () => BuildAgentSettingsChanges() },
+});
+
 /** Element Variables **/
 
 const agentIconPicker = new EmojiPicker({
@@ -268,89 +400,52 @@ function showAgentListTab() {
 	}, 300);
 }
 
-function CheckAgentTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	if (ManageAgentType === null) {
-		return { changes, hasChanges };
-	}
-
-	// Check General tab changes
-	const generalChanges = CheckAgentGeneralTabChanges(false);
-	changes.general = generalChanges.changes;
-	if (generalChanges.hasChanges) {
-		hasChanges = true;
-	}
-
-	// Check Context tab changes
-	const contextChanges = CheckAgentContextTabChanges(false);
-	changes.context = contextChanges.changes;
-	if (contextChanges.hasChanges) {
-		hasChanges = true;
-	}
-
-	// Check Personality tab changes
-	const personalityChanges = CheckAgentPersonalityTabChanges(false);
-	changes.personality = personalityChanges.changes;
-	if (personalityChanges.hasChanges) {
-		hasChanges = true;
-	}
-
-	// Check Utterances tab changes
-	const utterancesChanges = CheckAgentUtterancesTabChanges(false);
-	changes.utterances = utterancesChanges.changes;
-	if (utterancesChanges.hasChanges) {
-		hasChanges = true;
-	}
-
-	// Check Interruptions tab changes
-	const interruptionsChanges = CheckAgentInterruptionsTabChanges(false);
-	changes.interruptions = interruptionsChanges.changes;
-	if (interruptionsChanges.hasChanges) {
-		hasChanges = true;
-	}
-
-	// Check Integrations tab changes
-	changes.integrations = {
+function BuildAgentIntegrationsChanges() {
+	return {
 		stt: agentSTTIntegrationManager.getData(),
 		llm: agentLLMIntegrationManager.getData(),
 		tts: agentTTSIntegrationManager.getData(),
 	};
-	if (JSON.stringify(CurrentManageAgentData.integrations.stt) !== JSON.stringify(changes.integrations.stt)) {
-		hasChanges = true;
-	}
-	if (JSON.stringify(CurrentManageAgentData.integrations.tts) !== JSON.stringify(changes.integrations.tts)) {
-		hasChanges = true;
-	}
-	if (JSON.stringify(CurrentManageAgentData.integrations.llm) !== JSON.stringify(changes.integrations.llm)) {
-		hasChanges = true;
-	}
+}
 
-	// Check Knowledge Base tab changes
-	const knowledgeBaseChanges = CheckAgentKnowledgeBaseTabChanges(false);
-	changes.knowledgeBase = knowledgeBaseChanges.changes;
-	if (knowledgeBaseChanges.hasChanges) {
-		hasChanges = true;
-	}
+function CheckAgentIntegrationsChanges() {
+	const changes = BuildAgentIntegrationsChanges();
+	const hasChanges = AgentIntegrationsChanges.compare(CurrentManageAgentData.integrations, changes).hasChanges;
+	return { hasChanges, changes };
+}
 
-	// Check Cache tab changes
-	const cacheChanges = CheckAgentCacheTabChanges(false);
-	changes.cache = cacheChanges.changes;
-	if (cacheChanges.hasChanges) {
-		hasChanges = true;
-	}
-
-	// Check Settings tab changes
-	const settingsChanges = CheckAgentSettingsTabChanges(false);
-	changes.settings = settingsChanges.changes;
-	if (settingsChanges.hasChanges) {
-		hasChanges = true;
+function CheckAgentTabHasChanges(enableDisableButton = true) {
+	if (ManageAgentType === null) {
+		return { changes: {}, hasChanges: false };
 	}
 
 	if (enableDisableButton) {
+		const hasChanges = AgentTabSectionsChanges.compare().hasChanges;
 		confirmPublishAgentButton.prop("disabled", !hasChanges);
+		return { changes: {}, hasChanges };
 	}
+
+	const changes = {};
+	let hasChanges = false;
+
+	const sections = [
+		["general", CheckAgentGeneralTabChanges],
+		["context", CheckAgentContextTabChanges],
+		["personality", CheckAgentPersonalityTabChanges],
+		["utterances", CheckAgentUtterancesTabChanges],
+		["interruptions", CheckAgentInterruptionsTabChanges],
+		["integrations", CheckAgentIntegrationsChanges],
+		["knowledgeBase", CheckAgentKnowledgeBaseTabChanges],
+		["cache", CheckAgentCacheTabChanges],
+		["settings", CheckAgentSettingsTabChanges],
+	];
+	sections.forEach(([name, check]) => {
+		const sectionResult = check(false);
+		changes[name] = sectionResult.changes;
+		if (sectionResult.hasChanges) {
+			hasChanges = true;
+		}
+	});
 
 	return {
 		hasChanges,
@@ -825,35 +920,24 @@ function FillAgentsManagerTab() {
 }
 
 // General Tab Functions
-function CheckAgentGeneralTabChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Emoji
-	changes.emoji = $("#editAgentIconButton").text();
-	if (CurrentManageAgentData.general.emoji !== changes.emoji) {
-		hasChanges = true;
-	}
-
-	// Name (multi-language)
-	changes.name = {};
+function BuildAgentGeneralChanges() {
+	const changes = {
+		emoji: $("#editAgentIconButton").text(),
+		name: {},
+		description: {},
+	};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.name[language] = CurrentAgentGeneralNameMultiLangData[language];
-
-		if (CurrentManageAgentData.general.name[language] !== changes.name[language]) {
-			hasChanges = true;
-		}
 	});
-
-	// Description (multi-language)
-	changes.description = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.description[language] = CurrentAgentGeneralDescriptionMultiLangData[language];
-
-		if (CurrentManageAgentData.general.description[language] !== changes.description[language]) {
-			hasChanges = true;
-		}
 	});
+	return changes;
+}
+
+function CheckAgentGeneralTabChanges(enableDisableButton = true) {
+	const changes = BuildAgentGeneralChanges();
+	const hasChanges = AgentGeneralChanges.compare(CurrentManageAgentData.general, changes).hasChanges;
 
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);
@@ -923,30 +1007,18 @@ function validateAgentGeneralTab(onlyRemove = true) {
 }
 
 // Context Tab Functions
+function BuildAgentContextChanges() {
+	return {
+		useBranding: $("#agentEditContextEnableBranding").prop("checked"),
+		useBranches: $("#agentEditContextEnableBranches").prop("checked"),
+		useServices: $("#agentEditContextEnableServices").prop("checked"),
+		useProducts: $("#agentEditContextEnableProducts").prop("checked"),
+	};
+}
+
 function CheckAgentContextTabChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Context checkboxes
-	changes.useBranding = $("#agentEditContextEnableBranding").prop("checked");
-	if (CurrentManageAgentData.context.useBranding !== changes.useBranding) {
-		hasChanges = true;
-	}
-
-	changes.useBranches = $("#agentEditContextEnableBranches").prop("checked");
-	if (CurrentManageAgentData.context.useBranches !== changes.useBranches) {
-		hasChanges = true;
-	}
-
-	changes.useServices = $("#agentEditContextEnableServices").prop("checked");
-	if (CurrentManageAgentData.context.useServices !== changes.useServices) {
-		hasChanges = true;
-	}
-
-	changes.useProducts = $("#agentEditContextEnableProducts").prop("checked");
-	if (CurrentManageAgentData.context.useProducts !== changes.useProducts) {
-		hasChanges = true;
-	}
+	const changes = BuildAgentContextChanges();
+	const hasChanges = AgentContextChanges.compare(CurrentManageAgentData.context, changes).hasChanges;
 
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);
@@ -966,44 +1038,30 @@ function FillAgentContextTab() {
 }
 
 // Personality Tab Functions
-function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Name
-	changes.name = {};
+function BuildAgentPersonalityChanges() {
+	const changes = { name: {}, role: {} };
 	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.name[language] = CurrentAgentPersonalityNameMultiLangData[language];
-		if (CurrentManageAgentData.personality.name[language] !== changes.name[language]) {
-			hasChanges = true;
-		}
 	});
-
-	// Role
-	changes.role = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.role[language] = CurrentAgentPersonalityRoleMultiLangData[language];
-		if (CurrentManageAgentData.personality.role[language] !== changes.role[language]) {
-			hasChanges = true;
-		}
 	});
 
-	// Lists (Capabilities, Ethics, Tone)
 	["capabilities", "ethics", "tone"].forEach((listType) => {
 		changes[listType] = {};
 		const currentData =
 			listType === "capabilities" ? CurrentAgentPersonalityCapabilitiesMultiLangData : listType === "ethics" ? CurrentAgentPersonalityEthicsMultiLangData : CurrentAgentPersonalityToneMultiLangData;
-
 		BusinessFullData.businessData.languages.forEach((language) => {
 			changes[listType][language] = currentData[language] || [];
-
-			// Compare arrays
-			const originalArray = CurrentManageAgentData.personality[listType][language] || [];
-			if (JSON.stringify(originalArray) !== JSON.stringify(changes[listType][language])) {
-				hasChanges = true;
-			}
 		});
 	});
+
+	return changes;
+}
+
+function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
+	const changes = BuildAgentPersonalityChanges();
+	const hasChanges = AgentPersonalityChanges.compare(CurrentManageAgentData.personality, changes).hasChanges;
 
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);
@@ -1094,24 +1152,20 @@ function validateAgentPersonalityTab(onlyRemove = true) {
 }
 
 // Utterances Tab Functions
-function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Opening Type
-	changes.openingType = parseInt($("#editAgentGreetingStartTypeInput").val());
-	if (CurrentManageAgentData.utterances.openingType.value !== changes.openingType) {
-		hasChanges = true;
-	}
-
-	// Greeting Message (multi-language)
-	changes.greetingMessage = {};
+function BuildAgentUtterancesChanges() {
+	const changes = {
+		openingType: parseInt($("#editAgentGreetingStartTypeInput").val()),
+		greetingMessage: {},
+	};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.greetingMessage[language] = CurrentAgentUtterancesGreetingMessageMultiLangData[language];
-		if (CurrentManageAgentData.utterances.greetingMessage[language] !== changes.greetingMessage[language]) {
-			hasChanges = true;
-		}
 	});
+	return changes;
+}
+
+function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
+	const changes = BuildAgentUtterancesChanges();
+	const hasChanges = AgentUtterancesChanges.compare(CurrentManageAgentData.utterances, changes).hasChanges;
 
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);
@@ -1222,126 +1276,54 @@ function fillAgentInterruptionsTab() {
 	}
 }
 
-function CheckAgentInterruptionsTabChanges(enableDisableButton = true) {
+function BuildAgentInterruptionsChanges() {
 	const changes = {};
-	let hasChanges = false;
-	const original = CurrentManageAgentData.interruptions;
 
-	// Build changes object from UI
 	changes.turnEnd = {
 		type: parseInt(editAgentTurnEndTypeSelect.val())
 	};
-
-	if (changes.turnEnd.type != original.turnEnd.type.value) {
-        hasChanges = true;
-	}
-
 	if (changes.turnEnd.type == AGENT_INTERRUPTION_TURN_END_TYPE.VAD) {
 		changes.turnEnd.vadSilenceDurationMS = parseInt(editAgentTurnEndViaVADAudioActivityDuration.val());
-
-		if (original.turnEnd.type.value == AGENT_INTERRUPTION_TURN_END_TYPE.VAD &&
-			original.turnEnd.vadSilenceDurationMS != changes.turnEnd.vadSilenceDurationMS) {
-            hasChanges = true;
-		}
 	}
 	else if (changes.turnEnd.type == AGENT_INTERRUPTION_TURN_END_TYPE.AI) {
 		changes.turnEnd.useAgentLLM = editAgentTurnEndViaAIUseAgentLLM.is(":checked");
-
 		if (!changes.turnEnd.useAgentLLM) {
 			changes.turnEnd.llmIntegration = agentTurnEndLLMIntegrationManager.getData();
-		}
-
-		if (original.turnEnd.type.value == AGENT_INTERRUPTION_TURN_END_TYPE.AI &&
-			(
-				original.turnEnd.useAgentLLM != changes.turnEnd.useAgentLLM || 
-				(original.turnEnd.useAgentLLM && changes.turnEnd.useAgentLLM && original.turnEnd.llmIntegration != changes.turnEnd.llmIntegration) // todo might need better difference checking
-			)
-		) {
-            hasChanges = true;
 		}
 	}
 
 	changes.useTurnByTurnMode = editAgentTurnByTurnMode.is(":checked");
-
-	if (original.useTurnByTurnMode != changes.useTurnByTurnMode) {
-        hasChanges = true;
-    }
-
 	if (changes.useTurnByTurnMode) {
 		changes.includeInterruptedSpeechInTurnByTurnMode = editAgentTurnByTurnIncludeInterruptedSpeech.is(":checked");
-
-		if (original.useTurnByTurnMode && original.includeInterruptedSpeechInTurnByTurnMode != changes.includeInterruptedSpeechInTurnByTurnMode) {
-            hasChanges = true;
-        }
 	}
 	else {
 		changes.pauseTrigger = {
 			type: parseInt(agentInterruptionPauseTypeSelect.val())
 		};
-
-		if (
-			!original.pauseTrigger ||
-			changes.pauseTrigger.type != original.pauseTrigger.type.value
-		) {
-			hasChanges = true;
-        }
-
 		if (changes.pauseTrigger.type == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD) {
 			changes.pauseTrigger.vadDurationMS = parseInt(agentInterruptionPauseVADDuration.val());
-
-			if (!original.pauseTrigger ||
-				(
-					original.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD &&
-					original.pauseTrigger.vadDurationMS != changes.pauseTrigger.vadDurationMS
-				)
-			) {
-                hasChanges = true;
-            }
 		}
 		else if (changes.pauseTrigger.type == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT) {
 			changes.pauseTrigger.wordCount = parseInt(agentInterruptionPauseWordCount.val());
-
-			if (!original.pauseTrigger ||
-				(
-					original.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT &&
-					original.pauseTrigger.wordCount != changes.pauseTrigger.wordCount
-				)
-			) {
-                hasChanges = true;
-            }
-        }
+		}
 
 		changes.verification = {
 			enabled: enableAgentInterruptionVerification.is(":checked")
 		};
-
-		if (
-			original.verification && original.verification.enabled != changes.verification.enabled
-		) {
-			hasChanges = true;
-        }
-
 		if (changes.verification.enabled) {
 			changes.verification.useAgentLLM = agentInterruptionVerifyAIUseAgentLLM.is(":checked");
-
 			if (!changes.verification.useAgentLLM) {
 				changes.verification.llmIntegration = agentInterruptionVerifyLLMIntegrationManager.getData();
 			}
-
-			if (
-				original.verification &&
-				original.verification.enabled &&
-				(
-					changes.verification.useAgentLLM != original.verification.useAgentLLM ||
-					(changes.verification.useAgentLLM && original.verification.useAgentLLM && changes.verification.llmIntegration != original.verification.llmIntegration) // todo might need better difference checking
-				)
-			) {
-                hasChanges = true;
-			}
-
 		}
 	}
 
+	return changes;
+}
+
+function CheckAgentInterruptionsTabChanges(enableDisableButton = true) {
+	const changes = BuildAgentInterruptionsChanges();
+	const hasChanges = AgentInterruptionsChanges.compare(CurrentManageAgentData.interruptions, changes).hasChanges;
 	return { hasChanges, changes };
 }
 
@@ -1544,93 +1526,54 @@ function ResetAndEmptyAgentKnowledgeBaseTab() {
 	if (agentKbRefinementLLMIntegrationManager) agentKbRefinementLLMIntegrationManager.reset();
 }
 
-function CheckAgentKnowledgeBaseTabChanges(enableDisableButton = true) {
+function AgentKnowledgeBaseStrategyIs(type) {
+	return (get) => {
+		const strategy = get("searchStrategy");
+		if (!strategy) return false;
+		const value = strategy.type !== null && typeof strategy.type === "object" ? strategy.type.value : strategy.type;
+		return value == type;
+	};
+}
+
+function BuildAgentKnowledgeBaseChanges() {
 	const changes = {};
-	let hasChanges = false;
-	const original = CurrentManageAgentData.knowledgeBase;
 
-	// List
-	changes.linkedGroups = CurrentAgentLinkedKBs;
-	if (JSON.stringify(original.linkedGroups.sort()) !== JSON.stringify(changes.linkedGroups.sort())) {
-		hasChanges = true;
-	}
+	changes.linkedGroups = [...CurrentAgentLinkedKBs].sort();
 
-	// Settings
 	changes.searchStrategy = {
 		type: parseInt(agentKbSearchStrategySelect.val())
 	};
-
-	if (original.searchStrategy.type.value !== changes.searchStrategy.type) {
-		hasChanges = true;
-	}
-
 	if (changes.searchStrategy.type == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD) {
 		changes.specificKeywords = agentKbSpecificKeywordsTextarea.val();
-
-		if (
-            original.searchStrategy.type.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD &&
-			original.specificKeywords !== changes.specificKeywords
-		) {
-			hasChanges = true;
-		}
 	}
 	else if (changes.searchStrategy.type == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
-        changes.llmClassifier = {
-            useAgentLLM: agentKbClassifierUseAgentLLM.is(':checked')
+		changes.llmClassifier = {
+			useAgentLLM: agentKbClassifierUseAgentLLM.is(':checked')
 		};
-
-		if (!changes.llmClassifier.useAgentLLM) {
-			changes.llmClassifier.llmIntegration
-		}
-
-		if (original.searchStrategy.type.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
-			if (original.llmClassifier.useAgentLLM !== changes.llmClassifier.useAgentLLM) {
-                hasChanges = true;
-			}
-
-			if (
-				(original.llmClassifier.useAgentLLM == true && changes.llmClassifier.useAgentLLM == true) &&
-				JSON.stringify(original.llmClassifier.llmIntegration) !== JSON.stringify(changes.llmClassifier.llmIntegration)
-			) {
-                hasChanges = true;
-			}
-		}
-    }
+	}
 
 	changes.refinement = {
 		enabled: agentKbEnableQueryRefinement.is(':checked')
 	};
-
-	if (original.refinement.enabled !== changes.refinement.enabled) {
-        hasChanges = true;
-    }
-
 	if (changes.refinement.enabled) {
 		changes.refinement.queryCount = parseInt(agentKbRefinementQueryCount.val());
 		changes.refinement.useAgentLLM = agentKbRefinementUseAgentLLM.is(':checked');
-
 		if (!changes.refinement.useAgentLLM) {
 			changes.refinement.llmIntegration = agentKbRefinementLLMIntegrationManager.getData();
 		}
-
-		if (original.refinement.enabled) {
-			if (original.refinement.queryCount !== changes.refinement.queryCount ||
-				original.refinement.useAgentLLM !== changes.refinement.useAgentLLM) {
-                hasChanges = true;
-			}
-
-			if (
-				(original.refinement.useAgentLLM == true && changes.refinement.useAgentLLM == true) &&
-				JSON.stringify(original.refinement.llmIntegration) !== JSON.stringify(changes.refinement.llmIntegration)
-			) {
-                hasChanges = true;
-            }
-		}
 	}
+
+	return changes;
+}
+
+function CheckAgentKnowledgeBaseTabChanges(enableDisableButton = true) {
+	const changes = BuildAgentKnowledgeBaseChanges();
+	const hasChanges = AgentKnowledgeBaseChanges.compare(CurrentManageAgentData.knowledgeBase, changes).hasChanges;
 
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
+
 	return { hasChanges, changes };
 }
 
@@ -1839,72 +1782,34 @@ function fillCacheGroupsList(type) {
 	});
 }
 
-function CheckAgentCacheTabChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Messages
-	changes.messages = CurrentAgentCacheMessages;
-	if (JSON.stringify(CurrentManageAgentData.cache.messages) !== JSON.stringify(changes.messages)) {
-		hasChanges = true;
-	}
-
-	// Audios
-	changes.audios = CurrentAgentCacheAudios;
-	if (JSON.stringify(CurrentManageAgentData.cache.audios) !== JSON.stringify(changes.audios)) {
-		hasChanges = true;
-	}
-
-	// Embeddings
-    changes.embeddings = CurrentAgentCacheEmbeddings;
-    if (JSON.stringify(CurrentManageAgentData.cache.embeddings) !== JSON.stringify(changes.embeddings)) {
-        hasChanges = true;
-    }
-
-	// Auto Cache Audio Settings
-	changes.audioCacheSettings = {};
-
-	changes.audioCacheSettings.autoCacheAudioResponses = agentCacheSettingsAutoCacheAudioCheckbox.is(":checked");
-	if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses !== changes.audioCacheSettings.autoCacheAudioResponses) {
-		hasChanges = true;
-	} 
+function BuildAgentCacheChanges() {
+	const changes = {
+		messages: CurrentAgentCacheMessages,
+		audios: CurrentAgentCacheAudios,
+		embeddings: CurrentAgentCacheEmbeddings,
+		audioCacheSettings: {
+			autoCacheAudioResponses: agentCacheSettingsAutoCacheAudioCheckbox.is(":checked"),
+		},
+		embeddingsCacheSettings: {
+			autoCacheEmbeddingResponses: agentCacheSettingsAutoCacheEmbeddingCheckbox.is(":checked"),
+		},
+	};
 
 	if (changes.audioCacheSettings.autoCacheAudioResponses) {
 		changes.audioCacheSettings.autoCacheAudioResponseCacheGroupId = agentAutoCacheAudioGroupSelect.val();
-		if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses == true &&
-			CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponseCacheGroupId !== changes.audioCacheSettings.autoCacheAudioResponseCacheGroupId) {
-            hasChanges = true;
-        }
-
 		changes.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours = parseInt(agentAutoCacheAudioExpiryInput.val(), 10) || 0;
-		if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses == true &&
-			CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours !== changes.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours) {
-            hasChanges = true;
-		}
 	}
-
-	// Auto Cache Embedding Settings
-	changes.embeddingsCacheSettings = {};
-
-	changes.embeddingsCacheSettings.autoCacheEmbeddingResponses = agentCacheSettingsAutoCacheEmbeddingCheckbox.is(":checked");
-	if (CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponses !== changes.embeddingsCacheSettings.autoCacheEmbeddingResponses) {
-        hasChanges = true;
-	}
-
 	if (changes.embeddingsCacheSettings.autoCacheEmbeddingResponses) {
 		changes.embeddingsCacheSettings.autoCacheEmbeddingResponseCacheGroupId = agentAutoCacheEmbeddingGroupSelect.val();
-        if (CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponses == true &&
-			CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponseCacheGroupId !== changes.embeddingsCacheSettings.autoCacheEmbeddingResponseCacheGroupId) {
-			hasChanges = true;
-		}
-
 		changes.embeddingsCacheSettings.autoCacheEmbeddingResponsesDefaultExpiryHours = parseInt(agentAutoCacheEmbeddingExpiryInput.val(), 10) || 0;
-        if (CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponses == true &&
-			CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponsesDefaultExpiryHours !== changes.embeddingsCacheSettings.autoCacheEmbeddingResponsesDefaultExpiryHours) {
-            hasChanges = true;
-        }
-    }
+	}
 
+	return changes;
+}
+
+function CheckAgentCacheTabChanges(enableDisableButton = true) {
+	const changes = BuildAgentCacheChanges();
+	const hasChanges = AgentCacheChanges.compare(CurrentManageAgentData.cache, changes).hasChanges;
 
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);
@@ -2071,44 +1976,41 @@ function validateAgentCacheTab(onlyRemove = true) {
 }
 
 // Settings Tab Functions
-function CheckAgentSettingsTabChanges(enableDisableButton = true) {
+function SameAgentBackgroundAudioCommand(saved, current) {
+	if (current === "custom") return false;
+	if (current === null) return saved === null;
+	return true;
+}
+
+function BuildAgentSettingsChanges() {
 	const changes = {};
-	let hasChanges = false;
 
-	// Background Audio URL
 	const backgroundAudioType = agentBackgroundAudioSelect.val();
-
 	if (backgroundAudioType === "none") {
 		changes.backgroundAudioUrl = null;
-
-		if (CurrentManageAgentData.settings.backgroundAudioUrl !== null) {
-			hasChanges = true;
-		}
 	}
-
 	if (backgroundAudioType === "custom") {
-
 		if (
 			agentBackgroundAudioUploadInput[0].files.length === 1
 			||
 			(agentBackgroundAudioUploadInput[0].files.length === 0 && AgentBackgroundAudioWaveSurfer == null)
 		) {
 			changes.backgroundAudioUrl = "custom";
-			hasChanges = true;
 		}
-
 		if (CurrentManageAgentData.settings.backgroundAudioUrl !== null && agentBackgroundAudioUploadInput[0].files.length === 0 && AgentBackgroundAudioWaveSurfer != null) {
 			changes.backgroundAudioUrl = "previous";
 		}
 	}
-
-	// Background Audio Volume
 	if (backgroundAudioType !== "none") {
 		changes.backgroundAudioVolume = parseInt(agentBackgroundAudioVolumeInput.val());
-		if (CurrentManageAgentData.settings.backgroundAudioVolume !== changes.backgroundAudioVolume) {
-			hasChanges = true;
-		}
 	}
+
+	return changes;
+}
+
+function CheckAgentSettingsTabChanges(enableDisableButton = true) {
+	const changes = BuildAgentSettingsChanges();
+	const hasChanges = AgentSettingsChanges.compare(CurrentManageAgentData.settings, changes).hasChanges;
 
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);

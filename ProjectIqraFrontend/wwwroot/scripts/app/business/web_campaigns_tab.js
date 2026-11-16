@@ -468,6 +468,47 @@ var webCampaignOnConversationStartedActionInputArgumentsCustomInput = {};
 var webCampaignOnConversationEndedActionInputArgumentsCustomInput = {};
 var webCampaignOnPostAnalysisActionInputArgumentsCustomInput = {};
 
+// --- Change Helpers ---
+const WebCampaignActionToolRule = { kind: "object", fields: { toolId: "text", arguments: { kind: "map", values: "value" } } };
+const WebCampaignVariableListRule = { kind: "list", fields: { key: "text", isRequired: "boolean", isEmptyOrNullAllowed: "boolean" } };
+
+const WebCampaignChanges = ChangesHelper.define({
+    general: { kind: "object", fields: { emoji: "text", name: "text", description: "text" } },
+    agent: {
+        kind: "object",
+        fields: {
+            selectedAgentId: "text",
+            openingScriptId: "text",
+            language: "text",
+            timezones: { kind: "list", items: "text" },
+        },
+    },
+    configuration: {
+        kind: "object",
+        fields: {
+            timeouts: { kind: "object", fields: { notifyOnSilenceMS: "number", endOnSilenceMS: "number", maxConversationTimeS: "number" } },
+        },
+    },
+    variables: { kind: "object", fields: { dynamicVariables: WebCampaignVariableListRule, metadata: WebCampaignVariableListRule } },
+    postAnalysis: {
+        kind: "object",
+        fields: {
+            postAnalysisId: "text",
+            contextVariables: { kind: "list", fields: { name: "text", description: "text", value: "text" }, when: (get) => get("postAnalysisId") != null },
+        },
+    },
+    actions: {
+        kind: "object",
+        fields: {
+            conversationInitiationFailureTool: WebCampaignActionToolRule,
+            conversationInitiatedTool: WebCampaignActionToolRule,
+            conversationStartedTool: WebCampaignActionToolRule,
+            conversationEndedTool: WebCampaignActionToolRule,
+            conversationPostAnalysisTool: WebCampaignActionToolRule,
+        },
+    },
+});
+
 /** Element Variables **/
 const webCampaignsTab = $("#web-campaigns-tab");
 
@@ -884,6 +925,24 @@ function fillWebCampaignManager() {
     fillWebActionTool(data.actions.conversationPostAnalysisTool, webCampaignActionToolPostAnalysisSelect, webCampaignOnPostAnalysisActionArgurments, webCampaignOnPostAnalysisActionInputArgumentsCustomInput);
 }
 
+function collectWebCampaignToolArguments(selectElement, inputArguementObject) {
+    const args = {};
+    const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
+    argumentsList.find(".variable-input-container").each((_, el) => {
+        const inputArguement = $(el).attr("input_arguement");
+
+        args[inputArguement] = inputArguementObject[inputArguement].getValue();
+    });
+    return Object.keys(args).length > 0 ? args : null;
+}
+
+function readWebCampaignActionTool(selectElement, inputArguementObject) {
+    return {
+        toolId: selectElement.val() === 'none' ? null : selectElement.val(),
+        arguments: collectWebCampaignToolArguments(selectElement, inputArguementObject)
+    };
+}
+
 function checkWebCampaignChanges(enableDisableButton = true) {
     if (manageWebCampaignType === null) {
         return {
@@ -891,192 +950,63 @@ function checkWebCampaignChanges(enableDisableButton = true) {
         };
     }
 
-    const changes = {};
-    let hasChanges = false;
-    const original = currentWebCampaignData;
+    const timezoneValue = webCampaignAgentTimezoneSelect.find(":selected").val();
+    let postAnalysisId = webCampaignPostAnalysisTemplateSelect.find("option:selected").val();
+    if (!postAnalysisId || postAnalysisId == "" || postAnalysisId == null) {
+        postAnalysisId = null;
+    }
 
-    function checkGeneralTab() {
-        changes.general = {
+    const changes = {
+        general: {
             emoji: webCampaignIconInput.text(),
             name: webCampaignNameInput.val().trim(),
             description: webCampaignDescriptionInput.val().trim(),
-        };
-        if (changes.general.emoji !== original.general.emoji ||
-            changes.general.name !== original.general.name ||
-            changes.general.description !== original.general.description) {
-            hasChanges = true;
-        }
-    }
-
-    function checkAgentTab() {
-        var timezoneValue = webCampaignAgentTimezoneSelect.find(":selected").val();
-        changes.agent = {
+        },
+        agent: {
             selectedAgentId: currentWebCampaignAgentSelectedId,
             openingScriptId: webCampaignAgentScriptSelect.find(":selected").val(),
             language: webCampaignAgentLanguageSelect.find(":selected").val(),
             timezones: (timezoneValue && timezoneValue.trim() !== "") ? [timezoneValue] : [],
-        };
-        if (changes.agent.selectedAgentId !== original.agent.selectedAgentId ||
-            changes.agent.openingScriptId !== original.agent.openingScriptId ||
-            changes.agent.language !== original.agent.language ||
-            JSON.stringify(changes.agent.timezones) !== JSON.stringify(original.agent.timezones || [])) {
-            hasChanges = true;
-        }
-    }
-
-    function checkConfigurationTab() {
-        changes.configuration = {
+        },
+        configuration: {
             timeouts: {
                 notifyOnSilenceMS: parseInt(webCampaignSilenceNotifyInput.val()),
                 endOnSilenceMS: parseInt(webCampaignSilenceEndInput.val()),
                 maxConversationTimeS: parseInt(webCampaignMaxConversationTimeInput.val()),
             }
-        };
-        if (changes.configuration.timeouts.notifyOnSilenceMS !== original.configuration.timeouts.notifyOnSilenceMS ||
-            changes.configuration.timeouts.endOnSilenceMS !== original.configuration.timeouts.endOnSilenceMS ||
-            changes.configuration.timeouts.maxConversationTimeS !== original.configuration.timeouts.maxConversationTimeS) {
-            hasChanges = true;
+        },
+        variables: {
+            dynamicVariables: getWebCampaignVariablesList(webCampaignDynamicVariablesList),
+            metadata: getWebCampaignVariablesList(webCampaignMetadataList)
+        },
+        postAnalysis: {
+            postAnalysisId: postAnalysisId,
+            contextVariables: null
+        },
+        actions: {
+            conversationInitiationFailureTool: readWebCampaignActionTool(webCampaignActionToolConversationInitiationFailureSelect, webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput),
+            conversationInitiatedTool: readWebCampaignActionTool(webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput),
+            conversationStartedTool: readWebCampaignActionTool(webCampaignActionToolConversationStartedSelect, webCampaignOnConversationStartedActionInputArgumentsCustomInput),
+            conversationEndedTool: readWebCampaignActionTool(webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionInputArgumentsCustomInput),
+            conversationPostAnalysisTool: readWebCampaignActionTool(webCampaignActionToolPostAnalysisSelect, webCampaignOnPostAnalysisActionInputArgumentsCustomInput)
         }
-    }
+    };
 
-    function checkVariablesTab() {
-        changes.variables = {
-            dynamicVariables: [],
-            metadata: []
-        };
+    if (postAnalysisId != null) {
+        changes.postAnalysis.contextVariables = [];
 
-        changes.variables.dynamicVariables = getWebCampaignVariablesList(webCampaignDynamicVariablesList);
-        changes.variables.metadata = getWebCampaignVariablesList(webCampaignMetadataList);
+        webCampaignPostAnalysisVariablesList.children().each((i, contextVariableElement) => {
+            const dataId = $(contextVariableElement).attr("data-id");
 
-        // Check Changes
-        function areArraysOfObjectsEqual(arr1, arr2) {
-            if (arr1 === arr2) return true;
-            if (!arr1 || !arr2 || arr1.length !== arr2.length) return false;
-
-            for (let i = 0; i < arr1.length; i++) {
-                const obj1 = arr1[i];
-                const obj2 = arr2[i];
-                const keys1 = Object.keys(obj1);
-                const keys2 = Object.keys(obj2);
-                if (keys1.length !== keys2.length) return false;
-                for (const key of keys1) {
-                    if (obj1[key] !== obj2[key]) return false;
-                }
-            }
-            return true;
-        }
-
-        if (!areArraysOfObjectsEqual(changes.variables.dynamicVariables, original.variables.dynamicVariables) ||
-            !areArraysOfObjectsEqual(changes.variables.metadata, original.variables.metadata)) {
-            hasChanges = true;
-        }
-    }
-
-    function checkPostAnalysisTab() {
-        changes.postAnalysis = {};
-
-        let postAnalysisId = webCampaignPostAnalysisTemplateSelect.find("option:selected").val();
-        if (!postAnalysisId || postAnalysisId == "" || postAnalysisId == null) {
-            postAnalysisId = null;
-        }
-        changes.postAnalysis.postAnalysisId = postAnalysisId;
-        if (changes.postAnalysis.postAnalysisId != original.postAnalysis.postAnalysisId) {
-            hasChanges = true;
-        }
-
-        if (postAnalysisId == null) {
-            changes.postAnalysis.contextVariables = null;
-        }
-        else {
-            changes.postAnalysis.contextVariables = [];
-
-            webCampaignPostAnalysisVariablesList.children().each((i, contextVariableElement) => {
-                const dataId = $(contextVariableElement).attr("data-id");
-
-                const contextVariableData = {
-                    name: $(contextVariableElement).find('.campaign-post-analysis-context-variable-name').val() ?? "",
-                    description: $(contextVariableElement).find('.campaign-post-analysis-context-variable-description').val() ?? "",
-                    value: webCampaignPostAnalysisContextVariablesCustomInput[dataId].getValue() ?? ""
-                };
-
-                changes.postAnalysis.contextVariables.push(contextVariableData);
+            changes.postAnalysis.contextVariables.push({
+                name: $(contextVariableElement).find('.campaign-post-analysis-context-variable-name').val() ?? "",
+                description: $(contextVariableElement).find('.campaign-post-analysis-context-variable-description').val() ?? "",
+                value: webCampaignPostAnalysisContextVariablesCustomInput[dataId].getValue() ?? ""
             });
-        }        
-
-        if (postAnalysisId != null && original.postAnalysis.postAnalysisId != null) {
-            if (changes.postAnalysis.contextVariables.length != original.postAnalysis.contextVariables.length) {
-                hasChanges = true;
-            }
-
-            if (JSON.stringify(changes.postAnalysis.contextVariables) != JSON.stringify(original.postAnalysis.contextVariables)) {
-                hasChanges = true;
-            }
-        }
+        });
     }
 
-    function checkActionsTab() {
-        function collectToolArguments(selectElement, inputArguementObject) {
-            const args = {};
-            const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
-            argumentsList.find(".variable-input-container").each((_, el) => {
-                const inputArguement = $(el).attr("input_arguement");
-
-                args[inputArguement] = inputArguementObject[inputArguement].getValue();
-            });
-            return Object.keys(args).length > 0 ? args : null;
-        }
-
-        function compareToolData(newTool, originalTool) {
-            if (!originalTool) originalTool = {
-                toolId: null,
-                arguments: null
-            };
-            if (newTool.toolId !== originalTool.toolId) return true;
-            if (JSON.stringify(newTool.arguments) !== JSON.stringify(originalTool.arguments)) return true;
-            return false;
-        }
-
-        changes.actions = {
-            conversationInitiationFailureTool: {
-                toolId: webCampaignActionToolConversationInitiationFailureSelect.val() === 'none' ? null : webCampaignActionToolConversationInitiationFailureSelect.val(),
-                arguments: collectToolArguments(webCampaignActionToolConversationInitiationFailureSelect, webCampaignOnConversationInitiationFailureActionInputArgumentsCustomInput)
-            },
-            conversationInitiatedTool: {
-                toolId: webCampaignActionToolConversationInitiatedSelect.val() === 'none' ? null : webCampaignActionToolConversationInitiatedSelect.val(),
-                arguments: collectToolArguments(webCampaignActionToolConversationInitiatedSelect, webCampaignOnConversationInitiatedActionInputArgumentsCustomInput)
-            },
-            conversationStartedTool: {
-                toolId: webCampaignActionToolConversationStartedSelect.val() === 'none' ? null : webCampaignActionToolConversationStartedSelect.val(),
-                arguments: collectToolArguments(webCampaignActionToolConversationStartedSelect, webCampaignOnConversationStartedActionInputArgumentsCustomInput)
-            },
-            conversationEndedTool: {
-                toolId: webCampaignActionToolConversationEndedSelect.val() === 'none' ? null : webCampaignActionToolConversationEndedSelect.val(),
-                arguments: collectToolArguments(webCampaignActionToolConversationEndedSelect, webCampaignOnConversationEndedActionInputArgumentsCustomInput)
-            },
-            conversationPostAnalysisTool: {
-                toolId: webCampaignActionToolPostAnalysisSelect.val() === 'none' ? null : webCampaignActionToolPostAnalysisSelect.val(),
-                arguments: collectToolArguments(webCampaignActionToolPostAnalysisSelect, webCampaignOnPostAnalysisActionInputArgumentsCustomInput)
-            }
-        };
-
-        if (
-            compareToolData(changes.actions.conversationInitiationFailureTool, original.actions.conversationInitiationFailureTool) ||
-            compareToolData(changes.actions.conversationInitiatedTool, original.actions.conversationInitiatedTool) ||
-            compareToolData(changes.actions.conversationStartedTool, original.actions.conversationStartedTool) ||
-            compareToolData(changes.actions.conversationEndedTool, original.actions.conversationEndedTool) ||
-            compareToolData(changes.actions.conversationPostAnalysisTool, original.actions.conversationPostAnalysisTool)
-        ) {
-            hasChanges = true;
-        }
-    }
-
-    // Execute all checks
-    checkGeneralTab();
-    checkAgentTab();
-    checkConfigurationTab();
-    checkVariablesTab();
-    checkPostAnalysisTab();
-    checkActionsTab();
+    const hasChanges = WebCampaignChanges.compare(currentWebCampaignData, changes).hasChanges;
 
     if (enableDisableButton) {
         saveWebCampaignButton.prop("disabled", !hasChanges);

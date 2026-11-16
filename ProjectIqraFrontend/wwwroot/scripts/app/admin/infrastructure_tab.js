@@ -35,6 +35,10 @@ let ManageServerType = null; // 'new' or 'edit'
 let IsSavingRegion = false;
 let IsSavingServer = false;
 
+let InfraBackgroundConfigBaseline = null;
+let InfraRegionS3Baseline = null;
+let InfraServerConfigBaseline = null;
+
 // Status Modal State
 let PendingStatusToggle = null;
 let PendingStatusAction = null;
@@ -49,6 +53,11 @@ const InfraChartManager = {
     background: { chart: null, nodeId: null, days: 1, metric: 'cpu', lastRealPoint: null, timer: null },
     server: { chart: null, nodeId: null, days: 1, metric: 'cpu', lastRealPoint: null, timer: null }
 };
+
+// --- Change Helpers ---
+const InfraBackgroundConfigChanges = ChangesHelper.define({ endpoint: "text", apiKey: "text", useSSL: "boolean" });
+const InfraRegionS3Changes = ChangesHelper.define({ endpoint: "text", accessKey: "text", secretKey: "text", useSSL: "boolean" });
+const InfraServerConfigChanges = ChangesHelper.define({ endpoint: "text", apiKey: "text", sipPort: "text", type: "text", isDevelopmentServer: "boolean" });
 
 /** Element Variables **/
 
@@ -624,7 +633,35 @@ function FillBackgroundNodeTab(renderCard, backgroundNodeData, isRefresh = false
         backgroundNodeEndpoint.val(backgroundNodeData.endpoint);
         backgroundNodeUseSSL.prop('checked', backgroundNodeData.useSSL);
         backgroundNodeApiKey.val(backgroundNodeData.apiKey);
+        InfraBackgroundConfigBaseline = ReadInfraBackgroundConfigForm();
     }
+}
+
+function ReadInfraBackgroundConfigForm() {
+    return { endpoint: backgroundNodeEndpoint.val(), apiKey: backgroundNodeApiKey.val(), useSSL: backgroundNodeUseSSL.is(":checked") };
+}
+
+function ReadInfraRegionS3Form() {
+    return { endpoint: editRegionS3Endpoint.val(), accessKey: editRegionS3AccessKey.val(), secretKey: editRegionS3SecretKey.val(), useSSL: editRegionS3UseSSL.is(":checked") };
+}
+
+function ReadInfraServerConfigForm() {
+    return { endpoint: editServerEndpoint.val(), apiKey: editServerApiKey.val(), sipPort: editServerSipPort.val(), type: editServerType.val(), isDevelopmentServer: editServerIsDev.is(":checked") };
+}
+
+function CheckInfraBackgroundConfigHasChanges() {
+    if (InfraBackgroundConfigBaseline === null) return { hasChanges: false };
+    return { hasChanges: InfraBackgroundConfigChanges.compare(InfraBackgroundConfigBaseline, ReadInfraBackgroundConfigForm()).hasChanges };
+}
+
+function CheckInfraRegionS3HasChanges() {
+    if (InfraRegionS3Baseline === null) return { hasChanges: false };
+    return { hasChanges: InfraRegionS3Changes.compare(InfraRegionS3Baseline, ReadInfraRegionS3Form()).hasChanges };
+}
+
+function CheckInfraServerConfigHasChanges() {
+    if (InfraServerConfigBaseline === null) return { hasChanges: false };
+    return { hasChanges: InfraServerConfigChanges.compare(InfraServerConfigBaseline, ReadInfraServerConfigForm()).hasChanges };
 }
 
 // --- Region Manager Logic ---
@@ -702,6 +739,7 @@ function FillRegionManagerTab(isRefresh = false) {
         editRegionS3AccessKey.val(data.s3Config.accessKey);
         editRegionS3SecretKey.val(data.s3Config.secretKey);
         editRegionS3UseSSL.prop("checked", data.s3Config.useSSL);
+        InfraRegionS3Baseline = ReadInfraRegionS3Form();
     }
 
     // Settings (Status Toggles)
@@ -1206,6 +1244,7 @@ function initInfrastructureTab() {
                         timeout: 6000
                     });
                     btn.prop('disabled', false).text(originalText);
+                    InfraBackgroundConfigBaseline = data;
                 },
                 (errorResult) => {
                     var resultMessage = "Check console logs for more details.";
@@ -1408,6 +1447,7 @@ function initInfrastructureTab() {
                         timeout: 3000
                     });
                     confirmSaveRegionButtonSpinner.addClass("d-none");
+                    InfraRegionS3Baseline = s3Data;
                 },
                 (errorResult) => {
                     var resultMessage = "Check console logs for more details.";
@@ -1493,6 +1533,7 @@ function initInfrastructureTab() {
             }
             showServerManagerTab();
             FillServerManagerTab();
+            InfraServerConfigBaseline = ReadInfraServerConfigForm();
         };
 
         // SERVER MANAGER: Back
@@ -1522,6 +1563,7 @@ function initInfrastructureTab() {
                 () => {
                     AlertManager.createAlert({ type: 'success', message: 'Server Saved', timeout: 3000 });
                     confirmSaveServerButtonSpinner.addClass("d-none");
+                    InfraServerConfigBaseline = ReadInfraServerConfigForm();
                     showRegionManagerTab();
                 },
                 (errorResult) => {

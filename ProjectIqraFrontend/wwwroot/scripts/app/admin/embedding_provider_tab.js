@@ -9,6 +9,22 @@ let IsSavingEmbeddingProviderTab = false;
 
 let embeddingFieldsHelper = null;
 
+// --- Change Helpers ---
+const EmbeddingProviderChanges = ChangesHelper.define({
+    disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+    integrationId: "text",
+    userIntegrationFields: { kind: "list", fields: ProviderIntegrationsFieldHelper.FieldChangeRules },
+});
+
+const EmbeddingProviderModelChanges = ChangesHelper.define({
+    id: "text",
+    name: "text",
+    disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+    price: "number",
+    priceTokenUnit: "number",
+    availableVectorDimensions: { kind: "set", items: "number" },
+});
+
 /** Elements Variables **/
 const EmbeddingProviderTab = $("#embedding-provider-tab");
 
@@ -274,34 +290,19 @@ function ShowEmbeddingProviderModelListTab() {
 }
 
 function CheckEmbeddingProviderManageTabHasChanges(enableDisableButton = true) {
-    let changes = {};
-    let hasChanges = false;
-
-    // Check disabled state
-    changes.disabled = manageEmbeddingProviderDisabledInput.prop("checked");
-    if (changes.disabled === (CurrentManageEmbeddingProviderData.disabledAt == null)) {
-        hasChanges = true;
-    }
-
-    // Check integration selection
-    changes.integrationId = manageEmbeddingProviderIntegrationSelect.val();
-    if (changes.integrationId !== CurrentManageEmbeddingProviderData.integrationId) {
-        hasChanges = true;
-    }
-
-    // Check integration fields
-    changes.userIntegrationFields = embeddingFieldsHelper.getData();
-    if (embeddingFieldsHelper.hasChanges()) {
-        hasChanges = true;
-    }
+    const result = EmbeddingProviderChanges.compare(CurrentManageEmbeddingProviderData, {
+        disabled: () => manageEmbeddingProviderDisabledInput.prop("checked"),
+        integrationId: () => manageEmbeddingProviderIntegrationSelect.val(),
+        userIntegrationFields: () => embeddingFieldsHelper.getData(),
+    }, { build: true });
 
     if (enableDisableButton) {
-        saveManageEmbeddingProviderButton.prop("disabled", !hasChanges);
+        saveManageEmbeddingProviderButton.prop("disabled", !result.hasChanges);
     }
 
     return {
-        hasChanges: hasChanges,
-        changes: changes,
+        hasChanges: result.hasChanges,
+        changes: result.changes,
     };
 }
 
@@ -380,36 +381,22 @@ function FillEmbeddingProviderModelManageTab(modelData) {
 }
 
 function CheckEmbeddingProviderModelManageTabHasChanges(enableDisableButton = true) {
-    let changes = {};
-    let hasChanges = false;
-
-    changes.id = manageEmbeddingProviderModelIdInput.val();
-    if (CurrentManageEmbeddingProviderModelData.id != changes.id) hasChanges = true;
-
-    changes.name = manageEmbeddingProviderModelNameInput.val();
-    if (CurrentManageEmbeddingProviderModelData.name != changes.name) hasChanges = true;
-
-    changes.disabled = manageEmbeddingProviderModelDisabledInput.prop("checked");
-    if (changes.disabled == (CurrentManageEmbeddingProviderModelData.disabledAt == null)) hasChanges = true;
-
-    changes.price = manageEmbeddingProviderModelPriceInput.val();
-    if (CurrentManageEmbeddingProviderModelData.price != changes.price) hasChanges = true;
-
-    changes.priceTokenUnit = manageEmbeddingProviderModelPriceTokensInput.val();
-    if (CurrentManageEmbeddingProviderModelData.priceTokenUnit != changes.priceTokenUnit) hasChanges = true;
-
-    const newDims = manageEmbeddingProviderModelDimensionsInput.val().split(',').map(d => parseInt(d.trim())).filter(n => !isNaN(n)).sort((a, b) => a - b);
-    const oldDims = (CurrentManageEmbeddingProviderModelData.availableVectorDimensions || []).sort((a, b) => a - b);
-    changes.availableVectorDimensions = newDims;
-    if (JSON.stringify(newDims) !== JSON.stringify(oldDims)) hasChanges = true;
+    const result = EmbeddingProviderModelChanges.compare(CurrentManageEmbeddingProviderModelData, {
+        id: () => manageEmbeddingProviderModelIdInput.val(),
+        name: () => manageEmbeddingProviderModelNameInput.val(),
+        disabled: () => manageEmbeddingProviderModelDisabledInput.prop("checked"),
+        price: () => manageEmbeddingProviderModelPriceInput.val(),
+        priceTokenUnit: () => manageEmbeddingProviderModelPriceTokensInput.val(),
+        availableVectorDimensions: () => manageEmbeddingProviderModelDimensionsInput.val().split(',').map(d => parseInt(d.trim())).filter(n => !isNaN(n)).sort((a, b) => a - b),
+    }, { build: true });
 
     if (enableDisableButton) {
-        saveManageEmbeddingProviderModelButton.prop("disabled", !hasChanges);
+        saveManageEmbeddingProviderModelButton.prop("disabled", !result.hasChanges);
     }
 
     return {
-        hasChanges: hasChanges,
-        changes: changes
+        hasChanges: result.hasChanges,
+        changes: result.changes
     };
 }
 

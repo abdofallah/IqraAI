@@ -13,6 +13,7 @@ using MongoDB.Driver;
 using System.Text.Json;
 using IqraInfrastructure.Helpers.Business;
 using IqraCore.Entities.S3Storage;
+using IqraCore.Models.User.Business.App.Agent;
 using IqraInfrastructure.Repositories.S3Storage;
 using MongoDB.Bson;
 
@@ -63,6 +64,16 @@ namespace IqraInfrastructure.Managers.Business
         public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
         {
             return await _businessAppRepository.GetAgentById(businessId, agentId); ;
+        }
+
+        public BusinessAppAgentModel CreateAgentModel(BusinessAppAgent agent)
+        {
+            var model = new BusinessAppAgentModel(agent);
+            if (agent.Settings.BackgroundAudioS3StorageLink != null)
+            {
+                model.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GeneratePresignedUrl(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000);
+            }
+            return model;
         }
 
         // SAVING/ADDING AGENT

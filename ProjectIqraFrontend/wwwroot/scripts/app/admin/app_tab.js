@@ -2,6 +2,15 @@
 let AppTabPollingInterval = null;
 let CurrentPermissionContext = null; // 'maintenance', 'registration', 'login'
 
+// --- Change Helpers ---
+const AppEmailTemplateRule = { kind: "object", fields: { subject: "text", body: "text" } };
+
+const AppEmailTemplatesChanges = ChangesHelper.define({
+    verifyEmailTemplate: AppEmailTemplateRule,
+    welcomeUserTemplate: AppEmailTemplateRule,
+    resetPasswordTemplate: AppEmailTemplateRule,
+});
+
 /** Element Variables **/
 
 // Main Tab
@@ -294,6 +303,18 @@ function fillEmailTemplatesTab() {
 
     appEmailResetSubject.val(CurrentAppEmailTemplatesData.resetPasswordTemplate.subject);
     appEmailResetBody.val(CurrentAppEmailTemplatesData.resetPasswordTemplate.body);
+}
+
+function CheckAppEmailTemplatesHasChanges() {
+    if (!CurrentAppEmailTemplatesData) return { hasChanges: false, changes: {} };
+
+    const result = AppEmailTemplatesChanges.compare(CurrentAppEmailTemplatesData, {
+        verifyEmailTemplate: { subject: appEmailVerifySubject.val(), body: appEmailVerifyBody.val() },
+        welcomeUserTemplate: { subject: appEmailWelcomeSubject.val(), body: appEmailWelcomeBody.val() },
+        resetPasswordTemplate: { subject: appEmailResetSubject.val(), body: appEmailResetBody.val() },
+    }, { build: true });
+
+    return { hasChanges: result.hasChanges, changes: result.changes };
 }
 
 /** INIT **/

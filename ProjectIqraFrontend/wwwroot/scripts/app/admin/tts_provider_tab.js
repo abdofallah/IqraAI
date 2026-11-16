@@ -9,6 +9,22 @@ let IsSavingTTSProviderTab = false;
 
 let ttsFieldsHelper = null;
 
+// --- Change Helpers ---
+const TTSProviderChanges = ChangesHelper.define({
+	disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+	integrationId: "text",
+	userIntegrationFields: { kind: "list", fields: ProviderIntegrationsFieldHelper.FieldChangeRules },
+});
+
+const TTSProviderModelChanges = ChangesHelper.define({
+	id: { kind: "text", trim: true },
+	name: { kind: "text", trim: true },
+	pricePerUnit: "number",
+	priceUnit: { kind: "text", trim: true },
+	supportedLanguages: { kind: "set", items: "text" },
+	disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+});
+
 /** Elements Variables **/
 const TTSProviderTab = $("#tts-provider-tab");
 
@@ -241,34 +257,19 @@ function ResetAndEmptyTTSProvidersManageTab() {
 }
 
 function CheckTTSProviderManageTabHasChanges(enableDisableButton = true) {
-	let changes = {};
-	let hasChanges = false;
-
-	// Check disabled state
-	changes.disabled = manageTTSProviderDisabledInput.prop("checked");
-	if (changes.disabled === (CurrentTTSProviderData.disabledAt == null)) {
-		hasChanges = true;
-	}
-
-	// Check integration selection
-	changes.integrationId = manageTTSProviderIntegrationSelect.val();
-	if (changes.integrationId !== CurrentTTSProviderData.integrationId) {
-		hasChanges = true;
-	}
-
-	// Compare integration fields
-	changes.userIntegrationFields = ttsFieldsHelper.getData();
-	if (ttsFieldsHelper.hasChanges()) {
-		hasChanges = true;
-	}
+	const result = TTSProviderChanges.compare(CurrentTTSProviderData, {
+		disabled: () => manageTTSProviderDisabledInput.prop("checked"),
+		integrationId: () => manageTTSProviderIntegrationSelect.val(),
+		userIntegrationFields: () => ttsFieldsHelper.getData(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveManageTTSProviderButton.prop("disabled", !hasChanges);
+		saveManageTTSProviderButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 
@@ -443,63 +444,22 @@ function ResetAndEmptyTTSProviderModelManageTab() {
 }
 
 function CheckTTSProviderModelManageTabHasChanges(enableDisableButton = true) {
-	function arraysEqual(arr1, arr2) {
-		if (!arr1 || !arr2) return false;
-		if (arr1.length !== arr2.length) return false;
-
-		const sortedArr1 = [...arr1].sort();
-		const sortedArr2 = [...arr2].sort();
-
-		return sortedArr1.every((value, index) => value === sortedArr2[index]);
-	}
-
-	let changes = {};
-	let hasChanges = false;
-
-	// Check basic information
-	changes.id = manageTTSProviderModelIdInput.val().trim();
-	if (changes.id !== CurrentTTSProviderModelData.id) {
-		hasChanges = true;
-	}
-
-	changes.name = manageTTSProviderModelNameInput.val().trim();
-	if (changes.name !== CurrentTTSProviderModelData.name) {
-		hasChanges = true;
-	}
-
-	// Check price settings
-	changes.pricePerUnit = manageTTSProviderModelPriceInput.val();
-	if (changes.pricePerUnit !== CurrentTTSProviderModelData.pricePerUnit) {
-		hasChanges = true;
-	}
-
-	changes.priceUnit = manageTTSProviderModelPriceUnitInput.val().trim();
-	if (changes.priceUnit !== CurrentTTSProviderModelData.priceUnit) {
-		hasChanges = true;
-	}
-
-	// Check language settings
-	changes.supportedLanguages = [];
-	manageTTSProviderModelLanguagesContainer.find('input[type="checkbox"]:checked').each(function () {
-		changes.supportedLanguages.push($(this).val());
-	});
-	if (!arraysEqual(changes.supportedLanguages, CurrentTTSProviderModelData.supportedLanguages)) {
-		hasChanges = true;
-	}
-
-	// Check disabled state
-	changes.disabled = manageTTSProviderModelDisabledInput.prop("checked");
-	if (changes.disabled === (CurrentTTSProviderModelData.disabledAt === null)) {
-		hasChanges = true;
-	}
+	const result = TTSProviderModelChanges.compare(CurrentTTSProviderModelData, {
+		id: () => manageTTSProviderModelIdInput.val().trim(),
+		name: () => manageTTSProviderModelNameInput.val().trim(),
+		pricePerUnit: () => manageTTSProviderModelPriceInput.val(),
+		priceUnit: () => manageTTSProviderModelPriceUnitInput.val().trim(),
+		supportedLanguages: () => manageTTSProviderModelLanguagesContainer.find('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get(),
+		disabled: () => manageTTSProviderModelDisabledInput.prop("checked"),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveManageTTSProviderModelButton.prop("disabled", !hasChanges);
+		saveManageTTSProviderModelButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 

@@ -235,6 +235,67 @@ let variablesOffcanvas = null;
 let IsSavingScriptTab = false;
 let IsDeletingScriptTab = false;
 
+// --- Change Helpers ---
+const ScriptLanguageTextMap = { kind: "map", keys: () => BusinessFullData.businessData.languages, values: "text" };
+const ScriptLanguageListMap = { kind: "map", keys: () => BusinessFullData.businessData.languages, values: { kind: "list", items: "text" } };
+const ScriptNodeIs = (...types) => (get) => types.includes(get("type"));
+const ScriptToolIs = (...tools) => (get) => get("type") === SCRIPT_NODE_TYPES.SYSTEM_TOOL && tools.includes(get("toolType"));
+
+const ScriptTabChanges = ChangesHelper.define({
+	general: { kind: "object", fields: { name: ScriptLanguageTextMap, description: ScriptLanguageTextMap } },
+	nodes: {
+		kind: "keyedList",
+		key: "id",
+		fields: {
+			type: { kind: "enum", from: "nodeType", at: (node) => node.shape },
+			position: { kind: "object", at: (node) => node.getPosition(), fields: { x: "number", y: "number" } },
+			query: { ...ScriptLanguageTextMap, at: (node) => node.getData().query, when: ScriptNodeIs(SCRIPT_NODE_TYPES.USER_QUERY) },
+			response: { ...ScriptLanguageTextMap, at: (node) => node.getData().response, when: ScriptNodeIs(SCRIPT_NODE_TYPES.AI_RESPONSE) },
+			examples: { ...ScriptLanguageListMap, at: (node) => node.getData().examples, when: ScriptNodeIs(SCRIPT_NODE_TYPES.USER_QUERY, SCRIPT_NODE_TYPES.AI_RESPONSE) },
+			toolType: { kind: "enum", at: (node) => node.getData().toolType, when: ScriptNodeIs(SCRIPT_NODE_TYPES.SYSTEM_TOOL) },
+			endCallType: { kind: "enum", from: "type", at: (node) => ScriptNodeConfig(node).type, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.END_CALL) },
+			messages: { ...ScriptLanguageTextMap, at: (node) => ScriptNodeConfig(node).messages, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.END_CALL, SCRIPT_SYSTEM_TOOLS.SEND_SMS) },
+			timeout: { kind: "number", at: (node) => ScriptNodeConfig(node).timeout, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) },
+			requireStartAsterisk: { kind: "boolean", at: (node) => ScriptNodeConfig(node).requireStartAsterisk, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) },
+			requireEndHash: { kind: "boolean", at: (node) => ScriptNodeConfig(node).requireEndHash, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) },
+			maxLength: { kind: "number", at: (node) => ScriptNodeConfig(node).maxLength, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) },
+			encryptInput: { kind: "boolean", at: (node) => ScriptNodeConfig(node).encryptInput, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) },
+			variableName: { kind: "text", at: (node) => ScriptNodeConfig(node).variableName, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) },
+			outcomes: { kind: "value", at: (node) => ScriptNodeConfig(node).outcomes, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) },
+			agentId: { kind: "text", at: (node) => ScriptNodeConfig(node).agentId, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) },
+			transferContext: { kind: "boolean", at: (node) => ScriptNodeConfig(node).transferContext, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) },
+			summarizeContext: { kind: "boolean", at: (node) => ScriptNodeConfig(node).summarizeContext, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) },
+			scriptId: { kind: "text", at: (node) => ScriptNodeConfig(node).scriptId, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) },
+			phoneNumberId: { kind: "text", at: (node) => ScriptNodeConfig(node).phoneNumberId, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.SEND_SMS) },
+			goToNodeId: { kind: "text", at: (node) => ScriptNodeConfig(node).goToNodeId, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.GOTONODE) },
+			responseBeforeExecution: { ...ScriptLanguageTextMap, at: (node) => ScriptNodeConfig(node).responseBeforeExecution, when: ScriptToolIs(SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) },
+			toolId: { kind: "text", at: (node) => node.getData().toolId, when: ScriptNodeIs(SCRIPT_NODE_TYPES.CUSTOM_TOOL) },
+			config: { kind: "value", at: (node) => node.getData().config, when: ScriptNodeIs(SCRIPT_NODE_TYPES.CUSTOM_TOOL) },
+			appKey: { kind: "text", at: (node) => node.getData().appKey, when: ScriptNodeIs(SCRIPT_NODE_TYPES.FLOW_APP) },
+			actionKey: { kind: "text", at: (node) => node.getData().actionKey, when: ScriptNodeIs(SCRIPT_NODE_TYPES.FLOW_APP) },
+			integrationId: { kind: "text", at: (node) => node.getData().integrationId, when: ScriptNodeIs(SCRIPT_NODE_TYPES.FLOW_APP) },
+			speakingBeforeExecution: { kind: "value", at: (node) => node.getData().speakingBeforeExecution, when: ScriptNodeIs(SCRIPT_NODE_TYPES.FLOW_APP) },
+			inputs: { kind: "value", at: (node) => node.getData().inputs, when: ScriptNodeIs(SCRIPT_NODE_TYPES.FLOW_APP) },
+		},
+	},
+	edges: {
+		kind: "keyedList",
+		key: "id",
+		fields: { sourceNodeId: "text", sourceNodePortId: "text", targetNodeId: "text", targetNodePortId: "text" },
+	},
+	variables: {
+		kind: "keyedList",
+		key: "key",
+		fields: {
+			type: "enum",
+			defaultValue: "text",
+			isVisibleToAgent: "boolean",
+			isEditableByAI: "boolean",
+			description: ScriptLanguageTextMap,
+		},
+	},
+});
+
 /** Element Variables **/
 const scriptTab = $("#scripts-tab");
 const scriptsManagerHeader = scriptTab.find("#scripts-manager-header");
@@ -609,9 +670,53 @@ function validateScriptMultilanguageElements(onlyRemoveInvalid = true) {
 	};
 }
 
+const ScriptNodeConfig = (node) => node.getData().config || {};
+
+function ReadScriptEdgesForCompare() {
+	const edges = [];
+	CurrentScriptGraph.getEdges().forEach((edge) => {
+		const sourceCell = edge.getSourceCell();
+		const targetCell = edge.getTargetCell();
+		if (!sourceCell || !targetCell) return;
+
+		const sourcePort = sourceCell.getPort(edge.getSourcePortId());
+		const isSourceNodeOutput = sourcePort ? sourcePort.group === "output" : true;
+		edges.push({
+			id: edge.id,
+			sourceNodeId: isSourceNodeOutput ? edge.getSourceCellId() : edge.getTargetCellId(),
+			sourceNodePortId: isSourceNodeOutput ? edge.getSourcePortId() : edge.getTargetPortId(),
+			targetNodeId: isSourceNodeOutput ? edge.getTargetCellId() : edge.getSourceCellId(),
+			targetNodePortId: isSourceNodeOutput ? edge.getTargetPortId() : edge.getSourcePortId(),
+		});
+	});
+	return edges;
+}
+
 function checkScriptTabHasChanges(enableDisableButton = true, compileConversationChanges = false) {
+	if (compileConversationChanges) {
+		return compileScriptTabChanges(enableDisableButton);
+	}
+
+	const hasChanges = ScriptTabChanges.compare(ManageCurrentScriptData, {
+		general: { name: CurrentScriptNameMultiLangData, description: CurrentScriptDescriptionMultiLangData },
+		nodes: () => CurrentScriptGraph.getNodes(),
+		edges: () => ReadScriptEdgesForCompare(),
+		variables: CurrentScriptVariablesData,
+	}).hasChanges;
+
+	if (enableDisableButton) {
+		saveScriptButton.prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges,
+		changes: {},
+	};
+}
+
+function compileScriptTabChanges(enableDisableButton = true) {
+	const hasChanges = checkScriptTabHasChanges(enableDisableButton).hasChanges;
 	const changes = {};
-	let hasChanges = false;
 
 	// General Tab
 	changes.general = {
@@ -619,357 +724,140 @@ function checkScriptTabHasChanges(enableDisableButton = true, compileConversatio
 		description: CurrentScriptDescriptionMultiLangData,
 	};
 
-	BusinessFullData.businessData.languages.forEach((language) => {
-		if (ManageCurrentScriptData.general.name[language] !== CurrentScriptNameMultiLangData[language]) hasChanges = true;
-		if (ManageCurrentScriptData.general.description[language] !== CurrentScriptDescriptionMultiLangData[language]) hasChanges = true;
-	});
-
 	// Conversation/Graph Tab
 	const currentGraphJsonData = CurrentScriptGraph.toJSON();
 	const currentNodes = currentGraphJsonData.cells;
 	const edgeNodes = currentNodes.filter((node) => node.shape === "edge");
 	const scriptNodes = currentNodes.filter((node) => node.shape !== "edge");
 
-	if (ManageCurrentScriptData.nodes.length !== scriptNodes.length || ManageCurrentScriptData.edges.length !== edgeNodes.length) {
-		hasChanges = true;
-	}
-
 	// Nodes
 	changes.nodes = [];
-	if (!hasChanges || (hasChanges && compileConversationChanges)) {
-		for (let i = 0; i < scriptNodes.length; i++) {
-			const newNode = scriptNodes[i];
-			const pushNewNode = {
-				id: newNode.id,
-				type: parseInt(newNode.shape),
-				position: {
-					x: newNode.position.x,
-					y: newNode.position.y,
-				},
-			};
+	for (let i = 0; i < scriptNodes.length; i++) {
+		const newNode = scriptNodes[i];
+		const pushNewNode = {
+			id: newNode.id,
+			type: parseInt(newNode.shape),
+			position: {
+				x: newNode.position.x,
+				y: newNode.position.y,
+			},
+		};
 
-			let oldNode = {};
-			const oldNodeIndex = ManageCurrentScriptData.nodes.findIndex((node) => node.id === newNode.id);
-			if (oldNodeIndex === -1) {
-				hasChanges = true;
-				if (!compileConversationChanges) break;
-			} else {
-				oldNode = ManageCurrentScriptData.nodes[oldNodeIndex];
+		const newScriptNodeData = newNode.data;
+
+		// User Query Node
+		if (newNode.shape === SCRIPT_NODE_TYPES.USER_QUERY) {
+			pushNewNode.query = newScriptNodeData.query;
+			pushNewNode.examples = newScriptNodeData.examples;
+		}
+
+		// AI Response Node
+		if (newNode.shape === SCRIPT_NODE_TYPES.AI_RESPONSE) {
+			pushNewNode.response = newScriptNodeData.response;
+			pushNewNode.examples = newScriptNodeData.examples;
+		}
+
+		// System Tool Node
+		if (newNode.shape === SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+			pushNewNode.toolType = newScriptNodeData.toolType;
+			pushNewNode.config = {};
+
+			// End Call Tool
+			if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.END_CALL) {
+				pushNewNode.config.type = newScriptNodeData.config.type;
+				pushNewNode.config.messages = newScriptNodeData.config.messages;
 			}
 
-			const newScriptNodeData = newNode.data;
-
-			// Check node position compared to old
-			if (oldNodeIndex !== -1) {
-				if (oldNode.position?.x !== newNode.position.x || oldNode.position?.y !== newNode.position.y) {
-					hasChanges = true;
-					if (!compileConversationChanges) break;
-				}
+			// DTMF Input Tool
+			if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+				pushNewNode.config.timeout = newScriptNodeData.config.timeout;
+				pushNewNode.config.requireStartAsterisk = newScriptNodeData.config.requireStartAsterisk;
+				pushNewNode.config.requireEndHash = newScriptNodeData.config.requireEndHash;
+				pushNewNode.config.maxLength = newScriptNodeData.config.maxLength;
+				pushNewNode.config.encryptInput = newScriptNodeData.config.encryptInput;
+				pushNewNode.config.variableName = newScriptNodeData.config.variableName;
+				pushNewNode.config.outcomes = newScriptNodeData.config.outcomes;
 			}
 
-			// User Query Node
-			if (newNode.shape === SCRIPT_NODE_TYPES.USER_QUERY) {
-				pushNewNode.query = newScriptNodeData.query;
-				pushNewNode.examples = newScriptNodeData.examples;
-
-				if (oldNodeIndex !== -1) {
-					if (JSON.stringify(oldNode.query) !== JSON.stringify(newScriptNodeData.query) || JSON.stringify(oldNode.examples) !== JSON.stringify(newScriptNodeData.examples)) {
-						hasChanges = true;
-						if (!compileConversationChanges) break;
-					}
-				}
+			// Transfer To Agent Tool
+			if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) {
+				pushNewNode.config.agentId = newScriptNodeData.config.agentId;
+				pushNewNode.config.transferContext = newScriptNodeData.config.transferContext;
+				pushNewNode.config.summarizeContext = newScriptNodeData.config.summarizeContext;
 			}
 
-			// AI Response Node
-			if (newNode.shape === SCRIPT_NODE_TYPES.AI_RESPONSE) {
-				pushNewNode.response = newScriptNodeData.response;
-				pushNewNode.examples = newScriptNodeData.examples;
-
-				if (oldNodeIndex !== -1) {
-					if (JSON.stringify(oldNode.response) !== JSON.stringify(newScriptNodeData.response) || JSON.stringify(oldNode.examples) !== JSON.stringify(newScriptNodeData.examples)) {
-						hasChanges = true;
-						if (!compileConversationChanges) break;
-					}
-				}
+			// Add Script To Context Tool
+			if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
+				pushNewNode.config.scriptId = newScriptNodeData.config.scriptId;
 			}
 
-			// System Tool Node
-			if (newNode.shape === SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
-				pushNewNode.toolType = newScriptNodeData.toolType;
-
-				if (oldNodeIndex !== -1) {
-					if (oldNode.toolType.value !== pushNewNode.toolType) {
-						hasChanges = true;
-						if (!compileConversationChanges) break;
-					}
-				}
-
-				pushNewNode.config = {};
-
-				// End Call Tool
-				if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.END_CALL) {
-					pushNewNode.config.type = newScriptNodeData.config.type;
-					pushNewNode.config.messages = newScriptNodeData.config.messages;
-
-					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
-						if (oldNode.type.value !== pushNewNode.config.type || JSON.stringify(oldNode.messages) !== JSON.stringify(pushNewNode.config.messages)) {
-							hasChanges = true;
-							if (!compileConversationChanges) break;
-						}
-					}
-				}
-
-				// DTMF Input Tool
-				if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
-					pushNewNode.config.timeout = newScriptNodeData.config.timeout;
-					pushNewNode.config.requireStartAsterisk = newScriptNodeData.config.requireStartAsterisk;
-					pushNewNode.config.requireEndHash = newScriptNodeData.config.requireEndHash;
-					pushNewNode.config.maxLength = newScriptNodeData.config.maxLength;
-					pushNewNode.config.encryptInput = newScriptNodeData.config.encryptInput;
-					pushNewNode.config.variableName = newScriptNodeData.config.variableName;
-					pushNewNode.config.outcomes = newScriptNodeData.config.outcomes;
-
-					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
-						if (
-							oldNode.timeout !== pushNewNode.config.timeout ||
-							oldNode.requireStartAsterisk !== pushNewNode.config.requireStartAsterisk ||
-							oldNode.requireEndHash !== pushNewNode.config.requireEndHash ||
-							oldNode.maxLength !== pushNewNode.config.maxLength ||
-							oldNode.encryptInput !== pushNewNode.config.encryptInput ||
-							oldNode.variableName !== pushNewNode.variableName ||
-							JSON.stringify(oldNode.outcomes) !== JSON.stringify(pushNewNode.config.outcomes)
-						) {
-							hasChanges = true;
-							if (!compileConversationChanges) break;
-						}
-					}
-				}
-
-				// Transfer To Agent Tool
-				if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) {
-					pushNewNode.config.agentId = newScriptNodeData.config.agentId;
-					pushNewNode.config.transferContext = newScriptNodeData.config.transferContext;
-					pushNewNode.config.summarizeContext = newScriptNodeData.config.summarizeContext;
-
-					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
-						if (oldNode.agentId !== pushNewNode.config.agentId || oldNode.transferContext !== pushNewNode.config.transferContext || oldNode.summarizeContext !== pushNewNode.config.summarizeContext) {
-							hasChanges = true;
-							if (!compileConversationChanges) break;
-						}
-					}
-				}
-
-				// Add Script To Context Tool
-				if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
-					pushNewNode.config.scriptId = newScriptNodeData.config.scriptId;
-
-					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
-						if (oldNode.scriptId !== pushNewNode.config.scriptId) {
-							hasChanges = true;
-							if (!compileConversationChanges) break;
-						}
-					}
-				}
-
-				// Send SMS Tool
-				if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
-					pushNewNode.config.phoneNumberId = newScriptNodeData.config.phoneNumberId;
-					pushNewNode.config.messages = newScriptNodeData.config.messages;
-
-					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
-						if (oldNode.phoneNumberId !== pushNewNode.config.phoneNumberId || JSON.stringify(oldNode.messages) !== JSON.stringify(pushNewNode.config.messages)) {
-							hasChanges = true;
-							if (!compileConversationChanges) break;
-						}
-					}
-				}
-
-				// Go To Node
-				if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.GOTONODE) {
-					pushNewNode.config.goToNodeId = newScriptNodeData.config.goToNodeId;
-
-					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
-						if (oldNode.goToNodeId !== pushNewNode.config.goToNodeId) {
-							hasChanges = true;
-							if (!compileConversationChanges) break;
-						}
-					}
-				}
-
-				// Retrieve KnowledgeBase Tool
-				if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
-					pushNewNode.config.type = newScriptNodeData.config.type;
-					pushNewNode.config.responseBeforeExecution = newScriptNodeData.config.responseBeforeExecution;
-
-					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
-						if (JSON.stringify(oldNode.responseBeforeExecution) !== JSON.stringify(pushNewNode.config.responseBeforeExecution)) {
-							hasChanges = true;
-							if (!compileConversationChanges) break;
-						}
-					}
-				}
+			// Send SMS Tool
+			if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+				pushNewNode.config.phoneNumberId = newScriptNodeData.config.phoneNumberId;
+				pushNewNode.config.messages = newScriptNodeData.config.messages;
 			}
 
-			// Custom Tool Node
-			if (newNode.shape === SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
-				pushNewNode.toolId = newScriptNodeData.toolId;
-				pushNewNode.config = newScriptNodeData.config;
-
-				if (oldNodeIndex !== -1) {
-					if (oldNode.toolId !== newScriptNodeData.toolId || JSON.stringify(oldNode.config ?? {}) !== JSON.stringify(newScriptNodeData.config)) {
-						hasChanges = true;
-						if (!compileConversationChanges) break;
-					}
-				}
+			// Go To Node
+			if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.GOTONODE) {
+				pushNewNode.config.goToNodeId = newScriptNodeData.config.goToNodeId;
 			}
 
-			// FlowApp Node (Type 6)
-			if (newNode.shape === SCRIPT_NODE_TYPES.FLOW_APP) {
-				pushNewNode.appKey = newScriptNodeData.appKey;
-				pushNewNode.actionKey = newScriptNodeData.actionKey;
-				pushNewNode.integrationId = newScriptNodeData.integrationId;
-				pushNewNode.speakingBeforeExecution = newScriptNodeData.speakingBeforeExecution;
-
-				// Ensure inputs array exists
-				pushNewNode.inputs = newScriptNodeData.inputs || [];
-
-				if (oldNodeIndex !== -1) {
-					// Compare fields to detect changes
-					if (
-						oldNode.appKey !== newScriptNodeData.appKey ||
-						oldNode.actionKey !== newScriptNodeData.actionKey ||
-						oldNode.integrationId !== newScriptNodeData.integrationId ||
-						JSON.stringify(oldNode.speakingBeforeExecution) !== JSON.stringify(newScriptNodeData.speakingBeforeExecution) ||
-						JSON.stringify(oldNode.inputs) !== JSON.stringify(pushNewNode.inputs)
-					) {
-						hasChanges = true;
-						if (!compileConversationChanges) break;
-					}
-				}
-			}
-
-			if (compileConversationChanges) {
-				changes.nodes.push(pushNewNode);
+			// Retrieve KnowledgeBase Tool
+			if (newScriptNodeData.toolType === SCRIPT_SYSTEM_TOOLS.RETRIEVE_KNOWLEDGEBASE) {
+				pushNewNode.config.type = newScriptNodeData.config.type;
+				pushNewNode.config.responseBeforeExecution = newScriptNodeData.config.responseBeforeExecution;
 			}
 		}
+
+		// Custom Tool Node
+		if (newNode.shape === SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+			pushNewNode.toolId = newScriptNodeData.toolId;
+			pushNewNode.config = newScriptNodeData.config;
+		}
+
+		// FlowApp Node (Type 6)
+		if (newNode.shape === SCRIPT_NODE_TYPES.FLOW_APP) {
+			pushNewNode.appKey = newScriptNodeData.appKey;
+			pushNewNode.actionKey = newScriptNodeData.actionKey;
+			pushNewNode.integrationId = newScriptNodeData.integrationId;
+			pushNewNode.speakingBeforeExecution = newScriptNodeData.speakingBeforeExecution;
+
+			// Ensure inputs array exists
+			pushNewNode.inputs = newScriptNodeData.inputs || [];
+		}
+
+		changes.nodes.push(pushNewNode);
 	}
 
 	// Edges
 	changes.edges = [];
-	if (!hasChanges || (hasChanges && compileConversationChanges)) {
-		for (let i = 0; i < edgeNodes.length; i++) {
-			var sourceCellNode = scriptNodes.find((node) => node.id === edgeNodes[i].source.cell);
-			var sourceCellNodePort = sourceCellNode.ports.items.find((port) => port.id === edgeNodes[i].source.port);
+	for (let i = 0; i < edgeNodes.length; i++) {
+		var sourceCellNode = scriptNodes.find((node) => node.id === edgeNodes[i].source.cell);
+		var sourceCellNodePort = sourceCellNode.ports.items.find((port) => port.id === edgeNodes[i].source.port);
 
-			var targetCellNode = scriptNodes.find((node) => node.id === edgeNodes[i].target.cell);
-			var targetCellNodePort = targetCellNode.ports.items.find((port) => port.id === edgeNodes[i].target.port);
+		var targetCellNode = scriptNodes.find((node) => node.id === edgeNodes[i].target.cell);
+		var targetCellNodePort = targetCellNode.ports.items.find((port) => port.id === edgeNodes[i].target.port);
 
-			var isSourceNodeOutput = sourceCellNodePort.group === "output";
+		var isSourceNodeOutput = sourceCellNodePort.group === "output";
 
-			const pushNewEdgeNode = {
-				id: edgeNodes[i].id,
-				sourceNodeId: isSourceNodeOutput ? edgeNodes[i].source.cell : edgeNodes[i].target.cell,
-				sourceNodePortId: isSourceNodeOutput ? edgeNodes[i].source.port : edgeNodes[i].target.port,
-				targetNodeId: isSourceNodeOutput ? edgeNodes[i].target.cell : edgeNodes[i].source.cell,
-				targetNodePortId: isSourceNodeOutput ? edgeNodes[i].target.port : edgeNodes[i].source.port,
-			};
-
-			if (compileConversationChanges) {
-				changes.edges.push(pushNewEdgeNode);
-			}
-
-			if (hasChanges) continue;
-
-			const oldNodeIndex = ManageCurrentScriptData.edges.findIndex((node) => node.id === pushNewEdgeNode.id);
-			if (oldNodeIndex === -1) {
-				hasChanges = true;
-				if (!compileConversationChanges) break;
-				continue;
-			}
-
-			const oldNode = ManageCurrentScriptData.edges[oldNodeIndex];
-
-			// Check Source Data
-			if (pushNewEdgeNode.sourceNodeId !== oldNode.sourceNodeId || pushNewEdgeNode.sourceNodePortId !== oldNode.sourceNodePortId) {
-				hasChanges = true;
-				if (!compileConversationChanges) break;
-				continue;
-			}
-
-			// Check Target Data
-			if (pushNewEdgeNode.targetNodeId !== oldNode.targetNodeId || pushNewEdgeNode.targetNodePortId !== oldNode.targetNodePortId) {
-				hasChanges = true;
-				if (!compileConversationChanges) break;
-				continue;
-			}
-		}
+		changes.edges.push({
+			id: edgeNodes[i].id,
+			sourceNodeId: isSourceNodeOutput ? edgeNodes[i].source.cell : edgeNodes[i].target.cell,
+			sourceNodePortId: isSourceNodeOutput ? edgeNodes[i].source.port : edgeNodes[i].target.port,
+			targetNodeId: isSourceNodeOutput ? edgeNodes[i].target.cell : edgeNodes[i].source.cell,
+			targetNodePortId: isSourceNodeOutput ? edgeNodes[i].target.port : edgeNodes[i].source.port,
+		});
 	}
 
 	// Variables
-	changes.variables = [];
-	if (!hasChanges || (hasChanges && compileConversationChanges)) {
-		const savedVariables = ManageCurrentScriptData.variables || [];
-		if (CurrentScriptVariablesData.length !== savedVariables.length) {
-			hasChanges = true;
-		}
-
-		// We iterate current to see if anything changed or was added
-		for (let i = 0; i < CurrentScriptVariablesData.length; i++) {
-			const currVar = CurrentScriptVariablesData[i];
-			const oldVar = savedVariables.find(v => v.key === currVar.key);
-
-			if (compileConversationChanges) {
-				var variable = {
-					key: currVar.key,
-					type: currVar.type.value,
-					defaultValue: currVar.defaultValue,
-					isVisibleToAgent: currVar.isVisibleToAgent,
-					isEditableByAI: currVar.isEditableByAI,
-					description: currVar.description
-				}
-
-				changes.variables.push(variable);
-			}
-
-			if (hasChanges) continue;
-
-			if (!oldVar) {
-				hasChanges = true; // New variable found
-				break;
-			}
-
-			// Primitive Fields
-			if (!hasChanges) {
-				if (
-					currVar.type.value !== oldVar.type.value ||
-					currVar.defaultValue !== oldVar.defaultValue ||
-					currVar.isVisibleToAgent !== oldVar.isVisibleToAgent ||
-					currVar.isEditableByAI !== oldVar.isEditableByAI
-				) {
-					hasChanges = true;
-					break;
-				}
-			}
-
-			// Description (Multi-lang Dictionary)		
-			if (!hasChanges) {
-				let descChanged = false;
-				BusinessFullData.businessData.languages.forEach(lang => {
-					if (currVar.description[lang] !== oldVar.description[lang]) {
-						descChanged = true;
-					}
-				});
-				if (descChanged) {
-					hasChanges = true;
-					break;
-				}
-			}
-		}
-	}
-
-	if (enableDisableButton) {
-		saveScriptButton.prop("disabled", !hasChanges);
-	}
+	changes.variables = CurrentScriptVariablesData.map((currVar) => ({
+		key: currVar.key,
+		type: currVar.type.value,
+		defaultValue: currVar.defaultValue,
+		isVisibleToAgent: currVar.isVisibleToAgent,
+		isEditableByAI: currVar.isEditableByAI,
+		description: currVar.description,
+	}));
 
 	return {
 		hasChanges,

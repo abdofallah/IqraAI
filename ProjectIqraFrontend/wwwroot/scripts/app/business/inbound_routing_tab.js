@@ -103,6 +103,43 @@ let editRouteActionToolPickedCustomInputs = {};
 let editRouteActionToolEndedCustomInputs = {};
 let editRouteActionToolPostCallAnalysisCustomInputs = {};
 
+// --- Change Helpers ---
+const RouteActionToolRule = { kind: "object", fields: { toolId: "text", arguments: { kind: "map", values: "value" } } };
+
+const RouteChanges = ChangesHelper.define({
+	general: { kind: "object", fields: { emoji: "text", name: "text", description: "text" } },
+	language: {
+		kind: "object",
+		fields: {
+			defaultLanguageCode: "text",
+			multiLanguageEnabled: "boolean",
+			enabledMultiLanguages: { kind: "list", fields: { languageCode: "text", messageToPlay: "text" }, when: (get) => get("multiLanguageEnabled") },
+		},
+	},
+	configuration: { kind: "object", fields: { pickUpDelayMS: "number", notifyOnSilenceMS: "number", endCallOnSilenceMS: "number", maxCallTimeS: "number" } },
+	numbers: { kind: "set", items: "text" },
+	agent: {
+		kind: "object",
+		fields: {
+			selectedAgentId: "text",
+			openingScriptId: "text",
+			timezones: { kind: "set", items: "text" },
+			callerNumberInContext: "boolean",
+			routeNumberInContext: "boolean",
+		},
+	},
+	actions: {
+		kind: "object",
+		fields: {
+			callInitiationFailureTool: RouteActionToolRule,
+			ringingTool: RouteActionToolRule,
+			callPickedTool: RouteActionToolRule,
+			callEndedTool: RouteActionToolRule,
+			conversationPostAnalysisTool: RouteActionToolRule,
+		},
+	},
+});
+
 /** Element Variables  **/
 const tooltipTriggerList = document.querySelectorAll('#routing-tab [data-bs-toggle="tooltip"]');
 const tooltipList = [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -389,7 +426,7 @@ function resetAndEmptyRouteManagerTab() {
 	editSelectedRouteAgentIcon.html("-");
 
 	editRouteAgentDefaultScriptSelect.empty();
-	editRouteAgentDefaultScriptSelect.append('<option value="" disabled>Select Script</option>');
+	editRouteAgentDefaultScriptSelect.append('<option value="" disabled selected>Select Script</option>');
 	BusinessFullData.businessApp.scripts.forEach((script) => {
 		editRouteAgentDefaultScriptSelect.append(`<option value="${script.id}">${script.general.emoji} ${script.general.name[BusinessDefaultLanguage]}</option>`);
 	});
@@ -436,229 +473,75 @@ function resetAndEmptyRouteManagerTab() {
 	// Dynamic Variables
 	currentRouteAgentSelectedId = "";
 }
+
+function collectRouteToolArguments(selectElement, inputArguementObject) {
+	const args = {};
+	const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
+	argumentsList.find(".variable-input-container").each((_, el) => {
+		const inputArguement = $(el).attr("input_arguement");
+		args[inputArguement] = inputArguementObject[inputArguement].getValue();
+	});
+	return Object.keys(args).length > 0 ? args : null;
+}
+
+function readRouteActionTool(selectElement, inputArguementObject) {
+	return {
+		toolId: selectElement.val() === "none" ? null : selectElement.val(),
+		arguments: collectRouteToolArguments(selectElement, inputArguementObject),
+	};
+}
+
 function checkRoutingTabHasChanges(enableDisableButton = true) {
 	if (ManageRouteType === null) return;
 
-	const changes = {};
-	let hasChanges = false;
-
-	// General Tab
-	function checkGeneralTab() {
-		changes.general = {
+	const changes = {
+		general: {
 			emoji: editRouteIconInput.text(),
 			name: editRouteNameInput.val().trim(),
 			description: editRouteDescriptionInput.val().trim(),
-		};
-
-		if (
-			changes.general.emoji !== ManageCurrentRouteData.general.emoji ||
-			changes.general.name !== ManageCurrentRouteData.general.name ||
-			changes.general.description !== ManageCurrentRouteData.general.description
-		) {
-			hasChanges = true;
-		}
-	}
-
-	// Language Tab
-	function checkLanguageTab() {
-		changes.language = {
+		},
+		language: {
 			defaultLanguageCode: editRouteDefaultLanguageSelect.find("option:selected").val(),
 			multiLanguageEnabled: editRouteMultiLanguageCheck.is(":checked"),
 			enabledMultiLanguages: null,
-		};
-
-		if (changes.language.multiLanguageEnabled) {
-			changes.language.enabledMultiLanguages = [];
-			routeMultiLanguagesEnabledList.find("tbody tr").each((idx, element) => {
-				const currentElement = $(element);
-				if (!currentElement.attr("tr-type")) {
-					changes.language.enabledMultiLanguages.push({
-						languageCode: currentElement.attr("code"),
-						messageToPlay: currentElement.find("input").val().trim(),
-					});
-				}
-			});
-		}
-
-		// Check basic properties
-		if (
-			changes.language.defaultLanguageCode !== ManageCurrentRouteData.language.defaultLanguageCode ||
-			changes.language.multiLanguageEnabled !== ManageCurrentRouteData.language.multiLanguageEnabled
-		) {
-			hasChanges = true;
-			return;
-		}
-
-		// Check enabled languages
-		if (changes.language.multiLanguageEnabled) {
-			// Case: New has languages but original doesn't
-			if (!ManageCurrentRouteData.language.enabledMultiLanguages && changes.language.enabledMultiLanguages.length > 0) {
-				hasChanges = true;
-				return;
-			}
-
-			// Case: Both have languages
-			if (ManageCurrentRouteData.language.enabledMultiLanguages) {
-				// Compare lengths first
-				if (changes.language.enabledMultiLanguages.length !== ManageCurrentRouteData.language.enabledMultiLanguages.length) {
-					hasChanges = true;
-					return;
-				}
-
-				// Compare each language entry
-				for (let i = 0; i < changes.language.enabledMultiLanguages.length; i++) {
-					const newLang = changes.language.enabledMultiLanguages[i];
-					const originalLang = ManageCurrentRouteData.language.enabledMultiLanguages[i];
-
-					// Compare language codes and messages
-					if (newLang.languageCode !== originalLang.languageCode || newLang.messageToPlay !== originalLang.messageToPlay) {
-						hasChanges = true;
-						return;
-					}
-				}
-			}
-		}
-	}
-
-	// Configuration Tab
-	function checkConfigurationTab() {
-		changes.configuration = {
+		},
+		configuration: {
 			pickUpDelayMS: parseInt(editRouteNumberPickupDelay.val()),
 			notifyOnSilenceMS: parseInt(editRouteNumberSilenceNotify.val()),
 			endCallOnSilenceMS: parseInt(editRouteNumberSilenceEnd.val()),
 			maxCallTimeS: parseInt(editRouteNumberTotalCallTime.val()),
-		};
-
-		if (
-			changes.configuration.pickUpDelayMS !== ManageCurrentRouteData.configuration.pickUpDelayMS ||
-			changes.configuration.notifyOnSilenceMS !== ManageCurrentRouteData.configuration.notifyOnSilenceMS ||
-			changes.configuration.endCallOnSilenceMS !== ManageCurrentRouteData.configuration.endCallOnSilenceMS ||
-			changes.configuration.maxCallTimeS !== ManageCurrentRouteData.configuration.maxCallTimeS
-		) {
-			hasChanges = true;
-		}
-	}
-
-	// Numbers Tab
-	function checkNumbersTab() {
-		changes.numbers = [...currentRouteNumbersList];
-
-		// If lengths are different, there are changes
-		if (changes.numbers.length !== ManageCurrentRouteData.numbers.length) {
-			hasChanges = true;
-			return;
-		}
-
-		// Sort both arrays for comparison
-		const sortedNewNumbers = [...changes.numbers].sort();
-		const sortedOriginalNumbers = [...ManageCurrentRouteData.numbers].sort();
-
-		// Compare each number
-		for (let i = 0; i < sortedNewNumbers.length; i++) {
-			if (sortedNewNumbers[i] !== sortedOriginalNumbers[i]) {
-				hasChanges = true;
-				return;
-			}
-		}
-	}
-
-	// Agent Tab
-	function checkAgentTab() {
-		changes.agent = {
+		},
+		numbers: [...currentRouteNumbersList],
+		agent: {
 			selectedAgentId: currentRouteAgentSelectedId,
 			openingScriptId: editRouteAgentDefaultScriptSelect.find("option:selected").val(),
 			timezones: editRouteNumberTimezoneSelect.val() ? [editRouteNumberTimezoneSelect.val()] : [],
 			callerNumberInContext: editRouteAgentCallerNumberInContextCheck.is(":checked"),
 			routeNumberInContext: editRouteAgentRouteNumberInContextCheck.is(":checked"),
-		};
+		},
+		actions: {
+			callInitiationFailureTool: readRouteActionTool(editRouteActionToolCallInitiationFailure, editRouteActionToolCallInitiationFailureCustomInputs),
+			ringingTool: readRouteActionTool(editRouteActionToolRinging, editRouteActionToolRingingCustomInputs),
+			callPickedTool: readRouteActionTool(editRouteActionToolPicked, editRouteActionToolPickedCustomInputs),
+			callEndedTool: readRouteActionTool(editRouteActionToolEnded, editRouteActionToolEndedCustomInputs),
+			conversationPostAnalysisTool: readRouteActionTool(editRouteActionToolPostAnalysis, editRouteActionToolPostCallAnalysisCustomInputs),
+		},
+	};
 
-		// Compare basic properties
-		if (
-			changes.agent.selectedAgentId !== ManageCurrentRouteData.agent.selectedAgentId ||
-			changes.agent.openingScriptId !== ManageCurrentRouteData.agent.openingScriptId ||
-			changes.agent.callerNumberInContext !== ManageCurrentRouteData.agent.callerNumberInContext ||
-			changes.agent.routeNumberInContext !== ManageCurrentRouteData.agent.routeNumberInContext
-		) {
-			hasChanges = true;
-			return;
-		}
-
-		// Compare timezones
-		const newTimezones = new Set(changes.agent.timezones);
-		const originalTimezones = new Set(ManageCurrentRouteData.agent.timezones);
-
-		// Check if lengths are different
-		if (newTimezones.size !== originalTimezones.size) {
-			hasChanges = true;
-			return;
-		}
-
-		// Check if all timezones in new set exist in original set
-		if ([...newTimezones].some((timezone) => !originalTimezones.has(timezone))) {
-			hasChanges = true;
-		}
+	if (changes.language.multiLanguageEnabled) {
+		changes.language.enabledMultiLanguages = [];
+		routeMultiLanguagesEnabledList.find("tbody tr").each((idx, element) => {
+			const currentElement = $(element);
+			if (!currentElement.attr("tr-type")) {
+				changes.language.enabledMultiLanguages.push({
+					languageCode: currentElement.attr("code"),
+					messageToPlay: currentElement.find("input").val().trim(),
+				});
+			}
+		});
 	}
 
-	// Actions Tab
-	function checkActionsTab() {
-		function collectToolArguments(selectElement, inputArguementObject) {
-			const args = {};
-			const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
-			argumentsList.find(".variable-input-container").each((_, el) => {
-				const inputArguement = $(el).attr("input_arguement");
-				args[inputArguement] = inputArguementObject[inputArguement].getValue();
-			});
-			return Object.keys(args).length > 0 ? args : null;
-		}
-
-		function compareToolData(newTool, originalTool) {
-			if (!originalTool) originalTool = { toolId: null, arguments: null };
-			if (newTool.toolId !== originalTool.toolId) return true;
-			if (JSON.stringify(newTool.arguments) !== JSON.stringify(originalTool.arguments)) return true;
-			return false;
-		}
-
-		changes.actions = {
-			callInitiationFailureTool: {
-				toolId: editRouteActionToolCallInitiationFailure.val() === "none" ? null : editRouteActionToolCallInitiationFailure.val(),
-				arguments: collectToolArguments(editRouteActionToolCallInitiationFailure, editRouteActionToolCallInitiationFailureCustomInputs),
-			},
-			ringingTool: {
-				toolId: editRouteActionToolRinging.val() === "none" ? null : editRouteActionToolRinging.val(),
-				arguments: collectToolArguments(editRouteActionToolRinging, editRouteActionToolRingingCustomInputs),
-			},
-			callPickedTool: {
-				toolId: editRouteActionToolPicked.val() === "none" ? null : editRouteActionToolPicked.val(),
-				arguments: collectToolArguments(editRouteActionToolPicked, editRouteActionToolPickedCustomInputs),
-			},
-			callEndedTool: {
-				toolId: editRouteActionToolEnded.val() === "none" ? null : editRouteActionToolEnded.val(),
-				arguments: collectToolArguments(editRouteActionToolEnded, editRouteActionToolEndedCustomInputs),
-			},
-			conversationPostAnalysisTool: {
-				toolId: editRouteActionToolPostAnalysis.val() === "none" ? null : editRouteActionToolPostAnalysis.val(),
-				arguments: collectToolArguments(editRouteActionToolPostAnalysis, editRouteActionToolPostCallAnalysisCustomInputs),
-			},
-		};
-
-		if (
-			compareToolData(changes.actions.callInitiationFailureTool, original.actions.callInitiationFailureTool) ||
-			compareToolData(changes.actions.ringingTool, original.actions.ringingTool) ||
-			compareToolData(changes.actions.callPickedTool, original.actions.callPickedTool) ||
-			compareToolData(changes.actions.callEndedTool, original.actions.callEndedTool) ||
-			compareToolData(changes.actions.conversationPostAnalysisTool, original.actions.conversationPostAnalysisTool)
-		) {
-			hasChanges = true;
-		}
-	}
-
-	// Execute all check functions
-	checkGeneralTab();
-	checkLanguageTab();
-	checkConfigurationTab();
-	checkNumbersTab();
-	checkAgentTab();
-	checkActionsTab();
+	const hasChanges = RouteChanges.compare(ManageCurrentRouteData, changes).hasChanges;
 
 	if (enableDisableButton) {
 		saveRouteButton.prop("disabled", !hasChanges);
@@ -1032,11 +915,11 @@ function fillRoutingManagerTab() {
 		}
 	}
 
-	fillRouteActionTool(data.actions.callInitiationFailureTool, editRouteActionToolCallInitiationFailure, inboundRouteCallInitiationFailureArguments, editRouteActionToolCallInitiationFailureCustomInputs);
-	fillRouteActionTool(data.actions.ringingTool, editRouteActionToolRinging, inboundRouteCallRingingArguments, editRouteActionToolRingingCustomInputs);
-	fillRouteActionTool(data.actions.callPickedTool, editRouteActionToolPicked, inboundRouteCallPickedArguments, editRouteActionToolPickedCustomInputs);
-	fillRouteActionTool(data.actions.callEndedTool, editRouteActionToolEnded, inboundRouteCallEndedArguments, editRouteActionToolEndedCustomInputs);
-	fillRouteActionTool(data.actions.conversationPostAnalysisTool, editRouteActionToolPostAnalysis, inboundRoutePostCallAnalysisActionArgurments, editRouteActionToolPostCallAnalysisCustomInputs);
+	fillRouteActionTool(ManageCurrentRouteData.actions.callInitiationFailureTool, editRouteActionToolCallInitiationFailure, inboundRouteCallInitiationFailureArguments, editRouteActionToolCallInitiationFailureCustomInputs);
+	fillRouteActionTool(ManageCurrentRouteData.actions.ringingTool, editRouteActionToolRinging, inboundRouteCallRingingArguments, editRouteActionToolRingingCustomInputs);
+	fillRouteActionTool(ManageCurrentRouteData.actions.callPickedTool, editRouteActionToolPicked, inboundRouteCallPickedArguments, editRouteActionToolPickedCustomInputs);
+	fillRouteActionTool(ManageCurrentRouteData.actions.callEndedTool, editRouteActionToolEnded, inboundRouteCallEndedArguments, editRouteActionToolEndedCustomInputs);
+	fillRouteActionTool(ManageCurrentRouteData.actions.conversationPostAnalysisTool, editRouteActionToolPostAnalysis, inboundRoutePostCallAnalysisActionArgurments, editRouteActionToolPostCallAnalysisCustomInputs);
 }
 async function canLeaveRoutingTab(leaveMessage = "") {
 	if (IsSavingRouteManageTab) {

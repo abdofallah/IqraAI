@@ -9,6 +9,22 @@ let IsSavingSTTProviderTab = false;
 
 let sttFieldsHelper = null;
 
+// --- Change Helpers ---
+const STTProviderChanges = ChangesHelper.define({
+	disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+	integrationId: "text",
+	userIntegrationFields: { kind: "list", fields: ProviderIntegrationsFieldHelper.FieldChangeRules },
+});
+
+const STTProviderModelChanges = ChangesHelper.define({
+	id: "text",
+	name: "text",
+	disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+	pricePerUnit: "number",
+	priceUnit: { kind: "text", trim: true },
+	supportedLanguages: { kind: "set", items: "text" },
+});
+
 /** Elements Variables **/
 const STTProviderTab = $("#stt-provider-tab"); 
 
@@ -232,34 +248,19 @@ function FillSTTProviderManageTab(sttProviderData) {
 }
 
 function CheckSTTProviderManageTabHasChanges(enableDisableButton = true) {
-	let changes = {};
-	let hasChanges = false;
-
-	// Check disabled state
-	changes.disabled = manageSTTProviderDisabledInput.prop("checked");
-	if (changes.disabled === (CurrentSTTProviderData.disabledAt == null)) {
-		hasChanges = true;
-	}
-
-	// Check integration selection
-	changes.integrationId = manageSTTProviderIntegrationSelect.val();
-	if (changes.integrationId !== CurrentSTTProviderData.integrationId) {
-		hasChanges = true;
-	}
-
-	// Check integration fields using Helper
-	changes.userIntegrationFields = sttFieldsHelper.getData();
-	if (sttFieldsHelper.hasChanges()) {
-		hasChanges = true;		
-	}
+	const result = STTProviderChanges.compare(CurrentSTTProviderData, {
+		disabled: () => manageSTTProviderDisabledInput.prop("checked"),
+		integrationId: () => manageSTTProviderIntegrationSelect.val(),
+		userIntegrationFields: () => sttFieldsHelper.getData(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveManageSTTProviderButton.prop("disabled", !hasChanges);
+		saveManageSTTProviderButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 
@@ -454,59 +455,22 @@ function ValidateSTTProviderModelManageTabFields(onlyRemove = false) {
 }
 
 function CheckSTTProviderModelManageTabHasChanges(enableDisableButton = true) {
-	function arraysEqual(arr1, arr2) {
-		if (!arr1 || !arr2) return false;
-		if (arr1.length !== arr2.length) return false;
-
-		const sortedArr1 = [...arr1].sort();
-		const sortedArr2 = [...arr2].sort();
-
-		return sortedArr1.every((value, index) => value === sortedArr2[index]);
-	}
-
-	const changes = {};
-	let hasChanges = false;
-
-	changes.id = manageSTTProviderModelIdInput.val();
-	if (CurrentSTTProviderModelData.id !== changes.id) {
-		hasChanges = true;
-	}
-
-	changes.name = manageSTTProviderModelNameInput.val();
-	if (CurrentSTTProviderModelData.name !== changes.name) {
-		hasChanges = true;
-	}
-
-	changes.disabled = manageSTTProviderModelDisabledInput.prop("checked");
-	if (changes.disabled === (CurrentSTTProviderModelData.disabledAt === null)) {
-		hasChanges = true;
-	}
-
-	changes.pricePerUnit = manageSTTProviderModelPriceInput.val();
-	if (CurrentSTTProviderModelData.pricePerUnit !== changes.pricePerUnit) {
-		hasChanges = true;
-	}
-
-	changes.priceUnit = manageSTTProviderModelPriceUnitInput.val().trim();
-	if (CurrentSTTProviderModelData.priceUnit !== changes.priceUnit) {
-		hasChanges = true;
-	}
-
-	changes.supportedLanguages = [];
-	manageSTTProviderModelLanguagesContainer.find('input[type="checkbox"]:checked').each(function () {
-		changes.supportedLanguages.push($(this).val());
-	});
-	if (!arraysEqual(CurrentSTTProviderModelData.supportedLanguages, changes.supportedLanguages)) {
-		hasChanges = true;
-	}
+	const result = STTProviderModelChanges.compare(CurrentSTTProviderModelData, {
+		id: () => manageSTTProviderModelIdInput.val(),
+		name: () => manageSTTProviderModelNameInput.val(),
+		disabled: () => manageSTTProviderModelDisabledInput.prop("checked"),
+		pricePerUnit: () => manageSTTProviderModelPriceInput.val(),
+		priceUnit: () => manageSTTProviderModelPriceUnitInput.val().trim(),
+		supportedLanguages: () => manageSTTProviderModelLanguagesContainer.find('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveManageSTTProviderModelButton.prop("disabled", !hasChanges);
+		saveManageSTTProviderModelButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 

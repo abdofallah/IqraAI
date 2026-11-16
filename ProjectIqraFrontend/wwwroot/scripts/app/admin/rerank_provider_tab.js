@@ -9,6 +9,21 @@ let IsSavingRerankProviderTab = false;
 
 let rerankFieldsHelper = null;
 
+// --- Change Helpers ---
+const RerankProviderChanges = ChangesHelper.define({
+    disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+    integrationId: "text",
+    userIntegrationFields: { kind: "list", fields: ProviderIntegrationsFieldHelper.FieldChangeRules },
+});
+
+const RerankProviderModelChanges = ChangesHelper.define({
+    id: "text",
+    name: "text",
+    disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+    price: "number",
+    priceTokenUnit: "number",
+});
+
 /** Elements Variables **/
 const RerankProviderTab = $("#rerank-provider-tab");
 
@@ -277,34 +292,19 @@ function ShowRerankProviderModelListTab() {
 }
 
 function CheckRerankProviderManageTabHasChanges(enableDisableButton = true) {
-    let changes = {};
-    let hasChanges = false;
-
-    // Check disabled state
-    changes.disabled = manageRerankProviderDisabledInput.prop("checked");
-    if (changes.disabled === (CurrentManageRerankProviderData.disabledAt == null)) {
-        hasChanges = true;
-    }
-
-    // Check integration selection
-    changes.integrationId = manageRerankProviderIntegrationSelect.val();
-    if (changes.integrationId !== CurrentManageRerankProviderData.integrationId) {
-        hasChanges = true;
-    }
-
-    // Check integration fields
-    changes.userIntegrationFields = rerankFieldsHelper.getData();
-    if (rerankFieldsHelper.hasChanges()) {
-        hasChanges = true;      
-    }
+    const result = RerankProviderChanges.compare(CurrentManageRerankProviderData, {
+        disabled: () => manageRerankProviderDisabledInput.prop("checked"),
+        integrationId: () => manageRerankProviderIntegrationSelect.val(),
+        userIntegrationFields: () => rerankFieldsHelper.getData(),
+    }, { build: true });
 
     if (enableDisableButton) {
-        saveManageRerankProviderButton.prop("disabled", !hasChanges);
+        saveManageRerankProviderButton.prop("disabled", !result.hasChanges);
     }
 
     return {
-        hasChanges: hasChanges,
-        changes: changes,
+        hasChanges: result.hasChanges,
+        changes: result.changes,
     };
 }
 
@@ -381,31 +381,21 @@ function FillRerankProviderModelManageTab(modelData) {
 }
 
 function CheckRerankProviderModelManageTabHasChanges(enableDisableButton = true) {
-    let changes = {};
-    let hasChanges = false;
-
-    changes.id = manageRerankProviderModelIdInput.val();
-    if (CurrentManageRerankProviderModelData.id != changes.id) hasChanges = true;
-
-    changes.name = manageRerankProviderModelNameInput.val();
-    if (CurrentManageRerankProviderModelData.name != changes.name) hasChanges = true;
-
-    changes.disabled = manageRerankProviderModelDisabledInput.prop("checked");
-    if (changes.disabled == (CurrentManageRerankProviderModelData.disabledAt == null)) hasChanges = true;
-
-    changes.price = manageRerankProviderModelPriceInput.val();
-    if (CurrentManageRerankProviderModelData.price != changes.price) hasChanges = true;
-
-    changes.priceTokenUnit = manageRerankProviderModelPriceTokensInput.val();
-    if (CurrentManageRerankProviderModelData.priceTokenUnit != changes.priceTokenUnit) hasChanges = true;
+    const result = RerankProviderModelChanges.compare(CurrentManageRerankProviderModelData, {
+        id: () => manageRerankProviderModelIdInput.val(),
+        name: () => manageRerankProviderModelNameInput.val(),
+        disabled: () => manageRerankProviderModelDisabledInput.prop("checked"),
+        price: () => manageRerankProviderModelPriceInput.val(),
+        priceTokenUnit: () => manageRerankProviderModelPriceTokensInput.val(),
+    }, { build: true });
 
     if (enableDisableButton) {
-        saveManageRerankProviderModelButton.prop("disabled", !hasChanges);
+        saveManageRerankProviderModelButton.prop("disabled", !result.hasChanges);
     }
 
     return {
-        hasChanges: hasChanges,
-        changes: changes
+        hasChanges: result.hasChanges,
+        changes: result.changes
     };
 }
 

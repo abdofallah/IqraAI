@@ -9,6 +9,17 @@ let IntegrationsOAuthStatusPollInterval = null;
 let IsIntegrationsOAuthStatusTabShown = false;
 let IntegrationsOAuthRedirectUri = null;
 
+// --- Change Helpers ---
+const OAuthReconnectFieldsChanges = ChangesHelper.define({
+	fields: { kind: "map", keys: (context) => context.integration.fields.filter((field) => field.requiresOAuthReconnect).map((field) => field.id), foldKeyCase: true, values: "text" },
+});
+
+const BusinessIntegrationChanges = ChangesHelper.define({
+	type: { kind: "text", compare: false },
+	friendlyName: "text",
+	fields: { kind: "map", keys: () => GetIntegrationSpecFields().map((field) => field.id), foldKeyCase: true, values: "text" },
+});
+
 /** Elements Variables **/
 
 const integrationsTab = $("#integrations-tab");
@@ -357,7 +368,7 @@ function StartOAuthConnect(connectWindow, integrationId) {
 function HasOAuthBreakingChanges(integration, changes) {
 	if (ManageIntegrationType !== "edit" || !CurrentIntegrationData) return false;
 
-	return integration.fields.some((field) => field.requiresOAuthReconnect && (changes.fields[field.id] || "") !== (CurrentIntegrationData.fields[field.id] || ""));
+	return OAuthReconnectFieldsChanges.compare(CurrentIntegrationData, { fields: changes.fields }, { context: { integration: integration } }).hasChanges;
 }
 
 function UpdateSaveIntegrationButtonLabel(changes) {
@@ -558,54 +569,42 @@ function ValidateIntegrationTab(onlyRemove = true) {
 	};
 }
 
+function GetIntegrationSpecFields() {
+	const integration = SpecificationIntegrationsListData.find((i) => i.id === SelectedIntegrationType);
+	return integration ? integration.fields : [];
+}
+
+function CreateIntegrationSpecDefaultsObject() {
+	const fields = {};
+	GetIntegrationSpecFields().forEach((field) => {
+		fields[field.id] = field.type === "select" ? field.options.find((opt) => opt.isDefault)?.key || "" : field.defaultValue || "";
+	});
+	return { friendlyName: "", fields: fields };
+}
+
 function CheckIntegrationTabHasChanges(enableDisableButton = true) {
-	const changes = {
+	const fields = {};
+	GetIntegrationSpecFields().forEach((field) => {
+		fields[field.id] = $(`#integration_${field.id}`).val().trim();
+	});
+	const current = {
 		type: SelectedIntegrationType,
 		friendlyName: $("#integrationFriendlyNameInput").val().trim(),
-		fields: {},
+		fields: fields,
 	};
 
-	let hasChanges = false;
-
-	// Compare friendly name
-	if (ManageIntegrationType === "new" && changes.friendlyName) {
-		hasChanges = true;
-	} else if (CurrentIntegrationData && CurrentIntegrationData.friendlyName !== changes.friendlyName) {
-		hasChanges = true;
-	}
-
-	// Get field values
-	const integration = SpecificationIntegrationsListData.find((i) => i.id === SelectedIntegrationType);
-	if (integration) {
-		integration.fields.forEach((field) => {
-			const value = $(`#integration_${field.id}`).val().trim();
-			changes.fields[field.id] = value;
-
-			if (ManageIntegrationType === "new") {
-				// For new integration, compare with default value
-				if (field.type === "select") {
-					const defaultOption = field.options.find((opt) => opt.isDefault);
-					if (value !== (defaultOption?.key || "")) {
-						hasChanges = true;
-					}
-				} else if (value !== (field.defaultValue || "")) {
-					hasChanges = true;
-				}
-			} else if (CurrentIntegrationData && CurrentIntegrationData.fields[field.id] !== value) {
-				hasChanges = true;
-			}
-		});
-	}
+	const saved = ManageIntegrationType === "new" ? CreateIntegrationSpecDefaultsObject() : CurrentIntegrationData;
+	const result = BusinessIntegrationChanges.compare(saved || current, current, { build: true });
 
 	if (enableDisableButton) {
-		saveIntegrationButton.prop("disabled", !hasChanges);
+		saveIntegrationButton.prop("disabled", !result.hasChanges);
 	}
 
-	UpdateSaveIntegrationButtonLabel(changes);
+	UpdateSaveIntegrationButtonLabel(result.changes);
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 

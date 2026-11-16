@@ -31,6 +31,74 @@ let isDeletingPCATemplate = false;
 // Integration Managers
 let pcaConfigurationLLMIntegrationManager = null;
 
+// --- Change Helpers ---
+const PCATagRules = {
+    name: "text",
+    description: "text",
+    rules: { kind: "object", fields: { allowMultiple: "boolean", isRequired: "boolean" } },
+    subTags: { kind: "custom", equals: (saved, current) => !PCATagListChanges.compare({ tags: saved }, { tags: current }).hasChanges },
+};
+
+const PCAFieldRules = {
+    keyName: "text",
+    description: "text",
+    isRequired: "boolean",
+    isEmptyOrNullAllowed: "boolean",
+    dataType: "enum",
+    options: { kind: "list", items: "text", when: (get) => get("dataType") === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum },
+    validation: {
+        kind: "variant",
+        by: (get) => get("dataType"),
+        variants: {
+            [PCA_EXTRACTION_FIELD_DATA_TYPE.String]: { kind: "object", fields: { pattern: "text" } },
+            [PCA_EXTRACTION_FIELD_DATA_TYPE.Number]: { kind: "object", fields: { min: "number", max: "number" } },
+        },
+    },
+    conditionalRules: {
+        kind: "keyedList",
+        key: "id",
+        fields: {
+            condition: { kind: "object", fields: { operator: "enum", value: "text" } },
+            fieldsToExtract: { kind: "custom", equals: (saved, current) => !PCAFieldListChanges.compare({ fields: saved }, { fields: current }).hasChanges },
+        },
+    },
+};
+
+const PCATagListChanges = ChangesHelper.define({
+    tags: { kind: "keyedList", key: "id", fields: PCATagRules },
+});
+
+const PCAFieldListChanges = ChangesHelper.define({
+    fields: { kind: "keyedList", key: "id", fields: PCAFieldRules },
+});
+
+const PCATemplateChanges = ChangesHelper.define({
+    general: { kind: "object", fields: { emoji: "text", name: "text", description: "text" } },
+    configuration: {
+        kind: "object",
+        fields: {
+            llmIntegration: { kind: "object", fields: { id: "text", fieldValues: { kind: "map", values: "value" } } },
+        },
+    },
+    summary: { kind: "object", fields: { isActive: "boolean", prompt: "text" } },
+    tagging: {
+        kind: "object",
+        fields: {
+            isActive: "boolean",
+            prompt: "text",
+            tags: { kind: "keyedList", key: "id", fields: PCATagRules },
+        },
+    },
+    extraction: {
+        kind: "object",
+        fields: {
+            isActive: "boolean",
+            prompt: "text",
+            fields: { kind: "keyedList", key: "id", fields: PCAFieldRules },
+        },
+    },
+});
+
 // ELEMENT VARIABLES
 const postAnalysisTab = $("#post-analysis-tab");
 const pcaTooltipTriggerList = document.querySelectorAll('#post-analysis-tab [data-bs-toggle="tooltip"]');
@@ -236,14 +304,10 @@ function fillPCAManager(templateData) {
     pcaExtractionPromptInput.val(templateData.extraction.prompt);
     renderPCAExtractionFields(pcaExtractionFieldsList, templateData.extraction.fields, 0);
 }
+
 function checkPCAChanges(enableDisableButton = true) {
     if (managePCAType === null) return;
 
-    let hasChanges = false;
-    const original = currentPCATemplateData;
-    const findById = (arr, id) => arr.find(item => item.id === id);
-
-    // Build current state from DOM
     const currentState = {
         general: {
             emoji: pcaIconInput.text(),
@@ -269,46 +333,7 @@ function checkPCAChanges(enableDisableButton = true) {
         }
     };
 
-    // Compare General
-    if (currentState.general.name !== original.general.name ||
-        currentState.general.description !== original.general.description ||
-        currentState.general.emoji !== original.general.emoji)
-    {
-        hasChanges = true;
-    }
-
-    // Compare Configuration
-    // TODO better check
-    if (JSON.stringify(currentState.configuration.llmIntegration) !== JSON.stringify(original.configuration.llmIntegration)) {
-        hasChanges = true;
-    }
-
-    // Compare Summary
-    if (currentState.summary.isActive !== original.summary.isActive ||
-        currentState.summary.prompt !== original.summary.prompt
-    ) {
-        hasChanges = true;
-    }
-
-    // Compare Tagging recursively
-    if (currentState.tagging.isActive !== original.tagging.isActive ||
-        currentState.tagging.prompt !== original.tagging.prompt
-    ) {
-        hasChanges = true;
-    }
-    if (!hasChanges) {
-        hasChanges = comparePCATags(currentState.tagging.tags, original.tagging.tags);
-    }
-
-    // Compare Extraction recursively
-    if (currentState.extraction.isActive !== original.extraction.isActive ||
-        currentState.extraction.prompt !== original.extraction.prompt
-    ) {
-        hasChanges = true;
-    }
-    if (!hasChanges) {
-        hasChanges = comparePCAFields(currentState.extraction.fields, original.extraction.fields);
-    }
+    const hasChanges = PCATemplateChanges.compare(currentPCATemplateData, currentState).hasChanges;
 
     if (enableDisableButton) {
         savePCATemplateButton.prop("disabled", !hasChanges);
@@ -778,89 +803,6 @@ function validatePCAFieldsRecursive(container, errors, uniqueKeys, onlyRemove, l
     });
 
     return isInvalid;
-}
-function comparePCATags(currentTags, originalTags) {
-    if (currentTags.length !== originalTags.length) return true;
-
-    for (const currentTag of currentTags) {
-        const originalTag = originalTags.find(ot => ot.id === currentTag.id);
-        if (!originalTag) return true; // A tag was replaced
-
-        if (currentTag.name !== originalTag.name ||
-            currentTag.description !== originalTag.description ||
-            currentTag.rules.allowMultiple !== originalTag.rules.allowMultiple ||
-            currentTag.rules.isRequired !== originalTag.rules.isRequired) {
-            return true;
-        }
-
-        // Recursive call for sub-tags
-        if (comparePCATags(currentTag.subTags, originalTag.subTags)) {
-            return true;
-        }
-    }
-    return false; // No changes found
-}
-function compareRules(currentRules, originalRules) {
-    if (currentRules.length !== originalRules.length) return true;
-
-    for (const currentRule of currentRules) {
-        const originalRule = originalRules.find(or => or.id === currentRule.id);
-        if (!originalRule) return true; // A rule was replaced
-
-        if (currentRule.condition.operator !== originalRule.condition.operator.value ||
-            currentRule.condition.value !== originalRule.condition.value) {
-            return true;
-        }
-
-        // Recursive call for nested fields within the rule
-        if (comparePCAFields(currentRule.fieldsToExtract, originalRule.fieldsToExtract)) {
-            return true;
-        }
-    }
-    return false;
-}
-function comparePCAFields(currentFields, originalFields) {
-    if (currentFields.length !== originalFields.length) return true;
-
-    for (const currentField of currentFields) {
-        const originalField = originalFields.find(of => of.id === currentField.id);
-        if (!originalField) return true; // A field was replaced
-
-        // Compare simple properties
-        if (currentField.keyName !== originalField.keyName ||
-            currentField.description !== originalField.description ||
-            currentField.isRequired !== originalField.isRequired ||
-            currentField.isEmptyOrNullAllowed !== originalField.isEmptyOrNullAllowed ||
-            currentField.dataType !== originalField.dataType.value) {
-            return true;
-        }
-
-        // Compare validation properties old vs new
-        if (currentField.dataType === originalField.dataType.value) {
-            if (currentField.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Enum) {
-                if (JSON.stringify(currentField.options) !== JSON.stringify(originalField.options)) {
-                    return true;
-                }
-            }
-            else if (currentField.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.String) {
-                if (currentField.validation.pattern !== originalField.validation.pattern) {
-                    return true;
-                }
-            }
-            else if (currentField.dataType === PCA_EXTRACTION_FIELD_DATA_TYPE.Number) {
-                if (currentField.validation.min !== originalField.validation.min ||
-                    currentField.validation.max !== originalField.validation.max) {
-                    return true;
-                }
-            }
-        }
-
-        // Recursive call for conditional rules
-        if (compareRules(currentField.conditionalRules, originalField.conditionalRules)) {
-            return true;
-        }
-    }
-    return false;
 }
 function resetPCARuleConditions($fieldBox) {
     const newDataType = parseInt($fieldBox.find('select[data-type="DataType"]').first().val());

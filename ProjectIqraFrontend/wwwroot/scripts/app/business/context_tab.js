@@ -45,6 +45,72 @@ let IsSavingContextBranchTab = false;
 let IsSavingContextServiceTab = false;
 let IsSavingContextProductTab = false;
 
+// --- Change Helpers ---
+const ContextLanguageTextMap = { kind: "map", keys: () => BusinessFullData.businessData.languages, values: "text" };
+
+const ContextOtherInformationMap = { kind: "map", keys: () => BusinessFullData.businessData.languages, values: { kind: "custom", equals: SameContextOtherInformationInOrder } };
+
+const ContextBrandingChanges = ChangesHelper.define({
+	name: ContextLanguageTextMap,
+	country: ContextLanguageTextMap,
+	email: ContextLanguageTextMap,
+	phone: ContextLanguageTextMap,
+	website: ContextLanguageTextMap,
+	otherInformation: ContextOtherInformationMap,
+});
+
+const ContextBranchChanges = ChangesHelper.define({
+	general: {
+		kind: "object",
+		fields: {
+			name: ContextLanguageTextMap,
+			address: ContextLanguageTextMap,
+			phone: ContextLanguageTextMap,
+			email: ContextLanguageTextMap,
+			website: ContextLanguageTextMap,
+			otherInformation: ContextOtherInformationMap,
+		},
+	},
+	workingHours: {
+		kind: "map",
+		keys: ["0", "1", "2", "3", "4", "5", "6"],
+		values: {
+			kind: "object",
+			fields: {
+				isClosed: "boolean",
+				timings: { kind: "list", items: { kind: "list", items: "time" }, when: (get) => !get("isClosed") },
+			},
+		},
+	},
+	team: {
+		kind: "list",
+		fields: {
+			name: ContextLanguageTextMap,
+			role: ContextLanguageTextMap,
+			email: ContextLanguageTextMap,
+			phone: ContextLanguageTextMap,
+			information: ContextLanguageTextMap,
+		},
+	},
+});
+
+const ContextServiceChanges = ChangesHelper.define({
+	name: ContextLanguageTextMap,
+	shortDescription: ContextLanguageTextMap,
+	longDescription: ContextLanguageTextMap,
+	otherInformation: ContextOtherInformationMap,
+	availableAtBranches: { kind: "list", items: "text" },
+	relatedProducts: { kind: "list", items: "text" },
+});
+
+const ContextProductChanges = ChangesHelper.define({
+	name: ContextLanguageTextMap,
+	shortDescription: ContextLanguageTextMap,
+	longDescription: ContextLanguageTextMap,
+	otherInformation: ContextOtherInformationMap,
+	availableAtBranches: { kind: "list", items: "text" },
+});
+
 /** Element Variables  **/
 const contextTabTooltipTriggerList = document.querySelectorAll('#context-tab [data-bs-toggle="tooltip"]');
 const contextTabTooltipList = [...contextTabTooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -251,67 +317,26 @@ function FillContextTab() {
 
 // TAB | Branding
 
-function CheckContextBrandingTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
+function SameContextOtherInformationInOrder(saved, current) {
+	const savedEntries = Object.entries(saved || {});
+	const currentEntries = Object.entries(current || {});
+	if (savedEntries.length !== currentEntries.length) return false;
+	return savedEntries.every(([key, value], index) => key === currentEntries[index][0] && (value ?? "") === (currentEntries[index][1] ?? ""));
+}
 
-	// Name
-	changes.name = {};
+function CheckContextBrandingTabHasChanges(enableDisableButton = true) {
+	const changes = { name: {}, country: {}, email: {}, phone: {}, website: {}, otherInformation: {} };
+
 	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.name[language] = CurrentContextBrandingNameMultiLangData[language];
-		if (CurrentContextBrandingData.name[language] !== changes.name[language]) {
-			hasChanges = true;
-		}
-	});
-
-	// Country
-	changes.country = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.country[language] = CurrentContextBrandingCountryMultiLangData[language];
-		if (CurrentContextBrandingData.country[language] !== changes.country[language]) {
-			hasChanges = true;
-		}
-	});
-
-	// Email
-	changes.email = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.email[language] = CurrentContextBrandingEmailMultiLangData[language];
-		if (CurrentContextBrandingData.email[language] !== changes.email[language]) {
-			hasChanges = true;
-		}
-	});
-
-	// Phone
-	changes.phone = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.phone[language] = CurrentContextBrandingPhoneMultiLangData[language];
-		if (CurrentContextBrandingData.phone[language] !== changes.phone[language]) {
-			hasChanges = true;
-		}
-	});
-
-	// Website
-	changes.website = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.website[language] = CurrentContextBrandingWebsiteMultiLangData[language];
-		if (CurrentContextBrandingData.website[language] !== changes.website[language]) {
-			hasChanges = true;
-		}
+		changes.otherInformation[language] = CurrentContextBrandingOtherInformationMultiLangData[language] || {};
 	});
 
-	// Other Information
-	changes.otherInformation = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
-		const currentOtherInfo = CurrentContextBrandingOtherInformationMultiLangData[language] || {};
-		const originalOtherInfo = CurrentContextBrandingData.otherInformation[language] || {};
-
-		if (JSON.stringify(originalOtherInfo) !== JSON.stringify(currentOtherInfo)) {
-			hasChanges = true;
-		}
-
-		changes.otherInformation[language] = currentOtherInfo;
-	});
+	const hasChanges = ContextBrandingChanges.compare(CurrentContextBrandingData, changes).hasChanges;
 
 	if (enableDisableButton) {
 		saveContextBrandingButton.prop("disabled", !hasChanges);
@@ -713,91 +738,46 @@ function FillContextBranchesTab() {
 }
 
 function CheckContextBranchTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Check general section
-	function checkGeneralTab() {
-		changes.general = {
+	const changes = {
+		general: {
 			name: {},
 			address: {},
 			phone: {},
 			email: {},
 			website: {},
 			otherInformation: {},
+		},
+		workingHours: {},
+	};
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		changes.general.name[language] = CurrentContextBranchNameMultiLangData[language];
+		changes.general.address[language] = CurrentContextBranchAddressMultiLangData[language];
+		changes.general.phone[language] = CurrentContextBranchPhoneMultiLangData[language];
+		changes.general.email[language] = CurrentContextBranchEmailMultiLangData[language];
+		changes.general.website[language] = CurrentContextBranchWebsiteMultiLangData[language];
+		changes.general.otherInformation[language] = CurrentContextBranchOtherInformationMultiLangData[language] || {};
+	});
+
+	DAYS.forEach((day, index) => {
+		changes.workingHours[index] = {
+			isClosed: $(`#editBranchOpeningHours${day}Input`).is(":checked"),
+			timings: [],
 		};
 
-		BusinessFullData.businessData.languages.forEach((language) => {
-			// Name changes
-			changes.general.name[language] = CurrentContextBranchNameMultiLangData[language];
-			if (CurrentContextBranchData.general.name[language] !== changes.general.name[language]) {
-				hasChanges = true;
-			}
-
-			// Address changes
-			changes.general.address[language] = CurrentContextBranchAddressMultiLangData[language];
-			if (CurrentContextBranchData.general.address[language] !== changes.general.address[language]) {
-				hasChanges = true;
-			}
-
-			// Phone changes
-			changes.general.phone[language] = CurrentContextBranchPhoneMultiLangData[language];
-			if (CurrentContextBranchData.general.phone[language] !== changes.general.phone[language]) {
-				hasChanges = true;
-			}
-
-			// Email changes
-			changes.general.email[language] = CurrentContextBranchEmailMultiLangData[language];
-			if (CurrentContextBranchData.general.email[language] !== changes.general.email[language]) {
-				hasChanges = true;
-			}
-
-			// Website changes
-			changes.general.website[language] = CurrentContextBranchWebsiteMultiLangData[language];
-			if (CurrentContextBranchData.general.website[language] !== changes.general.website[language]) {
-				hasChanges = true;
-			}
-
-			// Other Information changes
-			changes.general.otherInformation[language] = CurrentContextBranchOtherInformationMultiLangData[language] || {};
-			if (JSON.stringify(CurrentContextBranchData.general.otherInformation[language]) !== JSON.stringify(changes.general.otherInformation[language])) {
-				hasChanges = true;
+		const timingsList = $(`.workingHoursTimingList[day-value="${day}"]`).children();
+		timingsList.each((idx, element) => {
+			const fromTime = $(element).find('[time-type="from"]').val();
+			const toTime = $(element).find('[time-type="to"]').val();
+			if (fromTime && toTime) {
+				changes.workingHours[index].timings.push([fromTime, toTime]);
 			}
 		});
-	}
-	checkGeneralTab();
+	});
 
-	// Working Hours changes
-	function checkWorkingHoursTab() {
-		changes.workingHours = {};
-		DAYS.forEach((day, index) => {
-			changes.workingHours[index] = {
-				isClosed: $(`#editBranchOpeningHours${day}Input`).is(":checked"),
-				timings: [],
-			};
-
-			const timingsList = $(`.workingHoursTimingList[day-value="${day}"]`).children();
-			timingsList.each((idx, element) => {
-				const fromTime = $(element).find('[time-type="from"]').val();
-				const toTime = $(element).find('[time-type="to"]').val();
-				if (fromTime && toTime) {
-					changes.workingHours[index].timings.push([fromTime, toTime]);
-				}
-			});
-
-			if (JSON.stringify(CurrentContextBranchData.workingHours[index]) !== JSON.stringify(changes.workingHours[index])) {
-				hasChanges = true;
-			}
-		});
-	}
-	checkWorkingHoursTab();
-
-	// Team changes
-	// TODO CHECK Individual and get rid of JSON.stringyfy
 	changes.team = CurrentContextBranchTeamMultiLangData;
-	if (JSON.stringify(CurrentContextBranchData.team) !== JSON.stringify(changes.team)) {
-		hasChanges = true;
-	}
+
+	const hasChanges = ContextBranchChanges.compare(CurrentContextBranchData, changes).hasChanges;
 
 	if (enableDisableButton) {
 		saveContextBranchesButton.prop("disabled", !hasChanges);
@@ -1618,59 +1598,26 @@ function validateServiceOtherInformationKeys() {
 }
 
 function CheckContextServiceTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
+	const changes = { name: {}, shortDescription: {}, longDescription: {}, otherInformation: {} };
 
-	// Check multilanguage fields
 	BusinessFullData.businessData.languages.forEach((language) => {
-		// Name changes
-		if (!changes.name) changes.name = {};
 		changes.name[language] = CurrentContextServiceNameMultiLangData[language];
-		if (CurrentContextServiceData.name[language] !== changes.name[language]) {
-			hasChanges = true;
-		}
-
-		// Short Description changes
-		if (!changes.shortDescription) changes.shortDescription = {};
 		changes.shortDescription[language] = CurrentContextServiceShortDescriptionMultiLangData[language];
-		if (CurrentContextServiceData.shortDescription[language] !== changes.shortDescription[language]) {
-			hasChanges = true;
-		}
-
-		// Long Description changes
-		if (!changes.longDescription) changes.longDescription = {};
 		changes.longDescription[language] = CurrentContextServiceLongDescriptionMultiLangData[language];
-		if (CurrentContextServiceData.longDescription[language] !== changes.longDescription[language]) {
-			hasChanges = true;
-		}
-
-		// Other Information changes
-		if (!changes.otherInformation) changes.otherInformation = {};
 		changes.otherInformation[language] = CurrentContextServiceOtherInformationMultiLangData[language] || {};
-		if (JSON.stringify(CurrentContextServiceData.otherInformation[language]) !== JSON.stringify(changes.otherInformation[language])) {
-			hasChanges = true;
-		}
 	});
 
-	// Check branches
 	changes.availableAtBranches = [];
 	linkedContextServiceBranchesList.children().each((idx, element) => {
-		const branchId = $(element).attr("branch-id");
-		changes.availableAtBranches.push(branchId);
+		changes.availableAtBranches.push($(element).attr("branch-id"));
 	});
-	if (JSON.stringify(CurrentContextServiceData.availableAtBranches) !== JSON.stringify(changes.availableAtBranches)) {
-		hasChanges = true;
-	}
 
-	// Check products
 	changes.relatedProducts = [];
 	linkedContextServiceProductsList.children().each((idx, element) => {
-		const productId = $(element).attr("product-id");
-		changes.relatedProducts.push(productId);
+		changes.relatedProducts.push($(element).attr("product-id"));
 	});
-	if (JSON.stringify(CurrentContextServiceData.relatedProducts) !== JSON.stringify(changes.relatedProducts)) {
-		hasChanges = true;
-	}
+
+	const hasChanges = ContextServiceChanges.compare(CurrentContextServiceData, changes).hasChanges;
 
 	if (enableDisableButton) {
 		saveContextServicesButton.prop("disabled", !hasChanges);
@@ -2068,49 +2015,21 @@ function validateProductOtherInformationKeys() {
 }
 
 function CheckContextProductTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
+	const changes = { name: {}, shortDescription: {}, longDescription: {}, otherInformation: {} };
 
-	// Check multilanguage fields
 	BusinessFullData.businessData.languages.forEach((language) => {
-		// Name changes
-		if (!changes.name) changes.name = {};
 		changes.name[language] = CurrentContextProductNameMultiLangData[language];
-		if (CurrentContextProductData.name[language] !== changes.name[language]) {
-			hasChanges = true;
-		}
-
-		// Short Description changes
-		if (!changes.shortDescription) changes.shortDescription = {};
 		changes.shortDescription[language] = CurrentContextProductShortDescriptionMultiLangData[language];
-		if (CurrentContextProductData.shortDescription[language] !== changes.shortDescription[language]) {
-			hasChanges = true;
-		}
-
-		// Long Description changes
-		if (!changes.longDescription) changes.longDescription = {};
 		changes.longDescription[language] = CurrentContextProductLongDescriptionMultiLangData[language];
-		if (CurrentContextProductData.longDescription[language] !== changes.longDescription[language]) {
-			hasChanges = true;
-		}
-
-		// Other Information changes
-		if (!changes.otherInformation) changes.otherInformation = {};
 		changes.otherInformation[language] = CurrentContextProductOtherInformationMultiLangData[language] || {};
-		if (JSON.stringify(CurrentContextProductData.otherInformation[language]) !== JSON.stringify(changes.otherInformation[language])) {
-			hasChanges = true;
-		}
 	});
 
-	// Check branches
 	changes.availableAtBranches = [];
 	linkedContextProductBranchesList.children().each((idx, element) => {
-		const branchId = $(element).attr("branch-id");
-		changes.availableAtBranches.push(branchId);
+		changes.availableAtBranches.push($(element).attr("branch-id"));
 	});
-	if (JSON.stringify(CurrentContextProductData.availableAtBranches) !== JSON.stringify(changes.availableAtBranches)) {
-		hasChanges = true;
-	}
+
+	const hasChanges = ContextProductChanges.compare(CurrentContextProductData, changes).hasChanges;
 
 	if (enableDisableButton) {
 		saveContextProductsButton.prop("disabled", !hasChanges);

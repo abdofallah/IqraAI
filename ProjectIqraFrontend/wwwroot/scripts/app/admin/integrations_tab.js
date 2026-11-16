@@ -3,6 +3,43 @@ let CurrentIntegrationData = null;
 let ManageIntegrationType = null; // new or edit
 let IsSavingIntegrationTab = false;
 
+// --- Change Helpers ---
+const IntegrationChanges = ChangesHelper.define({
+	id: "text",
+	name: "text",
+	description: "text",
+	disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+	type: { kind: "list", items: "text" },
+	help: { kind: "object", fields: { text: "text", uri: "text" } },
+	oAuth: {
+		kind: "object",
+		absent: "changed",
+		fields: {
+			authorizationUrl: "text",
+			tokenUrl: "text",
+			scopes: "text",
+			additionalAuthorizationParameters: { kind: "map", values: { kind: "text", strict: true } },
+			useBasicAuthForTokenEndpoint: "boolean",
+			extraResponseFields: { kind: "list", items: "text" },
+		},
+	},
+	fields: {
+		kind: "list",
+		fields: {
+			id: "text",
+			name: "text",
+			type: "text",
+			tooltip: "text",
+			placeholder: "text",
+			defaultValue: "text",
+			required: "boolean",
+			isEncrypted: "boolean",
+			requiresOAuthReconnect: "boolean",
+			options: { kind: "list", when: (get) => get("type") === "select", fields: { key: "text", value: "text", isDefault: "boolean" } },
+		},
+	},
+});
+
 /** Elements Variables **/
 const integrationsTab = $("#integrations-tab");
 const integrationsHeader = integrationsTab.find("#integrations-header");
@@ -216,30 +253,6 @@ function UpdateOAuthReconnectVisibility() {
 	integrationFieldsList.find(".field-oauth-reconnect-container").toggleClass("d-none", !integrationOAuthEnabledCheck.is(":checked"));
 }
 
-function HasOAuthDataChanges(newOAuthData, oldOAuthData) {
-	if (!newOAuthData || !oldOAuthData) return !!newOAuthData !== !!oldOAuthData;
-
-	if (newOAuthData.authorizationUrl !== (oldOAuthData.authorizationUrl || "")) return true;
-	if (newOAuthData.tokenUrl !== (oldOAuthData.tokenUrl || "")) return true;
-	if (newOAuthData.scopes !== (oldOAuthData.scopes || "")) return true;
-	if (newOAuthData.useBasicAuthForTokenEndpoint !== !!oldOAuthData.useBasicAuthForTokenEndpoint) return true;
-
-	const oldParameters = oldOAuthData.additionalAuthorizationParameters || {};
-	const newParameterKeys = Object.keys(newOAuthData.additionalAuthorizationParameters);
-	if (newParameterKeys.length !== Object.keys(oldParameters).length) return true;
-	for (const key of newParameterKeys) {
-		if (!Object.prototype.hasOwnProperty.call(oldParameters, key) || newOAuthData.additionalAuthorizationParameters[key] !== oldParameters[key]) return true;
-	}
-
-	const oldExtraResponseFields = oldOAuthData.extraResponseFields || [];
-	if (newOAuthData.extraResponseFields.length !== oldExtraResponseFields.length) return true;
-	for (let i = 0; i < newOAuthData.extraResponseFields.length; i++) {
-		if (newOAuthData.extraResponseFields[i] !== oldExtraResponseFields[i]) return true;
-	}
-
-	return false;
-}
-
 function collectOAuth() {
 	if (!integrationOAuthEnabledCheck.is(":checked")) return null;
 
@@ -429,112 +442,27 @@ function ValidateIntegrationTab(onlyRemove = true) {
 }
 
 function CheckIntegrationTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
-
-	// Check basic fields
-	changes.id = integrationIdInput.val().trim();
-	if (CurrentIntegrationData.id !== changes.id) {
-		hasChanges = true;
-	}
-
-	changes.name = integrationNameInput.val().trim();
-	if (CurrentIntegrationData.name !== changes.name) {
-		hasChanges = true;
-	}
-
-	changes.description = integrationDescriptionInput.val().trim();
-	if (CurrentIntegrationData.description !== changes.description) {
-		hasChanges = true;
-	}
-
-	// Check disabled state
-	const isDisabled = integrationDisabledCheck.is(":checked");
-	changes.disabled = isDisabled;
-	if (isDisabled === (CurrentIntegrationData.disabledAt == null)) {
-		hasChanges = true;
-	}
-
-	// Check types
-	changes.type = collectTypes();
-	if (changes.type.length !== CurrentIntegrationData.type.length) {
-		hasChanges = true;
-	} else {
-		for (let i = 0; i < changes.type.length; i++) {
-			if (changes.type[i] !== CurrentIntegrationData.type[i]) {
-				hasChanges = true;
-				break;
-			}
-		}
-	}
-
-	// Check help
-	changes.help = {
-		text: integrationHelpTextInput.val().trim(),
-		uri: integrationHelpUrlInput.val().trim(),
-	};
-
-	if (changes.help.text !== CurrentIntegrationData.help.text || changes.help.uri !== CurrentIntegrationData.help.uri) {
-		hasChanges = true;
-	}
-
-	// Check OAuth
-	changes.oAuth = collectOAuth();
-	if (HasOAuthDataChanges(changes.oAuth, CurrentIntegrationData.oAuth)) {
-		hasChanges = true;
-	}
-
-	// Check fields
-	changes.fields = collectFields();
-	if (changes.fields.length !== CurrentIntegrationData.fields.length) {
-		hasChanges = true;
-	} else {
-		for (let i = 0; i < changes.fields.length; i++) {
-			const newField = changes.fields[i];
-			const oldField = CurrentIntegrationData.fields[i];
-
-			if (
-				newField.id !== oldField.id ||
-				newField.name !== oldField.name ||
-				newField.type !== oldField.type ||
-				newField.tooltip !== oldField.tooltip ||
-				newField.placeholder !== oldField.placeholder ||
-				newField.defaultValue !== oldField.defaultValue ||
-				newField.required !== oldField.required ||
-				newField.isEncrypted !== oldField.isEncrypted ||
-				newField.requiresOAuthReconnect !== (oldField.requiresOAuthReconnect || false)
-			) {
-				hasChanges = true;
-				break;
-			}
-
-			// Check options for select fields
-			if (newField.type === "select") {
-				if (!oldField.options || newField.options.length !== oldField.options.length) {
-					hasChanges = true;
-					break;
-				}
-
-				for (let j = 0; j < newField.options.length; j++) {
-					const newOption = newField.options[j];
-					const oldOption = oldField.options[j];
-
-					if (newOption.key !== oldOption.key || newOption.value !== oldOption.value || newOption.isDefault !== oldOption.isDefault) {
-						hasChanges = true;
-						break;
-					}
-				}
-			}
-		}
-	}
+	const result = IntegrationChanges.compare(CurrentIntegrationData, {
+		id: () => integrationIdInput.val().trim(),
+		name: () => integrationNameInput.val().trim(),
+		description: () => integrationDescriptionInput.val().trim(),
+		disabled: () => integrationDisabledCheck.is(":checked"),
+		type: () => collectTypes(),
+		help: {
+			text: () => integrationHelpTextInput.val().trim(),
+			uri: () => integrationHelpUrlInput.val().trim(),
+		},
+		oAuth: () => collectOAuth(),
+		fields: () => collectFields(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveIntegrationButton.prop("disabled", !hasChanges);
+		saveIntegrationButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 

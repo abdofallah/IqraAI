@@ -105,6 +105,63 @@ let IsDeletingToolTab = false;
 
 let manageToolsLanguageDropdown = null;
 
+// --- Change Helpers ---
+const ToolLanguageTextMap = { kind: "map", keys: () => BusinessFullData.businessData.languages, values: "text" };
+const ToolKeyValueMap = { kind: "map", values: { kind: "text", strict: true } };
+
+const ToolManageChanges = ChangesHelper.define({
+	general: {
+		kind: "object",
+		fields: {
+			name: ToolLanguageTextMap,
+			shortDescription: ToolLanguageTextMap,
+		},
+	},
+	configuration: {
+		kind: "object",
+		fields: {
+			inputSchemea: {
+				kind: "list",
+				fields: {
+					id: "text",
+					name: ToolLanguageTextMap,
+					description: ToolLanguageTextMap,
+					type: "enum",
+					isArray: "boolean",
+					isRequired: "boolean",
+					dateTimeFormat: { kind: "text", when: (get) => get("type") === 4 },
+				},
+			},
+			requestType: "enum",
+			endpoint: "text",
+			headers: ToolKeyValueMap,
+			bodyType: "enum",
+			bodyData: { kind: "variant", by: (get) => get("bodyType"), variants: { 1: ToolKeyValueMap, 2: ToolKeyValueMap, 3: "text" } },
+		},
+	},
+	response: {
+		kind: "map",
+		values: {
+			kind: "object",
+			absent: "changed",
+			fields: {
+				javascript: "text",
+				hasStaticResponse: "boolean",
+				staticResponse: { ...ToolLanguageTextMap, when: (get) => get("hasStaticResponse"), alwaysBuild: true },
+			},
+		},
+	},
+	audio: {
+		kind: "object",
+		fields: {
+			duringExecutionAudioUrl: { kind: "custom", equals: SameToolAudioCommand, from: "duringExecutionAudioS3StorageLink" },
+			duringExecutionAudioVolume: { kind: "number", when: () => toolAudioDuringExecutionSelect.val() !== "none" },
+			afterExecutionAudioUrl: { kind: "custom", equals: SameToolAudioCommand, from: "afterExecutionAudioS3StorageLink" },
+			afterExecutionAudioVolume: { kind: "number", when: () => toolAudioAfterExecutionSelect.val() !== "none" },
+		},
+	},
+});
+
 /** Elements Variables **/
 const toolsTab = $("#tools-tab");
 
@@ -495,10 +552,10 @@ function CreateToolsDefaultToolObject() {
 		},
 		response: {},
 		audio: {
-			duringExecution: null,
-            duringExecutionVolume: 100,
-			afterExecution: null,
-            afterExecutionVolume: 100
+			duringExecutionAudioS3StorageLink: null,
+            duringExecutionAudioVolume: 100,
+			afterExecutionAudioS3StorageLink: null,
+            afterExecutionAudioVolume: 100
 		},
 	};
 
@@ -510,351 +567,98 @@ function CreateToolsDefaultToolObject() {
 	return object;
 }
 
-function CheckToolsManageTabHasChanges(enableDisableButton = true) {
-	const changes = {};
-	let hasChanges = false;
+function SameToolAudioCommand(saved, current) {
+	if (current === "custom") return false;
+	if (current === null) return saved == null;
+	return true;
+}
 
-	if (ManageToolType === null) return { hasChanges, changes };
-
-	// General
-	function CheckGeneralTabHasChanges() {
-		changes.general = {};
-
-		changes.general.name = {};
-		BusinessFullData.businessData.languages.forEach((language) => {
-			changes.general.name[language] = CurrentManageToolNameMultiLangData[language];
-
-			const previousData = CurrentManageToolData.general.name[language];
-			if (previousData !== changes.general.name[language]) {
-				hasChanges = true;
-			}
-		});
-
-		changes.general.shortDescription = {};
-		BusinessFullData.businessData.languages.forEach((language) => {
-			changes.general.shortDescription[language] = CurrentManageToolShortDescriptionMultiLangData[language];
-
-			const previousData = CurrentManageToolData.general.shortDescription[language];
-			if (previousData !== changes.general.shortDescription[language]) {
-				hasChanges = true;
-			}
-		});
-	}
-	CheckGeneralTabHasChanges();
-
-	// Configuration
-	function CheckConfigurationTabHasChanges() {
-		changes.configuration = {};
-
-		function checkInputArguementsList() {
-			const inputArgumentsList = [];
-			const argumentElements = toolInputArguementsList.find(".toolInputArguementBox");
-
-			if (argumentElements.length !== CurrentManageToolData.configuration.inputSchemea.length) {
-				hasChanges = true;
-			}
-
-			argumentElements.each((idx, element) => {
-				const currentElement = $(element);
-
-				const index = parseInt(currentElement.attr("data-index"));
-				const argumentData = {
-					id: currentElement.find('[data-type="id"]').val(),
-					name: {},
-					description: {},
-					type: parseInt(currentElement.find('[data-type="typeSelect"]').val()),
-					isArray: element.querySelector(
-						`[data-type="required"]#toolInputArguementArray${element.querySelector('[data-type="required"][id^="toolInputArguementArray"]').id.replace("toolInputArguementArray", "")}`,
-					).checked,
-					isRequired: element.querySelector(
-						`[data-type="required"]#toolInputArguementRequired${element.querySelector('[data-type="required"][id^="toolInputArguementRequired"]').id.replace("toolInputArguementRequired", "")}`,
-					).checked,
-				};
-
-				if (argumentData.type == 4) {
-					argumentData.dateTimeFormat = currentElement.find('[data-type="datetime-format"]').val();
-				}
-
-				const previousData = CurrentManageToolData.configuration.inputSchemea[index];
-				if (!previousData) {
-					hasChanges = true;
-				}
-
-				if (previousData) {
-					if (argumentData.id !== previousData.id || previousData.type.value !== argumentData.type || previousData.isArray !== argumentData.isArray || previousData.isRequired !== argumentData.isRequired) {
-						hasChanges = true;
-					}
-
-					if (argumentData.type == 4) {
-						if (previousData.dateTimeFormat !== argumentData.dateTimeFormat) {
-                            hasChanges = true;
-                        }
-					}
-				} else {
-					hasChanges = true;
-				}
-
-				BusinessFullData.businessData.languages.forEach((language) => {
-					argumentData.name[language] = CurrentManageToolInputSchemeaMultiLangData[index].name[language];
-					argumentData.description[language] = CurrentManageToolInputSchemeaMultiLangData[index].description[language];
-
-					if (previousData) {
-						if (previousData.name[language] !== argumentData.name[language] || previousData.description[language] !== argumentData.description[language]) {
-							hasChanges = true;
-						}
-					}
-				});
-
-				inputArgumentsList.push(argumentData);
-			});	
-
-			return inputArgumentsList;
-		}
-		changes.configuration.inputSchemea = checkInputArguementsList();
-
-		changes.configuration.requestType = parseInt(inputToolType.val());
-		if (changes.configuration.requestType !== CurrentManageToolData.configuration.requestType.value) {
-			hasChanges = true;
-		}
-
-		changes.configuration.endpoint = inputToolURL.val();
-		if (changes.configuration.endpoint !== CurrentManageToolData.configuration.endpoint) {
-			hasChanges = true;
-		}
-
-		function checkHeadersList() {
-			const headers = {};
-			const headerElements = toolHeadersList.find(".tool-header-box");
-
-			const currentHeaderCount = headerElements.length;
-			const originalHeaderCount = Object.keys(CurrentManageToolData.configuration.headers).length;
-			if (currentHeaderCount !== originalHeaderCount) {
-				hasChanges = true;
-			}
-
-			headerElements.each((idx, element) => {
-				const currentElement = $(element);
-
-				const keyInput = currentElement.find('[data-type="key"]');
-				const valueInput = currentElement.find('[data-type="value"]');
-
-				const key = keyInput.val().trim();
-				const value = valueInput.val().trim();
-
-				headers[key] = value;
-
-				if (!CurrentManageToolData.configuration.headers.hasOwnProperty(key) || CurrentManageToolData.configuration.headers[key] !== value) {
-					hasChanges = true;
-				}
-			});
-
-			Object.keys(CurrentManageToolData.configuration.headers).forEach((originalKey) => {
-				if (!headers.hasOwnProperty(originalKey)) {
-					hasChanges = true;
-				}
-			});
-
-			return headers;
-		}
-		changes.configuration.headers = checkHeadersList();
-
-		changes.configuration.bodyType = parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val());
-		if (changes.configuration.bodyType !== CurrentManageToolData.configuration.bodyType.value) {
-			hasChanges = true;
-		}
-		if (changes.configuration.bodyType !== 0) {
-			if (changes.configuration.bodyType === 1 || changes.configuration.bodyType === 2) {
-				const formKeyValData = {};
-				const formKeyValElements = toolBodyKeyValueViewList.children();
-
-				formKeyValElements.each((idx, element) => {
-					const currentElement = $(element);
-
-					const keyInput = currentElement.find('[data-type="key"]');
-					const valueInput = currentElement.find('[data-type="value"]');
-
-					const key = keyInput.val().trim();
-					const value = valueInput.val().trim();
-
-					formKeyValData[key] = value;
-
-					if (CurrentManageToolData.configuration.bodyType.value === 1 || CurrentManageToolData.configuration.bodyType.value === 2) {
-						if (!CurrentManageToolData.configuration.bodyData.hasOwnProperty(key) || CurrentManageToolData.configuration.bodyData[key] !== value) {
-							hasChanges = true;
-						}
-					}
-				});
-
-				if (CurrentManageToolData.configuration.bodyType.value === 1 || CurrentManageToolData.configuration.bodyType.value === 2) {
-					const currentFormKeyValCount = formKeyValElements.length;
-					const originalFormKeyValCount = Object.keys(CurrentManageToolData.configuration.bodyData).length;
-					if (currentFormKeyValCount !== originalFormKeyValCount) {
-						hasChanges = true;
-					}
-
-					Object.keys(CurrentManageToolData.configuration.bodyData).forEach((originalKey) => {
-						if (!formKeyValData.hasOwnProperty(originalKey)) {
-							hasChanges = true;
-						}
-					});
-				}
-
-				changes.configuration.bodyData = formKeyValData;
-			}
-
-			if (changes.configuration.bodyType === 3) {
-				changes.configuration.bodyData = toolBodyRawTextarea.val();
-
-				if (CurrentManageToolData.configuration.bodyType.value === 3 && CurrentManageToolData.configuration.bodyData !== changes.configuration.bodyData) {
-					hasChanges = true;
-				}
-			}
-		}
-	}
-	CheckConfigurationTabHasChanges();
-
-	// Response
-	function CheckResponseTabHasChanges() {
-		function checkResponseList() {
-			const response = {};
-
-			if (responseStatusMonacoEditors.length !== Object.keys(CurrentManageToolData.response).length) {
-				hasChanges = true;
-			}
-
-			responseStatusMonacoEditors.forEach((data) => {
-				const statusType = data.statusType;
-				const editor = data.editor;
-				const editorValue = editor.getValue();
-
-				response[statusType] = {
-					javascript: editorValue,
-					hasStaticResponse: toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked"),
-					staticResponse: {},
-				};
-
-				const previousData = CurrentManageToolData.response[statusType];
-				if (!previousData) {
-					hasChanges = true;
-				} else {
-					if (previousData.javascript !== response[statusType].javascript) {
-						hasChanges = true;
-					}
-
-					if (previousData.hasStaticResponse !== response[statusType].hasStaticResponse) {
-						hasChanges = true;
-					}
-
-					if (response[statusType].hasStaticResponse && previousData.hasStaticResponse) {
-						BusinessFullData.businessData.languages.forEach((language) => {
-							const value = CurrentManageToolResponseStaticResponse[statusType][language];
-							response[statusType].staticResponse[language] = value;
-
-							if (previousData && previousData.staticResponse[language] !== value) {
-								hasChanges = true;
-							}
-						});
-					}
-				}		
-			});
-
-			return response;
-		}
-		changes.response = checkResponseList();
-	}
-	CheckResponseTabHasChanges();
-
-	// Audio
-	function CheckAudioTabChanges() {
-		const changes = {};
-		let hasChanges = false;
-
-		// During Execution Audio
-		const duringAudioType = toolAudioDuringExecutionSelect.val();
-		if (duringAudioType === "none") {
-			changes.duringExecutionAudioUrl = null;
-			if (CurrentManageToolData.audio.duringExecutionAudioUrl !== null) {
-				hasChanges = true;
-			}
-		}
-		if (duringAudioType === "custom") {
-			if (
-				toolAudioDuringExecutionUploadInput[0].files.length === 1
-				||
-				(toolAudioDuringExecutionUploadInput[0].files.length === 0 && ToolAudioDuringExecutionWaveSurfer == null)
-			) {
-				changes.duringExecutionAudioUrl = "custom";
-				hasChanges = true;
-			}
-
-			if (
-				CurrentManageToolData.audio.duringExecutionAudioUrl !== null &&
-				toolAudioDuringExecutionUploadInput[0].files.length === 0 &&
-				ToolAudioDuringExecutionWaveSurfer != null
-			) {
-				changes.duringExecutionAudioUrl = "previous";
-			}
-		}
-		if (duringAudioType !== "none") {
-			changes.duringExecutionAudioVolume = parseInt(toolAudioDuringExecutionVolumeInput.val());
-			if (CurrentManageToolData.audio.duringExecutionAudioVolume !== changes.duringExecutionAudioVolume)
-			{
-				hasChanges = true;
-			}
-		}
-
-		// After Execution Audio
-		const afterAudioType = toolAudioAfterExecutionSelect.val();
-		if (afterAudioType === "none") {
-			changes.afterExecutionAudioUrl = null;
-			if (CurrentManageToolData.audio.afterExecutionAudioUrl !== null) {
-				hasChanges = true;
-			}
-		}
-		if (afterAudioType === "custom") {
-			if (
-				toolAudioAfterExecutionUploadInput[0].files.length === 1
-				||
-				(toolAudioAfterExecutionUploadInput[0].files.length === 0 && ToolAudioAfterExecutionWaveSurfer == null)
-			) {
-				changes.afterExecutionAudioUrl = "custom";
-				hasChanges = true;
-			}
-
-			if (
-				CurrentManageToolData.audio.afterExecutionAudioUrl !== null &&
-				toolAudioAfterExecutionUploadInput[0].files.length === 0 &&
-				ToolAudioAfterExecutionWaveSurfer != null
-			) {
-				changes.afterExecutionAudioUrl = "previous";
-			}
-		}
-
-		if (afterAudioType !== "none") {
-			changes.afterExecutionAudioVolume = parseInt(toolAudioAfterExecutionVolumeInput.val());
-			if (CurrentManageToolData.audio.afterExecutionAudioVolume !== changes.afterExecutionAudioVolume) {
-				hasChanges = true;
-			}
-		}
-
+function ReadToolInputArguments() {
+	return toolInputArguementsList.find(".toolInputArguementBox").toArray().map((element) => {
+		const box = $(element);
+		const texts = CurrentManageToolInputSchemeaMultiLangData[parseInt(box.attr("data-index"))];
 		return {
-			hasChanges,
-			changes,
+			id: () => box.find('[data-type="id"]').val(),
+			name: texts.name,
+			description: texts.description,
+			type: () => parseInt(box.find('[data-type="typeSelect"]').val()),
+			isArray: () => element.querySelector('[data-type="required"][id^="toolInputArguementArray"]').checked,
+			isRequired: () => element.querySelector('[data-type="required"][id^="toolInputArguementRequired"]').checked,
+			dateTimeFormat: () => box.find('[data-type="datetime-format"]').val(),
 		};
-	}
-	const audioTabChanges = CheckAudioTabChanges();
-	changes.audio = audioTabChanges.changes;
-	if (audioTabChanges.hasChanges) {
-		hasChanges = true;
-	}
+	});
+}
+
+function ReadToolKeyValueRows(rows) {
+	const pairs = {};
+	rows.each((idx, element) => {
+		const row = $(element);
+		pairs[row.find('[data-type="key"]').val().trim()] = row.find('[data-type="value"]').val().trim();
+	});
+	return pairs;
+}
+
+function ReadToolBodyData() {
+	const bodyType = parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val());
+	if (bodyType === 1 || bodyType === 2) return ReadToolKeyValueRows(toolBodyKeyValueViewList.children());
+	if (bodyType === 3) return toolBodyRawTextarea.val();
+	return undefined;
+}
+
+function ReadToolResponses() {
+	const responses = {};
+	responseStatusMonacoEditors.forEach(({ statusType, editor }) => {
+		const savedResponse = CurrentManageToolData.response[statusType];
+		const hasStaticResponse = () => toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked");
+		responses[statusType] = {
+			javascript: () => editor.getValue(),
+			hasStaticResponse: hasStaticResponse,
+			staticResponse: () => (hasStaticResponse() && savedResponse && savedResponse.hasStaticResponse ? CurrentManageToolResponseStaticResponse[statusType] : {}),
+		};
+	});
+	return responses;
+}
+
+function ReadToolAudioCommand(audioType, uploadInput, waveSurfer, savedUrl) {
+	if (audioType === "none") return null;
+	if (audioType !== "custom") return undefined;
+	if (uploadInput.files.length === 1 || (uploadInput.files.length === 0 && waveSurfer == null)) return "custom";
+	if (savedUrl != null && uploadInput.files.length === 0 && waveSurfer != null) return "previous";
+	return undefined;
+}
+
+function CheckToolsManageTabHasChanges(enableDisableButton = true) {
+	if (ManageToolType === null) return { hasChanges: false, changes: {} };
+
+	const result = ToolManageChanges.compare(CurrentManageToolData, {
+		general: {
+			name: CurrentManageToolNameMultiLangData,
+			shortDescription: CurrentManageToolShortDescriptionMultiLangData,
+		},
+		configuration: {
+			inputSchemea: () => ReadToolInputArguments(),
+			requestType: () => parseInt(inputToolType.val()),
+			endpoint: () => inputToolURL.val(),
+			headers: () => ReadToolKeyValueRows(toolHeadersList.find(".tool-header-box")),
+			bodyType: () => parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val()),
+			bodyData: () => ReadToolBodyData(),
+		},
+		response: () => ReadToolResponses(),
+		audio: {
+			duringExecutionAudioUrl: () => ReadToolAudioCommand(toolAudioDuringExecutionSelect.val(), toolAudioDuringExecutionUploadInput[0], ToolAudioDuringExecutionWaveSurfer, CurrentManageToolData.audio.duringExecutionAudioS3StorageLink),
+			duringExecutionAudioVolume: () => parseInt(toolAudioDuringExecutionVolumeInput.val()),
+			afterExecutionAudioUrl: () => ReadToolAudioCommand(toolAudioAfterExecutionSelect.val(), toolAudioAfterExecutionUploadInput[0], ToolAudioAfterExecutionWaveSurfer, CurrentManageToolData.audio.afterExecutionAudioS3StorageLink),
+			afterExecutionAudioVolume: () => parseInt(toolAudioAfterExecutionVolumeInput.val()),
+		},
+	}, { build: true });
 
 	if (enableDisableButton) {
-		confirmPublishToolButton.prop("disabled", !hasChanges);
+		confirmPublishToolButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 
@@ -1230,22 +1034,22 @@ function FillToolsManageTab(toolData) {
 
 	// Audio
 	function fillAudioTab() {
-		if (toolData.audio.duringExecutionAudioUrl) {
+		if (toolData.audio.duringExecutionAudioS3StorageLink) {
 			toolAudioDuringExecutionSelect.val("custom").change();
 
 			ToolAudioDuringExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#tool-audio-during-waveform");
-			ToolAudioDuringExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.duringExecutionAudioUrl}`);
+			ToolAudioDuringExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.duringExecutionAudioS3StorageLink.objectName}`);
 			toolAudioDuringExecutionVolumeInput.val(toolData.audio.duringExecutionAudioVolume);
 
 			toolAudioDuringExecutionInputBox.find(".no-audio-notice").addClass("d-none");
 			toolAudioDuringExecutionInputBox.find(".recording-container-waveform").removeClass("d-none");
 			toolAudioDuringExecutionInputBox.find(".audio-controller").removeClass("d-none");
 		}
-		if (toolData.audio.afterExecutionAudioUrl) {
+		if (toolData.audio.afterExecutionAudioS3StorageLink) {
 			toolAudioAfterExecutionSelect.val("custom").change();
 
             ToolAudioAfterExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#tool-audio-after-waveform");
-			ToolAudioAfterExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.afterExecutionAudioUrl}`);
+			ToolAudioAfterExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.afterExecutionAudioS3StorageLink.objectName}`);
 			toolAudioAfterExecutionVolumeInput.val(toolData.audio.afterExecutionAudioVolume);
 
 			toolAudioAfterExecutionInputBox.find(".no-audio-notice").addClass("d-none");
@@ -1532,7 +1336,7 @@ function ValidateToolsManageTab(onlyRemove = true) {
 
 	// Audio Tab Validation
 	function validateAudioTab() {
-		if (toolAudioDuringExecutionSelect.val() === "custom" && toolAudioDuringExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.duringExecutionAudioUrl == null) {
+		if (toolAudioDuringExecutionSelect.val() === "custom" && toolAudioDuringExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.duringExecutionAudioS3StorageLink == null) {
 			validated = false;
 			errors.push("Audio file for during execution is required.");
 
@@ -1557,7 +1361,7 @@ function ValidateToolsManageTab(onlyRemove = true) {
             }
 		}
 
-		if (toolAudioAfterExecutionSelect.val() === "custom" && toolAudioAfterExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.afterExecutionAudioUrl == null) {
+		if (toolAudioAfterExecutionSelect.val() === "custom" && toolAudioAfterExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.afterExecutionAudioS3StorageLink == null) {
 			validated = false;
 			errors.push("Audio file for after execution is required.");
 

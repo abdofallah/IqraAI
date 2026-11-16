@@ -9,6 +9,17 @@ let IsManagerDomainTabOpened = false;
 let ManageDomainType = null;
 let CurrentManageDomainData = null;
 
+// --- Change Helpers ---
+const SettingsGeneralChanges = ChangesHelper.define({
+	name: "text",
+	logo: { kind: "file", from: () => null },
+});
+
+const SettingsLanguagesChanges = ChangesHelper.define({
+	languages: { kind: "set", items: "text" },
+	defaultLanguage: { kind: "text", from: () => BusinessDefaultLanguage },
+});
+
 // Elements
 const settingsTab = $("#settings-tab");
 
@@ -103,72 +114,32 @@ function GetSettingsCurrentAddedLanguages() {
 
 	return currentAddedLanguages;
 }
+
 function CheckSettingsGeneralTabHasChanges() {
+	const current = {
+		name: settingsGeneralBusinessName.val(),
+		logo: settingsGeneralBusinessLogo[0].files[0],
+	};
+	const result = SettingsGeneralChanges.compare(BusinessFullData.businessData, current, { paths: true });
+
 	const changes = {};
-	let hasChanges = false;
-
-	if (BusinessFullData.businessData.name !== settingsGeneralBusinessName.val()) {
-		hasChanges = true;
-		changes.name = settingsGeneralBusinessName.val();
-	}
-
-	if (settingsGeneralBusinessLogo[0].files.length > 0) {
-		hasChanges = true;
-		changes.logo = settingsGeneralBusinessLogo[0].files[0];
-	}
+	if (result.paths.includes("name")) changes.name = current.name;
+	if (result.paths.includes("logo")) changes.logo = current.logo;
 
 	return {
-		hasChanges: hasChanges,
+		hasChanges: result.hasChanges,
 		changes: changes,
 	};
 }
 function CheckSettingsLanguagesTabHasChanges() {
-	let hasChanges = false;
-	let changes = {
-		languages: GetSettingsCurrentAddedLanguages(),
-        defaultLanguage: settingsAddedLanguagesList.find("input[name=businessDefaultLanguage]:checked").val(),
-	};
-
-	if (changes.languages.length !== BusinessFullData.businessData.languages.length) {
-		hasChanges = true;
-	}
-
-	if (changes.defaultLanguage !== BusinessDefaultLanguage) {
-		hasChanges = true;
-    }
-
-	if (hasChanges === true)
-	{
-		let addedCount = 0;
-		let removedCount = 0;
-		let remainedCount = 0;
-
-		for (let i = 0; i < BusinessFullData.businessData.languages.length; i++) {
-			const oldLanguage = BusinessFullData.businessData.languages[i];
-
-			if (changes.languages.includes(oldLanguage)) {
-				remainedCount++;
-			} else {
-				removedCount++;
-			}
-		}
-
-		for (let i = 0; i < changes.languages.length; i++) {
-			const newLanguage = changes.languages[i];
-
-			if (!BusinessFullData.businessData.languages.includes(newLanguage)) {
-				addedCount++;
-			}
-		}
-
-		if (addedCount > 0 || removedCount > 0) {
-			hasChanges = true;
-		}
-	}	
+	const result = SettingsLanguagesChanges.compare(BusinessFullData.businessData, {
+		languages: () => GetSettingsCurrentAddedLanguages(),
+		defaultLanguage: () => settingsAddedLanguagesList.find("input[name=businessDefaultLanguage]:checked").val(),
+	}, { build: true });
 
 	return {
-		hasChanges,
-		changes
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 function CheckIfSettingsHasChanges(enableDisableButton = true) {

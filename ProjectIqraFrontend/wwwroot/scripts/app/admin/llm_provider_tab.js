@@ -9,6 +9,25 @@ let IsSavingLLMProviderTab = false;
 
 let llmFieldsHelper = null;
 
+// --- Change Helpers ---
+const LLMProviderModelChanges = ChangesHelper.define({
+	id: "text",
+	name: "text",
+	disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+	inputPrice: "number",
+	inputPriceTokenUnit: "number",
+	outputPrice: "number",
+	outputPriceTokenUnit: "number",
+	maxInputTokenLength: "number",
+	maxOutputTokenLength: "number",
+});
+
+const LLMProviderChanges = ChangesHelper.define({
+	disabled: { kind: "boolean", from: (saved) => saved.disabledAt != null },
+	integrationId: "text",
+	userIntegrationFields: { kind: "list", fields: ProviderIntegrationsFieldHelper.FieldChangeRules },
+});
+
 /** Elements Variables **/
 const LLMProviderTab = $("#llm-provider-tab");
 
@@ -316,93 +335,42 @@ function ShowLLMProviderModelListTab() {
 }
 
 function CheckLLMProviderModelManageTabHasChanges(enableDisableButton = true) {
-	let changes = {};
-	let hasChanges = false;
-
-	changes.id = manageLLMProviderModelIdInput.val();
-	if (CurrentManageLLMProviderModelData.id != changes.id) {
-		hasChanges = true;
-	}
-
-	changes.name = manageLLMProviderModelNameInput.val();
-	if (CurrentManageLLMProviderModelData.name != changes.name) {
-		hasChanges = true;
-	}
-
-	changes.disabled = manageLLMProviderModelDisabledInput.prop("checked");
-	if (changes.disabled == (CurrentManageLLMProviderModelData.disabledAt == null)) {
-		hasChanges = true;
-	}
-
-	changes.inputPrice = manageLLMProviderModelInputPriceInput.val();
-	if (CurrentManageLLMProviderModelData.inputPrice != changes.inputPrice) {
-		hasChanges = true;
-	}
-
-	changes.inputPriceTokenUnit = manageLLMProviderModelInputTokensInput.val();
-	if (CurrentManageLLMProviderModelData.inputPriceTokenUnit != changes.inputPriceTokenUnit) {
-		hasChanges = true;
-	}
-
-	changes.outputPrice = manageLLMProviderModelOutputPriceInput.val();
-	if (CurrentManageLLMProviderModelData.outputPrice != changes.outputPrice) {
-		hasChanges = true;
-	}
-
-	changes.outputPriceTokenUnit = manageLLMProviderModelOutputTokensInput.val();
-	if (CurrentManageLLMProviderModelData.outputPriceTokenUnit != changes.outputPriceTokenUnit) {
-		hasChanges = true;
-	}
-
-	changes.maxInputTokenLength = manageLLMProviderModelInputLengthInput.val();
-	if (CurrentManageLLMProviderModelData.maxInputTokenLength != changes.maxInputTokenLength) {
-		hasChanges = true;
-	}
-
-	changes.maxOutputTokenLength = manageLLMProviderModelOutputLengthInput.val();
-	if (CurrentManageLLMProviderModelData.maxOutputTokenLength != changes.maxOutputTokenLength) {
-		hasChanges = true;
-	}
+	const result = LLMProviderModelChanges.compare(CurrentManageLLMProviderModelData, {
+		id: () => manageLLMProviderModelIdInput.val(),
+		name: () => manageLLMProviderModelNameInput.val(),
+		disabled: () => manageLLMProviderModelDisabledInput.prop("checked"),
+		inputPrice: () => manageLLMProviderModelInputPriceInput.val(),
+		inputPriceTokenUnit: () => manageLLMProviderModelInputTokensInput.val(),
+		outputPrice: () => manageLLMProviderModelOutputPriceInput.val(),
+		outputPriceTokenUnit: () => manageLLMProviderModelOutputTokensInput.val(),
+		maxInputTokenLength: () => manageLLMProviderModelInputLengthInput.val(),
+		maxOutputTokenLength: () => manageLLMProviderModelOutputLengthInput.val(),
+	}, { build: true });
 
 	if (enableDisableButton == true) {
-		saveManageLLMProviderModelButton.prop("disabled", !hasChanges);
+		saveManageLLMProviderModelButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 
 function CheckLLMProviderManageTabHasChanges(enableDisableButton = true) {
-	let changes = {};
-	let hasChanges = false;
-
-	// Check disabled state
-	changes.disabled = manageLLMProviderDisabledInput.prop("checked");
-	if (changes.disabled === (CurrentManageLLMProviderData.disabledAt == null)) {
-		hasChanges = true;
-	}
-
-	// Check integration selection
-	changes.integrationId = manageLLMProviderIntegrationSelect.val();
-	if (changes.integrationId !== CurrentManageLLMProviderData.integrationId) {
-		hasChanges = true;
-	}
-
-	// Check integration fields via Helper
-	changes.userIntegrationFields = llmFieldsHelper.getData();
-	if (llmFieldsHelper.hasChanges()) {
-		hasChanges = true;
-	}
+	const result = LLMProviderChanges.compare(CurrentManageLLMProviderData, {
+		disabled: () => manageLLMProviderDisabledInput.prop("checked"),
+		integrationId: () => manageLLMProviderIntegrationSelect.val(),
+		userIntegrationFields: () => llmFieldsHelper.getData(),
+	}, { build: true });
 
 	if (enableDisableButton) {
-		saveManageLLMProviderButton.prop("disabled", !hasChanges);
+		saveManageLLMProviderButton.prop("disabled", !result.hasChanges);
 	}
 
 	return {
-		hasChanges: hasChanges,
-		changes: changes,
+		hasChanges: result.hasChanges,
+		changes: result.changes,
 	};
 }
 
