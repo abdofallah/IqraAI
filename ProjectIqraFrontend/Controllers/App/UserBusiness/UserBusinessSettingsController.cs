@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,9 +24,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/settings/save")]
-        public async Task<FunctionReturnResult> SaveBusinessSettings(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<GetUserBusinessFullResultMetaDataModel?>> SaveBusinessSettings(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<GetUserBusinessFullResultMetaDataModel?>();
 
             // Validation
             var userSessionAndBusinessValidationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
@@ -58,7 +59,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 );
             }
 
-            return result.SetSuccessResult();
+            return result.SetSuccessResult(_businessManager.CreateBusinessMetaDataModel(updateResult.Data!));
         }
     }
 }

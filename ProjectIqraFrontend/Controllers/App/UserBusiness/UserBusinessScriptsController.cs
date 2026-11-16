@@ -3,6 +3,7 @@ using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business.App.Script;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -27,9 +28,9 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
         }
 
         [HttpPost("/app/user/business/{businessId}/scripts/save")]
-        public async Task<FunctionReturnResult<BusinessAppScript?>> SaveBusinessScript(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppScriptModel?>> SaveBusinessScript(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppScript?>();
+            var result = new FunctionReturnResult<BusinessAppScriptModel?>();
 
             try
             {
@@ -124,7 +125,7 @@ namespace ProjectIqraFrontend.Controllers.App.UserBusiness
                     );
                 }
 
-                return result.SetSuccessResult(addOrUpdateResult.Data);
+                return result.SetSuccessResult(new BusinessAppScriptModel(addOrUpdateResult.Data!));
             }
             catch (Exception ex)
             {

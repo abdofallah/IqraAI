@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Integrations;
+using IqraCore.Models.S3Storage;
 
 namespace IqraCore.Models.Specification
 {
@@ -21,7 +22,7 @@ namespace IqraCore.Models.Specification
         public string Name { get; set; }
         public string Description { get; set; }
         public DateTime? DisabledAt { get; set; }
-        public string? LogoUrl { get; set; }
+        public S3SignedFileModel? LogoUrl { get; set; }
         public List<string> Type { get; set; }
         public List<IntegrationFieldData> Fields { get; set; }
         public IntegrationHelpData Help { get; set; }

@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Attributes
 {
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, AllowMultiple = false)]
     public class ExcludeInAllEndpointsAttribute : Attribute
     {
     }

@@ -3,6 +3,7 @@ using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business.App.Routing;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -27,9 +28,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/routes/save")]
-        public async Task<FunctionReturnResult<BusinessAppRoute?>> SaveBusinessRoute(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppRouteModel?>> SaveBusinessRoute(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppRoute?>();
+            var result = new FunctionReturnResult<BusinessAppRouteModel?>();
 
             try
             {
@@ -121,7 +122,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppRouteModel(updateResult.Data!));
             }
             catch (Exception ex)
             {

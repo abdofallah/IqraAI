@@ -3,6 +3,7 @@ using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business.App.Context;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -27,9 +28,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/context/branding/save")]
-        public async Task<FunctionReturnResult<BusinessAppContextBranding?>> SaveBusinessContextBranding(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppContextBrandingModel?>> SaveBusinessContextBranding(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppContextBranding?>();
+            var result = new FunctionReturnResult<BusinessAppContextBrandingModel?>();
 
             try
             {
@@ -88,7 +89,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppContextBrandingModel(updateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -100,9 +101,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/context/branches/save")]
-        public async Task<FunctionReturnResult<BusinessAppContextBranch?>> SaveBusinessContextBranch(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppContextBranchModel?>> SaveBusinessContextBranch(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppContextBranch?>();
+            var result = new FunctionReturnResult<BusinessAppContextBranchModel?>();
 
             try
             {
@@ -203,7 +204,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppContextBranchModel(updateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -215,9 +216,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/context/services/save")]
-        public async Task<FunctionReturnResult<BusinessAppContextService?>> SaveBusinessContextService(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppContextServiceModel?>> SaveBusinessContextService(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppContextService?>();
+            var result = new FunctionReturnResult<BusinessAppContextServiceModel?>();
 
             try
             {
@@ -324,7 +325,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppContextServiceModel(updateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -336,9 +337,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/context/products/save")]
-        public async Task<FunctionReturnResult<BusinessAppContextProduct?>> SaveBusinessContextProduct(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppContextProductModel?>> SaveBusinessContextProduct(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppContextProduct?>();
+            var result = new FunctionReturnResult<BusinessAppContextProductModel?>();
 
             try
             {
@@ -445,7 +446,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppContextProductModel(updateResult.Data!));
             }
             catch (Exception ex)
             {

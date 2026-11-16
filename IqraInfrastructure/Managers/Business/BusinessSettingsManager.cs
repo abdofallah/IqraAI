@@ -52,9 +52,9 @@ namespace IqraInfrastructure.Managers.Business
          * 
         **/
 
-        public async Task<FunctionReturnResult<bool?>> UpdateUserBusinessSettings(long businessId, IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessData?>> UpdateUserBusinessSettings(long businessId, IFormCollection formData)
         {
-            var result = new FunctionReturnResult<bool?>();
+            var result = new FunctionReturnResult<BusinessData?>();
 
             bool updateBusinessApp = false;
 
@@ -281,6 +281,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
+            result.Data = await _businessRepository.GetBusinessAsync(businessId);
             result.Success = true;
             return result;
         }

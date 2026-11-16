@@ -192,6 +192,23 @@ async function canLeaveSettingsTab(leaveMessage = "") {
 
 	return true;
 }
+function ShowSettingsBusinessLogo() {
+	const businessData = BusinessFullData.businessData;
+	if (!businessData.logoUrl) {
+		SignedFileHelper.releaseImage(settingsGeneralBusinessLogoPreview);
+		settingsGeneralBusinessLogoPreview.attr("src", DefaultBusinessImgSRC);
+		return;
+	}
+
+	SignedFileHelper.showImage(settingsGeneralBusinessLogoPreview, {
+		file: businessData.logoUrl,
+		fetchFile: () => SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}`).then((data) => data.businessData.logoUrl),
+		onRenewed: (file) => {
+			businessData.logoUrl = file;
+		},
+		fallbackSrc: DefaultBusinessImgSRC,
+	});
+}
 function FillSettingsTab() {
 	function FillSettingsGeneralTab() {
 		settingsGeneralBusinessName.val(BusinessFullData.businessData.name);
@@ -199,11 +216,7 @@ function FillSettingsTab() {
 		if (settingsGeneralBusinessLogo[0].files.length > 0) {
 			settingsGeneralBusinessLogo[0].files = new DataTransfer().files;
 		}
-		if (BusinessFullData.businessData.logoUrl && BusinessFullData.businessData.logoUrl != null) {
-			settingsGeneralBusinessLogoPreview.attr("src", BusinessFullData.businessData.logoUrl);
-		} else {
-			settingsGeneralBusinessLogoPreview.attr("src", DefaultBusinessImgSRC);
-		}
+		ShowSettingsBusinessLogo();
 	}
 	function FillSettingsLanguagesTab() {
 		SpecificationLanguagesListData.forEach((value, index) => {
@@ -248,7 +261,7 @@ function initSettingsTab() {
 
 			const file = settingsGeneralBusinessLogo[0].files[0];
 			if (!file) {
-				settingsGeneralBusinessLogoPreview.attr("src", BusinessFullData.businessData.logoUrl);
+				ShowSettingsBusinessLogo();
 				CheckIfSettingsHasChanges();
 				return;
 			}
@@ -282,6 +295,7 @@ function initSettingsTab() {
 			const reader = new FileReader();
 
 			reader.onload = (event) => {
+				SignedFileHelper.releaseImage(settingsGeneralBusinessLogoPreview);
 				settingsGeneralBusinessLogoPreview.attr("src", event.target.result);
 			};
 
@@ -439,15 +453,36 @@ function initSettingsTab() {
 			SaveSettingsChanges(
 				formData,
 				(saveResponse) => {
-					if (saveResponse.success) {
+					const savedBusinessData = saveResponse.data;
+					const languagesChanged = SettingsLanguagesChanges.compare(BusinessFullData.businessData, {
+						languages: savedBusinessData.languages,
+						defaultLanguage: savedBusinessData.defaultLanguage,
+					}).hasChanges;
+
+					if (languagesChanged) {
 						setTimeout(() => {
 							IsReloadingAfterSettingsSave = true;
 							location.reload();
 						}, 1);
+
+						settingsSaveButton.prop("disabled", false);
+						settingsSaveButtonSpinner.addClass("d-none");
+						return;
 					}
 
-					settingsSaveButton.prop("disabled", false);
+					BusinessFullData.businessData = savedBusinessData;
+
+					settingsLanguageAddSelect.find('option[value!="none"]').remove();
+					FillSettingsTab();
+					CheckIfSettingsHasChanges();
+
 					settingsSaveButtonSpinner.addClass("d-none");
+
+					AlertManager.createAlert({
+						type: "success",
+						message: "Business settings saved successfully.",
+						timeout: 6000,
+					});
 				},
 				(saveError, isUnsuccessful) => {
 					AlertManager.createAlert({

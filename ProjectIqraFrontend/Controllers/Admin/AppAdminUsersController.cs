@@ -2,6 +2,8 @@
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.Admin.Business;
+using IqraCore.Models.Admin.User;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
@@ -25,9 +27,9 @@ namespace ProjectIqraFrontend.Controllers.Admin
         }
 
         [HttpPost("/app/admin/users")]
-        public async Task<FunctionReturnResult<List<UserData>?>> GetUsers(int page = 0, int pageSize = 10)
+        public async Task<FunctionReturnResult<List<AdminUserDataModel>?>> GetUsers(int page = 0, int pageSize = 10)
         {
-            var result = new FunctionReturnResult<List<UserData>?>();
+            var result = new FunctionReturnResult<List<AdminUserDataModel>?>();
 
             try
             {
@@ -53,7 +55,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                     );
                 }
 
-                return result.SetSuccessResult(usersResult.Data);
+                return result.SetSuccessResult(usersResult.Data!.Select(x => new AdminUserDataModel(x)).ToList());
             }
             catch (Exception ex)
             {
@@ -65,9 +67,9 @@ namespace ProjectIqraFrontend.Controllers.Admin
         }
 
         [HttpPost("/app/admin/user")]
-        public async Task<FunctionReturnResult<UserData?>> GetUser(string email)
+        public async Task<FunctionReturnResult<AdminUserDataModel?>> GetUser(string email)
         {
-            var result = new FunctionReturnResult<UserData?>();
+            var result = new FunctionReturnResult<AdminUserDataModel?>();
 
             try
             {
@@ -93,7 +95,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                     );
                 }
 
-                return result.SetSuccessResult(resultUser);
+                return result.SetSuccessResult(new AdminUserDataModel(resultUser));
             }
             catch (Exception ex)
             {
@@ -105,9 +107,9 @@ namespace ProjectIqraFrontend.Controllers.Admin
         }
 
         [HttpPost("/app/admin/user/businesses")]
-        public async Task<FunctionReturnResult<List<BusinessData>?>> GetUserBusinesses(string inputUserEmail, List<long> businessIds)
+        public async Task<FunctionReturnResult<List<AdminBusinessDataModel>?>> GetUserBusinesses(string inputUserEmail, List<long> businessIds)
         {
-            var result = new FunctionReturnResult<List<BusinessData>?>();
+            var result = new FunctionReturnResult<List<AdminBusinessDataModel>?>();
 
             try
             {
@@ -133,7 +135,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                     );
                 }
 
-                return result.SetSuccessResult(businessesResult.Data);
+                return result.SetSuccessResult(businessesResult.Data!.Select(x => new AdminBusinessDataModel(x)).ToList());
             }
             catch (Exception ex)
             {

@@ -1159,7 +1159,7 @@ namespace IqraInfrastructure.Managers.Business
 
             foreach (var client in state.Clients)
             {
-                string? audioUrl = _conversationAudioRepository.GeneratePresignedUrl($"{state.Id}/compiled/user_{client.ClientId}.wav", audioUrlExpirySeconds);
+                var audioUrl = _conversationAudioRepository.GenerateSignedFile($"{state.Id}/compiled/user_{client.ClientId}.wav", audioUrlExpirySeconds);
 
                 var clientModel = new ConversationStateClientViewModel()
                 {
@@ -1176,7 +1176,7 @@ namespace IqraInfrastructure.Managers.Business
 
             foreach (var agent in state.Agents)
             {
-                string? audioUrl = _conversationAudioRepository.GeneratePresignedUrl($"{state.Id}/recordings/{agent.AgentId}.wav", audioUrlExpirySeconds);
+                var audioUrl = _conversationAudioRepository.GenerateSignedFile($"{state.Id}/recordings/{agent.AgentId}.wav", audioUrlExpirySeconds);
 
                 var clientModel = new ConversationStateAgentViewModel()
                 {

@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using IqraCore.Attributes;
+using MongoDB.Bson;
 
 namespace IqraCore.Entities.Business
 {
@@ -16,14 +17,18 @@ namespace IqraCore.Entities.Business
         public BusinessAppAgentSettings Settings { get; set; } = new BusinessAppAgentSettings();
 
         // Route/Campaigns References
+        [ExcludeInAllEndpoints]
         public List<string> InboundRoutingReferences { get; set; } = new List<string>();
+        [ExcludeInAllEndpoints]
         public List<string> TelephonyCampaignReferences { get; set; } = new List<string>();
+        [ExcludeInAllEndpoints]
         public List<string> WebCampaignReferences { get; set; } = new List<string>();
 
         // Add/Transfer Script Node References
         public List<BusinessAppAgentScriptTransferToAgentNodeReference> ScriptTransferToAgentNodeReferences { get; set; } = new List<BusinessAppAgentScriptTransferToAgentNodeReference>();
     }
 
+    [ExcludeInAllEndpoints]
     public class BusinessAppAgentScriptTransferToAgentNodeReference
     {
         public string ScriptId { get; set; }

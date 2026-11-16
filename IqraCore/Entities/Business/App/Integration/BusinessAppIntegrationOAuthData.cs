@@ -1,5 +1,8 @@
+using IqraCore.Attributes;
+
 namespace IqraCore.Entities.Business
 {
+    [ExcludeInAllEndpoints]
     public class BusinessAppIntegrationOAuthData
     {
         public string? EncryptedRefreshToken { get; set; } = null;

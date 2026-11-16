@@ -10,7 +10,9 @@ namespace IqraCore.Entities.Business
         [MultiLanguageProperty]
         public Dictionary<string, List<BusinessAppCacheAudio>> Audios { get; set; } = new Dictionary<string, List<BusinessAppCacheAudio>>();
 
+        [ExcludeInAllEndpoints]
         public List<string> AgentReferences { get; set; } = new List<string>();
+        [ExcludeInAllEndpoints]
         public List<string> AgentAutoCacheReferences { get; set; } = new List<string>();
     }
 }

@@ -14,19 +14,13 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
     {
         private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly BusinessManager _businessManager;
-        private readonly BusinessLogoRepository _businessLogoRepository;
-        private readonly BusinessAgentAudioRepository _businessAgentAudioRepository;
 
         public APIv1BusinessController(
             ISessionValidationAndPermissionHelper sessionValidationAndPermissionHelper,
-            BusinessManager businessManager,
-            BusinessLogoRepository businessLogoRepository,
-            BusinessAgentAudioRepository businessAgentAudioRepository
+            BusinessManager businessManager
         ) {
             _userSessionValidationAndPermissionHelper = sessionValidationAndPermissionHelper;
             _businessManager = businessManager;
-            _businessLogoRepository = businessLogoRepository;
-            _businessAgentAudioRepository = businessAgentAudioRepository;
         }
 
         [HttpGet]
@@ -67,23 +61,9 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                     );
                 }
 
-                var businessMetaDataModel = new GetUseBusinessFullResultMetaDataModel(businessData);
-                if (businessData.LogoS3StorageLink != null)
-                {
-                    businessMetaDataModel.LogoUrl = _businessLogoRepository.GeneratePresignedUrl(businessData.LogoS3StorageLink.ObjectName, 86400);
-                }
+                var businessMetaDataModel = _businessManager.CreateBusinessMetaDataModel(businessData);
 
-                var businessAppModel = new GetUseBusinessFullResultAppModel(businessAppResult.Data!);
-                foreach (var agent in businessAppResult.Data!.Agents)
-                {
-                    var modelAgent = businessAppModel.Agents.FirstOrDefault(a => a.Id == agent.Id);
-                    if (modelAgent == null) continue;
-
-                    if (agent.Settings.BackgroundAudioS3StorageLink != null)
-                    {
-                        modelAgent.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GeneratePresignedUrl(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000);
-                    }
-                }
+                var businessAppModel = _businessManager.CreateBusinessAppModel(businessAppResult.Data!);
 
                 var fullBusinessReturnModel = new GetUserBusinessFullReturnModel()
                 {

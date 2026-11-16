@@ -119,16 +119,35 @@ function SaveIntegrationToAPI(formData, successCallback, errorCallback) {
 }
 
 /** Core Functions **/
+function ShowAdminIntegrationLogo(image, integration) {
+	if (!integration.presignedLogoUrl) return;
+
+	SignedFileHelper.showImage(image, {
+		file: integration.presignedLogoUrl,
+		fetchFile: () => SignedFileHelper.fetchData("/app/admin/integrations").then((integrations) => {
+			const stored = integrations.find((item) => item.id === integration.id);
+			return stored ? stored.presignedLogoUrl : null;
+		}),
+		onRenewed: (file) => {
+			integration.presignedLogoUrl = file;
+		},
+		fallbackSrc: "/img/picture_placeholder_light.png",
+	});
+}
+
 function createIntegrationCardElement(integration) {
 	const typesBadges = integration.type.map((type) => `<span class="badge border border-dark text-dark me-1 mb-1">${type}</span>`).join("");
 
-	return createIqraCardElement({
+	const cardElement = $(createIqraCardElement({
 		id: integration.id,
 		type: 'integration',
-		visualHtml: `<img src="${integration.presignedLogoUrl}" alt="${integration.name} logo">`,
+		visualHtml: `<img src="${integration.presignedLogoUrl?.url}" alt="${integration.name} logo">`,
 		titleHtml: integration.name,
 		descriptionHtml: typesBadges
-	});
+	}));
+
+	ShowAdminIntegrationLogo(cardElement.find("img").first(), integration);
+	return cardElement;
 }
 
 function createFieldElement(fieldData = null) {
@@ -546,6 +565,7 @@ function resetOrClearIntegrationManager() {
 	integrationIdInput.prop("disabled", false);
 	integrationNameInput.val("");
 	integrationDescriptionInput.val("");
+	SignedFileHelper.releaseImage(integrationLogoPreview);
 	integrationLogoPreview.attr("src", "/img/placeholder.png");
 	integrationLogoInput.val("");
 	integrationTypesList.empty();
@@ -574,9 +594,7 @@ function fillIntegrationManager(integrationData) {
 
 	integrationNameInput.val(integrationData.name);
 	integrationDescriptionInput.val(integrationData.description);
-	if (integrationData.presignedLogoUrl) {
-		integrationLogoPreview.attr("src", integrationData.presignedLogoUrl);
-	}
+	ShowAdminIntegrationLogo(integrationLogoPreview, integrationData);
 
 	// Set disabled state
 	integrationDisabledCheck.prop("checked", integrationData.disabledAt != null);
@@ -758,6 +776,7 @@ function initIntegrationsTab() {
 		if (file) {
 			const reader = new FileReader();
 			reader.onload = function (e) {
+				SignedFileHelper.releaseImage(integrationLogoPreview);
 				integrationLogoPreview.attr("src", e.target.result);
 			};
 			reader.readAsDataURL(file);

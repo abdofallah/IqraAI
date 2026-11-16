@@ -1,6 +1,7 @@
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Logs.Enums;
+using IqraCore.Models.S3Storage;
 
 namespace IqraCore.Models.Business.Conversations
 {
@@ -42,7 +43,7 @@ namespace IqraCore.Models.Business.Conversations
         public DateTime? LeftAt { get; set; }
         public string? LeaveReason { get; set; }
 
-        public string? AudioUrl { get; set; }
+        public S3SignedFileModel? AudioUrl { get; set; }
     }
 
     public class ConversationStateAgentViewModel
@@ -53,7 +54,7 @@ namespace IqraCore.Models.Business.Conversations
         public DateTime? LeftAt { get; set; }
         public string? LeaveReason { get; set; }
 
-        public string? AudioUrl { get; set; }
+        public S3SignedFileModel? AudioUrl { get; set; }
     }
 
     public class ConversationStateMessageViewModel

@@ -2,7 +2,7 @@
 {
     public class GetUserBusinessFullReturnModel
     {
-        public GetUseBusinessFullResultMetaDataModel BusinessData { get; set; }
-        public GetUseBusinessFullResultAppModel BusinessApp { get; set; }
+        public GetUserBusinessFullResultMetaDataModel BusinessData { get; set; }
+        public GetUserBusinessFullResultAppModel BusinessApp { get; set; }
     }
 }

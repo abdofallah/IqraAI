@@ -12,12 +12,12 @@
     var logoUrl = "/img/logo/logo-colored-light.png";
     if (platformLogoS3StorageLink != null)
     {
-        logoUrl = LogoRepo.GeneratePresignedUrl(platformLogoS3StorageLink.ObjectName, 3600);
+        logoUrl = LogoRepo.GenerateSignedFile(platformLogoS3StorageLink.ObjectName, 3600)?.Url;
     }
     var iconUrl = "/img/favicon/favicon.ico";
     if (platformIconS3StorageLink != null)
     {
-        iconUrl = LogoRepo.GeneratePresignedUrl(platformIconS3StorageLink.ObjectName, 3600);
+        iconUrl = LogoRepo.GenerateSignedFile(platformIconS3StorageLink.ObjectName, 3600)?.Url;
     }
 }
 <!DOCTYPE html>
@@ -432,7 +432,6 @@
     <!-- ASP -->
     <script>
         const IsWhiteLabelCustomer = @(Ctx.IsWhiteLabelRequest ? "true" : "false");
-        const BusinessToolAudioURL = "google.com";
         const BusinessAgentBackgroundAudioURL = "google.com";
     </script>
 
@@ -511,6 +510,7 @@
     <!-- Custom  -->
     <script src="~/js/ui_helpers.js"></script>
     <script src="~/js/changes_helper.js"></script>
+    <script src="~/js/signed_file_helper.js"></script>
     <script src="~/js/multilanguage_dropdown.js"></script>
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>

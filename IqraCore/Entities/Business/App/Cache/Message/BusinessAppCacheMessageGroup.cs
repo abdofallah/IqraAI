@@ -10,6 +10,7 @@ namespace IqraCore.Entities.Business
         [MultiLanguageProperty]
         public Dictionary<string, List<BusinessAppCacheMessage>> Messages { get; set; } = new Dictionary<string, List<BusinessAppCacheMessage>>();
 
+        [ExcludeInAllEndpoints]
         public List<string> AgentReferences { get; set; } = new List<string>();
     }
 }

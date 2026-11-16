@@ -3,6 +3,7 @@ using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.S3Storage;
 using IqraCore.Interfaces.User;
+using IqraCore.Models.User.Business;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
@@ -385,6 +386,24 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             return result;
+        }
+
+        public GetUserBusinessFullResultMetaDataModel CreateBusinessMetaDataModel(BusinessData businessData)
+        {
+            var model = new GetUserBusinessFullResultMetaDataModel(businessData);
+            if (businessData.LogoS3StorageLink != null)
+            {
+                model.LogoUrl = _businessLogoRepository!.GenerateSignedFile(businessData.LogoS3StorageLink.ObjectName, 86400);
+            }
+            return model;
+        }
+
+        public GetUserBusinessFullResultAppModel CreateBusinessAppModel(BusinessApp businessApp)
+        {
+            var model = new GetUserBusinessFullResultAppModel(businessApp);
+            model.Agents = businessApp.Agents.Select(GetAgentsManager().CreateAgentModel).ToList();
+            model.Tools = businessApp.Tools.Select(GetToolsManager().CreateToolModel).ToList();
+            return model;
         }
 
         public async Task<FunctionReturnResult<List<BusinessData>?>> GetUserBusinessesByIds(List<long> businessesId, string userEmail)

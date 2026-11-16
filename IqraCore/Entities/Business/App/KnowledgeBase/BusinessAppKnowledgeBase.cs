@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Business.App.KnowledgeBase.Configuration;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Business.App.KnowledgeBase.Configuration;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -14,6 +15,7 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase
         public List<long> Documents { get; set; } = new List<long>();
 
         // References
+        [ExcludeInAllEndpoints]
         public List<string> AgentReferences { get; set; } = new List<string>();
     }
 }

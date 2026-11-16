@@ -3,6 +3,7 @@ using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business.App.Campaign;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -34,9 +35,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         **/
 
         [HttpPost("/app/user/business/{businessId}/campaign/telephony/save")]
-        public async Task<FunctionReturnResult<BusinessAppTelephonyCampaign?>> SaveBusinessTelephonyCampaign(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppTelephonyCampaignModel?>> SaveBusinessTelephonyCampaign(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppTelephonyCampaign?>();
+            var result = new FunctionReturnResult<BusinessAppTelephonyCampaignModel?>();
 
             try
             {
@@ -129,7 +130,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(addOrUpdateResult.Data);
+                return result.SetSuccessResult(new BusinessAppTelephonyCampaignModel(addOrUpdateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -219,9 +220,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         **/ 
 
         [HttpPost("/app/user/business/{businessId}/campaign/web/save")]
-        public async Task<FunctionReturnResult<BusinessAppWebCampaign?>> SaveBusinessWebCampaign(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppWebCampaignModel?>> SaveBusinessWebCampaign(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppWebCampaign?>();
+            var result = new FunctionReturnResult<BusinessAppWebCampaignModel?>();
 
             try
             {
@@ -314,7 +315,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(addOrUpdateResult.Data);
+                return result.SetSuccessResult(new BusinessAppWebCampaignModel(addOrUpdateResult.Data!));
             }
             catch (Exception ex)
             {

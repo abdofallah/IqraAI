@@ -11,7 +11,7 @@ namespace IqraCore.Models.User.MasterUserDataModel
             FirstName = userData.FirstName;
             LastName = userData.LastName;
 
-            Bussiness = userData.Businesses;
+            Business = userData.Businesses;
 
             BusinessPermission = new UserPermissionBusinessModel(userData.Permission.Business);
 
@@ -46,7 +46,7 @@ namespace IqraCore.Models.User.MasterUserDataModel
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
 
-        public List<long> Bussiness { get; set; } = new List<long>();
+        public List<long> Business { get; set; } = new List<long>();
 
         public UserPermissionBusinessModel BusinessPermission { get; set; } = new UserPermissionBusinessModel();
 

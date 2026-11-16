@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.Admin.Business;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,9 +21,9 @@ namespace ProjectIqraFrontend.Controllers.Admin
         }
 
         [HttpPost("/app/admin/businesses")]
-        public async Task<FunctionReturnResult<List<BusinessData>?>> GetBusinesses(int page = 0, int pageSize = 10)
+        public async Task<FunctionReturnResult<List<AdminBusinessDataModel>?>> GetBusinesses(int page = 0, int pageSize = 10)
         {
-            var result = new FunctionReturnResult<List<BusinessData>?>();
+            var result = new FunctionReturnResult<List<AdminBusinessDataModel>?>();
 
             try
             {
@@ -48,7 +49,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                     );
                 }
 
-                return result.SetSuccessResult(businessesResult.Data);
+                return result.SetSuccessResult(businessesResult.Data!.Select(x => new AdminBusinessDataModel(x)).ToList());
             }
             catch (Exception ex)
             {

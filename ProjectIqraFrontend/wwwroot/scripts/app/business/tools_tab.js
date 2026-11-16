@@ -154,9 +154,9 @@ const ToolManageChanges = ChangesHelper.define({
 	audio: {
 		kind: "object",
 		fields: {
-			duringExecutionAudioUrl: { kind: "custom", equals: SameToolAudioCommand, from: "duringExecutionAudioS3StorageLink" },
+			duringExecutionAudioUrl: { kind: "custom", equals: SameToolAudioCommand },
 			duringExecutionAudioVolume: { kind: "number", when: () => toolAudioDuringExecutionSelect.val() !== "none" },
-			afterExecutionAudioUrl: { kind: "custom", equals: SameToolAudioCommand, from: "afterExecutionAudioS3StorageLink" },
+			afterExecutionAudioUrl: { kind: "custom", equals: SameToolAudioCommand },
 			afterExecutionAudioVolume: { kind: "number", when: () => toolAudioAfterExecutionSelect.val() !== "none" },
 		},
 	},
@@ -273,7 +273,38 @@ function DeleteBusinessToolFromAPI(toolId, successCallback, errorCallback) {
     });
 }
 
+function FetchToolAudioSignedFileFromAPI(toolId, audioField) {
+	return SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}`).then((businessData) => {
+		const tool = businessData.businessApp.tools.find((item) => item.id === toolId);
+		return tool ? tool.audio[audioField] : null;
+	});
+}
+
 // Functions
+function LoadToolAudioPreview(toolData, audioField, waveSurfer, getCurrentWaveSurfer) {
+	const handle = SignedFileHelper.use({
+		file: toolData.audio[audioField],
+		fetchFile: () => FetchToolAudioSignedFileFromAPI(toolData.id, audioField),
+		apply: (url) => {
+			if (getCurrentWaveSurfer() === waveSurfer) waveSurfer.load(url);
+		},
+		onRenewed: (file) => {
+			toolData.audio[audioField] = file;
+		},
+		onUnavailable: () => {
+			AlertManager.createAlert({
+				type: "danger",
+				message: "Error occured while loading the tool audio. Check browser console for logs.",
+				timeout: 6000,
+			});
+		},
+	});
+
+	waveSurfer.on("error", () => {
+		handle.failed();
+	});
+}
+
 function ShowToolsListTab() {
 	toolManagerHeader.removeClass("show");
 	toolManagerTab.removeClass("show");
@@ -552,9 +583,9 @@ function CreateToolsDefaultToolObject() {
 		},
 		response: {},
 		audio: {
-			duringExecutionAudioS3StorageLink: null,
+			duringExecutionAudioUrl: null,
             duringExecutionAudioVolume: 100,
-			afterExecutionAudioS3StorageLink: null,
+			afterExecutionAudioUrl: null,
             afterExecutionAudioVolume: 100
 		},
 	};
@@ -645,9 +676,9 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 		},
 		response: () => ReadToolResponses(),
 		audio: {
-			duringExecutionAudioUrl: () => ReadToolAudioCommand(toolAudioDuringExecutionSelect.val(), toolAudioDuringExecutionUploadInput[0], ToolAudioDuringExecutionWaveSurfer, CurrentManageToolData.audio.duringExecutionAudioS3StorageLink),
+			duringExecutionAudioUrl: () => ReadToolAudioCommand(toolAudioDuringExecutionSelect.val(), toolAudioDuringExecutionUploadInput[0], ToolAudioDuringExecutionWaveSurfer, CurrentManageToolData.audio.duringExecutionAudioUrl),
 			duringExecutionAudioVolume: () => parseInt(toolAudioDuringExecutionVolumeInput.val()),
-			afterExecutionAudioUrl: () => ReadToolAudioCommand(toolAudioAfterExecutionSelect.val(), toolAudioAfterExecutionUploadInput[0], ToolAudioAfterExecutionWaveSurfer, CurrentManageToolData.audio.afterExecutionAudioS3StorageLink),
+			afterExecutionAudioUrl: () => ReadToolAudioCommand(toolAudioAfterExecutionSelect.val(), toolAudioAfterExecutionUploadInput[0], ToolAudioAfterExecutionWaveSurfer, CurrentManageToolData.audio.afterExecutionAudioUrl),
 			afterExecutionAudioVolume: () => parseInt(toolAudioAfterExecutionVolumeInput.val()),
 		},
 	}, { build: true });
@@ -1034,22 +1065,22 @@ function FillToolsManageTab(toolData) {
 
 	// Audio
 	function fillAudioTab() {
-		if (toolData.audio.duringExecutionAudioS3StorageLink) {
+		if (toolData.audio.duringExecutionAudioUrl) {
 			toolAudioDuringExecutionSelect.val("custom").change();
 
 			ToolAudioDuringExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#tool-audio-during-waveform");
-			ToolAudioDuringExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.duringExecutionAudioS3StorageLink.objectName}`);
+			LoadToolAudioPreview(toolData, "duringExecutionAudioUrl", ToolAudioDuringExecutionWaveSurfer, () => ToolAudioDuringExecutionWaveSurfer);
 			toolAudioDuringExecutionVolumeInput.val(toolData.audio.duringExecutionAudioVolume);
 
 			toolAudioDuringExecutionInputBox.find(".no-audio-notice").addClass("d-none");
 			toolAudioDuringExecutionInputBox.find(".recording-container-waveform").removeClass("d-none");
 			toolAudioDuringExecutionInputBox.find(".audio-controller").removeClass("d-none");
 		}
-		if (toolData.audio.afterExecutionAudioS3StorageLink) {
+		if (toolData.audio.afterExecutionAudioUrl) {
 			toolAudioAfterExecutionSelect.val("custom").change();
 
             ToolAudioAfterExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#tool-audio-after-waveform");
-			ToolAudioAfterExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.afterExecutionAudioS3StorageLink.objectName}`);
+			LoadToolAudioPreview(toolData, "afterExecutionAudioUrl", ToolAudioAfterExecutionWaveSurfer, () => ToolAudioAfterExecutionWaveSurfer);
 			toolAudioAfterExecutionVolumeInput.val(toolData.audio.afterExecutionAudioVolume);
 
 			toolAudioAfterExecutionInputBox.find(".no-audio-notice").addClass("d-none");
@@ -1336,7 +1367,7 @@ function ValidateToolsManageTab(onlyRemove = true) {
 
 	// Audio Tab Validation
 	function validateAudioTab() {
-		if (toolAudioDuringExecutionSelect.val() === "custom" && toolAudioDuringExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.duringExecutionAudioS3StorageLink == null) {
+		if (toolAudioDuringExecutionSelect.val() === "custom" && toolAudioDuringExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.duringExecutionAudioUrl == null) {
 			validated = false;
 			errors.push("Audio file for during execution is required.");
 
@@ -1361,7 +1392,7 @@ function ValidateToolsManageTab(onlyRemove = true) {
             }
 		}
 
-		if (toolAudioAfterExecutionSelect.val() === "custom" && toolAudioAfterExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.afterExecutionAudioS3StorageLink == null) {
+		if (toolAudioAfterExecutionSelect.val() === "custom" && toolAudioAfterExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.afterExecutionAudioUrl == null) {
 			validated = false;
 			errors.push("Audio file for after execution is required.");
 

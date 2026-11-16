@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Interfaces;
 
 namespace IqraCore.Entities.Business
 {
@@ -11,6 +12,7 @@ namespace IqraCore.Entities.Business
         public List<BusinessAppCacheEmbeddingCacheLink> GeneratedCacheLinks { get; set; } = new List<BusinessAppCacheEmbeddingCacheLink>();
     }
 
+    [ExcludeInAllEndpoints]
     public class BusinessAppCacheEmbeddingCacheLink
     {
         public InterfaceEmbeddingProviderEnum Provider { get; set; }

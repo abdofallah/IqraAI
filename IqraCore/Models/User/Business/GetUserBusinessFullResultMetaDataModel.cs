@@ -1,27 +1,24 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Models.S3Storage;
 
 namespace IqraCore.Models.User.Business
 {
-    public class GetUseBusinessFullResultMetaDataModel
+    public class GetUserBusinessFullResultMetaDataModel
     {
-        public GetUseBusinessFullResultMetaDataModel(BusinessData data)
+        public GetUserBusinessFullResultMetaDataModel(BusinessData data)
         {
             Id = data.Id;
-            MasterUserEmail = data.MasterUserEmail;
             Name = data.Name;
-            // LogoUrl must be filled manually using a presigned url
             DefaultLanguage = data.DefaultLanguage;
             Languages = data.Languages;
             Tutorials = data.Tutorials;
             Permission = data.Permission;
-            WhiteLabelAssignedCustomerEmail = data.WhiteLabelAssignedCustomerEmail;
         }
 
         public long Id { get; set; }
-        public string MasterUserEmail { get; set; }
 
         public string Name { get; set; }
-        public string? LogoUrl { get; set; }
+        public S3SignedFileModel? LogoUrl { get; set; }
 
         public string DefaultLanguage { get; set; }
         public List<string> Languages { get; set; }
@@ -29,7 +26,5 @@ namespace IqraCore.Models.User.Business
         public Dictionary<string, object> Tutorials { get; set; }
 
         public BusinessModulePermission Permission { get; set; }
-
-        public string? WhiteLabelAssignedCustomerEmail { get; set; }
     }
 }

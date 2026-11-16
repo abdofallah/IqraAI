@@ -279,6 +279,12 @@ function FetchConversationStateBySessionId(sessionId, successCallback, errorCall
         },
     });
 }
+function FetchConversationAudioSignedFileFromAPI(sessionId, memberType) {
+    return SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}/conversations/state/${sessionId}`).then((stateData) => {
+        const members = memberType === "agent" ? stateData.agents : stateData.clients;
+        return members && members.length > 0 ? members[0].audioUrl : null;
+    });
+}
 function FetchWebSessionConversationsMetaDataFromAPI(requestPayload, successCallback, errorCallback) {
     $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/conversations/websession/metadata`,
@@ -1117,7 +1123,7 @@ function PopulateManageView(queueData, stateData) {
 
         PopulateMetricsTab(stateData.metrics);
         RenderConversationTurns(stateData.turns);
-        LoadConversationAudio(stateData);
+        LoadConversationAudio(stateData, queueData.sessionId);
 
         // Post-Analysis
         if (stateData.postAnalysis) {
@@ -1716,7 +1722,7 @@ function initAudioTurnSync(stateData) {
     });
 }
 
-function LoadConversationAudio(stateData) {
+function LoadConversationAudio(stateData, sessionId) {
     // Reset audio states
     agentAudioContainer.addClass('d-none');
     clientAudioContainer.addClass('d-none');
@@ -1735,7 +1741,7 @@ function LoadConversationAudio(stateData) {
         agentAudioPlayBtn.prop('disabled', true);
         agentAudioDownloadBtn.prop('disabled', true).attr('href', '#');
         agentAudioError.addClass('d-none');
-        handleAudioUrlSuccess(agentInfo.audioUrl, '#waveform-agent-audio', agentAudioLoader, agentAudioPlayBtn, agentAudioDownloadBtn, agentAudioError);
+        handleAudioUrlSuccess(agentInfo.audioUrl, () => FetchConversationAudioSignedFileFromAPI(sessionId, "agent"), '#waveform-agent-audio', agentAudioLoader, agentAudioPlayBtn, agentAudioDownloadBtn, agentAudioError);
     } else if (agentInfo) {
         agentAudioContainer.removeClass('d-none');
         agentAudioError.text('Agent audio not yet available. It may still be compiling.').removeClass('d-none');
@@ -1749,7 +1755,7 @@ function LoadConversationAudio(stateData) {
         clientAudioPlayBtn.prop('disabled', true);
         clientAudioDownloadBtn.prop('disabled', true).attr('href', '#');
         clientAudioError.addClass('d-none');
-        handleAudioUrlSuccess(clientInfo.audioUrl, '#waveform-client-audio', clientAudioLoader, clientAudioPlayBtn, clientAudioDownloadBtn, clientAudioError);
+        handleAudioUrlSuccess(clientInfo.audioUrl, () => FetchConversationAudioSignedFileFromAPI(sessionId, "client"), '#waveform-client-audio', clientAudioLoader, clientAudioPlayBtn, clientAudioDownloadBtn, clientAudioError);
     } else if (clientInfo) {
         clientAudioContainer.removeClass('d-none');
         clientAudioError.text('Client audio not yet available. It may still be compiling.').removeClass('d-none');
@@ -1868,19 +1874,114 @@ function LoadSessionLogsPaginated(sessionId, page) {
 }
 
 /** Event Handlers **/
-function handleAudioUrlSuccess(url, containerId, loader, playBtn, downloadBtn, errorEl) {
+function handleAudioUrlSuccess(file, fetchFile, containerId, loader, playBtn, downloadBtn, errorEl) {
     try {
         const wavesurfer = getOrCreateWaveSurfer(containerId, {
             waveColor: containerId === '#waveform-agent-audio' ? "#5f6833" : "#33685f", // Different colors
             progressColor: containerId === '#waveform-agent-audio' ? "#CBE54E" : "#4ecbe5",
         });
 
-        wavesurfer.load(url);
+        let currentFile = file;
+        let lastError = null;
+        const renewFailedMessage = "Error loading audio: the recording link could not be renewed.";
+        const isCurrentPlayer = () => (containerId === '#waveform-agent-audio' ? waveSurferAgent : waveSurferClient) === wavesurfer;
+        const handle = SignedFileHelper.use({
+            file: file,
+            fetchFile: fetchFile,
+            apply: (url) => {
+                if (isCurrentPlayer()) wavesurfer.load(url);
+            },
+            onRenewed: (renewedFile) => {
+                if (isCurrentPlayer()) currentFile = renewedFile;
+            },
+            onUnavailable: () => {
+                if (!isCurrentPlayer()) return;
+                handleAudioUrlError({ message: lastError ? `Error loading audio: ${lastError}` : renewFailedMessage }, loader, errorEl);
+            },
+        });
+
+        const downloadFailedMessage = "Error loading audio: the recording could not be downloaded.";
+        const downloadFileName = `conversation_${containerId.includes('agent') ? 'agent' : 'client'}_audio.wav`;
+        let isDownloading = false;
+
+        const fetchRecording = async (url) => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) return null;
+                return await response.blob();
+            } catch (error) {
+                console.error(`Error downloading audio for ${containerId}:`, error);
+                return null;
+            }
+        };
+
+        const renewForDownload = async () => {
+            const renewedFile = await SignedFileHelper.renew(fetchFile);
+            if (renewedFile !== null && isCurrentPlayer()) currentFile = renewedFile;
+            return renewedFile;
+        };
+
+        const saveRecording = (blob) => {
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = downloadFileName;
+            link.classList.add('d-none');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+        };
+
+        const downloadRecording = async () => {
+            let renewed = false;
+            if (!SignedFileHelper.isFresh(currentFile)) {
+                renewed = true;
+                if (await renewForDownload() === null) {
+                    if (isCurrentPlayer()) handleAudioUrlError({ message: renewFailedMessage }, loader, errorEl);
+                    return;
+                }
+            }
+            if (!isCurrentPlayer()) return;
+
+            let blob = await fetchRecording(currentFile.url);
+            if (!isCurrentPlayer()) return;
+
+            if (blob === null && !renewed) {
+                if (await renewForDownload() === null) {
+                    if (isCurrentPlayer()) handleAudioUrlError({ message: renewFailedMessage }, loader, errorEl);
+                    return;
+                }
+                if (!isCurrentPlayer()) return;
+
+                blob = await fetchRecording(currentFile.url);
+                if (!isCurrentPlayer()) return;
+            }
+
+            if (blob === null) {
+                handleAudioUrlError({ message: downloadFailedMessage }, loader, errorEl);
+                return;
+            }
+
+            saveRecording(blob);
+        };
+
+        downloadBtn.off('click.signedFile').on('click.signedFile', async (event) => {
+            event.preventDefault();
+            if (isDownloading || !isCurrentPlayer()) return;
+
+            isDownloading = true;
+            try {
+                await downloadRecording();
+            } finally {
+                isDownloading = false;
+            }
+        });
 
         wavesurfer.on('ready', () => {
             loader.addClass('d-none');
             playBtn.prop('disabled', false);
-            downloadBtn.prop('disabled', false).attr('href', url).attr('download', `conversation_${containerId.includes('agent') ? 'agent' : 'client'}_audio.wav`); // Set download link
+            downloadBtn.prop('disabled', false);
             console.log(`WaveSurfer ready for ${containerId}`);
             // Enable sync controls when at least one player is ready
             syncPlayPauseBtn.prop('disabled', false);
@@ -1889,7 +1990,8 @@ function handleAudioUrlSuccess(url, containerId, loader, playBtn, downloadBtn, e
 
         wavesurfer.on('error', (err) => {
             console.error(`WaveSurfer error for ${containerId}:`, err);
-            handleAudioUrlError({ message: `Error loading audio: ${err}` }, loader, errorEl);
+            lastError = err;
+            handle.failed();
         });
 
         wavesurfer.on('play', () => {

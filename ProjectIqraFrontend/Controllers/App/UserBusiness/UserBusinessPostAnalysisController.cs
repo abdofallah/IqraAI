@@ -3,6 +3,7 @@ using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business.App.PostAnalysis;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -28,9 +29,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/postanalysis/save")]
-        public async Task<FunctionReturnResult<BusinessAppPostAnalysis?>> SavePostAnalysisTemplate(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppPostAnalysisModel?>> SavePostAnalysisTemplate(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppPostAnalysis?>();
+            var result = new FunctionReturnResult<BusinessAppPostAnalysisModel?>();
 
             try
             {
@@ -122,7 +123,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(addOrUpdateResult.Data);
+                return result.SetSuccessResult(new BusinessAppPostAnalysisModel(addOrUpdateResult.Data!));
             }
             catch (Exception ex)
             {

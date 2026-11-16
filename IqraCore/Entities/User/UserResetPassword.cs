@@ -1,7 +1,9 @@
-﻿using MongoDB.Bson;
+﻿using IqraCore.Attributes;
+using MongoDB.Bson;
 
 namespace IqraCore.Entities.User
 {
+    [ExcludeInAllEndpoints]
     public class UserResetPassword
     {
         public string? RequestedBy { get; set; } = null;

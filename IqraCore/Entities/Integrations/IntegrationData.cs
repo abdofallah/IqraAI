@@ -1,5 +1,6 @@
 ﻿using IqraCore.Attributes;
 using IqraCore.Entities.S3Storage;
+using IqraCore.Models.S3Storage;
 using MongoDB.Bson;
 
 namespace IqraCore.Entities.Integrations
@@ -19,7 +20,7 @@ namespace IqraCore.Entities.Integrations
         public S3StorageFileLink? LogoS3StorageLink { get; set; } = null;
         [ExcludeInAllEndpoints]
         [IncludeInEndpoint("/app/admin/integrations")]
-        public string? PresignedLogoUrl { get; set; } = null;
+        public S3SignedFileModel? PresignedLogoUrl { get; set; } = null;
 
         public List<string> Type { get; set; } = new List<string>();
         public List<IntegrationFieldData> Fields { get; set; } = new List<IntegrationFieldData>();

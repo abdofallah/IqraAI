@@ -15,6 +15,7 @@ namespace ProjectIqraFrontend.Middlewares
     {
         private IHttpContextAccessor _httpContextAccessor;
         private readonly ConcurrentDictionary<(Type, string), PropertyInfo[]> _propertyCache = new ConcurrentDictionary<(Type, string), PropertyInfo[]>();
+        private static readonly ConcurrentDictionary<Type, bool> _excludedTypeCache = new ConcurrentDictionary<Type, bool>();
 
         public EndpointAwareJsonConverter()
         {
@@ -48,9 +49,15 @@ namespace ProjectIqraFrontend.Middlewares
                 return;
             }
 
+            var type = value.GetType();
+            if (IsExcludedType(type))
+            {
+                writer.WriteNullValue();
+                return;
+            }
+
             writer.WriteStartObject();
 
-            var type = value.GetType();
             var currentEndpoint = GetRouteTemplate();
             var properties = GetSerializableProperties(type, currentEndpoint);
 
@@ -302,6 +309,16 @@ namespace ProjectIqraFrontend.Middlewares
 
         private static bool ShouldSerializeProperty(PropertyInfo property, string currentEndpoint)
         {
+            if (property.GetCustomAttribute<JsonIgnoreAttribute>()?.Condition == JsonIgnoreCondition.Always)
+            {
+                return false;
+            }
+
+            if (IsExcludedType(property.PropertyType))
+            {
+                return false;
+            }
+
             if (property.GetCustomAttribute<ExcludeInAllEndpointsAttribute>() is object)
             {
                 return property.GetCustomAttributes<IncludeInEndpointAttribute>()
@@ -310,6 +327,39 @@ namespace ProjectIqraFrontend.Middlewares
 
             return !property.GetCustomAttributes<ExcludeInEndpointAttribute>()
                 .Any(attr => MatchPattern(attr.Endpoint, currentEndpoint));
+        }
+
+        private static bool IsExcludedType(Type type)
+        {
+            return _excludedTypeCache.GetOrAdd(type, key =>
+            {
+                var underlyingType = Nullable.GetUnderlyingType(key) ?? key;
+                if (underlyingType.GetCustomAttribute<ExcludeInAllEndpointsAttribute>(true) is object)
+                {
+                    return true;
+                }
+
+                if (underlyingType == typeof(string))
+                {
+                    return false;
+                }
+
+                var enumerableType = underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+                    ? underlyingType
+                    : underlyingType.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+                if (enumerableType == null)
+                {
+                    return false;
+                }
+
+                var elementType = enumerableType.GetGenericArguments()[0];
+                if (elementType.IsGenericType && elementType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+                {
+                    elementType = elementType.GetGenericArguments()[1];
+                }
+
+                return elementType != underlyingType && IsExcludedType(elementType);
+            });
         }
 
         private static bool MatchPattern(string template, string actual)

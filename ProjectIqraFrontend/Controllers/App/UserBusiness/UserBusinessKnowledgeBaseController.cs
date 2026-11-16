@@ -4,6 +4,7 @@ using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business.App.KnowledgeBase;
 using IqraCore.Models.RAG.Retrieval;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
@@ -36,9 +37,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/knowledgebase/save")]
-        public async Task<FunctionReturnResult<BusinessAppKnowledgeBase?>> SaveKnowledgeBase(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseModel?>> SaveKnowledgeBase(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppKnowledgeBase?>();
+            var result = new FunctionReturnResult<BusinessAppKnowledgeBaseModel?>();
 
             try
             {
@@ -131,7 +132,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(addOrUpdateResult.Data);
+                return result.SetSuccessResult(new BusinessAppKnowledgeBaseModel(addOrUpdateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -215,9 +216,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/knowledgebase/{knowledgeBaseId}/documents/upload")]
-        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> UploadKnowledgeBaseDocument(long businessId, string knowledgeBaseId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocumentModel?>> UploadKnowledgeBaseDocument(long businessId, string knowledgeBaseId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
+            var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocumentModel?>();
 
             try
             {
@@ -294,7 +295,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(addAndProcessResult.Data);
+                return result.SetSuccessResult(new BusinessAppKnowledgeBaseDocumentModel(addAndProcessResult.Data!));
             }
             catch (Exception ex)
             {
@@ -306,9 +307,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpGet("/app/user/business/{businessId}/knowledgebase/{kbId}/documents")]
-        public async Task<FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>> GetKnowledgebaseDocuments(long businessId, string kbId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<List<BusinessAppKnowledgeBaseDocumentModel>?>> GetKnowledgebaseDocuments(long businessId, string kbId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>();
+            var result = new FunctionReturnResult<List<BusinessAppKnowledgeBaseDocumentModel>?>();
 
             try
             {
@@ -368,7 +369,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(addOrUpdateResult.Data);
+                return result.SetSuccessResult(addOrUpdateResult.Data!.Select(x => new BusinessAppKnowledgeBaseDocumentModel(x)).ToList());
             }
             catch (Exception ex)
             {
@@ -496,9 +497,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/knowledgebase/{knowledgeBaseId}/documents/{documentId}/chunks/save")]
-        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> SaveDocumentChunks(long businessId, string knowledgeBaseId, long documentId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocumentModel?>> SaveDocumentChunks(long businessId, string knowledgeBaseId, long documentId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
+            var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocumentModel?>();
 
             try
             {
@@ -558,7 +559,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(forwardResult.Data);
+                return result.SetSuccessResult(new BusinessAppKnowledgeBaseDocumentModel(forwardResult.Data!));
             }
             catch (Exception ex) {
                 return result.SetFailureResult(

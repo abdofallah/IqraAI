@@ -4,7 +4,6 @@ using IqraCore.Interfaces.Validation;
 using IqraCore.Models.Specification;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Integrations;
-using IqraInfrastructure.Repositories.Integrations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
@@ -14,16 +13,13 @@ namespace ProjectIqraFrontend.Controllers.Admin
     {
         private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly IntegrationsManager _integrationsManager;
-        private readonly IntegrationsLogoRepository _integrationsLogoRepository;
 
         public AppAdminIntegrationsController(
             ISessionValidationAndPermissionHelper sessionValidationAndPermissionHelper,
-            IntegrationsManager integrationsManager,
-            IntegrationsLogoRepository integrationsLogoRepository
+            IntegrationsManager integrationsManager
         ) {
             _userSessionValidationAndPermissionHelper = sessionValidationAndPermissionHelper;
             _integrationsManager = integrationsManager;
-            _integrationsLogoRepository = integrationsLogoRepository;
         }
 
         [HttpGet("/app/admin/integrations")]
@@ -55,13 +51,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                     );
                 }
 
-                foreach (var item in integrationsResult.Data!)
-                {
-                    if (item.LogoS3StorageLink != null)
-                    {
-                        item.PresignedLogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400);
-                    }
-                }
+                _integrationsManager.AddAdminIntegrationLogos(integrationsResult.Data!);
 
                 return result.SetSuccessResult(integrationsResult.Data);
             }

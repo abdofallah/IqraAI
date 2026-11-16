@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Helper.Telephony;
 
 namespace IqraCore.Entities.Business
 {
@@ -10,7 +11,9 @@ namespace IqraCore.Entities.Business
 
         public bool IsE164Number { get; set; } = false;
 
+        [ExcludeInAllEndpoints]
         public string? OverrideSipUsername { get; set; }
+        [ExcludeInAllEndpoints]
         public string? OverrideSipPassword { get; set; }
 
         public List<string> AllowedSourceIps { get; set; } = new List<string>();

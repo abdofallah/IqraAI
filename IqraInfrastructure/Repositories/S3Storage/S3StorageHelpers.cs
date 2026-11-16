@@ -1,5 +1,6 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
+using IqraCore.Models.S3Storage;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
@@ -54,21 +55,22 @@ namespace IqraInfrastructure.Repositories.S3Storage
             }
         }
 
-        public static string? GeneratePresignedUrl(IAmazonS3 client, string bucketName, string key, int expiresInSeconds, ILogger logger)
+        public static S3SignedFileModel? GenerateSignedFile(IAmazonS3 client, string bucketName, string key, int expiresInSeconds, ILogger logger)
         {
             if (string.IsNullOrEmpty(key) || expiresInSeconds <= 0) return null;
 
             try
             {
+                var expiresAt = DateTime.UtcNow.AddSeconds(expiresInSeconds);
                 var request = new GetPreSignedUrlRequest
                 {
                     BucketName = bucketName,
                     Key = key,
-                    Expires = DateTime.UtcNow.AddSeconds(expiresInSeconds),
+                    Expires = expiresAt,
                     Verb = HttpVerb.GET
                 };
 
-                return client.GetPreSignedURL(request);
+                return new S3SignedFileModel(client.GetPreSignedURL(request), expiresAt);
             }
             catch (Exception ex)
             {

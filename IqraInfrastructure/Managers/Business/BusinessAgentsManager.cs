@@ -71,7 +71,7 @@ namespace IqraInfrastructure.Managers.Business
             var model = new BusinessAppAgentModel(agent);
             if (agent.Settings.BackgroundAudioS3StorageLink != null)
             {
-                model.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GeneratePresignedUrl(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000);
+                model.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GenerateSignedFile(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000);
             }
             return model;
         }

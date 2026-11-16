@@ -4,6 +4,7 @@ using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business.App.Number;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -30,9 +31,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/numbers/save")]
-        public async Task<FunctionReturnResult<BusinessNumberData?>> SaveBusinessNumber([FromForm] IFormCollection formData, long businessId)
+        public async Task<FunctionReturnResult<BusinessNumberModel?>> SaveBusinessNumber([FromForm] IFormCollection formData, long businessId)
         {
-            var result = new FunctionReturnResult<BusinessNumberData?>();
+            var result = new FunctionReturnResult<BusinessNumberModel?>();
 
             try
             {
@@ -300,7 +301,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(saveResult.Data);
+                return result.SetSuccessResult(BusinessNumberModel.Create(saveResult.Data!));
             }
             catch (Exception ex)
             {

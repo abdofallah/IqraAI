@@ -73,6 +73,22 @@ function MoveToBusinessPage(BusinessId) {
 	window.location.href = "/business/" + BusinessId;
 }
 
+function ShowBusinessCardLogo(cardElement, businessData) {
+	if (!businessData.logoUrl) return;
+
+	SignedFileHelper.showImage(cardElement.find("img").first(), {
+		file: businessData.logoUrl,
+		fetchFile: () => SignedFileHelper.fetchData("/app/user/businesses").then((businesses) => {
+			const business = businesses.find((item) => item.id === businessData.id);
+			return business ? business.logoUrl : null;
+		}),
+		onRenewed: (file) => {
+			businessData.logoUrl = file;
+		},
+		fallbackSrc: "/img/picture_placeholder_light.png",
+	});
+}
+
 function CreateUserBusinessCard(businessData) {
 	const actionDropdownHtml = `
         <div class="dropdown action-dropdown dropdown-menu-end">
@@ -85,15 +101,18 @@ function CreateUserBusinessCard(businessData) {
         </div>
     `;
 
-	return createIqraCardElement({
+	const cardElement = $(createIqraCardElement({
 		id: businessData.id,
 		type: 'business',
 		href: `/business/${businessData.id}`,
 		zIndex: lastBusinessCardIndex--,
-		visualHtml: `<img src="${businessData.logoUrl}" alt="${businessData.name} logo">`,
+		visualHtml: `<img src="${businessData.logoUrl?.url}" alt="${businessData.name} logo">`,
 		titleHtml: businessData.name,
 		actionDropdownHtml: actionDropdownHtml,
-	});
+	}));
+
+	ShowBusinessCardLogo(cardElement, businessData);
+	return cardElement;
 }
 
 function ValidateAddNewBusinessModal(enableDisableButton = false) {

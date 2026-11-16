@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Helper;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.Options;
@@ -24,12 +25,14 @@ namespace IqraCore.Entities.Business
         public List<BusinessAppToolWebCampaignReference> WebCampaignReferences { get; set; } = new List<BusinessAppToolWebCampaignReference>();
     }
 
+    [ExcludeInAllEndpoints]
     public class BusinessAppToolScriptExecuteCustomToolNodeReference
     { 
         public string ScriptId { get; set; }
         public string NodeId { get; set; }
     }
 
+    [ExcludeInAllEndpoints]
     public class BusinessAppToolInboundRouteReference
     {
         public string RouteId { get; set; }
@@ -44,6 +47,7 @@ namespace IqraCore.Entities.Business
         ConversationPostAnalysis = 4
     }
 
+    [ExcludeInAllEndpoints]
     public class BusinessAppToolTelephonyCampaignReference
     {
         public string CampaignId { get; set; }
@@ -60,6 +64,7 @@ namespace IqraCore.Entities.Business
         ConversationPostAnalysis = 6
     }
 
+    [ExcludeInAllEndpoints]
     public class BusinessAppToolWebCampaignReference
     {
         public string CampaignId { get; set; }

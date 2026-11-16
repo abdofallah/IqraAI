@@ -117,7 +117,7 @@
     <!-- Main Container -->
     <div class="w-100 main-container-wrapper" id="tabs-list">
 
-        <!-- Bussiness Container -->
+        <!-- Business Container -->
         <partial name="_BusinessesTab.cshtml" />
 
         <!-- Usage Container -->
@@ -151,6 +151,7 @@
     <!-- Custom Scripts -->
     <script src="~/js/ui_helpers.js"></script>
     <script src="~/js/changes_helper.js"></script>
+    <script src="~/js/signed_file_helper.js"></script>
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>
     <script src="~/js/notifications_manager.js"></script>
@@ -485,7 +486,7 @@
                             } else {
                                 CurrentBusinessesList = [];
 
-                                let alertMessage = "Bussiness Viewing, Adding, Editing and Deleting are disabled for your account.";
+                                let alertMessage = "Business Viewing, Adding, Editing and Deleting are disabled for your account.";
                                 if (MasterUserData.businessPermission.disableBusinessesReason != null) {
                                     alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.disableBusinessesReason}`;
                                 } else {
@@ -494,7 +495,7 @@
 
                                 notificationManager.addNotification({
                                     icon: 'fa-regular fa-circle-xmark text-danger',
-                                    title: "Bussinesses Disabled",
+                                    title: "Businesses Disabled",
                                     description: alertMessage,
                                     timestamp: new Date(MasterUserData.businessPermission.disableBusinesses),
                                     isFixed: true,
@@ -513,7 +514,7 @@
                             {
                                 // check business add allowed
                                 if (MasterUserData.businessPermission.addBusinessDisabled) {
-                                    let alertMessage = "Bussiness Adding is disabled for your account.";
+                                    let alertMessage = "Business Adding is disabled for your account.";
 
                                     if (MasterUserData.businessPermission.addBusinessDisableReason != null) {
                                         alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.addBusinessDisableReason}`;
@@ -523,7 +524,7 @@
 
                                     notificationManager.addNotification({
                                         icon: 'fa-regular fa-circle-xmark text-danger',
-                                        title: "Bussiness Adding Disabled",
+                                        title: "Business Adding Disabled",
                                         description: alertMessage,
                                         timestamp: new Date(MasterUserData.businessPermission.addBusinessDisabled),
                                         isFixed: true,
@@ -541,7 +542,7 @@
 
                                 // check business edit allowed
                                 if (MasterUserData.businessPermission.editBusinessDisabled) {
-                                    let alertMessage = "Bussiness Editing is disabled for your account.";
+                                    let alertMessage = "Business Editing is disabled for your account.";
 
                                     if (MasterUserData.businessPermission.editBusinessDisableReason != null) {
                                         alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.editBusinessDisableReason}`;
@@ -551,7 +552,7 @@
 
                                     notificationManager.addNotification({
                                         icon: 'fa-regular fa-circle-xmark text-danger',
-                                        title: "Bussiness Editing Disabled",
+                                        title: "Business Editing Disabled",
                                         description: alertMessage,
                                         timestamp: new Date(MasterUserData.businessPermission.editBusinessDisabled),
                                         isFixed: true,
@@ -567,7 +568,7 @@
 
                                 // check business delete allowed
                                 if (MasterUserData.businessPermission.deleteBusinessDisable) {
-                                    let alertMessage = "Bussiness Deleting is disabled for your account.";
+                                    let alertMessage = "Business Deleting is disabled for your account.";
 
                                     if (MasterUserData.businessPermission.deleteBusinessDisableReason != null) {
                                         alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.deleteBusinessDisableReason}`;
@@ -577,7 +578,7 @@
 
                                     notificationManager.addNotification({
                                         icon: 'fa-regular fa-circle-xmark text-danger',
-                                        title: "Bussiness Deleting Disabled",
+                                        title: "Business Deleting Disabled",
                                         description: alertMessage,
                                         timestamp: new Date(MasterUserData.businessPermission.deleteBusinessDisable),
                                         isFixed: true,

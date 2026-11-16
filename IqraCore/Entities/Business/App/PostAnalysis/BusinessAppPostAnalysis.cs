@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using IqraCore.Attributes;
+using MongoDB.Bson;
 
 namespace IqraCore.Entities.Business
 {
@@ -13,8 +14,11 @@ namespace IqraCore.Entities.Business
         public BusinessAppPostAnalysisExtraction Extraction { get; set; } = new BusinessAppPostAnalysisExtraction();
 
         // References
+        [ExcludeInAllEndpoints]
         public List<string> InboundRoutingReferences { get; set; } = new List<string>();
+        [ExcludeInAllEndpoints]
         public List<string> TelephonyCampaignReferences { get; set; } = new List<string>();
+        [ExcludeInAllEndpoints]
         public List<string> WebCampaignReferences { get; set; } = new List<string>();
     }
 }

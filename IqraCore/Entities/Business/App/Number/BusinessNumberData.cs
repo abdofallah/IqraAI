@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Helper.Telephony;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -33,16 +34,19 @@ namespace IqraCore.Entities.Business
         public virtual TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Unknown;
 
         public List<BusinessNumberScriptSMSNodeReference> ScriptSMSNodeReferences { get; set; } = new List<BusinessNumberScriptSMSNodeReference>();
+        [ExcludeInAllEndpoints]
         public List<string> TelephonyCampaignDefaultNumberRouteReferences { get; set; } = new List<string>();
         public List<BusinessNumberTelephonyCampaignNumbersRouteReference> TelephonyCampaignNumbersRouteReferences { get; set; } = new List<BusinessNumberTelephonyCampaignNumbersRouteReference>();
     }
 
+    [ExcludeInAllEndpoints]
     public class BusinessNumberScriptSMSNodeReference
     {
         public string ScriptId { get; set; } = string.Empty;
         public string NodeReference { get; set; } = string.Empty;
     }
 
+    [ExcludeInAllEndpoints]
     public class BusinessNumberTelephonyCampaignNumbersRouteReference
     {
         public string CampaignId { get; set; } = string.Empty;

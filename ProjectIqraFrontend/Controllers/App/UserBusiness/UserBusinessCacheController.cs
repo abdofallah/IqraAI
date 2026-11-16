@@ -3,6 +3,7 @@ using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business.App.Cache;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -27,9 +28,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/cache/messagegroups/save")]
-        public async Task<FunctionReturnResult<BusinessAppCacheMessageGroup?>> SaveBusinessCacheMessageGroup(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppCacheMessageGroupModel?>> SaveBusinessCacheMessageGroup(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppCacheMessageGroup?>();
+            var result = new FunctionReturnResult<BusinessAppCacheMessageGroupModel?>();
 
             try
             {
@@ -128,7 +129,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppCacheMessageGroupModel(updateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -140,9 +141,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/cache/messagegroups/messages/save")]
-        public async Task<FunctionReturnResult<BusinessAppCacheMessage?>> SaveBusinessCacheMessageGroupMessageItem(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppCacheMessageModel?>> SaveBusinessCacheMessageGroupMessageItem(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppCacheMessage?>();
+            var result = new FunctionReturnResult<BusinessAppCacheMessageModel?>();
 
             try
             {
@@ -297,7 +298,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppCacheMessageModel(updateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -309,9 +310,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/cache/audiogroups/save")]
-        public async Task<FunctionReturnResult<BusinessAppCacheAudioGroup?>> SaveBusinessAudioGroup(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppCacheAudioGroupModel?>> SaveBusinessAudioGroup(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppCacheAudioGroup?>();
+            var result = new FunctionReturnResult<BusinessAppCacheAudioGroupModel?>();
 
             try
             {
@@ -410,7 +411,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     return result;
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppCacheAudioGroupModel(updateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -422,9 +423,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/cache/audiogroups/audios/save")]
-        public async Task<FunctionReturnResult<BusinessAppCacheAudio?>> SaveBusinessAudioGroupAudioItem(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppCacheAudioModel?>> SaveBusinessAudioGroupAudioItem(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppCacheAudio?>();
+            var result = new FunctionReturnResult<BusinessAppCacheAudioModel?>();
 
             try
             {
@@ -579,7 +580,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppCacheAudioModel(updateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -591,9 +592,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/cache/embeddinggroups/save")]
-        public async Task<FunctionReturnResult<BusinessAppCacheEmbeddingGroup?>> SaveBusinessEmbeddingGroup(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppCacheEmbeddingGroupModel?>> SaveBusinessEmbeddingGroup(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppCacheEmbeddingGroup?>();
+            var result = new FunctionReturnResult<BusinessAppCacheEmbeddingGroupModel?>();
 
             try
             {
@@ -694,7 +695,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppCacheEmbeddingGroupModel(updateResult.Data!));
             }
             catch (Exception ex)
             {
@@ -706,9 +707,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/cache/embeddinggroups/embeddings/save")]
-        public async Task<FunctionReturnResult<BusinessAppCacheEmbedding?>> SaveBusinessEmbeddingGroupEmbeddingItem(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppCacheEmbeddingModel?>> SaveBusinessEmbeddingGroupEmbeddingItem(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppCacheEmbedding?>();
+            var result = new FunctionReturnResult<BusinessAppCacheEmbeddingModel?>();
 
             try
             {
@@ -864,7 +865,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(new BusinessAppCacheEmbeddingModel(updateResult.Data!));
             }
             catch (Exception ex)
             {

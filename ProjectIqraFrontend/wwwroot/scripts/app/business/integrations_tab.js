@@ -129,6 +129,24 @@ function DeleteBusinessIntegration(integrationId, onSuccess, onError) {
 }
 
 /** Core Functions **/
+function ShowIntegrationSpecLogo(image, integrationType, onRenewed) {
+	const integrationSpec = SpecificationIntegrationsListData.find((item) => item.id === integrationType);
+	if (!integrationSpec || !integrationSpec.logoUrl) return;
+
+	SignedFileHelper.showImage(image, {
+		file: integrationSpec.logoUrl,
+		fetchFile: () => SignedFileHelper.fetchData("/app/specification/integrations/").then((integrations) => {
+			const renewed = integrations.find((item) => item.id === integrationType);
+			return renewed ? renewed.logoUrl : null;
+		}),
+		onRenewed: (file) => {
+			integrationSpec.logoUrl = file;
+			if (onRenewed) onRenewed(file);
+		},
+		fallbackSrc: "/img/picture_placeholder_light.png",
+	});
+}
+
 function createIntegrationCardElement(integration) {
 	const actionDropdownHtml = `
         <div class="dropdown action-dropdown dropdown-menu-end">
@@ -147,14 +165,19 @@ function createIntegrationCardElement(integration) {
 
 	const integrationSpec = SpecificationIntegrationsListData.find((i) => i.id === integration.type);
 
-	return createIqraCardElement({
+	const cardElement = $(createIqraCardElement({
 		id: integration.id,
 		type: 'integration',
-		visualHtml: `<img src="${integration.logoUrl}" alt="${integration.friendlyName} logo">`,
+		visualHtml: `<img src="${integration.logoUrl?.url}" alt="${integration.friendlyName} logo">`,
 		titleHtml: integration.friendlyName,
 		descriptionHtml: integrationSpec && IsOAuthIntegrationSpec(integrationSpec) ? CreateOAuthStatusBadgeElement(GetOAuthIntegrationStatus(integration)).prop("outerHTML") : "",
 		actionDropdownHtml: actionDropdownHtml,
+	}));
+
+	ShowIntegrationSpecLogo(cardElement.find("img").first(), integration.type, (file) => {
+		integration.logoUrl = file;
 	});
+	return cardElement;
 }
 
 function createAvailableIntegrationCardElement(integration) {
@@ -166,7 +189,7 @@ function createAvailableIntegrationCardElement(integration) {
                 <div class="card-body">
 					<h5 class="card-title">${integration.name}${(integration.disabledAt == null ? "" : " | <span class='text-danger'>Disabled</span>") }</h5>
 
-					<img class="px-2 my-3" src="${integration.logoUrl}">
+					<img class="px-2 my-3" src="${integration.logoUrl?.url}">
 
                     <div class="mt-2">
                         ${typesBadges}
@@ -616,7 +639,9 @@ function initIntegrationsTab() {
 	// Fill available integrations in modal
 	availableIntegrationsList.empty();
 	SpecificationIntegrationsListData.forEach((integration) => {
-		availableIntegrationsList.append($(createAvailableIntegrationCardElement(integration)));
+		const availableIntegrationCard = $(createAvailableIntegrationCardElement(integration));
+		availableIntegrationsList.append(availableIntegrationCard);
+		ShowIntegrationSpecLogo(availableIntegrationCard.find("img").first(), integration.id);
 	});
 
 	// Fill existing integrations list

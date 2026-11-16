@@ -2,6 +2,7 @@
 using Amazon.S3.Model;
 using CommunityToolkit.HighPerformance;
 using IqraCore.Constants;
+using IqraCore.Models.S3Storage;
 using IqraInfrastructure.Repositories.S3Storage;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -220,10 +221,10 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public string? GeneratePresignedUrl(string fileId, int expiresInSeconds)
+        public S3SignedFileModel? GenerateSignedFile(string fileId, int expiresInSeconds)
         {
             var client = S3StorageHelpers.GetDefaultS3Client(_s3StorageClientFactory);
-            return S3StorageHelpers.GeneratePresignedUrl(client, _bucketName, fileId, expiresInSeconds, _logger);
+            return S3StorageHelpers.GenerateSignedFile(client, _bucketName, fileId, expiresInSeconds, _logger);
         }
     }
 }

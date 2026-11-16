@@ -2,6 +2,7 @@ using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.S3Storage;
+using IqraCore.Models.User.Business.App.Tool;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
@@ -56,6 +57,20 @@ namespace IqraInfrastructure.Managers.Business
         {
             var result = await _businessAppRepository.GetBusinessAppTool(businessId, toolId);
             return result;
+        }
+
+        public BusinessAppToolModel CreateToolModel(BusinessAppTool tool)
+        {
+            var model = new BusinessAppToolModel(tool);
+            if (tool.Audio.DuringExecutionAudioS3StorageLink != null)
+            {
+                model.Audio.DuringExecutionAudioUrl = _businessToolAudioRepository.GenerateSignedFile(tool.Audio.DuringExecutionAudioS3StorageLink.ObjectName, 3600);
+            }
+            if (tool.Audio.AfterExecutionAudioS3StorageLink != null)
+            {
+                model.Audio.AfterExecutionAudioUrl = _businessToolAudioRepository.GenerateSignedFile(tool.Audio.AfterExecutionAudioS3StorageLink.ObjectName, 3600);
+            }
+            return model;
         }
 
         public async Task<FunctionReturnResult<BusinessToolTestResult?>> TestBusinessTool(

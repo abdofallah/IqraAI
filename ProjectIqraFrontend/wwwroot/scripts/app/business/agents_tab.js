@@ -362,7 +362,38 @@ function DeleteBusinessAgent(agentId, onSuccess, onError) {
     });
 }
 
+function FetchAgentBackgroundAudioSignedFileFromAPI(agentId) {
+	return SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}`).then((businessData) => {
+		const agent = businessData.businessApp.agents.find((item) => item.id === agentId);
+		return agent ? agent.settings.backgroundAudioUrl : null;
+	});
+}
+
 /** Functions **/
+
+function LoadAgentBackgroundAudioPreview(agentData, waveSurfer) {
+	const handle = SignedFileHelper.use({
+		file: agentData.settings.backgroundAudioUrl,
+		fetchFile: () => FetchAgentBackgroundAudioSignedFileFromAPI(agentData.id),
+		apply: (url) => {
+			if (AgentBackgroundAudioWaveSurfer === waveSurfer) waveSurfer.load(url);
+		},
+		onRenewed: (file) => {
+			agentData.settings.backgroundAudioUrl = file;
+		},
+		onUnavailable: () => {
+			AlertManager.createAlert({
+				type: "danger",
+				message: "Error occured while loading the background audio. Check browser console for logs.",
+				timeout: 6000,
+			});
+		},
+	});
+
+	waveSurfer.on("error", () => {
+		handle.failed();
+	});
+}
 
 function showAgentManagerTab() {
 	agentsListTab.removeClass("show");
@@ -2083,7 +2114,7 @@ function fillAgentSettingsTab() {
 		agentBackgroundAudioSelect.val("custom").change();
 
 		AgentBackgroundAudioWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
-		AgentBackgroundAudioWaveSurfer.load(CurrentManageAgentData.settings.backgroundAudioUrl);
+		LoadAgentBackgroundAudioPreview(CurrentManageAgentData, AgentBackgroundAudioWaveSurfer);
 		agentBackgroundAudioVolumeInput.val(CurrentManageAgentData.settings.backgroundAudioVolume);
 
 		agentBackgroundAudioInputBox.find(".no-audio-notice").addClass("d-none");

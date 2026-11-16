@@ -15,7 +15,6 @@ using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
-using IqraInfrastructure.Repositories.Integrations;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers
@@ -30,7 +29,6 @@ namespace ProjectIqraFrontend.Controllers
         private readonly TTSProviderManager _ttsProviderManager;
         private readonly EmbeddingProviderManager _embeddingProviderManager;
         private readonly RerankProviderManager _rerankProviderManager;
-        private readonly IntegrationsLogoRepository _integrationsLogoRepository;
         private readonly FlowAppManager _flowAppManager;
 
         public SpecificationController(
@@ -42,7 +40,6 @@ namespace ProjectIqraFrontend.Controllers
             TTSProviderManager ttsProviderManager,
             EmbeddingProviderManager embeddingProviderManager,
             RerankProviderManager rerankProviderManager,
-            IntegrationsLogoRepository integrationsLogoRepository,
             FlowAppManager flowAppManager
         ) {
             _languagesManager = languagesManager;
@@ -53,7 +50,6 @@ namespace ProjectIqraFrontend.Controllers
             _ttsProviderManager = ttsProviderManager;
             _embeddingProviderManager = embeddingProviderManager;
             _rerankProviderManager = rerankProviderManager;
-            _integrationsLogoRepository = integrationsLogoRepository;
             _flowAppManager = flowAppManager;
         }
 
@@ -102,19 +98,7 @@ namespace ProjectIqraFrontend.Controllers
                     );
                 }
 
-                var resultDto = new List<IntegrationViewModel>();
-                foreach (var item in getIntegrationsListResult.Data!)
-                {
-                    var dtoItem = new IntegrationViewModel(item);
-                    if (item.LogoS3StorageLink != null)
-                    {
-                        dtoItem.LogoUrl = _integrationsLogoRepository.GeneratePresignedUrl(item.LogoS3StorageLink.ObjectName, 86400);
-                    }
-
-                    resultDto.Add(dtoItem);
-                }
-
-                return result.SetSuccessResult(resultDto);
+                return result.SetSuccessResult(getIntegrationsListResult.Data!.Select(_integrationsManager.CreateIntegrationViewModel).ToList());
             }
             catch (Exception ex)
             {

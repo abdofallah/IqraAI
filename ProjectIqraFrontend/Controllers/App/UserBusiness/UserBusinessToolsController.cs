@@ -3,6 +3,7 @@ using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.User.Business.App.Tool;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Services;
@@ -43,9 +44,9 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         }
 
         [HttpPost("/app/user/business/{businessId}/tools/save")]
-        public async Task<FunctionReturnResult<BusinessAppTool?>> SaveBusinessTool(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<BusinessAppToolModel?>> SaveBusinessTool(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppTool?>();
+            var result = new FunctionReturnResult<BusinessAppToolModel?>();
 
             try
             {
@@ -136,7 +137,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                return result.SetSuccessResult(updateResult.Data);
+                return result.SetSuccessResult(_businessManager.GetToolsManager().CreateToolModel(updateResult.Data!));
             }
             catch (Exception ex)
             {

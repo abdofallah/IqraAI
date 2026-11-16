@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Integrations;
 using IqraCore.Entities.S3Storage;
+using IqraCore.Models.Specification;
 using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.S3Storage;
@@ -484,6 +485,27 @@ namespace IqraInfrastructure.Managers.Integrations
             }
 
             return result;
+        }
+
+        public IntegrationViewModel CreateIntegrationViewModel(IntegrationData integration)
+        {
+            var model = new IntegrationViewModel(integration);
+            if (integration.LogoS3StorageLink != null)
+            {
+                model.LogoUrl = _integrationsLogoRepository!.GenerateSignedFile(integration.LogoS3StorageLink.ObjectName, 86400);
+            }
+            return model;
+        }
+
+        public void AddAdminIntegrationLogos(List<IntegrationData> integrations)
+        {
+            foreach (var integration in integrations)
+            {
+                if (integration.LogoS3StorageLink != null)
+                {
+                    integration.PresignedLogoUrl = _integrationsLogoRepository!.GenerateSignedFile(integration.LogoS3StorageLink.ObjectName, 86400);
+                }
+            }
         }
 
         public async Task<FunctionReturnResult<IntegrationData?>> getIntegrationData(string integrationId)
