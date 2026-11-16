@@ -2167,6 +2167,18 @@ function initContextTab() {
 			}
 		});
 
+		$(window).on("beforeunload", (event) => {
+			const managers = [
+				[ManageContextBranchType, IsSavingContextBranchTab, CheckContextBranchTabHasChanges],
+				[ManageContextServiceType, IsSavingContextServiceTab, CheckContextServiceTabHasChanges],
+				[ManageContextProductType, IsSavingContextProductTab, CheckContextProductTabHasChanges],
+			];
+			const managerAsks = managers.some(([manageType, isSaving, check]) => manageType != null && (isSaving || check(false).hasChanges));
+			if (!managerAsks && !IsSavingContextBrandingTab && !CheckContextBrandingTabHasChanges(false).hasChanges) return;
+
+			askBeforePageLeave(event);
+		});
+
 		ContextTabMultiLanguageDropdown.onLanguageChange((language) => {
 			// Branding Tab
 			brandingBrandNameInput.val(CurrentContextBrandingNameMultiLangData[language.id] || "");

@@ -664,6 +664,34 @@ function CheckInfraServerConfigHasChanges() {
     return { hasChanges: InfraServerConfigChanges.compare(InfraServerConfigBaseline, ReadInfraServerConfigForm()).hasChanges };
 }
 
+async function confirmInfraDiscard(subject, leaveMessage) {
+    const confirmDialog = new BootstrapConfirmDialog({
+        title: "Unsaved Changes Pending",
+        message: `You have unsaved changes in the ${subject}.${leaveMessage}`,
+        confirmText: "Discard",
+        cancelText: "Cancel",
+        confirmButtonClass: "btn-danger",
+        modalClass: "modal-lg",
+    });
+
+    return await confirmDialog.show();
+}
+
+async function canLeaveInfraServerManager(leaveMessage = "") {
+    if (infraServerManagerTab.hasClass("d-none") || !CheckInfraServerConfigHasChanges().hasChanges) return true;
+    return await confirmInfraDiscard("server settings", leaveMessage);
+}
+
+async function canLeaveInfraRegionManager(leaveMessage = "") {
+    if ((infraRegionManagerTab.hasClass("d-none") && infraServerManagerTab.hasClass("d-none")) || !CheckInfraRegionS3HasChanges().hasChanges) return true;
+    return await confirmInfraDiscard("region S3 settings", leaveMessage);
+}
+
+async function canLeaveInfraBackgroundConfig(leaveMessage = "") {
+    if (!CheckInfraBackgroundConfigHasChanges().hasChanges) return true;
+    return await confirmInfraDiscard("background node settings", leaveMessage);
+}
+
 // --- Region Manager Logic ---
 function FetchAndFillRegionDetail(regionId, isRefresh = false) {
     GetRegionDetail(regionId, (data) => {
@@ -1422,8 +1450,12 @@ function initInfrastructureTab() {
         });
 
         // REGION MANAGER: Back
-        switchBackToInfraRoot.on("click", (e) => {
+        switchBackToInfraRoot.on("click", async (e) => {
             e.preventDefault();
+
+            const canLeaveResult = await canLeaveInfraRegionManager(" Are you sure you want to discard these changes and leave the region?");
+            if (!canLeaveResult) return;
+
             showInfraRootTab();
         });
 
@@ -1537,12 +1569,44 @@ function initInfrastructureTab() {
         };
 
         // SERVER MANAGER: Back
-        switchBackToRegionManager.on("click", (e) => {
+        switchBackToRegionManager.on("click", async (e) => {
             e.preventDefault();
+
+            const canLeaveResult = await canLeaveInfraServerManager(" Are you sure you want to discard these changes and leave the server?");
+            if (!canLeaveResult) return;
+
             clearInterval(InfraChartManager.server.timer);
             InfraChartManager.server.timer = null;
             InfraChartManager.server.nodeId = null;
             showRegionManagerTab();
+        });
+
+        $("#nav-bar").on("tabChange", async (event) => {
+            const activeTab = event.detail.from;
+            if (activeTab !== "infrastructure-tab") return;
+
+            const leaveMessage = " Are you sure you want to discard these changes and leave the infrastructure tab?";
+            const managerOpen = !infraRegionManagerTab.hasClass("d-none") || !infraServerManagerTab.hasClass("d-none");
+
+            if (!(await canLeaveInfraServerManager(leaveMessage)) || !(await canLeaveInfraRegionManager(leaveMessage)) || !(await canLeaveInfraBackgroundConfig(leaveMessage))) {
+                event.preventDefault();
+                return;
+            }
+
+            if (InfraBackgroundConfigBaseline !== null) {
+                backgroundNodeEndpoint.val(InfraBackgroundConfigBaseline.endpoint);
+                backgroundNodeApiKey.val(InfraBackgroundConfigBaseline.apiKey);
+                backgroundNodeUseSSL.prop("checked", InfraBackgroundConfigBaseline.useSSL);
+            }
+            if (managerOpen) showInfraRootTab();
+        });
+
+        $(window).on("beforeunload", (event) => {
+            const serverAsks = !infraServerManagerTab.hasClass("d-none") && CheckInfraServerConfigHasChanges().hasChanges;
+            const regionAsks = !(infraRegionManagerTab.hasClass("d-none") && infraServerManagerTab.hasClass("d-none")) && CheckInfraRegionS3HasChanges().hasChanges;
+            if (!serverAsks && !regionAsks && !CheckInfraBackgroundConfigHasChanges().hasChanges) return;
+
+            askBeforePageLeave(event);
         });
 
         // SERVER MANAGER: Save

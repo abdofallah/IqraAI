@@ -357,6 +357,29 @@ function CheckLLMProviderModelManageTabHasChanges(enableDisableButton = true) {
 	};
 }
 
+async function canLeaveLLMProviderModelManageTab(leaveMessage = "") {
+	if (CurrentManageLLMProviderModelType == null) return true;
+
+	const changes = CheckLLMProviderModelManageTabHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the model.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 function CheckLLMProviderManageTabHasChanges(enableDisableButton = true) {
 	const result = LLMProviderChanges.compare(CurrentManageLLMProviderData, {
 		disabled: () => manageLLMProviderDisabledInput.prop("checked"),
@@ -372,6 +395,38 @@ function CheckLLMProviderManageTabHasChanges(enableDisableButton = true) {
 		hasChanges: result.hasChanges,
 		changes: result.changes,
 	};
+}
+
+async function canLeaveLLMProviderManageTab(leaveMessage = "") {
+	if (IsSavingLLMProviderTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Provider is currently being saved. Please wait for the save to finish.",
+			timeout: 6000,
+		});
+		return false;
+	}
+
+	if (CurrentManageLLMProviderType == null) return true;
+
+	const changes = CheckLLMProviderManageTabHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the provider.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 function ResetAndEmptyLLMProviderModelManageTab() {
@@ -766,11 +821,13 @@ $(document).ready(() => {
 		);
 	});
 
-	switchBackToLLMProviderManagerModelsListTabFromModelTab.on("click", (event) => {
+	switchBackToLLMProviderManagerModelsListTabFromModelTab.on("click", async (event) => {
 		event.preventDefault();
 
-		CurrentManageLLMProviderModelType = null;
+		const canLeaveResult = await canLeaveLLMProviderModelManageTab(" Are you sure you want to discard these changes and leave the model?");
+		if (!canLeaveResult) return;
 
+		CurrentManageLLMProviderModelType = null;
 		ShowLLMProviderModelListTab();
 	});
 
@@ -808,12 +865,49 @@ $(document).ready(() => {
 		ShowLLMProviderManageTab();
 	});
 
-	switchBackToLLMProviderListTabFromManageTab.on("click", (event) => {
+	switchBackToLLMProviderListTabFromManageTab.on("click", async (event) => {
 		event.preventDefault();
 
-		CurrentManageLLMProviderType = null;
+		const canLeaveResult = await canLeaveLLMProviderManageTab(" Are you sure you want to discard these changes and leave the provider?");
+		if (!canLeaveResult) return;
 
+		CurrentManageLLMProviderType = null;
 		ShowLLMProviderListTab();
+	});
+
+	$("#nav-bar").on("tabChange", async (event) => {
+		const activeTab = event.detail.from;
+		if (activeTab !== "llm-provider-tab") return;
+
+		const leaveMessage = " Are you sure you want to discard these changes and leave the LLM providers tab?";
+
+		if (CurrentManageLLMProviderModelType != null) {
+			const canLeaveModelResult = await canLeaveLLMProviderModelManageTab(leaveMessage);
+			if (!canLeaveModelResult) {
+				event.preventDefault();
+				return;
+			}
+			CurrentManageLLMProviderModelType = null;
+			ShowLLMProviderModelListTab();
+		}
+
+		if (CurrentManageLLMProviderType == null) return;
+
+		const canLeaveResult = await canLeaveLLMProviderManageTab(leaveMessage);
+		if (canLeaveResult) {
+			CurrentManageLLMProviderType = null;
+			ShowLLMProviderListTab();
+		} else {
+			event.preventDefault();
+		}
+	});
+
+	$(window).on("beforeunload", (event) => {
+		const providerAsks = CurrentManageLLMProviderType != null && (IsSavingLLMProviderTab || CheckLLMProviderManageTabHasChanges(false).hasChanges);
+		const modelAsks = CurrentManageLLMProviderModelType != null && (CheckLLMProviderModelManageTabHasChanges(false).hasChanges);
+		if (!providerAsks && !modelAsks) return;
+
+		askBeforePageLeave(event);
 	});
 
 	llmProviderModelListTable.on("click", "button[button-type=edit-llm-provider-model]", (event) => {

@@ -3594,6 +3594,13 @@ function initScriptsTabHandlers() {
 		}
 	});
 
+	$(window).on("beforeunload", (event) => {
+		if (ManageCurrentScriptType == null) return;
+		if (!IsSavingScriptTab && !checkScriptTabHasChanges(false, false).hasChanges) return;
+
+		askBeforePageLeave(event);
+	});
+
 	addNewScriptButton.on("click", (event) => {
 		event.preventDefault();
 

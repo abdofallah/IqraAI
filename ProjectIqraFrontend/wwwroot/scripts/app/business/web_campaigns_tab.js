@@ -1745,6 +1745,28 @@ function initWebCampaignsTab() {
             }
         });
 
+        $("#nav-bar").on("tabChange", async (event) => {
+            const activeTab = event.detail.from;
+            if (activeTab !== "web-campaigns-tab") return;
+
+            if (manageWebCampaignType == null) return;
+
+            const canLeaveResult = await canLeaveWebCampaignsManager(" Are you sure you want to discard these changes and leave the web campaigns tab?");
+            if (canLeaveResult) {
+                manageWebCampaignType = null;
+                showWebCampaignsListView();
+            } else {
+                event.preventDefault();
+            }
+        });
+
+        $(window).on("beforeunload", (event) => {
+            if (manageWebCampaignType == null) return;
+            if (!isSavingWebCampaign && !checkWebCampaignChanges(false).hasChanges) return;
+
+            askBeforePageLeave(event);
+        });
+
         webCampaignsListContainer.on("click", ".web-campaign-card", (e) => {
             e.preventDefault();
             e.stopPropagation();

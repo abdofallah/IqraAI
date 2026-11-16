@@ -2322,6 +2322,13 @@ function initAgentTab() {
 			}
 		});
 
+		$(window).on("beforeunload", (event) => {
+			if (ManageAgentType == null) return;
+			if (!IsSavingAgentTab && !CheckAgentTabHasChanges(false).hasChanges) return;
+
+			askBeforePageLeave(event);
+		});
+
 		// General Tab Handlers
 		function initAgentGeneralTabHandlers() {
 			// Name input changes

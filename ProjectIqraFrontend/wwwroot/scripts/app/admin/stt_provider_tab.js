@@ -264,6 +264,38 @@ function CheckSTTProviderManageTabHasChanges(enableDisableButton = true) {
 	};
 }
 
+async function canLeaveSTTProviderManageTab(leaveMessage = "") {
+	if (IsSavingSTTProviderTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Provider is currently being saved. Please wait for the save to finish.",
+			timeout: 6000,
+		});
+		return false;
+	}
+
+	if (CurrentSTTProviderType == null) return true;
+
+	const changes = CheckSTTProviderManageTabHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the provider.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 function ValidateSTTProviderManageTab(onlyRemove = true) {
 	const errors = [];
 	let validated = true;
@@ -474,6 +506,38 @@ function CheckSTTProviderModelManageTabHasChanges(enableDisableButton = true) {
 	};
 }
 
+async function canLeaveSTTProviderModelManageTab(leaveMessage = "") {
+	if (IsSavingSTTProviderTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Model is currently being saved. Please wait for the save to finish.",
+			timeout: 6000,
+		});
+		return false;
+	}
+
+	if (CurrentSTTProviderModelType == null) return true;
+
+	const changes = CheckSTTProviderModelManageTabHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the model.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 /** Integration Functions **/
 function fillSTTProviderIntegrationSelect() {
 	manageSTTProviderIntegrationSelect.empty();
@@ -512,10 +576,49 @@ $(document).ready(() => {
 	});
 
 	// Provider Management Events
-	switchBackToSTTProviderListTabFromManageTab.on("click", (event) => {
+	switchBackToSTTProviderListTabFromManageTab.on("click", async (event) => {
 		event.preventDefault();
+
+		const canLeaveResult = await canLeaveSTTProviderManageTab(" Are you sure you want to discard these changes and leave the provider?");
+		if (!canLeaveResult) return;
+
 		CurrentSTTProviderType = null;
 		ShowSTTProviderListTab();
+	});
+
+	$("#nav-bar").on("tabChange", async (event) => {
+		const activeTab = event.detail.from;
+		if (activeTab !== "stt-provider-tab") return;
+
+		const leaveMessage = " Are you sure you want to discard these changes and leave the STT providers tab?";
+
+		if (CurrentSTTProviderModelType != null) {
+			const canLeaveModelResult = await canLeaveSTTProviderModelManageTab(leaveMessage);
+			if (!canLeaveModelResult) {
+				event.preventDefault();
+				return;
+			}
+			CurrentSTTProviderModelType = null;
+			ShowSTTProviderModelListTab();
+		}
+
+		if (CurrentSTTProviderType == null) return;
+
+		const canLeaveResult = await canLeaveSTTProviderManageTab(leaveMessage);
+		if (canLeaveResult) {
+			CurrentSTTProviderType = null;
+			ShowSTTProviderListTab();
+		} else {
+			event.preventDefault();
+		}
+	});
+
+	$(window).on("beforeunload", (event) => {
+		const providerAsks = CurrentSTTProviderType != null && (IsSavingSTTProviderTab || CheckSTTProviderManageTabHasChanges(false).hasChanges);
+		const modelAsks = CurrentSTTProviderModelType != null && (IsSavingSTTProviderTab || CheckSTTProviderModelManageTabHasChanges(false).hasChanges);
+		if (!providerAsks && !modelAsks) return;
+
+		askBeforePageLeave(event);
 	});
 
 	sttProviderManagerGeneral.on("input change", "input, select", () => {
@@ -555,8 +658,12 @@ $(document).ready(() => {
 		ShowSTTProviderModelManageTab();
 	});
 
-	switchBackToSTTProviderManagerModelsListTabFromModelTab.on("click", (event) => {
+	switchBackToSTTProviderManagerModelsListTabFromModelTab.on("click", async (event) => {
 		event.preventDefault();
+
+		const canLeaveResult = await canLeaveSTTProviderModelManageTab(" Are you sure you want to discard these changes and leave the model?");
+		if (!canLeaveResult) return;
+
 		CurrentSTTProviderModelType = null;
 		ShowSTTProviderModelListTab();
 	});

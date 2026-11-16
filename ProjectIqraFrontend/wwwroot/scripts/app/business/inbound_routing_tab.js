@@ -1231,6 +1231,28 @@ function initRoutingTab() {
 			updateUrlForTab("routings");
 		});
 
+		$("#nav-bar").on("tabChange", async (event) => {
+			const activeTab = event.detail.from;
+			if (activeTab !== "routing-tab") return;
+
+			if (ManageRouteType == null) return;
+
+			const canLeaveResult = await canLeaveRoutingTab(" Are you sure you want to discard these changes and leave the routes tab?");
+			if (canLeaveResult) {
+				ManageRouteType = null;
+				showRoutingListTab();
+			} else {
+				event.preventDefault();
+			}
+		});
+
+		$(window).on("beforeunload", (event) => {
+			if (ManageRouteType == null) return;
+			if (!IsSavingRouteManageTab && !checkRoutingTabHasChanges(false).hasChanges) return;
+
+			askBeforePageLeave(event);
+		});
+
 		routingListContainer.on("click", ".routing-card", (event) => {
 			event.preventDefault();
 			event.stopPropagation();

@@ -311,6 +311,29 @@ function CheckLanguageManageTabHasChanges(enableDisableButton = true) {
     return { hasChanges: result.hasChanges, changes: result.changes };
 }
 
+async function canLeaveLanguageManageTab(leaveMessage = "") {
+    if (CurrentManageLanguageType == null) return true;
+
+    const changes = CheckLanguageManageTabHasChanges(false);
+    if (changes.hasChanges) {
+        const confirmDialog = new BootstrapConfirmDialog({
+            title: "Unsaved Changes Pending",
+            message: `You have unsaved changes in the language.${leaveMessage}`,
+            confirmText: "Discard",
+            cancelText: "Cancel",
+            confirmButtonClass: "btn-danger",
+            modalClass: "modal-lg",
+        });
+
+        const confirmResult = await confirmDialog.show();
+        if (!confirmResult) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 function ValidateLanguageManageTabFields(onlyRemove = true) {
     let errors = [];
     let validated = true;
@@ -461,10 +484,36 @@ $(document).ready(() => {
         ShowLanguagesManageTab();
     });
 
-    switchBackToLanguagesListTabFromManageTab.on("click", (event) => {
+    switchBackToLanguagesListTabFromManageTab.on("click", async (event) => {
         event.preventDefault();
+
+        const canLeaveResult = await canLeaveLanguageManageTab(" Are you sure you want to discard these changes and leave the language?");
+        if (!canLeaveResult) return;
+
         CurrentManageLanguageType = null;
         ShowLanguagesListTab();
+    });
+
+    $("#nav-bar").on("tabChange", async (event) => {
+        const activeTab = event.detail.from;
+        if (activeTab !== "languages-tab") return;
+
+        if (CurrentManageLanguageType == null) return;
+
+        const canLeaveResult = await canLeaveLanguageManageTab(" Are you sure you want to discard these changes and leave the languages tab?");
+        if (canLeaveResult) {
+            CurrentManageLanguageType = null;
+            ShowLanguagesListTab();
+        } else {
+            event.preventDefault();
+        }
+    });
+
+    $(window).on("beforeunload", (event) => {
+        if (CurrentManageLanguageType == null) return;
+        if (!CheckLanguageManageTabHasChanges(false).hasChanges) return;
+
+        askBeforePageLeave(event);
     });
 
     // --- Save Action ---

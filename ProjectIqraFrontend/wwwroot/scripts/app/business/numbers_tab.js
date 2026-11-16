@@ -15,7 +15,8 @@ const ModemTelNumbersState = {
 	CurrentManageData: null,
 	CurrentManageType: null,
 	IsSaving: false,
-	IsDeleting: false
+	IsDeleting: false,
+	CloseConfirmed: false
 }
 
 // Twilio
@@ -23,7 +24,8 @@ const TwilioNumbersState = {
 	CurrentManageData: null,
 	CurrentManageType: null,
 	IsSaving: false,
-	IsDeleting: false
+	IsDeleting: false,
+	CloseConfirmed: false
 }
 
 // SIP
@@ -31,7 +33,8 @@ const SipNumbersState = {
 	CurrentManageData: null,
 	CurrentManageType: null,
 	IsSaving: false,
-	IsDeleting: false
+	IsDeleting: false,
+	CloseConfirmed: false
 }
 
 // --- Change Helpers ---
@@ -232,6 +235,30 @@ async function deleteBusinessNumberHandler(event) {
 		});
 	}
 }
+function guardNumberModalClose(event, numberProviderType) {
+	const numberProviderState = getNumberProviderState(numberProviderType);
+	if (numberProviderState.CloseConfirmed || numberProviderState.CurrentManageType == null) return true;
+	if (!getNumberProviderCheckModalHasChangesFunction(numberProviderType)(false).hasChanges) return true;
+
+	event.preventDefault();
+
+	const confirmDialog = new BootstrapConfirmDialog({
+		title: "Unsaved Changes Pending",
+		message: `You have unsaved changes in the ${getNumberProviderName(numberProviderType)} number. Are you sure you want to discard these changes and close it?`,
+		confirmText: "Discard",
+		cancelText: "Cancel",
+		confirmButtonClass: "btn-danger",
+		modalClass: "modal-lg",
+	});
+	confirmDialog.show().then((confirmResult) => {
+		if (!confirmResult) return;
+
+		numberProviderState.CloseConfirmed = true;
+		getNumberProviderModal(numberProviderType).hide();
+	});
+
+	return false;
+}
 function saveBusinessNumberHandler(event, numberProviderType) {
 	event.preventDefault();
 
@@ -312,6 +339,7 @@ function saveBusinessNumberHandler(event, numberProviderType) {
 			});
 
 			numberProviderState.IsSaving = false; // needed in order to hide the modal
+			numberProviderState.CloseConfirmed = true;
 			numberProviderModal.hide();
 		},
 		(errorResult) => {
@@ -674,6 +702,9 @@ function initModemtelNumberEvents() {
 			return false;
 		}
 
+		if (!guardNumberModalClose(event, NumberProviderEnum.ModemTel)) return false;
+		ModemTelNumbersState.CloseConfirmed = false;
+
 		ModemTelNumbersState.CurrentManageData = null;
 		ModemTelNumbersState.CurrentManageType = null;
 
@@ -984,6 +1015,9 @@ function initTwilioNumberEvents() {
 			event.preventDefault();
 			return false;
 		}
+
+		if (!guardNumberModalClose(event, NumberProviderEnum.Twilio)) return false;
+		TwilioNumbersState.CloseConfirmed = false;
 
 		TwilioNumbersState.CurrentManageData = null;
 		TwilioNumbersState.CurrentManageType = null;
@@ -1339,6 +1373,9 @@ function initSipNumberEvents() {
 			return false;
 		}
 
+		if (!guardNumberModalClose(event, NumberProviderEnum.SIP)) return false;
+		SipNumbersState.CloseConfirmed = false;
+
 		SipNumbersState.CurrentManageData = null;
 		SipNumbersState.CurrentManageType = null;
 
@@ -1475,5 +1512,16 @@ function initNumbersTab() {
         initSipNumberEvents();
 		FillBusinessSipList();
 		FillInitialSipModal();
+
+		$(window).on("beforeunload", (event) => {
+			const numberModalAsks = [NumberProviderEnum.ModemTel, NumberProviderEnum.Twilio, NumberProviderEnum.SIP].some((numberProviderType) => {
+				const numberProviderState = getNumberProviderState(numberProviderType);
+				if (numberProviderState.CurrentManageType == null || numberProviderState.CloseConfirmed) return false;
+				return numberProviderState.IsSaving || getNumberProviderCheckModalHasChangesFunction(numberProviderType)(false).hasChanges;
+			});
+			if (!numberModalAsks) return;
+
+			askBeforePageLeave(event);
+		});
 	});
 }

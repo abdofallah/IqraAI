@@ -5,6 +5,7 @@ const DefaultWhiteLabelFaviconSRC = "/img/logo/logo-colored-light.png";
 const IqraBusinessDomain = "iqra.business"; // todo get this dynamically from server
 
 let IsSavingDomainTab = false;
+let IsReloadingAfterSettingsSave = false;
 let IsManagerDomainTabOpened = false;
 let ManageDomainType = null;
 let CurrentManageDomainData = null;
@@ -170,6 +171,26 @@ function CheckIfSettingsHasChanges(enableDisableButton = true) {
 	}
 
 	return result;
+}
+async function canLeaveSettingsTab(leaveMessage = "") {
+	const changes = CheckIfSettingsHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the settings.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
 }
 function FillSettingsTab() {
 	function FillSettingsGeneralTab() {
@@ -420,6 +441,7 @@ function initSettingsTab() {
 				(saveResponse) => {
 					if (saveResponse.success) {
 						setTimeout(() => {
+							IsReloadingAfterSettingsSave = true;
 							location.reload();
 						}, 1);
 					}
@@ -440,6 +462,27 @@ function initSettingsTab() {
 					settingsSaveButtonSpinner.addClass("d-none");
 				},
 			);
+		});
+
+		$("#nav-bar").on("tabChange", async (event) => {
+			const activeTab = event.detail.from;
+			if (activeTab !== "settings-tab") return;
+
+			const canLeaveResult = await canLeaveSettingsTab(" Are you sure you want to discard these changes and leave the settings tab?");
+			if (canLeaveResult) {
+				settingsLanguageAddSelect.find('option[value!="none"]').remove();
+				FillSettingsTab();
+				CheckIfSettingsHasChanges();
+			} else {
+				event.preventDefault();
+			}
+		});
+
+		$(window).on("beforeunload", (event) => {
+			if (IsReloadingAfterSettingsSave) return;
+			if (!CheckIfSettingsHasChanges(false).hasChanges) return;
+
+			askBeforePageLeave(event);
 		});
 
 		// Initialize

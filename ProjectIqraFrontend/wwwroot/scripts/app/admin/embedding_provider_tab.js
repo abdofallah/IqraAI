@@ -306,6 +306,38 @@ function CheckEmbeddingProviderManageTabHasChanges(enableDisableButton = true) {
     };
 }
 
+async function canLeaveEmbeddingProviderManageTab(leaveMessage = "") {
+    if (IsSavingEmbeddingProviderTab) {
+        AlertManager.createAlert({
+            type: "warning",
+            message: "Provider is currently being saved. Please wait for the save to finish.",
+            timeout: 6000,
+        });
+        return false;
+    }
+
+    if (CurrentManageEmbeddingProviderType == null) return true;
+
+    const changes = CheckEmbeddingProviderManageTabHasChanges(false);
+    if (changes.hasChanges) {
+        const confirmDialog = new BootstrapConfirmDialog({
+            title: "Unsaved Changes Pending",
+            message: `You have unsaved changes in the provider.${leaveMessage}`,
+            confirmText: "Discard",
+            cancelText: "Cancel",
+            confirmButtonClass: "btn-danger",
+            modalClass: "modal-lg",
+        });
+
+        const confirmResult = await confirmDialog.show();
+        if (!confirmResult) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 function ValidateEmbeddingProviderManageTab(onlyRemove = true) {
     const errors = [];
     let validated = true;
@@ -398,6 +430,29 @@ function CheckEmbeddingProviderModelManageTabHasChanges(enableDisableButton = tr
         hasChanges: result.hasChanges,
         changes: result.changes
     };
+}
+
+async function canLeaveEmbeddingProviderModelManageTab(leaveMessage = "") {
+    if (CurrentManageEmbeddingProviderModelType == null) return true;
+
+    const changes = CheckEmbeddingProviderModelManageTabHasChanges(false);
+    if (changes.hasChanges) {
+        const confirmDialog = new BootstrapConfirmDialog({
+            title: "Unsaved Changes Pending",
+            message: `You have unsaved changes in the model.${leaveMessage}`,
+            confirmText: "Discard",
+            cancelText: "Cancel",
+            confirmButtonClass: "btn-danger",
+            modalClass: "modal-lg",
+        });
+
+        const confirmResult = await confirmDialog.show();
+        if (!confirmResult) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function ValidateEmbeddingProviderModelManageTabFields(onlyRemove = false) {
@@ -622,8 +677,12 @@ $(document).ready(() => {
         );
     });
 
-    switchBackToEmbeddingProviderManagerModelsListTabFromModelTab.on("click", (event) => {
+    switchBackToEmbeddingProviderManagerModelsListTabFromModelTab.on("click", async (event) => {
         event.preventDefault();
+
+        const canLeaveResult = await canLeaveEmbeddingProviderModelManageTab(" Are you sure you want to discard these changes and leave the model?");
+        if (!canLeaveResult) return;
+
         CurrentManageEmbeddingProviderModelType = null;
         ShowEmbeddingProviderModelListTab();
     });
@@ -650,10 +709,49 @@ $(document).ready(() => {
         ShowEmbeddingProviderManageTab();
     });
 
-    switchBackToEmbeddingProviderListTabFromManageTab.on("click", (event) => {
+    switchBackToEmbeddingProviderListTabFromManageTab.on("click", async (event) => {
         event.preventDefault();
+
+        const canLeaveResult = await canLeaveEmbeddingProviderManageTab(" Are you sure you want to discard these changes and leave the provider?");
+        if (!canLeaveResult) return;
+
         CurrentManageEmbeddingProviderType = null;
         ShowEmbeddingProviderListTab();
+    });
+
+    $("#nav-bar").on("tabChange", async (event) => {
+        const activeTab = event.detail.from;
+        if (activeTab !== "embedding-provider-tab") return;
+
+        const leaveMessage = " Are you sure you want to discard these changes and leave the embedding providers tab?";
+
+        if (CurrentManageEmbeddingProviderModelType != null) {
+            const canLeaveModelResult = await canLeaveEmbeddingProviderModelManageTab(leaveMessage);
+            if (!canLeaveModelResult) {
+                event.preventDefault();
+                return;
+            }
+            CurrentManageEmbeddingProviderModelType = null;
+            ShowEmbeddingProviderModelListTab();
+        }
+
+        if (CurrentManageEmbeddingProviderType == null) return;
+
+        const canLeaveResult = await canLeaveEmbeddingProviderManageTab(leaveMessage);
+        if (canLeaveResult) {
+            CurrentManageEmbeddingProviderType = null;
+            ShowEmbeddingProviderListTab();
+        } else {
+            event.preventDefault();
+        }
+    });
+
+    $(window).on("beforeunload", (event) => {
+        const providerAsks = CurrentManageEmbeddingProviderType != null && (IsSavingEmbeddingProviderTab || CheckEmbeddingProviderManageTabHasChanges(false).hasChanges);
+        const modelAsks = CurrentManageEmbeddingProviderModelType != null && (CheckEmbeddingProviderModelManageTabHasChanges(false).hasChanges);
+        if (!providerAsks && !modelAsks) return;
+
+        askBeforePageLeave(event);
     });
 
     embeddingProviderModelListTable.on("click", "button[button-type=edit-embedding-provider-model]", (event) => {

@@ -372,6 +372,11 @@ function getCookie(name) {
 	return null;
 }
 
+function askBeforePageLeave(event) {
+	event.preventDefault();
+	event.originalEvent.returnValue = true;
+}
+
 // --- Document Ready - Initialization and Event Binding ---
 
 $(document).ready(() => {

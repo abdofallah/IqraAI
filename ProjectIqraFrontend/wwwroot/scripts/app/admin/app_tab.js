@@ -317,6 +317,21 @@ function CheckAppEmailTemplatesHasChanges() {
     return { hasChanges: result.hasChanges, changes: result.changes };
 }
 
+async function canLeaveAppEmailTemplates(leaveMessage = "") {
+    if (!CheckAppEmailTemplatesHasChanges().hasChanges) return true;
+
+    const confirmDialog = new BootstrapConfirmDialog({
+        title: "Unsaved Changes Pending",
+        message: `You have unsaved changes in the email templates.${leaveMessage}`,
+        confirmText: "Discard",
+        cancelText: "Cancel",
+        confirmButtonClass: "btn-danger",
+        modalClass: "modal-lg",
+    });
+
+    return await confirmDialog.show();
+}
+
 /** INIT **/
 function initAppTab() {
     $(document).ready(() => {
@@ -389,6 +404,24 @@ function initAppTab() {
                 AlertManager.createAlert({ type: 'danger', message: err.message || 'Failed to save templates.', timeout: 5000 });
                 btn.prop('disabled', false).html(originalText);
             });
+        });
+
+        $("#nav-bar").on("tabChange", async (event) => {
+            const activeTab = event.detail.from;
+            if (activeTab !== "app-tab") return;
+
+            const canLeaveResult = await canLeaveAppEmailTemplates(" Are you sure you want to discard these changes and leave the app tab?");
+            if (canLeaveResult) {
+                fillEmailTemplatesTab();
+            } else {
+                event.preventDefault();
+            }
+        });
+
+        $(window).on("beforeunload", (event) => {
+            if (!CheckAppEmailTemplatesHasChanges().hasChanges) return;
+
+            askBeforePageLeave(event);
         });
     });
 }

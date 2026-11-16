@@ -1925,6 +1925,46 @@ function initCacheTab() {
 				ManageEmbeddingCacheType = null;
 			});
 
+			$("#nav-bar").on("tabChange", async (event) => {
+				const activeTab = event.detail.from;
+				if (activeTab !== "cache-tab") return;
+
+				const leaveMessage = " Are you sure you want to discard these changes and leave the cache tab?";
+				const managers = [
+					[() => ManageMessageCacheType, canLeaveMessageCacheTab, () => { ManageMessageCacheType = null; ShowMessageCacheListTab(); }],
+					[() => ManageMessageGroupType, canLeaveMessageGroupTab, () => { ManageMessageGroupType = null; ShowMessageGroupsListTab(); }],
+					[() => ManageAudioCacheType, canLeaveAudioCacheTab, () => { ManageAudioCacheType = null; ShowAudioCacheListTab(); }],
+					[() => ManageAudioGroupType, canLeaveAudioGroupTab, () => { ManageAudioGroupType = null; ShowAudioGroupsListTab(); }],
+					[() => ManageEmbeddingCacheType, canLeaveEmbeddingCacheTab, () => { ManageEmbeddingCacheType = null; ShowEmbeddingCacheListTab(); }],
+					[() => ManageEmbeddingGroupType, canLeaveEmbeddingGroupTab, () => { ManageEmbeddingGroupType = null; ShowEmbeddingGroupsListTab(); }],
+				];
+
+				for (const [manageType, canLeave, leave] of managers) {
+					if (manageType() == null) continue;
+
+					const canLeaveResult = await canLeave(leaveMessage);
+					if (!canLeaveResult) {
+						event.preventDefault();
+						return;
+					}
+					leave();
+				}
+			});
+
+			$(window).on("beforeunload", (event) => {
+				const managers = [
+					[ManageMessageCacheType, IsSavingMessageCacheTab, CheckMessageCacheTabHasChanges],
+					[ManageMessageGroupType, IsSavingMessageGroupTab, CheckMessageGroupTabHasChanges],
+					[ManageAudioCacheType, IsSavingAudioCacheTab, CheckAudioCacheTabHasChanges],
+					[ManageAudioGroupType, IsSavingAudioGroupTab, CheckAudioGroupTabHasChanges],
+					[ManageEmbeddingCacheType, IsSavingEmbeddingCacheTab, CheckEmbeddingCacheTabHasChanges],
+					[ManageEmbeddingGroupType, IsSavingEmbeddingGroupTab, CheckEmbeddingGroupTabHasChanges],
+				];
+				if (!managers.some(([manageType, isSaving, check]) => manageType != null && (isSaving || check(false).hasChanges))) return;
+
+				askBeforePageLeave(event);
+			});
+
 			embeddingCacheManagerTab.on("input change", "input[type='text']", (event) => {
 				if (ManageEmbeddingCacheType == null) return;
 				CheckEmbeddingCacheTabHasChanges(true);

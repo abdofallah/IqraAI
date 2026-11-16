@@ -308,6 +308,38 @@ function CheckRerankProviderManageTabHasChanges(enableDisableButton = true) {
     };
 }
 
+async function canLeaveRerankProviderManageTab(leaveMessage = "") {
+    if (IsSavingRerankProviderTab) {
+        AlertManager.createAlert({
+            type: "warning",
+            message: "Provider is currently being saved. Please wait for the save to finish.",
+            timeout: 6000,
+        });
+        return false;
+    }
+
+    if (CurrentManageRerankProviderType == null) return true;
+
+    const changes = CheckRerankProviderManageTabHasChanges(false);
+    if (changes.hasChanges) {
+        const confirmDialog = new BootstrapConfirmDialog({
+            title: "Unsaved Changes Pending",
+            message: `You have unsaved changes in the provider.${leaveMessage}`,
+            confirmText: "Discard",
+            cancelText: "Cancel",
+            confirmButtonClass: "btn-danger",
+            modalClass: "modal-lg",
+        });
+
+        const confirmResult = await confirmDialog.show();
+        if (!confirmResult) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 function ValidateRerankProviderManageTab(onlyRemove = true) {
     const errors = [];
     let validated = true;
@@ -397,6 +429,29 @@ function CheckRerankProviderModelManageTabHasChanges(enableDisableButton = true)
         hasChanges: result.hasChanges,
         changes: result.changes
     };
+}
+
+async function canLeaveRerankProviderModelManageTab(leaveMessage = "") {
+    if (CurrentManageRerankProviderModelType == null) return true;
+
+    const changes = CheckRerankProviderModelManageTabHasChanges(false);
+    if (changes.hasChanges) {
+        const confirmDialog = new BootstrapConfirmDialog({
+            title: "Unsaved Changes Pending",
+            message: `You have unsaved changes in the model.${leaveMessage}`,
+            confirmText: "Discard",
+            cancelText: "Cancel",
+            confirmButtonClass: "btn-danger",
+            modalClass: "modal-lg",
+        });
+
+        const confirmResult = await confirmDialog.show();
+        if (!confirmResult) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function ValidateRerankProviderModelManageTabFields(onlyRemove = false) {
@@ -523,10 +578,49 @@ $(document).ready(() => {
         ShowRerankProviderManageTab();
     });
 
-    switchBackToRerankProviderListTabFromManageTab.on("click", (event) => {
+    switchBackToRerankProviderListTabFromManageTab.on("click", async (event) => {
         event.preventDefault();
+
+        const canLeaveResult = await canLeaveRerankProviderManageTab(" Are you sure you want to discard these changes and leave the provider?");
+        if (!canLeaveResult) return;
+
         CurrentManageRerankProviderType = null;
         ShowRerankProviderListTab();
+    });
+
+    $("#nav-bar").on("tabChange", async (event) => {
+        const activeTab = event.detail.from;
+        if (activeTab !== "rerank-provider-tab") return;
+
+        const leaveMessage = " Are you sure you want to discard these changes and leave the rerank providers tab?";
+
+        if (CurrentManageRerankProviderModelType != null) {
+            const canLeaveModelResult = await canLeaveRerankProviderModelManageTab(leaveMessage);
+            if (!canLeaveModelResult) {
+                event.preventDefault();
+                return;
+            }
+            CurrentManageRerankProviderModelType = null;
+            ShowRerankProviderModelListTab();
+        }
+
+        if (CurrentManageRerankProviderType == null) return;
+
+        const canLeaveResult = await canLeaveRerankProviderManageTab(leaveMessage);
+        if (canLeaveResult) {
+            CurrentManageRerankProviderType = null;
+            ShowRerankProviderListTab();
+        } else {
+            event.preventDefault();
+        }
+    });
+
+    $(window).on("beforeunload", (event) => {
+        const providerAsks = CurrentManageRerankProviderType != null && (IsSavingRerankProviderTab || CheckRerankProviderManageTabHasChanges(false).hasChanges);
+        const modelAsks = CurrentManageRerankProviderModelType != null && (CheckRerankProviderModelManageTabHasChanges(false).hasChanges);
+        if (!providerAsks && !modelAsks) return;
+
+        askBeforePageLeave(event);
     });
 
     // Model Level Events
@@ -553,8 +647,12 @@ $(document).ready(() => {
         ShowRerankProviderModelManageTab();
     });
 
-    switchBackToRerankProviderManagerModelsListTabFromModelTab.on("click", (event) => {
+    switchBackToRerankProviderManagerModelsListTabFromModelTab.on("click", async (event) => {
         event.preventDefault();
+
+        const canLeaveResult = await canLeaveRerankProviderModelManageTab(" Are you sure you want to discard these changes and leave the model?");
+        if (!canLeaveResult) return;
+
         CurrentManageRerankProviderModelType = null;
         ShowRerankProviderModelListTab();
     });

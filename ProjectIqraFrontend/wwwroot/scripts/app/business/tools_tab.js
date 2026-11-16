@@ -1904,6 +1904,13 @@ function initToolsTab() {
 				}
 			});
 
+			$(window).on("beforeunload", (event) => {
+				if (ManageToolType == null) return;
+				if (!IsSavingToolManageTab && !CheckToolsManageTabHasChanges(false).hasChanges) return;
+
+				askBeforePageLeave(event);
+			});
+
 			confirmPublishToolButton.on("click", async (event) => {
 				event.preventDefault();
 

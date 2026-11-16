@@ -1311,6 +1311,28 @@ function initPostAnalysisTab() {
         }
     });
 
+    $("#nav-bar").on("tabChange", async (event) => {
+        const activeTab = event.detail.from;
+        if (activeTab !== "post-analysis-tab") return;
+
+        if (managePCAType == null) return;
+
+        const canLeaveResult = await canLeavePCAManager(" Are you sure you want to discard these changes and leave the post analysis tab?");
+        if (canLeaveResult) {
+            managePCAType = null;
+            showPCAListView();
+        } else {
+            event.preventDefault();
+        }
+    });
+
+    $(window).on("beforeunload", (event) => {
+        if (managePCAType == null) return;
+        if (!isSavingPCATemplate && !checkPCAChanges(false).hasChanges) return;
+
+        askBeforePageLeave(event);
+    });
+
     pcaListContainer.on('click', '.post-analysis-card', (e) => {
         e.preventDefault();
         e.stopPropagation();

@@ -1232,18 +1232,25 @@ async function canLeaveKnowledgeBaseTab(leaveMessage = "") {
     }
     return true;
 }
-async function canLeaveChunkManager() {
+async function canLeaveChunkManager(leaveMessage = "") {
     const hasChanges = currentAddedChunks.length > 0 || currentEditedChunks.length > 0 || currentDeletedChunks.length > 0;
     if (hasChanges) {
         const confirmDialog = new BootstrapConfirmDialog({
-            title: "Unsaved Chunk Changes",
-            message: "You have unsaved changes in the document chunks. Are you sure you want to discard them?",
+            title: "Unsaved Changes Pending",
+            message: `You have unsaved changes in the document chunks.${leaveMessage}`,
             confirmText: "Discard",
-            confirmButtonClass: 'btn-danger'
+            cancelText: "Cancel",
+            confirmButtonClass: "btn-danger",
+            modalClass: "modal-lg",
         });
         return await confirmDialog.show();
     }
     return true;
+}
+function discardChunkManagerChanges() {
+    currentAddedChunks = [];
+    currentEditedChunks = [];
+    currentDeletedChunks = [];
 }
 
 // Event Handlers Setup
@@ -1425,10 +1432,44 @@ function initKnowledgeBaseTab() {
 
         backToKbManagerFromChunks.on('click', async (e) => {
             e.preventDefault();
-            if (!(await canLeaveChunkManager())) {
+            if (!(await canLeaveChunkManager(" Are you sure you want to discard these changes and leave the document chunks?"))) {
                 return; // User cancelled
             }
+            discardChunkManagerChanges();
             showKnowledgeBaseManagerTab();
+        });
+
+        $("#nav-bar").on("tabChange", async (event) => {
+            const activeTab = event.detail.from;
+            if (activeTab !== "knowledge-base-tab") return;
+
+            if (!documentChunkManagerTab.hasClass("d-none")) {
+                const canLeaveChunksResult = await canLeaveChunkManager(" Are you sure you want to discard these changes and leave the knowledge base tab?");
+                if (!canLeaveChunksResult) {
+                    event.preventDefault();
+                    return;
+                }
+                discardChunkManagerChanges();
+                showKnowledgeBaseManagerTab();
+            }
+
+            if (ManageKnowledgeBaseType == null) return;
+
+            const canLeaveResult = await canLeaveKnowledgeBaseTab(" Are you sure you want to discard these changes and leave the knowledge base tab?");
+            if (canLeaveResult) {
+                ManageKnowledgeBaseType = null;
+                showKnowledgeBaseListTab();
+            } else {
+                event.preventDefault();
+            }
+        });
+
+        $(window).on("beforeunload", (event) => {
+            const chunksAsk = !documentChunkManagerTab.hasClass("d-none") && (IsSavingChunks || currentAddedChunks.length > 0 || currentEditedChunks.length > 0 || currentDeletedChunks.length > 0);
+            const knowledgeBaseAsks = ManageKnowledgeBaseType != null && (IsSavingKnowledgeBase || checkKnowledgeBaseTabHasChanges(false).hasChanges);
+            if (!chunksAsk && !knowledgeBaseAsks) return;
+
+            askBeforePageLeave(event);
         });
 
 
@@ -1674,7 +1715,7 @@ function initKnowledgeBaseTab() {
         documentsTable.on('click', '[button-type="viewDocumentChunks"]', function (e) {
             e.preventDefault();
             const docId = $(this).closest('tr').attr('doc-id');
-            ManageCurrentDocumentData = ManageCurrentKnowledgeBaseDocuments.find(d => d.id.toString() === docId);
+            ManageCurrentDocumentData = ChangesHelper.snapshot(ManageCurrentKnowledgeBaseDocuments.find(d => d.id.toString() === docId));
 
             // Reset change tracking for the new session
             currentAddedChunks = [];

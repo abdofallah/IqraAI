@@ -273,6 +273,38 @@ function CheckTTSProviderManageTabHasChanges(enableDisableButton = true) {
 	};
 }
 
+async function canLeaveTTSProviderManageTab(leaveMessage = "") {
+	if (IsSavingTTSProviderTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Provider is currently being saved. Please wait for the save to finish.",
+			timeout: 6000,
+		});
+		return false;
+	}
+
+	if (CurrentTTSProviderType == null) return true;
+
+	const changes = CheckTTSProviderManageTabHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the provider.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 function ValidateTTSProviderManageTab(onlyRemove = true) {
 	const errors = [];
 	let validated = true;
@@ -463,6 +495,38 @@ function CheckTTSProviderModelManageTabHasChanges(enableDisableButton = true) {
 	};
 }
 
+async function canLeaveTTSProviderModelManageTab(leaveMessage = "") {
+	if (IsSavingTTSProviderTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Model is currently being saved. Please wait for the save to finish.",
+			timeout: 6000,
+		});
+		return false;
+	}
+
+	if (CurrentTTSProviderModelType == null) return true;
+
+	const changes = CheckTTSProviderModelManageTabHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the model.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 function ValidateTTSProviderModelManageTabFields(onlyRemove = true) {
 	const errors = [];
 	let validated = true;
@@ -542,10 +606,49 @@ $(document).ready(() => {
 	});
 
 	// Switch back to list event handler
-	switchBackToTTSProviderListTabFromManageTab.on("click", (event) => {
+	switchBackToTTSProviderListTabFromManageTab.on("click", async (event) => {
 		event.preventDefault();
+
+		const canLeaveResult = await canLeaveTTSProviderManageTab(" Are you sure you want to discard these changes and leave the provider?");
+		if (!canLeaveResult) return;
+
 		CurrentTTSProviderType = null;
 		ShowTTSProviderListTab();
+	});
+
+	$("#nav-bar").on("tabChange", async (event) => {
+		const activeTab = event.detail.from;
+		if (activeTab !== "tts-provider-tab") return;
+
+		const leaveMessage = " Are you sure you want to discard these changes and leave the TTS providers tab?";
+
+		if (CurrentTTSProviderModelType != null) {
+			const canLeaveModelResult = await canLeaveTTSProviderModelManageTab(leaveMessage);
+			if (!canLeaveModelResult) {
+				event.preventDefault();
+				return;
+			}
+			CurrentTTSProviderModelType = null;
+			ShowTTSProviderModelListTab();
+		}
+
+		if (CurrentTTSProviderType == null) return;
+
+		const canLeaveResult = await canLeaveTTSProviderManageTab(leaveMessage);
+		if (canLeaveResult) {
+			CurrentTTSProviderType = null;
+			ShowTTSProviderListTab();
+		} else {
+			event.preventDefault();
+		}
+	});
+
+	$(window).on("beforeunload", (event) => {
+		const providerAsks = CurrentTTSProviderType != null && (IsSavingTTSProviderTab || CheckTTSProviderManageTabHasChanges(false).hasChanges);
+		const modelAsks = CurrentTTSProviderModelType != null && (IsSavingTTSProviderTab || CheckTTSProviderModelManageTabHasChanges(false).hasChanges);
+		if (!providerAsks && !modelAsks) return;
+
+		askBeforePageLeave(event);
 	});
 
 	// Provider Management Event Handlers
@@ -668,8 +771,12 @@ $(document).ready(() => {
 	});
 
 	// Model Form Events
-	switchBackToTTSProviderManagerModelsListTabFromModelTab.on("click", (event) => {
+	switchBackToTTSProviderManagerModelsListTabFromModelTab.on("click", async (event) => {
 		event.preventDefault();
+
+		const canLeaveResult = await canLeaveTTSProviderModelManageTab(" Are you sure you want to discard these changes and leave the model?");
+		if (!canLeaveResult) return;
+
 		CurrentTTSProviderModelType = null;
 		ShowTTSProviderModelListTab();
 	});

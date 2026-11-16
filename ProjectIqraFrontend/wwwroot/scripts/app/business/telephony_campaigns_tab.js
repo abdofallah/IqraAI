@@ -2708,6 +2708,28 @@ function initTelephonyCampaignsTab() {
             }
         });
 
+        $("#nav-bar").on("tabChange", async (event) => {
+            const activeTab = event.detail.from;
+            if (activeTab !== "telephony-campaigns-tab") return;
+
+            if (manageTelephonyCampaignType == null) return;
+
+            const canLeaveResult = await canLeaveTelephonyCampaignsManager(" Are you sure you want to discard these changes and leave the telephony campaigns tab?");
+            if (canLeaveResult) {
+                manageTelephonyCampaignType = null;
+                showTelephonyCampaignsListView();
+            } else {
+                event.preventDefault();
+            }
+        });
+
+        $(window).on("beforeunload", (event) => {
+            if (manageTelephonyCampaignType == null) return;
+            if (!isSavingTelephonyCampaign && !checkTelephonyCampaignChanges(false).hasChanges) return;
+
+            askBeforePageLeave(event);
+        });
+
         telephonyCampaignsListContainer.on("click", ".telephony-campaign-card", (e) => {
             e.preventDefault();
             e.stopPropagation();

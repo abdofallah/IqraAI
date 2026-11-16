@@ -466,6 +466,38 @@ function CheckIntegrationTabHasChanges(enableDisableButton = true) {
 	};
 }
 
+async function canLeaveIntegrationTab(leaveMessage = "") {
+	if (IsSavingIntegrationTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Integration is currently being saved. Please wait for the save to finish.",
+			timeout: 6000,
+		});
+		return false;
+	}
+
+	if (ManageIntegrationType == null) return true;
+
+	const changes = CheckIntegrationTabHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the integration.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 function collectTypes() {
 	const types = [];
 	integrationTypesList.find(".badge").each(function () {
@@ -596,23 +628,35 @@ function initIntegrationsTab() {
 	switchBackToIntegrationsListTab.on("click", async (event) => {
 		event.preventDefault();
 
-		const changes = CheckIntegrationTabHasChanges(false);
-		if (changes.hasChanges) {
-			const confirmDialog = new BootstrapConfirmDialog({
-				title: "Unsaved Changes",
-				message: "You have unsaved changes. Are you sure you want to discard them?",
-				confirmText: "Discard",
-				cancelText: "Stay",
-				confirmButtonClass: "btn-danger",
-			});
-
-			const confirmed = await confirmDialog.show();
-			if (!confirmed) return;
-		}
+		const canLeaveResult = await canLeaveIntegrationTab(" Are you sure you want to discard these changes and leave the integration?");
+		if (!canLeaveResult) return;
 
 		ShowIntegrationsListTab();
 		ManageIntegrationType = null;
 		CurrentIntegrationData = null;
+	});
+
+	$("#nav-bar").on("tabChange", async (event) => {
+		const activeTab = event.detail.from;
+		if (activeTab !== "integrations-tab") return;
+
+		if (ManageIntegrationType == null) return;
+
+		const canLeaveResult = await canLeaveIntegrationTab(" Are you sure you want to discard these changes and leave the integrations tab?");
+		if (canLeaveResult) {
+			ShowIntegrationsListTab();
+			ManageIntegrationType = null;
+			CurrentIntegrationData = null;
+		} else {
+			event.preventDefault();
+		}
+	});
+
+	$(window).on("beforeunload", (event) => {
+		if (ManageIntegrationType == null) return;
+		if (!IsSavingIntegrationTab && !CheckIntegrationTabHasChanges(false).hasChanges) return;
+
+		askBeforePageLeave(event);
 	});
 
 	// Edit integration

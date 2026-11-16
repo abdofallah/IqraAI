@@ -309,6 +309,30 @@ function checkMakeCallTabHasChanges() {
 	}).hasChanges;
 }
 
+async function canLeaveMakeCallsTab(leaveMessage = "") {
+	if (IsInitiatingCall) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "A call is currently being queued. Please wait for it to finish.",
+			timeout: 6000,
+		});
+		return false;
+	}
+
+	if (!checkMakeCallTabHasChanges()) return true;
+
+	const confirmDialog = new BootstrapConfirmDialog({
+		title: "Unsaved Changes Pending",
+		message: `You have unsaved changes in the call form.${leaveMessage}`,
+		confirmText: "Discard",
+		cancelText: "Cancel",
+		confirmButtonClass: "btn-danger",
+		modalClass: "modal-lg",
+	});
+
+	return await confirmDialog.show();
+}
+
 /** HELPER & UI FUNCTIONS **/
 function handleCallTypeChange(selectedType) {
 	if (selectedType === OutboundCallNumberType.Single) {
@@ -589,6 +613,7 @@ function initMakeCallsTab() {
 					});
 
 					//resetMakeCallForm(); todo make configurable
+					captureInitialFormState();
 				}		
 
 				IsInitiatingCall = false;
@@ -615,6 +640,24 @@ function initMakeCallsTab() {
 	resetButton.on("click", (event) => {
 		event.preventDefault();
 		resetMakeCallForm();
+	});
+
+	$("#nav-bar").on("tabChange", async (event) => {
+		const activeTab = event.detail.from;
+		if (activeTab !== "make-calls-tab") return;
+
+		const canLeaveResult = await canLeaveMakeCallsTab(" Are you sure you want to discard these changes and leave the make calls tab?");
+		if (canLeaveResult) {
+			if (checkMakeCallTabHasChanges()) resetMakeCallForm();
+		} else {
+			event.preventDefault();
+		}
+	});
+
+	$(window).on("beforeunload", (event) => {
+		if (!IsInitiatingCall && !checkMakeCallTabHasChanges()) return;
+
+		askBeforePageLeave(event);
 	});
 
 	initMakeCallHandlers();

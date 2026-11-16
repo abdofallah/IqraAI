@@ -3,6 +3,8 @@ let CurrentIntegrationData = null;
 let ManageIntegrationType = null; // new or edit
 let SelectedIntegrationType = null;
 let IsSavingIntegrationTab = false;
+let IntegrationModalCloseConfirmed = false;
+let IsLeavingForOAuthConnect = false;
 let IsDeletingIntegrationTab = false;
 let IntegrationsOAuthStatusData = {};
 let IntegrationsOAuthStatusPollInterval = null;
@@ -361,6 +363,7 @@ function StartOAuthConnect(connectWindow, integrationId) {
 		connectWindow.location.href = connectUrl;
 		connectWindow.focus();
 	} else {
+		IsLeavingForOAuthConnect = true;
 		window.location.href = connectUrl;
 	}
 }
@@ -870,6 +873,7 @@ function initIntegrationsTab() {
 				}
 
 				FillIntegrationsList();
+				IntegrationModalCloseConfirmed = true;
 				addNewIntegrationModal.modal("hide");
 
 				AlertManager.createAlert({
@@ -904,6 +908,40 @@ function initIntegrationsTab() {
 				IsSavingIntegrationTab = false;
 			},
 		);
+	});
+
+	addNewIntegrationModal.on("hide.bs.modal", (event) => {
+		if (IntegrationModalCloseConfirmed || ManageIntegrationType == null || !integrationManagerContainer.hasClass("show")) {
+			IntegrationModalCloseConfirmed = false;
+			return;
+		}
+		if (!CheckIntegrationTabHasChanges(false).hasChanges) return;
+
+		event.preventDefault();
+
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: "You have unsaved changes in the integration. Are you sure you want to discard these changes and close it?",
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+		confirmDialog.show().then((confirmResult) => {
+			if (!confirmResult) return;
+
+			IntegrationModalCloseConfirmed = true;
+			addNewIntegrationModal.modal("hide");
+		});
+
+		return false;
+	});
+
+	$(window).on("beforeunload", (event) => {
+		if (IsLeavingForOAuthConnect || ManageIntegrationType == null || !integrationManagerContainer.hasClass("show")) return;
+		if (!IsSavingIntegrationTab && !CheckIntegrationTabHasChanges(false).hasChanges) return;
+
+		askBeforePageLeave(event);
 	});
 
 	// Add modal hidden event handler to reset state
