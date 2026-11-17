@@ -1,10 +1,12 @@
 ﻿using IqraCore.Entities.Embedding;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helper.Integration;
 using IqraCore.Entities.LLM;
 using IqraCore.Entities.Rerank;
 using IqraCore.Entities.STT;
 using IqraCore.Entities.TTS;
 using IqraCore.Models.FlowApp;
+using IqraCore.Models.S3Storage;
 using IqraCore.Models.Specification;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.FlowApp;
@@ -78,6 +80,33 @@ namespace ProjectIqraFrontend.Controllers
                 return result.SetFailureResult(
                     "GetAppLanguages:EXCEPTION",
                     ex.Message
+                );
+            }
+        }
+
+        [HttpGet("/app/specification/integrations/{integrationId}/signed-file/{kind}")]
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetIntegrationSignedFile(string integrationId, IntegrationSignedFileKindENUM kind)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            try
+            {
+                var signedFileResult = await _integrationsManager.GetIntegrationSignedFile(integrationId, kind);
+                if (!signedFileResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetIntegrationSignedFile:{signedFileResult.Code}",
+                        signedFileResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(signedFileResult.Data!);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetIntegrationSignedFile:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
                 );
             }
         }

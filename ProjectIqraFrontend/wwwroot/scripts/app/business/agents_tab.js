@@ -363,10 +363,7 @@ function DeleteBusinessAgent(agentId, onSuccess, onError) {
 }
 
 function FetchAgentBackgroundAudioSignedFileFromAPI(agentId) {
-	return SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}`).then((businessData) => {
-		const agent = businessData.businessApp.agents.find((item) => item.id === agentId);
-		return agent ? agent.settings.backgroundAudioUrl : null;
-	});
+	return SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}/agents/${agentId}/signed-file/BackgroundAudio`);
 }
 
 /** Functions **/

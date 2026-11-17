@@ -176,6 +176,12 @@ namespace IqraInfrastructure.Repositories.Integrations
             return await _integrationsCollection.BulkWriteAsync(updates);
         }
 
+        public async Task<S3StorageFileLink?> GetIntegrationLogoS3StorageLink(string integrationId)
+        {
+            var filter = Builders<IntegrationData>.Filter.Eq(x => x.Id, integrationId);
+            return await _integrationsCollection.Find(filter).Project(x => x.LogoS3StorageLink).FirstOrDefaultAsync();
+        }
+
         public async Task<IntegrationData?> GetIntegrationById(string integrationId)
         {
             var filter = Builders<IntegrationData>.Filter.Eq(x => x.Id, integrationId);

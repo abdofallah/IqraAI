@@ -279,11 +279,8 @@ function FetchConversationStateBySessionId(sessionId, successCallback, errorCall
         },
     });
 }
-function FetchConversationAudioSignedFileFromAPI(sessionId, memberType) {
-    return SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}/conversations/state/${sessionId}`).then((stateData) => {
-        const members = memberType === "agent" ? stateData.agents : stateData.clients;
-        return members && members.length > 0 ? members[0].audioUrl : null;
-    });
+function FetchConversationAudioSignedFileFromAPI(sessionId, memberType, memberId) {
+    return SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}/conversations/state/${sessionId}/signed-file/${memberType === "agent" ? "AgentRecording" : "ClientRecording"}/${memberId}`);
 }
 function FetchWebSessionConversationsMetaDataFromAPI(requestPayload, successCallback, errorCallback) {
     $.ajax({
@@ -1741,7 +1738,7 @@ function LoadConversationAudio(stateData, sessionId) {
         agentAudioPlayBtn.prop('disabled', true);
         agentAudioDownloadBtn.prop('disabled', true).attr('href', '#');
         agentAudioError.addClass('d-none');
-        handleAudioUrlSuccess(agentInfo.audioUrl, () => FetchConversationAudioSignedFileFromAPI(sessionId, "agent"), '#waveform-agent-audio', agentAudioLoader, agentAudioPlayBtn, agentAudioDownloadBtn, agentAudioError);
+        handleAudioUrlSuccess(agentInfo.audioUrl, () => FetchConversationAudioSignedFileFromAPI(sessionId, "agent", agentInfo.agentId), '#waveform-agent-audio', agentAudioLoader, agentAudioPlayBtn, agentAudioDownloadBtn, agentAudioError);
     } else if (agentInfo) {
         agentAudioContainer.removeClass('d-none');
         agentAudioError.text('Agent audio not yet available. It may still be compiling.').removeClass('d-none');
@@ -1755,7 +1752,7 @@ function LoadConversationAudio(stateData, sessionId) {
         clientAudioPlayBtn.prop('disabled', true);
         clientAudioDownloadBtn.prop('disabled', true).attr('href', '#');
         clientAudioError.addClass('d-none');
-        handleAudioUrlSuccess(clientInfo.audioUrl, () => FetchConversationAudioSignedFileFromAPI(sessionId, "client"), '#waveform-client-audio', clientAudioLoader, clientAudioPlayBtn, clientAudioDownloadBtn, clientAudioError);
+        handleAudioUrlSuccess(clientInfo.audioUrl, () => FetchConversationAudioSignedFileFromAPI(sessionId, "client", clientInfo.clientId), '#waveform-client-audio', clientAudioLoader, clientAudioPlayBtn, clientAudioDownloadBtn, clientAudioError);
     } else if (clientInfo) {
         clientAudioContainer.removeClass('d-none');
         clientAudioError.text('Client audio not yet available. It may still be compiling.').removeClass('d-none');

@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.ModulePermission.ENUM;
+using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using IqraCore.Entities.Validation;
 using IqraCore.Models.User.Business.App.Agent;
+using IqraCore.Models.S3Storage;
 
 namespace ProjectIqraFrontend.Controllers.App.Business
 {
@@ -27,6 +29,52 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             _businessManager = businessManager;
             _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _whiteLabelContext = whiteLabelContext;
+        }
+
+        [HttpGet("/app/user/business/{businessId}/agents/{agentId}/signed-file/{kind}")]
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetAgentSignedFile(long businessId, string agentId, BusinessAppAgentSignedFileKindENUM kind)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            try
+            {
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permissions
+                    checkUserDisabled: true,
+                    // User Business Permissions
+                    checkUserBusinessesDisabled: true,
+                    // Business Permissions
+                    checkBusinessIsDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetAgentSignedFile:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+
+                var signedFileResult = await _businessManager.GetAgentsManager().GetAgentSignedFile(businessId, agentId, kind);
+                if (!signedFileResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetAgentSignedFile:{signedFileResult.Code}",
+                        signedFileResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(signedFileResult.Data!);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetAgentSignedFile:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
+            }
         }
 
         [HttpPost("/app/user/business/{businessId}/agents/save")]

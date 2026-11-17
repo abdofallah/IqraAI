@@ -1,9 +1,11 @@
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.S3Storage;
 using IqraCore.Interfaces.User;
 using IqraCore.Models.User.Business;
+using IqraCore.Models.S3Storage;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
@@ -391,11 +393,37 @@ namespace IqraInfrastructure.Managers.Business
         public GetUserBusinessFullResultMetaDataModel CreateBusinessMetaDataModel(BusinessData businessData)
         {
             var model = new GetUserBusinessFullResultMetaDataModel(businessData);
-            if (businessData.LogoS3StorageLink != null)
-            {
-                model.LogoUrl = _businessLogoRepository!.GenerateSignedFile(businessData.LogoS3StorageLink.ObjectName, 86400);
-            }
+            model.LogoUrl = SignBusinessLogo(businessData.LogoS3StorageLink);
             return model;
+        }
+
+        public FunctionReturnResult<S3SignedFileModel?> CreateBusinessSignedFile(BusinessData businessData, BusinessSignedFileKindENUM kind)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            S3StorageFileLink? logoLink;
+            if (kind == BusinessSignedFileKindENUM.Logo)
+            {
+                logoLink = businessData.LogoS3StorageLink;
+            }
+            else
+            {
+                return result.SetFailureResult("GetBusinessSignedFile:UNKNOWN_KIND", "Unknown signed file kind.");
+            }
+
+            var signedFile = SignBusinessLogo(logoLink);
+            if (signedFile == null)
+            {
+                return result.SetFailureResult("GetBusinessSignedFile:NOT_FOUND", "Signed file not found.");
+            }
+
+            return result.SetSuccessResult(signedFile);
+        }
+
+        private S3SignedFileModel? SignBusinessLogo(S3StorageFileLink? logoLink)
+        {
+            if (logoLink == null) return null;
+            return _businessLogoRepository!.GenerateSignedFile(logoLink.ObjectName, 86400);
         }
 
         public GetUserBusinessFullResultAppModel CreateBusinessAppModel(BusinessApp businessApp)

@@ -1,7 +1,9 @@
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helper.Tool;
 using IqraCore.Entities.S3Storage;
+using IqraCore.Models.S3Storage;
 using IqraCore.Models.User.Business.App.Tool;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
@@ -62,15 +64,42 @@ namespace IqraInfrastructure.Managers.Business
         public BusinessAppToolModel CreateToolModel(BusinessAppTool tool)
         {
             var model = new BusinessAppToolModel(tool);
-            if (tool.Audio.DuringExecutionAudioS3StorageLink != null)
-            {
-                model.Audio.DuringExecutionAudioUrl = _businessToolAudioRepository.GenerateSignedFile(tool.Audio.DuringExecutionAudioS3StorageLink.ObjectName, 3600);
-            }
-            if (tool.Audio.AfterExecutionAudioS3StorageLink != null)
-            {
-                model.Audio.AfterExecutionAudioUrl = _businessToolAudioRepository.GenerateSignedFile(tool.Audio.AfterExecutionAudioS3StorageLink.ObjectName, 3600);
-            }
+            model.Audio.DuringExecutionAudioUrl = SignToolAudio(tool.Audio.DuringExecutionAudioS3StorageLink);
+            model.Audio.AfterExecutionAudioUrl = SignToolAudio(tool.Audio.AfterExecutionAudioS3StorageLink);
             return model;
+        }
+
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetToolSignedFile(long businessId, string toolId, BusinessAppToolSignedFileKindENUM kind)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            S3StorageFileLink? audioLink;
+            if (kind == BusinessAppToolSignedFileKindENUM.DuringExecutionAudio)
+            {
+                audioLink = await _businessAppRepository.GetToolDuringExecutionAudioS3StorageLink(businessId, toolId);
+            }
+            else if (kind == BusinessAppToolSignedFileKindENUM.AfterExecutionAudio)
+            {
+                audioLink = await _businessAppRepository.GetToolAfterExecutionAudioS3StorageLink(businessId, toolId);
+            }
+            else
+            {
+                return result.SetFailureResult("GetToolSignedFile:UNKNOWN_KIND", "Unknown signed file kind.");
+            }
+
+            var signedFile = SignToolAudio(audioLink);
+            if (signedFile == null)
+            {
+                return result.SetFailureResult("GetToolSignedFile:NOT_FOUND", "Signed file not found.");
+            }
+
+            return result.SetSuccessResult(signedFile);
+        }
+
+        private S3SignedFileModel? SignToolAudio(S3StorageFileLink? audioLink)
+        {
+            if (audioLink == null) return null;
+            return _businessToolAudioRepository.GenerateSignedFile(audioLink.ObjectName, 3600);
         }
 
         public async Task<FunctionReturnResult<BusinessToolTestResult?>> TestBusinessTool(

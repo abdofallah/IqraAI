@@ -1,6 +1,8 @@
 ﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helper.Integration;
 using IqraCore.Entities.Integrations;
 using IqraCore.Interfaces.Validation;
+using IqraCore.Models.S3Storage;
 using IqraCore.Models.Specification;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Integrations;
@@ -60,6 +62,46 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result.SetFailureResult(
                     "GetIntegrations:EXCEPTION",
                     $"Failed to get integrations. Exception: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpGet("/app/admin/integrations/{integrationId}/signed-file/{kind}")]
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetAdminIntegrationSignedFile(string integrationId, IntegrationSignedFileKindENUM kind)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            try
+            {
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionWithPermissions(
+                    Request: Request,
+                    checkUserIsAdmin: true,
+                    checkUserDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetAdminIntegrationSignedFile:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+
+                var signedFileResult = await _integrationsManager.GetIntegrationSignedFile(integrationId, kind);
+                if (!signedFileResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetAdminIntegrationSignedFile:{signedFileResult.Code}",
+                        signedFileResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(signedFileResult.Data!);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetAdminIntegrationSignedFile:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
                 );
             }
         }

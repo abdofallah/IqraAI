@@ -1,6 +1,8 @@
 ﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helper.Integration;
 using IqraCore.Entities.Integrations;
 using IqraCore.Entities.S3Storage;
+using IqraCore.Models.S3Storage;
 using IqraCore.Models.Specification;
 using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.Integrations;
@@ -490,10 +492,7 @@ namespace IqraInfrastructure.Managers.Integrations
         public IntegrationViewModel CreateIntegrationViewModel(IntegrationData integration)
         {
             var model = new IntegrationViewModel(integration);
-            if (integration.LogoS3StorageLink != null)
-            {
-                model.LogoUrl = _integrationsLogoRepository!.GenerateSignedFile(integration.LogoS3StorageLink.ObjectName, 86400);
-            }
+            model.LogoUrl = SignIntegrationLogo(integration.LogoS3StorageLink);
             return model;
         }
 
@@ -501,11 +500,37 @@ namespace IqraInfrastructure.Managers.Integrations
         {
             foreach (var integration in integrations)
             {
-                if (integration.LogoS3StorageLink != null)
-                {
-                    integration.PresignedLogoUrl = _integrationsLogoRepository!.GenerateSignedFile(integration.LogoS3StorageLink.ObjectName, 86400);
-                }
+                integration.PresignedLogoUrl = SignIntegrationLogo(integration.LogoS3StorageLink);
             }
+        }
+
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetIntegrationSignedFile(string integrationId, IntegrationSignedFileKindENUM kind)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            S3StorageFileLink? logoLink;
+            if (kind == IntegrationSignedFileKindENUM.Logo)
+            {
+                logoLink = await _integrationsRepository.GetIntegrationLogoS3StorageLink(integrationId);
+            }
+            else
+            {
+                return result.SetFailureResult("GetIntegrationSignedFile:UNKNOWN_KIND", "Unknown signed file kind.");
+            }
+
+            var signedFile = SignIntegrationLogo(logoLink);
+            if (signedFile == null)
+            {
+                return result.SetFailureResult("GetIntegrationSignedFile:NOT_FOUND", "Signed file not found.");
+            }
+
+            return result.SetSuccessResult(signedFile);
+        }
+
+        private S3SignedFileModel? SignIntegrationLogo(S3StorageFileLink? logoLink)
+        {
+            if (logoLink == null) return null;
+            return _integrationsLogoRepository!.GenerateSignedFile(logoLink.ObjectName, 86400);
         }
 
         public async Task<FunctionReturnResult<IntegrationData?>> getIntegrationData(string integrationId)

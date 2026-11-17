@@ -202,7 +202,7 @@ function ShowSettingsBusinessLogo() {
 
 	SignedFileHelper.showImage(settingsGeneralBusinessLogoPreview, {
 		file: businessData.logoUrl,
-		fetchFile: () => SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}`).then((data) => data.businessData.logoUrl),
+		fetchFile: () => SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}/signed-file/Logo`),
 		onRenewed: (file) => {
 			businessData.logoUrl = file;
 		},

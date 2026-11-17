@@ -198,6 +198,28 @@ namespace IqraInfrastructure.Repositories.Business
          * 
         **/
 
+        public async Task<S3StorageFileLink?> GetToolDuringExecutionAudioS3StorageLink(long businessId, string toolId)
+        {
+            var linkQuery = _businessAppCollection.AsQueryable()
+                .Where(b => b.Id == businessId)
+                .SelectMany(b => b.Tools)
+                .Where(tool => tool.Id == toolId)
+                .Select(tool => tool.Audio.DuringExecutionAudioS3StorageLink);
+
+            return await linkQuery.FirstOrDefaultAsync();
+        }
+
+        public async Task<S3StorageFileLink?> GetToolAfterExecutionAudioS3StorageLink(long businessId, string toolId)
+        {
+            var linkQuery = _businessAppCollection.AsQueryable()
+                .Where(b => b.Id == businessId)
+                .SelectMany(b => b.Tools)
+                .Where(tool => tool.Id == toolId)
+                .Select(tool => tool.Audio.AfterExecutionAudioS3StorageLink);
+
+            return await linkQuery.FirstOrDefaultAsync();
+        }
+
         public async Task<BusinessAppTool?> GetBusinessAppTool(long businessId, string selectedToolId)
         {
             var filter = Builders<BusinessApp>.Filter.And(

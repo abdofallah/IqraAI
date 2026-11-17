@@ -78,10 +78,7 @@ function ShowBusinessCardLogo(cardElement, businessData) {
 
 	SignedFileHelper.showImage(cardElement.find("img").first(), {
 		file: businessData.logoUrl,
-		fetchFile: () => SignedFileHelper.fetchData("/app/user/businesses").then((businesses) => {
-			const business = businesses.find((item) => item.id === businessData.id);
-			return business ? business.logoUrl : null;
-		}),
+		fetchFile: () => SignedFileHelper.fetchData(`/app/user/business/${businessData.id}/signed-file/Logo`),
 		onRenewed: (file) => {
 			businessData.logoUrl = file;
 		},

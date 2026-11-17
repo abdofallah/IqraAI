@@ -1,9 +1,11 @@
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.ModulePermission.ENUM;
+using IqraCore.Entities.Helper.Tool;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
 using IqraCore.Models.User.Business.App.Tool;
+using IqraCore.Models.S3Storage;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Services;
@@ -41,6 +43,52 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             _testExecutionRepository = testExecutionRepository;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<UserBusinessToolsController>();
+        }
+
+        [HttpGet("/app/user/business/{businessId}/tools/{toolId}/signed-file/{kind}")]
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetToolSignedFile(long businessId, string toolId, BusinessAppToolSignedFileKindENUM kind)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            try
+            {
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permissions
+                    checkUserDisabled: true,
+                    // User Business Permissions
+                    checkUserBusinessesDisabled: true,
+                    // Business Permissions
+                    checkBusinessIsDisabled: true
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetToolSignedFile:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+
+                var signedFileResult = await _businessManager.GetToolsManager().GetToolSignedFile(businessId, toolId, kind);
+                if (!signedFileResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetToolSignedFile:{signedFileResult.Code}",
+                        signedFileResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(signedFileResult.Data!);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetToolSignedFile:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
+            }
         }
 
         [HttpPost("/app/user/business/{businessId}/tools/save")]

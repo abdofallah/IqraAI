@@ -1,9 +1,11 @@
 ﻿using IqraCore.Attributes;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.WhiteLabel;
 using IqraCore.Interfaces.Validation;
 using IqraCore.Models.User.Business;
+using IqraCore.Models.S3Storage;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Business;
@@ -133,6 +135,53 @@ namespace ProjectIqraFrontend.Controllers.App.User
             {
                 return result.SetFailureResult(
                     "GetUserBusiness:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpGet("/app/user/business/{businessId}/signed-file/{kind}")]
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetBusinessSignedFile(long businessId, BusinessSignedFileKindENUM kind)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            try
+            {
+                var validationResult = await _userSessionValidationAndPermissionHelper.ValidateUserSessionAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    whiteLabelContext: _whiteLabelContext,
+                    // User Permissions
+                    checkUserDisabled: true,
+                    // User Business Permissions
+                    checkUserBusinessesDisabled: true,
+                    // Business Permissions
+                    checkBusinessIsDisabled: false
+                );
+                if (!validationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetBusinessSignedFile:{validationResult.Code}",
+                        validationResult.Message
+                    );
+                }
+                var businessData = validationResult.Data!.businessData!;
+
+                var signedFileResult = _businessManager.CreateBusinessSignedFile(businessData, kind);
+                if (!signedFileResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetBusinessSignedFile:{signedFileResult.Code}",
+                        signedFileResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(signedFileResult.Data!);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetBusinessSignedFile:EXCEPTION",
                     $"Internal server error: {ex.Message}"
                 );
             }

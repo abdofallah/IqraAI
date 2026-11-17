@@ -135,10 +135,7 @@ function ShowIntegrationSpecLogo(image, integrationType, onRenewed) {
 
 	SignedFileHelper.showImage(image, {
 		file: integrationSpec.logoUrl,
-		fetchFile: () => SignedFileHelper.fetchData("/app/specification/integrations/").then((integrations) => {
-			const renewed = integrations.find((item) => item.id === integrationType);
-			return renewed ? renewed.logoUrl : null;
-		}),
+		fetchFile: () => SignedFileHelper.fetchData(`/app/specification/integrations/${integrationType}/signed-file/Logo`),
 		onRenewed: (file) => {
 			integrationSpec.logoUrl = file;
 			if (onRenewed) onRenewed(file);

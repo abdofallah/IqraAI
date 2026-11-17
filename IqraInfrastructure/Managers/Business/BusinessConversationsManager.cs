@@ -7,6 +7,8 @@ using IqraCore.Entities.Conversation.Turn;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helper.Session;
+using IqraCore.Models.S3Storage;
 using IqraCore.Entities.WebSession;
 using IqraCore.Models.Business.Conversations;
 using IqraCore.Models.Business.Queues;
@@ -1140,6 +1142,46 @@ namespace IqraInfrastructure.Managers.Business
             return result.SetSuccessResult(logsData?.Logs ?? new List<WebSessionLogEntry>());
         }
 
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetConversationSignedFile(long businessId, string sessionId, ConversationSignedFileKindENUM kind, string memberId)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            S3SignedFileModel? signedFile;
+            if (kind == ConversationSignedFileKindENUM.AgentRecording)
+            {
+                var storedAgentId = await _conversationStateRepository.GetConversationAgentMemberId(businessId, sessionId, memberId);
+                signedFile = string.IsNullOrEmpty(storedAgentId) ? null : SignAgentRecording(sessionId, storedAgentId);
+            }
+            else if (kind == ConversationSignedFileKindENUM.ClientRecording)
+            {
+                var storedClientId = await _conversationStateRepository.GetConversationClientMemberId(businessId, sessionId, memberId);
+                signedFile = string.IsNullOrEmpty(storedClientId) ? null : SignClientRecording(sessionId, storedClientId);
+            }
+            else
+            {
+                return result.SetFailureResult("GetConversationSignedFile:UNKNOWN_KIND", "Unknown signed file kind.");
+            }
+
+            if (signedFile == null)
+            {
+                return result.SetFailureResult("GetConversationSignedFile:NOT_FOUND", "Signed file not found.");
+            }
+
+            return result.SetSuccessResult(signedFile);
+        }
+
+        private S3SignedFileModel? SignAgentRecording(string stateId, string agentId)
+        {
+            return _conversationAudioRepository.GenerateSignedFile($"{stateId}/recordings/{agentId}.wav", RecordingLinkSeconds);
+        }
+
+        private S3SignedFileModel? SignClientRecording(string stateId, string clientId)
+        {
+            return _conversationAudioRepository.GenerateSignedFile($"{stateId}/compiled/user_{clientId}.wav", RecordingLinkSeconds);
+        }
+
+        private static readonly int RecordingLinkSeconds = (int)TimeSpan.FromMinutes(30).TotalSeconds;
+
         private async Task<ConversationStateViewModel> MapConversationStateToViewModelAsync(ConversationState state)
         {
             ConversationStateViewModel resultModel = new ConversationStateViewModel()
@@ -1155,11 +1197,9 @@ namespace IqraInfrastructure.Managers.Business
                 Turns = new List<ConversationTurnViewModel>(),
             };
 
-            int audioUrlExpirySeconds = (int)TimeSpan.FromMinutes(30).TotalSeconds;
-
             foreach (var client in state.Clients)
             {
-                var audioUrl = _conversationAudioRepository.GenerateSignedFile($"{state.Id}/compiled/user_{client.ClientId}.wav", audioUrlExpirySeconds);
+                var audioUrl = SignClientRecording(state.Id, client.ClientId);
 
                 var clientModel = new ConversationStateClientViewModel()
                 {
@@ -1176,7 +1216,7 @@ namespace IqraInfrastructure.Managers.Business
 
             foreach (var agent in state.Agents)
             {
-                var audioUrl = _conversationAudioRepository.GenerateSignedFile($"{state.Id}/recordings/{agent.AgentId}.wav", audioUrlExpirySeconds);
+                var audioUrl = SignAgentRecording(state.Id, agent.AgentId);
 
                 var clientModel = new ConversationStateAgentViewModel()
                 {

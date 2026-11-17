@@ -124,10 +124,7 @@ function ShowAdminIntegrationLogo(image, integration) {
 
 	SignedFileHelper.showImage(image, {
 		file: integration.presignedLogoUrl,
-		fetchFile: () => SignedFileHelper.fetchData("/app/admin/integrations").then((integrations) => {
-			const stored = integrations.find((item) => item.id === integration.id);
-			return stored ? stored.presignedLogoUrl : null;
-		}),
+		fetchFile: () => SignedFileHelper.fetchData(`/app/admin/integrations/${integration.id}/signed-file/Logo`),
 		onRenewed: (file) => {
 			integration.presignedLogoUrl = file;
 		},

@@ -274,10 +274,8 @@ function DeleteBusinessToolFromAPI(toolId, successCallback, errorCallback) {
 }
 
 function FetchToolAudioSignedFileFromAPI(toolId, audioField) {
-	return SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}`).then((businessData) => {
-		const tool = businessData.businessApp.tools.find((item) => item.id === toolId);
-		return tool ? tool.audio[audioField] : null;
-	});
+	const signedFileKind = audioField === "duringExecutionAudioUrl" ? "DuringExecutionAudio" : "AfterExecutionAudio";
+	return SignedFileHelper.fetchData(`/app/user/business/${CurrentBusinessId}/tools/${toolId}/signed-file/${signedFileKind}`);
 }
 
 // Functions

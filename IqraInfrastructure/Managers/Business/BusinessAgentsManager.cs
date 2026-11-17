@@ -14,6 +14,7 @@ using System.Text.Json;
 using IqraInfrastructure.Helpers.Business;
 using IqraCore.Entities.S3Storage;
 using IqraCore.Models.User.Business.App.Agent;
+using IqraCore.Models.S3Storage;
 using IqraInfrastructure.Repositories.S3Storage;
 using MongoDB.Bson;
 
@@ -69,11 +70,37 @@ namespace IqraInfrastructure.Managers.Business
         public BusinessAppAgentModel CreateAgentModel(BusinessAppAgent agent)
         {
             var model = new BusinessAppAgentModel(agent);
-            if (agent.Settings.BackgroundAudioS3StorageLink != null)
-            {
-                model.Settings.BackgroundAudioUrl = _businessAgentAudioRepository.GenerateSignedFile(agent.Settings.BackgroundAudioS3StorageLink.ObjectName, 30000);
-            }
+            model.Settings.BackgroundAudioUrl = SignAgentBackgroundAudio(agent.Settings.BackgroundAudioS3StorageLink);
             return model;
+        }
+
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetAgentSignedFile(long businessId, string agentId, BusinessAppAgentSignedFileKindENUM kind)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            S3StorageFileLink? audioLink;
+            if (kind == BusinessAppAgentSignedFileKindENUM.BackgroundAudio)
+            {
+                audioLink = await _businessAppRepository.GetAgentSettingsBackgroundAudioS3StorageLink(businessId, agentId);
+            }
+            else
+            {
+                return result.SetFailureResult("GetAgentSignedFile:UNKNOWN_KIND", "Unknown signed file kind.");
+            }
+
+            var signedFile = SignAgentBackgroundAudio(audioLink);
+            if (signedFile == null)
+            {
+                return result.SetFailureResult("GetAgentSignedFile:NOT_FOUND", "Signed file not found.");
+            }
+
+            return result.SetSuccessResult(signedFile);
+        }
+
+        private S3SignedFileModel? SignAgentBackgroundAudio(S3StorageFileLink? audioLink)
+        {
+            if (audioLink == null) return null;
+            return _businessAgentAudioRepository.GenerateSignedFile(audioLink.ObjectName, 30000);
         }
 
         // SAVING/ADDING AGENT

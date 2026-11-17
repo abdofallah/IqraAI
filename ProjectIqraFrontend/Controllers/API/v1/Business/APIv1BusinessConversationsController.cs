@@ -1,7 +1,9 @@
 ﻿using IqraCore.Entities.Business.ModulePermission.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helper.Session;
 using IqraCore.Interfaces.Validation;
 using IqraCore.Models.Business.Conversations;
+using IqraCore.Models.S3Storage;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
 using IqraCore.Entities.Validation;
@@ -92,6 +94,69 @@ namespace ProjectIqraFrontend.Controllers.API.v1.Business
                 return result.SetFailureResult(
                     "GetConversationState:EXCEPTION",
                     $"Internal server error processing request: {ex.Message}"
+                );
+            }
+        }
+
+        [HttpGet("{sessionId}/signed-file/{kind}/{memberId}")]
+        public async Task<FunctionReturnResult<S3SignedFileModel?>> GetConversationSignedFile(long businessId, string sessionId, ConversationSignedFileKindENUM kind, string memberId)
+        {
+            var result = new FunctionReturnResult<S3SignedFileModel?>();
+
+            try
+            {
+                // API Key Validation
+                var apiKeyValidaiton = await _userSessionValidationAndPermissionHelper.ValidateUserAPIAndBusinessWithPermissions(
+                    Request: Request,
+                    businessId: businessId,
+                    checkAPIKeyBusinessRestriction: true,
+                    // User Permission
+                    checkUserDisabled: true,
+                    // User Business Permission
+                    checkUserBusinessesDisabled: true,
+                    checkUserBusinessesEditingEnabled: true,
+                    // Business Permission
+                    checkBusinessIsDisabled: true,
+                    checkBusinessCanBeEdited: true,
+                    // Business Module Permissions,
+                    ModulePermissionsToCheck: new List<ModulePermissionCheckData>()
+                    {
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Full,
+                        },
+                        new ModulePermissionCheckData()
+                        {
+                            ModulePath = "Conversations.ConversationPermissions",
+                            Type = BusinessModulePermissionType.Retrieving,
+                        }
+                    }
+                );
+                if (!apiKeyValidaiton.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetConversationSignedFile:{apiKeyValidaiton.Code}",
+                        apiKeyValidaiton.Message
+                    );
+                }
+
+                var signedFileResult = await _businessManager.GetConversationsManager().GetConversationSignedFile(businessId, sessionId, kind, memberId);
+                if (!signedFileResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"GetConversationSignedFile:{signedFileResult.Code}",
+                        signedFileResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult(signedFileResult.Data!);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetConversationSignedFile:EXCEPTION",
+                    $"Internal server error: {ex.Message}"
                 );
             }
         }

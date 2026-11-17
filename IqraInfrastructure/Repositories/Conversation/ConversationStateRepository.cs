@@ -129,6 +129,28 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
+        public async Task<string?> GetConversationAgentMemberId(long businessId, string conversationId, string agentId)
+        {
+            var memberQuery = _conversationStateCollection.AsQueryable()
+                .Where(c => c.Id == conversationId && c.BusinessId == businessId)
+                .SelectMany(c => c.Agents)
+                .Where(agent => agent.AgentId == agentId)
+                .Select(agent => agent.AgentId);
+
+            return await memberQuery.FirstOrDefaultAsync();
+        }
+
+        public async Task<string?> GetConversationClientMemberId(long businessId, string conversationId, string clientId)
+        {
+            var memberQuery = _conversationStateCollection.AsQueryable()
+                .Where(c => c.Id == conversationId && c.BusinessId == businessId)
+                .SelectMany(c => c.Clients)
+                .Where(client => client.ClientId == clientId)
+                .Select(client => client.ClientId);
+
+            return await memberQuery.FirstOrDefaultAsync();
+        }
+
         public async Task<ConversationState> GetByIdAsync(long businessId, string conversationId, CancellationToken cancellationToken = default)
         {
             try
