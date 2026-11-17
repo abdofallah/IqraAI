@@ -108,6 +108,7 @@ let manageToolsLanguageDropdown = null;
 // --- Change Helpers ---
 const ToolLanguageTextMap = { kind: "map", keys: () => BusinessFullData.businessData.languages, values: "text" };
 const ToolKeyValueMap = { kind: "map", values: { kind: "text", strict: true } };
+const ToolHeaderMap = { kind: "map", values: { kind: "object", absent: "changed", fields: { value: { kind: "text", strict: true }, isEncrypted: "boolean" } } };
 
 const ToolManageChanges = ChangesHelper.define({
 	general: {
@@ -134,7 +135,7 @@ const ToolManageChanges = ChangesHelper.define({
 			},
 			requestType: "enum",
 			endpoint: "text",
-			headers: ToolKeyValueMap,
+			headers: ToolHeaderMap,
 			bodyType: "enum",
 			bodyData: { kind: "variant", by: (get) => get("bodyType"), variants: { 1: ToolKeyValueMap, 2: ToolKeyValueMap, 3: "text" } },
 		},
@@ -627,6 +628,18 @@ function ReadToolKeyValueRows(rows) {
 	return pairs;
 }
 
+function ReadToolHeaderRows() {
+	const headers = {};
+	toolHeadersList.find(".tool-header-box").each((idx, element) => {
+		const row = $(element);
+		headers[row.find('[data-type="key"]').val().trim()] = {
+			value: row.find('[data-type="value"]').val().trim(),
+			isEncrypted: row.find('[data-type="encrypted"]').prop("checked"),
+		};
+	});
+	return headers;
+}
+
 function ReadToolBodyData() {
 	const bodyType = parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val());
 	if (bodyType === 1 || bodyType === 2) return ReadToolKeyValueRows(toolBodyKeyValueViewList.children());
@@ -668,7 +681,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 			inputSchemea: () => ReadToolInputArguments(),
 			requestType: () => parseInt(inputToolType.val()),
 			endpoint: () => inputToolURL.val(),
-			headers: () => ReadToolKeyValueRows(toolHeadersList.find(".tool-header-box")),
+			headers: () => ReadToolHeaderRows(),
 			bodyType: () => parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val()),
 			bodyData: () => ReadToolBodyData(),
 		},
@@ -852,10 +865,20 @@ function CreateAgentBackgroundAudioWavesurfer(containerId) {
 }
 
 function CreateToolConfigurationHeaderElement() {
+	const elementId = Date.now() + Math.random().toString(36);
+
 	const element = `
 		<div class="input-group mt-1 tool-header-box">
 			<input type="text" class="form-control" data-type="key" placeholder="Key">
-			<input type="text" class="form-control" data-type="value" placeholder="Value">
+			<input type="text" real-type="text" class="form-control" data-type="value" placeholder="Value">
+			<div class="form-check d-flex flex-row align-items-center justify-content-center m-0" style="background-color: #1a1a1a; border: 1px solid var(--bs-border-color); border-left: none">
+				<div class="px-3">
+					<input class="form-check-input" type="checkbox" data-type="encrypted" id="toolHeaderEncrypted${elementId}">
+					<label class="form-check-label" for="toolHeaderEncrypted${elementId}">
+						Encrypted
+					</label>
+				</div>
+			</div>
 			<button class="btn btn-danger" button-type="removeToolHeader">
 				<i class="fa-regular fa-trash"></i>
 			</button>
@@ -863,6 +886,24 @@ function CreateToolConfigurationHeaderElement() {
 	`;
 
 	return element;
+}
+
+function FillToolConfigurationHeaders(headers) {
+	toolHeadersList.children().remove();
+
+	Object.entries(headers).forEach(([key, header]) => {
+		const headerBox = $(CreateToolConfigurationHeaderElement());
+
+		toolHeadersList.append(headerBox);
+
+		headerBox.find('[data-type="key"]').val(key);
+		headerBox.find('[data-type="value"]').val(header.value);
+		headerBox.find('[data-type="encrypted"]').prop("checked", header.isEncrypted);
+
+		if (header.isEncrypted) {
+			headerBox.find('[data-type="value"]').attr("type", "password");
+		}
+	});
 }
 
 function CreateToolConfigurationBodyKeyValueElement() {
@@ -1007,14 +1048,7 @@ function FillToolsManageTab(toolData) {
 			}
 		});
 
-		Object.entries(toolData.configuration.headers).forEach(([key, value]) => {
-			const headerBox = $(CreateToolConfigurationHeaderElement());
-
-			toolHeadersList.append(headerBox);
-
-			headerBox.find('[data-type="key"]').val(key);
-			headerBox.find('[data-type="value"]').val(value);
-		});
+		FillToolConfigurationHeaders(toolData.configuration.headers);
 
 		toolManagerTab.find(`[name="toolBodyTypeCheckbox"][value="${toolData.configuration.bodyType.value}"]`).prop("checked", true).change();
 
@@ -1272,6 +1306,16 @@ function ValidateToolsManageTab(onlyRemove = true) {
 				}
 			} else {
 				valueInput.removeClass("is-invalid");
+			}
+
+			const savedHeader = ManageToolType === "edit" ? CurrentManageToolData.configuration.headers[keyInput.val().trim()] : undefined;
+			if (!currentElement.find('[data-type="encrypted"]').prop("checked") && valueInput.val().trim() === "value_encrypted_after_saving" && savedHeader && savedHeader.isEncrypted) {
+				validated = false;
+				errors.push(`Header ${keyInput.val().trim()} is no longer encrypted so its value must be entered again.`);
+
+				if (!onlyRemove) {
+					valueInput.addClass("is-invalid");
+				}
 			}
 		});
 
@@ -1593,6 +1637,30 @@ function initToolsTab() {
 				$(event.currentTarget).parent().remove();
 
 				CheckToolsManageTabHasChanges(true);
+			});
+
+			toolHeadersList.on("change", '[data-type="encrypted"]', (event) => {
+				CheckToolsManageTabHasChanges(true);
+				ValidateToolsManageTab(true);
+			});
+
+			toolHeadersList.on("keydown paste drop compositionstart", 'input[type="password"]', (event) => {
+				if (event.type === "keydown") {
+					event.stopPropagation();
+
+					const key = event.key || "";
+					const isTyping = key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
+					const isPasting = key.toLowerCase() === "v" && (event.ctrlKey || event.metaKey) && !event.altKey;
+					const isDeleting = key === "Backspace" || key === "Delete";
+					if (!isTyping && !isPasting && !isDeleting) return;
+				}
+
+				const currentElement = $(event.currentTarget);
+				const realTypeAttr = currentElement.attr("real-type");
+
+				currentElement.attr("type", realTypeAttr);
+
+				currentElement.val("");
 			});
 
 			toolBodyType.on("change", (event) => {
@@ -1987,6 +2055,8 @@ function initToolsTab() {
 					formData,
 					(saveResponse) => {
 						CurrentManageToolData = saveResponse.data;
+
+						FillToolConfigurationHeaders(CurrentManageToolData.configuration.headers);
 
 						currentToolName.text(CurrentManageToolData.general.name[BusinessDefaultLanguage]);
 

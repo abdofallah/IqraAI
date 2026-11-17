@@ -11,6 +11,10 @@ namespace IqraCore.Entities.Business
 
         [KeepOriginalDictionaryKeyCase]
         public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
+
+        [ExcludeInAllEndpoints]
+        [KeepOriginalDictionaryKeyCase]
+        public Dictionary<string, string> EncryptedHeaders { get; set; } = new Dictionary<string, string>();
         public HttpBodyEnum BodyType { get; set; } = HttpBodyEnum.None;
         public object? BodyData { get; set; } = null;
     }

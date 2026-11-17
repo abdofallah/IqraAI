@@ -1043,8 +1043,16 @@ function initIntegrationsTab() {
 	});
 
 	// Handle Encrypted Fields
-	integrationManagerContainer.on("keydown", 'input[type="password"]', (event) => {
-		event.stopPropagation();
+	integrationManagerContainer.on("keydown paste drop compositionstart", 'input[type="password"]', (event) => {
+		if (event.type === "keydown") {
+			event.stopPropagation();
+
+			const key = event.key || "";
+			const isTyping = key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
+			const isPasting = key.toLowerCase() === "v" && (event.ctrlKey || event.metaKey) && !event.altKey;
+			const isDeleting = key === "Backspace" || key === "Delete";
+			if (!isTyping && !isPasting && !isDeleting) return;
+		}
 
 		const currentElement = $(event.currentTarget);
 		const realTypeAttr = currentElement.attr("real-type");

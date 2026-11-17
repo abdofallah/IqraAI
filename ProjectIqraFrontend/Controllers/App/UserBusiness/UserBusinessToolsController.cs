@@ -7,6 +7,7 @@ using IqraCore.Interfaces.Validation;
 using IqraCore.Models.User.Business.App.Tool;
 using IqraCore.Models.S3Storage;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
         private readonly ISessionValidationAndPermissionHelper _userSessionValidationAndPermissionHelper;
         private readonly WhiteLabelContext? _whiteLabelContext;
         private readonly BusinessManager _businessManager;
+        private readonly IntegrationsManager _integrationsManager;
         private readonly ToolTestRateLimiter _rateLimiter;
         private readonly EndpointSecurityService _endpointSecurityService;
         private readonly BusinessToolTestExecutionRepository _testExecutionRepository;
@@ -30,6 +32,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             ISessionValidationAndPermissionHelper userSessionValidationAndPermissionHelper,
             WhiteLabelContext? whiteLabelContext,
             BusinessManager businessManager,
+            IntegrationsManager integrationsManager,
             ToolTestRateLimiter rateLimiter,
             EndpointSecurityService endpointSecurityService,
             BusinessToolTestExecutionRepository testExecutionRepository,
@@ -38,6 +41,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
             _userSessionValidationAndPermissionHelper = userSessionValidationAndPermissionHelper;
             _whiteLabelContext = whiteLabelContext;
             _businessManager = businessManager;
+            _integrationsManager = integrationsManager;
             _rateLimiter = rateLimiter;
             _endpointSecurityService = endpointSecurityService;
             _testExecutionRepository = testExecutionRepository;
@@ -176,7 +180,7 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     }
                 }
 
-                var updateResult = await _businessManager.GetToolsManager().AddOrUpdateBusinessTool(businessId, formData, postType, exisitingTool);
+                var updateResult = await _businessManager.GetToolsManager().AddOrUpdateBusinessTool(businessId, formData, postType, exisitingTool, _integrationsManager);
                 if (!updateResult.Success)
                 {
                     return result.SetFailureResult(
@@ -347,7 +351,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     testRequest.Parameters,
                     testRequest.LanguageCode,
                     _loggerFactory,
-                    _endpointSecurityService
+                    _endpointSecurityService,
+                    _integrationsManager
                 );
 
                 // Persist test execution (fire-and-forget, don't block response)

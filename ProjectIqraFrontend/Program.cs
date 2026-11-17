@@ -1226,7 +1226,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<WebSessionRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<ConversationStateLogsRepository>(),
-                    sp.GetRequiredService<BusinessManager>()
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<IntegrationsManager>()
                 );
             });
         }

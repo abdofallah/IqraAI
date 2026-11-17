@@ -11,7 +11,14 @@ namespace IqraCore.Models.User.Business.App.Tool
             InputSchemea = data.InputSchemea;
             RequestType = data.RequestType;
             Endpoint = data.Endpoint;
-            Headers = data.Headers;
+            Headers = data.Headers.ToDictionary(
+                header => header.Key,
+                header => new BusinessAppToolConfigurationHeaderModel
+                {
+                    Value = header.Value,
+                    IsEncrypted = data.EncryptedHeaders.ContainsKey(header.Key)
+                }
+            );
             BodyType = data.BodyType;
             BodyData = data.BodyData;
         }
@@ -21,7 +28,7 @@ namespace IqraCore.Models.User.Business.App.Tool
         public string Endpoint { get; set; }
 
         [KeepOriginalDictionaryKeyCase]
-        public Dictionary<string, string> Headers { get; set; }
+        public Dictionary<string, BusinessAppToolConfigurationHeaderModel> Headers { get; set; }
         public HttpBodyEnum BodyType { get; set; }
         public object? BodyData { get; set; }
     }

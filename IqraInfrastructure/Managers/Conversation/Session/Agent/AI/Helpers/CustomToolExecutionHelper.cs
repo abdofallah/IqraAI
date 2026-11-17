@@ -1,6 +1,7 @@
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helpers;
+using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Services;
 using Jint;
 using Microsoft.Extensions.Logging;
@@ -19,10 +20,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
         private BusinessApp? _businessApp;
         private string? _currentLanguageCode;
         private EndpointSecurityService? _endpointSecurityService;
+        private readonly IntegrationsManager _integrationsManager;
 
-        public CustomToolExecutionHelper(ILoggerFactory loggerFactory, EndpointSecurityService? endpointSecurityService = null)
+        public CustomToolExecutionHelper(ILoggerFactory loggerFactory, IntegrationsManager integrationsManager, EndpointSecurityService? endpointSecurityService = null)
         {
             _logger = loggerFactory.CreateLogger<CustomToolExecutionHelper>();
+            _integrationsManager = integrationsManager;
             _endpointSecurityService = endpointSecurityService;
         }
 
@@ -106,11 +109,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     // Add Headers
                     foreach (var header in toolData.Configuration.Headers)
                     {
-                        var headerValueResult = await RenderScribanTemplateAsync(header.Value, convertedParametersResult.Data);
+                        bool isEncryptedHeader = toolData.Configuration.EncryptedHeaders.TryGetValue(header.Key, out string? encryptedHeaderValue);
+                        string headerTemplate = isEncryptedHeader ? _integrationsManager.DecryptField(encryptedHeaderValue!) : header.Value;
+
+                        var headerValueResult = await RenderScribanTemplateAsync(headerTemplate, convertedParametersResult.Data);
                         if (!headerValueResult.Success)
                         {
                             result.Code = "ExecuteHttpRequest:4";
-                            result.Message = $"Error rendering header value for tool {toolData.Id}:\n\n```{headerValueResult.Message}```";
+                            result.Message = isEncryptedHeader
+                                ? $"Error rendering header value for tool {toolData.Id}: header {header.Key}, {headerValueResult.Code}"
+                                : $"Error rendering header value for tool {toolData.Id}:\n\n```{headerValueResult.Message}```";
                             return result;
                         }
                         toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValueResult.Data);
@@ -264,11 +272,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     // Add Headers
                     foreach (var header in toolData.Configuration.Headers)
                     {
-                        var headerValueResult = await RenderScribanTemplateAsync(header.Value, parameters);
+                        bool isEncryptedHeader = toolData.Configuration.EncryptedHeaders.TryGetValue(header.Key, out string? encryptedHeaderValue);
+                        string headerTemplate = isEncryptedHeader ? _integrationsManager.DecryptField(encryptedHeaderValue!) : header.Value;
+
+                        var headerValueResult = await RenderScribanTemplateAsync(headerTemplate, parameters);
                         if (!headerValueResult.Success)
                         {
                             result.Code = "ExecuteHttpRequest:4";
-                            result.Message = $"Error rendering header value for tool {toolData.Id}:\n\n```{headerValueResult.Message}```";
+                            result.Message = isEncryptedHeader
+                                ? $"Error rendering header value for tool {toolData.Id}: header {header.Key}, {headerValueResult.Code}"
+                                : $"Error rendering header value for tool {toolData.Id}:\n\n```{headerValueResult.Message}```";
                             return result;
                         }
                         toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValueResult.Data);
@@ -471,15 +484,20 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     testResult.ResolvedHeaders = new Dictionary<string, string>();
                     foreach (var header in toolData.Configuration.Headers)
                     {
-                        var headerValueResult = await RenderScribanTemplateAsync(header.Value, validatedParameters);
+                        bool isEncryptedHeader = toolData.Configuration.EncryptedHeaders.TryGetValue(header.Key, out string? encryptedHeaderValue);
+                        string headerTemplate = isEncryptedHeader ? _integrationsManager.DecryptField(encryptedHeaderValue!) : header.Value;
+
+                        var headerValueResult = await RenderScribanTemplateAsync(headerTemplate, validatedParameters);
                         if (!headerValueResult.Success)
                         {
-                            testResult.HttpExecutionError = $"Error rendering header '{header.Key}': {headerValueResult.Message}";
+                            testResult.HttpExecutionError = isEncryptedHeader
+                                ? $"Error rendering header '{header.Key}': {headerValueResult.Code}"
+                                : $"Error rendering header '{header.Key}': {headerValueResult.Message}";
                             result.Data = testResult;
                             result.Success = true;
                             return result;
                         }
-                        testResult.ResolvedHeaders[header.Key] = headerValueResult.Data ?? "";
+                        testResult.ResolvedHeaders[header.Key] = isEncryptedHeader ? MaskSecretHeaderValue(headerValueResult.Data ?? "") : headerValueResult.Data ?? "";
                         toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValueResult.Data);
                     }
 
@@ -1211,6 +1229,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
 
             return result;
+        }
+
+        private static string MaskSecretHeaderValue(string value)
+        {
+            int shown = value.Length / 4;
+            int head = (shown + 1) / 2;
+            int tail = shown / 2;
+            return value.Substring(0, head) + "..." + value.Substring(value.Length - tail);
         }
     }
 }

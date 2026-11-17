@@ -124,7 +124,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             // Instantiate Helper Modules
             _scriptAccessor = new ScriptExecutionManager(sessionLoggerFactory.CreateLogger<ScriptExecutionManager>()); // Now primarily data access
-            _customToolHelper = new CustomToolExecutionHelper(sessionLoggerFactory, serviceProvider.GetService<EndpointSecurityService>()); // New helper for tool execution with endpoint security
+            _customToolHelper = new CustomToolExecutionHelper(sessionLoggerFactory, integrationManager, serviceProvider.GetService<EndpointSecurityService>()); // New helper for tool execution with endpoint security
             _sendSMSToolExecutionHelper = new SendSMSToolExecutionHelper(sessionLoggerFactory, integrationManager, modemTelManager, twilioManager);
 
             // Instantiate Core Modules

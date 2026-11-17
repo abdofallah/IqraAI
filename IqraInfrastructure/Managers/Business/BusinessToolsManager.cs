@@ -8,6 +8,7 @@ using IqraCore.Models.User.Business.App.Tool;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
+using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.S3Storage;
 using IqraInfrastructure.Services;
@@ -109,13 +110,14 @@ namespace IqraInfrastructure.Managers.Business
             Dictionary<string, object?> parameters,
             string languageCode,
             ILoggerFactory loggerFactory,
-            EndpointSecurityService? endpointSecurityService)
+            EndpointSecurityService? endpointSecurityService,
+            IntegrationsManager integrationsManager)
         {
             var result = new FunctionReturnResult<BusinessToolTestResult?>();
 
             try
             {
-                var helper = new CustomToolExecutionHelper(loggerFactory, endpointSecurityService);
+                var helper = new CustomToolExecutionHelper(loggerFactory, integrationsManager, endpointSecurityService);
                 helper.Initialize(businessApp, languageCode);
 
                 var testResult = await helper.ExecuteHttpRequestForToolTestAsync(toolData, parameters, CancellationToken.None);
@@ -137,7 +139,7 @@ namespace IqraInfrastructure.Managers.Business
             return result;
         }
 
-        public async Task<FunctionReturnResult<BusinessAppTool?>> AddOrUpdateBusinessTool(long businessId, IFormCollection formData, string postType, BusinessAppTool? exisitingToolData)
+        public async Task<FunctionReturnResult<BusinessAppTool?>> AddOrUpdateBusinessTool(long businessId, IFormCollection formData, string postType, BusinessAppTool? exisitingToolData, IntegrationsManager integrationsManager)
         {
             var result = new FunctionReturnResult<BusinessAppTool?>();
 
@@ -369,7 +371,41 @@ namespace IqraInfrastructure.Managers.Business
                 foreach (var header in configurationHeadersProperty.EnumerateObject())
                 {
                     string? headerKey = header.Name;
-                    string? headerValue = header.Value.GetString();
+                    if (header.Value.ValueKind != JsonValueKind.Object)
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:44";
+                        result.Message = $"Configuration tab header {headerKey} is not an object.";
+                        return result;
+                    }
+
+                    if (!header.Value.TryGetProperty("value", out var headerValueProperty))
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:45";
+                        result.Message = $"Configuration tab header {headerKey} value property not found.";
+                        return result;
+                    }
+                    if (headerValueProperty.ValueKind != JsonValueKind.String)
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:46";
+                        result.Message = $"Invalid configuration tab header {headerKey} value.";
+                        return result;
+                    }
+                    string? headerValue = headerValueProperty.GetString();
+
+                    if (!header.Value.TryGetProperty("isEncrypted", out var headerIsEncryptedProperty))
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:47";
+                        result.Message = $"Configuration tab header {headerKey} isEncrypted property not found.";
+                        return result;
+                    }
+                    if (headerIsEncryptedProperty.ValueKind != JsonValueKind.True && headerIsEncryptedProperty.ValueKind != JsonValueKind.False)
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:48";
+                        result.Message = $"Invalid configuration tab header {headerKey} isEncrypted value.";
+                        return result;
+                    }
+                    bool headerIsEncrypted = headerIsEncryptedProperty.GetBoolean();
+
                     if (string.IsNullOrWhiteSpace(headerKey) || string.IsNullOrWhiteSpace(headerValue))
                     {
                         result.Code = "AddOrUpdateUserBusinessTools:16";
@@ -384,7 +420,38 @@ namespace IqraInfrastructure.Managers.Business
                         return result;
                     }
 
-                    NewBusinessAppToolData.Configuration.Headers.Add(headerKey, headerValue);
+                    if (headerIsEncrypted)
+                    {
+                        if (headerValue == "value_encrypted_after_saving" && postType == "edit" && exisitingToolData != null)
+                        {
+                            if (!exisitingToolData.Configuration.EncryptedHeaders.TryGetValue(headerKey, out string? encryptedHeaderValue))
+                            {
+                                result.Code = "AddOrUpdateUserBusinessTools:49";
+                                result.Message = $"Encrypted header {headerKey} is unchanged so previous value is missing.";
+                                return result;
+                            }
+
+                            headerValue = encryptedHeaderValue;
+                        }
+                        else
+                        {
+                            headerValue = integrationsManager.EncryptField(headerValue);
+                        }
+
+                        NewBusinessAppToolData.Configuration.Headers.Add(headerKey, "value_encrypted_after_saving");
+                        NewBusinessAppToolData.Configuration.EncryptedHeaders.Add(headerKey, headerValue);
+                    }
+                    else
+                    {
+                        if (headerValue == "value_encrypted_after_saving" && postType == "edit" && exisitingToolData != null && exisitingToolData.Configuration.EncryptedHeaders.ContainsKey(headerKey))
+                        {
+                            result.Code = "AddOrUpdateUserBusinessTools:50";
+                            result.Message = $"Header {headerKey} is no longer encrypted so its value must be entered again.";
+                            return result;
+                        }
+
+                        NewBusinessAppToolData.Configuration.Headers.Add(headerKey, headerValue);
+                    }
                 }
 
                 if (!configurationTabRootElement.TryGetProperty("bodyType", out var configurationBodyTypeProperty))
