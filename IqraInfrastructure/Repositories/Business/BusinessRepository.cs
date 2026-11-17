@@ -96,6 +96,15 @@ namespace IqraInfrastructure.Repositories.Business
             return _businessCollection.Find(filter).FirstOrDefaultAsync();
         }
 
+        public Task<BusinessData?> GetBusinessForMasterEmailAsync(long businessId, string masterEmail)
+        {
+            var filter = Builders<BusinessData>.Filter.And(
+                Builders<BusinessData>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessData>.Filter.Eq(b => b.MasterUserEmail, masterEmail)
+            );
+            return _businessCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
         public Task AddBusinessAsync(BusinessData business, IClientSessionHandle mongoSession)
         {
             return _businessCollection.InsertOneAsync(mongoSession, business);

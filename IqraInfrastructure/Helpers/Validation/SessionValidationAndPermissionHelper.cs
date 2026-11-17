@@ -172,8 +172,17 @@ namespace IqraInfrastructure.Helpers.Validation
             }
             var userData = userSessionValidationResult.Data!.userData!;
 
+            // Validate User Owns Business
+            if (!userData.Businesses.Contains(businessId))
+            {
+                return result.SetFailureResult(
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:USER_DOES_NOT_OWN_BUSINESS",
+                    "User does not own the business"
+                );
+            }
+
             // Get and validate business
-            var businessGetResult = await _businessManager.GetUserBusinessById(businessId, userData.Email);
+            var businessGetResult = await _businessManager.GetBusinessByIdForMasterEmailAsync(businessId, userData.Email);
             if (!businessGetResult.Success)
             {
                 return result.SetFailureResult(
@@ -334,6 +343,15 @@ namespace IqraInfrastructure.Helpers.Validation
             var userData = userSessionValidationResult.Data!.userData!;
             var apiKeyData = userSessionValidationResult.Data!.userApiKeyData!;
 
+            // Validate User Owns Business
+            if (!userData.Businesses.Contains(businessId))
+            {
+                return result.SetFailureResult(
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:USER_DOES_NOT_OWN_BUSINESS",
+                    "User does not own the business"
+                );
+            }
+
             // Check API Key Restricted
             if (checkAPIKeyBusinessRestriction && apiKeyData.RestrictedToBusinessIds.Count > 0 && !apiKeyData.RestrictedToBusinessIds.Contains(businessId))
             {
@@ -344,7 +362,7 @@ namespace IqraInfrastructure.Helpers.Validation
             }
 
             // Get and validate business
-            var businessGetResult = await _businessManager.GetUserBusinessById(businessId, userData.Email);
+            var businessGetResult = await _businessManager.GetBusinessByIdForMasterEmailAsync(businessId, userData.Email);
             if (!businessGetResult.Success)
             {
                 return result.SetFailureResult(

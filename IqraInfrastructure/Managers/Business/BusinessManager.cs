@@ -460,6 +460,26 @@ namespace IqraInfrastructure.Managers.Business
             return result;
         }
 
+        public async Task<FunctionReturnResult<BusinessData?>> GetBusinessByIdForMasterEmailAsync(long businessId, string userEmail)
+        {
+            var result = new FunctionReturnResult<BusinessData?>();
+            result.Data = null;
+
+            BusinessData? businessData = await _businessRepository.GetBusinessForMasterEmailAsync(businessId, userEmail);
+            if (businessData == null)
+            {
+                result.Code = "GetBusinessByIdForMasterEmailAsync:1";
+                _logger.LogError("[BusinessManager] Null - Business not found for user: " + userEmail);
+            }
+            else
+            {
+                result.Success = true;
+                result.Data = businessData;
+            }
+
+            return result;
+        }
+
         public async Task<FunctionReturnResult<BusinessApp?>> GetUserBusinessAppById(long businessId, string userEmail)
         {
             var result = new FunctionReturnResult<BusinessApp?>();
