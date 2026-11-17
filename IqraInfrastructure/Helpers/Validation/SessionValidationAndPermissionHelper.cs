@@ -343,21 +343,21 @@ namespace IqraInfrastructure.Helpers.Validation
             var userData = userSessionValidationResult.Data!.userData!;
             var apiKeyData = userSessionValidationResult.Data!.userApiKeyData!;
 
-            // Validate User Owns Business
-            if (!userData.Businesses.Contains(businessId))
-            {
-                return result.SetFailureResult(
-                    "ValidateUserSessionAndGetUserAndBusinessAsync:USER_DOES_NOT_OWN_BUSINESS",
-                    "User does not own the business"
-                );
-            }
-
             // Check API Key Restricted
             if (checkAPIKeyBusinessRestriction && apiKeyData.RestrictedToBusinessIds.Count > 0 && !apiKeyData.RestrictedToBusinessIds.Contains(businessId))
             {
                 return result.SetFailureResult(
                     "ValidateUserAPIAndBusinessWithPermissions:RESTRICTED_API_KEY",
                     "API Key is restricted to a different business."
+                );
+            }
+
+            // Validate User Owns Business
+            if (!userData.Businesses.Contains(businessId))
+            {
+                return result.SetFailureResult(
+                    "ValidateUserSessionAndGetUserAndBusinessAsync:USER_DOES_NOT_OWN_BUSINESS",
+                    "User does not own the business"
                 );
             }
 
