@@ -1,6 +1,7 @@
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helpers;
+using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Services;
 using Jint;
@@ -121,7 +122,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                                 : $"Error rendering header value for tool {toolData.Id}:\n\n```{headerValueResult.Message}```";
                             return result;
                         }
-                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValueResult.Data);
+                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, HttpHeaderTextHelper.CleanValue(headerValueResult.Data));
                     }
 
                     // Execute Request
@@ -284,7 +285,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                                 : $"Error rendering header value for tool {toolData.Id}:\n\n```{headerValueResult.Message}```";
                             return result;
                         }
-                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValueResult.Data);
+                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, HttpHeaderTextHelper.CleanValue(headerValueResult.Data));
                     }
 
                     // Execute Request
@@ -497,8 +498,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                             result.Success = true;
                             return result;
                         }
-                        testResult.ResolvedHeaders[header.Key] = isEncryptedHeader ? MaskSecretHeaderValue(headerValueResult.Data ?? "") : headerValueResult.Data ?? "";
-                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValueResult.Data);
+                        string headerValue = HttpHeaderTextHelper.CleanValue(headerValueResult.Data);
+                        testResult.ResolvedHeaders[header.Key] = isEncryptedHeader ? MaskSecretHeaderValue(headerValue) : headerValue;
+                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValue);
                     }
 
                     // Phase 4: Execute HTTP Request

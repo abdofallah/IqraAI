@@ -406,6 +406,9 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     bool headerIsEncrypted = headerIsEncryptedProperty.GetBoolean();
 
+                    headerKey = headerKey.Trim();
+                    headerValue = HttpHeaderTextHelper.CleanValue(headerValue);
+
                     if (string.IsNullOrWhiteSpace(headerKey) || string.IsNullOrWhiteSpace(headerValue))
                     {
                         result.Code = "AddOrUpdateUserBusinessTools:16";
@@ -418,6 +421,14 @@ namespace IqraInfrastructure.Managers.Business
                         result.Code = "AddOrUpdateUserBusinessTools:17";
                         result.Message = $"Configuration tab header key {headerKey} already exists.";
                         return result;
+                    }
+
+                    if (!HttpHeaderTextHelper.IsValidName(headerKey))
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateBusinessTool:INVALID_HEADER_NAME",
+                            $"Header {headerKey} is not a valid header name. Use letters, digits and ! # $ % & ' * + - . ^ _ ` | ~ only."
+                        );
                     }
 
                     if (headerIsEncrypted)

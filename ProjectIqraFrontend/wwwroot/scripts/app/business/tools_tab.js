@@ -628,12 +628,24 @@ function ReadToolKeyValueRows(rows) {
 	return pairs;
 }
 
+function CleanToolHeaderText(value, trimEnd = true) {
+	const cleaned = (value || "")
+		.replace(/[\r\n\u000B\u000C\u0085\u2028\u2029]+/g, " ")
+		.replace(/\t/g, " ")
+		.replace(/[\u0000-\u0008\u000E-\u001F\u007F]/g, "");
+	return trimEnd ? cleaned.trim() : cleaned.trimStart();
+}
+
+function IsValidToolHeaderName(name) {
+	return /^[A-Za-z0-9!#$%&'*+\-.^_`|~]+$/.test(name);
+}
+
 function ReadToolHeaderRows() {
 	const headers = {};
 	toolHeadersList.find(".tool-header-box").each((idx, element) => {
 		const row = $(element);
-		headers[row.find('[data-type="key"]').val().trim()] = {
-			value: row.find('[data-type="value"]').val().trim(),
+		headers[CleanToolHeaderText(row.find('[data-type="key"]').val())] = {
+			value: CleanToolHeaderText(row.find('[data-type="value"]').val()),
 			isEncrypted: row.find('[data-type="encrypted"]').prop("checked"),
 		};
 	});
@@ -1286,9 +1298,17 @@ function ValidateToolsManageTab(onlyRemove = true) {
 			const keyInput = currentElement.find('[data-type="key"]');
 			const valueInput = currentElement.find('[data-type="value"]');
 
-			if (keyInput.val().trim() === "") {
+			const headerName = CleanToolHeaderText(keyInput.val());
+			if (headerName === "") {
 				validated = false;
 				errors.push(`Header #${idx + 1} key is required.`);
+
+				if (!onlyRemove) {
+					keyInput.addClass("is-invalid");
+				}
+			} else if (!IsValidToolHeaderName(headerName)) {
+				validated = false;
+				errors.push(`Header ${headerName} is not a valid header name. Use letters, digits and ! # $ % & ' * + - . ^ _ \` | ~ only.`);
 
 				if (!onlyRemove) {
 					keyInput.addClass("is-invalid");
@@ -1646,6 +1666,22 @@ function initToolsTab() {
 				$(event.currentTarget).parent().remove();
 
 				CheckToolsManageTabHasChanges(true);
+			});
+
+			toolHeadersList.on("input", '[data-type="key"], [data-type="value"]', (event) => {
+				const element = event.currentTarget;
+				const cleaned = CleanToolHeaderText(element.value, false);
+				if (cleaned === element.value) return;
+
+				const caret = Math.max(0, (element.selectionStart ?? element.value.length) - (element.value.length - cleaned.length));
+				element.value = cleaned;
+				element.setSelectionRange(caret, caret);
+			});
+
+			toolHeadersList.on("change", '[data-type="key"], [data-type="value"]', (event) => {
+				const element = event.currentTarget;
+				const cleaned = CleanToolHeaderText(element.value);
+				if (cleaned !== element.value) element.value = cleaned;
 			});
 
 			toolHeadersList.on("change", '[data-type="encrypted"]', (event) => {
