@@ -10,7 +10,7 @@ namespace IqraCore.Entities.Business
         public string Endpoint { get; set; } = string.Empty;
 
         [KeepOriginalDictionaryKeyCase]
-        public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string?> Headers { get; set; } = new Dictionary<string, string?>();
 
         [ExcludeInAllEndpoints]
         [KeepOriginalDictionaryKeyCase]

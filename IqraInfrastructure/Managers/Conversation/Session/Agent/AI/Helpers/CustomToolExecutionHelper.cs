@@ -111,7 +111,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     foreach (var header in toolData.Configuration.Headers)
                     {
                         bool isEncryptedHeader = toolData.Configuration.EncryptedHeaders.TryGetValue(header.Key, out string? encryptedHeaderValue);
-                        string headerTemplate = isEncryptedHeader ? _integrationsManager.DecryptField(encryptedHeaderValue!) : header.Value;
+                        string? headerTemplate = isEncryptedHeader ? _integrationsManager.DecryptField(encryptedHeaderValue!) : header.Value;
 
                         var headerValueResult = await RenderScribanTemplateAsync(headerTemplate, convertedParametersResult.Data);
                         if (!headerValueResult.Success)
@@ -274,7 +274,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     foreach (var header in toolData.Configuration.Headers)
                     {
                         bool isEncryptedHeader = toolData.Configuration.EncryptedHeaders.TryGetValue(header.Key, out string? encryptedHeaderValue);
-                        string headerTemplate = isEncryptedHeader ? _integrationsManager.DecryptField(encryptedHeaderValue!) : header.Value;
+                        string? headerTemplate = isEncryptedHeader ? _integrationsManager.DecryptField(encryptedHeaderValue!) : header.Value;
 
                         var headerValueResult = await RenderScribanTemplateAsync(headerTemplate, parameters);
                         if (!headerValueResult.Success)
@@ -486,7 +486,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     foreach (var header in toolData.Configuration.Headers)
                     {
                         bool isEncryptedHeader = toolData.Configuration.EncryptedHeaders.TryGetValue(header.Key, out string? encryptedHeaderValue);
-                        string headerTemplate = isEncryptedHeader ? _integrationsManager.DecryptField(encryptedHeaderValue!) : header.Value;
+                        string? headerTemplate = isEncryptedHeader ? _integrationsManager.DecryptField(encryptedHeaderValue!) : header.Value;
 
                         var headerValueResult = await RenderScribanTemplateAsync(headerTemplate, validatedParameters);
                         if (!headerValueResult.Success)

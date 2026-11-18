@@ -13,10 +13,14 @@ namespace IqraCore.Models.User.Business.App.Tool
             Endpoint = data.Endpoint;
             Headers = data.Headers.ToDictionary(
                 header => header.Key,
-                header => new BusinessAppToolConfigurationHeaderModel
+                header =>
                 {
-                    Value = header.Value,
-                    IsEncrypted = data.EncryptedHeaders.ContainsKey(header.Key)
+                    bool isEncrypted = data.EncryptedHeaders.ContainsKey(header.Key);
+                    return new BusinessAppToolConfigurationHeaderModel
+                    {
+                        Value = isEncrypted ? null : header.Value,
+                        IsEncrypted = isEncrypted
+                    };
                 }
             );
             BodyType = data.BodyType;

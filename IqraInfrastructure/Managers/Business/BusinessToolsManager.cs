@@ -384,7 +384,7 @@ namespace IqraInfrastructure.Managers.Business
                         result.Message = $"Configuration tab header {headerKey} value property not found.";
                         return result;
                     }
-                    if (headerValueProperty.ValueKind != JsonValueKind.String)
+                    if (headerValueProperty.ValueKind != JsonValueKind.String && headerValueProperty.ValueKind != JsonValueKind.Null)
                     {
                         result.Code = "AddOrUpdateUserBusinessTools:46";
                         result.Message = $"Invalid configuration tab header {headerKey} value.";
@@ -407,12 +407,15 @@ namespace IqraInfrastructure.Managers.Business
                     bool headerIsEncrypted = headerIsEncryptedProperty.GetBoolean();
 
                     headerKey = headerKey.Trim();
-                    headerValue = HttpHeaderTextHelper.CleanValue(headerValue);
+                    if (headerValue != null)
+                    {
+                        headerValue = HttpHeaderTextHelper.CleanValue(headerValue);
+                    }
 
-                    if (string.IsNullOrWhiteSpace(headerKey) || string.IsNullOrWhiteSpace(headerValue))
+                    if (string.IsNullOrWhiteSpace(headerKey))
                     {
                         result.Code = "AddOrUpdateUserBusinessTools:16";
-                        result.Message = "Configuration tab header key or value is empty.";
+                        result.Message = "Configuration tab header key is empty.";
                         return result;
                     }
 
@@ -431,34 +434,42 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
 
+                    string? storedEncryptedHeaderValue = null;
+                    bool hasStoredEncryptedHeader = postType == "edit" && exisitingToolData != null && exisitingToolData.Configuration.EncryptedHeaders.TryGetValue(headerKey, out storedEncryptedHeaderValue);
+
                     if (headerIsEncrypted)
                     {
-                        if (headerValue == "value_encrypted_after_saving" && postType == "edit" && exisitingToolData != null)
+                        string encryptedHeaderValue;
+                        if (headerValue == null)
                         {
-                            if (!exisitingToolData.Configuration.EncryptedHeaders.TryGetValue(headerKey, out string? encryptedHeaderValue))
+                            if (!hasStoredEncryptedHeader)
                             {
-                                result.Code = "AddOrUpdateUserBusinessTools:49";
-                                result.Message = $"Encrypted header {headerKey} is unchanged so previous value is missing.";
-                                return result;
+                                return result.SetFailureResult(
+                                    "AddOrUpdateBusinessTool:ENCRYPTED_HEADER_VALUE_MISSING",
+                                    $"Encrypted header {headerKey} has no saved value under this name, so its value must be entered."
+                                );
                             }
 
-                            headerValue = encryptedHeaderValue;
+                            encryptedHeaderValue = storedEncryptedHeaderValue!;
                         }
                         else
                         {
-                            headerValue = integrationsManager.EncryptField(headerValue);
+                            encryptedHeaderValue = integrationsManager.EncryptField(headerValue);
                         }
 
-                        NewBusinessAppToolData.Configuration.Headers.Add(headerKey, "value_encrypted_after_saving");
-                        NewBusinessAppToolData.Configuration.EncryptedHeaders.Add(headerKey, headerValue);
+                        NewBusinessAppToolData.Configuration.Headers.Add(headerKey, null);
+                        NewBusinessAppToolData.Configuration.EncryptedHeaders.Add(headerKey, encryptedHeaderValue);
                     }
                     else
                     {
-                        if (headerValue == "value_encrypted_after_saving" && postType == "edit" && exisitingToolData != null && exisitingToolData.Configuration.EncryptedHeaders.ContainsKey(headerKey))
+                        if (headerValue == null)
                         {
-                            result.Code = "AddOrUpdateUserBusinessTools:50";
-                            result.Message = $"Header {headerKey} is no longer encrypted so its value must be entered again.";
-                            return result;
+                            return result.SetFailureResult(
+                                "AddOrUpdateBusinessTool:UNENCRYPTED_HEADER_VALUE_MISSING",
+                                hasStoredEncryptedHeader
+                                    ? $"Header {headerKey} is no longer encrypted so its value must be entered again."
+                                    : $"Header {headerKey} value must be entered."
+                            );
                         }
 
                         NewBusinessAppToolData.Configuration.Headers.Add(headerKey, headerValue);

@@ -12,14 +12,16 @@ let IsIntegrationsOAuthStatusTabShown = false;
 let IntegrationsOAuthRedirectUri = null;
 
 // --- Change Helpers ---
+const IntegrationFieldValue = { kind: "text", strict: true, isEmpty: (value) => value === undefined || value === "" };
+
 const OAuthReconnectFieldsChanges = ChangesHelper.define({
-	fields: { kind: "map", keys: (context) => context.integration.fields.filter((field) => field.requiresOAuthReconnect).map((field) => field.id), foldKeyCase: true, values: "text" },
+	fields: { kind: "map", keys: (context) => context.integration.fields.filter((field) => field.requiresOAuthReconnect).map((field) => field.id), foldKeyCase: true, values: IntegrationFieldValue },
 });
 
 const BusinessIntegrationChanges = ChangesHelper.define({
 	type: { kind: "text", compare: false },
 	friendlyName: "text",
-	fields: { kind: "map", keys: () => GetIntegrationSpecFields().map((field) => field.id), foldKeyCase: true, values: "text" },
+	fields: { kind: "map", keys: () => GetIntegrationSpecFields().map((field) => field.id), foldKeyCase: true, values: IntegrationFieldValue },
 });
 
 /** Elements Variables **/
@@ -223,10 +225,27 @@ function createIntegrationFieldElement(field) {
                 ${field.options.map((opt) => `<option value="${opt.key}" ${opt.isDefault ? "selected" : ""}>${opt.value}</option>`).join("")}
             </select>
         `;
+	} else if (field.isEncrypted) {
+		fieldHtml += `
+            <div class="input-group">
+                <span class="input-group-text d-none" data-type="savedLock" title="A value is saved">
+                    <i class="fa-regular fa-lock"></i>
+                </span>
+                <input type="password" class="form-control" data-secret="true" autocomplete="new-password"
+                       id="integration_${field.id}"
+                       placeholder="${field.placeholder || `Enter ${field.name}`}"
+                       value="${field.defaultValue || ""}"
+                       ${field.required ? "required" : ""}>
+                <button type="button" class="btn btn-secondary" button-type="toggleSecretVisibility" title="Show or hide the value">
+                    <i class="fa-regular fa-eye-slash"></i>
+                </button>
+            </div>
+            ${field.required ? "" : `<a href="#" class="small d-none" button-type="clearSavedIntegrationSecret" data-field-id="${field.id}">Clear saved value</a>`}
+        `;
 	} else {
 		fieldHtml += `
-            <input type="${field.isEncrypted ? "password" : field.type}" real-type="${field.type}" class="form-control" 
-                   id="integration_${field.id}" 
+            <input type="${field.type}" class="form-control"
+                   id="integration_${field.id}"
                    placeholder="${field.placeholder || `Enter ${field.name}`}"
                    value="${field.defaultValue || ""}"
                    ${field.required ? "required" : ""}>
@@ -262,9 +281,13 @@ function fillIntegrationFields(integration) {
 		// If editing, use the saved value, otherwise use default value
 		if (ManageIntegrationType === "edit" && CurrentIntegrationData) {
 			const savedValue = CurrentIntegrationData.fields[field.id];
-			if (savedValue) {
+			if (savedValue !== undefined && savedValue !== null) {
 				$(`#integration_${field.id}`).val(savedValue);
 			}
+		}
+
+		if (field.isEncrypted && field.type !== "select") {
+			UpdateIntegrationSecretState(field);
 		}
 	});
 
@@ -283,6 +306,42 @@ function fillIntegrationFields(integration) {
 
 	// Initialize tooltips
 	initializeIntegrationTooltips();
+}
+
+function IntegrationSecretHasSavedValue(field) {
+	return ManageIntegrationType === "edit" && !!CurrentIntegrationData && Object.prototype.hasOwnProperty.call(CurrentIntegrationData.fields, field.id);
+}
+
+function IntegrationSecretKeepsSavedValue(field) {
+	const box = $(`#integration_${field.id}`);
+	return IntegrationSecretHasSavedValue(field) && box.val().trim() === "" && box.attr("data-clear-saved") !== "true";
+}
+
+function ReadIntegrationFieldValue(field) {
+	if (field.isEncrypted && field.type !== "select" && IntegrationSecretKeepsSavedValue(field)) return null;
+	return $(`#integration_${field.id}`).val().trim();
+}
+
+function UpdateIntegrationSecretState(field) {
+	const box = $(`#integration_${field.id}`);
+	const container = box.closest(".mb-3");
+	const hasSavedValue = IntegrationSecretHasSavedValue(field);
+
+	if (!hasSavedValue) box.removeAttr("data-clear-saved");
+
+	const clearSaved = box.attr("data-clear-saved") === "true";
+	const isVisible = box.attr("data-value-visible") === "true";
+
+	box.attr("type", isVisible ? "text" : "password");
+	box.attr("placeholder", hasSavedValue ? (clearSaved ? "Will be cleared when you save" : "Saved. Type to replace it.") : field.placeholder || `Enter ${field.name}`);
+
+	container.find('[data-type="savedLock"]').toggleClass("d-none", !hasSavedValue || clearSaved);
+	container.find('[button-type="clearSavedIntegrationSecret"]').toggleClass("d-none", !hasSavedValue).text(clearSaved ? "Keep saved value" : "Clear saved value");
+	container.find('[button-type="toggleSecretVisibility"] i').toggleClass("fa-eye", isVisible).toggleClass("fa-eye-slash", !isVisible);
+}
+
+function GetIntegrationSpecField(fieldId) {
+	return GetIntegrationSpecFields().find((field) => field.id === fieldId);
 }
 
 function IsOAuthIntegrationSpec(integration) {
@@ -574,7 +633,8 @@ function ValidateIntegrationTab(onlyRemove = true) {
 	integration.fields.forEach((field) => {
 		if (field.required) {
 			const value = $(`#integration_${field.id}`).val().trim();
-			if (!value) {
+			const keepsSavedValue = field.isEncrypted && field.type !== "select" && IntegrationSecretKeepsSavedValue(field);
+			if (!value && !keepsSavedValue) {
 				validated = false;
 				errors.push(`${field.name} is required`);
 				if (!onlyRemove) {
@@ -608,7 +668,7 @@ function CreateIntegrationSpecDefaultsObject() {
 function CheckIntegrationTabHasChanges(enableDisableButton = true) {
 	const fields = {};
 	GetIntegrationSpecFields().forEach((field) => {
-		fields[field.id] = $(`#integration_${field.id}`).val().trim();
+		fields[field.id] = ReadIntegrationFieldValue(field);
 	});
 	const current = {
 		type: SelectedIntegrationType,
@@ -734,14 +794,6 @@ function initIntegrationsTab() {
 		// Fill the form
 		$("#integrationFriendlyNameInput").val(CurrentIntegrationData.friendlyName);
 		fillIntegrationFields(integration);
-
-		// Fill existing values
-		Object.entries(CurrentIntegrationData.fields).forEach(([fieldId, value]) => {
-			const field = $(`#integration_${fieldId}`);
-			if (field.length) {
-				field.val(value);
-			}
-		});
 
 		ShowIntegrationManager();
 
@@ -1043,24 +1095,39 @@ function initIntegrationsTab() {
 	});
 
 	// Handle Encrypted Fields
-	integrationManagerContainer.on("keydown paste drop compositionstart", 'input[type="password"]', (event) => {
-		if (event.type === "keydown") {
-			event.stopPropagation();
+	integrationManagerContainer.on("input", '[data-secret="true"]', (event) => {
+		const box = $(event.currentTarget);
+		const field = GetIntegrationSpecField(box.attr("id").replace("integration_", ""));
+		if (!field) return;
 
-			const key = event.key || "";
-			const isTyping = key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
-			const isPasting = key.toLowerCase() === "v" && (event.ctrlKey || event.metaKey) && !event.altKey;
-			const isDeleting = key === "Backspace" || key === "Delete";
-			if (!isTyping && !isPasting && !isDeleting) return;
-		}
+		if (box.val().trim() !== "") box.removeAttr("data-clear-saved");
 
-		const currentElement = $(event.currentTarget);
-		const realTypeAttr = currentElement.attr("real-type");
+		UpdateIntegrationSecretState(field);
+	});
 
-		currentElement.attr("type", realTypeAttr);
+	integrationManagerContainer.on("click", '[button-type="toggleSecretVisibility"]', (event) => {
+		event.preventDefault();
 
-		currentElement.val("");
+		const box = $(event.currentTarget).closest(".input-group").find('[data-secret="true"]');
+		const field = GetIntegrationSpecField(box.attr("id").replace("integration_", ""));
+		if (!field) return;
 
+		box.attr("data-value-visible", box.attr("data-value-visible") === "true" ? "false" : "true");
+
+		UpdateIntegrationSecretState(field);
+	});
+
+	integrationManagerContainer.on("click", '[button-type="clearSavedIntegrationSecret"]', (event) => {
+		event.preventDefault();
+
+		const field = GetIntegrationSpecField($(event.currentTarget).attr("data-field-id"));
+		if (!field) return;
+
+		const box = $(`#integration_${field.id}`);
+		box.attr("data-clear-saved", box.attr("data-clear-saved") === "true" ? "false" : "true");
+		box.val("");
+
+		UpdateIntegrationSecretState(field);
 		CheckIntegrationTabHasChanges(true);
 	});
 

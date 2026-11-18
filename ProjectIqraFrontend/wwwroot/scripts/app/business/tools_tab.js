@@ -640,12 +640,16 @@ function IsValidToolHeaderName(name) {
 	return /^[A-Za-z0-9!#$%&'*+\-.^_`|~]+$/.test(name);
 }
 
+function ToolHeaderRowKeepsSavedValue(row) {
+	return row.attr("data-saved-name") !== undefined && CleanToolHeaderText(row.find('[data-type="value"]').val()) === "" && row.attr("data-clear-saved") !== "true";
+}
+
 function ReadToolHeaderRows() {
 	const headers = {};
 	toolHeadersList.find(".tool-header-box").each((idx, element) => {
 		const row = $(element);
 		headers[CleanToolHeaderText(row.find('[data-type="key"]').val())] = {
-			value: CleanToolHeaderText(row.find('[data-type="value"]').val()),
+			value: ToolHeaderRowKeepsSavedValue(row) ? null : CleanToolHeaderText(row.find('[data-type="value"]').val()),
 			isEncrypted: row.find('[data-type="encrypted"]').prop("checked"),
 		};
 	});
@@ -882,7 +886,14 @@ function CreateToolConfigurationHeaderElement() {
 	const element = `
 		<div class="input-group mt-1 tool-header-box">
 			<input type="text" class="form-control" data-type="key" placeholder="Key">
-			<input type="text" real-type="text" class="form-control" data-type="value" placeholder="Value">
+			<span class="input-group-text d-none" data-type="savedLock" title="A value is saved">
+				<i class="fa-regular fa-lock"></i>
+			</span>
+			<input type="text" class="form-control" data-type="value" placeholder="Value">
+			<button type="button" class="btn btn-secondary d-none" button-type="toggleToolHeaderVisibility" title="Show or hide the value">
+				<i class="fa-regular fa-eye-slash"></i>
+			</button>
+			<button type="button" class="btn btn-secondary d-none" button-type="clearSavedToolHeader">Clear saved value</button>
 			<div class="form-check d-flex flex-row align-items-center justify-content-center m-0" style="background-color: #1a1a1a; border: 1px solid var(--bs-border-color); border-left: none">
 				<div class="px-3">
 					<input class="form-check-input" type="checkbox" data-type="encrypted" id="toolHeaderEncrypted${elementId}">
@@ -909,13 +920,43 @@ function FillToolConfigurationHeaders(headers) {
 		toolHeadersList.append(headerBox);
 
 		headerBox.find('[data-type="key"]').val(key);
-		headerBox.find('[data-type="value"]').val(header.value);
+		headerBox.find('[data-type="value"]').val(header.isEncrypted ? "" : header.value);
 		headerBox.find('[data-type="encrypted"]').prop("checked", header.isEncrypted);
 
 		if (header.isEncrypted) {
-			headerBox.find('[data-type="value"]').attr("type", "password");
+			headerBox.attr("data-saved-name", key);
 		}
+
+		UpdateToolHeaderRowState(headerBox);
 	});
+}
+
+function UpdateToolHeaderRowState(headerBox) {
+	const valueInput = headerBox.find('[data-type="value"]');
+	const isEncrypted = headerBox.find('[data-type="encrypted"]').prop("checked");
+	const savedName = headerBox.attr("data-saved-name");
+	const hasSavedValue = isEncrypted && savedName !== undefined && CleanToolHeaderText(headerBox.find('[data-type="key"]').val()) === savedName;
+
+	if (!hasSavedValue) headerBox.removeAttr("data-clear-saved");
+	if (!isEncrypted) headerBox.removeAttr("data-value-visible");
+
+	const clearSaved = headerBox.attr("data-clear-saved") === "true";
+	const isVisible = headerBox.attr("data-value-visible") === "true";
+
+	valueInput.attr("type", isEncrypted && !isVisible ? "password" : "text");
+	if (isEncrypted) {
+		valueInput.attr("autocomplete", "new-password");
+	} else {
+		valueInput.removeAttr("autocomplete");
+	}
+	valueInput.attr("placeholder", hasSavedValue ? (clearSaved ? "Will be saved empty" : "Saved. Type to replace it.") : "Value");
+
+	headerBox.find('[data-type="savedLock"]').toggleClass("d-none", !hasSavedValue || clearSaved);
+	headerBox.find('[button-type="clearSavedToolHeader"]').toggleClass("d-none", !hasSavedValue).text(clearSaved ? "Keep saved value" : "Clear saved value");
+
+	const visibilityButton = headerBox.find('[button-type="toggleToolHeaderVisibility"]');
+	visibilityButton.toggleClass("d-none", !isEncrypted);
+	visibilityButton.find("i").toggleClass("fa-eye", isVisible).toggleClass("fa-eye-slash", !isVisible);
 }
 
 function CreateToolConfigurationBodyKeyValueElement() {
@@ -1317,34 +1358,24 @@ function ValidateToolsManageTab(onlyRemove = true) {
 				keyInput.removeClass("is-invalid");
 			}
 
-			if (valueInput.val().trim() === "") {
+			let valueError = null;
+			if (headerName !== "" && ToolHeaderRowKeepsSavedValue(currentElement)) {
+				if (!currentElement.find('[data-type="encrypted"]').prop("checked")) {
+					valueError = `Header ${headerName} is no longer encrypted so its value must be entered again.`;
+				} else if (headerName !== currentElement.attr("data-saved-name")) {
+					valueError = `Encrypted header ${headerName} has no saved value under this name, so its value must be entered.`;
+				}
+			}
+
+			if (valueError !== null) {
 				validated = false;
-				errors.push(`Header #${idx + 1} value is required.`);
+				errors.push(valueError);
 
 				if (!onlyRemove) {
 					valueInput.addClass("is-invalid");
 				}
 			} else {
 				valueInput.removeClass("is-invalid");
-			}
-
-			const savedHeader = ManageToolType === "edit" ? CurrentManageToolData.configuration.headers[keyInput.val().trim()] : undefined;
-			if (!currentElement.find('[data-type="encrypted"]').prop("checked") && valueInput.val().trim() === "value_encrypted_after_saving" && savedHeader && savedHeader.isEncrypted) {
-				validated = false;
-				errors.push(`Header ${keyInput.val().trim()} is no longer encrypted so its value must be entered again.`);
-
-				if (!onlyRemove) {
-					valueInput.addClass("is-invalid");
-				}
-			}
-
-			if (ManageToolType === "edit" && keyInput.val().trim() !== "" && currentElement.find('[data-type="encrypted"]').prop("checked") && valueInput.val().trim() === "value_encrypted_after_saving" && !(savedHeader && savedHeader.isEncrypted)) {
-				validated = false;
-				errors.push(`Encrypted header ${keyInput.val().trim()} is unchanged so previous value is missing.`);
-
-				if (!onlyRemove) {
-					valueInput.addClass("is-invalid");
-				}
 			}
 		});
 
@@ -1670,12 +1701,20 @@ function initToolsTab() {
 
 			toolHeadersList.on("input", '[data-type="key"], [data-type="value"]', (event) => {
 				const element = event.currentTarget;
+				const headerBox = $(element).closest(".tool-header-box");
 				const cleaned = CleanToolHeaderText(element.value, false);
-				if (cleaned === element.value) return;
 
-				const caret = Math.max(0, (element.selectionStart ?? element.value.length) - (element.value.length - cleaned.length));
-				element.value = cleaned;
-				element.setSelectionRange(caret, caret);
+				if (cleaned !== element.value) {
+					const caret = Math.max(0, (element.selectionStart ?? element.value.length) - (element.value.length - cleaned.length));
+					element.value = cleaned;
+					element.setSelectionRange(caret, caret);
+				}
+
+				if (element.getAttribute("data-type") === "value" && cleaned !== "") {
+					headerBox.removeAttr("data-clear-saved");
+				}
+
+				UpdateToolHeaderRowState(headerBox);
 			});
 
 			toolHeadersList.on("change", '[data-type="key"], [data-type="value"]', (event) => {
@@ -1685,27 +1724,29 @@ function initToolsTab() {
 			});
 
 			toolHeadersList.on("change", '[data-type="encrypted"]', (event) => {
+				UpdateToolHeaderRowState($(event.currentTarget).closest(".tool-header-box"));
+
 				CheckToolsManageTabHasChanges(true);
 				ValidateToolsManageTab(true);
 			});
 
-			toolHeadersList.on("keydown paste drop compositionstart", 'input[type="password"]', (event) => {
-				if (event.type === "keydown") {
-					event.stopPropagation();
+			toolHeadersList.on("click", '[button-type="toggleToolHeaderVisibility"]', (event) => {
+				event.preventDefault();
 
-					const key = event.key || "";
-					const isTyping = key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
-					const isPasting = key.toLowerCase() === "v" && (event.ctrlKey || event.metaKey) && !event.altKey;
-					const isDeleting = key === "Backspace" || key === "Delete";
-					if (!isTyping && !isPasting && !isDeleting) return;
-				}
+				const headerBox = $(event.currentTarget).closest(".tool-header-box");
+				headerBox.attr("data-value-visible", headerBox.attr("data-value-visible") === "true" ? "false" : "true");
 
-				const currentElement = $(event.currentTarget);
-				const realTypeAttr = currentElement.attr("real-type");
+				UpdateToolHeaderRowState(headerBox);
+			});
 
-				currentElement.attr("type", realTypeAttr);
+			toolHeadersList.on("click", '[button-type="clearSavedToolHeader"]', (event) => {
+				event.preventDefault();
 
-				currentElement.val("");
+				const headerBox = $(event.currentTarget).closest(".tool-header-box");
+				headerBox.attr("data-clear-saved", headerBox.attr("data-clear-saved") === "true" ? "false" : "true");
+				headerBox.find('[data-type="value"]').val("");
+
+				UpdateToolHeaderRowState(headerBox);
 
 				CheckToolsManageTabHasChanges(true);
 				ValidateToolsManageTab(true);
@@ -2022,7 +2063,7 @@ function initToolsTab() {
 				}
 			});
 
-			toolManagerTab.on("input change", "input[type='text'], input[type='number'], input[type='file'], textarea, select", (event) => {
+			toolManagerTab.on("input change", "input[type='text'], input[type='password'], input[type='number'], input[type='file'], textarea, select", (event) => {
 				event.stopPropagation();
 
 				if (ManageToolType == null) return;
