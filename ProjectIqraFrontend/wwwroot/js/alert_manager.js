@@ -25,13 +25,23 @@ class BootstrapAlertManager {
 
         const alertElement = $('<div>', {
             class: `alert alert-${type} alert-dismissible ${fade ? 'fade' : ''} ${customClassName} d-none`,
-            role: 'alert',
-            html: `
-                ${message}
-                ${resultMessage ? `<code class="bg-dark p-2 rounded border mt-2" style="display: block;">${resultMessage}</code>` : ""}
-                ${(enableDismiss ? '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' : "")}
-            `
+            role: 'alert'
         });
+
+        this.appendText(alertElement, message);
+
+        if (resultMessage) {
+            const resultElement = $('<code>', {
+                class: 'bg-dark p-2 rounded border mt-2',
+                style: 'display: block;'
+            });
+            this.appendText(resultElement, resultMessage);
+            alertElement.append(resultElement);
+        }
+
+        if (enableDismiss) {
+            alertElement.append('<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>');
+        }
 
         this.container.append(alertElement);
 
@@ -49,6 +59,13 @@ class BootstrapAlertManager {
         }
 
         return alertElement;
+    }
+
+    appendText(element, text) {
+        String(text ?? '').split(/<br\s*\/?>|\r?\n/i).forEach((line, index) => {
+            if (index > 0) element.append($('<br>'));
+            element.append(document.createTextNode(line));
+        });
     }
 
     dismissAlert(alertElement) {
