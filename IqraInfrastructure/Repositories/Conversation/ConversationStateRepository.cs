@@ -193,7 +193,13 @@ namespace IqraInfrastructure.Repositories.Conversation
             try
             {
                 var filter = Builders<ConversationState>.Filter.In(c => c.QueueId, queueIds);
-                var states = await _conversationStateCollection.Find(filter).ToListAsync(cancellationToken);
+                var projection = Builders<ConversationState>.Projection
+                    .Include(c => c.QueueId)
+                    .Include(c => c.Status)
+                    .Include(c => c.EndType)
+                    .Include(c => c.PostAnalysis.Status)
+                    .Include(c => c.PostAnalysis.SummaryData.Summary!.Summary);
+                var states = await _conversationStateCollection.Find(filter).Project<ConversationState>(projection).ToListAsync(cancellationToken);
 
                 return states
                     .GroupBy(s => s.QueueId)
@@ -217,7 +223,14 @@ namespace IqraInfrastructure.Repositories.Conversation
             try
             {
                 var filter = Builders<ConversationState>.Filter.In(c => c.WebSessionId, webSessionIds);
-                var states = await _conversationStateCollection.Find(filter).ToListAsync(cancellationToken);
+                var projection = Builders<ConversationState>.Projection
+                    .Include(c => c.WebSessionId)
+                    .Include(c => c.Status)
+                    .Include(c => c.EndType)
+                    .Include(c => c.EndTime)
+                    .Include(c => c.PostAnalysis.Status)
+                    .Include(c => c.PostAnalysis.SummaryData.Summary!.Summary);
+                var states = await _conversationStateCollection.Find(filter).Project<ConversationState>(projection).ToListAsync(cancellationToken);
 
                 return states
                     .GroupBy(s => s.WebSessionId)
