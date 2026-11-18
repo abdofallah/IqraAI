@@ -1317,6 +1317,15 @@ function ValidateToolsManageTab(onlyRemove = true) {
 					valueInput.addClass("is-invalid");
 				}
 			}
+
+			if (ManageToolType === "edit" && keyInput.val().trim() !== "" && currentElement.find('[data-type="encrypted"]').prop("checked") && valueInput.val().trim() === "value_encrypted_after_saving" && !(savedHeader && savedHeader.isEncrypted)) {
+				validated = false;
+				errors.push(`Encrypted header ${keyInput.val().trim()} is unchanged so previous value is missing.`);
+
+				if (!onlyRemove) {
+					valueInput.addClass("is-invalid");
+				}
+			}
 		});
 
 		// Body validation
@@ -1661,6 +1670,9 @@ function initToolsTab() {
 				currentElement.attr("type", realTypeAttr);
 
 				currentElement.val("");
+
+				CheckToolsManageTabHasChanges(true);
+				ValidateToolsManageTab(true);
 			});
 
 			toolBodyType.on("change", (event) => {

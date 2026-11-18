@@ -1060,6 +1060,8 @@ function initIntegrationsTab() {
 		currentElement.attr("type", realTypeAttr);
 
 		currentElement.val("");
+
+		CheckIntegrationTabHasChanges(true);
 	});
 
 	$(document).on("tabShown", (event, tabData) => {
