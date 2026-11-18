@@ -335,11 +335,11 @@ function initUsersTab() {
 			(userBusinessesError) => {
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occured while fetching user businesses. Check browser console for logs.",
+					message: "Error occurred while fetching user businesses. Check browser console for logs.",
 					timeout: 5000,
 				});
 
-				console.log("Error occured while fetching user businesses: ", userBusinessesError);
+				console.log("Error occurred while fetching user businesses: ", userBusinessesError);
 			},
 		);
 	});
@@ -457,11 +457,11 @@ function initUsersTab() {
 			(businessesError) => {
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occured while fetching user businesses. Check browser console for logs.",
+					message: "Error occurred while fetching user businesses. Check browser console for logs.",
 					timeout: 5000,
 				});
 
-				console.log("Error occured while fetching user businesses: ", businessesError);
+				console.log("Error occurred while fetching user businesses: ", businessesError);
 			},
 		);
 	});
@@ -505,7 +505,7 @@ function initUsersTab() {
 		if (businessData.masterUserEmail && businessData.masterUserEmail !== CurrentManageUserEmail) {
 			const transferConfirmDialog = new BootstrapConfirmDialog({
 				title: "Confirm Business Transfer",
-				message: `This business is managed by: ${businessData.masterUserEmail}\nThey will lose complete access to this business.\nDo you want to continue?`,
+				message: `This business is managed by: ${escapeHtml(businessData.masterUserEmail)}\nThey will lose complete access to this business.\nDo you want to continue?`,
 				confirmText: "Continue",
 				cancelText: "Cancel",
 				confirmButtonClass: "btn-warning",

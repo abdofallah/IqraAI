@@ -52,7 +52,8 @@
                     verifyButton.hide();
                 } else {
                     // --- Step 6: Handle Failure ---
-                    errorMessageDiv.html('<span>' + (response.message || 'An error occurred.') + '</span>');
+                    console.error('Verify account error:', response);
+                    errorMessageDiv.empty().append($('<span>').text(response.message || 'An error occurred.'));
                     errorMessageDiv.removeClass('d-none').addClass('show');
                     verifyButton.prop('disabled', false);
                     buttonSpinner.addClass('d-none');

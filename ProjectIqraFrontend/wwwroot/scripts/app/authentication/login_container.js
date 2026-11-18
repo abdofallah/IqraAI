@@ -43,19 +43,21 @@
                         }, 10);
                     }
                     else {
+                        console.error('Login error occurred:', response);
+
                         $('.login-container #errorMessage').removeClass('d-none');
                         setTimeout(() => {
-                            $('.login-container #errorMessage').addClass('show').html('<span>' + response.message + '</span>');
+                            $('.login-container #errorMessage').addClass('show').empty().append($('<span>').text(response.message));
                         }, 10);
                         loginButton.prop('disabled', false);
                         buttonSpinner.addClass('d-none');
                     }
                 },
                 error: (xhr, status, error) => {
-                    console.error('Login error occured:', error);
+                    console.error('Login error occurred:', error);
                     $('.login-container #errorMessage').removeClass('d-none');
                     setTimeout(() => {
-                        $('.login-container #errorMessage').addClass('show').html('<span>Error occured while logging in.<br>Check console logs.</span>');
+                        $('.login-container #errorMessage').addClass('show').html('<span>Error occurred while logging in.<br>Check console logs.</span>');
                     }, 10);
 
                     loginButton.prop('disabled', false);

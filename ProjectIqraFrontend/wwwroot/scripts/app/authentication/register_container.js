@@ -58,9 +58,11 @@
                         buttonSpinner.addClass('d-none');
                     }
                     else {
+                        console.error('register error:', response);
+
                         $('.register-container #errorMessage').removeClass('d-none');
                         setTimeout(() => {
-                            $('.register-container #errorMessage').addClass('show').html('<span>' + response.message + '</span>');
+                            $('.register-container #errorMessage').addClass('show').empty().append($('<span>').text(response.message));
                         }, 10);
 
                         registerButton.prop('disabled', false);

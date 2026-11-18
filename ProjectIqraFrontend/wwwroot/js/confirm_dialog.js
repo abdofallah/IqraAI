@@ -26,19 +26,23 @@ class BootstrapConfirmDialog {
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title">${this.options.title}</h5>
+                            <h5 class="modal-title"></h5>
                         </div>
                         <div class="modal-body">
                             ${this.options.message}
                         </div>
                         <div class="modal-footer">
-							${this.options.hideCancel ? "" : `<button type="button" class="btn ${this.options.cancelButtonClass}" id="${this.modalId}-cancel">${this.options.cancelText}</button>`}
-                            <button type="button" class="btn ${this.options.confirmButtonClass}" id="${this.modalId}-confirm">${this.options.confirmText}</button>
+							${this.options.hideCancel ? "" : `<button type="button" class="btn ${this.options.cancelButtonClass}" id="${this.modalId}-cancel"></button>`}
+                            <button type="button" class="btn ${this.options.confirmButtonClass}" id="${this.modalId}-confirm"></button>
                         </div>
                     </div>
                 </div>
             </div>
         `);
+
+		modal.find(".modal-title").text(this.options.title);
+		modal.find(`#${this.modalId}-cancel`).text(this.options.cancelText);
+		modal.find(`#${this.modalId}-confirm`).text(this.options.confirmText);
 
 		$(this.options.bodySelectorQuery).append(modal);
 

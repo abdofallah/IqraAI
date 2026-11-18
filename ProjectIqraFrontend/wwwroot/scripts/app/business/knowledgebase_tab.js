@@ -1405,12 +1405,12 @@ function initKnowledgeBaseTab() {
 
                         AlertManager.createAlert({
                             type: "danger",
-                            message: "Error occured while deleting business knowledgebase.",
+                            message: "Error occurred while deleting business knowledgebase.",
                             resultMessage: resultMessage,
                             timeout: 6000,
                         });
 
-                        console.log("Error occured while deleting business knowledgebase: ", errorResult);
+                        console.log("Error occurred while deleting business knowledgebase: ", errorResult);
                     }
                 ).always(() => {
                     showHideButtonSpinnerWithDisableEnable(button, false);
@@ -1683,7 +1683,7 @@ function initKnowledgeBaseTab() {
 
             const confirmDialog = new BootstrapConfirmDialog({
                 title: 'Confirm Deletion',
-                message: `Are you sure you want to delete the document "${doc.name}"? This action cannot be undone.`,
+                message: `Are you sure you want to delete the document "${escapeHtml(doc.name)}"? This action cannot be undone.`,
                 confirmText: 'Delete',
                 cancelText: 'Cancel',
                 confirmButtonClass: 'btn-danger'
@@ -2138,12 +2138,12 @@ function initKnowledgeBaseTab() {
 
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Error occured while saving knowledgebase data.",
+                        message: "Error occurred while saving knowledgebase data.",
                         resultMessage: resultMessage,
                         timeout: 6000,
                     });
 
-                    console.error("Error occured while saving knowledgebase data:", error);
+                    console.error("Error occurred while saving knowledgebase data:", error);
                 }
             );
         });

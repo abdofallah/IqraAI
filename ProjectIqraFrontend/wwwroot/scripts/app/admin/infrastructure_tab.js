@@ -909,12 +909,12 @@ function submitStatusChange(reasons = { public: "", private: "" }, skipModal = f
 
         AlertManager.createAlert({
             type: "danger",
-            message: "Error occured while toggling status.",
+            message: "Error occurred while toggling status.",
             resultMessage: resultMessage,
             timeout: 6000,
         });
 
-        console.log("Error occured while toggling status: ", errorResult);
+        console.log("Error occurred while toggling status: ", errorResult);
 
         PendingStatusToggle = null;
         PendingStatusAction = null;
@@ -1280,12 +1280,12 @@ function initInfrastructureTab() {
 
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Error occured while updating configuration.",
+                        message: "Error occurred while updating configuration.",
                         resultMessage: resultMessage,
                         timeout: 6000,
                     });
 
-                    console.log("Error occured while updating configuration: ", errorResult);
+                    console.log("Error occurred while updating configuration: ", errorResult);
 
                     btn.prop('disabled', false).text(originalText);
                 }
@@ -1314,12 +1314,12 @@ function initInfrastructureTab() {
 
                             AlertManager.createAlert({
                                 type: "danger",
-                                message: "Error occured while shutting down background node.",
+                                message: "Error occurred while shutting down background node.",
                                 resultMessage: resultMessage,
                                 timeout: 6000,
                             });
 
-                            console.log("Error occured while shutting down background node: ", errorResult);
+                            console.log("Error occurred while shutting down background node: ", errorResult);
                         }
                     );
                 }
@@ -1382,12 +1382,12 @@ function initInfrastructureTab() {
 
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Error occured while adding region.",
+                        message: "Error occurred while adding region.",
                         resultMessage: resultMessage,
                         timeout: 6000,
                     });
 
-                    console.log("Error occured while adding region: ", errorResult);
+                    console.log("Error occurred while adding region: ", errorResult);
 
                     btn.prop('disabled', false).text(originalText);
                 }
@@ -1415,7 +1415,7 @@ function initInfrastructureTab() {
             const rId = $(e.currentTarget).data("item-id");
             const confirm = new BootstrapConfirmDialog({
                 title: "Delete Region",
-                message: `Delete ${rId}?<br><b>NOTE</b>: You must stop all nodes online for this region and set the disabled flag to true before deleting.`,
+                message: `Delete ${escapeHtml(rId)}?<br><b>NOTE</b>: You must stop all nodes online for this region and set the disabled flag to true before deleting.`,
                 confirmButtonClass: "btn-danger"
             });
             confirm.show().then(ok => {
@@ -1437,12 +1437,12 @@ function initInfrastructureTab() {
 
                             AlertManager.createAlert({
                                 type: "danger",
-                                message: "Error occured while deleting region.",
+                                message: "Error occurred while deleting region.",
                                 resultMessage: resultMessage,
                                 timeout: 6000,
                             });
 
-                            console.log("Error occured while deleting region: ", errorResult);
+                            console.log("Error occurred while deleting region: ", errorResult);
                         }
                     );
                 }   
@@ -1487,12 +1487,12 @@ function initInfrastructureTab() {
 
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Error occured while saving region s3 config.",
+                        message: "Error occurred while saving region s3 config.",
                         resultMessage: resultMessage,
                         timeout: 6000,
                     });
 
-                    console.log("Error occured while saving region s3 config: ", errorResult);
+                    console.log("Error occurred while saving region s3 config: ", errorResult);
 
                     confirmSaveRegionButtonSpinner.addClass("d-none");
                     confirmSaveRegionButton.prop("disabled", false);
@@ -1509,7 +1509,7 @@ function initInfrastructureTab() {
         btnShutdownRegion.on("click", () => {
             const confirm = new BootstrapConfirmDialog({
                 title: "Shutdown Region?",
-                message: `Shutdown all servers in <b>${CurrentManageRegionData.regionId}</b>? This will terminate all active calls and stop processing queues.`,
+                message: `Shutdown all servers in <b>${escapeHtml(CurrentManageRegionData.regionId)}</b>? This will terminate all active calls and stop processing queues.`,
                 confirmButtonClass: "btn-danger",
                 confirmText: "Shutdown All"
             });
@@ -1527,12 +1527,12 @@ function initInfrastructureTab() {
 
                             AlertManager.createAlert({
                                 type: "danger",
-                                message: "Error occured while shutting down region nodes.",
+                                message: "Error occurred while shutting down region nodes.",
                                 resultMessage: resultMessage,
                                 timeout: 6000,
                             });
 
-                            console.log("Error occured while shutting down region nodes: ", errorResult);
+                            console.log("Error occurred while shutting down region nodes: ", errorResult);
                         }
                     );
                 }
@@ -1636,12 +1636,12 @@ function initInfrastructureTab() {
 
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Error occured while saving region server.",
+                        message: "Error occurred while saving region server.",
                         resultMessage: resultMessage,
                         timeout: 6000,
                     });
 
-                    console.log("Error occured while saving region server: ", errorResult);
+                    console.log("Error occurred while saving region server: ", errorResult);
 
                     confirmSaveServerButtonSpinner.addClass("d-none");
                     confirmSaveServerButton.prop("disabled", false);
@@ -1658,7 +1658,7 @@ function initInfrastructureTab() {
         btnShutdownServer.on("click", () => {
             const confirm = new BootstrapConfirmDialog({
                 title: "Shutdown Server?",
-                message: `Shutdown <b>${CurrentManageServerData.endpoint}</b>? Active sessions on this node will be terminated.`,
+                message: `Shutdown <b>${escapeHtml(CurrentManageServerData.endpoint)}</b>? Active sessions on this node will be terminated.`,
                 confirmButtonClass: "btn-danger",
                 confirmText: "Shutdown"
             });
@@ -1672,12 +1672,12 @@ function initInfrastructureTab() {
 
                             AlertManager.createAlert({
                                 type: "danger",
-                                message: "Error occured while shutting down region server.",
+                                message: "Error occurred while shutting down region server.",
                                 resultMessage: resultMessage,
                                 timeout: 6000,
                             });
 
-                            console.log("Error occured while shutting down region server: ", errorResult);
+                            console.log("Error occurred while shutting down region server: ", errorResult);
                         }
                     );
                 }
@@ -1688,7 +1688,7 @@ function initInfrastructureTab() {
         btnDeleteServer.on("click", () => {
             const confirm = new BootstrapConfirmDialog({
                 title: "Delete Server Configuration?",
-                message: `Remove <b>${CurrentManageServerData.endpoint}</b> from configuration?<br>Note: Server must be Disabled and Offline.`,
+                message: `Remove <b>${escapeHtml(CurrentManageServerData.endpoint)}</b> from configuration?<br>Note: Server must be Disabled and Offline.`,
                 confirmButtonClass: "btn-danger",
                 confirmText: "Delete"
             });
@@ -1709,12 +1709,12 @@ function initInfrastructureTab() {
 
                             AlertManager.createAlert({
                                 type: "danger",
-                                message: "Error occured while deleting region server.",
+                                message: "Error occurred while deleting region server.",
                                 resultMessage: resultMessage,
                                 timeout: 6000,
                             });
 
-                            console.log("Error occured while deleting region server: ", errorResult);
+                            console.log("Error occurred while deleting region server: ", errorResult);
                         }
                     );
                 }

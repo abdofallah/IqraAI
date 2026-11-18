@@ -72,7 +72,8 @@
                     resetButton.hide();
                 } else {
                     // --- Step 7: Handle Failure ---
-                    errorMessageDiv.html('<span>' + (response.message || 'An error occurred.') + '</span>');
+                    console.error('Password reset error:', response);
+                    errorMessageDiv.empty().append($('<span>').text(response.message || 'An error occurred.'));
                     errorMessageDiv.removeClass('d-none').addClass('show');
                     resetButton.prop('disabled', false);
                     buttonSpinner.addClass('d-none');

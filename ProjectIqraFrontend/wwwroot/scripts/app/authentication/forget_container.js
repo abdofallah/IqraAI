@@ -18,9 +18,11 @@
                         }, 10);
                     }
                     else {
+                        console.error('Password reset error:', response);
+
                         $('.forget-container #errorMessage').removeClass('d-none');
                         setTimeout(() => {
-                            $('.forget-container #errorMessage').addClass('show').html('<span>' + response.message + '</span>');
+                            $('.forget-container #errorMessage').addClass('show').empty().append($('<span>').text(response.message));
                         }, 10);
                     }
                 },

@@ -371,7 +371,7 @@ function initSettingsTab() {
 			if (BusinessFullData.businessData.languages.includes(languageCode)) {
 				const confirmDeleteDialog = new BootstrapConfirmDialog({
 					title: "Confirm Delete Language",
-					message: `Are you sure you want to delete the language <b>${languageData.name}</b>?<br><br>Deleting the language will remove all references to this language from context, tools, agents, and other components while automatically re-publishing inbound call routings without this language.<br><br><b>This action cannot be undone.</b>`,
+					message: `Are you sure you want to delete the language <b>${escapeHtml(languageData.name)}</b>?<br><br>Deleting the language will remove all references to this language from context, tools, agents, and other components while automatically re-publishing inbound call routings without this language.<br><br><b>This action cannot be undone.</b>`,
 					confirmText: "Delete",
 					cancelText: "Cancel",
 					confirmButtonClass: "btn-danger",
@@ -487,11 +487,11 @@ function initSettingsTab() {
 				(saveError, isUnsuccessful) => {
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occured while saving business settings data. Check browser console for logs.",
+						message: "Error occurred while saving business settings data. Check browser console for logs.",
 						timeout: 6000,
 					});
 
-					console.error("Error occured while saving business settings data: ", saveError);
+					console.error("Error occurred while saving business settings data: ", saveError);
 
 					settingsSaveButton.prop("disabled", false);
 					settingsSaveButtonSpinner.addClass("d-none");

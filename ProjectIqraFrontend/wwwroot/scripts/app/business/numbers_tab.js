@@ -222,12 +222,12 @@ async function deleteBusinessNumberHandler(event) {
 
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occured while deleting business number.",
+					message: "Error occurred while deleting business number.",
 					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 
-				console.log("Error occured while deleting business number: ", errorResult);
+				console.log("Error occurred while deleting business number: ", errorResult);
 			}
 		).always(() => {
 			showHideButtonSpinnerWithDisableEnable(button, false);
@@ -348,7 +348,7 @@ function saveBusinessNumberHandler(event, numberProviderType) {
 
 			AlertManager.createAlert({
 				type: "danger",
-				message: `Error occured while saving ${numberProviderName} business number.`,
+				message: `Error occurred while saving ${numberProviderName} business number.`,
 				resultMessage: resultMessage,
 				timeout: 6000,
 			});
@@ -778,7 +778,7 @@ function initModemtelNumberEvents() {
 			message: `
 					<div class="mb-3">
 						<label class="form-label">Webhook URI</label>
-						<input type="text" class="form-control" value="${webhookURI}" readonly>
+						<input type="text" class="form-control" value="${escapeHtml(webhookURI)}" readonly>
 					</div>
 
 					<a href="https://www.modemtel.com" target="_blank" class="text-decoration-none">
@@ -1092,7 +1092,7 @@ function initTwilioNumberEvents() {
 			message: `
 					<div class="mb-3">
 						<label class="form-label">Webhook URI (HTTP Post)</label>
-						<input type="text" class="form-control" value="${webhookURI}" readonly>
+						<input type="text" class="form-control" value="${escapeHtml(webhookURI)}" readonly>
 					</div>
 
 					<a href="https://www.twilio.com/docs/usage/webhooks/getting-started-twilio-webhooks" target="_blank" class="text-decoration-none">
@@ -1456,7 +1456,7 @@ function initSipNumberEvents() {
                 <div class="mb-3">
                     <label class="form-label fw-bold">SIP URI (Destination)</label>
                     <div class="input-group">
-                        <input type="text" class="form-control" value="${sipUri}" readonly>
+                        <input type="text" class="form-control" value="${escapeHtml(sipUri)}" readonly>
                         <button class="btn btn-outline-secondary copy-btn" type="button"><i class="fa-regular fa-copy"></i></button>
                     </div>
                 </div>
@@ -1464,7 +1464,7 @@ function initSipNumberEvents() {
                     <label class="form-label fw-bold">Required Headers / URI Parameters</label>
                     <div class="form-text mb-1">Add these to your Invite Request URI.</div>
                     <div class="input-group">
-                        <input type="text" class="form-control" value="${headerString}" readonly>
+                        <input type="text" class="form-control" value="${escapeHtml(headerString)}" readonly>
                          <button class="btn btn-outline-secondary copy-btn" type="button"><i class="fa-regular fa-copy"></i></button>
                     </div>
                 </div>
