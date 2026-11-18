@@ -74,8 +74,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Context.Branches, t => t.Id == branchId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> UpdateBusinessContextBranding(long businessId, BusinessAppContextBranding newBusinessContextBranding)
@@ -111,8 +110,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Context.Services, t => t.Id == exisitingServiceId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> CheckBusinessAppProductExists(long businessId, string productId)
@@ -121,8 +119,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Context.Products, t => t.Id == productId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> AddBusinessContextService(long businessId, BusinessAppContextService newBusinessContextService)
@@ -175,8 +172,7 @@ namespace IqraInfrastructure.Repositories.Business
                 if (businessToArchive == null)
                 {
                     var archivedBusinessAppFilter = Builders<ArchivedRepoObject<BusinessApp>>.Filter.Eq(c => c.ObjectId, businessIdString);
-                    var alreadyArchived = await _businessAppArchivedCollection.Find(archivedBusinessAppFilter).FirstOrDefaultAsync();
-                    return alreadyArchived != null;
+                    return await _businessAppArchivedCollection.Find(archivedBusinessAppFilter).AnyAsync();
                 }
 
                 var businessAppArchive = new ArchivedRepoObject<BusinessApp>(businessIdString, businessToArchive);
@@ -242,8 +238,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> UpdateBusinessAppToolExceptReferences(long businessId, BusinessAppTool newBusinessAppToolData)
@@ -457,8 +452,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.MessageGroups, t => t.Id == existingGroupId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> CheckCacheMessageGroupMessageExists(long businessId, string groupId, string language, string existingCacheId)
@@ -471,8 +465,7 @@ namespace IqraInfrastructure.Repositories.Business
                 )
             );
 
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> AddAgentReferenceToMessageCacheGroup(long businessId, string groupId, string agentId, IClientSessionHandle session)
@@ -551,8 +544,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.AudioGroups, t => t.Id == existingGroupId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> CheckCacheAudioGroupAudioExists(long businessId, string groupId, string language, string existingCacheId)
@@ -564,8 +556,7 @@ namespace IqraInfrastructure.Repositories.Business
                     g.Audios[language].Any(a => a.Id == existingCacheId)
                 )
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> AddCacheLinkToAudioCacheGroupEntry(long businessId, string groupId, string audioId, string language, BusinessAppCacheAudioCacheLink cacheLinkToAdd)
@@ -685,8 +676,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.EmbeddingGroups, t => t.Id == existingGroupId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> CheckCacheEmbeddingGroupEmbeddingExists(long businessId, string groupId, string language, string existingCacheId)
@@ -698,8 +688,7 @@ namespace IqraInfrastructure.Repositories.Business
                     g.Embeddings[language].Any(a => a.Id == existingCacheId)
                 )
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<List<BusinessAppCacheEmbeddingGroup>> FindCacheEmbeddingGroupsWithCacheQuery(long businessId, string language, string query)
@@ -1186,12 +1175,11 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<bool> CheckAgentExists(long businessId, string existingAgentId)
         {
-            var query = _businessAppCollection.AsQueryable()
-                .Where(b => b.Id == businessId)
-                .SelectMany(b => b.Agents)
-                .AnyAsync(agent => agent.Id == existingAgentId);
-
-            return await query;
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == existingAgentId)
+            );
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
@@ -1386,12 +1374,11 @@ namespace IqraInfrastructure.Repositories.Business
         **/
         public async Task<bool> CheckScriptExists(long businessId, string scriptId)
         {
-            var query = _businessAppCollection.AsQueryable()
-                .Where(b => b.Id == businessId)
-                .SelectMany(b => b.Scripts)
-                .AnyAsync(script => script.Id == scriptId);
-
-            return await query;
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<BusinessAppScript?> GetScriptById(long businessId, string scriptId)
@@ -1599,8 +1586,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.CountryCode == numberCountryCode && t.Number == phoneNumber)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
         public async Task<bool> CheckBusinessNumberExistsById(string exisitingNumberId, long businessId)
         {
@@ -1608,13 +1594,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == exisitingNumberId)
             );
-
-            var projection = Builders<BusinessApp>.Projection
-                .Include(b => b.Id)
-                .Include(b => b.Numbers.FirstMatchingElement());
-
-            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
         public async Task<bool> AddBusinessNumber(long businessId, BusinessNumberData newNumberData, IClientSessionHandle session)
         {
@@ -1775,7 +1755,11 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<bool> CheckBusinessRouteExists(long businessId, string existingRouteId)
         {
-            return await GetBusinessRoute(businessId, existingRouteId) != null;
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Routings, t => t.Id == existingRouteId)
+            );
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
         public async Task<BusinessAppRoute?> GetBusinessRoute(long businessId, string existingRouteId)
         {
@@ -1830,13 +1814,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == linkedGroupId)
             );
-
-            var projection = Builders<BusinessApp>.Projection
-                .Include(b => b.Id)
-                .Include(b => b.KnowledgeBases.FirstMatchingElement());
-
-            var result = await _businessAppCollection.Find(filter).Project(projection).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
         public async Task<bool> AddKnowledgeBase(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle session)
         {
@@ -1982,13 +1960,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.TelephonyCampaigns, k => k.Id == telephonyCampaignIdValue)
             );
-
-            var project = Builders<BusinessApp>.Projection
-                .Include(b => b.Id)
-                .Include(b => b.TelephonyCampaigns.FirstMatchingElement());
-                
-            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(project).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> DeleteBusinessAppTelephonyCampaign(long businessId, string telephonyCampaignId, IClientSessionHandle session)
@@ -2056,13 +2028,7 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.WebCampaigns, k => k.Id == telephonyCampaignIdValue)
             );
-
-            var project = Builders<BusinessApp>.Projection
-                .Include(b => b.Id)
-                .Include(b => b.WebCampaigns.FirstMatchingElement());
-
-            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(project).FirstOrDefaultAsync();
-            return result != null;
+            return await _businessAppCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> DeleteBusinessAppWebCampaign(long businessId, string webCampaignId, IClientSessionHandle session)

@@ -57,8 +57,8 @@ namespace IqraInfrastructure.Repositories.Business
         public async Task ValidateBusinessIdCounter()
         {
             var filter = Builders<BsonDocument>.Filter.Eq("_id", BusinessIdCounterField);
-            var counter = await _businessCounterCollection.Find(filter).FirstOrDefaultAsync();
-            if (counter == null)
+            var counterExists = await _businessCounterCollection.Find(filter).AnyAsync();
+            if (!counterExists)
             {
                 await _businessCounterCollection.InsertOneAsync(
                     new BsonDocument
@@ -174,8 +174,7 @@ namespace IqraInfrastructure.Repositories.Business
         public async Task<bool> CheckBusinessExists(long businessId, string userEmail)
         {
             var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId) & Builders<BusinessData>.Filter.Eq(b => b.MasterUserEmail, userEmail);
-            var business = await _businessCollection.Find(filter).FirstOrDefaultAsync();
-            return business != null;
+            return await _businessCollection.Find(filter).AnyAsync();
         }
 
         public async Task<bool> MoveBusinessToArchivedAsync(long businessId, IClientSessionHandle session)
@@ -190,8 +189,7 @@ namespace IqraInfrastructure.Repositories.Business
                 if (businessToArchive == null)
                 {
                     var archivedBusinessDataFilter = Builders<ArchivedRepoObject<BusinessData>>.Filter.Eq(c => c.ObjectId, businessIdString);
-                    var alreadyArchived = await _businessArchivedCollection.Find(archivedBusinessDataFilter).FirstOrDefaultAsync();
-                    return alreadyArchived != null;
+                    return await _businessArchivedCollection.Find(archivedBusinessDataFilter).AnyAsync();
                 }
 
                 var businessDataArchive = new ArchivedRepoObject<BusinessData>(businessIdString, businessToArchive);
