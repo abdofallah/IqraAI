@@ -99,22 +99,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendOutboundCallQueueTelephonyCampaignAction");
-            if (!businessAppResult.Success)
-            {
-                await _outboundCallQueueRepo.AddCallLogAsync(
-                    outboundCallQueueData.Id,
-                    new CallQueueLogEntry
-                    {
-                        Message = $"Unable to find business app for outbound call queue {outboundCallQueueId} to send campaign action: [{businessAppResult.Code}] {businessAppResult.Message} ",
-                        Type = CallQueueLogTypeEnum.Error
-                    }
-                );
-
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             var callQueueTelephonyCampaignResult = await _businessManager.GetCampaignManager().GetTelephonyCampaignById(outboundCallQueueData.BusinessId, outboundCallQueueData.CampaignId);
             if (!callQueueTelephonyCampaignResult.Success)
             {
@@ -155,7 +139,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
                 var callFailureArgumentsResult = GetTelephonyCampaignCallInitiationFailureArguements(outboundCallQueueData, logMessage);
                 if (!callFailureArgumentsResult.Success)
@@ -257,7 +241,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
                 var callInitiatedArgumentsResult = GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(outboundCallQueueData);
                 if (!callInitiatedArgumentsResult.Success)
@@ -410,24 +394,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendOutboundConversationSessionTelephonyCampaignAction");
-            if (!businessAppResult.Success)
-            {
-                _logger.LogError("Unable to find business app data for business id {BusinessId} for outbound conversation session id {OutboundConversationSessionId}.", outboundConversationSessionId, businessData.Id);
-
-                await _conversationStateLogsRepository.AddLogEntryAsync(
-                    outboundConversationSessionId,
-                    new ConversationStateLogEntry
-                    {
-                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-                        Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Unable to find business app data for business id {businessData.Id} to send session telephony campaign answered action.",
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             var callQueueTelephonyCampaignResult = await _businessManager.GetCampaignManager().GetTelephonyCampaignById(outboundCallQueueData.BusinessId, outboundCallQueueData.CampaignId);
             if (!callQueueTelephonyCampaignResult.Success)
             {
@@ -464,7 +430,7 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+            toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
             var callAnsweredArgumentsResult = GetTelephonyCampaignCallAnsweredArguements(outboundCallQueueData, converationStateData);
             if (!callAnsweredArgumentsResult.Success)
@@ -595,24 +561,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendOutboundConversationSessionTelephonyCampaignAction");
-            if (!businessAppResult.Success)
-            {
-                _logger.LogError("Unable to find business app data for business id {BusinessId} for outbound conversation session id {OutboundConversationSessionId}.", outboundConversationSessionId, businessData.Id);
-
-                await _conversationStateLogsRepository.AddLogEntryAsync(
-                    outboundConversationSessionId,
-                    new ConversationStateLogEntry
-                    {
-                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-                        Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Unable to find business app data for business id {businessData.Id} to send session telephony campaign action if any for reason {reason}.",
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             var callQueueTelephonyCampaignResult = await _businessManager.GetCampaignManager().GetTelephonyCampaignById(outboundCallQueueData.BusinessId, outboundCallQueueData.CampaignId);
             if (!callQueueTelephonyCampaignResult.Success)
             {
@@ -657,7 +605,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
                 var callEndedArgumentsResult = GetTelephonyCampaignCallEndArguements(outboundCallQueueData, converationStateData);
                 if (!callEndedArgumentsResult.Success)
@@ -748,7 +696,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
                 var callDeclinedOrBusyArgumentsResult = GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(outboundCallQueueData);
                 if (!callDeclinedOrBusyArgumentsResult.Success)
@@ -839,7 +787,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
                 var callMissedArgumentsResult = GetTelephonyCampaignCallInitiatedOrDeclinedOrMissedArguements(outboundCallQueueData);
                 if (!callMissedArgumentsResult.Success)
@@ -955,24 +903,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendOutboundConversationSessionPostAnalysisAction");
-            if (!businessAppResult.Success)
-            {
-                _logger.LogError("Unable to find business app data for business id {BusinessId} for outbound conversation session id {OutboundConversationSessionId}.", businessData.Id, outboundConversationSessionId);
-
-                await _conversationStateLogsRepository.AddLogEntryAsync(
-                    outboundConversationSessionId,
-                    new ConversationStateLogEntry
-                    {
-                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-                        Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Unable to find business app data for business id {businessData.Id} to send session post analysis action.",
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             var callQueueTelephonyCampaignResult = await _businessManager.GetCampaignManager().GetTelephonyCampaignById(outboundCallQueueData.BusinessId, outboundCallQueueData.CampaignId);
             if (!callQueueTelephonyCampaignResult.Success)
             {
@@ -1009,7 +939,7 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+            toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
             var postAnalysisArgumentsResult = GetTelephonyCampaignPostAnalysisArguements(outboundCallQueueData, converationStateData);
             if (!postAnalysisArgumentsResult.Success)
@@ -1330,21 +1260,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendInboundCallQueueRingingAction");
-            if (!businessAppResult.Success)
-            {
-                await _inboundCallQueueRepository.AddCallLogAsync(
-                    inboundCallQueueData.Id,
-                    new CallQueueLogEntry
-                    {
-                        Message = $"Unable to find business app for inbound call queue {inboundCallQueueId} to send ringing action: [{businessAppResult.Code}] {businessAppResult.Message} ",
-                        Type = CallQueueLogTypeEnum.Error
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             if (string.IsNullOrEmpty(inboundCallQueueData.RouteId))
             {
                 await _inboundCallQueueRepository.AddCallLogAsync(
@@ -1402,7 +1317,7 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+            toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
             var ringingArgumentsResult = GetInboundTelephonyCampaignCallRingingArguements(inboundCallQueueData);
             if (!ringingArgumentsResult.Success)
@@ -1505,21 +1420,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendInboundCallQueueInitiationFailureAction");
-            if (!businessAppResult.Success)
-            {
-                await _inboundCallQueueRepository.AddCallLogAsync(
-                    inboundCallQueueData.Id,
-                    new CallQueueLogEntry
-                    {
-                        Message = $"Unable to find business app for inbound call queue {inboundCallQueueId} to send initiation failure action: [{businessAppResult.Code}] {businessAppResult.Message} ",
-                        Type = CallQueueLogTypeEnum.Error
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             if (string.IsNullOrEmpty(inboundCallQueueData.RouteId))
             {
                 await _inboundCallQueueRepository.AddCallLogAsync(
@@ -1564,7 +1464,7 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+            toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
             var callFailureArgumentsResult = GetInboundTelephonyCampaignCallInitiationFailureArguements(inboundCallQueueData, logMessage);
             if (!callFailureArgumentsResult.Success)
@@ -1697,24 +1597,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendInboundConversationSessionPickedAction");
-            if (!businessAppResult.Success)
-            {
-                _logger.LogError("Unable to find business app data for business id {BusinessId} for inbound conversation session id {InboundConversationSessionId}.", businessData.Id, inboundConversationSessionId);
-
-                await _conversationStateLogsRepository.AddLogEntryAsync(
-                    inboundConversationSessionId,
-                    new ConversationStateLogEntry
-                    {
-                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-                        Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Unable to find business app data for business id {businessData.Id} to send session picked action.",
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             if (string.IsNullOrEmpty(inboundCallQueueData.RouteId)) return;
 
             var businessRoute = await _businessManager.GetRoutesManager().GetBusinessRoute(inboundCallQueueData.BusinessId, inboundCallQueueData.RouteId);
@@ -1752,7 +1634,7 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+            toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
             var callPickedArgumentsResult = GetInboundTelephonyCampaignCallPickedArguements(inboundCallQueueData, converationStateData);
             if (!callPickedArgumentsResult.Success)
@@ -1879,24 +1761,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendInboundConversationSessionEndedAction");
-            if (!businessAppResult.Success)
-            {
-                _logger.LogError("Unable to find business app data for business id {BusinessId} for inbound conversation session id {InboundConversationSessionId}.", businessData.Id, inboundConversationSessionId);
-
-                await _conversationStateLogsRepository.AddLogEntryAsync(
-                    inboundConversationSessionId,
-                    new ConversationStateLogEntry
-                    {
-                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-                        Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Unable to find business app data for business id {businessData.Id} to send session ended action.",
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             if (string.IsNullOrEmpty(inboundCallQueueData.RouteId)) return;
 
             var businessRoute = await _businessManager.GetRoutesManager().GetBusinessRoute(inboundCallQueueData.BusinessId, inboundCallQueueData.RouteId);
@@ -1942,7 +1806,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
                 var callEndedArgumentsResult = GetInboundTelephonyCampaignCallEndArguements(inboundCallQueueData, converationStateData);
                 if (!callEndedArgumentsResult.Success)
@@ -2068,24 +1932,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendInboundConversationSessionPostAnalysisAction");
-            if (!businessAppResult.Success)
-            {
-                _logger.LogError("Unable to find business app data for business id {BusinessId} for inbound conversation session id {InboundConversationSessionId}.", businessData.Id, inboundConversationSessionId);
-
-                await _conversationStateLogsRepository.AddLogEntryAsync(
-                    inboundConversationSessionId,
-                    new ConversationStateLogEntry
-                    {
-                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-                        Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Unable to find business app data for business id {businessData.Id} to send session post analysis action.",
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             var businessRoute = await _businessManager.GetRoutesManager().GetBusinessRoute(inboundCallQueueData.BusinessId, inboundCallQueueData.RouteId!);
             if (businessRoute == null)
             {
@@ -2121,7 +1967,7 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+            toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
             var postAnalysisArgumentsResult = GetInboundTelephonyCampaignPostAnalysisArguements(inboundCallQueueData, converationStateData);
             if (!postAnalysisArgumentsResult.Success)
@@ -2419,22 +2265,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebSessionCampaignAction");
-            if (!businessAppResult.Success)
-            {
-                await _webSessionRepository.AddLogAsync(
-                    webSessionData.Id,
-                    new WebSessionLogEntry
-                    {
-                        Message = $"Unable to find business app for web session {webSessionId} to send campaign action: [{businessAppResult.Code}] {businessAppResult.Message} ",
-                        Type = WebSessionLogTypeEnum.Error
-                    }
-                );
-
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             if (string.IsNullOrEmpty(webSessionData.WebCampaignId)) return;
 
             var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId);
@@ -2477,7 +2307,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
                 var failureArgumentsResult = GetWebCampaignConversationInitiationFailureArguements(webSessionData);
                 if (!failureArgumentsResult.Success)
@@ -2578,7 +2408,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
                 var successArgumentsResult = GetWebCampaignConversationInitiatedOrStartedArguements(webSessionData, conversationState!);
                 if (!successArgumentsResult.Success)
@@ -2729,22 +2559,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebConversationSessionInitiatedCampaignAction");
-            if (!businessAppResult.Success)
-            {
-                await _conversationStateLogsRepository.AddLogEntryAsync(
-                    webConversationSessionId,
-                    new ConversationStateLogEntry
-                    {
-                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-                        Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Unable to find business app data for business id {businessData.Id} to send web campaign initiated action.",
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             if (string.IsNullOrEmpty(webSessionData.WebCampaignId)) return;
 
             var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId);
@@ -2781,7 +2595,7 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+            toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
             var conversationStartedArgumentsResult = GetWebCampaignConversationInitiatedOrStartedArguements(webSessionData, converationStateData);
             if (!conversationStartedArgumentsResult.Success)
@@ -2913,24 +2727,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebConversationSessionCampaignAction");
-            if (!businessAppResult.Success)
-            {
-                _logger.LogError("Unable to find business app data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", webConversationSessionId, businessData.Id);
-
-                await _conversationStateLogsRepository.AddLogEntryAsync(
-                    webConversationSessionId,
-                    new ConversationStateLogEntry
-                    {
-                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-                        Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Unable to find business app data for business id {businessData.Id} to send web campaign action if any.",
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             if (string.IsNullOrEmpty(webSessionData.WebCampaignId)) return;
 
             var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId);
@@ -2977,7 +2773,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-                toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+                toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
                 var callEndedArgumentsResult = GetWebCampaignConversationEndArguements(webSessionData, converationStateData);
                 if (!callEndedArgumentsResult.Success)
@@ -3107,24 +2903,6 @@ namespace IqraInfrastructure.Managers.Call
             }
             var businessData = businessDataResult.Data!;
 
-            var businessAppResult = await _businessManager.GetUserBusinessAppById(businessData.Id, "SendWebConversationSessionPostAnalysisAction");
-            if (!businessAppResult.Success)
-            {
-                _logger.LogError("Unable to find business app data for business id {BusinessId} for web conversation session id {WebConversationSessionId}.", businessData.Id, webConversationSessionId);
-
-                await _conversationStateLogsRepository.AddLogEntryAsync(
-                    webConversationSessionId,
-                    new ConversationStateLogEntry
-                    {
-                        SenderType = ConversationStateLogSenderTypeEnum.Conversation,
-                        Level = ConversationStateLogLevelEnum.Error,
-                        Message = $"Unable to find business app data for business id {businessData.Id} to send session post analysis action.",
-                    }
-                );
-                return;
-            }
-            var businessApp = businessAppResult.Data!;
-
             var webCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(webSessionData.BusinessId, webSessionData.WebCampaignId!);
             if (!webCampaignResult.Success)
             {
@@ -3161,7 +2939,7 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             CustomToolExecutionHelper toolExecutionHelper = new CustomToolExecutionHelper(_loggerFactory, _integrationsManager, _endpointSecurityService);
-            toolExecutionHelper.Initialize(businessApp, businessData.DefaultLanguage);
+            toolExecutionHelper.Initialize(businessData.DefaultLanguage);
 
             var postAnalysisArgumentsResult = GetWebCampaignConversationPostAnalysisArguements(webSessionData, converationStateData);
             if (!postAnalysisArgumentsResult.Success)

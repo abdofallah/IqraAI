@@ -222,14 +222,12 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == selectedToolId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.Tools.FirstMatchingElement());
 
-            if (result == null)
-            {
-                throw new Exception("Business not found");
-            }
-
-            return result.Tools.FirstOrDefault(t => t.Id == selectedToolId);
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+            return result?.Tools.FirstOrDefault();
         }
 
         public async Task<bool> CheckBusinessAppToolExists(long businessId, string toolId)

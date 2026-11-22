@@ -66,8 +66,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 throw new InvalidOperationException("ScriptExecutionManager requires BusinessApp, Route, and LanguageCode.");
             }
 
-            // Initialize the helper (it needs business app data)
-            _customToolHelper.Initialize(_agentState.BusinessApp, _agentState.CurrentLanguageCode);
+            _customToolHelper.Initialize(_agentState.CurrentLanguageCode);
             _sendSMSToolExecutionHelper.Initalize(_agentState.BusinessApp);
         }
 

@@ -18,7 +18,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
     public class CustomToolExecutionHelper
     {
         private readonly ILogger<CustomToolExecutionHelper> _logger;
-        private BusinessApp? _businessApp;
         private string? _currentLanguageCode;
         private EndpointSecurityService? _endpointSecurityService;
         private readonly IntegrationsManager _integrationsManager;
@@ -30,9 +29,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             _endpointSecurityService = endpointSecurityService;
         }
 
-        public void Initialize(BusinessApp businessApp, string languageCode)
+        public void Initialize(string languageCode)
         {
-            _businessApp = businessApp;
             _currentLanguageCode = languageCode;
         }
 
@@ -43,11 +41,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
         )
         {
             var result = new FunctionReturnResult<string?>();
-            if (_businessApp == null || string.IsNullOrEmpty(_currentLanguageCode))
+            if (string.IsNullOrEmpty(_currentLanguageCode))
             {
-                result.Code = "ExecuteHttpRequest:0";
-                result.Message = "Helper not initialized with BusinessApp and LanguageCode.";
-                return result;
+                return result.SetFailureResult(
+                    "ExecuteHttpRequestForToolAsync:NOT_INITIALIZED",
+                    "Helper not initialized with a language code."
+                );
             }
             if (toolData == null)
             {
@@ -213,11 +212,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
         )
         {
             var result = new FunctionReturnResult<string?>();
-            if (_businessApp == null || string.IsNullOrEmpty(_currentLanguageCode))
+            if (string.IsNullOrEmpty(_currentLanguageCode))
             {
-                result.Code = "ExecuteHttpRequest:0";
-                result.Message = "Helper not initialized with BusinessApp and LanguageCode.";
-                return result;
+                return result.SetFailureResult(
+                    "ExecuteHttpRequestForToolWithObjectDictAsync:NOT_INITIALIZED",
+                    "Helper not initialized with a language code."
+                );
             }
             if (toolData == null)
             {
@@ -380,11 +380,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             var testResult = new BusinessToolTestResult();
             const int MAX_RESPONSE_BODY_SIZE = 100 * 1024; // 100KB
 
-            if (_businessApp == null || string.IsNullOrEmpty(_currentLanguageCode))
+            if (string.IsNullOrEmpty(_currentLanguageCode))
             {
-                result.Code = "TestHttpRequest:0";
-                result.Message = "Helper not initialized with BusinessApp and LanguageCode.";
-                return result;
+                return result.SetFailureResult(
+                    "ExecuteHttpRequestForToolTestAsync:NOT_INITIALIZED",
+                    "Helper not initialized with a language code."
+                );
             }
             if (toolData == null)
             {

@@ -106,7 +106,6 @@ namespace IqraInfrastructure.Managers.Business
         public async Task<FunctionReturnResult<BusinessToolTestResult?>> TestBusinessTool(
             long businessId,
             BusinessAppTool toolData,
-            BusinessApp businessApp,
             Dictionary<string, object?> parameters,
             string languageCode,
             ILoggerFactory loggerFactory,
@@ -118,7 +117,7 @@ namespace IqraInfrastructure.Managers.Business
             try
             {
                 var helper = new CustomToolExecutionHelper(loggerFactory, integrationsManager, endpointSecurityService);
-                helper.Initialize(businessApp, languageCode);
+                helper.Initialize(languageCode);
 
                 var testResult = await helper.ExecuteHttpRequestForToolTestAsync(toolData, parameters, CancellationToken.None);
                 return testResult;

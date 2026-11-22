@@ -322,19 +322,8 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                     );
                 }
 
-                // Get Business App (contains Tools list)
-                var businessAppResult = await _businessManager.GetUserBusinessAppById(businessId, userEmail);
-                if (!businessAppResult.Success || businessAppResult.Data == null)
-                {
-                    return result.SetFailureResult(
-                        "TestBusinessTool:BUSINESS_APP_NOT_FOUND",
-                        "Business app data not found."
-                    );
-                }
-                var businessApp = businessAppResult.Data;
-
                 // Find Tool
-                var toolData = businessApp.Tools?.Find(t => t.Id == toolId);
+                var toolData = await _businessManager.GetToolsManager().GetBusinessAppTool(businessId, toolId);
                 if (toolData == null)
                 {
                     return result.SetFailureResult(
@@ -347,7 +336,6 @@ namespace ProjectIqraFrontend.Controllers.App.Business
                 var testResult = await _businessManager.GetToolsManager().TestBusinessTool(
                     businessId,
                     toolData,
-                    businessApp,
                     testRequest.Parameters,
                     testRequest.LanguageCode,
                     _loggerFactory,
