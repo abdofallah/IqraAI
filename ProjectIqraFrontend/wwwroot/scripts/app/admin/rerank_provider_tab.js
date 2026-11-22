@@ -543,22 +543,19 @@ $(document).ready(() => {
                         timeout: 6000
                     });
                     CheckRerankProviderManageTabHasChanges();
-                } else {
-                    AlertManager.createAlert({
-                        type: "danger",
-                        message: "Error saving rerank provider data. Check console.",
-                        timeout: 6000
-                    });
-                    console.error("Error saving rerank provider:", saveResponse);
                 }
                 saveManageRerankProviderButton.prop("disabled", true);
                 IsSavingRerankProviderTab = false;
             },
-            (saveError) => {
+            (saveError, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
                 AlertManager.createAlert({
                     type: "danger",
-                    message: "Error saving rerank provider data. Check console.",
-                    timeout: 6000
+                    message: "Error saving rerank provider data.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
                 });
                 console.error("Error saving rerank provider:", saveError);
                 saveManageRerankProviderButton.prop("disabled", false);
@@ -711,21 +708,17 @@ $(document).ready(() => {
                         message: "Rerank model saved successfully.",
                         timeout: 6000
                     });
-                } else {
-                    AlertManager.createAlert({
-                        type: "danger",
-                        message: "Error saving model. Check console.",
-                        timeout: 6000
-                    });
-                    console.error("Error saving rerank model:", saveResponse);
-                    saveManageRerankProviderModelButton.prop("disabled", false);
                 }
             },
-            (saveError) => {
+            (saveError, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
                 AlertManager.createAlert({
                     type: "danger",
-                    message: "Error saving model. Check console.",
-                    timeout: 6000
+                    message: "Error saving model.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
                 });
                 console.error("Error saving rerank model:", saveError);
                 saveManageRerankProviderModelButton.prop("disabled", false);
@@ -745,11 +738,15 @@ $(document).ready(() => {
                 });
             }
         },
-        (error) => {
+        (error, isResponseUnsuccessful) => {
+            var resultMessage = "Check console logs for more details.";
+            if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
             AlertManager.createAlert({
                 type: "danger",
-                message: "Error fetching rerank providers. Check console.",
-                timeout: 5000
+                message: "Error fetching rerank providers.",
+                resultMessage: resultMessage,
+                timeout: 6000,
             });
             console.error("Error fetching rerank providers: ", error);
         }

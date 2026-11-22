@@ -87,13 +87,13 @@ function FetchIntegrationsFromAPI(successCallback, errorCallback) {
 		dataType: "json",
 		success: (response) => {
 			if (!response.success) {
-				errorCallback(response);
+				errorCallback(response, true);
 				return;
 			}
 			successCallback(response.data);
 		},
 		error: (error) => {
-			errorCallback(error);
+			errorCallback(error, false);
 		}
 	});
 }
@@ -107,13 +107,13 @@ function SaveIntegrationToAPI(formData, successCallback, errorCallback) {
 		contentType: false,
 		success: (response) => {
 			if (!response.success) {
-				errorCallback(response);
+				errorCallback(response, true);
 				return;
 			}
 			successCallback(response.data);
 		},
 		error: (error) => {
-			errorCallback(error);
+			errorCallback(error, false);
 		}
 	});
 }
@@ -313,10 +313,14 @@ function FillIntegrationsList() {
 				integrationsListContainer.append($(createIntegrationCardElement(integration)));
 			});
 		},
-		(error) => {
+		(error, isResponseUnsuccessful) => {
+			var resultMessage = "Check console logs for more details.";
+			if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
 			AlertManager.createAlert({
 				type: "danger",
 				message: "Error loading integrations. Please try again.",
+				resultMessage: resultMessage,
 				timeout: 6000,
 			});
 			console.error("Error loading integrations:", error);
@@ -830,10 +834,14 @@ function initIntegrationsTab() {
 				ShowIntegrationsListTab();
 				FillIntegrationsList();
 			},
-			(error) => {
+			(error, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
 				AlertManager.createAlert({
 					type: "danger",
-					message: error.message || "Error saving integration. Please try again.",
+					message: "Error saving integration. Please try again.",
+					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 

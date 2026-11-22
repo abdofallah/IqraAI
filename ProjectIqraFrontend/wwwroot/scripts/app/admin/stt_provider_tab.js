@@ -92,7 +92,7 @@ function SaveSTTProviderData(formData, successCallback, errorCallback) {
 			}
 		},
 		error: function (xhr, status, error) {
-			errorCallback(error, false);
+			errorCallback(xhr, false);
 		}
 	});
 }
@@ -112,7 +112,7 @@ function SaveSTTProviderModelData(formData, successCallback, errorCallback) {
 			}
 		},
 		error: function (xhr, status, error) {
-			errorCallback(error, false);
+			errorCallback(xhr, false);
 		}
 	});
 }
@@ -133,7 +133,7 @@ function FetchSTTProvidersFromAPI(page, pageSize, successCallback, errorCallback
 			}
 		},
 		error: function (xhr, status, error) {
-			errorCallback(error, false);
+			errorCallback(xhr, false);
 		}
 	});
 }
@@ -724,21 +724,19 @@ $(document).ready(() => {
 					});
 
 					CheckSTTProviderManageTabHasChanges();
-				} else {
-					AlertManager.createAlert({
-						type: "danger",
-						message: "Error occurred while saving STT provider data.",
-						timeout: 6000,
-					});
 				}
 
 				saveManageSTTProviderButton.prop("disabled", false);
 				IsSavingSTTProviderTab = false;
 			},
-			(error, isUnsuccessful) => {
+			(error, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
 				AlertManager.createAlert({
 					type: "danger",
 					message: "Error occurred while saving STT provider data.",
+					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 				console.error("Save error:", error);
@@ -809,21 +807,19 @@ $(document).ready(() => {
 					});
 
 					ShowSTTProviderModelListTab();
-				} else {
-					AlertManager.createAlert({
-						type: "danger",
-						message: "Error occurred while saving STT provider model.",
-						timeout: 6000,
-					});
 				}
 
 				saveManageSTTProviderModelButton.prop("disabled", false);
 				IsSavingSTTProviderTab = false;
 			},
-			(error, isUnsuccessful) => {
+			(error, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
 				AlertManager.createAlert({
 					type: "danger",
 					message: "Error occurred while saving STT provider model.",
+					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 				console.error("Save error:", error);
@@ -844,11 +840,15 @@ $(document).ready(() => {
 				STTProviderListTable.find("tbody").append(CreateSTTProviderListTableElement(providerData));
 			});
 		},
-		(error, isUnsuccessful) => {
+		(error, isResponseUnsuccessful) => {
+			var resultMessage = "Check console logs for more details.";
+			if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
 			AlertManager.createAlert({
 				type: "danger",
-				message: "Error occurred while fetching STT providers. Check browser console for logs.",
-				timeout: 5000,
+				message: "Error occurred while fetching STT providers.",
+				resultMessage: resultMessage,
+				timeout: 6000,
 			});
 			console.error("Error fetching STT providers:", error);
 		},

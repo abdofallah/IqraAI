@@ -434,14 +434,18 @@
             (users) => {
                 CurrentUsersList = users;
             },
-            (usersError) => {
+            (usersError, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && usersError && usersError.message) resultMessage = usersError.message;
+
                 AlertManager.createAlert({
                     type: "danger",
-                    message: "Error occured while fetching users. Check browser console for logs.",
-                    timeout: 5000,
+                    message: "Error occurred while fetching users.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
                 });
 
-                console.log("Error occured while fetching users: ", usersError);
+                console.log("Error occurred while fetching users: ", usersError);
             },
         );
 
@@ -452,14 +456,18 @@
                 (plans) => {
                     CurrentPlansList = plans;
                 },
-                (error) => {
+                (error, isResponseUnsuccessful) => {
+                    var resultMessage = "Check console logs for more details.";
+                    if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Error occured while fetching plans. Check browser console for logs.",
-                        timeout: 5000
+                        message: "Error occurred while fetching plans.",
+                        resultMessage: resultMessage,
+                        timeout: 6000,
                     });
 
-                    console.error("Error occured while fetching plans:", error);
+                    console.error("Error occurred while fetching plans:", error);
                 }
             );
         }

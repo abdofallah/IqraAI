@@ -80,14 +80,14 @@ function FetchUsersFromAPI(page, pageSize, successCallback, errorCallback) {
 		},
 		success: (response) => {
 			if (!response.success) {
-				errorCallback(response);
+				errorCallback(response, true);
 				return;
 			}
 
 			successCallback(response.data);
 		},
 		error: (error) => {
-			errorCallback(error);
+			errorCallback(error, false);
 		}
 	});
 }
@@ -102,14 +102,14 @@ function FetchUserFromAPI(email, successCallback, errorCallback) {
 		},
 		success: (response) => {
 			if (!response.success) {
-				errorCallback(response);
+				errorCallback(response, true);
 				return;
 			}
 
 			successCallback(response.data);
 		},
 		error: (error) => {
-			errorCallback(error);
+			errorCallback(error, false);
 		}
 	});
 }
@@ -125,14 +125,14 @@ function FetchUserBusinessesFromAPI(userEmail, businessIds, successCallback, err
 		},
 		success: (response) => {
 			if (!response.success) {
-				errorCallback(response);
+				errorCallback(response, true);
 				return;
 			}
 
 			successCallback(response.data);
 		},
 		error: (error) => {
-			errorCallback(error);
+			errorCallback(error, false);
 		}
 	});
 }
@@ -332,11 +332,15 @@ function initUsersTab() {
 				$("#users-manage-general-tab").click();
 				ShowUserManageTab();
 			},
-			(userBusinessesError) => {
+			(userBusinessesError, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && userBusinessesError && userBusinessesError.message) resultMessage = userBusinessesError.message;
+
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occurred while fetching user businesses. Check browser console for logs.",
-					timeout: 5000,
+					message: "Error occurred while fetching user businesses.",
+					resultMessage: resultMessage,
+					timeout: 6000,
 				});
 
 				console.log("Error occurred while fetching user businesses: ", userBusinessesError);
@@ -454,11 +458,15 @@ function initUsersTab() {
 					});
 				}
 			},
-			(businessesError) => {
+			(businessesError, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && businessesError && businessesError.message) resultMessage = businessesError.message;
+
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occurred while fetching user businesses. Check browser console for logs.",
-					timeout: 5000,
+					message: "Error occurred while fetching user businesses.",
+					resultMessage: resultMessage,
+					timeout: 6000,
 				});
 
 				console.log("Error occurred while fetching user businesses: ", businessesError);

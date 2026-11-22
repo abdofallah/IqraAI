@@ -698,14 +698,6 @@ $(document).ready(() => {
 
 					// Reset state
 					CheckLLMProviderManageTabHasChanges();
-				} else {
-					AlertManager.createAlert({
-						type: "danger",
-						message: "Error occurred while saving LLM provider data. Check browser console for logs.",
-						timeout: 6000,
-					});
-
-					console.error("Error occurred while saving LLM provider data: ", saveResponse);
 				}
 
 				// Reset UI state
@@ -713,11 +705,15 @@ $(document).ready(() => {
 				saveButtonSpinner.addClass("d-none");
 				IsSavingLLMProviderTab = false;
 			},
-			(saveError, isUnsuccessful) => {
+			(saveError, isResponseUnsuccessful) => {
 				// Handle error
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occurred while saving LLM provider data. Check browser console for logs.",
+					message: "Error occurred while saving LLM provider data.",
+					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 
@@ -797,24 +793,20 @@ $(document).ready(() => {
 						message: "LLM provider model data saved successfully.",
 						timeout: 6000,
 					});
-				} else {
-					AlertManager.createAlert({
-						type: "danger",
-						message: "Error occured while saving LLM provider model data. Check browser console for logs.",
-						timeout: 6000,
-					});
-
-					console.log("Error occured while saving LLM provider model data: ", saveResponse);
 				}
 			},
-			(saveError, isUnsuccessful) => {
+			(saveError, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occured while saving LLM provider model data. Check browser console for logs.",
+					message: "Error occurred while saving LLM provider model data.",
+					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 
-				console.log("Error occured while saving LLM provider model data: ", saveError);
+				console.log("Error occurred while saving LLM provider model data: ", saveError);
 
 				saveManageLLMProviderModelButton.prop("disabled", false);
 			},
@@ -949,14 +941,18 @@ $(document).ready(() => {
 				LLMProviderListTable.append(CreateLLMProviderListTableElement(llmProviderData));
 			});
 		},
-		(llmProviderError, isUnsuccessful) => {
+		(llmProviderError, isResponseUnsuccessful) => {
+			var resultMessage = "Check console logs for more details.";
+			if (isResponseUnsuccessful && llmProviderError && llmProviderError.message) resultMessage = llmProviderError.message;
+
 			AlertManager.createAlert({
 				type: "danger",
-				message: "Error occured while fetching llm providers. Check browser console for logs.",
-				timeout: 5000,
+				message: "Error occurred while fetching llm providers.",
+				resultMessage: resultMessage,
+				timeout: 6000,
 			});
 
-			console.log("Error occured while fetching llm providers: ", llmProviderError);
+			console.log("Error occurred while fetching llm providers: ", llmProviderError);
 		},
 	);
 });

@@ -585,15 +585,19 @@ $(document).ready(() => {
 
                 saveManageLanguagesButton.prop("disabled", true); // Disable until next change
             },
-            (errorResult) => {
-                let msg = "Error saving language.";
-                if (errorResult && errorResult.message) msg = errorResult.message;
+            (errorResult, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                 AlertManager.createAlert({
                     type: "danger",
-                    message: msg,
+                    message: "Error occurred while saving the language.",
+                    resultMessage: resultMessage,
                     timeout: 6000,
                 });
+
+                console.error("Error occurred while saving the language: ", errorResult);
+
                 saveManageLanguagesButton.prop("disabled", false);
             },
         );
@@ -677,9 +681,17 @@ function FetchLanguages() {
                 languagesListTable.find("tbody").append('<tr class="none-notice"><td colspan="4" class="text-center text-muted">No Languages Found</td></tr>');
             }
         },
-        (error) => {
+        (error, isResponseUnsuccessful) => {
             console.error(error);
-            AlertManager.createAlert({ type: 'danger', message: 'Failed to fetch languages.' });
+            var resultMessage = "Check console logs for more details.";
+            if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
+            AlertManager.createAlert({
+                type: "danger",
+                message: "Failed to fetch languages.",
+                resultMessage: resultMessage,
+                timeout: 6000,
+            });
         }
     );
 }

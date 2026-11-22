@@ -146,14 +146,14 @@ function FetchBusinessesFromAPI(page, pageSize, successCallback, errorCallback) 
 		},
 		success: (response) => {
 			if (!response.success) {
-				errorCallback(response);
+				errorCallback(response, true);
 				return;
 			}
 
 			successCallback(response.data);
 		},
 		error: (error) => {
-			errorCallback(error);
+			errorCallback(error, false);
 		}
 	});
 }
@@ -170,14 +170,14 @@ function FetchSearchedBusinessesFromAPI(query, page, pageSize, successCallback, 
 		},
 		success: (response) => {
 			if (!response.success) {
-				errorCallback(response);
+				errorCallback(response, true);
 				return;
 			}
 
 			successCallback(response.data);
 		},
 		error: (error) => {
-			errorCallback(error);
+			errorCallback(error, false);
 		}
 	});
 }
@@ -678,14 +678,18 @@ $(document).ready(() => {
 				businessesListTable.append(CreateBusinessesListTableElement(businessData));
 			});
 		},
-		(businessesError) => {
+		(businessesError, isResponseUnsuccessful) => {
+			var resultMessage = "Check console logs for more details.";
+			if (isResponseUnsuccessful && businessesError && businessesError.message) resultMessage = businessesError.message;
+
 			AlertManager.createAlert({
 				type: "danger",
-				message: "Error occured while fetching businesses. Check browser console for logs.",
-				timeout: 5000,
+				message: "Error occurred while fetching businesses.",
+				resultMessage: resultMessage,
+				timeout: 6000,
 			});
 
-			console.log("Error occured while fetching businesses: ", businessesError);
+			console.log("Error occurred while fetching businesses: ", businessesError);
 		},
 	);
 });

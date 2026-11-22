@@ -101,7 +101,7 @@ function SaveTTSProviderData(formData, successCallback, errorCallback) {
 			}
 		},
 		error: function (xhr, status, error) {
-			errorCallback(error, false);
+			errorCallback(xhr, false);
 		}
 	});
 }
@@ -121,7 +121,7 @@ function SaveTTSProviderModelData(formData, successCallback, errorCallback) {
 			}
 		},
 		error: function (xhr, status, error) {
-			errorCallback(error, false);
+			errorCallback(xhr, false);
 		}
 	});
 }
@@ -142,7 +142,7 @@ function FetchTTSProvidersFromAPI(page, pageSize, successCallback, errorCallback
 			}
 		},
 		error: function (xhr, status, error) {
-			errorCallback(error, false);
+			errorCallback(xhr, false);
 		}
 	});
 }
@@ -713,21 +713,19 @@ $(document).ready(() => {
 					});
 
 					CheckTTSProviderManageTabHasChanges();
-				} else {
-					AlertManager.createAlert({
-						type: "danger",
-						message: "Error occurred while saving TTS provider data.",
-						timeout: 6000,
-					});
 				}
 
 				saveManageTTSProviderButton.prop("disabled", false);
 				IsSavingTTSProviderTab = false;
 			},
-			(error, isUnsuccessful) => {
+			(error, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
 				AlertManager.createAlert({
 					type: "danger",
 					message: "Error occurred while saving TTS provider data.",
+					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 				console.error("Save error:", error);
@@ -853,21 +851,19 @@ $(document).ready(() => {
 					});
 
 					ShowTTSProviderModelListTab();
-				} else {
-					AlertManager.createAlert({
-						type: "danger",
-						message: "Error occurred while saving TTS provider model.",
-						timeout: 6000,
-					});
 				}
 
 				saveManageTTSProviderModelButton.prop("disabled", false);
 				IsSavingTTSProviderTab = false;
 			},
-			(error, isUnsuccessful) => {
+			(error, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
 				AlertManager.createAlert({
 					type: "danger",
 					message: "Error occurred while saving TTS provider model.",
+					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 				console.error("Save error:", error);
@@ -908,11 +904,15 @@ $(document).ready(() => {
 				TTSProviderListTable.find("tbody").append(CreateTTSProviderListTableElement(providerData));
 			});
 		},
-		(error, isUnsuccessful) => {
+		(error, isResponseUnsuccessful) => {
+			var resultMessage = "Check console logs for more details.";
+			if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
 			AlertManager.createAlert({
 				type: "danger",
-				message: "Error occurred while fetching TTS providers. Check browser console for logs.",
-				timeout: 5000,
+				message: "Error occurred while fetching TTS providers.",
+				resultMessage: resultMessage,
+				timeout: 6000,
 			});
 			console.error("Error fetching TTS providers:", error);
 		},

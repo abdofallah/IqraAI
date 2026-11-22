@@ -572,22 +572,19 @@ $(document).ready(() => {
                     });
 
                     CheckEmbeddingProviderManageTabHasChanges();
-                } else {
-                    AlertManager.createAlert({
-                        type: "danger",
-                        message: "Error saving embedding provider data. Check console.",
-                        timeout: 6000
-                    });
-                    console.error("Error saving embedding provider data: ", saveResponse);
                 }
                 saveManageEmbeddingProviderButton.prop("disabled", true);
                 IsSavingEmbeddingProviderTab = false;
             },
-            (saveError) => {
+            (saveError, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
                 AlertManager.createAlert({
                     type: "danger",
-                    message: "Error saving embedding provider data. Check console.",
-                    timeout: 6000
+                    message: "Error saving embedding provider data.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
                 });
                 console.error("Error saving embedding provider data: ", saveError);
                 saveManageEmbeddingProviderButton.prop("disabled", false);
@@ -654,22 +651,19 @@ $(document).ready(() => {
                         message: "Embedding model saved successfully.",
                         timeout: 6000
                     });
-                } else {
-                    AlertManager.createAlert({
-                        type: "danger",
-                        message: "Error saving model. Check console.",
-                        timeout: 6000
-                    });
-                    console.error("Error saving embedding model:", saveResponse);
                 }
                 // Only re-enable the button on failure
                 if (!saveResponse.success) saveManageEmbeddingProviderModelButton.prop("disabled", false);
             },
-            (saveError) => {
+            (saveError, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
                 AlertManager.createAlert({
                     type: "danger",
-                    message: "Error saving model. Check console.",
-                    timeout: 6000
+                    message: "Error saving model.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
                 });
                 console.error("Error saving embedding model:", saveError);
                 saveManageEmbeddingProviderModelButton.prop("disabled", false);
@@ -785,11 +779,15 @@ $(document).ready(() => {
                 EmbeddingProviderListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No providers found</td></tr>');
             }
         },
-        (error) => {
+        (error, isResponseUnsuccessful) => {
+            var resultMessage = "Check console logs for more details.";
+            if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
             AlertManager.createAlert({
                 type: "danger",
-                message: "Error fetching embedding providers. Check console.",
-                timeout: 5000
+                message: "Error fetching embedding providers.",
+                resultMessage: resultMessage,
+                timeout: 6000,
             });
             console.error("Error fetching embedding providers: ", error);
         }

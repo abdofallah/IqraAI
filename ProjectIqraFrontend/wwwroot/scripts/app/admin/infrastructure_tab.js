@@ -46,6 +46,9 @@ let PendingStatusAction = null;
 // Polling & Timers
 let InfraOverviewPollingInterval = null;
 let InfraDetailPollingInterval = null;
+let InfraOverviewPollFailing = false;
+let InfraDetailPollFailing = false;
+let InfraHistoryPollFailing = false;
 
 // Chart State
 const InfraChartManager = {
@@ -203,17 +206,30 @@ const infraBtnConfirmAddRegion = $(infraAddRegionModalEl).find("#infraBtnConfirm
 /** API FUNCTIONS **/
 
 function GetInfraOverview(onSuccess, onError) {
-    return $.get('/app/admin/infrastructure/overview', (res) => res.success ? onSuccess(res.data) : onError(res));
+    return $.ajax({
+        url: '/app/admin/infrastructure/overview',
+        type: 'GET',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function GetRegionDetail(regionId, onSuccess, onError) {
-    return $.get(`/app/admin/infrastructure/regions/${regionId}`, (res) => res.success ? onSuccess(res.data) : onError(res));
+    return $.ajax({
+        url: `/app/admin/infrastructure/regions/${regionId}`,
+        type: 'GET',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
-function FetchServerHistory(nodeId, startIso, endIso, onSuccess) {
-    $.get(`/app/admin/infrastructure/servers/${nodeId}/history?start=${startIso}&end=${endIso}`,
-        (res) => { if (res.success) onSuccess(res.data); }
-    );
+function FetchServerHistory(nodeId, startIso, endIso, onSuccess, onError) {
+    return $.ajax({
+        url: `/app/admin/infrastructure/servers/${nodeId}/history?start=${startIso}&end=${endIso}`,
+        type: 'GET',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function UpdateCoreBackgroundConfig(data, onSuccess, onError) {
@@ -222,15 +238,18 @@ function UpdateCoreBackgroundConfig(data, onSuccess, onError) {
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(data),
-        success: (res) => res.success ? onSuccess(res.data) : onError(res),
-        error: (err) => onError(err)
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
     });
 }
 
 function ShutdownCoreBackground(onSuccess, onError) {
-    return $.post('/app/admin/infrastructure/core/background/shutdown',
-        (res) => res.success ? onSuccess(res.data) : onError(res)
-    );
+    return $.ajax({
+        url: '/app/admin/infrastructure/core/background/shutdown',
+        type: 'POST',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function AddRegion(data, onSuccess, onError) {
@@ -239,8 +258,8 @@ function AddRegion(data, onSuccess, onError) {
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(data),
-        success: (res) => res.success ? onSuccess(res.data) : onError(res),
-        error: (err) => onError(err)
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
     });
 }
 
@@ -251,8 +270,8 @@ function SaveRegionConfig(regionId, changes, onSuccess, onError) {
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(changes.s3),
-            success: (res) => res.success ? onSuccess(res.data) : onError(res),
-            error: (err) => onError(err)
+            success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+            error: (err) => onError(err, false)
         });
     }
 }
@@ -261,15 +280,18 @@ function DeleteRegion(regionId, onSuccess, onError) {
     return $.ajax({
         url: `/app/admin/infrastructure/regions/${regionId}`,
         type: 'DELETE',
-        success: (res) => res.success ? onSuccess(res.data) : onError(res),
-        error: (err) => onError(err)
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
     });
 }
 
 function ShutdownRegion(regionId, onSuccess, onError) {
-    return $.post(`/app/admin/infrastructure/regions/${regionId}/shutdown`,
-        (res) => res.success ? onSuccess(res.data) : onError(res)
-    );
+    return $.ajax({
+        url: `/app/admin/infrastructure/regions/${regionId}/shutdown`,
+        type: 'POST',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function SaveServerConfig(regionId, serverId, data, onSuccess, onError) {
@@ -282,41 +304,56 @@ function SaveServerConfig(regionId, serverId, data, onSuccess, onError) {
         type: serverId ? 'PUT' : 'POST',
         contentType: 'application/json',
         data: JSON.stringify(data),
-        success: (res) => res.success ? onSuccess(res.data) : onError(res),
-        error: (err) => onError(err)
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
     });
 }
 
 function ShutdownRegionServer(regionId, serverId, onSuccess, onError) {
-    return $.post(`/app/admin/infrastructure/regions/${regionId}/servers/${serverId}/shutdown`,
-        (res) => res.success ? onSuccess(res.data) : onError(res)
-    );
+    return $.ajax({
+        url: `/app/admin/infrastructure/regions/${regionId}/servers/${serverId}/shutdown`,
+        type: 'POST',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function ToggleRegionStatus(regionId, type, enabled, reasons, onSuccess, onError) {
     const endpoint = type === 'maintenance' ? 'maintenance' : 'disabled';
-    return $.post(`/app/admin/infrastructure/regions/${regionId}/${endpoint}`, {
-        enabled: enabled,
-        publicReason: reasons.public,
-        privateReason: reasons.private
-    }, (res) => res.success ? onSuccess(res.data) : onError(res));
+    return $.ajax({
+        url: `/app/admin/infrastructure/regions/${regionId}/${endpoint}`,
+        type: 'POST',
+        data: {
+            enabled: enabled,
+            publicReason: reasons.public,
+            privateReason: reasons.private
+        },
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function ToggleServerStatus(regionId, serverId, type, enabled, reasons, onSuccess, onError) {
     const endpoint = type === 'maintenance' ? 'maintenance' : 'disabled';
-    return $.post(`/app/admin/infrastructure/regions/${regionId}/servers/${serverId}/${endpoint}`, {
-        enabled: enabled,
-        publicReason: reasons.public,
-        privateReason: reasons.private
-    }, (res) => res.success ? onSuccess(res.data) : onError(res));
+    return $.ajax({
+        url: `/app/admin/infrastructure/regions/${regionId}/servers/${serverId}/${endpoint}`,
+        type: 'POST',
+        data: {
+            enabled: enabled,
+            publicReason: reasons.public,
+            privateReason: reasons.private
+        },
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function DeleteRegionServer(regionId, serverId, onSuccess, onError) {
     return $.ajax({
         url: `/app/admin/infrastructure/regions/${regionId}/servers/${serverId}`,
         type: 'DELETE',
-        success: (res) => res.success ? onSuccess(res.data) : onError(res),
-        error: (err) => onError(err)
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
     });
 }
 
@@ -440,11 +477,27 @@ function StopInfraDetailPolling() {
 function FetchAndFillOverview(isRefresh = false) {
     if (infraTab.hasClass('d-none')) return;
     GetInfraOverview((data) => {
+        InfraOverviewPollFailing = false;
         CurrentInfraOverviewData = data;
         FillInfraDashboard();
         FillSingletonNodes(isRefresh);
         FillInfraRegionsList(isRefresh);
-    }, (err) => console.log("Poll Error", err));
+    }, (errorResult, isResponseUnsuccessful) => {
+        console.error("Error occurred while refreshing the infrastructure overview: ", errorResult);
+
+        if (InfraOverviewPollFailing) return;
+        InfraOverviewPollFailing = true;
+
+        var resultMessage = "Check console logs for more details.";
+        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+        AlertManager.createAlert({
+            type: "danger",
+            message: "Error occurred while refreshing the infrastructure overview.",
+            resultMessage: resultMessage,
+            timeout: 6000,
+        });
+    });
 }
 
 function FillInfraDashboard() {
@@ -695,6 +748,7 @@ async function canLeaveInfraBackgroundConfig(leaveMessage = "") {
 // --- Region Manager Logic ---
 function FetchAndFillRegionDetail(regionId, isRefresh = false) {
     GetRegionDetail(regionId, (data) => {
+        InfraDetailPollFailing = false;
         CurrentManageRegionData = data;
         FillRegionManagerTab(isRefresh);
 
@@ -706,7 +760,22 @@ function FetchAndFillRegionDetail(regionId, isRefresh = false) {
                 FillServerManagerTab(isRefresh); // Refreshes metrics
             }
         }
-    }, (err) => console.log("Region Detail Error", err));
+    }, (errorResult, isResponseUnsuccessful) => {
+        console.error("Error occurred while refreshing the region details: ", errorResult);
+
+        if (InfraDetailPollFailing) return;
+        InfraDetailPollFailing = true;
+
+        var resultMessage = "Check console logs for more details.";
+        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+        AlertManager.createAlert({
+            type: "danger",
+            message: "Error occurred while refreshing the region details.",
+            resultMessage: resultMessage,
+            timeout: 6000,
+        });
+    });
 }
 
 function FillRegionManagerTab(isRefresh = false) {
@@ -903,9 +972,9 @@ function submitStatusChange(reasons = { public: "", private: "" }, skipModal = f
         else FetchAndFillRegionDetail(CurrentManageRegionData.regionId);
     };
 
-    const errorCb = (errorResult) => {
+    const errorCb = (errorResult, isResponseUnsuccessful) => {
         var resultMessage = "Check console logs for more details.";
-        if (errorResult && errorResult.message) resultMessage = errorResult.message;
+        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
         AlertManager.createAlert({
             type: "danger",
@@ -993,6 +1062,18 @@ function LoadFullHistory(group) {
 
         // 4. Render
         RenderFreshChart(group, processedData);
+    }, (errorResult, isResponseUnsuccessful) => {
+        var resultMessage = "Check console logs for more details.";
+        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+        AlertManager.createAlert({
+            type: "danger",
+            message: "Error occurred while loading the server history.",
+            resultMessage: resultMessage,
+            timeout: 6000,
+        });
+
+        console.error("Error occurred while loading the server history: ", errorResult);
     });
 }
 
@@ -1005,6 +1086,7 @@ function UpdateHistory(group) {
     const end = new Date();
 
     FetchServerHistory(config.nodeId, start.toISOString(), end.toISOString(), (rawData) => {
+        InfraHistoryPollFailing = false;
         let dataToAppend = [];
 
         if (rawData && rawData.length > 0) {
@@ -1021,6 +1103,21 @@ function UpdateHistory(group) {
         if (dataToAppend.length > 0) {
             AppendDataToChart(group, dataToAppend);
         }
+    }, (errorResult, isResponseUnsuccessful) => {
+        console.error("Error occurred while refreshing the server history: ", errorResult);
+
+        if (InfraHistoryPollFailing) return;
+        InfraHistoryPollFailing = true;
+
+        var resultMessage = "Check console logs for more details.";
+        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+        AlertManager.createAlert({
+            type: "danger",
+            message: "Error occurred while refreshing the server history.",
+            resultMessage: resultMessage,
+            timeout: 6000,
+        });
     });
 }
 
@@ -1274,9 +1371,9 @@ function initInfrastructureTab() {
                     btn.prop('disabled', false).text(originalText);
                     InfraBackgroundConfigBaseline = data;
                 },
-                (errorResult) => {
+                (errorResult, isResponseUnsuccessful) => {
                     var resultMessage = "Check console logs for more details.";
-                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                    if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                     AlertManager.createAlert({
                         type: "danger",
@@ -1308,9 +1405,9 @@ function initInfrastructureTab() {
                             message: 'Shutdown signal sent.',
                             timeout: 6000
                         }),
-                        (errorResult) => {
+                        (errorResult, isResponseUnsuccessful) => {
                             var resultMessage = "Check console logs for more details.";
-                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                            if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                             AlertManager.createAlert({
                                 type: "danger",
@@ -1376,9 +1473,9 @@ function initInfrastructureTab() {
                     FetchAndFillOverview();
                     btn.prop('disabled', false).text(originalText);
                 },
-                (resultMessage) => {
+                (errorResult, isResponseUnsuccessful) => {
                     var resultMessage = "Check console logs for more details.";
-                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                    if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                     AlertManager.createAlert({
                         type: "danger",
@@ -1403,11 +1500,19 @@ function initInfrastructureTab() {
                 CurrentManageRegionData = data;
                 showRegionManagerTab();
                 FillRegionManagerTab();
-            }, (e) => AlertManager.createAlert({
-                type: 'danger',
-                message: 'Error loading region',
-                timeout: 6000
-            }));
+            }, (errorResult, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                AlertManager.createAlert({
+                    type: "danger",
+                    message: "Error occurred while loading the region.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
+                });
+
+                console.error("Error occurred while loading the region: ", errorResult);
+            });
         });
 
         // ROOT: Delete Region
@@ -1431,9 +1536,9 @@ function initInfrastructureTab() {
                             });
                             FetchAndFillOverview();
                         },
-                        (errorResult) => {
+                        (errorResult, isResponseUnsuccessful) => {
                             var resultMessage = "Check console logs for more details.";
-                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                            if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                             AlertManager.createAlert({
                                 type: "danger",
@@ -1481,9 +1586,9 @@ function initInfrastructureTab() {
                     confirmSaveRegionButtonSpinner.addClass("d-none");
                     InfraRegionS3Baseline = s3Data;
                 },
-                (errorResult) => {
+                (errorResult, isResponseUnsuccessful) => {
                     var resultMessage = "Check console logs for more details.";
-                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                    if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                     AlertManager.createAlert({
                         type: "danger",
@@ -1521,9 +1626,9 @@ function initInfrastructureTab() {
                             message: 'Region shutdown initiated.',
                             timeout: 6000
                         }),
-                        (errorResult) => {
+                        (errorResult, isResponseUnsuccessful) => {
                             var resultMessage = "Check console logs for more details.";
-                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                            if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                             AlertManager.createAlert({
                                 type: "danger",
@@ -1630,9 +1735,9 @@ function initInfrastructureTab() {
                     InfraServerConfigBaseline = ReadInfraServerConfigForm();
                     showRegionManagerTab();
                 },
-                (errorResult) => {
+                (errorResult, isResponseUnsuccessful) => {
                     var resultMessage = "Check console logs for more details.";
-                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                    if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                     AlertManager.createAlert({
                         type: "danger",
@@ -1666,9 +1771,9 @@ function initInfrastructureTab() {
                 if (ok) {
                     ShutdownRegionServer(CurrentManageRegionData.regionId, CurrentManageServerData.id,
                         () => AlertManager.createAlert({ type: 'success', message: 'Server shutdown initiated.', timeout: 6000 }),
-                        (errorResult) => {
+                        (errorResult, isResponseUnsuccessful) => {
                             var resultMessage = "Check console logs for more details.";
-                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                            if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                             AlertManager.createAlert({
                                 type: "danger",
@@ -1703,9 +1808,9 @@ function initInfrastructureTab() {
                             });
                             showRegionManagerTab();
                         },
-                        (errorResult) => {
+                        (errorResult, isResponseUnsuccessful) => {
                             var resultMessage = "Check console logs for more details.";
-                            if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                            if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                             AlertManager.createAlert({
                                 type: "danger",

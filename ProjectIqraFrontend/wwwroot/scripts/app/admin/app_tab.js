@@ -1,5 +1,7 @@
 ﻿/** Dynamic Variables **/
 let AppTabPollingInterval = null;
+let AppConfigPollFailing = false;
+let AppUpdatesPollFailing = false;
 let CurrentPermissionContext = null; // 'maintenance', 'registration', 'login'
 
 // --- Change Helpers ---
@@ -72,15 +74,30 @@ const appPermissionConfigSaveBtn = $(appPermissionConfigModalEl).find("#btnSaveP
 /** API FUNCTIONS **/
 
 function GetAppConfig(onSuccess, onError) {
-    $.get('/app/admin/app/config', (res) => res.success ? onSuccess(res.data) : onError(res));
+    return $.ajax({
+        url: '/app/admin/app/config',
+        type: 'GET',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function CheckAppUpdates(onSuccess, onError) {
-    $.post('/app/admin/app/update-status', (res) => res.success ? onSuccess(res.data) : onError(res));
+    return $.ajax({
+        url: '/app/admin/app/update-status',
+        type: 'POST',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function GetAppPermissions(onSuccess, onError) {
-    $.get('/app/admin/app/permissions', (res) => res.success ? onSuccess(res.data) : onError(res));
+    return $.ajax({
+        url: '/app/admin/app/permissions',
+        type: 'GET',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function UpdateAppPermissions(data, onSuccess, onError) {
@@ -89,13 +106,18 @@ function UpdateAppPermissions(data, onSuccess, onError) {
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(data),
-        success: (res) => res.success ? onSuccess(res.data) : onError(res),
-        error: (err) => onError(err)
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
     });
 }
 
 function GetAppEmailTemplates(onSuccess, onError) {
-    $.get('/app/admin/app/email-templates', (res) => res.success ? onSuccess(res.data) : onError(res));
+    return $.ajax({
+        url: '/app/admin/app/email-templates',
+        type: 'GET',
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
+    });
 }
 
 function UpdateAppEmailTemplates(data, onSuccess, onError) {
@@ -104,8 +126,8 @@ function UpdateAppEmailTemplates(data, onSuccess, onError) {
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(data),
-        success: (res) => res.success ? onSuccess(res.data) : onError(res),
-        error: (err) => onError(err)
+        success: (res) => res.success ? onSuccess(res.data) : onError(res, true),
+        error: (err) => onError(err, false)
     });
 }
 
@@ -129,19 +151,51 @@ function startAppOverviewPolling() {
 function refreshAppConfig(force = false) {
     GetAppConfig(
         (data) => {
+            AppConfigPollFailing = false;
             CurrentAppConfigData = data;
             fillAppOverview();
         },
-        (err) => console.error("Config Poll Error", err)
+        (errorResult, isResponseUnsuccessful) => {
+            console.error("Error occurred while refreshing the app configuration: ", errorResult);
+
+            if (AppConfigPollFailing) return;
+            AppConfigPollFailing = true;
+
+            var resultMessage = "Check console logs for more details.";
+            if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+            AlertManager.createAlert({
+                type: "danger",
+                message: "Error occurred while refreshing the app configuration.",
+                resultMessage: resultMessage,
+                timeout: 6000,
+            });
+        }
     );
 }
 
 function refreshUpdateStatus(force = false) {
     CheckAppUpdates(
         (data) => {
+            AppUpdatesPollFailing = false;
             fillUpdateStatus(data);
         },
-        (err) => console.error("Update Poll Error", err)
+        (errorResult, isResponseUnsuccessful) => {
+            console.error("Error occurred while checking for app updates: ", errorResult);
+
+            if (AppUpdatesPollFailing) return;
+            AppUpdatesPollFailing = true;
+
+            var resultMessage = "Check console logs for more details.";
+            if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+            AlertManager.createAlert({
+                type: "danger",
+                message: "Error occurred while checking for app updates.",
+                resultMessage: resultMessage,
+                timeout: 6000,
+            });
+        }
     );
 }
 
@@ -185,7 +239,19 @@ function fetchAndFillPermissions() {
     GetAppPermissions((data) => {
         CurrentAppPermissionsData = data;
         fillPermissionsTab();
-    }, (err) => AlertManager.createAlert({ type: 'danger', message: 'Failed to load permissions', timeout: 5000 }));
+    }, (errorResult, isResponseUnsuccessful) => {
+        var resultMessage = "Check console logs for more details.";
+        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+        AlertManager.createAlert({
+            type: "danger",
+            message: "Error occurred while loading the app permissions.",
+            resultMessage: resultMessage,
+            timeout: 6000,
+        });
+
+        console.error("Error occurred while loading the app permissions: ", errorResult);
+    });
 }
 
 function fillPermissionsTab() {
@@ -279,8 +345,18 @@ function savePermissions(newData, onSuccessCallback) {
         fillPermissionsTab();
         AlertManager.createAlert({ type: 'success', message: 'Permissions updated successfully.', timeout: 3000 });
         if (onSuccessCallback) onSuccessCallback();
-    }, (err) => {
-        AlertManager.createAlert({ type: 'danger', message: err.message || 'Failed to save permissions.', timeout: 5000 });
+    }, (errorResult, isResponseUnsuccessful) => {
+        var resultMessage = "Check console logs for more details.";
+        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+        AlertManager.createAlert({
+            type: "danger",
+            message: "Error occurred while saving the app permissions.",
+            resultMessage: resultMessage,
+            timeout: 6000,
+        });
+
+        console.error("Error occurred while saving the app permissions: ", errorResult);
     });
 }
 
@@ -289,7 +365,19 @@ function fetchAndFillEmailTemplates() {
     GetAppEmailTemplates((data) => {
         CurrentAppEmailTemplatesData = data;
         fillEmailTemplatesTab();
-    }, (err) => AlertManager.createAlert({ type: 'danger', message: 'Failed to load templates', timeout: 5000 }));
+    }, (errorResult, isResponseUnsuccessful) => {
+        var resultMessage = "Check console logs for more details.";
+        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+        AlertManager.createAlert({
+            type: "danger",
+            message: "Error occurred while loading the email templates.",
+            resultMessage: resultMessage,
+            timeout: 6000,
+        });
+
+        console.error("Error occurred while loading the email templates: ", errorResult);
+    });
 }
 
 function fillEmailTemplatesTab() {
@@ -400,8 +488,19 @@ function initAppTab() {
                 CurrentAppEmailTemplatesData = data;
                 AlertManager.createAlert({ type: 'success', message: 'Email templates saved.', timeout: 3000 });
                 btn.prop('disabled', false).html(originalText);
-            }, (err) => {
-                AlertManager.createAlert({ type: 'danger', message: err.message || 'Failed to save templates.', timeout: 5000 });
+            }, (errorResult, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+                AlertManager.createAlert({
+                    type: "danger",
+                    message: "Error occurred while saving the email templates.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
+                });
+
+                console.error("Error occurred while saving the email templates: ", errorResult);
+
                 btn.prop('disabled', false).html(originalText);
             });
         });
