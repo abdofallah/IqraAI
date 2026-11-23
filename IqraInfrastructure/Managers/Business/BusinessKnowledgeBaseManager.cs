@@ -1274,16 +1274,7 @@ namespace IqraInfrastructure.Managers.Business
         {
             var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
 
-            var businessApp = await _parentBusinessManager.GetUserBusinessAppById(businessId, "SYSTEM");
-            if (!businessApp.Success)
-            {
-                return result.SetFailureResult(
-                    "ProcessAndAddDocumentAsync:BUSINESS_APP_NOT_FOUND",
-                    "Business app not found."
-                );
-            }
-
-            var kb = businessApp.Data?.KnowledgeBases.FirstOrDefault(k => k.Id == knowledgeBaseId);
+            var kb = await _businessAppRepository.GetBusinessAppKnowledgeBaseAsync(businessId, knowledgeBaseId);
             if (kb == null)
             {
                 return result.SetFailureResult(
@@ -1345,17 +1336,17 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Run Background Processing Task
-            _ = ProcessDocumentBackgroundAsync(file, businessId, kb, newDocument, businessApp.Data!);
+            _ = ProcessDocumentBackgroundAsync(file, businessId, kb, newDocument);
 
             return result.SetSuccessResult(newDocument);
         }
-        private async Task ProcessDocumentBackgroundAsync(IFormFile file, long businessId, BusinessAppKnowledgeBase kb, BusinessAppKnowledgeBaseDocument knowledgeBaseDocument, BusinessApp businessApp)
+        private async Task ProcessDocumentBackgroundAsync(IFormFile file, long businessId, BusinessAppKnowledgeBase kb, BusinessAppKnowledgeBaseDocument knowledgeBaseDocument)
         {
             string? tempFilePath = null;
 
             try
             {
-                var embeddingIntegrationData = businessApp.Integrations.Find(integration => integration.Id == kb.Configuration.Embedding.Id);
+                var embeddingIntegrationData = await _businessAppRepository.getBusinessIntegrationById(businessId, kb.Configuration.Embedding.Id);
                 if (embeddingIntegrationData == null)
                 {
                     await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(businessId, kb.Id, knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "No embedding integration found in business app.");

@@ -798,8 +798,12 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, t => t.Id == currentIntegrationId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result?.Integrations.FirstOrDefault(t => t.Id == currentIntegrationId);
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.Integrations.FirstMatchingElement());
+
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+            return result?.Integrations.FirstOrDefault();
         }
 
         public async Task<bool> AddBusinessIntegration(long businessId, BusinessAppIntegration newIntegration)
@@ -1575,8 +1579,12 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == numberId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result?.Numbers.FirstOrDefault(t => t.Id == numberId);
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.Numbers.FirstMatchingElement());
+
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+            return result?.Numbers.FirstOrDefault();
         }
         public async Task<bool> CheckBusinessNumberExistsByNumber(string numberCountryCode, string phoneNumber, long businessId)
         {
@@ -1765,12 +1773,12 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Routings, t => t.Id == existingRouteId)
             );
-            var projection = Builders<BusinessApp>.Projection.Include(b => b.Routings).Include(b => b.Id);
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.Routings.FirstMatchingElement());
+
             var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
-
-            if (result == null) return null;
-
-            return result.Routings.FirstOrDefault(t => t.Id == existingRouteId);
+            return result?.Routings.FirstOrDefault();
         }
         public async Task<bool> AddBusinessAppRoute(long businessId, BusinessAppRoute newBusinessAppRouteData, IClientSessionHandle session)
         {
@@ -1830,8 +1838,12 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == existingKbId)
             );
 
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result?.KnowledgeBases.FirstOrDefault(kb => kb.Id == existingKbId);
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.KnowledgeBases.FirstMatchingElement());
+
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+            return result?.KnowledgeBases.FirstOrDefault();
         }
         public async Task<bool> UpdateKnowledgeBaseExceptDocumentsAndReferences(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle session)
         {
@@ -2055,10 +2067,12 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.PostAnalysis, t => t.Id == templateId)
             );
 
-            var businessApp = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            if (businessApp == null) return null;
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.PostAnalysis.FirstMatchingElement());
 
-            return businessApp.PostAnalysis.FirstOrDefault(t => t.Id == templateId);
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+            return result?.PostAnalysis.FirstOrDefault();
         }
 
         public async Task<bool> AddBusinessAppPostAnalysisTemplate(long businessId, BusinessAppPostAnalysis newTemplate, IClientSessionHandle session)
