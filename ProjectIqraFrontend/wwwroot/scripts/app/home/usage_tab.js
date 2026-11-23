@@ -63,10 +63,10 @@ function FetchUsageSummaryFromAPI(startDate, endDate, groupBy, successCallback, 
             groupBy: groupBy
         }),
         success: (response) => {
-            if (!response.success) return errorCallback(response);
+            if (!response.success) return errorCallback(response, true);
             successCallback(response.data);
         },
-        error: (error) => errorCallback(error)
+        error: (error) => errorCallback(error, false)
     });
 }
 
@@ -81,10 +81,10 @@ function FetchUsageHistoryFromAPI(pageSize, nextCursor, prevCursor, successCallb
             previousCursor: prevCursor
         }),
         success: (response) => {
-            if (!response.success) return errorCallback(response);
+            if (!response.success) return errorCallback(response, true);
             successCallback(response.data);
         },
-        error: (error) => errorCallback(error)
+        error: (error) => errorCallback(error, false)
     });
 }
 
@@ -256,8 +256,19 @@ function loadUsageOverview() {
             usageOverallCostChartSpinner.addClass('d-none');
             usageOverallCostChartCanvas.removeClass('d-none');
         },
-        (error) => {
+        (error, isResponseUnsuccessful) => {
             console.error("Failed to load usage overview data", error);
+
+            var resultMessage = "Check console logs for more details.";
+            if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
+            AlertManager.createAlert({
+                type: "danger",
+                message: "Failed to load the usage overview.",
+                resultMessage: resultMessage,
+                timeout: 6000,
+            });
+
             usageChartSpinner.addClass('d-none');
             usageCallsChartSpinner.addClass('d-none');
             usageChartCanvas.parent().html('<p class="text-center text-danger">Could not load chart data.</p>');
@@ -411,8 +422,19 @@ function loadUsageHistory(cursor = null, direction = 'next') {
             isUsageLoading = false;
             showTableLoading(false);
         },
-        (error) => {
+        (error, isResponseUnsuccessful) => {
             console.error("Failed to load usage history", error);
+
+            var resultMessage = "Check console logs for more details.";
+            if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
+            AlertManager.createAlert({
+                type: "danger",
+                message: "Failed to load the usage history.",
+                resultMessage: resultMessage,
+                timeout: 6000,
+            });
+
             // Revert page number on error
             currentUsagePage = pageBeforeRequest;
             usagePagination.pageInfo.text(`Page ${currentUsagePage}`);

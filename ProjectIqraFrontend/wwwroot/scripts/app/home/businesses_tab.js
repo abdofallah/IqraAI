@@ -34,14 +34,14 @@ function AddNewUserBusinessToAPI(formData, successCallback, errorCallback) {
 		contentType: false,
 		success: (response) => {
 			if (!response.success) {
-				errorCallback(response);
+				errorCallback(response, true);
 				return;
 			}
 
 			successCallback(response.data);
 		},
 		error: (error) => {
-			errorCallback(error);
+			errorCallback(error, false);
 		}
 	});
 }
@@ -56,14 +56,14 @@ function DeleteBusinessFromAPI(businessId, successCallback, errorCallback) {
 		contentType: false,
         success: (response) => {
 			if (!response.success) {
-				errorCallback(response);
+				errorCallback(response, true);
 				return;
 			}
 
             successCallback(response.data);
         },
 		error: (error) => {
-			errorCallback(error);
+			errorCallback(error, false);
 		}
     });
 }
@@ -369,14 +369,18 @@ function InitBusinessesTab() {
 
 				isDeletingBusiness = false;
 			},
-			(errorResponse) => {
+			(errorResponse, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && errorResponse && errorResponse.message) resultMessage = errorResponse.message;
+
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occured while adding deleting user business. Check browser console for logs.",
-					timeout: 5000,
+					message: "Error occurred while deleting user business.",
+					resultMessage: resultMessage,
+					timeout: 6000,
 				});
 
-				console.error("Error occured while adding deleting user business: ", errorResponse);
+				console.error("Error occurred while adding deleting user business: ", errorResponse);
 
 				isDeletingBusiness = false;
 			}
@@ -459,14 +463,18 @@ function InitBusinessesTab() {
 				addNewBusinessButtonSpinner.addClass("d-none");
 				addNewBusinessModal.modal("hide");
 			},
-			(businessError) => {
+			(businessError, isResponseUnsuccessful) => {
+				var resultMessage = "Check console logs for more details.";
+				if (isResponseUnsuccessful && businessError && businessError.message) resultMessage = businessError.message;
+
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occured while adding new user business. Check browser console for logs.",
-					timeout: 5000,
+					message: "Error occurred while adding new user business.",
+					resultMessage: resultMessage,
+					timeout: 6000,
 				});
 
-				console.error("Error occured while adding new user business: ", businessError);
+				console.error("Error occurred while adding new user business: ", businessError);
 
 				addNewBusinessButton.prop("disabled", false);
 				addNewBusinessButtonSpinner.addClass("d-none");

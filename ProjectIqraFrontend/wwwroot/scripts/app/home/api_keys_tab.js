@@ -35,7 +35,7 @@ function CreateNewApiKeyToAPI(formData, successCallback, errorCallback) {
         contentType: false,
         success: (response) => {
             if (!response.success) {
-                errorCallback(response);
+                errorCallback(response, true);
                 return;
             }
 
@@ -43,7 +43,7 @@ function CreateNewApiKeyToAPI(formData, successCallback, errorCallback) {
             successCallback(response.data);
         },
         error: (error) => {
-            errorCallback(error);
+            errorCallback(error, false);
         }
     });
 }
@@ -60,7 +60,7 @@ function DeleteApiKeyFromAPI(formData, successCallback, errorCallback) {
         contentType: false,
         success: (response) => {
             if (!response.success) {
-                errorCallback(response);
+                errorCallback(response, true);
                 return;
             }
 
@@ -71,7 +71,7 @@ function DeleteApiKeyFromAPI(formData, successCallback, errorCallback) {
             successCallback(response.data);
         },
         error: (error) => {
-            errorCallback(error);
+            errorCallback(error, false);
         }
     });
 }
@@ -289,8 +289,16 @@ function InitApiKeysTab() {
                 createApiKeyConfirmButton.prop("disabled", false);
                 createApiKeyButtonSpinner.addClass("d-none");
             },
-            (error) => {
-                AlertManager.createAlert({ type: "danger", message: "Error creating API key.", timeout: 5000 });
+            (error, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
+                AlertManager.createAlert({
+                    type: "danger",
+                    message: "Error creating API key.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
+                });
                 console.error("Error creating API key: ", error);
                 createApiKeyConfirmButton.prop("disabled", false);
                 createApiKeyButtonSpinner.addClass("d-none");
@@ -332,8 +340,16 @@ function InitApiKeysTab() {
                 }
                 isDeletingApiKey = false;
             },
-            (error) => {
-                AlertManager.createAlert({ type: "danger", message: "Error deleting API key.", timeout: 5000 });
+            (error, isResponseUnsuccessful) => {
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
+                AlertManager.createAlert({
+                    type: "danger",
+                    message: "Error deleting API key.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
+                });
                 console.error("Error deleting API key: ", error);
                 rowElement.removeClass('table-danger');
                 isDeletingApiKey = false;
