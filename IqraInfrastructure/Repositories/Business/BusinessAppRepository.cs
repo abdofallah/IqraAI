@@ -434,16 +434,25 @@ namespace IqraInfrastructure.Repositories.Business
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.MessageGroups, g => g.Id == groupId)
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.MessageGroups, g =>
+                    g.Id == groupId &&
+                    g.Messages[language].Any(m => m.Id == newMessage.Id)
+                )
             );
 
             var update = Builders<BusinessApp>.Update.Set(
-                $"Cache.MessageGroups.$.Messages.{language}",
-                new BsonArray(new[] { newMessage.ToBsonDocument() })
+                $"Cache.MessageGroups.$[group].Messages.{language}.$[message]",
+                newMessage.ToBsonDocument()
             );
+            var arrayFilters = new List<ArrayFilterDefinition>
+            {
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("group._id", groupId)),
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("message._id", newMessage.Id))
+            };
+            var options = new UpdateOptions { ArrayFilters = arrayFilters };
 
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result != null;
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update, options);
+            return result.IsAcknowledged && result.MatchedCount > 0;
         }
 
         public async Task<bool> CheckCacheMessageGroupExists(long businessId, string existingGroupId)
@@ -528,14 +537,25 @@ namespace IqraInfrastructure.Repositories.Business
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.AudioGroups, g => g.Id == groupId)
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.AudioGroups, g =>
+                    g.Id == groupId &&
+                    g.Audios[language].Any(a => a.Id == newAudio.Id)
+                )
             );
+
             var update = Builders<BusinessApp>.Update.Set(
-                $"Cache.AudioGroups.$.Audios.{language}",
-                new BsonArray(new[] { newAudio.ToBsonDocument() })
+                $"Cache.AudioGroups.$[group].Audios.{language}.$[audio]",
+                newAudio.ToBsonDocument()
             );
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result != null;
+            var arrayFilters = new List<ArrayFilterDefinition>
+            {
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("group._id", groupId)),
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("audio._id", newAudio.Id))
+            };
+            var options = new UpdateOptions { ArrayFilters = arrayFilters };
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update, options);
+            return result.IsAcknowledged && result.MatchedCount > 0;
         }
 
         public async Task<bool> CheckCacheAudioGroupExists(long businessId, string existingGroupId)
@@ -660,14 +680,25 @@ namespace IqraInfrastructure.Repositories.Business
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.EmbeddingGroups, g => g.Id == groupId)
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.EmbeddingGroups, g =>
+                    g.Id == groupId &&
+                    g.Embeddings[language].Any(e => e.Id == newEmbedding.Id)
+                )
             );
+
             var update = Builders<BusinessApp>.Update.Set(
-                $"Cache.EmbeddingGroups.$.Embeddings.{language}",
-                new BsonArray(new[] { newEmbedding.ToBsonDocument() })
+                $"Cache.EmbeddingGroups.$[group].Embeddings.{language}.$[embedding]",
+                newEmbedding.ToBsonDocument()
             );
-            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
-            return result != null;
+            var arrayFilters = new List<ArrayFilterDefinition>
+            {
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("group._id", groupId)),
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("embedding._id", newEmbedding.Id))
+            };
+            var options = new UpdateOptions { ArrayFilters = arrayFilters };
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update, options);
+            return result.IsAcknowledged && result.MatchedCount > 0;
         }
 
         public async Task<bool> CheckCacheEmbeddingGroupExists(long businessId, string existingGroupId)
