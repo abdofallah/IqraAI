@@ -585,7 +585,7 @@ function saveWebCampaign(formData, successCallback, errorCallback) {
             }
         },
         error: (xhr, status, error) => {
-            errorCallback(error, false);
+            errorCallback(xhr, false);
         },
     });
 }
@@ -601,7 +601,7 @@ function deleteWebCampaign(campaignId, successCallback, errorCallback) {
             }
         },
         error: (xhr, status, error) => {
-            errorCallback(error, false);
+            errorCallback(xhr, false);
         },
     });
 }
@@ -1843,20 +1843,20 @@ function initWebCampaignsTab() {
                             timeout: 6000,
                         });
                     },
-                    (errorResult) => {
+                    (errorResult, isResponseUnsuccessful) => {
                         campaignCard.removeClass("disabled");
 
                         var resultMessage = "Check console logs for more details.";
-                        if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                         AlertManager.createAlert({
                             type: "danger",
-                            message: "Error occured while deleting business web campaign.",
+                            message: "Error occurred while deleting business web campaign.",
                             resultMessage: resultMessage,
                             timeout: 6000,
                         });
 
-                        console.log("Error occured while deleting business web campaign: ", errorResult);
+                        console.log("Error occurred while deleting business web campaign: ", errorResult);
                     }
                 ).always(() => {
                     showHideButtonSpinnerWithDisableEnable(button, false);
@@ -1917,13 +1917,17 @@ function initWebCampaignsTab() {
                     webCampaignManagerNameBreadcrumb.text(currentWebCampaignData.general.name);
                     updateUrlForTab(`webcampaigns/${currentWebCampaignData.id}`);
                 },
-                (error) => {
+                (error, isResponseUnsuccessful) => {
                     isSavingWebCampaign = false;
                     saveWebCampaignButton.prop("disabled", false);
+                    var resultMessage = "Check console logs for more details.";
+                    if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Failed to save campaign. Check console for more details.",
-                        timeout: 3000
+                        message: "Failed to save campaign.",
+                        resultMessage: resultMessage,
+                        timeout: 6000,
                     });
                     console.error("Failed to save campaign:", error);
                 }

@@ -1325,10 +1325,14 @@ function initCacheTab() {
 							timeout: 6000,
 						});
 					},
-					(saveError, isUnsuccessful) => {
+					(saveError, isResponseUnsuccessful) => {
+						var resultMessage = "Check console logs for more details.";
+						if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 						AlertManager.createAlert({
 							type: "danger",
-							message: "Error occurred while saving message group. Check browser console for logs.",
+							message: "Error occurred while saving message group.",
+							resultMessage: resultMessage,
 							timeout: 6000,
 						});
 
@@ -1468,10 +1472,14 @@ function initCacheTab() {
 							timeout: 6000,
 						});
 					},
-					(saveError, isUnsuccessful) => {
+					(saveError, isResponseUnsuccessful) => {
+						var resultMessage = "Check console logs for more details.";
+						if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 						AlertManager.createAlert({
 							type: "danger",
-							message: "Error occurred while saving message cache. Check browser console for logs.",
+							message: "Error occurred while saving message cache.",
+							resultMessage: resultMessage,
 							timeout: 6000,
 						});
 
@@ -1598,10 +1606,14 @@ function initCacheTab() {
 							timeout: 6000,
 						});
 					},
-					(saveError, isUnsuccessful) => {
+					(saveError, isResponseUnsuccessful) => {
+						var resultMessage = "Check console logs for more details.";
+						if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 						AlertManager.createAlert({
 							type: "danger",
-							message: "Error occurred while saving audio group. Check browser console for logs.",
+							message: "Error occurred while saving audio group.",
+							resultMessage: resultMessage,
 							timeout: 6000,
 						});
 
@@ -1764,10 +1776,14 @@ function initCacheTab() {
 							timeout: 6000,
 						});
 					},
-					(saveError, isUnsuccessful) => {
+					(saveError, isResponseUnsuccessful) => {
+						var resultMessage = "Check console logs for more details.";
+						if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 						AlertManager.createAlert({
 							type: "danger",
-							message: "Error occurred while saving audio cache. Check browser console for logs.",
+							message: "Error occurred while saving audio cache.",
+							resultMessage: resultMessage,
 							timeout: 6000,
 						});
 
@@ -1868,8 +1884,16 @@ function initCacheTab() {
 						IsSavingEmbeddingGroupTab = false;
 						AlertManager.createAlert({ type: "success", message: `Embedding group saved successfully.` });
 					},
-					(error) => {
-						AlertManager.createAlert({ type: "danger", message: "Error saving embedding group." });
+					(error, isResponseUnsuccessful) => {
+						var resultMessage = "Check console logs for more details.";
+						if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
+						AlertManager.createAlert({
+							type: "danger",
+							message: "Error saving embedding group.",
+							resultMessage: resultMessage,
+							timeout: 6000,
+						});
 						console.error("Error saving embedding group:", error);
 						saveEmbeddingGroupButton.prop("disabled", false);
 						IsSavingEmbeddingGroupTab = false;
@@ -2015,8 +2039,16 @@ function initCacheTab() {
 						IsSavingEmbeddingCacheTab = false;
 						AlertManager.createAlert({ type: "success", message: `Embedding cache saved successfully.` });
 					},
-					(error) => {
-						AlertManager.createAlert({ type: "danger", message: "Error saving embedding cache." });
+					(error, isResponseUnsuccessful) => {
+						var resultMessage = "Check console logs for more details.";
+						if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
+						AlertManager.createAlert({
+							type: "danger",
+							message: "Error saving embedding cache.",
+							resultMessage: resultMessage,
+							timeout: 6000,
+						});
 						console.error("Error saving embedding cache:", error);
 						saveEmbeddingCacheButton.prop("disabled", false);
 						IsSavingEmbeddingCacheTab = false;

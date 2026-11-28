@@ -2375,10 +2375,14 @@ function initContextTab() {
 						timeout: 6000,
 					});
 				},
-				(saveError, isUnsuccessful) => {
+				(saveError, isResponseUnsuccessful) => {
+					var resultMessage = "Check console logs for more details.";
+					if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occurred while saving business branding data. Check browser console for logs.",
+						message: "Error occurred while saving business branding data.",
+						resultMessage: resultMessage,
 						timeout: 6000,
 					});
 
@@ -2505,10 +2509,14 @@ function initContextTab() {
 
 					ManageContextBranchType = "edit";
 				},
-				(saveError, isUnsuccessful) => {
+				(saveError, isResponseUnsuccessful) => {
+					var resultMessage = "Check console logs for more details.";
+					if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occurred while saving business branch data. Check browser console for logs.",
+						message: "Error occurred while saving business branch data.",
+						resultMessage: resultMessage,
 						timeout: 6000,
 					});
 
@@ -2955,10 +2963,14 @@ function initContextTab() {
 
 					ManageContextServiceType = "edit";
 				},
-				(saveError, isUnsuccessful) => {
+				(saveError, isResponseUnsuccessful) => {
+					var resultMessage = "Check console logs for more details.";
+					if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occurred while saving service data. Check browser console for logs.",
+						message: "Error occurred while saving service data.",
+						resultMessage: resultMessage,
 						timeout: 6000,
 					});
 
@@ -3198,10 +3210,14 @@ function initContextTab() {
 
 					ManageContextProductType = "edit";
 				},
-				(saveError, isUnsuccessful) => {
+				(saveError, isResponseUnsuccessful) => {
+					var resultMessage = "Check console logs for more details.";
+					if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
+
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occurred while saving product data. Check browser console for logs.",
+						message: "Error occurred while saving product data.",
+						resultMessage: resultMessage,
 						timeout: 6000,
 					});
 

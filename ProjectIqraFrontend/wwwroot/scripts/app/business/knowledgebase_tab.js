@@ -808,27 +808,19 @@ function fillKnowledgeBaseManagerTab() {
     uploadDocumentButton.prop('disabled', true);
     GetBusinessKnowledgeBaseDocuments(kbData.id,
         (successResponse) => {
-            if (!successResponse.success) {
-                AlertManager.createAlert({
-                    type: "danger",
-                    message: "Unable to retrieve knowledge base documents. Check console for details.",
-                    timeout: 6000,
-                });
-
-                console.log("Unable to retrieve knowledge base documents.", successResponse);
-
-                return;
-            }
-
             ManageCurrentKnowledgeBaseDocuments = successResponse.data;
             fillDocumentsTable();
 
             uploadDocumentButton.prop('disabled', false);
         },
-        (errorResponse) => {
+        (errorResponse, isResponseUnsuccessful) => {
+            var resultMessage = "Check console logs for more details.";
+            if (isResponseUnsuccessful && errorResponse && errorResponse.message) resultMessage = errorResponse.message;
+
             AlertManager.createAlert({
                 type: "danger",
-                message: "Failed to retrieve knowledge base documents. Check console for details.",
+                message: "Failed to retrieve knowledge base documents.",
+                resultMessage: resultMessage,
                 timeout: 6000,
             });
 
@@ -1397,11 +1389,11 @@ function initKnowledgeBaseTab() {
                             timeout: 6000,
                         });
                     },
-                    (errorResult) => {
+                    (errorResult, isResponseUnsuccessful) => {
                         knowledgeBaseCard.removeClass("disabled");
 
                         var resultMessage = "Check console logs for more details.";
-                        if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                         AlertManager.createAlert({
                             type: "danger",
@@ -1570,19 +1562,6 @@ function initKnowledgeBaseTab() {
 
             SaveAndProcessDocument(ManageCurrentKnowledgeBaseData.id, formData,
                 (response) => {
-                    if (!response.success) {
-                        spinner.addClass('d-none');
-                        saveAndProcessDocumentButton.prop('disabled', false);
-                        IsProcessingDocument = false;
-
-                        AlertManager.createAlert({
-                            type: 'danger',
-                            message: 'Unable to add document for processing. Check console logs for more details.',
-                        });
-                        console.log("Unable to add document for processing.", response);
-
-                        return;
-                    }
 
                     const newDoc = response.data;
                     ManageCurrentKnowledgeBaseDocuments.push(newDoc); 
@@ -1601,19 +1580,19 @@ function initKnowledgeBaseTab() {
                         timeout: 6000
                     });
                 },
-                (error) => {
+                (error, isResponseUnsuccessful) => {
                     spinner.addClass('d-none');
                     saveAndProcessDocumentButton.prop('disabled', false);
                     IsProcessingDocument = false;
 
                     var resultMessage = "Check console logs for more details.";
-                    if (error && error.message) resultMessage = error.message;
+                    if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
 
                     AlertManager.createAlert({
-                        type: 'danger',
-                        message: 'Failed to add document for processing. Check console logs for more details.',
+                        type: "danger",
+                        message: "Failed to add document for processing.",
                         resultMessage: resultMessage,
-                        timeout: 6000
+                        timeout: 6000,
                     });
 
                     console.log("Failed to add document for processing.", error);
@@ -1646,30 +1625,32 @@ function initKnowledgeBaseTab() {
                 (response) => {
                     retrievalResultsContainer.empty();
 
-                    if (!response.success) {
-                        AlertManager.createAlert({
-                            type: 'danger',
-                            message: 'Unable to fetch results. Check console logs for more details.',
-                            timeout: 6000
+                    if (response.data.sources.length === 0) {
+                        retrievalResultsContainer.html('<p class="text-muted">No results found for your query.</p>');
+                    } else {
+                        response.data.sources.forEach((result, index) => {
+                            retrievalResultsContainer.append(createRetrievalResultCard(result, index));
                         });
-
-                        console.log("Unable to fetch results.", response);
                     }
-                    else {
-                        if (response.data.sources.length === 0) {
-                            retrievalResultsContainer.html('<p class="text-muted">No results found for your query.</p>');
-                        } else {
-                            response.data.sources.forEach((result, index) => {
-                                retrievalResultsContainer.append(createRetrievalResultCard(result, index));
-                            });
-                        }
-                    }    
 
                     spinner.addClass('d-none');
                     runQueryButton.prop('disabled', false);
                 },
-                (error) => {
+                (error, isResponseUnsuccessful) => {
                     retrievalResultsContainer.html('<p class="text-danger">An error occurred while fetching results.</p>');
+
+                    var resultMessage = "Check console logs for more details.";
+                    if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: "Error occurred while fetching the retrieval results.",
+                        resultMessage: resultMessage,
+                        timeout: 6000,
+                    });
+
+                    console.error("Error occurred while fetching the retrieval results: ", error);
+
                     spinner.addClass('d-none');
                     runQueryButton.prop('disabled', false);
             });
@@ -2012,53 +1993,42 @@ function initKnowledgeBaseTab() {
 
             SaveDocumentChunks(ManageCurrentKnowledgeBaseData.id, ManageCurrentDocumentData.id, formData,
                 (response) => {
-                    if (!response.success) {
-                        AlertManager.createAlert({
-                            type: 'success',
-                            message: 'Unable to save chunks. Check console logs for more details.',
-                            timeout: 6000
-                        });
+                    currentAddedChunks = [];
+                    currentEditedChunks = [];
+                    currentDeletedChunks = [];
 
-                        console.error("Unable to save chunks:", response);
-                    }
-                    else {
-                        currentAddedChunks = [];
-                        currentEditedChunks = [];
-                        currentDeletedChunks = [];
+                    ManageCurrentDocumentData = response.data;
 
-                        ManageCurrentDocumentData = response.data;
-                        
-                        const documentIndex = ManageCurrentKnowledgeBaseDocuments.findIndex(doc => doc.id === ManageCurrentDocumentData.id);
-                        ManageCurrentKnowledgeBaseDocuments[documentIndex] = ManageCurrentDocumentData;
+                    const documentIndex = ManageCurrentKnowledgeBaseDocuments.findIndex(doc => doc.id === ManageCurrentDocumentData.id);
+                    ManageCurrentKnowledgeBaseDocuments[documentIndex] = ManageCurrentDocumentData;
 
-                        fillChunksList();
+                    fillChunksList();
 
-                        // todo maybe update the document list element too
+                    // todo maybe update the document list element too
 
-                        AlertManager.createAlert({
-                            type: 'success',
-                            message: 'Chunks saved successfully and submitted for processing.',
-                            timeout: 6000
-                        });
-                    }   
+                    AlertManager.createAlert({
+                        type: 'success',
+                        message: 'Chunks saved successfully and submitted for processing.',
+                        timeout: 6000
+                    });
 
                     spinner.addClass('d-none');
                     IsSavingChunks = false;
                     updateSaveChangesButtonState();
                 },
-                (error) => {
+                (error, isResponseUnsuccessful) => {
                     spinner.addClass('d-none');
                     IsSavingChunks = false;
                     updateSaveChangesButtonState();
 
                     var resultMessage = "Check console logs for more details.";
-                    if (error && error.message) resultMessage = error.message;
+                    if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
 
                     AlertManager.createAlert({
-                        type: 'danger',
-                        message: 'Failed to save chunks and submit for processing. Check console logs for more details.',
+                        type: "danger",
+                        message: "Failed to save chunks and submit for processing.",
                         resultMessage: resultMessage,
-                        timeout: 6000
+                        timeout: 6000,
                     });
 
                     console.error("Failed to save chunks and submit for processing:", error);
@@ -2128,13 +2098,13 @@ function initKnowledgeBaseTab() {
 
                     knowledgeBaseManagerDocumentsTabButton.click();
                 },
-                (error) => {
+                (error, isResponseUnsuccessful) => {
                     spinner.addClass('d-none');
                     IsSavingKnowledgeBase = false;
                     saveKnowledgeBaseButton.removeClass('disabled').prop('disabled', false);
 
                     var resultMessage = "Check console logs for more details.";
-                    if (error && error.message) resultMessage = error.message;
+                    if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
 
                     AlertManager.createAlert({
                         type: "danger",

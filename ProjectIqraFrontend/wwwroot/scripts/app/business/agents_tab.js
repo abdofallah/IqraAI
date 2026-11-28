@@ -381,7 +381,7 @@ function LoadAgentBackgroundAudioPreview(agentData, waveSurfer) {
 		onUnavailable: () => {
 			AlertManager.createAlert({
 				type: "danger",
-				message: "Error occured while loading the background audio. Check browser console for logs.",
+				message: "Error occurred while loading the background audio. Check browser console for logs.",
 				timeout: 6000,
 			});
 		},
@@ -2310,20 +2310,20 @@ function initAgentTab() {
 							timeout: 6000,
 						});
 					},
-					(errorResult) => {
+					(errorResult, isResponseUnsuccessful) => {
 						agentCard.removeClass("disabled");
 
 						var resultMessage = "Check console logs for more details.";
-						if (errorResult && errorResult.message) resultMessage = errorResult.message;
+						if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
 						AlertManager.createAlert({
 							type: "danger",
-							message: "Error occured while deleting business agent.",
+							message: "Error occurred while deleting business agent.",
 							resultMessage: resultMessage,
 							timeout: 6000,
 						});
 
-						console.log("Error occured while deleting business agent: ", errorResult);
+						console.log("Error occurred while deleting business agent: ", errorResult);
 					}
 				).always(() => {
 					showHideButtonSpinnerWithDisableEnable(button, false);
@@ -2997,18 +2997,18 @@ function initAgentTab() {
 
 					ManageAgentType = "edit";
 				},
-				(errorResult, isUnsuccessful) => {
+				(errorResult, isResponseUnsuccessful) => {
 					var resultMessage = "Check console logs for more details.";
-					if (errorResult && errorResult.message) resultMessage = errorResult.message;
+					if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occured while saving business agent data.",
+						message: "Error occurred while saving business agent data.",
 						resultMessage: resultMessage,
 						timeout: 6000,
 					});
 
-					console.log("Error occured while saving business agent data: ", errorResult);
+					console.log("Error occurred while saving business agent data: ", errorResult);
 
 					confirmPublishAgentButton.prop("disabled", false);
 					confirmPublishAgentButtonSpinner.addClass("d-none");

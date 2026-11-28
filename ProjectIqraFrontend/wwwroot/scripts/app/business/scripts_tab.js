@@ -358,6 +358,27 @@ function DeleteBusinessScript(scriptId, onSuccess, onError) {
         },
     });
 }
+function FetchFlowAppFetcherOptions(appKey, fetcherKey, integrationId, context, onSuccess, onError) {
+    return $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/flowapps/${appKey}/fetchers/${fetcherKey}`,
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({
+            integrationId: integrationId,
+            context: context
+        }),
+        success: (response) => {
+            if (response.success) {
+                onSuccess(response.data);
+            } else {
+                onError(response, true);
+            }
+        },
+        error: (error) => {
+            onError(error, false);
+        },
+    });
+}
 
 // Scripts Tab Functions
 function showScriptManagerTab() {
@@ -3713,20 +3734,20 @@ function initScriptsTabHandlers() {
 						timeout: 6000,
 					});
 				},
-				(errorResult) => {
+				(errorResult, isResponseUnsuccessful) => {
 					scriptCard.removeClass("disabled");
 
 					var resultMessage = "Check console logs for more details.";
-					if (errorResult && errorResult.message) resultMessage = errorResult.message;
+					if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occured while deleting script.",
+						message: "Error occurred while deleting script.",
 						resultMessage: resultMessage,
 						timeout: 6000,
 					});
 
-					console.log("Error occured while deleting script: ", errorResult);
+					console.log("Error occurred while deleting script: ", errorResult);
 				}
 			).always(() => {
 				showHideButtonSpinnerWithDisableEnable(button, false);
@@ -4659,24 +4680,14 @@ function initScriptsTabHandlers() {
 			}
 
 			// 5. Execute API Call
-			try {
-				const response = await $.ajax({
-					url: `/app/user/business/${CurrentBusinessId}/flowapps/${appKey}/fetchers/${fetcherKey}`,
-					method: "POST",
-					contentType: "application/json",
-					data: JSON.stringify({
-						integrationId: integrationId,
-						context: context
-					})
-				});
-
-				if (response.success) {
-					if (response.data.length === 0) {
+			FetchFlowAppFetcherOptions(appKey, fetcherKey, integrationId, context,
+				(options) => {
+					if (options.length === 0) {
 						resultsContainer.html('<div class="p-3 text-center text-muted small">No options found.</div>');
 						return;
 					}
 
-					const listHtml = response.data.map(opt => `
+					const listHtml = options.map(opt => `
                     <div class="fetcher-result-item" data-value="${opt.value}" data-target-key="${targetInputKey}">
                         <div class="fetcher-result-label">${opt.label}</div>
                         ${opt.description ? `<div class="fetcher-result-desc">${opt.description}</div>` : ""}
@@ -4684,13 +4695,23 @@ function initScriptsTabHandlers() {
                 `).join("");
 
 					resultsContainer.html(listHtml);
-				} else {
-					resultsContainer.html(`<div class="p-3 text-center text-danger small">Error: ${response.message}</div>`);
+				},
+				(errorResult, isResponseUnsuccessful) => {
+					resultsContainer.html('<div class="p-3 text-center text-danger small">Could not load the options.</div>');
+
+					var resultMessage = "Check console logs for more details.";
+					if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
+
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occurred while loading the options.",
+						resultMessage: resultMessage,
+						timeout: 6000,
+					});
+
+					console.error("Error occurred while loading the options: ", errorResult);
 				}
-			} catch (err) {
-				console.error(err);
-				resultsContainer.html('<div class="p-3 text-center text-danger small">Network Error</div>');
-			}
+			);
 		});
 
 		// --- Select Option ---
@@ -4904,18 +4925,18 @@ function initScriptsTabHandlers() {
 				IsSavingScriptTab = false;
 				ManageCurrentScriptType = "edit";
 			},
-			(saveError, isUnsuccessful) => {
+			(saveError, isResponseUnsuccessful) => {
 				var resultMessage = "Check console logs for more details.";
-				if (saveError && saveError.message) resultMessage = saveError.message;
+				if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
 
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occured while saving business script data.",
+					message: "Error occurred while saving business script data.",
 					resultMessage: resultMessage,
 					timeout: 6000,
 				});
 
-				console.log("Error occured while saving business script data: ", saveError);
+				console.log("Error occurred while saving business script data: ", saveError);
 
 				saveScriptButton.prop("disabled", false);
 				saveScriptButtonSpinner.addClass("d-none");

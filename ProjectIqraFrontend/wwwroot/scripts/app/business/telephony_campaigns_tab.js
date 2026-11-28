@@ -1041,7 +1041,7 @@ function saveTelephonyCampaign(formData, successCallback, errorCallback) {
             }
         },
         error: (xhr, status, error) => {
-            errorCallback(error, false);
+            errorCallback(xhr, false);
         },
     });
 }
@@ -1057,7 +1057,7 @@ function deleteTelephonyCampaign(campaignId, successCallback, errorCallback) {
             }
         },
         error: (xhr, status, error) => {
-            errorCallback(error, false);
+            errorCallback(xhr, false);
         },
     });
 }
@@ -2806,20 +2806,20 @@ function initTelephonyCampaignsTab() {
                             timeout: 6000,
                         });
                     },
-                    (errorResult) => {
+                    (errorResult, isResponseUnsuccessful) => {
                         campaignCard.removeClass("disabled");
 
                         var resultMessage = "Check console logs for more details.";
-                        if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                        if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                         AlertManager.createAlert({
                             type: "danger",
-                            message: "Error occured while deleting business telephony campaign.",
+                            message: "Error occurred while deleting business telephony campaign.",
                             resultMessage: resultMessage,
                             timeout: 6000,
                         });
 
-                        console.log("Error occured while deleting business telephony campaign: ", errorResult);
+                        console.log("Error occurred while deleting business telephony campaign: ", errorResult);
                     }
                 ).always(() => {
                     showHideButtonSpinnerWithDisableEnable(button, false);
@@ -2886,13 +2886,17 @@ function initTelephonyCampaignsTab() {
                     telephonyCampaignManagerNameBreadcrumb.text(currentTelephonyCampaignData.general.name);
                     updateUrlForTab(`telephonycampaigns/${currentTelephonyCampaignData.id}`);
                 },
-                (error) => {
+                (error, isResponseUnsuccessful) => {
                     isSavingTelephonyCampaign = false;
                     saveTelephonyCampaignButton.prop("disabled", false);
+                    var resultMessage = "Check console logs for more details.";
+                    if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Failed to save campaign. Check console logs for more details.",
-                        timeout: 3000
+                        message: "Failed to save campaign.",
+                        resultMessage: resultMessage,
+                        timeout: 6000,
                     });
                     console.error("Failed to save campaign:", error);
                 }

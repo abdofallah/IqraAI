@@ -165,7 +165,7 @@ function savePCATemplate(formData, successCallback, errorCallback) {
             }
         },
         error: (xhr, status, error) => {
-            errorCallback(error, false);
+            errorCallback(xhr, false);
         },
     });
 }
@@ -182,7 +182,7 @@ function deletePCATemplate(templateId, successCallback, errorCallback) {
             }
         },
         error: (xhr, status, error) => {
-            errorCallback(error, false);
+            errorCallback(xhr, false);
         },
     });
 }
@@ -1410,20 +1410,20 @@ function initPostAnalysisTab() {
                         timeout: 6000,
                     });
                 },
-                (errorResult) => {
+                (errorResult, isResponseUnsuccessful) => {
                     templateCard.removeClass("disabled");
 
                     var resultMessage = "Check console logs for more details.";
-                    if (errorResult && errorResult.message) resultMessage = errorResult.message;
+                    if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "Error occured while deleting business post analysis template.",
+                        message: "Error occurred while deleting business post analysis template.",
                         resultMessage: resultMessage,
                         timeout: 6000,
                     });
 
-                    console.log("Error occured while deleting business post analysis template: ", errorResult);
+                    console.log("Error occurred while deleting business post analysis template: ", errorResult);
                 }
             ).always(() => {
                 showHideButtonSpinnerWithDisableEnable(button, false);
@@ -1484,14 +1484,18 @@ function initPostAnalysisTab() {
                 pcaManagerNameBreadcrumb.text(savedData.general.name);
                 updateUrlForTab(`postanalysis/${currentPCATemplateData.id}`);
             },
-            (error, isUnsuccessful) => {
+            (error, isResponseUnsuccessful) => {
                 isSavingPCATemplate = false;
                 savePCATemplateButton.prop("disabled", false);
                 savePCATemplateButtonSpinner.addClass("d-none");
+                var resultMessage = "Check console logs for more details.";
+                if (isResponseUnsuccessful && error && error.message) resultMessage = error.message;
+
                 AlertManager.createAlert({
                     type: "danger",
-                    message: "Failed to save template. Check console for details.",
-                    timeout: 3000
+                    message: "Failed to save template.",
+                    resultMessage: resultMessage,
+                    timeout: 6000,
                 });
                 console.error("Failed to save PCA template:", error);
             }

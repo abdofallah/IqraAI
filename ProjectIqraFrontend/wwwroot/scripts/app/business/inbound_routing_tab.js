@@ -248,7 +248,7 @@ function SaveBusinessRoute(formData, successCallback, errorCallback) {
 			}
 		},
 		error: (xhr, status, error) => {
-			errorCallback(error, false);
+			errorCallback(xhr, false);
 		},
 	});
 }
@@ -264,7 +264,7 @@ function DeleteBusinessRoute(routeId, successCallback, errorCallback) {
 			}
 		},
 		error: (xhr, status, error) => {
-			errorCallback(error, false);
+			errorCallback(xhr, false);
 		},
 	});
 }
@@ -1329,20 +1329,20 @@ function initRoutingTab() {
 							timeout: 6000,
 						});
 					},
-					(errorResult) => {
+					(errorResult, isResponseUnsuccessful) => {
 						routeCard.removeClass("disabled");
 
 						var resultMessage = "Check console logs for more details.";
-						if (errorResult && errorResult.message) resultMessage = errorResult.message;
+						if (isResponseUnsuccessful && errorResult && errorResult.message) resultMessage = errorResult.message;
 
 						AlertManager.createAlert({
 							type: "danger",
-							message: "Error occured while deleting business inbound route.",
+							message: "Error occurred while deleting business inbound route.",
 							resultMessage: resultMessage,
 							timeout: 6000,
 						});
 
-						console.log("Error occured while deleting business inbound route: ", errorResult);
+						console.log("Error occurred while deleting business inbound route: ", errorResult);
 					}
 				).always(() => {
 					showHideButtonSpinnerWithDisableEnable(button, false);
@@ -1763,9 +1763,9 @@ function initRoutingTab() {
 					ManageRouteType = "edit";
 					updateUrlForTab(`routings/${ManageCurrentRouteData.id}`);
 				},
-				(saveError, isUnsuccessful) => {
+				(saveError, isResponseUnsuccessful) => {
 					var resultMessage = "Check console logs for more details.";
-					if (saveError && saveError.message) resultMessage = saveError.message;
+					if (isResponseUnsuccessful && saveError && saveError.message) resultMessage = saveError.message;
 
 					// Show error message
 					AlertManager.createAlert({
