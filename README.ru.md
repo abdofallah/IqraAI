@@ -57,7 +57,7 @@
 
 ### 2. Self-Hosted (Open Source)
 Запускайте основной движок на собственной инфраструктуре. Эта версия включает полный движок агента, конструктор скриптов и систему FlowApp, но исключает коммерческие модули биллинга и White Labeling.
-**Требования:** .NET 10 Runtime, MongoDB, Redis, Milvus, RustFS (S3).
+**Требования:** .NET 10 Runtime, MongoDB 4.4 или новее, Redis, Milvus, RustFS (S3).
 [Читать руководство по развертыванию](https://docs.iqra.bot/developers/self-hosting)
 
 ### 3. Enterprise

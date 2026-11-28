@@ -196,24 +196,26 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<S3StorageFileLink?> GetToolDuringExecutionAudioS3StorageLink(long businessId, string toolId)
         {
-            var linkQuery = _businessAppCollection.AsQueryable()
-                .Where(b => b.Id == businessId)
-                .SelectMany(b => b.Tools)
-                .Where(tool => tool.Id == toolId)
-                .Select(tool => tool.Audio.DuringExecutionAudioS3StorageLink);
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
 
-            return await linkQuery.FirstOrDefaultAsync();
+            return await _businessAppCollection.Find(filter)
+                .Project(b => b.Tools.Where(t => t.Id == toolId).Select(t => t.Audio.DuringExecutionAudioS3StorageLink).FirstOrDefault())
+                .FirstOrDefaultAsync();
         }
 
         public async Task<S3StorageFileLink?> GetToolAfterExecutionAudioS3StorageLink(long businessId, string toolId)
         {
-            var linkQuery = _businessAppCollection.AsQueryable()
-                .Where(b => b.Id == businessId)
-                .SelectMany(b => b.Tools)
-                .Where(tool => tool.Id == toolId)
-                .Select(tool => tool.Audio.AfterExecutionAudioS3StorageLink);
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
 
-            return await linkQuery.FirstOrDefaultAsync();
+            return await _businessAppCollection.Find(filter)
+                .Project(b => b.Tools.Where(t => t.Id == toolId).Select(t => t.Audio.AfterExecutionAudioS3StorageLink).FirstOrDefault())
+                .FirstOrDefaultAsync();
         }
 
         public async Task<BusinessAppTool?> GetBusinessAppTool(long businessId, string selectedToolId)
@@ -1186,23 +1188,28 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
         {
-            var agentQuery = _businessAppCollection.AsQueryable()
-                .Where(b => b.Id == businessId)
-                .SelectMany(b => b.Agents)
-                .Where(agent => agent.Id == agentId);
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.Agents.FirstMatchingElement());
 
-            return await agentQuery.FirstOrDefaultAsync();
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+            return result?.Agents.FirstOrDefault();
         }
 
         public async Task<S3StorageFileLink?> GetAgentSettingsBackgroundAudioS3StorageLink(long businessId, string agentId)
         {
-            var urlQuery = _businessAppCollection.AsQueryable()
-                .Where(b => b.Id == businessId)
-                .SelectMany(b => b.Agents)
-                .Where(agent => agent.Id == agentId)
-                .Select(agent => agent.Settings.BackgroundAudioS3StorageLink);
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
 
-            return await urlQuery.FirstOrDefaultAsync();
+            return await _businessAppCollection.Find(filter)
+                .Project(b => b.Agents.Where(a => a.Id == agentId).Select(a => a.Settings.BackgroundAudioS3StorageLink).FirstOrDefault())
+                .FirstOrDefaultAsync();
         }
 
         public async Task<bool> AddAgent(long businessId, BusinessAppAgent agent, IClientSessionHandle session)
@@ -1385,12 +1392,16 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<BusinessAppScript?> GetScriptById(long businessId, string scriptId)
         {
-            var scriptQuery = _businessAppCollection.AsQueryable()
-                .Where(b => b.Id == businessId)
-                .SelectMany(b => b.Scripts)
-                .Where(script => script.Id == scriptId);
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Scripts, s => s.Id == scriptId)
+            );
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.Scripts.FirstMatchingElement());
 
-            return await scriptQuery.FirstOrDefaultAsync();
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+            return result?.Scripts.FirstOrDefault();
         }
 
         public async Task<bool> AddScript(long businessId, BusinessAppScript newScriptData, IClientSessionHandle? session = null)

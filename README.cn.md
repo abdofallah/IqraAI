@@ -57,7 +57,7 @@
 
 ### 2. 私有部署 (开源)
 在您自己的基础设施上运行核心引擎。此版本包括完整的代理引擎、脚本构建器和 FlowApp 系统，但不包括商业计费和白标模块。
-**要求：** .NET 10 Runtime, MongoDB, Redis, Milvus, RustFS (S3).
+**要求：** .NET 10 Runtime, MongoDB 4.4 或更高版本, Redis, Milvus, RustFS (S3).
 [阅读部署指南](https://docs.iqra.bot/developers/self-hosting)
 
 ### 3. 企业版 (Enterprise)

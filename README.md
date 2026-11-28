@@ -57,7 +57,7 @@ The fully managed, production-ready platform. Includes the multi-tenant Billing 
 
 ### 2. Self-Hosted (Open Source)
 Run the core engine on your own infrastructure. This version includes the full Agent Engine, Script Builder, and FlowApp system, but excludes the commercial Billing and Whitelabeling modules.
-**Requirements:** .NET 10 Runtime, MongoDB, Redis, Milvus, RustFS (S3).
+**Requirements:** .NET 10 Runtime, MongoDB 4.4 or later, Redis, Milvus, RustFS (S3).
 [Read the Deployment Guide](https://docs.iqra.bot/developers/self-hosting)
 
 ### 3. Enterprise

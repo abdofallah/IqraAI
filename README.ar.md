@@ -57,7 +57,7 @@
 
 ### 2. الاستضافة الذاتية (مفتوح المصدر)
 شغّل المحرك الأساسي على بنيتك التحتية الخاصة. تتضمن هذه النسخة محرك الوكيل الكامل، مُنشئ النصوص، ونظام FlowApp، ولكنها تستثني وحدات الفوترة والـ Whitelabeling التجارية.
-**المتطلبات:** .NET 10 Runtime, MongoDB, Redis, Milvus, RustFS (S3).
+**المتطلبات:** .NET 10 Runtime, MongoDB 4.4 أو أحدث, Redis, Milvus, RustFS (S3).
 [اقرأ دليل النشر](https://docs.iqra.bot/developers/self-hosting)
 
 ### 3. المؤسسات (Enterprise)
