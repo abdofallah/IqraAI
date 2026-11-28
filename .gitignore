@@ -363,6 +363,7 @@ MigrationBackup/
 FodyWeavers.xsd
 appsettings*.json
 .vscode
+.agents/
 IqraCore.Cloud
 IqraInfrastructure.Cloud
 ProjectIqraFrontend.Cloud
